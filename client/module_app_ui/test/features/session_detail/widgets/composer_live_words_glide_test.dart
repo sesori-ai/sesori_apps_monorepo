@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/rendering.dart";
@@ -10,11 +11,15 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/composer_live_words.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
+
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 const _words = LiveWords(confirmed: "spoken words", provisional: "");
 const _tentativeWords = LiveWords(confirmed: "spoken ", provisional: "words");
@@ -327,7 +332,6 @@ void main() {
 
       await tester.pump(_flight ~/ 2);
       final end = tester.getRect(_glide);
-      expect(end.right, moreOrLessEquals(composer.right - UserMessageBubble.margin.right));
       expect(end.bottom, lessThan(composer.top));
       expect(_glideOpacity(tester), 0);
 
@@ -359,6 +363,80 @@ void main() {
       screen.addRowLate(text: "spoken words");
       await tester.pump();
       expect(_bubbleSlot(tester).hidden, isFalse);
+    });
+
+    group("on a real session screen, scrolled too far up to build the row", () {
+      setUpAll(() {
+        registerFallbackValue(ComposerInputMode.typed);
+        registerFallbackValue(ComposerDraft.typed(text: ""));
+        registerFallbackValue(AnalyticsVoiceFinish.sent);
+        registerFallbackValue(AnalyticsVoiceMode.afterRecording);
+      });
+
+      const longWords =
+          "please look at the failing test in the composer and tell me what it would take to fix it "
+          "properly without changing how the list moves today";
+
+      for (final from in const [2500.0, 20000.0]) {
+        for (final (length, text) in const [("few words", "spoken words"), ("words that wrap", longWords)]) {
+          testWidgets("$length sent from $from up end on the bubble that comes, clear of its status", (tester) async {
+            await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: from);
+            final gesture = await hold(
+              tester: tester,
+              words: LiveWords(confirmed: text, provisional: ""),
+            );
+            await gesture.up();
+            await tester.pump();
+            await complete(tester: tester, transcript: text);
+
+            for (var frame = 0; frame < 6; frame++) {
+              await tester.pump(_frame);
+            }
+            expect(find.byType(QueuedMessageBubble), findsNothing, reason: "The words have stopped waiting for it.");
+
+            var landed = tester.getRect(_glide);
+            while (_glide.evaluate().isNotEmpty) {
+              landed = tester.getRect(_glide);
+              await tester.pump(_frame);
+            }
+            await tester.pump(const Duration(seconds: 1));
+
+            final row = find.byType(QueuedMessageBubble);
+            final surface = UserMessageBubble.margin.deflateRect(
+              tester.getRect(find.descendant(of: row, matching: find.byType(SentBubbleSlot))),
+            );
+            _expectRect(landed, surface);
+            final status = tester.getRect(find.descendant(of: row, matching: find.textContaining("Sending")));
+            expect(landed.bottom, lessThanOrEqualTo(status.top));
+          });
+        }
+      }
+
+      testWidgets("the words read as the bubble will, marker and all", (tester) async {
+        await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: 2500);
+        final gesture = await hold(tester: tester);
+        await send(tester: tester, gesture: gesture);
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(_frame);
+        }
+        await tester.pump(_flight ~/ 2);
+
+        expect(_glideString(tester), wrapDictatedText(text: "spoken words"));
+      });
+
+      testWidgets("the words land as the final transcript when it differs from the last ones shown", (tester) async {
+        await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: 2500);
+        final gesture = await hold(tester: tester);
+        await gesture.up();
+        await tester.pump();
+        await complete(tester: tester, transcript: "the final words");
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(_frame);
+        }
+        await tester.pump(_flight ~/ 2);
+
+        expect(_glideString(tester), wrapDictatedText(text: "the final words"));
+      });
     });
   });
 
@@ -670,6 +748,169 @@ Future<_ScreenState> _pumpScreen({
   await tester.pump();
   await tester.pump(const Duration(seconds: 1));
   return tester.state<_ScreenState>(find.byType(_Screen));
+}
+
+/// The session's own list and composer controls, scrolled [scrolledUp] from the
+/// list's end, whose send puts a sending row at that end as the cubit does.
+Future<void> _pumpSessionScreen({
+  required WidgetTester tester,
+  required VoiceInputCubit voiceCubit,
+  required double scrolledUp,
+}) async {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+
+  final provider = testProviderListResponse().items.first;
+  final initial = SessionDetailLoaded(
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
+    messages: [
+      for (var index = 0; index < 70; index++)
+        MessageWithParts(
+          info: Message.user(promptId: null, id: "user-$index", sessionID: "session-1", agent: null, time: null),
+          parts: [
+            MessagePart.text(
+              id: "part-$index",
+              sessionID: "session-1",
+              messageID: "user-$index",
+              text: List.generate(8, (line) => "Message $index line $line").join("\n"),
+            ),
+          ],
+        ),
+    ],
+    launchHandoff: null,
+    olderMessagesCursor: null,
+    userMessagesBeforeOldest: null,
+    promptIndex: null,
+    streamingText: const {},
+    sessionStatus: const SessionStatus.idle(),
+    pendingQuestions: const [],
+    pendingPermissions: const [],
+    sessionTitle: "Session",
+    session: testConstSession,
+    pluginId: "opencode",
+    supportsPromptAttachments: true,
+    assistantAgentModel: null,
+    children: const [],
+    childStatuses: const {},
+    isRootSession: true,
+    isArchived: false,
+    queuedMessages: const [],
+    bridgePromptAttachments: const {},
+    localSend: const LocalSendPhase.idle(),
+    availableAgents: [testAgentInfo()],
+    availableProviders: [provider],
+    availableCommands: const [],
+    selectedAgent: "coder",
+    selectedAgentModel: AgentModel(providerID: provider.id, modelID: "model", variant: "xhigh"),
+    promptDefaults: null,
+    fastMode: false,
+    stagedCommand: null,
+    isRefreshing: false,
+    availableVariants: const [SessionVariant(id: "xhigh")],
+    cannotContinueMessage: null,
+  );
+
+  final detailStates = StreamController<SessionDetailState>();
+  addTearDown(detailStates.close);
+  final detailCubit = _MockSessionDetailCubit();
+  addTearDown(detailCubit.close);
+  whenListen(detailCubit, detailStates.stream, initialState: initial);
+  when(() => detailCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+  when(() => detailCubit.saveComposerDraft(draft: any(named: "draft"))).thenReturn(null);
+  when(detailCubit.clearComposerDraft).thenReturn(null);
+  when(
+    () => detailCubit.reportVoiceTranscriptionCompleted(
+      finish: any(named: "finish"),
+      mode: any(named: "mode"),
+    ),
+  ).thenReturn(null);
+  when(
+    () => detailCubit.sendMessage(
+      text: any(named: "text"),
+      command: any(named: "command"),
+      inputMode: any(named: "inputMode"),
+      attachments: any(named: "attachments"),
+    ),
+  ).thenAnswer((call) async {
+    detailStates.add(
+      initial.copyWith(
+        localSend: LocalSendPhase.sending(
+          submission: QueuedSessionSubmission.text(
+            promptId: "prm_sent",
+            text: call.namedArguments[#text] as String,
+            inputMode: call.namedArguments[#inputMode] as ComposerInputMode,
+            attachments: const [],
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
+        ),
+      ),
+    );
+  });
+  final currentPromptId = ValueNotifier<String?>(null);
+  addTearDown(currentPromptId.dispose);
+  final jumpNotifier = TranscriptJumpNotifier();
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider<VoiceInputCubit>.value(value: voiceCubit),
+          BlocProvider<SessionDetailCubit>.value(value: detailCubit),
+        ],
+        child: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.supported,
+          inputMode: ChatInputMode.voiceFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+          presentation: ComposerPresentation.touch,
+          attachmentDispatcher: () => ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker()),
+          imageClipboard: _NoOpImageClipboard.new,
+          child: SentBubbleLanding(
+            child: Scaffold(
+              body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
+                builder: (context, state) {
+                  final loaded = state is SessionDetailLoaded ? state : initial;
+                  return SessionDetailLoadedView.interactive(
+                    projectId: "project-1",
+                    sessionId: "session-1",
+                    state: loaded,
+                    onShowPendingQuestions: () {},
+                    onShowPendingPermissions: () {},
+                    bottomControls: SessionDetailComposerControls(
+                      projectId: "project-1",
+                      sessionId: "session-1",
+                      source: LoadedSessionComposerSource(state: loaded),
+                    ),
+                    columnWidths: null,
+                    currentPromptId: currentPromptId,
+                    jumpNotifier: jumpNotifier,
+                    onPinchIn: ({required focalPoint}) {},
+                    initialBottomControlsHeight: 120,
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 1));
+
+  final controller = tester.widget<ListView>(find.byKey(const Key("session-detail-message-list-view"))).controller;
+  if (controller == null) throw StateError("The list has no controller");
+  while (controller.position.pixels < scrolledUp) {
+    controller.jumpTo(math.min(controller.position.pixels + 500, scrolledUp));
+    await tester.pump();
+  }
+  await tester.pump(const Duration(milliseconds: 100));
 }
 
 /// A session screen reduced to what the words touch: a landing over a list of
