@@ -67,6 +67,17 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
 
   bool get _isOpenByDefault => widget.alwaysOpen && !widget.isTyping;
 
+  /// Eases the pill as it opens and folds. Reduced motion resizes at once: a
+  /// zero-duration [AnimatedSize] would re-dirty itself mid-layout.
+  Widget _easeWidth({required Widget child}) => context.isReducedMotion
+      ? child
+      : AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: AlignmentDirectional.centerEnd,
+          child: child,
+        );
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -84,10 +95,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
         borderRadius: BorderRadius.circular(PregoRadius.full),
         child: SizedBox(
           height: 44,
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            alignment: AlignmentDirectional.centerEnd,
+          child: _easeWidth(
             child: Padding(
               // Keep a single button centred in a 44pt circle, including
               // command-only harnesses. Expansion remains anchored to the

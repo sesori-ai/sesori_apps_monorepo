@@ -1267,10 +1267,11 @@ class _PromptInputState() extends State<PromptInput> {
     required AlignmentGeometry alignment,
     required Duration duration,
     required Curve curve,
+    required Clip clipBehavior,
     required Widget child,
   }) => prefersReducedMotion(context)
       ? child
-      : AnimatedSize(duration: duration, curve: curve, alignment: alignment, child: child);
+      : AnimatedSize(duration: duration, curve: curve, alignment: alignment, clipBehavior: clipBehavior, child: child);
 
   /// Stacks the composer's layouts on its bottom edge. A layout fading out holds
   /// the box open until it has gone, unless a send left it: then it gives up its
@@ -1375,7 +1376,7 @@ class _PromptInputState() extends State<PromptInput> {
                     spacing: 8,
                     children: [
                       Expanded(child: _buildComposerTopSlot(context: context, hintWidth: constraints.maxWidth)),
-                      _buildComposerTrailing(context: context, trailing: trailing),
+                      _buildComposerTrailing(trailing: trailing),
                     ],
                   ),
                 ),
@@ -1414,6 +1415,7 @@ class _PromptInputState() extends State<PromptInput> {
                     alignment: Alignment.bottomCenter,
                     duration: _closesWithSend ? transcriptMotionDuration : _morphDuration,
                     curve: _closesWithSend ? transcriptMotionCurve : _morphCurve,
+                    clipBehavior: Clip.hardEdge,
                     child: AnimatedSwitcher(
                       key: _composerBodyKey,
                       duration: _morphDuration,
@@ -1453,9 +1455,8 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// Fades where it stands while the release hint shows over its place. It stays
   /// mounted and keeps its room, so nothing in the row moves.
-  Widget _buildComposerTrailing({required BuildContext context, required Widget trailing}) {
+  Widget _buildComposerTrailing({required Widget trailing}) {
     return _fadeInPlace(
-      context: context,
       visible: _voicePresentation != _VoicePresentation.recording,
       child: Padding(
         padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
@@ -1465,19 +1466,18 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// Fades [child] where it stands, inert from the moment it starts to go.
-  Widget _fadeInPlace({required BuildContext context, required bool visible, required Widget child}) {
-    final duration = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
+  Widget _fadeInPlace({required bool visible, required Widget child}) {
     final opacity = visible ? 1.0 : 0.0;
     // Leaves on the house curve and comes back once what is over its place (the
     // release hint, the waveform's end, the keyboard button) has mostly gone: each
     // fade holds one curve, as an implicit animation given a new curve restarts from
     // the wrong value when a quick tap turns it back.
     return AnimatedOpacity(
-      duration: duration,
+      duration: _morphDuration,
       curve: _morphCurve,
       opacity: opacity,
       child: AnimatedOpacity(
-        duration: duration,
+        duration: _morphDuration,
         curve: _trailingReturnCurve,
         opacity: opacity,
         child: ExcludeFocus(
@@ -1491,11 +1491,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// Keeps [child] inert for the first stretch of its return, while [_fadeInPlace]
   /// still shows nothing: a tap on that empty spot must not send the draft a hold
   /// left in the box, or stop the running work.
-  Widget _inertUntilShowing({required BuildContext context, required bool visible, required Widget child}) {
+  Widget _inertUntilShowing({required bool visible, required Widget child}) {
     final target = visible ? 1.0 : 0.0;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: target, end: target),
-      duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+      duration: _morphDuration,
       builder: (context, progress, _) {
         final inert = progress < _trailingReturnCurve.begin;
         return ExcludeFocus(
@@ -1561,8 +1561,7 @@ class _PromptInputState() extends State<PromptInput> {
       );
     }
 
-    if (prefersReducedMotion(context)) return child;
-    return AnimatedSize(
+    return _morphSize(
       duration: _morphDuration,
       curve: _morphCurve,
       alignment: Alignment.bottomCenter,
@@ -1577,6 +1576,8 @@ class _PromptInputState() extends State<PromptInput> {
         transitionBuilder: (transitionChild, animation) {
           // Only the staged chip bears glass. Picker/voice/retry content keeps
           // its ordinary fade, including while the outgoing chip dematerializes.
+          // Under reduced motion the materialize is itself a plain fade, with no
+          // scale or blur, and the one fade that glass honours.
           if (transitionChild.key == const ValueKey("staged-command")) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
@@ -1822,9 +1823,8 @@ class _PromptInputState() extends State<PromptInput> {
         ),
       ),
       restingActions: _fadeInPlace(
-        context: context,
         visible: trailingVisible,
-        child: _inertUntilShowing(context: context, visible: trailingVisible, child: trailing),
+        child: _inertUntilShowing(visible: trailingVisible, child: trailing),
       ),
       child: Row(
         spacing: PregoSpacing.md,
@@ -1844,6 +1844,7 @@ class _PromptInputState() extends State<PromptInput> {
             alignment: AlignmentDirectional.centerStart,
             duration: _morphDuration,
             curve: _morphCurve,
+            clipBehavior: Clip.hardEdge,
             child: SizedBox(width: trailingVisible ? _actionButtonSize + extraTrailingWidth : 0),
           ),
         ],
@@ -1905,9 +1906,8 @@ class _PromptInputState() extends State<PromptInput> {
         alignment: AlignmentDirectional.centerEnd,
         children: [
           _fadeInPlace(
-            context: context,
             visible: busy,
-            child: _inertUntilShowing(context: context, visible: busy, child: _buildStopButton(context)),
+            child: _inertUntilShowing(visible: busy, child: _buildStopButton(context)),
           ),
           AnimatedPositionedDirectional(
             duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
@@ -2305,7 +2305,7 @@ class _PromptInputState() extends State<PromptInput> {
         // The finger is on the mic, so the primary action fades where it stands
         // and keeps its room: nothing moves under the hold.
         AnimatedOpacity(
-          duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+          duration: _morphDuration,
           curve: _morphCurve,
           opacity: visible ? 1 : 0,
           child: ExcludeFocus(
@@ -2659,27 +2659,25 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     };
 
-    final switcher = AnimatedSwitcher(
-      duration: _morphDuration,
-      transitionBuilder: _fadeEachEntry,
-      // Pinned to the leading edge: centred, the narrower child would jump
-      // sideways when the wider one leaves at the fade's end.
-      layoutBuilder: (currentChild, previousChildren) => Stack(
-        alignment: AlignmentDirectional.centerStart,
-        children: [...previousChildren, ?currentChild],
-      ),
-      child: child,
-    );
-    if (prefersReducedMotion(context)) return switcher;
     // The pointer accordion and the targets differ in width; glide the change
     // so the waveform beside them does not snap at the fade's end.
-    return AnimatedSize(
+    return _morphSize(
       duration: _morphDuration,
       curve: _morphCurve,
       alignment: AlignmentDirectional.centerStart,
       // The accordion's focus ring and glass may paint past its box at rest.
       clipBehavior: Clip.none,
-      child: switcher,
+      child: AnimatedSwitcher(
+        duration: _morphDuration,
+        transitionBuilder: _fadeEachEntry,
+        // Pinned to the leading edge: centred, the narrower child would jump
+        // sideways when the wider one leaves at the fade's end.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: AlignmentDirectional.centerStart,
+          children: [...previousChildren, ?currentChild],
+        ),
+        child: child,
+      ),
     );
   }
 

@@ -71,6 +71,38 @@ void main() {
     });
   }
 
+  for (final (name, features) in const [
+    ("iOS Reduce Motion", FakeAccessibilityFeatures(reduceMotion: true)),
+    ("Android Remove animations", FakeAccessibilityFeatures(disableAnimations: true)),
+  ]) {
+    testWidgets("$name opens and folds the pill at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await _pumpAccordion(
+        tester: tester,
+        brightness: Brightness.dark,
+        alwaysOpen: false,
+        actionsEnabled: true,
+        showAttachImage: true,
+        onAttachImageTap: () {},
+        onSlashCommandsTap: () {},
+      );
+      final accordion = find.byType(ComposerOptionsAccordion);
+      expect(tester.getSize(accordion).width, 44);
+
+      await tester.tap(_tooltip("More actions"));
+      await tester.pump();
+      expect(
+        tester.getSize(accordion).width,
+        ComposerOptionsAccordion.openWidth(showAttachImage: true),
+        reason: "Nothing eases on.",
+      );
+      await tester.tap(_tooltip("Attach image"));
+      await tester.pump();
+      expect(tester.getSize(accordion).width, 44);
+    });
+  }
+
   testWidgets("command-only harnesses show one centred action without a collapse arrow", (tester) async {
     var commandPicks = 0;
     await _pumpAccordion(

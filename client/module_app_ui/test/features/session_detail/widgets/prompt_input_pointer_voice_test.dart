@@ -685,6 +685,8 @@ void main() {
 
       expect(tester.getRect(_wideSend).width, 94);
       expect(tester.getRect(_wideSend).left, micRect.left);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_shownOpacity(_wideSend), inExclusiveRange(0, 1), reason: "It fades in where it already stands.");
       await tester.pump(const Duration(milliseconds: 300));
     });
 

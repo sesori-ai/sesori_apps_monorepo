@@ -316,6 +316,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 
 ### Automated checks (L2)
 
+- The sidebar resize handle's name on its own screen reader node, not on the window behind it.
 - Optional file-access card/dismissal, narrow layout, local Settings statuses and unsupported omission.
 - Project/no-project keyboard entry, nullable route-name propagation, platform modifiers, held-key repeat suppression,
   text-field/popup precedence, layout persistence, narrow-window no-op, and New session following the open
