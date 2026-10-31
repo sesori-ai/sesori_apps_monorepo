@@ -28,12 +28,14 @@ void main() {
     when(() => remoteConfig.setDefaults(any())).thenAnswer((_) async {});
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetchAndActivate()).thenAnswer((_) async => true);
-    when(() => remoteConfig.getBool(any())).thenReturn(true);
+    when(() => remoteConfig.getValue(any())).thenReturn(RemoteConfigValue("".codeUnits, ValueSource.valueRemote));
     when(() => remoteConfig.getString(any())).thenReturn("");
   });
 
-  test("reads the console values and treats empty text as none", () async {
-    when(() => remoteConfig.getBool(BoolRemoteConfig.founderCallEnabled.key)).thenReturn(false);
+  test("reads the console values, and blank ones as the default or no text", () async {
+    when(
+      () => remoteConfig.getValue(BoolRemoteConfig.founderCallEnabled.key),
+    ).thenReturn(RemoteConfigValue("false".codeUnits, ValueSource.valueRemote));
     when(() => remoteConfig.getString(StringRemoteConfig.founderCallUrl.key)).thenReturn("https://cal.com/example");
     when(() => remoteConfig.getString(StringRemoteConfig.founderCallTitle.key)).thenReturn("Talk to the founder");
     when(() => remoteConfig.getString(StringRemoteConfig.founderCallButton.key)).thenReturn("Pick a time");

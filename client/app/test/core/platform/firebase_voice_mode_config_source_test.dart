@@ -28,7 +28,9 @@ void main() {
     when(() => remoteConfig.setDefaults(any())).thenAnswer((_) async {});
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetchAndActivate()).thenAnswer((_) async => true);
-    when(() => remoteConfig.getBool(BoolRemoteConfig.voiceLiveEnabled.key)).thenReturn(true);
+    when(
+      () => remoteConfig.getValue(BoolRemoteConfig.voiceLiveEnabled.key),
+    ).thenReturn(RemoteConfigValue("true".codeUnits, ValueSource.valueRemote));
   });
 
   test("uses the agreed parameter key", () {

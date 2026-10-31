@@ -18,10 +18,12 @@ class FirebaseRemoteConfigClient({
   late final Future<void> _activated = _fetchAndActivate();
 
   /// The flag's fresh value, the one activated on an earlier launch when the fetch
-  /// fails, or else its default.
+  /// fails, or else its default. A blank console value also means the default,
+  /// where `getBool` would read it as false.
   Future<bool> getBool({required BoolRemoteConfig config}) async {
     await _activated;
-    return _remoteConfig.getBool(config.key);
+    final value = _remoteConfig.getValue(config.key);
+    return value.asString().isEmpty ? config.defaultValue : value.asBool();
   }
 
   Future<int> getInt({required IntRemoteConfig config}) async {
