@@ -37,7 +37,7 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   disable, logout, or account switch. Results state SDK acceptance, not delivery. On the phone, the home (`/sessions`)
   and Archived both report the `sessions` screen. The desktop reports no screens.
 - Switching computers reports `computer_switched` with a pinned `source` (`menu`, `offline_screen`, `settings`,
-  `alert`, `notification`, `computers_page`) and `target_online`, never a computer name or identifier. It fires when
+  `alert`, `notification`, `computers_page`, `command_palette`) and `target_online`, never a computer name or identifier. It fires when
   the switch is made, before the new connection's outcome is known.
 - Renaming or removing a computer reports `computer_managed` with a pinned `action` (`renamed`, `removed`) only after
   the auth server confirms the change, never a name, nickname or identifier. A failed change reports nothing.

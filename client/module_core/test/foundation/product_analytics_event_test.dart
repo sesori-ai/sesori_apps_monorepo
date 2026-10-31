@@ -219,6 +219,7 @@ void main() {
         (ComputerSwitchSource.alert, "alert"),
         (ComputerSwitchSource.notification, "notification"),
         (ComputerSwitchSource.computersPage, "computers_page"),
+        (ComputerSwitchSource.commandPalette, "command_palette"),
       ])
         (
           ProductAnalyticsEvent.computerSwitched(source: source, targetOnline: true),

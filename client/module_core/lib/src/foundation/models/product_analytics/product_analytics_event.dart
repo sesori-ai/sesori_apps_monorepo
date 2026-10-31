@@ -147,7 +147,8 @@ enum ComputerSwitchSource({required final String wireValue}) {
   settings(wireValue: "settings"),
   alert(wireValue: "alert"),
   notification(wireValue: "notification"),
-  computersPage(wireValue: "computers_page");
+  computersPage(wireValue: "computers_page"),
+  commandPalette(wireValue: "command_palette");
 }
 
 /// What the user did to a computer from the Computers page.

@@ -102,12 +102,28 @@ void main() {
             BlocProvider<FileAccessCubit>.value(value: fileAccess),
             BlocProvider<AllSessionsCubit>.value(value: sessions),
             BlocProvider<LocalBridgeStartupCubit>.value(value: startup),
+            // As the cockpit provides them around its pages.
+            BlocProvider(
+              lazy: false,
+              create: (_) => BridgeIdentityCubit(
+                registeredBridgesService: getIt<RegisteredBridgesService>(),
+                connectionService: getIt<ConnectionService>(),
+                selectedComputerService: getIt<SelectedComputerService>(),
+              ),
+            ),
+            BlocProvider(
+              create: (_) => ComputerSwitcherCubit(
+                registeredBridgesService: getIt<RegisteredBridgesService>(),
+                connectionService: getIt<ConnectionService>(),
+                selectedComputerService: getIt<SelectedComputerService>(),
+                activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+              ),
+            ),
           ],
           child: Scaffold(
             body: DesktopHomePane(
               onOpenSession: ({required context, required project, required displayName, required session}) {},
               onOpenHarnessSettings: () {},
-              onManageComputers: () {},
             ),
           ),
         ),
@@ -424,7 +440,6 @@ void main() {
       expect(find.text("workstation is offline"), findsOneWidget);
       expect(find.text("Start the bridge on that computer to load its projects and sessions here."), findsOneWidget);
       expect(find.text("Start the bridge"), findsNothing);
-      expect(find.text("Viewing: workstation"), findsOneWidget);
 
       await tester.tap(find.text("this-mac"));
       verify(() => switches.switchTo(bridgeId: local.id, source: ComputerSwitchSource.offlineScreen)).called(1);
@@ -450,49 +465,19 @@ void main() {
       await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
       await tester.pumpAndSettle();
 
-      expect(find.text("Viewing: This computer"), findsOneWidget);
       expect(find.text("workstation is offline"), findsNothing);
       await tester.tap(find.text("Start the bridge"));
       verify(bridgeControlCubit.recoverConnection).called(1);
     });
 
-    testWidgets("before this computer's id is known, header and body both treat it as this computer", (tester) async {
+    testWidgets("before this computer's id is known, the body treats it as this computer", (tester) async {
       // A fresh install: no target yet, the helper has not registered, and the
       // account already lists other computers.
       arrange(computers: [remote, gpu], targetId: null, localId: null);
       await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
       await tester.pumpAndSettle();
 
-      expect(find.text("Viewing: This computer"), findsOneWidget);
-      expect(find.text("Viewing: workstation"), findsNothing);
       expect(find.text("Start the bridge"), findsOneWidget);
-    });
-
-    testWidgets("the header's menu switches to another computer", (tester) async {
-      arrange(computers: [local, remote, gpu], targetId: remote.id, localId: local.id);
-      await pumpHome(
-        tester: tester,
-        state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key("desktop-computer-header")));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text("gpu-box"));
-      await tester.pumpAndSettle();
-
-      verify(() => switches.switchTo(bridgeId: gpu.id, source: ComputerSwitchSource.menu)).called(1);
-    });
-
-    testWidgets("the header stays hidden while this computer is the account's only one", (tester) async {
-      arrange(computers: [local], targetId: local.id, localId: local.id);
-      await pumpHome(
-        tester: tester,
-        state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key("desktop-computer-header")), findsNothing);
     });
   });
 
@@ -701,72 +686,6 @@ void main() {
         expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
       });
     }
-
-    testWidgets("a second computer's Viewing line fades in over the top band; the composer stays put", (tester) async {
-      final heading = find.text("What should we work on?");
-      final header = find.byKey(const Key("desktop-computer-header"));
-      await pumpReadyHome(tester: tester);
-      final composerRect = tester.getRect(composer);
-      final headingRect = tester.getRect(heading);
-      expect(header, findsNothing);
-
-      // The account's list loads after the home, naming a second computer.
-      bridges.emitBridges(
-        bridges: [
-          _computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active),
-          _computer(id: "studio", name: "Studio Mac", status: BridgeRegistrationStatus.active),
-        ],
-      );
-      await tester.pump();
-      for (var frame = 0; frame < 8; frame++) {
-        await tester.pump(const Duration(milliseconds: 33));
-        expect(tester.getRect(composer), composerRect);
-        expect(tester.getRect(heading), headingRect);
-      }
-      expect(find.text("Viewing: This computer"), findsOneWidget);
-      expect(opacityOf(tester: tester, finder: header), 1);
-      expect(header.hitTestable(), findsOneWidget);
-      // Beside the line, the band leaves clicks to the body beneath it.
-      final beside = Offset(
-        tester.getRect(find.byType(DesktopHomePane)).right - PregoSpacing.x2l,
-        tester.getCenter(header).dy,
-      );
-      expect(
-        tester.hitTestOnBinding(beside).path.map((entry) => entry.target),
-        contains(tester.renderObject(find.byType(NewSessionView))),
-      );
-
-      // Back to one computer, the line fades out the same way.
-      bridges.emitBridges(
-        bridges: [_computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active)],
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 110));
-      expect(opacityOf(tester: tester, finder: header), inExclusiveRange(0, 1));
-      expect(tester.getRect(composer), composerRect);
-      await tester.pump(const Duration(milliseconds: 120));
-      expect(header, findsNothing);
-      expect(tester.getRect(composer), composerRect);
-    });
-
-    testWidgets("with reduced motion the Viewing line appears at once", (tester) async {
-      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
-      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      final header = find.byKey(const Key("desktop-computer-header"));
-      await pumpReadyHome(tester: tester);
-      final composerRect = tester.getRect(composer);
-
-      bridges.emitBridges(
-        bridges: [
-          _computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active),
-          _computer(id: "studio", name: "Studio Mac", status: BridgeRegistrationStatus.active),
-        ],
-      );
-      await tester.pump();
-      await tester.pump();
-      expect(opacityOf(tester: tester, finder: header), 1);
-      expect(tester.getRect(composer), composerRect);
-    });
 
     testWidgets("a status page of another kind cross-fades in; one whose content changes stays put", (tester) async {
       final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);

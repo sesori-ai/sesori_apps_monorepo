@@ -961,17 +961,17 @@ abstract class AppLocalizations {
   /// **'Still starting this computer\'s bridge…'**
   String get projectsDesktopBridgeStillStarting;
 
-  /// Desktop home header naming the other computer whose projects are shown; opens the computer menu.
+  /// Desktop command palette command that switches to another computer of the account.
   ///
   /// In en, this message translates to:
-  /// **'Viewing: {name}'**
-  String desktopViewingComputer(String name);
+  /// **'Switch to {name}'**
+  String desktopSwitchToComputer(String name);
 
-  /// Desktop home header when the projects shown are this computer's own; opens the computer menu.
+  /// Desktop command palette command that switches back to this computer while another is viewed.
   ///
   /// In en, this message translates to:
-  /// **'Viewing: This computer'**
-  String get desktopViewingThisComputer;
+  /// **'Switch to this computer'**
+  String get desktopSwitchToThisComputer;
 
   /// No description provided for @connectionLostTitle.
   ///

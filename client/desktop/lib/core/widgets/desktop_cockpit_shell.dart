@@ -37,6 +37,25 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     child: MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+        // Not lazy: besides naming the computer, it fetches the account's
+        // computers whenever the relay is reachable, which the sidebar's
+        // computer row relies on, as nothing else there loads the list.
+        BlocProvider(
+          lazy: false,
+          create: (_) => BridgeIdentityCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => ComputerSwitcherCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+          ),
+        ),
         BlocProvider(
           create: (_) => LinkedComputerAlertCubit(
             registeredBridgesService: getIt<RegisteredBridgesService>(),
@@ -64,6 +83,9 @@ class const DesktopCockpitShell({
   /// Opens a new session in a project, including one just added.
   required final ProjectOpenedCallback onNewSession,
   required final SessionListActionDispatcher sessionActions,
+
+  /// Opens the Computers page from the sidebar's computer menu.
+  required final VoidCallback onManageComputers,
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 
@@ -110,10 +132,14 @@ class const DesktopCockpitShell({
       );
     }
 
+    void switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
+        unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
         final loc = context.loc;
+        final computers = context.watch<ComputerSwitcherCubit>().state;
         // As the sidebar's row: absent until projects load, Add project while there are none.
         final hasProjects = context.select(
           (ProjectListCubit cubit) => switch (cubit.state) {
@@ -157,6 +183,18 @@ class const DesktopCockpitShell({
             shortcut: desktopShortcut(key: LogicalKeyboardKey.bracketLeft),
             run: onGoBack,
           ),
+          // The way to switch while the sidebar, and its computer row, is hidden.
+          for (final computer in computers.computers)
+            if (computer.id != computers.currentId)
+              DesktopCommand(
+                label: computers.isThisComputer(bridgeId: computer.id)
+                    ? loc.desktopSwitchToThisComputer
+                    : loc.desktopSwitchToComputer(computer.name),
+                detail: ComputerMenu.presenceLabel(context: context, computer: computer),
+                icon: ComputerMenu.platformIcon(platform: computer.platform),
+                shortcut: null,
+                run: () => switchComputer(bridgeId: computer.id, source: ComputerSwitchSource.commandPalette),
+              ),
         ];
         void openPalette() => unawaited(
           showDesktopCommandPalette(
@@ -205,6 +243,8 @@ class const DesktopCockpitShell({
                 onOpenArchived: onOpenArchived,
                 sessionActions: sessionActions,
                 onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                onSwitchComputer: switchComputer,
+                onManageComputers: onManageComputers,
                 onOpenBridgeSettings: onOpenBridgeSettings,
                 onOpenSettings: onOpenSettings,
               ),

@@ -48,6 +48,7 @@ void main() {
     getIt.registerSingleton<RegisteredBridgesService>(MockRegisteredBridgesService());
     getIt.registerSingleton<ConnectionService>(connection);
     getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
+    getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
     final filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projects);
     getIt.registerSingleton<SessionListFilterTracker>(filterTracker);
     getIt.registerFactory<SessionLaunchService>(
@@ -98,6 +99,7 @@ void main() {
       await getIt.unregister<RegisteredBridgesService>();
       await getIt.unregister<ConnectionService>();
       await getIt.unregister<ActiveBridgeLocality>();
+      await getIt.unregister<SelectedComputerService>();
       await getIt.unregister<SessionListFilterTracker>();
       await filterTracker.dispose();
       await getIt.unregister<SessionLaunchService>();

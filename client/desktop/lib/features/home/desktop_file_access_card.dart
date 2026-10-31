@@ -14,7 +14,7 @@ class const DesktopFileAccessCard({super.key}) extends StatelessWidget {
     final cubit = context.read<FileAccessCubit>();
     final loc = context.loc;
     return Padding(
-      // Clear of the top band, where the home's "Viewing:" line floats over it.
+      // Clear of the top band, where the sidebar's restore button sits.
       padding: const EdgeInsetsDirectional.fromSTEB(
         PregoSpacing.xl,
         DesktopPageToolbar.height,

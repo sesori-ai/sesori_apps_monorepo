@@ -55,32 +55,44 @@ class const DesktopBridgePopover({
           };
     return Padding(
       key: const Key("desktop-bridge-popover"),
-      padding: const EdgeInsets.all(PregoSpacing.xl),
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(loc.desktopLocalBridgeTitle, style: context.prego.textTheme.textSm.bold),
-          const SizedBox(height: PregoSpacing.xs),
-          Row(
-            children: [
-              // A status dot, not a glyph: no icon token applies.
-              Icon(
-                TablerSolid.circle,
-                size: 8,
-                color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
-              ),
-              const SizedBox(width: PregoSpacing.sm),
-              Expanded(
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    state.statusLabel,
-                    style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-                  ),
+          // In line with the rows' icons, here and in the menu around this.
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(loc.desktopLocalBridgeTitle, style: context.prego.textTheme.textSm.bold),
+                const SizedBox(height: PregoSpacing.xs),
+                Row(
+                  children: [
+                    // A status dot, not a glyph: no icon token applies.
+                    Icon(
+                      TablerSolid.circle,
+                      size: 8,
+                      color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
+                    ),
+                    const SizedBox(width: PregoSpacing.sm),
+                    Expanded(
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          state.statusLabel,
+                          style: context.prego.textTheme.textSm.regular.copyWith(
+                            color: context.prego.colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           // Recovery actions stay a solid button; stopping a healthy bridge is
           // routine, so it joins the quiet rows.
@@ -128,14 +140,20 @@ class const _BridgeAction({
   required final VoidCallback? onPressed,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => TextButton.icon(
+  Widget build(BuildContext context) => TextButton(
     onPressed: onPressed,
-    icon: Icon(icon, size: PregoIconSize.md),
-    label: Text(label, style: context.prego.textTheme.textSm.medium),
     style: TextButton.styleFrom(
       foregroundColor: context.prego.colors.textSecondary,
       alignment: AlignmentDirectional.centerStart,
-      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs, vertical: PregoSpacing.md),
+    ),
+    // The menu rows' icon and gap, so the labels line up with theirs.
+    child: Row(
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 12),
+        Expanded(child: Text(label, style: context.prego.textTheme.textSm.medium)),
+      ],
     ),
   );
 }
