@@ -213,6 +213,7 @@ export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";
 export "src/foundation/platform/image_sharer.dart";
 export "src/foundation/platform/installed_app_build_source.dart";
+export "src/foundation/platform/on_device_speech_source.dart";
 export "src/foundation/platform/plugin_authentication_browser.dart";
 export "src/foundation/platform/temporary_directory_provider.dart";
 export "src/foundation/platform/voice_mode_config_source.dart";

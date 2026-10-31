@@ -39,6 +39,7 @@ final class const VoiceLiveFellBack() extends VoiceLiveEvent;
 final class const VoiceLiveEnded({
   required final String transcript,
   required final VoiceDictationOutcome outcome,
+  required final VoiceDictationMode mode,
 }) extends VoiceLiveEvent;
 
 /// The session ended by itself and left nothing to hand over. There is no

@@ -31,6 +31,8 @@ import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
 import 'package:sesori_mobile/core/platform/application_support_directory_client.dart'
     as _i441;
+import 'package:sesori_mobile/core/platform/channel_on_device_speech_source.dart'
+    as _i140;
 import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
 import 'package:sesori_mobile/core/platform/file_attribution_claim_storage.dart'
@@ -214,6 +216,9 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
+    gh.lazySingleton<_i948.OnDeviceSpeechSource>(
+      () => _i140.ChannelOnDeviceSpeechSource(),
+    );
     gh.lazySingleton<_i982.FirebaseApp>(
       () => firebaseRegisterModule.enabledFirebaseApp,
       registerFor: {_firebaseEnabled},

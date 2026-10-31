@@ -12,4 +12,7 @@ class FirebaseVoiceModeConfigSource({
 }) implements VoiceModeConfigSource {
   @override
   Future<bool> fetchLiveEnabled() => _remoteConfigClient.getBool(config: BoolRemoteConfig.voiceLiveEnabled);
+
+  @override
+  Future<bool> fetchOnDeviceEnabled() => _remoteConfigClient.getBool(config: BoolRemoteConfig.voiceOnDeviceEnabled);
 }

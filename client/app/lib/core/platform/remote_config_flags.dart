@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// sets one. [FirebaseRemoteConfigClient] registers these as Firebase's defaults.
 enum BoolRemoteConfig({required final String key, required final bool defaultValue}) {
   voiceLiveEnabled(key: "voice_live_enabled", defaultValue: false),
+  voiceOnDeviceEnabled(key: "voice_on_device_enabled", defaultValue: true),
   founderCallEnabled(key: "founder_call_enabled", defaultValue: true),
   founderCallAfterComputer(key: "founder_call_after_computer", defaultValue: true),
 }

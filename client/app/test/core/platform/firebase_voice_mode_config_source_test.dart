@@ -43,6 +43,7 @@ void main() {
     final calls = verifyInOrder([() => remoteConfig.setDefaults(captureAny()), () => remoteConfig.fetchAndActivate()]);
     expect(calls.first.captured.single, {
       "voice_live_enabled": false,
+      "voice_on_device_enabled": true,
       "founder_call_enabled": true,
       "founder_call_after_computer": true,
       "feedback_prompt_interaction_threshold": 5,
@@ -50,6 +51,23 @@ void main() {
       "android_latest_production_submission_build": 0,
       "founder_call_url": "https://cal.com/vespr/sesori-walkthrough",
     });
+  });
+
+  test("reads on-device as true while the key is unset or true, and false only when set to false", () async {
+    void setValue(RemoteConfigValue value) {
+      when(() => remoteConfig.getValue(BoolRemoteConfig.voiceOnDeviceEnabled.key)).thenReturn(value);
+    }
+
+    expect(BoolRemoteConfig.voiceOnDeviceEnabled.key, "voice_on_device_enabled");
+
+    setValue(RemoteConfigValue(null, ValueSource.valueStatic));
+    expect(await source.fetchOnDeviceEnabled(), isTrue);
+
+    setValue(RemoteConfigValue("true".codeUnits, ValueSource.valueRemote));
+    expect(await source.fetchOnDeviceEnabled(), isTrue);
+
+    setValue(RemoteConfigValue("false".codeUnits, ValueSource.valueRemote));
+    expect(await source.fetchOnDeviceEnabled(), isFalse);
   });
 
   test("passes the activated value through", () async {

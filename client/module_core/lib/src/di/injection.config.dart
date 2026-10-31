@@ -36,6 +36,7 @@ import 'package:sesori_dart_core/src/api/message_image_api.dart' as _i938;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
+import 'package:sesori_dart_core/src/api/on_device_speech_api.dart' as _i736;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i232;
 import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i958;
@@ -95,6 +96,8 @@ import 'package:sesori_dart_core/src/foundation/platform/founder_call_config_sou
     as _i1059;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
+import 'package:sesori_dart_core/src/foundation/platform/on_device_speech_source.dart'
+    as _i598;
 import 'package:sesori_dart_core/src/foundation/platform/plugin_authentication_browser.dart'
     as _i732;
 import 'package:sesori_dart_core/src/foundation/platform/temporary_directory_provider.dart'
@@ -367,11 +370,8 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i64.ComposerDraftStorage>(),
       ),
     );
-    gh.lazySingleton<_i107.VoiceRepository>(
-      () => _i107.VoiceRepository(
-        api: gh<_i176.VoiceApi>(),
-        realtimeClient: gh<_i231.RealtimeVoiceClient>(),
-      ),
+    gh.lazySingleton<_i736.OnDeviceSpeechApi>(
+      () => _i736.OnDeviceSpeechApi(source: gh<_i598.OnDeviceSpeechSource>()),
     );
     gh.lazySingleton<_i695.LegacyNativeStorageMigrationRepository>(
       () => _i695.LegacyNativeStorageMigrationRepository(
@@ -517,6 +517,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i471.NotificationRepository(
         api: gh<_i400.NotificationApi>(),
         deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(
+        api: gh<_i176.VoiceApi>(),
+        realtimeClient: gh<_i231.RealtimeVoiceClient>(),
+        onDeviceSpeechApi: gh<_i736.OnDeviceSpeechApi>(),
       ),
     );
     gh.lazySingleton<_i804.ProductAnalyticsPreferenceRepository>(

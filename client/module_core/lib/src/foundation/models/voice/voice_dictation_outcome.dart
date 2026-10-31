@@ -13,7 +13,17 @@ enum VoiceDictationOutcome() {
 
 /// How a dictation actually ran. A fallback counts as [afterRecording].
 enum VoiceDictationMode() {
+  /// The server, showing the words while the user speaks.
   live,
+
+  /// The device's own engine, showing the words while the user speaks.
+  onDeviceLive,
+
+  /// The device's own engine, with the words hidden until the end because the
+  /// live switch is off.
+  onDeviceHidden,
+
+  /// The server, after recording a file.
   afterRecording,
 }
 
