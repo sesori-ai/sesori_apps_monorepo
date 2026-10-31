@@ -471,6 +471,13 @@ state.
   to the last two folders, growing one folder at a time while a same-named
   project still ends the same way; a path shown whole keeps its root. Adding a
   first project from the phone home's empty state opens a new session in it.
+- `GET /projects` reports `sessionCount`, a project's top-level non-archived
+  sessions from the bridge database, for every harness. The project picker shows
+  it under the name ("34 sessions", before the path when a shared name has one),
+  and nothing at zero or from an older bridge. With six or more projects and no
+  search, the picker lists the three most recent under Recent and the rest under
+  Most sessions, ties most recent first. Shorter lists and searches stay one list
+  in the usual order.
 - `GET /projects` reports `directoryMissing` for a project whose folder no
   longer exists at its path. The bridge probes each folder asynchronously; a
   probe that fails or takes longer than two seconds reads as present, and is

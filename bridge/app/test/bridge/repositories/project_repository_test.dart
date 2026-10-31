@@ -977,12 +977,17 @@ void main() {
         ],
       );
 
-      final unseen = await repo.unseenByProjectId(
-        projectIds: ["child-only", "archived-only", "unseen-root", "empty"],
-      );
-
-      expect(unseen, {"child-only": false, "archived-only": false, "unseen-root": true, "empty": false});
+      final listed = {for (final project in await repo.getProjects()) project.id: project};
+      expect(listed["child-only"]?.hasUnseenChanges, isFalse);
+      expect(listed["archived-only"]?.hasUnseenChanges, isFalse);
+      expect(listed["unseen-root"]?.hasUnseenChanges, isTrue);
+      expect(await repo.projectHasUnseenChanges(projectId: "empty"), isFalse);
       expect(await repo.projectHasUnseenChanges(projectId: "unseen-root"), isTrue);
+
+      // The list's count skips the child and the archived session alike.
+      expect(listed["child-only"]?.sessionCount, 1);
+      expect(listed["archived-only"]?.sessionCount, 1);
+      expect(listed["unseen-root"]?.sessionCount, 2);
       expect(await repo.projectHasUnseenChanges(projectId: "child-only"), isFalse);
     });
   });

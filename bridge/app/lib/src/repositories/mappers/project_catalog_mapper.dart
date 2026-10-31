@@ -9,6 +9,7 @@ class const ProjectCatalogMapper() {
     required bool hasUnseenChanges,
     required bool directoryMissing,
     required ProjectKind kind,
+    required int sessionCount,
   }) {
     return ProjectSummary(
       id: row.projectId,
@@ -18,6 +19,7 @@ class const ProjectCatalogMapper() {
       hasUnseenChanges: hasUnseenChanges,
       directoryMissing: directoryMissing,
       kind: kind,
+      sessionCount: sessionCount,
     );
   }
 
