@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
@@ -338,7 +339,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                         onEnabledChanged: (enabled) =>
                             unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
                       ),
-                    ?widget.bottomControls,
+                    if (widget.bottomControls case final controls?)
+                      SentBubbleRowReach(reach: composerInset - transcriptInset, child: controls),
                   ],
                 ),
               ),

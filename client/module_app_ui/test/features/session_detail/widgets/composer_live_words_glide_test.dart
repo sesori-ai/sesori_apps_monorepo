@@ -377,8 +377,33 @@ void main() {
           "please look at the failing test in the composer and tell me what it would take to fix it "
           "properly without changing how the list moves today";
 
-      for (final from in const [2500.0, 20000.0]) {
-        for (final (length, text) in const [("few words", "spoken words"), ("words that wrap", longWords)]) {
+      /// From a dictation that has just finished, with its words about to go.
+      Future<void> expectToLandOnTheBubbleThatComes({required WidgetTester tester, required String text}) async {
+        await complete(tester: tester, transcript: text);
+
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(_frame);
+        }
+        expect(find.byType(QueuedMessageBubble), findsNothing, reason: "The words have stopped waiting for it.");
+
+        var landed = tester.getRect(_glide);
+        while (_glide.evaluate().isNotEmpty) {
+          landed = tester.getRect(_glide);
+          await tester.pump(_frame);
+        }
+        await tester.pump(const Duration(seconds: 1));
+
+        final row = find.byType(QueuedMessageBubble);
+        final surface = UserMessageBubble.margin.deflateRect(
+          tester.getRect(find.descendant(of: row, matching: find.byType(SentBubbleSlot))),
+        );
+        _expectRect(landed, surface);
+        final status = tester.getRect(find.descendant(of: row, matching: find.textContaining("Sending")));
+        expect(landed.bottom, lessThanOrEqualTo(status.top));
+      }
+
+      for (final (length, text) in const [("few words", "spoken words"), ("words that wrap", longWords)]) {
+        for (final from in const [2500.0, 20000.0]) {
           testWidgets("$length sent from $from up end on the bubble that comes, clear of its status", (tester) async {
             await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: from);
             final gesture = await hold(
@@ -387,27 +412,56 @@ void main() {
             );
             await gesture.up();
             await tester.pump();
-            await complete(tester: tester, transcript: text);
 
-            for (var frame = 0; frame < 6; frame++) {
-              await tester.pump(_frame);
-            }
-            expect(find.byType(QueuedMessageBubble), findsNothing, reason: "The words have stopped waiting for it.");
+            await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
+          });
+        }
 
-            var landed = tester.getRect(_glide);
-            while (_glide.evaluate().isNotEmpty) {
-              landed = tester.getRect(_glide);
-              await tester.pump(_frame);
-            }
-            await tester.pump(const Duration(seconds: 1));
-
-            final row = find.byType(QueuedMessageBubble);
-            final surface = UserMessageBubble.margin.deflateRect(
-              tester.getRect(find.descendant(of: row, matching: find.byType(SentBubbleSlot))),
+        for (final scale in const [1.3, 2.0]) {
+          testWidgets("$length sent at text x$scale end on the bubble that comes", (tester) async {
+            await _pumpSessionScreen(
+              tester: tester,
+              voiceCubit: voiceCubit,
+              scrolledUp: 2500,
+              textScaler: TextScaler.linear(scale),
             );
-            _expectRect(landed, surface);
-            final status = tester.getRect(find.descendant(of: row, matching: find.textContaining("Sending")));
-            expect(landed.bottom, lessThanOrEqualTo(status.top));
+            final gesture = await hold(
+              tester: tester,
+              words: LiveWords(confirmed: text, provisional: ""),
+            );
+            await gesture.up();
+            await tester.pump();
+
+            await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
+          });
+        }
+
+        for (final width in const [800.0, 1300.0, 1800.0]) {
+          testWidgets("$length sent in a pane $width wide end on the bubble that comes", (tester) async {
+            await _pumpSessionScreen(
+              tester: tester,
+              voiceCubit: voiceCubit,
+              scrolledUp: 2500,
+              size: Size(width, 900),
+              columnWidths: const SessionDetailColumnWidths(transcript: 960, composer: 760),
+              presentation: ComposerPresentation.pointer,
+            );
+            final words = LiveWords(confirmed: text, provisional: "");
+            when(() => voiceCubit.stopAndTranscribe(limitReached: false)).thenAnswer((_) async {
+              voiceStates.add(VoiceInputState.liveFinishing(words: words, presentation: VoiceLivePresentation.focus));
+            });
+            await tester.tap(find.byTooltip("Record voice"));
+            await tester.pump();
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 300));
+            voiceStates.add(VoiceInputState.liveRecording(words: words, presentation: VoiceLivePresentation.focus));
+            await tester.pump();
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 500));
+            await tester.tap(find.byType(PregoVoiceSendButton));
+            await tester.pump();
+
+            await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
           });
         }
       }
@@ -756,8 +810,12 @@ Future<void> _pumpSessionScreen({
   required WidgetTester tester,
   required VoiceInputCubit voiceCubit,
   required double scrolledUp,
+  Size size = const Size(390, 844),
+  SessionDetailColumnWidths? columnWidths,
+  ComposerPresentation presentation = ComposerPresentation.touch,
+  TextScaler textScaler = TextScaler.noScaling,
 }) async {
-  tester.view.physicalSize = const Size(390, 844);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
@@ -858,6 +916,10 @@ Future<void> _pumpSessionScreen({
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: MultiBlocProvider(
         providers: [
           BlocProvider<VoiceInputCubit>.value(value: voiceCubit),
@@ -865,10 +927,13 @@ Future<void> _pumpSessionScreen({
         ],
         child: ComposerPresentationScope(
           voiceSupport: ComposerVoiceSupport.supported,
-          inputMode: ChatInputMode.voiceFirst,
+          inputMode: switch (presentation) {
+            ComposerPresentation.touch => ChatInputMode.voiceFirst,
+            ComposerPresentation.pointer => ChatInputMode.textFirst,
+          },
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
-          presentation: ComposerPresentation.touch,
+          presentation: presentation,
           attachmentDispatcher: () => ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker()),
           imageClipboard: _NoOpImageClipboard.new,
           child: SentBubbleLanding(
@@ -887,7 +952,7 @@ Future<void> _pumpSessionScreen({
                       sessionId: "session-1",
                       source: LoadedSessionComposerSource(state: loaded),
                     ),
-                    columnWidths: null,
+                    columnWidths: columnWidths,
                     currentPromptId: currentPromptId,
                     jumpNotifier: jumpNotifier,
                     onPinchIn: ({required focalPoint}) {},
