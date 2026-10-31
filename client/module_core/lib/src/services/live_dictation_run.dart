@@ -13,10 +13,11 @@ import "../repositories/voice_repository.dart";
 
 const int _pcmBytesPerSample = 2;
 
-/// How much audio may wait for `ready` (D29): 15 seconds. A socket this slow is
-/// not working, and falling back now loses less speech than waiting for the ping
-/// to fail.
-final int _maxHeldAudioBytes = 15 * _pcmBytesPerSample * voiceCapturePcmSampleRate.hertz;
+/// How much audio may wait for `ready` (D29): 4 seconds. The server allows 5 seconds
+/// of audio ahead of real time, counted from `ready`, and ends a session that sends
+/// more with `invalid_audio`, which would lose everything said so far. Falling back
+/// here keeps the rest of the dictation.
+final int _maxHeldAudioBytes = 4 * _pcmBytesPerSample * voiceCapturePcmSampleRate.hertz;
 
 /// How a [LiveDictationRun] ended. By then its socket and microphone are released.
 sealed class const LiveDictationEnding();

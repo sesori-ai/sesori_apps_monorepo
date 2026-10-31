@@ -480,7 +480,7 @@ void main() {
 
     test("when ready takes longer than the held audio may grow", () async {
       await holdLive();
-      for (var second = 0; second < 15; second++) {
+      for (var second = 0; second < 4; second++) {
         frames.add(Uint8List(32000));
       }
       await pumpEventQueue();
