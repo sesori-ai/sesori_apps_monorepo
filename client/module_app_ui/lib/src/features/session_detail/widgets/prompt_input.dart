@@ -277,7 +277,7 @@ class _PromptInputState() extends State<PromptInput> {
   final ValueNotifier<double> _editDragProgress = ValueNotifier<double>(0);
 
   /// Locates the pencil, which both drag measurements are taken from.
-  final GlobalKey _editTargetKey = GlobalKey();
+  GlobalKey _editTargetKey = GlobalKey();
 
   /// Carries the composer's layouts, and the input's focus, across the
   /// [AnimatedSize] that [_morphSize] adds or drops as reduced motion toggles.
@@ -1222,6 +1222,14 @@ class _PromptInputState() extends State<PromptInput> {
   static const Curve _morphCurve = Curves.easeOutCubic;
   static const Curve _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
 
+  /// [AnimatedSwitcher.defaultTransitionBuilder] keys a fade by its child's key,
+  /// and the switcher drops an outgoing fade sharing the incoming one's key, so a
+  /// child coming back mid-fade after a quick tap restarts from nothing. Pressing
+  /// again before it finishes leaves two outgoing fades with one key, which the
+  /// framework refuses. Unkeyed, every entry finishes its own fade.
+  static AnimatedSwitcherTransitionBuilder get _fadeEachEntry =>
+      (child, animation) => FadeTransition(opacity: animation, child: child);
+
   /// Eases [child]'s size changes in the house timing. Reduced motion resizes
   /// at once: a zero-duration [AnimatedSize] would re-dirty itself mid-layout.
   Widget _morphSize({required AlignmentGeometry alignment, required Widget child}) => prefersReducedMotion(context)
@@ -1476,7 +1484,7 @@ class _PromptInputState() extends State<PromptInput> {
           if (transitionChild.key == const ValueKey("staged-command")) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
-          return AnimatedSwitcher.defaultTransitionBuilder(transitionChild, animation);
+          return _fadeEachEntry(transitionChild, animation);
         },
         child: child,
       ),
@@ -1567,6 +1575,7 @@ class _PromptInputState() extends State<PromptInput> {
                 liveRegion: true,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 150),
+                  transitionBuilder: _fadeEachEntry,
                   child: Text(
                     switch (arm) {
                       _VoiceDragArm.none => restingHint,
@@ -2320,6 +2329,8 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
     final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
+    // The next hold's pencil gets its own key: this hold's may still be fading out.
+    if (_voicePresentation != _VoicePresentation.recording) _editTargetKey = GlobalKey();
 
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
@@ -2354,6 +2365,7 @@ class _PromptInputState() extends State<PromptInput> {
 
     final switcher = AnimatedSwitcher(
       duration: _morphDuration,
+      transitionBuilder: _fadeEachEntry,
       // Pinned to the leading edge: centred, the narrower child would jump
       // sideways when the wider one leaves at the fade's end.
       layoutBuilder: (currentChild, previousChildren) => Stack(
@@ -2432,7 +2444,7 @@ class _PromptInputState() extends State<PromptInput> {
 
     return SizedBox(
       height: height,
-      child: AnimatedSwitcher(duration: _morphDuration, child: child),
+      child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
     );
   }
 
