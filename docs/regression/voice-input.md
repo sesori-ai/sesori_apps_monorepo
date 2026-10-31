@@ -83,10 +83,10 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   no touches or keyboard focus while the hint shows, and comes back afterwards; nothing in that row moves.
 - A live dictation's words show in a layer of their own while the user speaks, in the presentation remote config chose.
   Nothing under that layer moves or resizes for them, and they never take a touch away from the pill or the chat.
-- Focus dims the chat pane, and only that pane, from the first frame of listening, and shows the words large above the
-  composer: 23 pt on a touch shell, 25 pt on a pointer shell. The panel leaves the chat in view and opens at the first
-  word, growing to five lines. In both, the newest words stay at the bottom, a new line rises smoothly, and older lines
-  fade away at the top once the words run out of room.
+- Focus fades a solid cover over the chat pane, and only that pane, from the first frame of listening, and shows the
+  words large above the composer: 23 pt on a touch shell, 25 pt on a pointer shell. The panel leaves the chat in view
+  and opens at the first word, growing to five lines. In both, the newest words stay at the bottom, a new line rises
+  smoothly, and older lines fade away at the top once the words run out of room.
 - A tentative word fades in dim and brightens where it stands when it turns final or when the user releases, and on its
   way to the box when a dictation is cut off. A word the server changes keeps its place and brightness.
 - Sliding up to cancel fades the words with the finger, to 40% at the arm line, and coming back restores them. A cancel

@@ -150,7 +150,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   static const _slideBackDuration = Duration(milliseconds: 180);
   static const _hintFadeDuration = Duration(milliseconds: 150);
 
-  static const double _dimOpacity = 0.98;
+  static const double _dimOpacity = 1;
 
   /// Between the words and whatever sits under them.
   static const double _wordsGap = PregoSpacing.md;
