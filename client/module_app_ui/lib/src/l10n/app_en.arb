@@ -1603,6 +1603,18 @@
     "description": "Floating helper above the composer once the recording hold has slid far enough out of the pill; releasing there discards the recording."
   },
   "voiceTranscribing": "Transcribing...",
+  "voiceFinishing": "Finishing...",
+  "@voiceFinishing": {
+    "description": "Composer label while a live dictation's last words arrive after the user finished speaking."
+  },
+  "voiceDictationCutOff": "Dictation was cut off. Check your words before sending.",
+  "@voiceDictationCutOff": {
+    "description": "Notice when a dictation's connection failed, so its words wait in the prompt field unsent because some may be missing."
+  },
+  "voiceDictationLimitReached": "Dictation limit reached",
+  "@voiceDictationLimitReached": {
+    "description": "Notice when the server ended a live dictation at a time or quota limit; its words wait in the prompt field unsent."
+  },
   "voiceRecordingSaved": "Recording saved",
   "@voiceRecordingSaved": {
     "description": "Persistent composer status shown after a retryable async transcription failure."

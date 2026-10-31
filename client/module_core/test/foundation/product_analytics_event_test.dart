@@ -64,19 +64,28 @@ void main() {
         const {"failure_reason": "unknown", "workspace_kind": "no_project"},
       ),
       (
-        const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.sent),
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(
+          finish: AnalyticsVoiceFinish.sent,
+          mode: AnalyticsVoiceMode.live,
+        ),
         "voice_transcription_completed",
-        const {"finish": "sent"},
+        const {"finish": "sent", "mode": "live"},
       ),
       (
-        const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.edited),
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(
+          finish: AnalyticsVoiceFinish.edited,
+          mode: AnalyticsVoiceMode.afterRecording,
+        ),
         "voice_transcription_completed",
-        const {"finish": "edited"},
+        const {"finish": "edited", "mode": "after_recording"},
       ),
       (
-        const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.cutOff),
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(
+          finish: AnalyticsVoiceFinish.cutOff,
+          mode: AnalyticsVoiceMode.afterRecording,
+        ),
         "voice_transcription_completed",
-        const {"finish": "cut_off"},
+        const {"finish": "cut_off", "mode": "after_recording"},
       ),
       (
         const ProductAnalyticsEvent.sessionQuestionAnswered(),

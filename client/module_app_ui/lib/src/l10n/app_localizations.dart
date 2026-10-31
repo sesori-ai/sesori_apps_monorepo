@@ -3955,6 +3955,24 @@ abstract class AppLocalizations {
   /// **'Transcribing...'**
   String get voiceTranscribing;
 
+  /// Composer label while a live dictation's last words arrive after the user finished speaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing...'**
+  String get voiceFinishing;
+
+  /// Notice when a dictation's connection failed, so its words wait in the prompt field unsent because some may be missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictation was cut off. Check your words before sending.'**
+  String get voiceDictationCutOff;
+
+  /// Notice when the server ended a live dictation at a time or quota limit; its words wait in the prompt field unsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictation limit reached'**
+  String get voiceDictationLimitReached;
+
   /// Persistent composer status shown after a retryable async transcription failure.
   ///
   /// In en, this message translates to:

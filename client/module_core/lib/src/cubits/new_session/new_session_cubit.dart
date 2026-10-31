@@ -1312,8 +1312,10 @@ class NewSessionCubit({
     _composerSelection = selection;
   }
 
-  void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish}) {
-    _reportProductEvent(event: ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: finish));
+  void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish, required AnalyticsVoiceMode mode}) {
+    _reportProductEvent(
+      event: ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: finish, mode: mode),
+    );
   }
 
   static final Random _launchIdRandom = Random.secure();

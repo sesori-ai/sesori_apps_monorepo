@@ -1891,11 +1891,17 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
 
-      cubit.reportVoiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.sent);
+      cubit.reportVoiceTranscriptionCompleted(
+        finish: AnalyticsVoiceFinish.sent,
+        mode: AnalyticsVoiceMode.afterRecording,
+      );
 
       verify(
         () => mockProductAnalyticsService.logEvent(
-          event: const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.sent),
+          event: const ProductAnalyticsEvent.voiceTranscriptionCompleted(
+            finish: AnalyticsVoiceFinish.sent,
+            mode: AnalyticsVoiceMode.afterRecording,
+          ),
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(1);

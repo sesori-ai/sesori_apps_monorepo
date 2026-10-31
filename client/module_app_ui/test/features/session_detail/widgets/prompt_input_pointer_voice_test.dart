@@ -60,7 +60,9 @@ void main() {
     String transcript = "spoken words",
     VoiceDictationOutcome outcome = VoiceDictationOutcome.finished,
   }) async {
-    voiceStates.add(VoiceInputState.completed(transcript: transcript, outcome: outcome));
+    voiceStates.add(
+      VoiceInputState.completed(transcript: transcript, outcome: outcome, mode: VoiceDictationMode.afterRecording),
+    );
     await tester.pump();
     await tester.pump();
     voiceStates.add(const VoiceInputState.idle());
@@ -590,7 +592,7 @@ Future<void> _pumpPointerComposer({
                 hasMessages: true,
                 canSend: canSend,
                 onSend: ({required draft, required command, required attachments}) => harness.sent.add(draft.text),
-                onVoiceTranscriptionFinished: ({required finish}) => harness.finishes.add(finish),
+                onVoiceTranscriptionFinished: ({required finish, required mode}) => harness.finishes.add(finish),
                 onDraftChanged: (_) {},
                 onDraftCleared: () {},
                 onAbort: () {},

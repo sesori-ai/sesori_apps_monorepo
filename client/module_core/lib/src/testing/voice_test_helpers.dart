@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 
 import "../foundation/models/voice/voice_dictation_outcome.dart";
+import "../foundation/models/voice/voice_live.dart";
 import "../services/voice_transcription_service.dart";
 
 class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
@@ -22,6 +23,7 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   required MockVoiceTranscriptionService service,
   Stream<void> maxDurationStream = const Stream<void>.empty(),
   Stream<double> amplitudeStream = const Stream<double>.empty(),
+  Stream<VoiceLiveEvent> liveEventStream = const Stream<VoiceLiveEvent>.empty(),
 }) {
   final session = MockVoiceTranscriptionSession();
   when(
@@ -32,6 +34,7 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   ).thenReturn(session);
   when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationStream);
   when(() => service.amplitudeStream(session: session)).thenAnswer((_) => amplitudeStream);
+  when(() => service.liveEventStream(session: session)).thenAnswer((_) => liveEventStream);
   when(() => service.prewarm(session: session)).thenAnswer((_) async {});
   when(() => service.start(session: session)).thenAnswer((_) async {});
   when(() => service.stopAndTranscribe(session: session)).thenAnswer((_) async => afterRecordingResult(transcript: ""));

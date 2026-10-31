@@ -27,7 +27,7 @@ class VoiceTranscriptionService({
   required final VoiceCapture _capture,
 }) {
   /// [allowLive] is false where dictation keeps recording first, whatever the
-  /// voice mode says.
+  /// voice mode says. A change of mode applies from the next session.
   VoiceTranscriptionSession createSession({required String? projectId, required bool allowLive}) {
     final session = VoiceTranscriptionSession._(
       captureSession: _capture.createSession(),

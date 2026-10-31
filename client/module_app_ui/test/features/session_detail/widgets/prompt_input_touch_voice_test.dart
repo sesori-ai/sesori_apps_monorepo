@@ -18,6 +18,7 @@ class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements Voice
 class _Composer() {
   final List<({String text, String? command})> sent = [];
   final List<AnalyticsVoiceFinish> finishes = [];
+  final List<AnalyticsVoiceMode> modes = [];
   int commandsCleared = 0;
 }
 
@@ -55,10 +56,11 @@ void main() {
     required WidgetTester tester,
     required String transcript,
     required VoiceDictationOutcome outcome,
+    VoiceDictationMode mode = VoiceDictationMode.afterRecording,
   }) async {
     await emitVoice(
       tester: tester,
-      state: VoiceInputState.completed(transcript: transcript, outcome: outcome),
+      state: VoiceInputState.completed(transcript: transcript, outcome: outcome, mode: mode),
     );
     await emitVoice(tester: tester, state: const VoiceInputState.idle());
     // Past the transcribing presentation's bounded transitions.
@@ -282,6 +284,142 @@ void main() {
         expect(composer.sent, isEmpty);
         expect(composer.finishes, [AnalyticsVoiceFinish.cutOff]);
         expect(find.text("cut off words"), findsOneWidget);
+      });
+
+      group("live", () {
+        const panel = VoiceLivePresentation.panel;
+        const cutOffNotice = "Dictation was cut off. Check your words before sending.";
+
+        setUp(() {
+          when(voiceCubit.startRecording).thenAnswer((_) async {
+            voiceStates.add(const VoiceInputState.liveRecording(words: LiveWords.none, presentation: panel));
+            await Future<void>.delayed(Duration.zero);
+          });
+          when(() => voiceCubit.stopAndTranscribe(limitReached: false)).thenAnswer((_) async {
+            voiceStates.add(const VoiceInputState.liveFinishing(words: LiveWords.none, presentation: panel));
+          });
+        });
+
+        testWidgets("a release finishes, says so, and sends the words with no notice", (tester) async {
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
+
+          await gesture.up();
+          await tester.pump();
+          await tester.pump();
+          verify(() => voiceCubit.stopAndTranscribe(limitReached: false)).called(1);
+          expect(find.text("Finishing..."), findsOneWidget);
+
+          await complete(
+            tester: tester,
+            transcript: "live words",
+            outcome: VoiceDictationOutcome.finished,
+            mode: VoiceDictationMode.live,
+          );
+
+          expect(composer.sent, [(text: "live words", command: null)]);
+          expect(composer.finishes, [AnalyticsVoiceFinish.sent]);
+          expect(composer.modes, [AnalyticsVoiceMode.live]);
+          expect(find.text(cutOffNotice), findsNothing);
+          expect(find.text("Dictation limit reached"), findsNothing);
+        });
+
+        testWidgets("cut off after the release lands in the box with a notice, never sent (D20)", (tester) async {
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          await gesture.up();
+          await tester.pump();
+          await complete(
+            tester: tester,
+            transcript: "cut off words",
+            outcome: VoiceDictationOutcome.interrupted,
+            mode: VoiceDictationMode.live,
+          );
+
+          expect(composer.sent, isEmpty);
+          expect(composer.finishes, [AnalyticsVoiceFinish.cutOff]);
+          expect(composer.modes, [AnalyticsVoiceMode.live]);
+          expect(find.text("cut off words"), findsOneWidget);
+          expect(find.text(cutOffNotice), findsOneWidget);
+        });
+
+        testWidgets("cut off with the finger down lands in the box and the release sends nothing", (tester) async {
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          await complete(
+            tester: tester,
+            transcript: "cut off words",
+            outcome: VoiceDictationOutcome.interrupted,
+            mode: VoiceDictationMode.live,
+          );
+          await gesture.up();
+          await tester.pump();
+
+          expect(composer.sent, isEmpty);
+          expect(find.text("cut off words"), findsOneWidget);
+          expect(find.text(cutOffNotice), findsOneWidget);
+        });
+
+        testWidgets("a fallback's recording lands in the box with the same notice, never sent (D33)", (tester) async {
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          await emitVoice(tester: tester, state: const VoiceInputState.recording());
+          await gesture.up();
+          await tester.pump();
+          await emitVoice(tester: tester, state: const VoiceInputState.transcribing(limitReached: false));
+          await complete(
+            tester: tester,
+            transcript: "recorded words",
+            outcome: VoiceDictationOutcome.interrupted,
+            mode: VoiceDictationMode.afterRecording,
+          );
+
+          expect(composer.sent, isEmpty);
+          expect(composer.modes, [AnalyticsVoiceMode.afterRecording]);
+          expect(find.text("recorded words"), findsOneWidget);
+          expect(find.text(cutOffNotice), findsOneWidget);
+        });
+
+        testWidgets("the server's limit lands in the box with its own notice", (tester) async {
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          await complete(
+            tester: tester,
+            transcript: "limited words",
+            outcome: VoiceDictationOutcome.limitReached,
+            mode: VoiceDictationMode.live,
+          );
+          await gesture.up();
+          await tester.pump();
+
+          expect(composer.sent, isEmpty);
+          expect(composer.finishes, [AnalyticsVoiceFinish.cutOff]);
+          expect(find.text("limited words"), findsOneWidget);
+          expect(find.text("Dictation limit reached"), findsOneWidget);
+        });
+
+        testWidgets("a network failure offers no retry and sends nothing", (tester) async {
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          await gesture.up();
+          await tester.pump();
+          await emitVoice(
+            tester: tester,
+            state: VoiceInputState.transcriptionFailed(error: VoiceTranscriptionError.networkError(innerError: null)),
+          );
+
+          expect(composer.sent, isEmpty);
+          expect(find.text("Transcription failed. Record again or type instead."), findsOneWidget);
+          expect(find.text("Retry"), findsNothing);
+          verifyNever(voiceCubit.retry);
+        });
       });
 
       testWidgets("a completion with the finger still down lands in the box", (tester) async {
@@ -528,7 +666,10 @@ Future<_Composer> _pumpComposer({
                 onSend: ({required draft, required command, required attachments}) {
                   composer.sent.add((text: draft.text, command: command));
                 },
-                onVoiceTranscriptionFinished: ({required finish}) => composer.finishes.add(finish),
+                onVoiceTranscriptionFinished: ({required finish, required mode}) {
+                  composer.finishes.add(finish);
+                  composer.modes.add(mode);
+                },
                 onDraftChanged: (_) {},
                 onDraftCleared: () {},
                 onAbort: () {},

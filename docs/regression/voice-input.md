@@ -8,7 +8,8 @@ prompt field instead. A voice-first or text-first preference decides which contr
 text-first and adds the mic as an extra control on the same pipeline: one click starts listening, and a second click in
 the same place or Enter sends; the pencil or Shift+Enter puts the words in the prompt field, and the X or Escape
 cancels. The device microphone and transcription endpoint are external. The bridge independently prepares optional
-project-scoped vocabulary from bounded local evidence; no backend plugin participates.
+project-scoped vocabulary from bounded local evidence; no backend plugin participates. When the voice mode switch turns
+live on and the host can stream, the same gestures run over a realtime socket instead of an upload.
 
 ## Required Behavior
 
@@ -58,8 +59,25 @@ project-scoped vocabulary from bounded local evidence; no backend plugin partici
   transcription disposes and invalidates the voice interaction, releases its resources, and prevents a late
   completion from restoring or sending input. Availability recovery creates a fresh eligible composer; the gate
   does not retain the recording or transcript.
+- A hold takes the voice mode once, when it starts, and keeps it whatever the switch does next. It never waits for an
+  answer: until the mode has loaded and the host has said it can stream, a hold records first. The feedback sheet always
+  records first.
+- A live dictation sends its audio as it is spoken. Audio spoken before the server is ready waits in memory, up to
+  15 seconds, and goes first. A release before then waits for the server, sends what was held, and then finishes. Only
+  confirmed words are the result; a blank result is the empty-transcript error.
+- A live failure before any audio left while the user still holds continues as a recording, without losing the hold.
+  Those words land in the box with a cut-off notice and are never sent. A denied microphone permission is not a failure
+  of this kind and shows its own error. If the recorder cannot restart, or the user had already released, the dictation
+  ends in an error notice with nothing in the box.
+- A live failure after audio left puts every word heard, confirmed or provisional, in the box with the cut-off notice,
+  and never sends them. With no words it shows an error notice. Live keeps no recording, so it never offers Retry.
+- The server's session or quota limit ends a live dictation with its confirmed words in the box and a limit notice, even
+  with the finger still down.
+- Cancelling a live dictation at any point sends `cancel` when the socket is streaming, closes the socket, releases the
+  microphone, and hands nothing over.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
-  `edited` or `cut_off`. No audio, transcript, or prompt text reaches logs or analytics.
+  `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
+  counts as. No audio, transcript, or prompt text reaches logs or analytics.
 - A successful current-project load starts best-effort bridge glossary population. It delegates to one serialized
   coordinator that coalesces concurrent work for the same project and never delays the route response, recording, or
   transcription.
@@ -96,7 +114,7 @@ project-scoped vocabulary from bounded local evidence; no backend plugin partici
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, and shutdown cancellation. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, and music from another app keeps playing when a chat opens. |
@@ -141,6 +159,8 @@ interruptions such as a call.
 - A project glossary contains connector or everyday English words, or exceeds 100 terms.
 - A cut-off, failed, cancelled or retried dictation sends by itself, a feedback-sheet dictation sends by itself, or a
   message with surviving voice text is classified as typed.
+- A hold waits for the voice mode, a switch change alters a dictation already running, a live failure offers Retry, a
+  fallback loses the hold, or audio or `finish` reaches the socket before ready.
 - A desktop dictation sends the box and the words as two messages, Enter inserts a newline while listening, or the
   second click misses because the control moved.
 - A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a
@@ -160,8 +180,12 @@ interruptions such as a call.
 - Desktop capture is unverified on device: the macOS feel check has not been run yet and is pending a check on a
   build from `main` after merge. Windows records through Media Foundation and is unverified. Linux needs
   `parecord` and `ffmpeg` on the PATH; the DEB and RPM packages recommend them on a fresh install (an upgrade may not
-  add them), the AppImage cannot, and without them the composer shows the recording-failed notice. Leaving a desktop
-  session while recording discards the recording, as on the phone.
+  add them), the AppImage cannot, and without them the composer shows the recording-failed notice. With `parecord` but
+  no `ffmpeg`, live can start, and a failure before any audio leaves ends in the transcription-failed notice because the
+  fallback cannot record. Leaving a desktop session while recording discards the recording, as on the phone.
+- Live has no client deadline for `ready` once the user has released: a dead network shows Finishing until the socket
+  gives up, and the X still stops it.
+- A fallen-back recording that fails and is retried lands in the box without the cut-off notice.
 - Retained recordings are composer-local and memory-owned. They do not survive composer disposal, route replacement,
   process restart, or a valid submission of other composer content. Failed best-effort deletion can still leave an
   unowned audio file on disk.
