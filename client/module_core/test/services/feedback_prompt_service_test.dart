@@ -105,11 +105,11 @@ void main() {
     expect(prompts, isEmpty);
   });
 
-  test("falls back to 10 interactions when the remote value is missing", () async {
+  test("falls back to 5 interactions when the remote value is missing", () async {
     configSource.values = (interactionThreshold: null, cooldownDays: null);
     service.start();
 
-    await recordPositive(times: 9);
+    await recordPositive(times: 4);
     expect(prompts, isEmpty);
 
     await recordPositive(times: 1);
@@ -184,13 +184,6 @@ void main() {
 
     for (final (name, event) in [
       ("an AI error message", const SesoriSseEvent.messageUpdated(info: _errorMessage)),
-      (
-        "a transient retry",
-        const SesoriSseEvent.sessionStatus(
-          sessionID: "ses-1",
-          status: SessionStatus.retry(attempt: 1, message: "rate limited", next: 0, since: null),
-        ),
-      ),
       ("a session error", const SesoriSseEvent.sessionError(sessionID: "ses-1")),
     ]) {
       test("$name on any session resets the count", () async {
@@ -205,6 +198,13 @@ void main() {
     for (final (name, event) in [
       ("an assistant message", const SesoriSseEvent.messageUpdated(info: _assistantMessage)),
       (
+        "a transient retry",
+        const SesoriSseEvent.sessionStatus(
+          sessionID: "ses-1",
+          status: SessionStatus.retry(attempt: 1, message: "rate limited", next: 0, since: null),
+        ),
+      ),
+      (
         "a busy status",
         const SesoriSseEvent.sessionStatus(sessionID: "ses-1", status: SessionStatus.busy(since: null)),
       ),
@@ -217,6 +217,28 @@ void main() {
         expect(await stored(), counting(positiveCount: 2, lastShownAt: isNull));
       });
     }
+
+    test("AI errors keep the count after a user stop until the next good interaction", () async {
+      await recordPositive(times: 1);
+      service.recordUserStop();
+
+      await emitEvent(const SesoriSseEvent.messageUpdated(info: _errorMessage));
+      await emitEvent(const SesoriSseEvent.sessionError(sessionID: "ses-1"));
+      expect(await stored(), counting(positiveCount: 1, lastShownAt: isNull));
+
+      await recordPositive(times: 1);
+      await emitEvent(const SesoriSseEvent.sessionError(sessionID: "ses-1"));
+      expect(await stored(), counting(positiveCount: 0, lastShownAt: isNull));
+    });
+
+    test("a failed send still resets the count after a user stop", () async {
+      await recordPositive(times: 2);
+      service.recordUserStop();
+
+      await service.recordFailure();
+
+      expect(await stored(), counting(positiveCount: 0, lastShownAt: isNull));
+    });
 
     test("Yes retires the automatic sheet for good", () async {
       await recordPositive(times: 2);

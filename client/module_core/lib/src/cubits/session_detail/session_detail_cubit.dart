@@ -3283,6 +3283,7 @@ class SessionDetailCubit(
       return const SessionAbortOutcome.failed();
     }
     _abortRequestInFlight = true;
+    _feedbackPromptService.recordUserStop();
     try {
       await _sessionAbortService.abortSession(sessionId: _sessionId, subAgents: subAgents);
       _clearLocalPromptQueue();

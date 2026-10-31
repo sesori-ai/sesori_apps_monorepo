@@ -12,7 +12,7 @@ import "../repositories/feedback_prompt_repository.dart";
 
 /// Decides when the rating sheet opens by itself.
 ///
-/// Every big successful interaction adds a point; any meaningful error resets
+/// Every big successful interaction adds a point; a failure the user felt resets
 /// the count to zero. Once the count reaches the configured threshold and the
 /// cooldown since the last automatic showing has passed, the service resets
 /// the count, records the showing and emits on [prompts]. Answering **Yes**
@@ -36,6 +36,10 @@ class FeedbackPromptService({
   /// Serializes the read-modify-write updates of the stored progress.
   Future<void> _lastUpdate = Future<void>.value();
 
+  /// Some backends report a stopped response as an error, so AI errors do not
+  /// count from a stop until the user's next good interaction.
+  bool _userStopped = false;
+
   /// Emits once for each automatic showing, right after it is recorded.
   Stream<void> get prompts => _prompts.stream;
 
@@ -47,30 +51,37 @@ class FeedbackPromptService({
 
   /// Sending a message, creating a session with one, or answering a question
   /// or permission request succeeded.
-  Future<void> recordPositiveInteraction() => _update(() async {
-    final state = await _repository.readState();
-    if (state is! FeedbackPromptCounting) return;
-    final positiveCount = state.positiveCount + 1;
-    final config = await _config;
-    final now = DateTime.now().toUtc();
-    final lastShownAt = state.lastShownAt;
-    final isDue =
-        positiveCount >= config.interactionThreshold &&
-        (lastShownAt == null || now.difference(lastShownAt) >= config.cooldown);
-    if (!isDue) {
-      await _repository.writeState(
-        state: FeedbackPromptCounting(positiveCount: positiveCount, lastShownAt: lastShownAt),
-      );
-      return;
-    }
-    // Claiming the showing in the same write that resets the count means the
-    // next one needs a fresh run of good interactions and the full cooldown.
-    await _repository.writeState(state: FeedbackPromptCounting(positiveCount: 0, lastShownAt: now));
-    logi("Showing the automatic rating sheet after $positiveCount good interactions");
-    if (!_prompts.isClosed) _prompts.add(null);
-  });
+  Future<void> recordPositiveInteraction() {
+    _userStopped = false;
+    return _update(() async {
+      final state = await _repository.readState();
+      if (state is! FeedbackPromptCounting) return;
+      final positiveCount = state.positiveCount + 1;
+      final config = await _config;
+      final now = DateTime.now().toUtc();
+      final lastShownAt = state.lastShownAt;
+      final isDue =
+          positiveCount >= config.interactionThreshold &&
+          (lastShownAt == null || now.difference(lastShownAt) >= config.cooldown);
+      if (!isDue) {
+        await _repository.writeState(
+          state: FeedbackPromptCounting(positiveCount: positiveCount, lastShownAt: lastShownAt),
+        );
+        return;
+      }
+      // Claiming the showing in the same write that resets the count means the
+      // next one needs a fresh run of good interactions and the full cooldown.
+      await _repository.writeState(state: FeedbackPromptCounting(positiveCount: 0, lastShownAt: now));
+      logi("Showing the automatic rating sheet after $positiveCount good interactions");
+      if (!_prompts.isClosed) _prompts.add(null);
+    });
+  }
 
-  /// A meaningful error: an AI error, a failed send or reply, or a crash.
+  /// The user is stopping a response; call before the stop request goes out,
+  /// because its error event can arrive before the response does.
+  void recordUserStop() => _userStopped = true;
+
+  /// A failure the user felt: an AI error, a failed send or reply, or a crash.
   Future<void> recordFailure() => _update(() async {
     final state = await _repository.readState();
     if (state case FeedbackPromptCounting(:final positiveCount, :final lastShownAt) when positiveCount > 0) {
@@ -82,10 +93,8 @@ class FeedbackPromptService({
   Future<void> recordYes() => _update(() => _repository.writeState(state: const FeedbackPromptRetired()));
 
   void _onEvent(SseEvent event) {
-    if (event.data
-        case SesoriMessageUpdated(info: MessageError()) ||
-            SesoriSessionStatus(status: SessionStatusRetry()) ||
-            SesoriSessionError()) {
+    if (_userStopped) return;
+    if (event.data case SesoriMessageUpdated(info: MessageError()) || SesoriSessionError()) {
       unawaited(recordFailure());
     }
   }

@@ -43,15 +43,11 @@ void _configureFirebaseSdk({
 
   if (supportsCrashlytics) {
     final crashlytics = getIt<FirebaseCrashlytics>();
-    final feedbackPromptService = getIt<FeedbackPromptService>();
-    // A crash also restarts the count toward the automatic rating sheet.
     FlutterError.onError = (details) {
-      unawaited(feedbackPromptService.recordFailure());
       unawaited(crashlytics.recordFlutterFatalError(details));
     };
     // Pass uncaught asynchronous errors outside the Flutter framework to Crashlytics.
     PlatformDispatcher.instance.onError = (error, stack) {
-      unawaited(feedbackPromptService.recordFailure());
       crashlytics.recordError(error, stack, fatal: true);
       return true;
     };
@@ -59,7 +55,7 @@ void _configureFirebaseSdk({
 }
 
 /// Starts counting toward the automatic rating sheet, restarting the count
-/// when the previous launch crashed without reaching the handlers above.
+/// when the previous launch crashed.
 void _startFeedbackPrompt({required bool supportsCrashlytics}) {
   final feedbackPromptService = getIt<FeedbackPromptService>()..start();
   if (!supportsCrashlytics) return;

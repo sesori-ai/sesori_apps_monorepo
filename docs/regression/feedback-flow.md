@@ -99,11 +99,15 @@ Desktop neither shows the row nor opens the sheet by itself.
     session detail, a new session started with a message, a question answered
     or rejected, and a permission request answered.
   - The count restarts from zero after an AI error reported by any session (a
-    message that ended in an error, a retrying session, or a session error),
-    after a failed send, session creation, or reply, and after an app crash. A
-    crash is detected by the global error handlers or, at the next launch, from
-    Crashlytics' previous-launch report. Crash detection needs Firebase.
-  - At 10 points the sheet opens right away on the root navigator, over
+    message that ended in an error or a session error), after a failed send,
+    session creation, or reply, and after an app crash. A crash is detected at
+    the next launch from Crashlytics' previous-launch report, which needs
+    Firebase.
+  - A retrying session and an uncaught error that does not crash the app keep
+    the count. After the user stops a response in this app, AI errors keep the
+    count until their next point, because some backends report a stop as an
+    error.
+  - At 5 points the sheet opens right away on the root navigator, over
     whatever screen is showing. Opening it restarts the count and records the
     time in the same write.
   - After an answer other than **Yes, love it!**, including a dismissal, the
@@ -111,7 +115,7 @@ Desktop neither shows the row nor opens the sheet by itself.
     many points are earned. Points keep counting during the wait.
   - **Yes, love it!**, from either entry, stops the automatic sheet for good.
     **Rate Sesori** in Settings always works.
-  - Firebase Remote Config can change the 10 points
+  - Firebase Remote Config can change the 5 points
     (`feedback_prompt_interaction_threshold`) and the 14 days
     (`feedback_prompt_cooldown_days`). It is fetched once per launch with a
     short timeout. A missing value or one below 1 uses its default, and a
@@ -136,9 +140,9 @@ Desktop neither shows the row nor opens the sheet by itself.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated. The sheet widget suite proves the review takeover at the tap with visible travel, the same travel for **Could be better**, and the confirmation copy; the locked answers; that the outcome resolves only after the sheet has closed; that the automatic iOS sheet closes itself at 800 ms without switching content, and that closing it earlier requests no review; the outcomes for dismiss, **Not now**, a close during the celebration, and **Cancel**; private send with its toast after closing and the recipient line; that nothing dismisses the sheet mid-send; a failed send that keeps the draft and retries; the 4,000-character limit and counter; reduced motion (at open, turned on mid-flight, while writing, and while recording); and the narrow large-text layout. Its voice group proves hold-to-talk with the waveform, the disabled send, and the transcript appended without sending; discard by the cancel target and a quick tap; the permission and network-failure notices keeping the draft; the transcript cut at the limit; and that closing mid-recording discards it. The cubit, repository, API, and store-client suites prove the outcome mapping, send locking, failure, and a stale in-flight send, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the StoreKit request (and its logged failure) on iOS, and the Play Store listing instead of In-App Review on Android. The Settings suite proves the row's position, that the store opens only after the confirmed sheet has closed, and a send with the `settings` source. The counter suites prove the stored state's round trip and discard of unreadable values, the Remote Config fetch, fallbacks, and defaults, the threshold and cooldown, that a showing restarts the count and records the time, that AI-error events and failures restart the count, that **Yes** stops it for good, that nothing is counted before the counter starts (desktop), and that the session-detail and new-session cubits count only successful sends, creations, and replies. The listener test proves the sheet opens over the current screen, right away without a keyboard and only after 500 ms when one is raised. The event, cubit, and sheet suites prove both analytics events' wire names and values, one answer per closed sheet, `private_feedback_sent` only after a successful send, and `voice_assisted` after a dictated transcript. |
+| L1 Smoke | Automated. The sheet widget suite proves the review takeover at the tap with visible travel, the same travel for **Could be better**, and the confirmation copy; the locked answers; that the outcome resolves only after the sheet has closed; that the automatic iOS sheet closes itself at 800 ms without switching content, and that closing it earlier requests no review; the outcomes for dismiss, **Not now**, a close during the celebration, and **Cancel**; private send with its toast after closing and the recipient line; that nothing dismisses the sheet mid-send; a failed send that keeps the draft and retries; the 4,000-character limit and counter; reduced motion (at open, turned on mid-flight, while writing, and while recording); and the narrow large-text layout. Its voice group proves hold-to-talk with the waveform, the disabled send, and the transcript appended without sending; discard by the cancel target and a quick tap; the permission and network-failure notices keeping the draft; the transcript cut at the limit; and that closing mid-recording discards it. The cubit, repository, API, and store-client suites prove the outcome mapping, send locking, failure, and a stale in-flight send, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the StoreKit request (and its logged failure) on iOS, and the Play Store listing instead of In-App Review on Android. The Settings suite proves the row's position, that the store opens only after the confirmed sheet has closed, and a send with the `settings` source. The counter suites prove the stored state's round trip and discard of unreadable values, the Remote Config fetch, fallbacks, and defaults, the threshold and cooldown, that a showing restarts the count and records the time, that AI-error events and failures restart the count, that retries and AI errors after a user stop keep it, that **Yes** stops it for good, that nothing is counted before the counter starts (desktop), and that the session-detail and new-session cubits count only successful sends, creations, and replies. The listener test proves the sheet opens over the current screen, right away without a keyboard and only after 500 ms when one is raised. The event, cubit, and sheet suites prove both analytics events' wire names and values, one answer per closed sheet, `private_feedback_sent` only after a successful send, and `voice_assisted` after a dictated transcript. |
 | L2 Routine | Client end to end on the release-target client platform against the dev auth server: Settings shows **Rate Sesori**; **Yes**, then **Leave a review**, opens the store review page after the sheet has closed; **Not now** returns to Settings without leaving the app; **Could be better** sends ticked issues and fixture text (typed, then extended by a held voice recording), closes the sheet, and shows the toast, and the stored document matches (message omitted when blank). |
-| L3 Release | Client end to end on the alternate client platform: the same journey opens that platform's store. On a phone with Remote Config setting the threshold to 2 and the cooldown to 1 day, two sent messages open the automatic sheet over the session, and an AI retry between them restarts the count. On iOS **Yes** closes the sheet and the StoreKit prompt appears only after it has gone; on Android **Yes** shows the confirmation, **Leave a review** opens the Play Store listing, and **Not now** only closes. After a dismissal the sheet does not reopen by itself on the next two sends; after **Yes** it never reopens by itself. |
+| L3 Release | Client end to end on the alternate client platform: the same journey opens that platform's store. On a phone with Remote Config setting the threshold to 2 and the cooldown to 1 day, two sent messages open the automatic sheet over the session, an AI retry between them keeps the count, and a real AI error between them restarts it. On iOS **Yes** closes the sheet and the StoreKit prompt appears only after it has gone; on Android **Yes** shows the confirmation, **Leave a review** opens the Play Store listing, and **Not now** only closes. After a dismissal the sheet does not reopen by itself on the next two sends; after **Yes** it never reopens by itself. |
 | L4 Extended | Client end to end with Reduce Motion or Remove animations enabled and at accessibility text sizes. On Android, a device without the Play Store app falls back to the web listing. Sending offline or past the server's rate limit shows the inline error, keeps the draft, and **Retry** succeeds once the server accepts it. |
 | L5 Full | No additional coverage. |
 
@@ -173,6 +177,8 @@ Desktop neither shows the row nor opens the sheet by itself.
   section, or misaligned with the account row.
 - The automatic sheet opens on desktop, before the threshold, inside the
   cooldown, after **Yes**, or twice for one threshold crossing.
+- A retry, a stopped response, or an uncaught error that does not crash the app
+  restarts the count.
 - A failed send, creation, or reply, an AI error, or a crash does not restart
   the count, or a request the bridge rejects still earns a point.
 - The count or cooldown is lost on restart.

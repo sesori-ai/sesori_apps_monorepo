@@ -348,10 +348,12 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
   int _positiveInteractions = 0;
   int _failures = 0;
   int _yesAnswers = 0;
+  int _userStops = 0;
 
   int get positiveInteractions => _positiveInteractions;
   int get failures => _failures;
   int get yesAnswers => _yesAnswers;
+  int get userStops => _userStops;
 
   @override
   Stream<void> get prompts => promptsController.stream;
@@ -364,6 +366,9 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
 
   @override
   Future<void> recordYes() async => _yesAnswers++;
+
+  @override
+  void recordUserStop() => _userStops++;
 }
 
 class MockConnectionService() extends Mock implements ConnectionService {
