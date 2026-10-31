@@ -14,7 +14,7 @@ const List<String> _bridgePackageManifests = <String>[
 final RegExp _semverPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)$');
 final RegExp _clientVersionPattern = RegExp(r'^(\d+\.\d+\.\d+)(?:\+(\d+))?$');
 final RegExp _pubspecVersionPattern = RegExp(
-  r'^version:\s*([^#\s]+)\s*$',
+  r'^version:[ \t]*([^#\s]+)[ \t\r]*$',
   multiLine: true,
 );
 final RegExp _versionDartPattern = RegExp(
