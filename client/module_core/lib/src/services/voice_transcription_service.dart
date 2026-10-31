@@ -3,8 +3,10 @@ import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart" show ErrorResponse, SuccessResponse;
-import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectGlossaryKey;
 
+import "../capabilities/server_connection/connection_service.dart";
+import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/voice/voice_dictation_outcome.dart";
 import "../foundation/models/voice/voice_live.dart";
 import "../foundation/models/voice/voice_mode.dart";
@@ -25,7 +27,12 @@ class VoiceTranscriptionService({
   required final ProjectRepository _projectRepository,
   required final VoiceModeRepository _voiceModeRepository,
   required final VoiceCapture _capture,
+  required final ConnectionService _connectionService,
 }) {
+  // Lets a new composer start with the key its project had last time, because a
+  // live dictation can't wait for the bridge to answer.
+  final Map<({String computerId, String projectId}), ProjectGlossaryKey> _rememberedProjectGlossaryKeys = {};
+
   /// [allowLive] is false where dictation keeps recording first, whatever the
   /// voice mode says. A change of mode applies from the next session.
   VoiceTranscriptionSession createSession({required String? projectId, required bool allowLive}) {
@@ -33,7 +40,10 @@ class VoiceTranscriptionService({
       captureSession: _capture.createSession(),
       projectId: projectId == null || projectId.trim().isEmpty ? null : projectId,
     );
-    _refreshProjectGlossaryKey(session: session);
+    session._projectGlossaryKey = _rememberedProjectGlossaryKey(projectId: session._projectId);
+    // Asks even with a remembered key: this request is also what keeps the
+    // project's glossary refreshed on the bridge.
+    _loadProjectGlossaryKeyIfIdle(session: session);
     if (allowLive) unawaited(_loadLiveAvailability(session: session));
     return session;
   }
@@ -50,10 +60,15 @@ class VoiceTranscriptionService({
     session._canRunLive = await session._captureSession.supportsPcmStream();
   }
 
-  void _refreshProjectGlossaryKey({required VoiceTranscriptionSession session}) {
+  ProjectGlossaryKey? _rememberedProjectGlossaryKey({required String? projectId}) {
+    final computerId = _connectionService.currentStatus.targetBridgeId;
+    if (projectId == null || computerId == null) return null;
+    return _rememberedProjectGlossaryKeys[(computerId: computerId, projectId: projectId)];
+  }
+
+  void _loadProjectGlossaryKeyIfIdle({required VoiceTranscriptionSession session}) {
     final projectId = session._projectId;
     if (projectId == null ||
-        session._availableProjectGlossaryKey != null ||
         session._projectGlossaryKeyLoad != null ||
         session._state is _VoiceSessionClosing ||
         session._state is _VoiceSessionDisposed) {
@@ -73,12 +88,20 @@ class VoiceTranscriptionService({
     required VoiceTranscriptionSession session,
     required String projectId,
   }) async {
+    // Read before asking, so the answer is remembered for the computer it came from.
+    final computerId = _connectionService.currentStatus.targetBridgeId;
     try {
       final response = await _projectRepository.getProject(projectId: projectId);
       if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) return;
       switch (response) {
-        case SuccessResponse(:final data):
-          session._availableProjectGlossaryKey = data.voiceGlossaryKey;
+        case SuccessResponse(data: Project(voiceGlossaryKey: final key?)):
+          session._projectGlossaryKey = key;
+          if (computerId != null) {
+            _rememberedProjectGlossaryKeys[(computerId: computerId, projectId: projectId)] = key;
+          }
+        case SuccessResponse():
+          // No key in this answer, so whatever is already known stays.
+          break;
         case ErrorResponse(:final error):
           logw("Could not load optional project voice context; continuing unscoped", error);
       }
@@ -88,7 +111,7 @@ class VoiceTranscriptionService({
   }
 
   void _logProjectGlossaryUse({required VoiceTranscriptionSession session}) {
-    final glossary = session._interactionProjectGlossaryKey == null ? "no project glossary" : "the project glossary";
+    final glossary = session._projectGlossaryKey == null ? "no project glossary" : "the project glossary";
     logi("Transcribing with $glossary");
   }
 
@@ -152,8 +175,7 @@ class VoiceTranscriptionService({
   Future<void> _start({required VoiceTranscriptionSession session}) async {
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
-    session._interactionProjectGlossaryKey = session._availableProjectGlossaryKey;
-    _refreshProjectGlossaryKey(session: session);
+    if (session._projectGlossaryKey == null) _loadProjectGlossaryKeyIfIdle(session: session);
     // Read once, here: the dictation keeps this mode whatever the switch does next.
     final mode = session._canRunLive ? _voiceModeRepository.mode : const VoiceModeAfterRecording();
 
@@ -224,7 +246,7 @@ class VoiceTranscriptionService({
       capture: captureSession,
       onWords: ({required words}) => session._liveEventsController.add(VoiceLiveWordsChanged(words: words)),
       frames: frames,
-      projectKey: session._interactionProjectGlossaryKey,
+      projectKey: session._projectGlossaryKey,
     );
     session._state = _VoiceSessionLiveRecording(run: run);
     _startMaxDurationTimer(session: session);
@@ -346,9 +368,6 @@ class VoiceTranscriptionService({
       throw VoiceTranscriptionError.cancelled();
     }
 
-    // The upload has not started, so a key that arrived during the recording
-    // still counts. A retry keeps whatever this attempt sent.
-    session._interactionProjectGlossaryKey ??= session._availableProjectGlossaryKey;
     session._state = _VoiceSessionInitialTranscribing(artifact: artifact);
     final transcript = await _transcribeArtifact(
       session: session,
@@ -405,7 +424,7 @@ class VoiceTranscriptionService({
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectGlossaryKey: session._interactionProjectGlossaryKey,
+        projectGlossaryKey: session._projectGlossaryKey,
       );
       if (!_ownsGeneration(session: session, generation: generation)) {
         throw VoiceTranscriptionError.cancelled();
@@ -655,8 +674,7 @@ class VoiceTranscriptionSession._({
   Future<void>? _cancelFuture;
   Future<void>? _projectGlossaryKeyLoad;
   Timer? _maxDurationTimer;
-  ProjectGlossaryKey? _availableProjectGlossaryKey;
-  ProjectGlossaryKey? _interactionProjectGlossaryKey;
+  ProjectGlossaryKey? _projectGlossaryKey;
 
   /// False until the voice mode says live and this host can stream, which is also
   /// the answer for a session that doesn't allow live.

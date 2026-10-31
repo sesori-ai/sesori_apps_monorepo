@@ -240,7 +240,10 @@ void main() {
       request: const PiSetStatusRequest(id: "status", statusKey: "key", statusText: "secret", raw: {}),
     );
 
-    await Future<void>.delayed(const Duration(milliseconds: 35));
+    // Both timeouts run on real timers, so wait for their effect, not a set time.
+    while (events.whereType<PiExtensionUiQuestionRejected>().length < 2 || processes.replies.isEmpty) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
 
     expect(service.getPendingQuestions(sessionId: "child"), isEmpty);
     expect(processes.replies.map((reply) => reply.requestId), ["editor-timeout"]);

@@ -6,7 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_protocol.dart";
-import "package:sesori_shared/sesori_shared.dart" show Project, ProjectGlossaryKey;
+import "package:sesori_shared/sesori_shared.dart" show HealthResponse, Project, ProjectGlossaryKey;
 import "package:test/test.dart";
 
 import "../capabilities/voice/fake_realtime_voice_channel.dart";
@@ -23,6 +23,8 @@ class _MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
 
 class _MockVoiceApi() extends Mock implements VoiceApi;
 
+class _MockConnectionService() extends Mock implements ConnectionService;
+
 const _ready = '{"type":"ready","protocolVersion":1,"maxSessionSeconds":900,"dailySecondsRemaining":420}';
 const _finished = '{"type":"complete","reason":"finished","dailySecondsRemaining":400}';
 const _sessionLimit = '{"type":"complete","reason":"session_limit","dailySecondsRemaining":0}';
@@ -38,6 +40,7 @@ Uint8List _frame({required int fill}) => Uint8List.fromList([fill, fill]);
 void main() {
   late FakeRealtimeVoiceChannel channel;
   late _MockVoiceRepository repository;
+  late _MockConnectionService connectionService;
   late _MockVoiceModeRepository voiceModeRepository;
   late _MockVoiceCaptureSession capture;
   late StreamController<Uint8List> frames;
@@ -86,6 +89,17 @@ void main() {
     frames = StreamController<Uint8List>();
     repository = _MockVoiceRepository();
     voiceModeRepository = _MockVoiceModeRepository();
+    connectionService = _MockConnectionService();
+    when(() => connectionService.currentStatus).thenReturn(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+          bridgeId: "computer",
+        ),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
+      ),
+    );
     capture = _MockVoiceCaptureSession();
     final platform = _MockVoiceCapture();
     final realRepository = VoiceRepository(
@@ -133,6 +147,7 @@ void main() {
       projectRepository: _MockProjectRepository(),
       voiceModeRepository: voiceModeRepository,
       capture: platform,
+      connectionService: connectionService,
     );
   });
 
@@ -260,7 +275,38 @@ void main() {
         projectRepository: projects,
         voiceModeRepository: voiceModeRepository,
         capture: platform,
+        connectionService: connectionService,
       );
+      session = await createSession(projectId: "project");
+
+      await service.start(session: session);
+      await pumpEventQueue();
+
+      verify(() => repository.openRealtime(sampleRate: voiceCapturePcmSampleRate, projectKey: key)).called(1);
+    });
+
+    test("a remembered key reaches a dictation that starts before the bridge answers", () async {
+      final key = ProjectGlossaryKey.parse(value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ");
+      final projects = _MockProjectRepository();
+      final platform = _MockVoiceCapture();
+      when(platform.createSession).thenReturn(capture);
+      when(platform.prewarm).thenAnswer((_) async {});
+      when(() => projects.getProject(projectId: "project")).thenAnswer(
+        (_) async => ApiResponse.success(
+          Project(id: "project", name: "Project", path: "/project", time: null, voiceGlossaryKey: key),
+        ),
+      );
+      service = VoiceTranscriptionService(
+        repository: repository,
+        projectRepository: projects,
+        voiceModeRepository: voiceModeRepository,
+        capture: platform,
+        connectionService: connectionService,
+      );
+      await createSession(projectId: "project");
+      when(
+        () => projects.getProject(projectId: "project"),
+      ).thenAnswer((_) => Completer<ApiResponse<Project>>().future);
       session = await createSession(projectId: "project");
 
       await service.start(session: session);
