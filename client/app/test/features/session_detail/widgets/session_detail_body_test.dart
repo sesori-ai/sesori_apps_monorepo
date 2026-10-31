@@ -17,6 +17,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_harness_unavailable_notice.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
@@ -352,6 +353,15 @@ void main() {
       expect(find.byIcon(TablerRegular.x), findsNothing);
     });
   }
+
+  testWidgets("a sent dictation has a landing over the composer", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(SentBubbleLanding.of(context: tester.element(find.byType(PromptInput))), isNotNull);
+  });
 
   testWidgets("the chat menu enables auto continuation through the shared cubit", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(

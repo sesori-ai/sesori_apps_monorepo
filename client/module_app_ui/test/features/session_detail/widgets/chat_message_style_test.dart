@@ -2,6 +2,7 @@ import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -90,5 +91,5 @@ Widget _app({required Brightness brightness, required Widget child}) => Material
   theme: buildPregoThemeData(brightness: brightness),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
-  home: Scaffold(body: child),
+  home: SentBubbleLanding(child: Scaffold(body: child)),
 );

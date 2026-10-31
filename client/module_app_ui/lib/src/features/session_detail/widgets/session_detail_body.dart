@@ -18,6 +18,7 @@ import "external_action_modal.dart";
 import "pending_form_modal.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
+import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
@@ -686,7 +687,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           listener: (context, state) => setState(() => _shellHandoffs++),
         ),
       ],
-      child: page,
+      child: SentBubbleLanding(child: page),
     );
   }
 

@@ -17,6 +17,7 @@ import "message_timestamp_reveal.dart";
 import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
+import "sent_bubble_landing.dart";
 import "session_launch_submission_view.dart";
 import "system_message_card.dart";
 import "transcript_glide_activity.dart";
@@ -1036,12 +1037,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // Rows held still while scrolled away never animate, and a prompt shows
     // at once: only the agent's side of the transcript eases in. A row that
     // takes the place of one that just left is that row re-keyed, as when a
-    // refresh swaps a live row for its history twin, so it stays put.
+    // refresh swaps a live row for its history twin, so it stays put. The prompt
+    // a dictation's words are gliding to is the exception: the list rises for it
+    // as they come down, rather than jumping beside them.
+    final wordsGlidingIn = SentBubbleLanding.of(context: context).isExpecting;
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
         ? const <String>{}
         : _rowsArriving(previous: previousRowIds, current: rowIds).difference({
-            for (final rowId in rowIds)
-              if (_isUserRow(rowId: rowId, messages: messages, indexById: indexById)) rowId,
+            if (!wordsGlidingIn)
+              for (final rowId in rowIds)
+                if (_isUserRow(rowId: rowId, messages: messages, indexById: indexById)) rowId,
           });
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
@@ -1124,19 +1129,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       rowId: entryId,
                       onMount: _onRowMount,
                       onUnmount: _onRowUnmount,
-                      child: TranscriptPresence(
-                        entering: enteringRowIds.contains(entryId),
-                        exiting: false,
-                        onExited: null,
-                        child: _buildRow(
-                          entryId: entryId,
-                          messages: messages,
-                          indexById: indexById,
-                          transientSubmissions: transientSubmissions,
-                          transcript: transcript,
-                          streamingText: streamingText,
-                          retryErrorMessage: retryErrorMessage,
-                          activity: activity,
+                      child: SentBubbleArrival(
+                        arriving: !(knownRowIds?.contains(entryId) ?? false),
+                        child: TranscriptPresence(
+                          entering: enteringRowIds.contains(entryId),
+                          exiting: false,
+                          onExited: null,
+                          child: _buildRow(
+                            entryId: entryId,
+                            messages: messages,
+                            indexById: indexById,
+                            transientSubmissions: transientSubmissions,
+                            transcript: transcript,
+                            streamingText: streamingText,
+                            retryErrorMessage: retryErrorMessage,
+                            activity: activity,
+                          ),
                         ),
                       ),
                     );
