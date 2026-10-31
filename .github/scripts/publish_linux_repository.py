@@ -28,6 +28,12 @@ BUCKET = "sesori-ai-linux-packages"
 PUBLIC_ROOT = f"https://storage.googleapis.com/{BUCKET}"
 TAGS = {Channel.STABLE: re.compile(r"v(\d+)\.(\d+)\.(\d+)"),
         Channel.INTERNAL: re.compile(r"v(\d+)\.(\d+)\.(\d+)-internal\.([1-9]\d*)")}
+KEPT_INTERNAL_BUILDS = 5
+# Only internal paths match, so stable packages are always kept.
+INTERNAL_PACKAGE = re.compile(
+    r"(?P<directory>apt/pool/internal/[^/]+|rpm/internal/[^/]+/Packages|desktop-updates/k1/internal/linux-[^/]+)/"
+    r"(?:Sesori-linux-[^/-]+-|sesori-desktop-)(\d+)\.(\d+)\.(\d+)-(?:internal\.)?(\d+)"
+    r"(?:\.deb|\.rpm|-internal-full\.nupkg)")
 
 
 def version_order(*, version: str) -> tuple[int, ...]:
@@ -280,10 +286,33 @@ def publish(*, root: Path, channel: Channel) -> None:
     print(f"Published Linux {channel} {report['version']}+{report['buildNumber']}; InRelease completed last")
 
 
+def stale_internal_packages(*, names: list[str]) -> list[str]:
+    builds = {}
+    for name in names:
+        match = INTERNAL_PACKAGE.fullmatch(name)
+        if match:
+            order = tuple(int(part) for part in match.groups()[1:])
+            builds.setdefault(match["directory"], []).append((order, name))
+    return sorted(name for rows in builds.values() for _, name in sorted(rows, reverse=True)[KEPT_INTERNAL_BUILDS:])
+
+
+def prune_internal_packages() -> None:
+    # The signed indexes and feeds name only the newest build, so older packages are unreferenced.
+    # Old index objects stay: they are tiny, and this is about the packages' storage.
+    listing = subprocess.run(["gcloud", "storage", "ls", f"gs://{BUCKET}/**"], check=True, capture_output=True,
+                             text=True, timeout=180).stdout
+    stale = stale_internal_packages(names=[line.removeprefix(f"gs://{BUCKET}/") for line in listing.splitlines()])
+    if stale:
+        subprocess.run(["gcloud", "storage", "rm", *(f"gs://{BUCKET}/{name}" for name in stale)], check=True,
+                       timeout=600)
+    print(f"Pruned {len(stale)} internal packages; kept the newest {KEPT_INTERNAL_BUILDS} builds of each target")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("select")
+    commands.add_parser("prune-internal")
     for operation, directory in (("download", "--output"), ("verify", "--root"), ("publish", "--root")):
         command = commands.add_parser(operation)
         command.add_argument("--channel", type=Channel, choices=list(Channel), required=True)
@@ -292,6 +321,8 @@ def main() -> None:
     if arguments.command == "select":
         # GitHub step output for the per-channel matrix; an empty list skips signing and hosting.
         print(f"channels={json.dumps([channel.value for channel in select_channels()])}")
+    elif arguments.command == "prune-internal":
+        prune_internal_packages()
     elif arguments.command == "download":
         download(channel=arguments.channel, output=arguments.output)
     elif arguments.command == "verify":
