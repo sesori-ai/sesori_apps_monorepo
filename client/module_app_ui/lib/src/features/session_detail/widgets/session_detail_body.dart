@@ -915,11 +915,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       // never sees an empty slot.
       actions: [Row(mainAxisSize: MainAxisSize.min, children: actions)],
       slivers: [
-        // The loaded view is a Column with an Expanded chat and a pinned
-        // composer. With reserveBarSpace: false there is no top spacer, so
+        // The loaded view is a chat filling the pane with the composer floating
+        // over its bottom. With reserveBarSpace: false there is no top spacer, so
         // hasScrollBody: true gives it the full viewport height behind the
         // bar — the chat scrolls behind the transparent bar and insets its
-        // own content below it (chat flexes, composer stays anchored at the
+        // own content below it (composer stays anchored at the
         // bottom and rides above the keyboard). The chat owns its own
         // reversed scroll controller, so the large title can't collapse with
         // it; the inline title is used instead, as on the new-session screen.
