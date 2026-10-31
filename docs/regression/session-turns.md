@@ -709,6 +709,9 @@ defaults and queued client sends coherent.
   shows a renderable user message, or a bridge-queued prompt that is neither one
   of the launch's own follow-ups nor a prompt sent from the session screen, so
   the bubble and its replacement never show together. A stop removes it, and while it shows the transcript is not empty.
+  The list opens on that row even when its first load already holds the replacement or finds the session at work, so
+  from the launch view the row eases to its new place and its status line cross-fades, the row above the working row,
+  as in any later update. Reduced motion takes the height at once and keeps the fade.
 - Messages sent while that session was still being created follow the first
   one as transient rows. They send in press order once the session exists,
   after the first message and before anything sent from the session screen,
@@ -720,8 +723,10 @@ defaults and queued client sends coherent.
   from the first frame, before the transcript loads, in the new-session
   composer's place and with its options, unsent text, command, images and
   focus; the options stay inert until the load. A message sent there before the
-  load queues behind the launch's follow-ups, stays cancellable, and sends when
-  the load lands. The composer and every bubble stay put through the load. If
+  load queues behind the launch's follow-ups, stays cancellable once its Queued
+  line shows, two seconds from the launch as in the list, and sends when the load
+  lands. The composer stays put through the load, and every bubble keeps its place
+  unless the load changes its row, which then eases there. If
   the first load fails, the queued messages stay in view under the error and
   Retry sends them; none is dropped silently.
 - Read-only, archived, and harness-blocked views retain inline pending bubbles
