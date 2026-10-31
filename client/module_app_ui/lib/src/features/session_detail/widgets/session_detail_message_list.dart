@@ -1448,7 +1448,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
-      MessageUser() => _userMessage(message: message),
+      MessageUser() => _userMessage(message: message, outlineFade: null),
       MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
@@ -1469,10 +1469,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// A user message's bubble, registered where it is so its pin can stand in
   /// for it.
-  Widget _userMessage({required MessageWithParts message}) => TranscriptPromptSlot(
+  Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) => TranscriptPromptSlot(
     openerId: message.info.id,
     registry: _promptSlots,
-    child: UserMessageCard(message: message),
+    child: UserMessageCard(message: message, outlineFade: outlineFade),
   );
 
   /// A delivered prompt's row. It carries on from the bubble that waited, the row's
@@ -1484,7 +1484,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isCommand: false,
       attachmentCount: 0,
       localAttachments: const [],
-      presentation: QueuedMessageBubblePresentation.delivered(message: _userMessage(message: message)),
+      presentation: QueuedMessageBubblePresentation.delivered(
+        message: ({required outlineFade}) => _userMessage(message: message, outlineFade: outlineFade),
+      ),
     ),
   );
 

@@ -28,8 +28,9 @@ sealed class const QueuedMessageBubblePresentation() {
       FailedMessageBubblePresentation;
 
   /// A message that has arrived: [message] takes the bubble's place, under the
-  /// line it had while it waited, if any, on its way out.
-  const factory delivered({required Widget message}) = DeliveredMessageBubblePresentation;
+  /// line it had while it waited, if any, on its way out, and fades its outline.
+  const factory delivered({required Widget Function({required Duration? outlineFade}) message}) =
+      DeliveredMessageBubblePresentation;
 }
 
 final class const SendingMessageBubblePresentation({
@@ -53,8 +54,9 @@ final class const FailedMessageBubblePresentation({
   required final VoidCallback? onRemove,
 }) extends QueuedMessageBubblePresentation;
 
-final class const DeliveredMessageBubblePresentation({required final Widget message})
-    extends QueuedMessageBubblePresentation;
+final class const DeliveredMessageBubblePresentation({
+  required final Widget Function({required Duration? outlineFade}) message,
+}) extends QueuedMessageBubblePresentation;
 
 class const QueuedMessageBubble({
   super.key,
@@ -82,6 +84,10 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
 
   Timer? _statusTimer;
   bool _isStatusDue = false;
+
+  /// Whether the last build outlined the bubble, for a message delivered on it to
+  /// fade the outline.
+  bool _wasOutlined = false;
 
   /// The states whose line waits. A failure and an unavailable command need
   /// acting on, so theirs shows at once.
@@ -147,8 +153,6 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final reducedMotion = context.isReducedMotion;
-    final duration = reducedMotion ? Duration.zero : _statusFade;
     final presentation = widget.presentation;
     final isCommand = widget.isCommand;
     final displayText = widget.displayText;
@@ -282,6 +286,11 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       DeliveredMessageBubblePresentation() => null,
     };
 
+    // Nothing says it is queued before its line does.
+    final outlined = status != null && presentation is! SendingMessageBubblePresentation;
+    final wasOutlined = _wasOutlined;
+    _wasOutlined = outlined;
+
     // Nothing at all without a status, padding included, so that the row is the
     // same height as the delivered message.
     final statusRail = status == null
@@ -302,7 +311,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (presentation case DeliveredMessageBubblePresentation(:final message))
-          message
+          message(outlineFade: wasOutlined ? _statusFade : null)
         else
           UserMessageBubble(
             markdown: displayText,
@@ -311,9 +320,8 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
               if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
                 _QueuedAttachmentCount(count: attachmentCount),
             ],
-            // Nothing says it is queued before its line does.
-            outlined: status != null && presentation is! SendingMessageBubblePresentation,
-            transitionDuration: duration,
+            outlined: outlined,
+            transitionDuration: _statusFade,
           ),
         // Cross-fade the status rail between its states, a line's arrival among
         // them, so the swap reads as one row changing state; the enclosing prompt

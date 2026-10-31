@@ -770,6 +770,46 @@ void main() {
       );
     });
 
+    Color outlineOf(WidgetTester tester) {
+      final surface = tester.widget<AnimatedContainer>(
+        find.descendant(of: fresh, matching: find.byType(AnimatedContainer)).first,
+      );
+      final renders = tester.renderObjectList<RenderDecoratedBox>(
+        find.descendant(of: find.byWidget(surface), matching: find.byType(DecoratedBox)),
+      );
+      final foreground = renders.firstWhere((box) => box.position == DecorationPosition.foreground);
+      return (foreground.decoration as BoxDecoration).border?.top.color ?? const Color(0x00000000);
+    }
+
+    for (final reduced in const [false, true]) {
+      testWidgets("a queued outline fades with its line${reduced ? " under reduced motion" : ""}", (tester) async {
+        if (reduced) {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+            reduceMotion: true,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        }
+        final harness = await pumpSlowQueued(tester);
+        final full = outlineOf(tester).a;
+        expect(full, greaterThan(0.5));
+
+        harness.deliverBridgePrompt(promptId: "prm_sent", message: echo(), insertionIndex: 1);
+        await tester.pump();
+        expect(outlineOf(tester).a, moreOrLessEquals(full, epsilon: 0.001));
+        await tester.pump();
+        var last = full;
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(frame);
+          final alpha = outlineOf(tester).a;
+          expect(alpha, inInclusiveRange(last - 0.12, last), reason: "At $ms ms");
+          last = alpha;
+        }
+        await tester.pump(frame);
+        await tester.pump(frame);
+        expect(outlineOf(tester).a, 0);
+      });
+    }
+
     testWidgets("a dispatched prompt's fades out as the row eases", (tester) async {
       final harness = await pumpChat(tester);
       harness.updateBridgeQueue(

@@ -11,16 +11,16 @@ import "attachment_collection_widget.dart";
 import "sent_bubble_landing.dart";
 import "user_prompt_markdown_image.dart";
 
-class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
+class const UserMessageCard({
+  super.key,
+  required final MessageWithParts message,
+
+  /// How long to fade the outline this message's bubble had while it waited, or
+  /// null when it had none.
+  required final Duration? outlineFade,
+}) extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return UserMessageBubble(
-      markdown: markdownOf(message: message),
-      attachments: [attachmentsOf(message: message)],
-      outlined: false,
-      transitionDuration: Duration.zero,
-    );
-  }
+  State<UserMessageCard> createState() => _UserMessageCardState();
 
   /// The message's text, or null when it has only attachments.
   static String? markdownOf({required MessageWithParts message}) {
@@ -37,6 +37,33 @@ class const UserMessageCard({super.key, required final MessageWithParts message}
         .whereType<MessageAttachment>()
         .toList(),
   );
+}
+
+class _UserMessageCardState() extends State<UserMessageCard> {
+  late bool _outlined = widget.outlineFade != null;
+
+  /// The row's next build no longer has an outline to fade, and this one still fades.
+  late final Duration _transitionDuration = widget.outlineFade ?? Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_outlined) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _outlined = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final message = widget.message;
+    return UserMessageBubble(
+      markdown: UserMessageCard.markdownOf(message: message),
+      attachments: [UserMessageCard.attachmentsOf(message: message)],
+      outlined: _outlined,
+      transitionDuration: _transitionDuration,
+    );
+  }
 }
 
 /// The shared surface and Markdown body for settled and queued user messages.

@@ -1593,7 +1593,7 @@ void main() {
 
     await tester.pumpWidget(
       _app(
-        child: const UserMessageCard(message: message),
+        child: const UserMessageCard(message: message, outlineFade: null),
       ),
     );
 

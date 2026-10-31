@@ -646,9 +646,10 @@ defaults and queued client sends coherent.
   replaces the queued entry in the same client state emission, so no frame
   shows the prompt twice or not at all. A status line showing as its prompt is
   delivered fades out as the row's height eases, with the motion of the line's
-  other transitions, on every path to delivery: it takes no tap or focus and is
-  gone for a screen reader from that frame, and scrolling away and back doesn't
-  replay it. Reduced motion keeps the fade and takes the height at once. Client-staged sends preserve order,
+  other transitions, on every path to delivery, and so does a queued outline: the
+  line takes no tap or focus and is gone for a screen reader from that frame, and
+  scrolling away and back doesn't replay it. Reduced motion keeps the fades and
+  takes the height at once. Client-staged sends preserve order,
   survive a transient disconnection while the session-detail cubit is alive,
   retain the agent, model, and variant selected at submission, and drain with
   the same prompt id so retries stay idempotent.
