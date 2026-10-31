@@ -222,9 +222,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   final _jumpNotifier = TranscriptJumpNotifier();
   final _composerKey = GlobalKey();
 
-  /// The launch-seeded composer's height as last laid out.
-  double _composerHeight = 0;
-
   /// How many times the unavailable notice has given way, which keys the
   /// content so each replacement fades in.
   int _shellHandoffs = 0;
@@ -992,7 +989,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
                 onPinchIn: _openPromptsFromPinch,
-                initialBottomControlsHeight: _composerHeight,
               )
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
@@ -1010,7 +1006,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
                 onPinchIn: _openPromptsFromPinch,
-                initialBottomControlsHeight: _composerHeight,
               ),
       SessionDetailHarnessUnavailable(
         :final interaction,
@@ -1162,9 +1157,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         Expanded(child: transcript),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: composerInset),
-          // The loaded view starts its transcript clear of this height, as
-          // its own measurement only lands after its first frame.
-          child: PregoSizeObserver(onSizeChanged: (size) => _composerHeight = size.height, child: composer),
+          child: composer,
         ),
       ],
     );

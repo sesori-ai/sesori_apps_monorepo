@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "floating_bottom_controls_layout.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
@@ -48,7 +49,7 @@ final class const SessionDetailColumnWidths({
   required final double composer,
 });
 
-class SessionDetailLoadedView extends StatefulWidget {
+class SessionDetailLoadedView extends StatelessWidget {
   final String? projectId;
   final String sessionId;
   final SessionDetailLoaded state;
@@ -67,10 +68,6 @@ class SessionDetailLoadedView extends StatefulWidget {
   final TranscriptJumpNotifier jumpNotifier;
   final void Function({required Offset focalPoint}) onPinchIn;
 
-  /// The bottom controls' height as last measured before this view mounted, so
-  /// its first frame insets the transcript as the controls already stand.
-  final double initialBottomControlsHeight;
-
   const new readOnly({
     super.key,
     required this.projectId,
@@ -83,7 +80,6 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.currentPromptId,
     required this.jumpNotifier,
     required this.onPinchIn,
-    required this.initialBottomControlsHeight,
   }) : readOnly = true;
 
   const new interactive({
@@ -98,35 +94,11 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.currentPromptId,
     required this.jumpNotifier,
     required this.onPinchIn,
-    required this.initialBottomControlsHeight,
   }) : readOnly = false;
 
   @override
-  State<SessionDetailLoadedView> createState() => _SessionDetailLoadedViewState();
-}
-
-class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
-  /// Measured height of the floating bottom controls overlaying the bottom of
-  /// the chat — the needs-you cards, background-tasks bar and composer, or a
-  /// read-only session's run details. Fed to the message list so the newest
-  /// message rests just above them (and the "jump to latest" pill clears them)
-  /// while older content scrolls up behind the composer's fade.
-  ///
-  /// A notifier rather than state: the composer's layout morphs animate its
-  /// height frame-by-frame, and each measurement must re-inset only the
-  /// message list — not rebuild the whole view including the very composer
-  /// being measured.
-  late final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(widget.initialBottomControlsHeight);
-
-  @override
-  void dispose() {
-    _bottomControlsHeight.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final columnWidths = widget.columnWidths;
+    final columnWidths = this.columnWidths;
     if (columnWidths == null) return _buildContent(context: context, transcriptInset: 0, composerInset: 0);
     return LayoutBuilder(
       builder: (context, constraints) => _buildContent(
@@ -143,7 +115,6 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     required double composerInset,
   }) {
     final loc = context.loc;
-    final state = widget.state;
     // A session waiting on the user is not working; its card says so.
     final isBusy =
         hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses) &&
@@ -164,7 +135,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     // A lost response may already have reached the bridge, so only an
     // authoritative rejection can be removed.
     final canRemoveFailedSend =
-        !widget.readOnly &&
+        !readOnly &&
         switch (state.localSend) {
           LocalSendFailed(:final failure) => failure == PromptSendFailure.rejected,
           LocalSendIdle() || LocalSendSending() => false,
@@ -172,7 +143,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
     final hasTypedRequest = state.pendingQuestions.any((q) => q.interactionKind != QuestionInteractionKind.question);
     // An archived session's requests can never be answered.
-    final canAnswer = !widget.readOnly && !state.isArchived && state.interaction.canInteract;
+    final canAnswer = !readOnly && !state.isArchived && state.interaction.canInteract;
     final needsYou = [
       if (state.pendingQuestions.firstOrNull?.questions.firstOrNull case final question? when canAnswer)
         SessionDetailNeedsYouCard(
@@ -184,7 +155,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               : (questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount)),
           request: _firstLine(question.question),
           action: hasTypedRequest ? loc.needsYouReview : loc.needsYouAnswer,
-          onPressed: widget.onShowPendingQuestions,
+          onPressed: onShowPendingQuestions,
         ),
       if (state.pendingPermissions.firstOrNull case final permission? when canAnswer)
         SessionDetailNeedsYouCard(
@@ -194,10 +165,10 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               : loc.permissionBannerMultiple(state.pendingPermissions.length),
           request: _firstLine(permission.description),
           action: loc.needsYouReview,
-          onPressed: widget.onShowPendingPermissions,
+          onPressed: onShowPendingPermissions,
         ),
     ];
-    final hasBottomControls = needsYou.isNotEmpty || widget.bottomControls != null;
+    final hasBottomControls = needsYou.isNotEmpty || bottomControls != null;
 
     // The scaffold lets this view fill the full height behind the transparent
     // bar (reserveBarSpace: false), so the message list scrolls behind it like
@@ -205,49 +176,48 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     // indicator and archived notice — come from PregoTopBarInsetBuilder so
     // they clear the bar at rest and ride the top-nav connection banner's height
     // animation frame-by-frame.
-    return Stack(
-      children: [
-        Column(
-          children: [
-            Expanded(
-              child: showEmptyState
-                  ? Center(child: Text(loc.sessionDetailEmpty))
-                  : PregoTopBarInsetBuilder(
-                      builder: (context, topInset, _) => ValueListenableBuilder<double>(
-                        valueListenable: _bottomControlsHeight,
-                        builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
-                          projectId: widget.projectId,
+    return FloatingBottomControlsLayout(
+      contentBuilder: (context, bottomControlsHeight) => Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: showEmptyState
+                    ? Center(child: Text(loc.sessionDetailEmpty))
+                    : PregoTopBarInsetBuilder(
+                        builder: (context, topInset, _) => SessionDetailMessageList(
+                          projectId: projectId,
                           messages: state.messages,
                           localSend: state.localSend,
                           queuedMessages: state.queuedMessages,
                           harnessName: state.interaction.harnessDisplayName,
                           launchHandoff: state.launchHandoff,
-                          onRetryFailedSend: widget.readOnly || !state.interaction.canInteract
+                          onRetryFailedSend: readOnly || !state.interaction.canInteract
                               ? null
                               : context.read<SessionDetailCubit>().retryFailedSend,
                           onRemoveFailedSend: canRemoveFailedSend
                               ? context.read<SessionDetailCubit>().removeFailedSend
                               : null,
                           launchFollowUps: state.launchFollowUps,
-                          onRetryLaunchFollowUp: widget.readOnly || !state.interaction.canInteract
+                          onRetryLaunchFollowUp: readOnly || !state.interaction.canInteract
                               ? null
                               : context.read<SessionDetailCubit>().retryLaunchFollowUp,
-                          onRemoveLaunchFollowUp: widget.readOnly
+                          onRemoveLaunchFollowUp: readOnly
                               ? null
                               : context.read<SessionDetailCubit>().removeLaunchFollowUp,
                           bridgeQueuedPrompts: state.bridgeQueuedPrompts,
                           bridgePromptAttachments: state.bridgePromptAttachments,
                           awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
-                          onCancelBridgeQueuedPrompt: widget.readOnly || !state.interaction.canInteract
+                          onCancelBridgeQueuedPrompt: readOnly || !state.interaction.canInteract
                               ? null
                               : (promptId) => unawaited(
                                   context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
                                 ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           isRefreshing: state.isRefreshing,
-                          currentPromptId: widget.currentPromptId,
-                          jumpNotifier: widget.jumpNotifier,
-                          onPinchIn: widget.onPinchIn,
+                          currentPromptId: currentPromptId,
+                          jumpNotifier: jumpNotifier,
+                          onPinchIn: onPinchIn,
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
@@ -260,7 +230,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                               : context.read<SessionDetailCubit>().loadOlderMessages,
                           promptIndex: state.promptIndex,
                           onLoadThrough: context.read<SessionDetailCubit>().loadMessagesThrough,
-                          onCancelQueuedMessage: widget.readOnly
+                          onCancelQueuedMessage: readOnly
                               ? null
                               : context.read<SessionDetailCubit>().cancelQueuedMessage,
                           retryErrorMessage: state.retryErrorMessage,
@@ -270,68 +240,62 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           // composer); content in between scrolls
                           // up behind the bar's fade and the composer's fade.
                           topInset: topInset,
-                          bottomInset: hasBottomControls ? bottomControlsHeight : 0,
+                          bottomInset: bottomControlsHeight,
                           horizontalInset: transcriptInset,
                         ),
                       ),
-                    ),
-            ),
-          ],
-        ),
-        // The refresh indicator and archived notice pin just below the
-        // transparent bar, floating over the chat that scrolls behind them —
-        // rather than pushing the chat down out of the behind-bar region. The
-        // cluster itself is inset-independent, so it rides through as `child`
-        // and only the Positioned offset follows the banner animation.
-        PregoTopBarInsetBuilder(
-          builder: (context, topInset, child) => Positioned(
-            top: topInset,
-            left: 0,
-            right: 0,
-            child: child ?? const SizedBox.shrink(),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (state.isRefreshing) const LinearProgressIndicator(),
-              // Archiving is permanent, so this session is audit-only: say so
-              // where the composer used to be.
-              if (state.isArchived) const SessionDetailArchivedNotice(),
-              // The harness can no longer restore this session; its stored
-              // history stays readable beneath this floating layer, which
-              // fades rather than moving the transcript.
-              AnimatedSwitcher(
-                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeOut,
-                child: switch (state.cannotContinueMessage) {
-                  final message? => SessionDetailCannotContinueNotice(message: message),
-                  null => const SizedBox.shrink(),
-                },
               ),
             ],
           ),
-        ),
-        // Floating bottom controls: the needs-you cards docked above the
-        // background-tasks bar and composer. Queued submissions are regular
-        // rows in the transcript above them. Every control's halo paints in
-        // one layer beneath them all, fading the transcript passing under it.
-        if (hasBottomControls)
-          Positioned(
-            bottom: 0,
-            left: composerInset,
-            right: composerInset,
-            child: PregoSizeObserver(
-              onSizeChanged: (size) {
-                if (!mounted) return;
-                _bottomControlsHeight.value = size.height;
-              },
+          // The refresh indicator and archived notice pin just below the
+          // transparent bar, floating over the chat that scrolls behind them —
+          // rather than pushing the chat down out of the behind-bar region. The
+          // cluster itself is inset-independent, so it rides through as `child`
+          // and only the Positioned offset follows the banner animation.
+          PregoTopBarInsetBuilder(
+            builder: (context, topInset, child) => Positioned(
+              top: topInset,
+              left: 0,
+              right: 0,
+              child: child ?? const SizedBox.shrink(),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (state.isRefreshing) const LinearProgressIndicator(),
+                // Archiving is permanent, so this session is audit-only: say so
+                // where the composer used to be.
+                if (state.isArchived) const SessionDetailArchivedNotice(),
+                // The harness can no longer restore this session; its stored
+                // history stays readable beneath this floating layer, which
+                // fades rather than moving the transcript.
+                AnimatedSwitcher(
+                  duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeOut,
+                  child: switch (state.cannotContinueMessage) {
+                    final message? => SessionDetailCannotContinueNotice(message: message),
+                    null => const SizedBox.shrink(),
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      // Floating bottom controls: the needs-you cards docked above the
+      // background-tasks bar and composer. Queued submissions are regular
+      // rows in the transcript above them. Every control's halo paints in
+      // one layer beneath them all, fading the transcript passing under it.
+      controls: hasBottomControls
+          ? Padding(
+              padding: EdgeInsets.symmetric(horizontal: composerInset),
               child: PregoPageHaloLayer(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ...needsYou,
-                    if (!widget.readOnly && !state.isArchived)
+                    if (!readOnly && !state.isArchived)
                       SessionAutoContinuationNotice(
                         view: state.session.autoContinuation,
                         updating: state.isUpdatingAutoContinuation,
@@ -339,14 +303,13 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                         onEnabledChanged: (enabled) =>
                             unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
                       ),
-                    if (widget.bottomControls case final controls?)
+                    if (bottomControls case final controls?)
                       SentBubbleRowReach(reach: composerInset - transcriptInset, child: controls),
                   ],
                 ),
               ),
-            ),
-          ),
-      ],
+            )
+          : null,
     );
   }
 }

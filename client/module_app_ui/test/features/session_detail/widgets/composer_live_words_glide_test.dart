@@ -956,7 +956,6 @@ Future<void> _pumpSessionScreen({
                     currentPromptId: currentPromptId,
                     jumpNotifier: jumpNotifier,
                     onPinchIn: ({required focalPoint}) {},
-                    initialBottomControlsHeight: 120,
                   );
                 },
               ),
