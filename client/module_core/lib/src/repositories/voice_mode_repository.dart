@@ -12,8 +12,9 @@ class VoiceModeRepository({required final VoiceModeConfigApi _configApi}) {
   /// Synchronous because a hold never waits on the switch.
   VoiceMode get mode => _mode;
 
-  /// The last loaded kill switch, and false until a load has finished, so a hold
-  /// before the answer stays on the server.
+  /// Whether on-device transcription is allowed: the inverse of the
+  /// `voice_on_device_disabled` kill switch. False until a load has finished, so a
+  /// hold before the answer stays on the server.
   bool get onDeviceEnabled => _onDeviceEnabled;
 
   /// Reads the switch into [mode]. This can take seconds on a phone, so a

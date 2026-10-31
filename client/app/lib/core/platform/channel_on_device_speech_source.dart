@@ -99,12 +99,17 @@ final class _ChannelOnDeviceSpeechSession({
         _events.add(const OnDeviceSpeechCompleted());
         close();
       case {"type": "failed", "reason": final String reason}:
-        _events.add(OnDeviceSpeechFailed(reason: reason));
-        close();
+        _fail(cause: reason);
       default:
-        _events.add(OnDeviceSpeechFailed(reason: "Unknown on-device speech event: ${event["type"].toString()}"));
-        close();
+        _fail(cause: StateError("Unknown on-device speech event: ${event["type"].toString()}"));
     }
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, causes can be any object
+  void _fail({required Object cause}) {
+    if (_closed) return;
+    _events.add(OnDeviceSpeechFailed(cause: cause));
+    close();
   }
 
   // ignore: no_slop_linter/prefer_specific_type, platform channel maps are untyped
@@ -118,9 +123,9 @@ final class _ChannelOnDeviceSpeechSession({
     try {
       await _channel.invokeMethod<void>(method, arguments);
     } on PlatformException catch (error) {
-      onNativeEvent(event: {"type": "failed", "reason": "$method: ${error.code} ${error.message}"});
+      _fail(cause: error);
     } on MissingPluginException catch (error) {
-      onNativeEvent(event: {"type": "failed", "reason": "$method: ${error.toString()}"});
+      _fail(cause: error);
     }
   }
 }

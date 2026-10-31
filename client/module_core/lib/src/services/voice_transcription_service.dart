@@ -39,6 +39,7 @@ class VoiceTranscriptionService({
     final session = VoiceTranscriptionSession._(
       captureSession: _capture.createSession(),
       projectId: projectId == null || projectId.trim().isEmpty ? null : projectId,
+      allowLive: allowLive,
     );
     session._projectGlossaryKey = _rememberedProjectGlossaryKey(projectId: session._projectId);
     // Asks even with a remembered key: this request is also what keeps the
@@ -56,12 +57,14 @@ class VoiceTranscriptionService({
     } catch (error, stackTrace) {
       logw("Could not load the voice mode; keeping the last one", error, stackTrace);
     }
-    if (_voiceModeRepository.onDeviceEnabled) {
-      session._canRunOnDevice =
-          await _repository.prepareOnDevice() && await session._captureSession.supportsPcmStream();
-    }
+    await _checkOnDevice(session: session);
     if (_voiceModeRepository.mode is! VoiceModeLive) return;
     session._canRunLive = await session._captureSession.supportsPcmStream();
+  }
+
+  Future<void> _checkOnDevice({required VoiceTranscriptionSession session}) async {
+    if (!_voiceModeRepository.onDeviceEnabled) return;
+    session._canRunOnDevice = await _repository.prepareOnDevice() && await session._captureSession.supportsPcmStream();
   }
 
   /// The two switches are independent: the device's engine runs whenever it can,
@@ -195,6 +198,8 @@ class VoiceTranscriptionService({
     if (session._projectGlossaryKey == null) _loadProjectGlossaryKeyIfIdle(session: session);
     // Read once, here: the dictation keeps this mode whatever the switches do next.
     final mode = _chooseMode(session: session);
+    // The model may have finished downloading, which the next hold can then use.
+    if (session._allowLive && !session._canRunOnDevice) unawaited(_checkOnDevice(session: session));
 
     try {
       final prewarmFuture = session._prewarmFuture;
@@ -721,6 +726,7 @@ class VoiceTranscriptionService({
 class VoiceTranscriptionSession._({
   required final VoiceCaptureSession _captureSession,
   required final String? _projectId,
+  required final bool _allowLive,
 }) {
   final StreamController<void> _maxDurationReachedController = StreamController<void>.broadcast();
   final StreamController<VoiceLiveEvent> _liveEventsController = StreamController<VoiceLiveEvent>.broadcast(sync: true);

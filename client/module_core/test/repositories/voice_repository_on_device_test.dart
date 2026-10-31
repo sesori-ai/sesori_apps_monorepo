@@ -74,12 +74,27 @@ void main() {
     expect(events.last, isA<VoiceRealtimeCompleted>());
   });
 
+  test("adds no space before Chinese or Japanese, which don't use them", () async {
+    final connection = await open();
+    final events = <VoiceRealtimeEvent>[];
+    connection.events.listen(events.add);
+
+    session.controller
+      ..add(const OnDeviceSpeechWords(confirmedDelta: "こんにちは。", provisional: ""))
+      ..add(const OnDeviceSpeechWords(confirmedDelta: "元気ですか", provisional: ""))
+      ..add(const OnDeviceSpeechCompleted());
+    await pumpEventQueue();
+
+    final words = events.whereType<VoiceRealtimeWords>();
+    expect(words.map((event) => event.confirmedDelta).join(), "こんにちは。元気ですか");
+  });
+
   test("an engine failure is a recording failure that keeps its reason, so nothing offers a retry", () async {
     final connection = await open();
     final events = <VoiceRealtimeEvent>[];
     connection.events.listen(events.add);
 
-    session.controller.add(const OnDeviceSpeechFailed(reason: "model gone"));
+    session.controller.add(const OnDeviceSpeechFailed(cause: "model gone"));
     await pumpEventQueue();
 
     final failure = events.last;
