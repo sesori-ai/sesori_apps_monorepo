@@ -41,7 +41,10 @@ class const DesktopVoiceInputScope({
     return BlocProvider(
       create: (_) {
         final service = getIt<VoiceTranscriptionService>();
-        return VoiceInputCubit(service: service, session: service.createSession(projectId: projectId));
+        return VoiceInputCubit(
+          service: service,
+          session: service.createSession(projectId: projectId, allowLive: false),
+        );
       },
       child: child,
     );

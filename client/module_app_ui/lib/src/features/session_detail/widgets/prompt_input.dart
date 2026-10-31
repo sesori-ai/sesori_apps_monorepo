@@ -991,7 +991,7 @@ class _PromptInputState() extends State<PromptInput> {
     final sent = sendRequested && await _submitComposer(fromDictation: true);
     report?.call(
       finish: switch (outcome) {
-        VoiceDictationOutcome.limitReached => AnalyticsVoiceFinish.cutOff,
+        VoiceDictationOutcome.limitReached || VoiceDictationOutcome.interrupted => AnalyticsVoiceFinish.cutOff,
         VoiceDictationOutcome.finished => sent ? AnalyticsVoiceFinish.sent : AnalyticsVoiceFinish.edited,
       },
     );

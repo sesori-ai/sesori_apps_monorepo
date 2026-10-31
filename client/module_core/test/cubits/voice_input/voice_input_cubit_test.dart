@@ -3,6 +3,7 @@ import "dart:async";
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart" show afterRecordingResult;
 import "package:test/test.dart";
 
 class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
@@ -22,7 +23,9 @@ void main() {
     when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationController.stream);
     when(() => service.prewarm(session: session)).thenAnswer((_) async {});
     when(() => service.start(session: session)).thenAnswer((_) async {});
-    when(() => service.stopAndTranscribe(session: session)).thenAnswer((_) async => "hello");
+    when(
+      () => service.stopAndTranscribe(session: session),
+    ).thenAnswer((_) async => afterRecordingResult(transcript: "hello"));
     when(() => service.retry(session: session)).thenAnswer((_) async => "retried");
     when(() => service.cancel(session: session)).thenAnswer((_) async {});
     when(() => service.discard(session: session)).thenAnswer((_) async {});
