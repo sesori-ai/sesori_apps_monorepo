@@ -1,3 +1,4 @@
+import "dart:async" show Timer;
 import "dart:math" as math;
 import "dart:ui" show lerpDouble;
 
@@ -39,6 +40,9 @@ class const ComposerLiveWords({
   State<ComposerLiveWords> createState() => _ComposerLiveWordsState();
 }
 
+/// Neighbouring words at one opacity.
+typedef _WordsRun = ({String text, double opacity});
+
 /// What the layer shows, which outlives the dictation long enough to fade it.
 sealed class const _Layer();
 
@@ -65,9 +69,9 @@ final class _Gliding({
   required var Rect target,
   required final _Destination destination,
 
-  /// How bright the tentative words were as they set off. They carry on from
+  /// The words as bright as they each were when they set off. They carry on from
   /// there to fully bright, as they do when the user releases.
-  required final double tentativeOpacity,
+  required final List<_WordsRun> runs,
 
   /// Holds the bubble back for as long as the words are on their way to it.
   required final SentBubbleLandingController landing,
@@ -270,6 +274,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       setState(() => _layer = const _Hidden());
       return;
     }
+    _liveTextKey.currentState?.stopSettling();
     setState(() => _layer = _Leaving(last: layer, cancelled: cancelled));
     _presence.reverse();
   }
@@ -294,7 +299,9 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
         from: from,
         target: from,
         destination: const _Undecided(),
-        tentativeOpacity: _liveTextKey.currentState?.tentativeOpacity ?? 1,
+        runs:
+            _liveTextKey.currentState?.runsOf(words: layer.words, settled: layer.finishing) ??
+            [(text: layer.words.text, opacity: 1)],
         landing: landing,
       );
     });
@@ -350,7 +357,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
         from: layer.from,
         target: layer.target,
         destination: destination,
-        tentativeOpacity: layer.tentativeOpacity,
+        runs: layer.runs,
         landing: layer.landing,
       );
     });
@@ -590,7 +597,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
             child: _GlidingText(
               text: _glideSpan(
                 words: last.words,
-                tentativeOpacity: _glideTentativeOpacity(from: layer.tentativeOpacity),
+                runs: layer.runs,
+                brightened: _glideBrightened(),
                 destination: layer.destination,
                 style: style,
                 t: t,
@@ -624,33 +632,50 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     return row == null ? null : UserMessageBubble.margin.deflateRect(row);
   }
 
-  /// The same fade as a release's, on the glide's clock.
-  double _glideTentativeOpacity({required double from}) {
+  /// How far along the words are to fully bright: the same fade as a release's,
+  /// on the glide's clock.
+  double _glideBrightened() {
     final elapsed = (_glideDuration + _handOverDuration) * _glide.value;
     final fade = math.min(elapsed.inMicroseconds / _LiveWordsTextState._brightenFade.inMicroseconds, 1.0);
-    return from + (1 - from) * Curves.ease.transform(fade);
+    return Curves.ease.transform(fade);
   }
 
-  /// [text], whose last part is the [tentative] words, at [opacity] against the rest.
-  List<TextSpan> _spansOfWords({
-    required String text,
-    required String tentative,
-    required double opacity,
+  /// [runs], each that much of the way from where it set off to fully bright.
+  List<TextSpan> _spansOfRuns({
+    required List<_WordsRun> runs,
+    required double brightened,
     required Color color,
   }) => [
-    TextSpan(text: text.substring(0, text.length - tentative.length)),
-    TextSpan(
-      text: tentative,
-      style: TextStyle(color: color.withValues(alpha: color.a * opacity)),
-    ),
+    for (final run in runs)
+      TextSpan(
+        text: run.text,
+        style: TextStyle(color: color.withValues(alpha: color.a * (run.opacity + (1 - run.opacity) * brightened))),
+      ),
   ];
+
+  /// [runs] without the spacing around the words as a whole.
+  List<_WordsRun> _trimmedRuns({required List<_WordsRun> runs}) {
+    final whole = runs.map((run) => run.text).join();
+    final start = whole.length - whole.trimLeft().length;
+    final end = whole.trimRight().length;
+    final trimmed = <_WordsRun>[];
+    var offset = 0;
+    for (final run in runs) {
+      final from = math.max(start, offset);
+      final to = math.min(end, offset + run.text.length);
+      if (from < to) trimmed.add((text: whole.substring(from, to), opacity: run.opacity));
+      offset += run.text.length;
+    }
+    return trimmed;
+  }
 
   /// The words, with whatever else ends up around them: the marker a bubble adds
   /// and what the box already held. That grows from nothing as they fly, which
   /// keeps the words from shifting on the glide's first frame.
   TextSpan _glideSpan({
     required LiveWords words,
-    required double tentativeOpacity,
+    required List<_WordsRun> runs,
+    required double brightened,
     required _Destination destination,
     required TextStyle style,
     required double t,
@@ -664,12 +689,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     if (landed == null) {
       return TextSpan(
         style: style,
-        children: _spansOfWords(
-          text: words.text,
-          tentative: words.provisional,
-          opacity: tentativeOpacity,
-          color: color,
-        ),
+        children: _spansOfRuns(runs: runs, brightened: brightened, color: color),
       );
     }
 
@@ -685,10 +705,9 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       style: style,
       children: [
         TextSpan(text: landed.substring(0, at), style: grown),
-        ..._spansOfWords(
-          text: core,
-          tentative: words.provisional.trim(),
-          opacity: tentativeOpacity,
+        ..._spansOfRuns(
+          runs: _trimmedRuns(runs: runs),
+          brightened: brightened,
           color: color,
         ),
         TextSpan(text: landed.substring(at + core.length), style: grown),
@@ -866,6 +885,9 @@ class const LiveWordsText({
 /// One word's opacity, on its way to where its standing says it belongs.
 final class _FadingWord({required String text, required double target, required Duration duration}) {
   String text = text;
+
+  /// Runs out once a dim word has stayed the same for long enough to brighten.
+  Timer? settling;
   double _from = 0;
   double _to = target;
   Duration _duration = duration;
@@ -899,16 +921,16 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
   static const _riseCurve = Cubic(.2, .8, .2, 1);
   static const double _tentativeOpacity = 0.46;
 
+  /// How long a tentative word has to stay the same to read as solid. The server
+  /// takes far longer than this to confirm it, and it can still change after.
+  static const _settleAfter = Duration(seconds: 1);
+
   /// A word and its spacing. Tokens line up by index between updates, so a word
   /// keeps its place when it turns final, or when the server changes its mind.
   static final _tokens = RegExp(r"\s*\S+\s*|\s+");
 
   final List<_FadingWord> _words = [];
 
-  /// How bright the tentative words are now, by the oldest of them, as a word
-  /// that has only just come is still fading in.
-  double get tentativeOpacity =>
-      _words.elementAtOrNull(_tokens.allMatches(widget.words.confirmed).length)?.opacity ?? 1;
   final ValueNotifier<int> _frame = ValueNotifier<int>(0);
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
@@ -922,44 +944,83 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _syncWords();
+    _syncWords(words: widget.words, settled: widget.settled);
   }
 
   @override
   void didUpdateWidget(LiveWordsText oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncWords();
+    _syncWords(words: widget.words, settled: widget.settled);
   }
 
   @override
   void dispose() {
+    stopSettling();
     _ticker.dispose();
     _frame.dispose();
     super.dispose();
   }
 
-  void _syncWords() {
+  /// The dictation is over: dim words stay dim as they go.
+  void stopSettling() {
+    for (final word in _words) {
+      word.settling?.cancel();
+    }
+  }
+
+  /// [words] as they stand right now, which a build may not have got to yet.
+  List<_WordsRun> runsOf({required LiveWords words, required bool settled}) {
+    _syncWords(words: words, settled: settled);
+    return _runs();
+  }
+
+  void _syncWords({required LiveWords words, required bool settled}) {
     final instant = context.isReducedMotion;
-    final tentative = widget.settled ? 1.0 : _tentativeOpacity;
-    final parts = [(text: widget.words.confirmed, target: 1.0), (text: widget.words.provisional, target: tentative)];
+    final tentative = settled ? 1.0 : _tentativeOpacity;
+    final parts = [(text: words.confirmed, target: 1.0), (text: words.provisional, target: tentative)];
     var index = 0;
+    // The first word to differ and all those after it have changed. Spacing
+    // doesn't count: a word gains its space when the next one comes.
+    var changed = false;
     for (final part in parts) {
       for (final match in _tokens.allMatches(part.text)) {
         final token = match.group(0) ?? "";
         if (index == _words.length) {
-          _words.add(
-            _FadingWord(text: token, target: part.target, duration: instant ? Duration.zero : _newWordFade),
-          );
+          final word = _FadingWord(text: token, target: part.target, duration: instant ? Duration.zero : _newWordFade);
+          _words.add(word);
+          _restartSettling(word: word);
         } else {
-          final word = _words[index]..text = token;
-          if (word.target != part.target) {
-            word.fadeTo(target: part.target, duration: instant ? Duration.zero : _brightenFade);
+          final word = _words[index];
+          changed = changed || word.text.trim() != token.trim();
+          word.text = token;
+          // A tentative word that hasn't changed stands wherever it has got to.
+          if (part.target == 1 || changed) {
+            if (word.target != part.target) {
+              word.fadeTo(target: part.target, duration: instant ? Duration.zero : _brightenFade);
+            }
+            _restartSettling(word: word);
           }
         }
         index++;
       }
     }
+    for (final word in _words.skip(index)) {
+      word.settling?.cancel();
+    }
     _words.length = index;
+    _showFades();
+  }
+
+  void _restartSettling({required _FadingWord word}) {
+    word.settling?.cancel();
+    if (word.target == 1) return;
+    word.settling = Timer(_settleAfter, () {
+      word.fadeTo(target: 1, duration: context.isReducedMotion ? Duration.zero : _brightenFade);
+      _showFades();
+    });
+  }
+
+  void _showFades() {
     if (!_ticker.isActive && _words.any((word) => word.isFading)) _ticker.start();
     _frame.value++;
   }
@@ -977,23 +1038,17 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
     }
   }
 
-  /// Neighbouring words at one opacity share a span, which leaves one long span
-  /// for everything final however long the dictation runs.
-  TextSpan _buildSpan() {
-    final base = widget.style.color ?? const Color(0xFF000000);
-    final spans = <InlineSpan>[];
+  /// Neighbouring words at one opacity share a run, which leaves one long run for
+  /// everything final however long the dictation runs.
+  List<_WordsRun> _runs() {
+    final runs = <_WordsRun>[];
     final run = StringBuffer();
     double? runOpacity;
 
     void flush() {
       final opacity = runOpacity;
       if (opacity == null) return;
-      spans.add(
-        TextSpan(
-          text: run.toString(),
-          style: TextStyle(color: base.withValues(alpha: base.a * opacity)),
-        ),
-      );
+      runs.add((text: run.toString(), opacity: opacity));
       run.clear();
     }
 
@@ -1006,7 +1061,21 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
       run.write(word.text);
     }
     flush();
-    return TextSpan(style: widget.style, children: spans);
+    return runs;
+  }
+
+  TextSpan _buildSpan() {
+    final base = widget.style.color ?? const Color(0xFF000000);
+    return TextSpan(
+      style: widget.style,
+      children: [
+        for (final run in _runs())
+          TextSpan(
+            text: run.text,
+            style: TextStyle(color: base.withValues(alpha: base.a * run.opacity)),
+          ),
+      ],
+    );
   }
 
   /// The words' full height at [width] and one line's. Colours never change the

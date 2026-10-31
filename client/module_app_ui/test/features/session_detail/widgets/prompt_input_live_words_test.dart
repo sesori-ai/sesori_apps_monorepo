@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -97,9 +98,10 @@ void main() {
     ),
   );
 
-  /// Lets the layer's entrance, a word's fade and a rise all end. The waveform
-  /// never settles, so frames are pumped explicitly.
-  Future<void> settle(WidgetTester tester) => tester.pump(const Duration(seconds: 1));
+  /// Lets the layer's entrance, a word's fade and a rise all end, well before an
+  /// unchanged word brightens. The waveform never settles, so frames are pumped
+  /// explicitly.
+  Future<void> settle(WidgetTester tester) => tester.pump(const Duration(milliseconds: 500));
 
   group("focus", () {
     testWidgets("dims the screen from the first frame of listening, before any word", (tester) async {
@@ -290,7 +292,7 @@ void main() {
       expect(_alphaOf(tester, word: "second"), closeTo(0.46, 0.01));
     });
 
-    testWidgets("a word the server changes keeps its place and its brightness", (tester) async {
+    testWidgets("a dim word the server changes stays as dim, with no fade from nothing", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       await live(tester: tester, presentation: _focus, provisional: "there");
       await settle(tester);
@@ -376,6 +378,214 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
       expect(_wordsPresence(tester), inExclusiveRange(0, 1));
       expect(_wordsTravel(tester), 0);
+    });
+  });
+
+  group("settling", () {
+    const fadeHalf = Duration(milliseconds: 140);
+    const fadeRest = Duration(milliseconds: 150);
+
+    testWidgets("a word unchanged for a second eases bright, and later words wait their own", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await settle(tester);
+      await live(tester: tester, presentation: _focus, provisional: "alpha bravo");
+      await tester.pump(const Duration(milliseconds: 490));
+      expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
+
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.pump(fadeHalf);
+      expect(_alphaOf(tester, word: "alpha"), inExclusiveRange(0.46, 1));
+      expect(_alphaOf(tester, word: "bravo"), closeTo(0.46, 0.01));
+      await tester.pump(fadeRest);
+      expect(_alphaOf(tester, word: "alpha"), 1);
+      expect(_alphaOf(tester, word: "bravo"), closeTo(0.46, 0.01));
+
+      await tester.pump(const Duration(milliseconds: 210));
+      await tester.pump(fadeHalf + fadeRest);
+      expect(_alphaOf(tester, word: "bravo"), 1);
+    });
+
+    testWidgets("a changed word and the words after it ease dim, and earn their second again", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _focus, provisional: "alpha bravo charlie");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1010));
+      await tester.pump(fadeHalf + fadeRest);
+      expect(_alphaOf(tester, word: "charlie"), 1);
+
+      await live(tester: tester, presentation: _focus, provisional: "alpha BRAVO charlie");
+      await tester.pump(fadeHalf);
+      expect(_alphaOf(tester, word: "alpha"), 1);
+      expect(_alphaOf(tester, word: "BRAVO"), inExclusiveRange(0.46, 1));
+      expect(_alphaOf(tester, word: "charlie"), inExclusiveRange(0.46, 1));
+
+      await tester.pump(fadeRest);
+      expect(_alphaOf(tester, word: "alpha"), 1);
+      expect(_alphaOf(tester, word: "BRAVO"), closeTo(0.46, 0.01));
+      expect(_alphaOf(tester, word: "charlie"), closeTo(0.46, 0.01));
+
+      await tester.pump(const Duration(milliseconds: 720));
+      await tester.pump(fadeHalf + fadeRest);
+      expect(_alphaOf(tester, word: "charlie"), 1);
+    });
+
+    testWidgets("a word still arriving stays dim however long it takes", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      for (final partial in const ["ta", "tak", "take", "taken"]) {
+        await live(tester: tester, presentation: _focus, provisional: partial);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(_alphaOf(tester, word: partial), closeTo(0.46, 0.01));
+      }
+    });
+
+    testWidgets("a word gaining its space hasn't changed, nor has one turning final", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await settle(tester);
+      await live(tester: tester, presentation: _focus, provisional: " alpha bravo");
+      await tester.pump(const Duration(milliseconds: 510));
+      await tester.pump(fadeHalf + fadeRest);
+      expect(_alphaOf(tester, word: "alpha"), 1);
+
+      await live(tester: tester, presentation: _focus, confirmed: "alpha ", provisional: "bravo");
+      expect(_alphaOf(tester, word: "alpha"), 1);
+      expect(_alphaOf(tester, word: "bravo"), closeTo(0.46, 0.01));
+    });
+
+    testWidgets("brightening moves no text and rebuilds nothing but the words", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      final body = find.byType(PregoVoiceWaveform);
+      await live(tester: tester, presentation: _focus, provisional: _longText);
+      await settle(tester);
+      await live(tester: tester, presentation: _focus, provisional: "$_longText and more");
+      await settle(tester);
+      expect(_alphaOf(tester, word: "more"), closeTo(0.46, 0.01));
+
+      final waveform = tester.widget(body);
+      final text = _longText.length + " and more".length;
+      List<TextBox> boxes() => tester
+          .renderObject<RenderParagraph>(_paragraph)
+          .getBoxesForSelection(TextSelection(baseOffset: 0, extentOffset: text));
+      final rect = tester.getRect(_paragraph);
+      final dim = boxes();
+
+      // Partly bright: the older words have settled and the newest haven't, and
+      // then all of them, with a frame caught part of the way through each.
+      for (final step in const [10, 140, 160, 200, 140, 160]) {
+        await tester.pump(Duration(milliseconds: step));
+        expect(boxes(), dim);
+        expect(tester.getRect(_paragraph), rect);
+      }
+      expect(_alphaOf(tester, word: "more"), 1);
+      expect(identical(tester.widget(body), waveform), isTrue);
+    });
+
+    testWidgets("dim words stay dim as a cancel takes them away", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await tester.pump(const Duration(milliseconds: 900));
+
+      await emit(tester: tester, state: const VoiceInputState.cancelling());
+      await tester.pump(const Duration(milliseconds: 110));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_words, findsOneWidget);
+      expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_words, findsNothing);
+    });
+
+    testWidgets("the panel's words settle too", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _panel, provisional: "alpha");
+      await settle(tester);
+      expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
+
+      await tester.pump(const Duration(milliseconds: 510));
+      await tester.pump(fadeHalf + fadeRest);
+      expect(_alphaOf(tester, word: "alpha"), 1);
+    });
+
+    testWidgets("reduced motion brightens and dims at once", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, disableAnimations: true);
+      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
+
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(_alphaOf(tester, word: "alpha"), 1);
+
+      await live(tester: tester, presentation: _focus, provisional: "ALPHA");
+      expect(_alphaOf(tester, word: "ALPHA"), closeTo(0.46, 0.01));
+    });
+
+    group("leaves nothing running", () {
+      Future<void> pumpWords({required WidgetTester tester, required LiveWords words, required bool settled}) =>
+          tester.pumpWidget(
+            MaterialApp(
+              home: Align(
+                alignment: Alignment.bottomCenter,
+                child: LiveWordsText(
+                  words: words,
+                  settled: settled,
+                  maxLines: null,
+                  style: const TextStyle(fontSize: 20, color: Color(0xFF000000)),
+                ),
+              ),
+            ),
+          );
+
+      /// Time passing with no frame asked for means no settle timer came due.
+      Future<void> expectStillAfterASecond(WidgetTester tester) async {
+        expect(tester.binding.hasScheduledFrame, isFalse);
+        await tester.binding.delayed(const Duration(milliseconds: 1100));
+        expect(tester.binding.hasScheduledFrame, isFalse);
+      }
+
+      testWidgets("once every word has settled", (tester) async {
+        await pumpWords(
+          tester: tester,
+          words: const LiveWords(confirmed: "", provisional: "alpha"),
+          settled: false,
+        );
+        await tester.pump(const Duration(milliseconds: 1010));
+        await tester.pump(fadeHalf + fadeRest);
+        await expectStillAfterASecond(tester);
+      });
+
+      testWidgets("after the release", (tester) async {
+        const words = LiveWords(confirmed: "", provisional: "alpha");
+        await pumpWords(tester: tester, words: words, settled: false);
+        await tester.pump(const Duration(milliseconds: 500));
+        await pumpWords(tester: tester, words: words, settled: true);
+        await tester.pump(fadeHalf + fadeRest);
+        await expectStillAfterASecond(tester);
+      });
+
+      testWidgets("for a word the server dropped", (tester) async {
+        await pumpWords(
+          tester: tester,
+          words: const LiveWords(confirmed: "", provisional: "alpha"),
+          settled: false,
+        );
+        await tester.pump(const Duration(milliseconds: 500));
+        await pumpWords(tester: tester, words: LiveWords.none, settled: false);
+        await tester.pump(const Duration(milliseconds: 300));
+        await expectStillAfterASecond(tester);
+      });
+
+      testWidgets("after the words go", (tester) async {
+        await pumpWords(
+          tester: tester,
+          words: const LiveWords(confirmed: "", provisional: "alpha"),
+          settled: false,
+        );
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await expectStillAfterASecond(tester);
+      });
     });
   });
 

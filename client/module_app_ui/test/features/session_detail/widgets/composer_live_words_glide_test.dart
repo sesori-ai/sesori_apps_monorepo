@@ -108,7 +108,8 @@ void main() {
     voiceStates.add(VoiceInputState.liveRecording(words: words, presentation: presentation));
     await tester.pump();
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    // Long enough to show them, not for a word that hasn't changed to brighten.
+    await tester.pump(const Duration(milliseconds: 500));
     return gesture;
   }
 
@@ -431,6 +432,72 @@ void main() {
 
       await complete(tester: tester, outcome: VoiceDictationOutcome.interrupted);
       expect(_tentativeOpacity(tester), moreOrLessEquals(atRelease, epsilon: 0.01));
+    });
+
+    testWidgets("each word sets off as bright as it was, settled or dim or part way", (tester) async {
+      await _pumpScreen(tester: tester, voiceCubit: voiceCubit);
+      const first = LiveWords(confirmed: "", provisional: "spoken ");
+      final gesture = await hold(tester: tester, words: first);
+      voiceStates.add(
+        const VoiceInputState.liveRecording(
+          words: LiveWords(confirmed: "", provisional: "spoken words"),
+          presentation: VoiceLivePresentation.focus,
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 310));
+      await tester.pump(const Duration(milliseconds: 140));
+
+      InlineSpan live() => tester
+          .widget<RichText>(find.descendant(of: find.byType(LiveWordsText), matching: find.byType(RichText)))
+          .text;
+      final partWay = _opacityOf(span: live(), text: "spoken ");
+      expect(partWay, inExclusiveRange(_tentativeStart + 0.1, 0.95));
+      expect(_opacityOf(span: live(), text: "words"), moreOrLessEquals(_tentativeStart, epsilon: 0.01));
+
+      await complete(tester: tester, outcome: VoiceDictationOutcome.interrupted);
+      final span = tester.widget<RichText>(_glideText).text;
+      expect(_opacityOf(span: span, text: "spoken "), moreOrLessEquals(partWay, epsilon: 0.01));
+      expect(_tentativeOpacity(tester), moreOrLessEquals(_tentativeStart, epsilon: 0.01));
+      await gesture.up();
+    });
+
+    testWidgets("spacing around the words stays out of the landing, whatever their brightness", (tester) async {
+      await _pumpScreen(tester: tester, voiceCubit: voiceCubit);
+      const spaced = LiveWords(confirmed: " spoken ", provisional: "words ");
+      final gesture = await hold(tester: tester, words: spaced);
+      await complete(tester: tester, outcome: VoiceDictationOutcome.interrupted);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(_flight ~/ 2);
+
+      expect(_glideString(tester), "spoken words");
+      final span = tester.widget<RichText>(_glideText).text;
+      expect(_opacityOf(span: span, text: "spoken "), 1);
+      expect(_opacityOf(span: span, text: "words"), lessThan(1));
+      await gesture.up();
+    });
+
+    testWidgets("words heard in the very frame the dictation ends fly with the rest", (tester) async {
+      await _pumpScreen(tester: tester, voiceCubit: voiceCubit);
+      final gesture = await hold(
+        tester: tester,
+        words: const LiveWords(confirmed: "", provisional: "spoken "),
+      );
+      voiceStates
+        ..add(const VoiceInputState.liveRecording(words: _tentativeWords, presentation: VoiceLivePresentation.focus))
+        ..add(
+          const VoiceInputState.completed(
+            transcript: "spoken words",
+            outcome: VoiceDictationOutcome.interrupted,
+            mode: VoiceDictationMode.live,
+          ),
+        );
+      await tester.pump(Duration.zero);
+
+      expect(_glideString(tester), "spoken words");
+      await gesture.up();
     });
 
     testWidgets("words with no words to land fade as they did", (tester) async {
