@@ -7,6 +7,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -571,6 +572,7 @@ Future<void> _pumpPointerComposer({
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => SentBubbleLanding(child: child ?? const SizedBox.shrink()),
       home: MediaQuery(
         data: MediaQueryData(size: const Size(760, 600), disableAnimations: reducedMotion),
         child: BlocProvider<VoiceInputCubit>.value(

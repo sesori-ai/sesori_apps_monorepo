@@ -81,11 +81,17 @@ live on and the host can stream, the same gestures run over a realtime socket in
   composer: 23 pt on a touch shell, 25 pt on a pointer shell. The panel leaves the chat in view and opens at the first
   word, growing to five lines. In both, the newest words stay at the bottom, a new line rises smoothly, and older lines
   fade away at the top once the words run out of room.
-- A tentative word fades in dim and brightens where it stands when it turns final or when the user releases. A word the
-  server changes keeps its place and brightness.
+- A tentative word fades in dim and brightens where it stands when it turns final or when the user releases, and on its
+  way to the box when a dictation is cut off. A word the server changes keeps its place and brightness.
 - Sliding up to cancel fades the words with the finger, to 40% at the arm line, and coming back restores them. A cancel
-  fades them with a 12 px drop; a send, an edit, a fallback or a failure fades them where they stand. Reduced motion
-  removes the movement, and word fades and brightening become instant.
+  fades them with a 12 px drop. Reduced motion removes the movement, and word fades and
+  brightening become instant.
+- A sent dictation's words glide to its bubble, in session detail and in a new session's launch view. The bubble is built
+  hidden, the list rises for its row as the words come down, and the bubble shows under the words once they have landed
+  on it, so there is one copy throughout. If no bubble is built within two frames, the words glide to where it would
+  have been, right-aligned above the composer, and fade. If the screen goes mid-glide, they go with it.
+- Live words that land in the box (the pencil or a cut-off) glide to the field, which holds its text back
+  until they arrive. A dictation with nothing to land in, or under reduced motion, fades where it stands.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
   `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
   counts as. No audio, transcript, or prompt text reaches logs or analytics.
@@ -125,7 +131,7 @@ live on and the host can stream, the same gestures run over a realtime socket in
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, and reduced motion. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, reduced motion, and the glide: the bubble's handover with one copy on every frame, the two-frame fallback above the composer, the screen or row going mid-glide, the box holding its text back, and no travel under reduced motion. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, and music from another app keeps playing when a chat opens. |
@@ -172,8 +178,11 @@ interruptions such as a call.
   message with surviving voice text is classified as typed.
 - A hold waits for the voice mode, a switch change alters a dictation already running, a live failure offers Retry, a
   fallback loses the hold, or audio or `finish` reaches the socket before ready.
-- Live words move, relayout or rebuild the chat or the composer, snap when they wrap, hide the release hint, block the
-  pill's gesture, or stay on screen after the dictation ends.
+- While the user speaks, live words move, relayout or rebuild the chat or the composer, snap when they wrap, hide the
+  release hint, or block the pill's gesture. Words stay on screen after their glide or fade ends.
+- A glide shows two copies of the words, or pops the text at its end: a change of weight, wrap or position when the
+  bubble or the box takes over. The list jumps instead of rising for a dictated send's row, a word lands on an older
+  row or a pinned copy, the panel's shadow shows as a plate under a clear surface, or reduced motion travels.
 - A desktop dictation sends the box and the words as two messages, Enter inserts a newline while listening, or the
   second click misses because the control moved.
 - A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a
@@ -215,6 +224,7 @@ interruptions such as a call.
 `client/module_app_ui/test/platform/voice/`, `client/app/test/features/session_detail/widgets/`,
 `client/module_app_ui/test/features/session_detail/widgets/prompt_input_pointer_voice_test.dart`,
 `client/module_app_ui/test/features/session_detail/widgets/prompt_input_live_words_test.dart`,
+`client/module_app_ui/test/features/session_detail/widgets/composer_live_words_glide_test.dart`,
 `client/module_core/test/{capabilities,cubits,repositories,services}/`, and bridge glossary tests under
 `bridge/app/test/{bridge,listeners}/`; production code under `client/module_app_ui/lib/src/platform/voice/`,
 `client/module_app_ui/lib/src/features/session_detail/widgets/`, `client/app/lib/features/session_detail/widgets/`,

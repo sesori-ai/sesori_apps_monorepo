@@ -21,6 +21,7 @@ import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
 import "prompt_editor_sheet.dart";
+import "sent_bubble_landing.dart";
 
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
 // ignore: use_primary_constructors
@@ -216,6 +217,7 @@ class _PromptInputState() extends State<PromptInput> {
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
   final _controller = TextEditingController();
+  late final _wordsBox = ComposerWordsBox(controller: _controller);
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
 
@@ -576,6 +578,9 @@ class _PromptInputState() extends State<PromptInput> {
         }
       }
 
+      // Here rather than before this method: a refusal above leaves the words
+      // for the box, with no bubble expected.
+      if (fromDictation) SentBubbleLanding.of(context: context).expect();
       widget.onSend(
         draft: submission,
         command: stagedCommand?.name,
@@ -1480,7 +1485,18 @@ class _PromptInputState() extends State<PromptInput> {
   /// no voice has no cubit to take them from.
   Widget _withLiveWords({required BuildContext context, required Widget body}) {
     if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return body;
-    return ComposerLiveWords(cancelProgress: _cancelDragProgress, hint: _buildReleaseHint(context), child: body);
+    return ComposerLiveWords(
+      cancelProgress: _cancelDragProgress,
+      hint: _buildReleaseHint(context),
+      box: _wordsBox,
+      boxStyle: _fieldStyle(context),
+      child: body,
+    );
+  }
+
+  TextStyle _fieldStyle(BuildContext context) {
+    final prego = context.prego;
+    return prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary);
   }
 
   /// The floating helper above the recording pill. Follows the drag: what a
@@ -1749,37 +1765,40 @@ class _PromptInputState() extends State<PromptInput> {
                           activator: const SingleActivator(LogicalKeyboardKey.enter),
                         ): _handleSend,
                     },
-                    child: TextField(
-                      controller: _controller,
-                      scrollController: _textScrollController,
-                      focusNode: _focusNode,
-                      minLines: 1,
-                      maxLines: growsInPlace ? 16 : 6,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      contextMenuBuilder: (_, editableTextState) =>
-                          _buildComposerContextMenu(editableTextState: editableTextState),
-                      // Material's default keeps focus on mobile touch taps;
-                      // this composer wants outside taps (e.g. the picker
-                      // pills above the region) to dismiss the keyboard — the
-                      // behaviour the TextFieldTapRegion grouping was built
-                      // around.
-                      onTapOutside: (_) => _focusNode.unfocus(),
-                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
-                      decoration: InputDecoration(
-                        isCollapsed: true,
-                        border: InputBorder.none,
-                        // Growing in place stops at a third of the window and
-                        // then scrolls, so a short window keeps the selectors
-                        // above the draft on screen.
-                        constraints: growsInPlace
-                            ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
-                        // Command-aware placeholder: the staged command's hint,
-                        // else the follow-up/default prompt hint.
-                        hintText: _hintText(context),
-                        hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                    child: ComposerWordsBoxSlot(
+                      box: _wordsBox,
+                      child: TextField(
+                        controller: _controller,
+                        scrollController: _textScrollController,
+                        focusNode: _focusNode,
+                        minLines: 1,
+                        maxLines: growsInPlace ? 16 : 6,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        contextMenuBuilder: (_, editableTextState) =>
+                            _buildComposerContextMenu(editableTextState: editableTextState),
+                        // Material's default keeps focus on mobile touch taps;
+                        // this composer wants outside taps (e.g. the picker
+                        // pills above the region) to dismiss the keyboard — the
+                        // behaviour the TextFieldTapRegion grouping was built
+                        // around.
+                        onTapOutside: (_) => _focusNode.unfocus(),
+                        style: _fieldStyle(context),
+                        decoration: InputDecoration(
+                          isCollapsed: true,
+                          border: InputBorder.none,
+                          // Growing in place stops at a third of the window and
+                          // then scrolls, so a short window keeps the selectors
+                          // above the draft on screen.
+                          constraints: growsInPlace
+                              ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
+                              : null,
+                          contentPadding: ComposerWordsBox.contentPadding,
+                          // Command-aware placeholder: the staged command's hint,
+                          // else the follow-up/default prompt hint.
+                          hintText: _hintText(context),
+                          hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                        ),
                       ),
                     ),
                   ),

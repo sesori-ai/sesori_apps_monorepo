@@ -1,14 +1,18 @@
 import "dart:math" as math;
+import "dart:ui" show lerpDouble;
 
-import "package:flutter/foundation.dart" show ValueListenable;
-import "package:flutter/scheduler.dart" show Ticker;
+import "package:flutter/foundation.dart" show ValueListenable, clampDouble;
+import "package:flutter/scheduler.dart" show SchedulerBinding, Ticker;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/markdown_styles.dart";
 import "../composer_presentation_scope.dart";
+import "sent_bubble_landing.dart";
+import "user_message_card.dart";
 
 /// The words of a live dictation, in a layer of their own over the screen.
 /// Nothing under the layer moves or resizes for them, and they take no gestures,
@@ -25,6 +29,10 @@ class const ComposerLiveWords({
   /// What a release does. The focus dim covers the composer's own hint, so the
   /// layer draws this one in its place. The panel only keeps clear of it.
   required final Widget hint,
+
+  /// Where words that aren't sent land.
+  required final ComposerWordsBox box,
+  required final TextStyle boxStyle,
   required final Widget child,
 }) extends StatefulWidget {
   @override
@@ -47,7 +55,84 @@ final class const _Live({
 /// Fading out, showing the [last] words. Only a cancel drops them as they go.
 final class const _Leaving({required final _Live last, required final bool cancelled}) extends _Layer;
 
-class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTickerProviderStateMixin {
+/// On their way from where they stood, [from], to the [destination]. Only the
+/// words travel: the dim and the hint go as they do when the words fade.
+final class _Gliding({
+  required final _Live last,
+  required final Rect from,
+
+  /// Where the glide last knew it was going, for when that place goes away.
+  required var Rect target,
+  required final _Destination destination,
+
+  /// How bright the tentative words were as they set off. They carry on from
+  /// there to fully bright, as they do when the user releases.
+  required final double tentativeOpacity,
+
+  /// Holds the bubble back for as long as the words are on their way to it.
+  required final SentBubbleLandingController landing,
+}) extends _Layer;
+
+sealed class const _Destination();
+
+/// Standing still until it's known where they go, which takes a frame or two.
+final class const _Undecided() extends _Destination;
+
+/// The bubble the landing holds. [text] is what it shows.
+final class const _Bubble({required final String text}) extends _Destination;
+
+/// The box, which [text] is now in, along with whatever it already held.
+final class const _Box({required final String text}) extends _Destination;
+
+/// A send whose bubble isn't being built, as when the list is scrolled away from
+/// its end. The words go where it would have been and fade there.
+final class const _Estimate({required final Rect rect}) extends _Destination;
+
+/// Nowhere to go: the words fade where they stand.
+final class const _InPlace() extends _Destination;
+
+/// How words appear at either end of a glide.
+typedef _WordsLook = ({TextStyle style, EdgeInsets padding, BoxDecoration decoration});
+
+/// The composer's box, for words landing in it. Works before the field is built:
+/// a voice-first composer only brings it up once it has the words.
+final class ComposerWordsBox({required final TextEditingController controller}) {
+  /// Around the text inside the field.
+  static const contentPadding = EdgeInsets.symmetric(vertical: PregoSpacing.md);
+
+  /// What an [EditableText] keeps free at the end of each line for its caret.
+  static const double _caretMargin = 3;
+
+  final TextEditingController _controller = controller;
+  RenderLandingSlot? _slot;
+  bool _held = false;
+
+  /// Keeps the field from showing its text until the words have arrived.
+  void _hold({required bool held}) {
+    _held = held;
+    _slot?.hidden = held;
+  }
+
+  void _attach(RenderLandingSlot slot) {
+    _slot = slot;
+    slot.hidden = _held;
+  }
+
+  void _detach(RenderLandingSlot slot) {
+    if (identical(_slot, slot)) _slot = null;
+  }
+}
+
+/// Wraps the composer's field, as the place the [box]'s words land on. The field
+/// fades in and out with the composer's layouts, so two can be up for a moment.
+class const ComposerWordsBoxSlot({super.key, required final ComposerWordsBox box, required super.child})
+    extends SingleChildRenderObjectWidget {
+  @override
+  RenderLandingSlot createRenderObject(BuildContext context) =>
+      RenderLandingSlot(onAttach: box._attach, onDetach: box._detach);
+}
+
+class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProviderStateMixin {
   /// How long the layer takes to come in, dim and all, and to go.
   static const _enterDuration = Duration(milliseconds: 260);
   static const _exitDuration = Duration(milliseconds: 240);
@@ -76,9 +161,31 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
   static const double _panelRadius = 18;
   static const int _panelLines = 5;
 
+  static const _glideDuration = Duration(milliseconds: 340);
+  static const _glideCurve = Cubic(.2, .8, .2, 1);
+
+  /// How long the words stay over what they landed on, once it shows, to soften
+  /// what differs between them: images in the bubble, or Markdown in the words.
+  static const _handOverDuration = Duration(milliseconds: 90);
+  static final double _handOverAt = _glideDuration.inMicroseconds / (_glideDuration + _handOverDuration).inMicroseconds;
+
+  /// How far along its travel the text takes its final face and wrap.
+  static const double _rewrapAt = 0.5;
+
+  /// How many frames a sent bubble gets to be built before the words stop
+  /// waiting for it.
+  static const int _bubbleFrames = 2;
+
+  /// From the composer's body up to where the list's last row ends, past the
+  /// selectors above the body.
+  static const double _estimatedSlotGap = 52;
+
   final _portal = OverlayPortalController();
+  final _wordsKey = GlobalKey();
+  final _liveTextKey = GlobalKey<_LiveWordsTextState>();
   late final AnimationController _presence;
   late final CurvedAnimation _presenceCurve;
+  late final AnimationController _glide;
   _Layer _layer = const _Hidden();
 
   /// Where the composer's body last was during the dictation. Words on their way
@@ -95,12 +202,20 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
         setState(() => _layer = const _Hidden());
       });
     _presenceCurve = CurvedAnimation(parent: _presence, curve: Curves.ease);
+    _glide = AnimationController(vsync: this, duration: _glideDuration + _handOverDuration)
+      ..addListener(_handleGlideTick)
+      ..addStatusListener((status) {
+        if (status.isCompleted) _endGlide();
+      });
     // A listener skips the current state, and a composer can remount mid-dictation.
     _handleVoiceState(state: context.read<VoiceInputCubit>().state);
   }
 
   @override
   void dispose() {
+    // The owner going mid-glide leaves the bubble with nothing coming to it.
+    if (_layer case _Gliding(:final landing)) landing.handOver();
+    _glide.dispose();
     _presenceCurve.dispose();
     _presence.dispose();
     super.dispose();
@@ -118,6 +233,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
         );
       case VoiceInputCancelling():
         _leave(cancelled: true);
+      case VoiceInputCompleted(:final transcript):
+        _land(transcript: transcript);
       case VoiceInputIdle() ||
           VoiceInputStarting() ||
           VoiceInputRecording() ||
@@ -126,7 +243,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
           VoiceInputRetrying() ||
           VoiceInputRetryCancelling() ||
           VoiceInputDiscarding() ||
-          VoiceInputCompleted() ||
           VoiceInputStartFailed() ||
           VoiceInputTranscriptionFailed():
         _leave(cancelled: false);
@@ -134,6 +250,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
   }
 
   void _showLive({required _Live live}) {
+    // Another hold starting this soon doesn't wait for the last words to arrive.
+    if (_layer is _Gliding) _endGlide();
     setState(() => _layer = live);
     // Focus clears the screen as soon as the dictation starts; the panel has
     // nothing to show until there are words.
@@ -156,6 +274,131 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
     _presence.reverse();
   }
 
+  /// A dictation is done and its words were just sent or put in the box: this
+  /// runs after the composer has handled the same state. Whatever the composer
+  /// expects is settled here, the one place that knows when there is nothing to
+  /// glide, as after a recording, whose words were never on screen.
+  void _land({required String transcript}) {
+    final layer = _layer;
+    final landing = SentBubbleLanding.of(context: context);
+    final from = layer is _Live && transcript.trim().isNotEmpty && !context.isReducedMotion ? _wordsRect() : null;
+    if (layer is! _Live || from == null) {
+      landing.handOver();
+      _leave(cancelled: false);
+      return;
+    }
+
+    setState(() {
+      _layer = _Gliding(
+        last: layer,
+        from: from,
+        target: from,
+        destination: const _Undecided(),
+        tentativeOpacity: _liveTextKey.currentState?.tentativeOpacity ?? 1,
+        landing: landing,
+      );
+    });
+    _presence.reverse();
+    if (landing.isExpecting) {
+      _awaitBubble(landing: landing, frames: _bubbleFrames);
+    } else {
+      widget.box._hold(held: true);
+      SchedulerBinding.instance.addPostFrameCallback((_) => _glideToBox());
+    }
+  }
+
+  Rect? _wordsRect() {
+    final overlay = Overlay.of(context).context.findRenderObject();
+    final words = _wordsKey.currentContext?.findRenderObject();
+    if (overlay == null || words is! RenderBox) return null;
+    return MatrixUtils.transformRect(words.getTransformTo(overlay), Offset.zero & words.size);
+  }
+
+  void _awaitBubble({required SentBubbleLandingController landing, required int frames}) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _layer is! _Gliding) return;
+      final text = landing.heldText;
+      if (text != null) {
+        _startGlide(destination: _Bubble(text: text));
+      } else if (frames > 1) {
+        _awaitBubble(landing: landing, frames: frames - 1);
+        SchedulerBinding.instance.scheduleFrame();
+      } else {
+        landing.handOver();
+        _startGlide(destination: _estimatedSlot());
+      }
+    });
+  }
+
+  void _glideToBox() {
+    if (!mounted || _layer is! _Gliding) return;
+    final box = widget.box;
+    if (box._slot == null) {
+      box._hold(held: false);
+      _startGlide(destination: const _InPlace());
+    } else {
+      _startGlide(destination: _Box(text: box._controller.text));
+    }
+  }
+
+  void _startGlide({required _Destination destination}) {
+    final layer = _layer;
+    if (layer is! _Gliding) return;
+    setState(() {
+      _layer = _Gliding(
+        last: layer.last,
+        from: layer.from,
+        target: layer.target,
+        destination: destination,
+        tentativeOpacity: layer.tentativeOpacity,
+        landing: layer.landing,
+      );
+    });
+    _glide.forward(from: 0);
+  }
+
+  void _handleGlideTick() {
+    if (_glide.value >= _handOverAt) _handOver();
+    // Runs the layer's builder again, which reads where the destination is now.
+    // It lays out ahead of the list, so it follows a moving row a frame behind.
+    setState(() {});
+  }
+
+  void _handOver() {
+    if (_layer case _Gliding(:final landing)) landing.handOver();
+    widget.box._hold(held: false);
+  }
+
+  void _endGlide() {
+    _handOver();
+    _glide.reset();
+    _portal.hide();
+    setState(() => _layer = const _Hidden());
+  }
+
+  /// Right-aligned above the composer, where the bubble goes when the list is at
+  /// its end. The words are what there is to size it by.
+  _Destination _estimatedSlot() {
+    final layer = _layer;
+    final composer = _composerRect;
+    if (layer is! _Gliding || composer == null) return const _InPlace();
+    final painter = TextPainter(
+      text: TextSpan(text: layer.last.words.text, style: _bubbleLook().style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: UserMessageBubble.maxContentWidth(rowWidth: composer.width));
+    final right = composer.right - UserMessageBubble.margin.right;
+    final bottom = composer.top - _estimatedSlotGap;
+    final rect = Rect.fromLTRB(
+      right - painter.width - UserMessageBubble.padding * 2,
+      bottom - painter.height - UserMessageBubble.padding * 2,
+      right,
+      bottom,
+    );
+    painter.dispose();
+    return _Estimate(rect: rect);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<VoiceInputCubit, VoiceInputState>(
@@ -176,7 +419,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
         return const SizedBox.shrink();
       case _Live():
         live = layer;
-      case _Leaving(:final last):
+      case _Leaving(:final last) || _Gliding(:final last):
         live = last;
     }
 
@@ -216,7 +459,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
                   Expanded(
                     child: Align(
                       alignment: AlignmentDirectional.bottomStart,
-                      child: _buildWords(context: context, live: live),
+                      child: layer is _Gliding ? const SizedBox.shrink() : _buildWords(context: context, live: live),
                     ),
                   ),
                   const SizedBox(height: _wordsGap),
@@ -233,6 +476,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
                 ],
               ),
             ),
+            if (layer is _Gliding) _buildGlide(layer: layer),
           ],
         ),
       ),
@@ -253,46 +497,226 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
   Color _paneBackground({required BuildContext context}) =>
       Scaffold.of(context).widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor;
 
-  Widget _buildWords({required BuildContext context, required _Live live}) {
+  /// How live words look. A focus has no surface; its look starts from a clear
+  /// copy of the bubble's, so that one fades in with no other change.
+  _WordsLook _liveLook({required VoiceLivePresentation presentation}) {
     final prego = context.prego;
     final desktop = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
-    final style = switch (live.presentation) {
-      VoiceLivePresentation.focus => prego.textTheme.displayXs.medium.copyWith(
-        fontSize: desktop ? 25 : 23,
-        height: 1.32,
-        color: prego.colors.textPrimary,
+    return switch (presentation) {
+      VoiceLivePresentation.focus => (
+        style: prego.textTheme.displayXs.medium.copyWith(
+          fontSize: desktop ? 25 : 23,
+          height: 1.32,
+          color: prego.colors.textPrimary,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
+        decoration: BoxDecoration(
+          color: prego.colors.bgSurface2.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(UserMessageBubble.radius),
+        ),
       ),
-      VoiceLivePresentation.panel => prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+      // The card stays solid so the slide never lets the chat show through words.
+      VoiceLivePresentation.panel => (
+        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
+        decoration: pregoComposerSurfaceDecoration(
+          prego: prego,
+          style: PregoComposerSurfaceStyle.emphasized,
+          borderRadius: BorderRadius.circular(_panelRadius),
+        ).copyWith(boxShadow: prego.shadows.lg),
+      ),
     };
+  }
+
+  /// The bubble's surface, and its Markdown body's paragraph.
+  _WordsLook _bubbleLook() {
+    final prego = context.prego;
+    return (
+      style: buildChatMessageMarkdownStyleSheet(prego: prego).p ?? prego.textTheme.textSm.regular,
+      padding: const EdgeInsets.all(UserMessageBubble.padding),
+      decoration: BoxDecoration(
+        color: prego.colors.bgSurface2,
+        borderRadius: BorderRadius.circular(UserMessageBubble.radius),
+      ),
+    );
+  }
+
+  Widget _buildGlide({required _Gliding layer}) {
+    final last = layer.last;
+    final start = _liveLook(presentation: last.presentation);
+    final overlay = Overlay.of(context).context.findRenderObject();
+    final (_WordsLook end, Rect? target) = switch (layer.destination) {
+      _Undecided() || _InPlace() => (start, layer.from),
+      _Bubble() => (_bubbleLook(), _bubbleTarget(layer: layer, overlay: overlay)),
+      _Box() => (
+        (
+          style: widget.boxStyle,
+          padding: ComposerWordsBox.contentPadding.copyWith(right: ComposerWordsBox._caretMargin),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(UserMessageBubble.radius)),
+        ),
+        overlay == null ? null : widget.box._slot?.rectIn(ancestor: overlay),
+      ),
+      _Estimate(:final rect) => (_bubbleLook(), rect),
+    };
+    if (target != null) layer.target = target;
+
+    final flight = math.min(_glide.value / _handOverAt, 1.0);
+    final t = _glideCurve.transform(flight);
+    // Two weights are two font files with nothing between them, so a lerped weight
+    // stays on the heavier face until its very last frame and the text pops narrower
+    // as it lands. The face and the wrap change once instead, while the words move
+    // fastest; from there the final paragraph only scales, and can't wrap again.
+    final rewrapped = t >= _rewrapAt;
+    final fontSize = lerpDouble(start.style.fontSize, end.style.fontSize, t);
+    final endFontSize = end.style.fontSize;
+    final TextStyle style = rewrapped
+        ? end.style.copyWith(color: Color.lerp(start.style.color, end.style.color, t))
+        : (TextStyle.lerp(start.style, end.style, t) ?? end.style).copyWith(fontWeight: start.style.fontWeight);
+    final double opacity = switch (layer.destination) {
+      _Undecided() => 1,
+      _Bubble() || _Box() => 1 - (_glide.value - _handOverAt) / (1 - _handOverAt),
+      _Estimate() || _InPlace() => 1 - flight,
+    };
+
+    return Positioned.fromRect(
+      key: composerLiveWordsGlideKey,
+      rect: Rect.lerp(layer.from, layer.target, t) ?? layer.from,
+      child: Opacity(
+        opacity: clampDouble(opacity, 0, 1),
+        child: DecoratedBox(
+          decoration: _glideSurface(start: start.decoration, end: end.decoration, t: t),
+          child: Padding(
+            padding: EdgeInsets.lerp(start.padding, end.padding, t) ?? end.padding,
+            child: _GlidingText(
+              text: _glideSpan(
+                words: last.words,
+                tentativeOpacity: _glideTentativeOpacity(from: layer.tentativeOpacity),
+                destination: layer.destination,
+                style: style,
+                t: t,
+                grows: !rewrapped,
+              ),
+              topFade: _wordsTopFade * (1 - t),
+              scale: rewrapped && fontSize != null && endFontSize != null ? fontSize / endFontSize : 1,
+              wrapWidth: rewrapped ? layer.target.width - end.padding.horizontal : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// [BoxDecoration.lerp] shrinks a shadow with nothing to lerp to at full strength,
+  /// which draws a hard plate under a clear surface. This one fades where it is.
+  BoxDecoration _glideSurface({required BoxDecoration start, required BoxDecoration end, required double t}) {
+    final surface = BoxDecoration.lerp(start.copyWith(boxShadow: const []), end, t) ?? end;
+    return surface.copyWith(
+      boxShadow: [
+        for (final shadow in start.boxShadow ?? const <BoxShadow>[])
+          shadow.copyWith(color: shadow.color.withValues(alpha: shadow.color.a * (1 - t))),
+      ],
+    );
+  }
+
+  Rect? _bubbleTarget({required _Gliding layer, required RenderObject? overlay}) {
+    if (overlay == null) return null;
+    final row = layer.landing.heldRect(ancestor: overlay);
+    return row == null ? null : UserMessageBubble.margin.deflateRect(row);
+  }
+
+  /// The same fade as a release's, on the glide's clock.
+  double _glideTentativeOpacity({required double from}) {
+    final elapsed = (_glideDuration + _handOverDuration) * _glide.value;
+    final fade = math.min(elapsed.inMicroseconds / _LiveWordsTextState._brightenFade.inMicroseconds, 1.0);
+    return from + (1 - from) * Curves.ease.transform(fade);
+  }
+
+  /// [text], whose last part is the [tentative] words, at [opacity] against the rest.
+  List<TextSpan> _spansOfWords({
+    required String text,
+    required String tentative,
+    required double opacity,
+    required Color color,
+  }) => [
+    TextSpan(text: text.substring(0, text.length - tentative.length)),
+    TextSpan(
+      text: tentative,
+      style: TextStyle(color: color.withValues(alpha: color.a * opacity)),
+    ),
+  ];
+
+  /// The words, with whatever else ends up around them: the marker a bubble adds
+  /// and what the box already held. That grows from nothing as they fly, which
+  /// keeps the words from shifting on the glide's first frame.
+  TextSpan _glideSpan({
+    required LiveWords words,
+    required double tentativeOpacity,
+    required _Destination destination,
+    required TextStyle style,
+    required double t,
+    required bool grows,
+  }) {
+    final String? landed = switch (destination) {
+      _Bubble(:final text) || _Box(:final text) => text,
+      _Undecided() || _Estimate() || _InPlace() => null,
+    };
+    final color = style.color ?? const Color(0xFF000000);
+    if (landed == null) {
+      return TextSpan(
+        style: style,
+        children: _spansOfWords(
+          text: words.text,
+          tentative: words.provisional,
+          opacity: tentativeOpacity,
+          color: color,
+        ),
+      );
+    }
+
+    final core = words.text.trim();
+    final at = landed.lastIndexOf(core);
+    if (at < 0) return TextSpan(text: landed, style: style);
+
+    final grown = TextStyle(
+      fontSize: grows ? (style.fontSize ?? 0) * t : null,
+      color: color.withValues(alpha: color.a * t),
+    );
+    return TextSpan(
+      style: style,
+      children: [
+        TextSpan(text: landed.substring(0, at), style: grown),
+        ..._spansOfWords(
+          text: core,
+          tentative: words.provisional.trim(),
+          opacity: tentativeOpacity,
+          color: color,
+        ),
+        TextSpan(text: landed.substring(at + core.length), style: grown),
+      ],
+    );
+  }
+
+  Widget _buildWords({required BuildContext context, required _Live live}) {
+    final look = _liveLook(presentation: live.presentation);
     final text = _buildFadingWithSlide(
       child: LiveWordsText(
+        key: _liveTextKey,
         words: live.words,
         settled: live.finishing,
         maxLines: switch (live.presentation) {
           VoiceLivePresentation.focus => null,
           VoiceLivePresentation.panel => _panelLines,
         },
-        style: style,
+        style: look.style,
       ),
     );
-    final Widget words = switch (live.presentation) {
-      VoiceLivePresentation.focus => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
-        child: text,
+    final Widget words = KeyedSubtree(
+      key: _wordsKey,
+      child: DecoratedBox(
+        decoration: look.decoration,
+        child: Padding(padding: look.padding, child: text),
       ),
-      // The card stays solid so the slide never lets the chat show through words.
-      VoiceLivePresentation.panel => DecoratedBox(
-        decoration: pregoComposerSurfaceDecoration(
-          prego: prego,
-          style: PregoComposerSurfaceStyle.emphasized,
-          borderRadius: BorderRadius.circular(_panelRadius),
-        ).copyWith(boxShadow: prego.shadows.lg),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
-          child: text,
-        ),
-      ),
-    };
+    );
 
     final reducedMotion = context.isReducedMotion;
     return AnimatedBuilder(
@@ -302,7 +726,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
         final double travel = switch (_layer) {
           _Leaving(cancelled: true) => _cancelDrop,
           _Live(presentation: VoiceLivePresentation.panel) => _panelRise,
-          _Hidden() || _Leaving() || _Live() => 0,
+          _Hidden() || _Leaving() || _Live() || _Gliding() => 0,
         };
         return Transform.translate(
           offset: Offset(0, reducedMotion ? 0 : travel * away),
@@ -323,7 +747,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
         final bool tracksSlide = switch (_layer) {
           _Live(:final finishing) => !finishing,
           _Leaving(:final cancelled) => cancelled,
-          _Hidden() => false,
+          _Hidden() || _Gliding() => false,
         };
         return AnimatedOpacity(
           opacity: tracksSlide ? 1 - _slideOutFade * progress : 1,
@@ -357,6 +781,67 @@ class const _FocusDimPainter({required final Color color, required final Rect co
 /// Finds the focus dim, for a test to measure.
 @visibleForTesting
 const composerLiveWordsDimKey = Key("composer_live_words_dim");
+
+/// Finds the words on their way to where they land, for a test to measure.
+@visibleForTesting
+const composerLiveWordsGlideKey = Key("composer_live_words_glide");
+
+/// How much of the top fades away once the words outgrow their room.
+const double _wordsTopFade = 26;
+
+/// Words in a box changing shape around them: a paragraph held to the box's
+/// bottom edge, the newest in view, as [LiveWordsText] holds them.
+class const _GlidingText({
+  required final TextSpan text,
+  required final double topFade,
+  required final double scale,
+
+  /// What the paragraph wraps to before scaling; null for the room it has.
+  required final double? wrapWidth,
+}) extends StatelessWidget {
+  /// Lets the last frames' width fit the paragraph that gave it, whatever it
+  /// rounded to, so the words don't wrap a line early as they land.
+  static const double _widthTolerance = 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final textDirection = Directionality.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (wrapWidth ?? constraints.maxWidth) + _widthTolerance;
+        final painter = TextPainter(text: text, textDirection: textDirection, textScaler: textScaler)
+          ..layout(maxWidth: width);
+        final overflow = painter.height * scale - constraints.maxHeight;
+        painter.dispose();
+        final fade = clampDouble(overflow, 0, topFade);
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (bounds) => LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: const [Colors.transparent, Colors.white],
+            stops: [0, constraints.maxHeight > 0 ? math.min(fade / constraints.maxHeight, 1) : 0],
+          ).createShader(bounds),
+          child: ClipRect(
+            child: Transform.scale(
+              scale: scale,
+              alignment: AlignmentDirectional.bottomStart,
+              child: OverflowBox(
+                alignment: AlignmentDirectional.bottomStart,
+                minWidth: 0,
+                maxWidth: width,
+                minHeight: 0,
+                maxHeight: double.infinity,
+                child: RichText(text: text, textDirection: textDirection, textScaler: textScaler),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 /// The words themselves: anchored at the bottom with the newest always in view,
 /// rising a line at a time as they wrap, the oldest fading away at the top once
@@ -414,14 +899,16 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
   static const _riseCurve = Cubic(.2, .8, .2, 1);
   static const double _tentativeOpacity = 0.46;
 
-  /// How much of the top fades away once the words outgrow their room.
-  static const double _topFade = 26;
-
   /// A word and its spacing. Tokens line up by index between updates, so a word
   /// keeps its place when it turns final, or when the server changes its mind.
   static final _tokens = RegExp(r"\s*\S+\s*|\s+");
 
   final List<_FadingWord> _words = [];
+
+  /// How bright the tentative words are now, by the oldest of them, as a word
+  /// that has only just come is still fading in.
+  double get tentativeOpacity =>
+      _words.elementAtOrNull(_tokens.allMatches(widget.words.confirmed).length)?.opacity ?? 1;
   final ValueNotifier<int> _frame = ValueNotifier<int>(0);
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
@@ -559,7 +1046,7 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
           ),
           builder: (context, shown, child) {
             final visible = math.min(shown, room);
-            final fade = math.min(shown - visible, _topFade);
+            final fade = math.min(shown - visible, _wordsTopFade);
             return SizedBox(
               width: constraints.maxWidth,
               height: visible,
