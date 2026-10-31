@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -18,6 +19,7 @@ final _wideSend = find.byType(PregoVoiceSendButton);
 final _pencil = _labelledTooltip("Edit before sending");
 final _cancel = _labelledTooltip("Cancel recording");
 final _cancelTranscription = _labelledTooltip("Cancel transcription");
+final _hint = find.text("Follow up...");
 
 /// A tooltip excluded from semantics because its target announces the same
 /// words itself, which [CommonFinders.byTooltip] cannot see.
@@ -454,6 +456,107 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     });
 
+    for (final (harnessKind, attachmentsSupported) in [("command-only", false), ("attaching", true)]) {
+      for (final ending in ["cancelled", "with no words"]) {
+        testWidgets("the hint fades where it rests through a dictation $ending, $harnessKind", (tester) async {
+          final semantics = tester.ensureSemantics();
+          final harness = _Harness();
+          await _pumpPointerComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            harness: harness,
+            attachmentsSupported: attachmentsSupported,
+          );
+          final resting = tester.getRect(_hint);
+          // Beside the options as the row would place it, with the row's 8 and the slot's 4.
+          expect(resting.left, tester.getRect(find.byType(ComposerOptionsAccordion)).right + 12);
+
+          await tester.tap(_mic);
+          await tester.pump();
+          await tester.pump();
+          var shown = 1.0;
+          for (var frame = 0; frame < 13; frame++) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(tester.getRect(_hint), resting, reason: "moved leaving, frame $frame");
+            expect(_shownOpacity(_hint), lessThan(shown));
+            shown = _shownOpacity(_hint);
+          }
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(_hint, findsNothing);
+
+          if (ending == "cancelled") {
+            await tester.tap(_cancel);
+            voiceStates.add(const VoiceInputState.idle());
+          } else {
+            await tester.tap(_wideSend);
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 300));
+            voiceStates.add(
+              const VoiceInputState.completed(
+                transcript: "",
+                outcome: VoiceDictationOutcome.finished,
+                mode: VoiceDictationMode.afterRecording,
+              ),
+            );
+            await tester.pump();
+            await tester.pump();
+            voiceStates.add(const VoiceInputState.idle());
+          }
+          await tester.pump();
+          await tester.pump();
+          shown = 0;
+          for (var frame = 0; frame < 30; frame++) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(tester.getRect(_hint), resting, reason: "moved returning, frame $frame");
+            expect(_shownOpacity(_hint), frame < 13 ? greaterThan(shown) : 1);
+            shown = _shownOpacity(_hint);
+          }
+
+          expect(find.bySemanticsLabel("Follow up..."), findsOneWidget);
+          semantics.dispose();
+          await tester.tapAt(tester.getCenter(_hint));
+          await tester.pump();
+          expect(_fieldHasFocus(), isTrue);
+          await tester.pump(const Duration(milliseconds: 300));
+        });
+      }
+    }
+
+    testWidgets("the whole slot beneath the hint focuses the field and shows the text cursor", (tester) async {
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: _Harness());
+      final options = tester.getRect(find.byType(ComposerOptionsAccordion));
+      final mic = tester.getRect(_mic);
+
+      // Its first point past the options' gap, the words, and its last point before the mic's.
+      for (final x in [options.right + 9, tester.getCenter(_hint).dx, mic.left - 9]) {
+        final spot = Offset(x, mic.center.dy);
+        final hit = HitTestResult();
+        RendererBinding.instance.hitTestInView(hit, spot, tester.view.viewId);
+        final cursors = hit.path.map((entry) => entry.target).whereType<RenderMouseRegion>().map((r) => r.cursor);
+        expect(cursors.firstWhere((cursor) => cursor != MouseCursor.defer), SystemMouseCursors.text, reason: "at $x");
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(_fieldHasFocus(), isTrue, reason: "at $x");
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+    });
+
+    testWidgets("a screen reader hears the hint once and can tap it to type", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: _Harness());
+
+      expect(find.bySemanticsLabel("Follow up..."), findsOneWidget);
+      tester.semantics.tap(find.semantics.byLabel("Follow up..."));
+      await tester.pump();
+
+      expect(_fieldHasFocus(), isTrue);
+      semantics.dispose();
+      await tester.pump(const Duration(milliseconds: 300));
+    });
+
     testWidgets("the composer and the send's far edge hold still on every frame of the merge and back", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
@@ -567,6 +670,19 @@ void main() {
   });
 }
 
+bool _fieldHasFocus() =>
+    FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<TextField>() != null;
+
+double _shownOpacity(Finder finder) {
+  var opacity = 1.0;
+  RenderObject? render = finder.evaluate().single.renderObject;
+  while (render != null) {
+    if (render is RenderAnimatedOpacity) opacity *= render.opacity.value;
+    render = render.parent;
+  }
+  return opacity;
+}
+
 /// The text the composer's field holds, once the layout that shows it is up.
 String _fieldText(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField)).controller?.text ?? "";
 
@@ -582,6 +698,7 @@ Future<void> _pumpPointerComposer({
   String initialText = "",
   bool canSend = true,
   bool reducedMotion = false,
+  bool attachmentsSupported = false,
 }) async {
   tester.view.physicalSize = const Size(760, 600);
   tester.view.devicePixelRatio = 1;
@@ -629,7 +746,7 @@ Future<void> _pumpPointerComposer({
                 stagedCommand: null,
                 onCommandSelected: (_) {},
                 onCommandCleared: () {},
-                attachmentsSupported: false,
+                attachmentsSupported: attachmentsSupported,
                 draftIdentity: "pointer-voice-test",
                 restorationKey: null,
                 initialDraft: ComposerDraft.typed(text: initialText),
