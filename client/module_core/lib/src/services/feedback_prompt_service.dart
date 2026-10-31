@@ -36,8 +36,8 @@ class FeedbackPromptService({
   /// Serializes the read-modify-write updates of the stored progress.
   Future<void> _lastUpdate = Future<void>.value();
 
-  /// Some backends report a stopped response as an error, so AI errors are
-  /// ignored from a stop until the user's next good interaction.
+  /// Some backends report a stopped response as an error, so AI errors do not
+  /// count from a stop until the user's next good interaction.
   bool _userStopped = false;
 
   /// Emits once for each automatic showing, right after it is recorded.
@@ -51,29 +51,31 @@ class FeedbackPromptService({
 
   /// Sending a message, creating a session with one, or answering a question
   /// or permission request succeeded.
-  Future<void> recordPositiveInteraction() => _update(() async {
+  Future<void> recordPositiveInteraction() {
     _userStopped = false;
-    final state = await _repository.readState();
-    if (state is! FeedbackPromptCounting) return;
-    final positiveCount = state.positiveCount + 1;
-    final config = await _config;
-    final now = DateTime.now().toUtc();
-    final lastShownAt = state.lastShownAt;
-    final isDue =
-        positiveCount >= config.interactionThreshold &&
-        (lastShownAt == null || now.difference(lastShownAt) >= config.cooldown);
-    if (!isDue) {
-      await _repository.writeState(
-        state: FeedbackPromptCounting(positiveCount: positiveCount, lastShownAt: lastShownAt),
-      );
-      return;
-    }
-    // Claiming the showing in the same write that resets the count means the
-    // next one needs a fresh run of good interactions and the full cooldown.
-    await _repository.writeState(state: FeedbackPromptCounting(positiveCount: 0, lastShownAt: now));
-    logi("Showing the automatic rating sheet after $positiveCount good interactions");
-    if (!_prompts.isClosed) _prompts.add(null);
-  });
+    return _update(() async {
+      final state = await _repository.readState();
+      if (state is! FeedbackPromptCounting) return;
+      final positiveCount = state.positiveCount + 1;
+      final config = await _config;
+      final now = DateTime.now().toUtc();
+      final lastShownAt = state.lastShownAt;
+      final isDue =
+          positiveCount >= config.interactionThreshold &&
+          (lastShownAt == null || now.difference(lastShownAt) >= config.cooldown);
+      if (!isDue) {
+        await _repository.writeState(
+          state: FeedbackPromptCounting(positiveCount: positiveCount, lastShownAt: lastShownAt),
+        );
+        return;
+      }
+      // Claiming the showing in the same write that resets the count means the
+      // next one needs a fresh run of good interactions and the full cooldown.
+      await _repository.writeState(state: FeedbackPromptCounting(positiveCount: 0, lastShownAt: now));
+      logi("Showing the automatic rating sheet after $positiveCount good interactions");
+      if (!_prompts.isClosed) _prompts.add(null);
+    });
+  }
 
   /// The user is stopping a response; call before the stop request goes out,
   /// because its error event can arrive before the response does.
