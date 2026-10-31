@@ -25,9 +25,8 @@ sealed class const TranscriptPinView();
 /// before it pinned.
 final class const TranscriptPinStart() extends TranscriptPinView;
 
-/// The bubble's end, cut where the pin starts: a message taller than the rows
-/// below the pin line, which pins only once the reader has scrolled to its
-/// end. [fade], from 0 to 1, is how far the cut top edge has faded in since.
+/// The bubble's end, cut where the pin starts: a tall message, which pins only
+/// once the reader has scrolled to its end. [fade], from 0 to 1, is how far the cut top edge has faded in since.
 final class const TranscriptPinEnd({required final double fade}) extends TranscriptPinView {
   @override
   bool operator ==(Object other) => other is TranscriptPinEnd && other.fade == fade;
@@ -73,6 +72,11 @@ const double transcriptStickyGap = 8;
 /// How far the halo reaches beyond the bubble: its blur plus its spread.
 const double transcriptStickyHaloReach = 42;
 
+/// The tallest bubble that pins its start. A fixed height, so opening the
+/// keyboard swaps which part a pin shows only when the rows left are shorter
+/// than the bubble.
+const double transcriptStickyMaxStartHeight = 320;
+
 /// The index in [openers] of the prompt being read: the last one at or above
 /// the pin line at [pinTop]; -1 before any is.
 int currentTranscriptStickyIndex({required List<TranscriptStickyOpener> openers, required double pinTop}) =>
@@ -98,8 +102,9 @@ int currentTranscriptStickyIndex({required List<TranscriptStickyOpener> openers,
 /// then pins the same way. The halo shows only while rows slide under the
 /// compact pin, and drains as the next message arrives or the bubble returns.
 ///
-/// A bubble taller than the rows between the pin line and [viewportBottom]
-/// could never be read to its end that way, so it scrolls on as a row and
+/// A bubble taller than [transcriptStickyMaxStartHeight], or than the rows
+/// between the pin line and [viewportBottom], would hide lines the reader can
+/// only get back by scrolling away from them, so it scrolls on as a row and
 /// pins its end only once just the compact height of it is left below the
 /// line. That pin covers the bubble's end exactly, and the bubble keeps
 /// painting, its rest scrolling away above the line.
@@ -119,8 +124,9 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
 }) {
   final current = currentTranscriptStickyIndex(openers: openers, pinTop: pinTop);
   if (current < 0 || !fullHeights.containsKey(openers[current].id)) return TranscriptStickyLayout.empty;
+  final maxStartHeight = min(transcriptStickyMaxStartHeight, viewportBottom - pinTop);
   bool showsEnd({required TranscriptStickyOpener opener}) =>
-      cutOpenerIds.contains(opener.id) || (fullHeights[opener.id] ?? 0) > viewportBottom - pinTop;
+      cutOpenerIds.contains(opener.id) || (fullHeights[opener.id] ?? 0) > maxStartHeight;
 
   final pinned = <TranscriptPinnedPrompt>[];
   for (final index in [current - 1, current]) {

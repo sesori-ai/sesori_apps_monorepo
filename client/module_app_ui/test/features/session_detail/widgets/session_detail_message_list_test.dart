@@ -3313,7 +3313,7 @@ void main() {
       });
     });
 
-    group("a message taller than the screen", () {
+    group("a tall message", () {
       final withTallPrompt = [
         for (final message in shortTurns)
           if (message.info.id == "u4")
@@ -3360,6 +3360,28 @@ void main() {
             .first;
         final lastLineTop = paragraph.localToGlobal(Offset(0, lastLineBox.top)).dy;
         expect(lastLineTop, greaterThan(pinTop), reason: "the last line shows below the pin line");
+      });
+
+      testWidgets("rests whole to its last line when it nearly fills the screen", (tester) async {
+        await _pumpTurns(
+          tester,
+          messages: [
+            _message(messageId: "u0", role: "user", text: "First"),
+            _message(messageId: "a0", role: "assistant", text: _multilineText(label: "Older", lines: 60)),
+            _message(
+              messageId: "u4",
+              role: "user",
+              text: _multilineText(label: "Long", lines: 24),
+            ),
+            _message(messageId: "a4", role: "assistant", text: _multilineText(label: "Answer", lines: 7)),
+          ],
+        );
+        final own = ownBubble(tester, "u4");
+        expect(own.height, lessThan(pins(tester).size.height), reason: "it would fit the screen on its own");
+        expect(own.top, lessThan(pinTop), reason: "the rows below have pushed its start past the pin line");
+
+        expect(pinOf(tester, "u4"), isNull, reason: "a pin would cover its last lines at the list's end");
+        expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u4")).hidden, isFalse);
       });
 
       testWidgets("pins its end exactly where it covers its bubble", (tester) async {
