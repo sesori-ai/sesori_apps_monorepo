@@ -2998,6 +2998,20 @@ void main() {
       expect(taken.where((held) => held != "Dictated from history"), isEmpty);
     });
 
+    testWidgets("with a dictated send landing on a row that arrives on the same build", (tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      await tester.drag(find.byKey(_listViewKey), const Offset(0, 280));
+      await tester.pumpAndSettle();
+      final landing = SentBubbleLanding.of(context: tester.element(find.byType(SessionDetailMessageList)));
+
+      landing.expect();
+      await tester.tap(find.byKey(_jumpToLatestKey), warnIfMissed: false);
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Dictated on the way back"));
+      await tester.pump();
+
+      expect(landing.heldText, "Dictated on the way back");
+    });
+
     testWidgets("with a dictated send's words aimed at where its row comes to rest", (tester) async {
       final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
       await tester.drag(find.byKey(_listViewKey), const Offset(0, 280));

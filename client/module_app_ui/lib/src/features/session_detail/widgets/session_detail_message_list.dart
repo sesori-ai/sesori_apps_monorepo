@@ -1045,10 +1045,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           )
           .firstOrNull;
     }
-    final previousRowIds = _rowIndexById.keys.toList();
-    // Reattaching forgets the known rows, but what it catches up on was not just
-    // sent, least of all the old rows a glide back to the latest edge builds.
-    final isFirstBuild = previousRowIds.isEmpty;
+    final previousRowIndexById = _rowIndexById;
+    final previousRowIds = previousRowIndexById.keys.toList();
     _knownRowIds = rowIds.toSet();
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
@@ -1151,7 +1149,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       onMount: _onRowMount,
                       onUnmount: _onRowUnmount,
                       child: SentBubbleArrival(
-                        arriving: knownRowIds == null ? isFirstBuild : !knownRowIds.contains(entryId),
+                        // Not the old rows a glide back to the latest edge builds on its way.
+                        arriving: !previousRowIndexById.containsKey(entryId),
                         child: TranscriptPresence(
                           entering: enteringRowIds.contains(entryId),
                           exiting: false,

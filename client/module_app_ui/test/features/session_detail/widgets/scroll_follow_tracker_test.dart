@@ -126,9 +126,12 @@ void main() {
       addTearDown(tailing.dispose);
       Widget list({required double height}) => Directionality(
         textDirection: TextDirection.ltr,
-        child: ListView(
-          controller: tailing.scrollController,
-          children: [SizedBox(height: height)],
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) => tailing.handleScrollNotification(notification: notification),
+          child: ListView(
+            controller: tailing.scrollController,
+            children: [SizedBox(height: height)],
+          ),
         ),
       );
       await tester.pumpWidget(list(height: 5000));
@@ -150,6 +153,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pump();
       expect(position.pixels, position.maxScrollExtent);
+      expect(tailing.following, isTrue);
     });
   });
 }
