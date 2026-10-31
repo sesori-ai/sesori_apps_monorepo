@@ -40,8 +40,9 @@ stored or sent to the bridge.
   message of three lines or fewer just pins whole. The pin takes over where it
   and the bubble are pixel-identical, its Markdown rendered as the real bubble
   renders it, and the bubble underneath stops painting. A message taller than
-  the rows between the pin line and the composer stays readable to its last
-  line: it scrolls on as an ordinary row, its top passing under the bar, until
+  about half a phone screen (320 logical pixels), or than the rows between the
+  pin line and the composer, stays readable to its last line, also when the
+  rows below it have reached the end of the transcript: it scrolls on as an ordinary row, its top passing under the bar, until
   only about three lines of it are left below the pin line, and only then pins
   those last lines, pixel-identical where it takes over; its cut top edge fades
   in as the scroll continues, while the rest of its bubble scrolls on above the
