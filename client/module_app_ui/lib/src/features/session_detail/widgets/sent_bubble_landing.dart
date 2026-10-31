@@ -37,6 +37,9 @@ final class const _Expecting() extends _Phase;
 /// The bubble has been built and stays hidden until the words reach it.
 final class const _Held({required final RenderLandingSlot slot, required final String text}) extends _Phase;
 
+/// The bubble shows under the words fading out on it, which stay on it to the end.
+final class const _Landed({required final RenderLandingSlot slot}) extends _Phase;
+
 /// That bubble has left the tree. A row swapping its queued bubble for the
 /// message's own, when the echo comes back mid-glide, builds the next in this frame.
 final class const _Lost({required final String text}) extends _Phase;
@@ -52,18 +55,26 @@ final class SentBubbleLandingController() {
   /// What the bubble waiting for the words shows, once there is one.
   String? get heldText => switch (_phase) {
     _Held(:final text) => text,
-    _Idle() || _Expecting() || _Lost() => null,
+    _Idle() || _Expecting() || _Landed() || _Lost() => null,
   };
 
   /// Where that bubble's row comes to rest, in [ancestor]'s coordinates. Its
   /// place in the list can still be changing, so this is read afresh on every
   /// frame of the glide.
   Rect? heldRect({required RenderObject ancestor}) => switch (_phase) {
-    _Held(:final slot) => slot.restingRectIn(ancestor: ancestor),
+    _Held(:final slot) || _Landed(:final slot) => slot.restingRectIn(ancestor: ancestor),
     _Idle() || _Expecting() || _Lost() => null,
   };
 
-  /// The words have arrived, or won't: the bubble shows and nothing is expected.
+  /// The words have reached the bubble, which shows beneath them as they fade.
+  void showBubble() {
+    if (_phase case _Held(:final slot)) {
+      slot.hidden = false;
+      _phase = _Landed(slot: slot);
+    }
+  }
+
+  /// The words are gone, or won't come: the bubble shows and nothing is expected.
   void handOver() {
     if (_phase case _Held(:final slot)) slot.hidden = false;
     _phase = const _Idle();
@@ -73,7 +84,7 @@ final class SentBubbleLandingController() {
     final bool takes = switch (_phase) {
       _Expecting() => arriving,
       _Lost(text: final lost) => lost == text,
-      _Idle() || _Held() => false,
+      _Idle() || _Held() || _Landed() => false,
     };
     if (!takes) return;
     slot.hidden = true;
@@ -81,7 +92,11 @@ final class SentBubbleLandingController() {
   }
 
   void _release({required RenderLandingSlot slot}) {
-    if (_phase case _Held(slot: final held, :final text) when identical(held, slot)) _phase = _Lost(text: text);
+    _phase = switch (_phase) {
+      _Held(slot: final held, :final text) when identical(held, slot) => _Lost(text: text),
+      _Landed(slot: final held) when identical(held, slot) => const _Idle(),
+      final phase => phase,
+    };
   }
 }
 
