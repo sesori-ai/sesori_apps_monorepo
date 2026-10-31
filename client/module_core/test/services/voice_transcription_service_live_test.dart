@@ -1144,6 +1144,24 @@ void main() {
       expect(sentAfterStart(), isEmpty);
     });
 
+    test("audio already waiting when the microphone comes up doesn't stop that fallback", () async {
+      await holdWithMicStarting();
+      channel.upgrade.complete();
+      await pumpEventQueue();
+      hear(_ready);
+      hear(_audioTimeout);
+      await pumpEventQueue();
+
+      frames.add(_frame(fill: 1));
+      micStarting.complete(frames.stream);
+      await start;
+      await pumpEventQueue();
+
+      expect(events.whereType<VoiceLiveFellBack>(), hasLength(1));
+      verifyInOrder([capture.cancel, capture.start]);
+      expect(sentAfterStart(), isEmpty);
+    });
+
     test("a socket failing while the microphone starts leaves the composer recording", () async {
       session = await createSession();
       final cubit = VoiceInputCubit(service: service, session: session);

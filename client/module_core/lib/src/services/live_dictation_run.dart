@@ -212,8 +212,7 @@ final class LiveDictationRun({
   }
 
   void _forward({required VoiceRealtimeConnection connection, required Uint8List frame}) {
-    _audioForwarded = true;
-    connection.sendAudio(frame: frame);
+    if (connection.sendAudio(frame: frame)) _audioForwarded = true;
   }
 
   /// The server finalizes before it completes, so what is still provisional is
