@@ -723,6 +723,17 @@ void main() {
     });
   }
 
+  testWidgets("text-first's hint stays in its tappable slot on touch", (tester) async {
+    await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
+
+    final hint = find.text("Follow up...");
+    final ignoring = tester
+        .widgetList<IgnorePointer>(find.ancestor(of: hint, matching: find.byType(IgnorePointer)))
+        .where((widget) => widget.ignoring);
+    expect(ignoring, isEmpty, reason: "the caption layer ignores touches");
+    expect(find.ancestor(of: hint, matching: find.byType(GestureDetector)), findsWidgets);
+  });
+
   testWidgets("voice-first's pill says it's transcribing to a screen reader", (tester) async {
     final semantics = tester.ensureSemantics();
     await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, initialText: "");

@@ -35,6 +35,17 @@ class const ComposerOptionsAccordion({
   /// support is still unknown.
   required final VoidCallback? onAttachImageTap,
 }) extends StatefulWidget {
+  static const double _iconButtonSize = 32;
+
+  /// Figma's leading inset for the joined actions.
+  static const double _joinedStartInset = 3;
+
+  /// The pill's width with its actions open, for placing things beside it without
+  /// following its size as it gives way to other controls.
+  static double openWidth({required bool showAttachImage}) => showAttachImage
+      ? _joinedStartInset + _iconButtonSize + PregoSpacing.md + _iconButtonSize + PregoSpacing.sm
+      : PregoSpacing.sm + _iconButtonSize + PregoSpacing.sm;
+
   @override
   State<ComposerOptionsAccordion> createState() => _ComposerOptionsAccordionState();
 }
@@ -78,11 +89,11 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
             curve: Curves.easeOutCubic,
             alignment: AlignmentDirectional.centerEnd,
             child: Padding(
-              // Figma uses a 3pt leading inset for the joined actions. Keep a
-              // single button centred in a 44pt circle, including command-only
-              // harnesses. Expansion remains anchored to the trailing edge.
+              // Keep a single button centred in a 44pt circle, including
+              // command-only harnesses. Expansion remains anchored to the
+              // trailing edge.
               padding: EdgeInsetsDirectional.only(
-                start: isOpen && widget.showAttachImage ? 3 : PregoSpacing.sm,
+                start: isOpen && widget.showAttachImage ? ComposerOptionsAccordion._joinedStartInset : PregoSpacing.sm,
                 end: PregoSpacing.sm,
               ),
               child: Row(
@@ -141,7 +152,8 @@ class const _AccordionIconButton({
       child: PregoTappable(
         onTap: onTap,
         borderRadius: BorderRadius.circular(PregoRadius.full),
-        containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
+        containerBuilder: (Widget child) =>
+            SizedBox.square(dimension: ComposerOptionsAccordion._iconButtonSize, child: child),
         child: Icon(icon, size: PregoIconSize.md, color: prego.colors.textPrimary),
       ),
     );

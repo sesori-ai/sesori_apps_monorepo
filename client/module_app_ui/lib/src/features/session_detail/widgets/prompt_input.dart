@@ -1830,15 +1830,38 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// The text-first layouts' caption. Their hint stays in the slot, where it can
-  /// be tapped, so only the shimmer shows here. A pointer shell's voice targets
-  /// and wide Send are equally wide; a touch shell has the mic beyond the send.
-  Widget _buildTextFirstCaption(BuildContext context) {
+  /// The text-first layouts' caption, showing the shimmer and [idle] at rest. A
+  /// pointer shell's voice targets and wide Send are equally wide; a touch shell
+  /// has the mic beyond the send.
+  Widget _buildTextFirstCaption(BuildContext context, {required Widget idle}) {
     final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
     return _buildVoiceCaption(
       context,
-      idle: const SizedBox.shrink(),
+      idle: idle,
       extraTrailingWidth: pointer ? 0 : _actionButtonSize + PregoSpacing.sm,
+    );
+  }
+
+  /// The compact pill's hint in the caption, for a pointer shell, whose voice
+  /// targets are wider than its options and would carry it sideways in the slot.
+  /// The insets narrow the caption to that slot as it rests, so the words sit and
+  /// clip as they would inside it. The tap target in the slot speaks for them.
+  Widget _buildPointerCaptionHint(BuildContext context, {required Widget hint}) {
+    final optionsWidth = ComposerOptionsAccordion.openWidth(showAttachImage: _offersAttachImage);
+    return ExcludeSemantics(
+      child: SizedBox(
+        height: _actionButtonSize,
+        child: AnimatedPadding(
+          // Follows the options when the harness' attachment support resolves.
+          duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+          curve: _morphCurve,
+          padding: EdgeInsetsDirectional.only(
+            start: optionsWidth - _actionButtonSize + PregoSpacing.xs,
+            end: _pointerVoiceGroupWidth - _actionButtonSize,
+          ),
+          child: Align(alignment: AlignmentDirectional.centerStart, child: hint),
+        ),
+      ),
     );
   }
 
@@ -1846,11 +1869,22 @@ class _PromptInputState() extends State<PromptInput> {
   /// invites typing, with mic and send/stop alongside.
   Widget _buildCompactComposer(BuildContext context) {
     final prego = context.prego;
+    final hintInCaption =
+        _voiceSupport.isSupported && ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
+    final hint = Text(
+      _hintText(context),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+    );
 
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.emphasized,
-      overlay: _buildTextFirstCaption(context),
+      overlay: _buildTextFirstCaption(
+        context,
+        idle: hintInCaption ? _buildPointerCaptionHint(context, hint: hint) : const SizedBox.shrink(),
+      ),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1863,18 +1897,15 @@ class _PromptInputState() extends State<PromptInput> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _enterTypingMode,
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                      child: Text(
-                        _hintText(context),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                      ),
-                    ),
-                  ),
+                  child: hintInCaption
+                      ? Semantics(label: _hintText(context), child: const SizedBox.expand())
+                      : Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                            child: hint,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -2137,7 +2168,7 @@ class _PromptInputState() extends State<PromptInput> {
           top: -PregoSpacing.sm,
           right: -PregoSpacing.sm,
           bottom: -PregoSpacing.sm,
-          child: _buildTextFirstCaption(context),
+          child: _buildTextFirstCaption(context, idle: const SizedBox.shrink()),
         ),
       ],
     );
@@ -2289,6 +2320,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// and send sit at rest.
   static const double _pointerVoiceGroupWidth = _actionButtonSize * 2 + PregoSpacing.sm;
 
+  /// Nearly every harness takes images, so the action holds its place while
+  /// support is unknown instead of growing in once it is known.
+  bool get _offersAttachImage => widget.attachmentsSupported ?? true;
+
   Widget _buildOptionsAccordion() {
     return PregoPickerPopover(
       pointerWidth: 360,
@@ -2299,9 +2334,7 @@ class _PromptInputState() extends State<PromptInput> {
         actionsEnabled: _voicePresentation == _VoicePresentation.idle,
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
         isTyping: _hasText,
-        // Nearly every harness takes images, so the action holds its place
-        // while support is unknown instead of growing in once it is known.
-        showAttachImage: widget.attachmentsSupported ?? true,
+        showAttachImage: _offersAttachImage,
         onSlashCommandsTap: () {
           _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
           toggle();
