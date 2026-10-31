@@ -196,9 +196,13 @@ void main() {
       expect(tester.getTopLeft(_paragraph).dy, lessThan(clip.top));
     });
 
-    testWidgets("reduced motion shows words at once and rises nothing", (tester) async {
+    testWidgets("reduced motion fades words in where they stand and rises nothing", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit, disableAnimations: true);
       await live(tester: tester, confirmed: "said ", provisional: "maybe");
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(_alphaOf(tester, word: "said"), inExclusiveRange(0, 1));
+      expect(_alphaOf(tester, word: "maybe"), inExclusiveRange(0, 0.46));
+      await settle(tester);
       expect(_alphaOf(tester, word: "said"), 1);
       expect(_alphaOf(tester, word: "maybe"), closeTo(0.46, 0.01));
 
@@ -364,18 +368,32 @@ void main() {
       expect(_words, findsNothing);
     });
 
-    testWidgets("reduced motion brightens and dims at once", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, disableAnimations: true);
-      await live(tester: tester, provisional: "alpha");
-      await tester.pump(const Duration(milliseconds: 490));
-      expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
+    for (final (name, features) in const [
+      ("iOS Reduce Motion", FakeAccessibilityFeatures(reduceMotion: true)),
+      ("Android Remove animations", FakeAccessibilityFeatures(disableAnimations: true)),
+    ]) {
+      testWidgets("$name keeps the brightening and the dimming, whose clock is the words' own", (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, disableAnimations: features.disableAnimations);
+        await live(tester: tester, provisional: "alpha");
+        await tester.pump(const Duration(milliseconds: 490));
+        expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
 
-      await tester.pump(const Duration(milliseconds: 20));
-      expect(_alphaOf(tester, word: "alpha"), 1);
+        await tester.pump(const Duration(milliseconds: 20));
+        await tester.pump(const Duration(milliseconds: 140));
+        expect(_alphaOf(tester, word: "alpha"), inExclusiveRange(0.46, 1));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(_alphaOf(tester, word: "alpha"), 1);
 
-      await live(tester: tester, provisional: "ALPHA");
-      expect(_alphaOf(tester, word: "ALPHA"), closeTo(0.46, 0.01));
-    });
+        await live(tester: tester, provisional: "ALPHA");
+        await tester.pump(const Duration(milliseconds: 16));
+        await tester.pump(const Duration(milliseconds: 140));
+        expect(_alphaOf(tester, word: "ALPHA"), inExclusiveRange(0.46, 1));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(_alphaOf(tester, word: "ALPHA"), closeTo(0.46, 0.01));
+      });
+    }
 
     group("leaves nothing running", () {
       Future<void> pumpWords({required WidgetTester tester, required LiveWords words, required bool settled}) =>

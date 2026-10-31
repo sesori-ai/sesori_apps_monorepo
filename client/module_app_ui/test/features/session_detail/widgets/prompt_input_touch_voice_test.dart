@@ -485,42 +485,95 @@ void main() {
         });
       }
 
-      testWidgets("reduced motion swaps the hint and what it covers at once", (tester) async {
-        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-          disableAnimations: true,
-        );
-        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-        await _pumpComposer(
-          tester: tester,
-          voiceCubit: voiceCubit,
-          mode: mode,
-          composerHeader: const SizedBox(key: Key("model row"), height: 44),
-        );
-        final header = find.byKey(const Key("model row"));
-        final hint = find.textContaining("Release to");
-        final dots = find.byType(PregoVoiceWaveform);
-        final resting = _restingWords(mode: mode);
+      for (final setting in _reducedMotionSettings) {
+        testWidgets("${setting.name} fades the hint and what it covers, and moves nothing", (tester) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: mode,
+            composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          );
+          final header = find.byKey(const Key("model row"));
+          final hint = find.textContaining("Release to");
+          final dots = find.byType(PregoVoiceWaveform);
+          final resting = _restingWords(mode: mode);
+          final headerTop = tester.getTopLeft(header);
+          final composerHeight = tester.getSize(find.byType(PromptInput)).height;
+          double progress(int ms) => (ms / setting.fadeMs).clamp(0.0, 1.0);
 
-        final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
-        await tester.pump();
-        expect(_shownOpacity(hint), 1);
-        expect(header, findsNothing);
-        await tester.pump(const Duration(milliseconds: 16));
-        expect(_shownOpacity(dots), 1);
-        expect(resting, findsNothing);
+          final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+          await tester.pump();
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(_shownOpacity(hint), closeTo(progress(ms), 0.01), reason: "hint at $ms ms");
+            expect(_shownOpacity(dots), closeTo(progress(ms), 0.01), reason: "dots at $ms ms");
+            expect(_shownOpacity(header), closeTo(1 - progress(ms), 0.01), reason: "header at $ms ms");
+            expect(_shownOpacity(resting), closeTo(1 - progress(ms), 0.01), reason: "resting words at $ms ms");
+            if (header.evaluate().isNotEmpty) expect(tester.getTopLeft(header), headerTop, reason: "header at $ms ms");
+            expect(tester.getSize(find.byType(PromptInput)).height, composerHeight, reason: "composer at $ms ms");
+          }
+          expect(header, findsNothing);
+          expect(resting, findsNothing);
 
-        await tester.pump(const Duration(milliseconds: 300));
-        await gesture.moveTo(abovePill(tester: tester, by: 64));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-        await gesture.up();
-        await tester.pump();
-        expect(_shownOpacity(header), 1);
-        expect(hint, findsNothing);
-        await tester.pump(const Duration(milliseconds: 16));
-        expect(_shownOpacity(resting), 1);
-        expect(dots, findsNothing);
-      });
+          await gesture.moveTo(abovePill(tester: tester, by: 64));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          await gesture.up();
+          await tester.pump();
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            final leaving = 1 - Curves.easeOutCubic.transform(progress(ms));
+            final returning = const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+            expect(_shownOpacity(hint), closeTo(leaving, 0.01), reason: "hint at $ms ms");
+            expect(_shownOpacity(header), closeTo(returning, 0.01), reason: "header at $ms ms");
+            expect(_shownOpacity(resting), closeTo(returning, 0.01), reason: "resting words at $ms ms");
+            expect(tester.getTopLeft(header), headerTop, reason: "header at $ms ms");
+            expect(tester.getSize(find.byType(PromptInput)).height, composerHeight, reason: "composer at $ms ms");
+          }
+          expect(hint, findsNothing);
+          expect(dots, findsNothing);
+        });
+
+        testWidgets("${setting.name} takes a taller hint's height at once and gives it back as it goes", (
+          tester,
+        ) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: mode,
+            composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          );
+          final composer = find.byType(PromptInput);
+          final restingHeight = tester.getSize(composer).height;
+
+          final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+          await tester.pump();
+          final heldHeight = tester.getSize(composer).height;
+          expect(heldHeight, greaterThan(restingHeight), reason: "The slot takes the taller hint in one frame.");
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(tester.getSize(composer).height, heldHeight, reason: "Nothing eases on, $ms ms");
+          }
+
+          await gesture.moveTo(abovePill(tester: tester, by: 64));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          await gesture.up();
+          await tester.pump();
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            final height = tester.getSize(composer).height;
+            final hintGone = find.textContaining("Release to").evaluate().isEmpty;
+            expect(height, hintGone ? restingHeight : heldHeight, reason: "One step, as the hint goes, $ms ms");
+          }
+        });
+      }
 
       testWidgets("at large text the composer still eases open and closed around a release", (tester) async {
         tester.platformDispatcher.textScaleFactorTestValue = 1.3;
@@ -1394,28 +1447,37 @@ void main() {
       });
     }
 
-    testWidgets("reduced motion swaps send at once, with the mic still", (tester) async {
-      setPhone(tester: tester, width: 390);
-      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-        disableAnimations: true,
-      );
-      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
-      final micLeft = tester.getTopLeft(mic).dx;
+    for (final setting in _reducedMotionSettings) {
+      testWidgets("${setting.name} keeps send's fade, with the mic still", (tester) async {
+        setPhone(tester: tester, width: 390);
+        tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
+        final micLeft = tester.getTopLeft(mic).dx;
+        final sendLeft = tester.getTopLeft(send).dx;
+        double faded(int ms) => Curves.easeOutCubic.transform((ms / setting.fadeMs).clamp(0.0, 1.0));
 
-      final gesture = await tester.startGesture(tester.getCenter(mic));
-      await tester.pump();
-      expect(_shownOpacity(send), 0);
-      expect(tester.getTopLeft(mic).dx, micLeft);
+        final gesture = await tester.startGesture(tester.getCenter(mic));
+        await tester.pump();
+        expect(_shownOpacity(send), 1, reason: "It starts to go from where it stood.");
+        expect(send.hitTestable(), findsNothing, reason: "Dead from the moment it starts to go.");
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(_shownOpacity(send), closeTo(1 - faded(ms), 0.01), reason: "holding, $ms ms");
+          expect(tester.getTopLeft(mic).dx, micLeft, reason: "mic moved holding, $ms ms");
+          expect(tester.getTopLeft(send).dx, sendLeft, reason: "send moved holding, $ms ms");
+        }
 
-      await tester.pump(const Duration(milliseconds: 300));
-      await gesture.up();
-      await tester.pump();
-      await tester.pump();
-      expect(_shownOpacity(send), 1);
-      expect(tester.getTopLeft(mic).dx, micLeft);
-      await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
-    });
+        await gesture.up();
+        await tester.pump();
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(_shownOpacity(send), closeTo(faded(ms), 0.01), reason: "releasing, $ms ms");
+          expect(tester.getTopLeft(mic).dx, micLeft, reason: "mic moved releasing, $ms ms");
+        }
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+      });
+    }
 
     testWidgets("a fading send takes no touch, focus or screen reader tap, then comes back with the text", (
       tester,
@@ -1613,31 +1675,63 @@ void main() {
         }
       }
 
-      testWidgets("reduced motion swaps the button and its room at once", (tester) async {
-        setPhone(tester: tester, width: 390);
-        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-          disableAnimations: true,
-        );
-        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, initialText: draft);
-        final rect = tester.getRect(button);
+      for (final setting in _reducedMotionSettings) {
+        testWidgets("${setting.name} keeps the button's fade and gate, and moves its room at once", (tester) async {
+          setPhone(tester: tester, width: 390);
+          final semantics = tester.ensureSemantics();
+          tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: ChatInputMode.voiceFirst,
+            initialText: draft,
+          );
+          final rect = tester.getRect(button);
+          bool excludesFocus() => tester
+              .widgetList<ExcludeFocus>(find.ancestor(of: action, matching: find.byType(ExcludeFocus)))
+              .any((exclude) => exclude.excluding);
+          double progress(int ms) => (ms / setting.fadeMs).clamp(0.0, 1.0);
+          double leaving(int ms) => 1 - Curves.easeOutCubic.transform(progress(ms));
+          double returning(int ms) =>
+              Curves.easeOutCubic.transform(progress(ms)) *
+              const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
 
-        final gesture = await tester.startGesture(tester.getCenter(holdLabel));
-        await tester.pump();
-        expect(_shownOpacity(action), 0);
-        final openRight = tester.getRect(waveform).right;
-        expect(openRight, greaterThan(rect.left + rect.width / 2), reason: "The room is the waveform's already.");
-        await tester.pump(const Duration(milliseconds: 300));
-        expect(tester.getRect(waveform).right, openRight, reason: "Nothing eases on afterwards.");
+          final gesture = await tester.startGesture(tester.getCenter(holdLabel));
+          await tester.pump();
+          expect(button.hitTestable(), findsNothing, reason: "Dead from the moment it starts to go.");
+          expect(excludesFocus(), isTrue);
+          final openRight = tester.getRect(waveform).right;
+          expect(openRight, greaterThan(rect.left + rect.width / 2), reason: "The room is the waveform's already.");
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(_shownOpacity(action), closeTo(leaving(ms), 0.03), reason: "holding, $ms ms");
+            expect(tester.getRect(button), rect, reason: "It fades where it stands, $ms ms");
+            expect(tester.getRect(waveform).right, openRight, reason: "Nothing eases on afterwards, $ms ms");
+            expect(offersTap(tester.getSemantics(action)), isFalse, reason: "holding, $ms ms");
+          }
 
-        await gesture.up();
-        await tester.pump();
-        expect(_shownOpacity(action), 1);
-        expect(tester.getRect(button), rect);
-        expect(button.hitTestable(), findsOne, reason: "Nothing holds it back once it shows.");
-        expect(tester.getRect(waveform).right, lessThanOrEqualTo(rect.left), reason: "The room comes back as fast.");
-        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
-      });
+          await gesture.moveTo(abovePill(tester: tester, by: 64));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          await gesture.up();
+          await tester.pump();
+          expect(tester.getRect(waveform).right, lessThanOrEqualTo(rect.left), reason: "The room comes back as fast.");
+          expect(_shownOpacity(action), 0);
+          expect(button.hitTestable(), findsNothing, reason: "Back in its place, but nothing shows yet.");
+          expect(excludesFocus(), isTrue);
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            final shows = progress(ms) >= 0.6;
+            expect(_shownOpacity(action), closeTo(returning(ms), 0.01), reason: "releasing, $ms ms");
+            expect(tester.getRect(button), rect, reason: "It comes back where it stood, $ms ms");
+            expect(button.hitTestable(), shows ? findsOne : findsNothing, reason: "releasing, $ms ms");
+            expect(excludesFocus(), !shows, reason: "releasing, $ms ms");
+            expect(offersTap(tester.getSemantics(action)), shows, reason: "releasing, $ms ms");
+          }
+          semantics.dispose();
+        });
+      }
 
       testWidgets("a hidden button takes no touch, focus or screen reader tap, then comes back", (tester) async {
         setPhone(tester: tester, width: 390);
@@ -2162,30 +2256,57 @@ void main() {
       });
     }
 
-    for (final (name, features) in [
-      ("Android's", const FakeAccessibilityFeatures(disableAnimations: true)),
-      ("iOS's", const FakeAccessibilityFeatures(reduceMotion: true)),
-    ]) {
-      testWidgets("$name reduced motion swaps it, the keyboard button and the words at once", (tester) async {
-        tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+    for (final setting in _reducedMotionSettings) {
+      testWidgets("${setting.name} keeps its fade and gate, with the keyboard button and the words moving at once", (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
         addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
         final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
         final keyboardRest = tester.getRect(keyboard).left;
         final wordsRest = tester.getCenter(words).dx;
+        final spot = tester.getCenter(stop);
+        double fadeProgress(int ms) => (ms / setting.fadeMs).clamp(0.0, 1.0);
 
         composer.busy.value = true;
         await tester.pump();
-        expect(tester.getRect(keyboard).left, keyboardRest - room);
-        expect(tester.getCenter(words).dx, wordsRest - room / 2);
-        expect(_shownOpacity(stopIcon), 1);
-        expect(stop.hitTestable(), findsOne, reason: "Nothing holds it back once it shows.");
+        expect(_shownOpacity(stopIcon), 0);
+        expect(stop.hitTestable(), findsNothing, reason: "Back in its place, but nothing shows yet.");
+        expect(excludesFocus(tester: tester), isTrue);
+        await tester.tapAt(spot);
+        expect(composer.aborts, 0, reason: "An unseen stop stopped the work.");
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final t = fadeProgress(ms);
+          final shows = t >= 0.6;
+          final arrives =
+              Curves.easeOutCubic.transform(t) * const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t);
+          expect(_shownOpacity(stopIcon), closeTo(arrives, 0.01), reason: "arriving, $ms ms");
+          expect(stop.hitTestable(), shows ? findsOne : findsNothing, reason: "arriving, $ms ms");
+          expect(excludesFocus(tester: tester), !shows, reason: "arriving, $ms ms");
+          if (!shows) expect(stopForScreenReader, findsNothing, reason: "arriving, $ms ms");
+          expect(tester.getRect(keyboard).left, keyboardRest - room, reason: "arriving, $ms ms");
+          expect(tester.getCenter(words).dx, wordsRest - room / 2, reason: "arriving, $ms ms");
+        }
+        expect(_offersTap(tester.getSemantics(stopIcon)), isTrue);
 
         composer.busy.value = false;
         await tester.pump();
-        expect(tester.getRect(keyboard).left, keyboardRest);
-        expect(tester.getCenter(words).dx, wordsRest);
-        expect(_shownOpacity(stopIcon), 0);
-        expect(stop.hitTestable(), findsNothing);
+        expect(stop.hitTestable(), findsNothing, reason: "Dead from the moment it starts to go.");
+        expect(_offersTap(tester.getSemantics(stopIcon)), isFalse);
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final t = fadeProgress(ms);
+          final leaves =
+              (1 - Curves.easeOutCubic.transform(t)) *
+              (1 - const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t));
+          expect(_shownOpacity(stopIcon), closeTo(leaves, 0.01), reason: "leaving, $ms ms");
+          expect(stop.hitTestable(), findsNothing, reason: "leaving, $ms ms");
+          expect(tester.getRect(keyboard).left, keyboardRest, reason: "leaving, $ms ms");
+          expect(tester.getCenter(words).dx, wordsRest, reason: "leaving, $ms ms");
+        }
+        semantics.dispose();
       });
     }
   });
@@ -2344,23 +2465,39 @@ void main() {
         await tester.pump();
       });
 
-      testWidgets("reduced motion swaps them at once, ${mode.name}", (tester) async {
-        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-          disableAnimations: true,
-        );
-        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+      for (final setting in _reducedMotionSettings) {
+        testWidgets("${setting.name} keeps the fades in order, ${mode.name}", (tester) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+          final shimmer = find.byType(PregoShimmer);
+          final resting = _restingWords(mode: mode);
 
-        await release(tester: tester, mode: mode, state: transcribing);
-        await tester.pump(const Duration(milliseconds: 300));
-        await end(tester: tester);
-        await tester.pump(const Duration(milliseconds: 16));
-        expect(find.text("Transcribing..."), findsNothing);
-        expect(_shownOpacity(_restingWords(mode: mode)), 1);
-      });
+          await release(tester: tester, mode: mode, state: transcribing);
+          await tester.pump(const Duration(milliseconds: 300));
+          await end(tester: tester);
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            final t = (ms / setting.fadeMs).clamp(0.0, 1.0);
+            final leaving = 1 - Curves.easeOutCubic.transform(t);
+            final returning = const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t);
+            expect(_shownOpacity(shimmer), closeTo(leaving, 0.01), reason: "words at $ms ms");
+            expect(_shownOpacity(resting), closeTo(returning, 0.01), reason: "resting at $ms ms");
+          }
+          expect(find.text("Transcribing..."), findsNothing);
+        });
+      }
     }
   });
 }
+
+/// The settings that ask for reduced motion, and how long a 220 ms fade then
+/// takes: iOS's Reduce Motion only tells the app, while Android's Remove
+/// animations also runs the framework's animation controllers at 5%.
+const _reducedMotionSettings = [
+  (name: "iOS Reduce Motion", features: FakeAccessibilityFeatures(reduceMotion: true), fadeMs: 220),
+  (name: "Android Remove animations", features: FakeAccessibilityFeatures(disableAnimations: true), fadeMs: 11),
+];
 
 /// Whether a screen reader can tap [node] or, as with a button in its tooltip, a node under it.
 bool _offersTap(SemanticsNode node) {

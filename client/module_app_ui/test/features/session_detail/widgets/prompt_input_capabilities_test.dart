@@ -397,38 +397,53 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, "Keep this draft");
   }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}));
 
-  for (final disableAnimations in [true, false]) {
-    testWidgets("staged chip respects ${disableAnimations ? 'Remove animations' : 'iOS Reduce Motion'}", (
-      tester,
-    ) async {
+  for (final (name, features, fadeMs) in const [
+    ("iOS Reduce Motion", FakeAccessibilityFeatures(reduceMotion: true), 220),
+    ("Android Remove animations", FakeAccessibilityFeatures(disableAnimations: true), 11),
+  ]) {
+    testWidgets("$name keeps the staged chip's fade, without its scale or the slot's easing", (tester) async {
       final command = ValueNotifier<CommandInfo?>(null);
       addTearDown(command.dispose);
-      if (!disableAnimations) {
-        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
-        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      }
+      tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       await _pumpCommandComposer(
         tester: tester,
         command: command,
         voiceCubit: null,
-        disableAnimations: disableAnimations,
+        disableAnimations: features.disableAnimations,
       );
       await tester.pumpAndSettle();
+      final transition = find.byType(GlassMaterializeTransition);
+      void expectPlainFade({required int ms}) {
+        final progress = (ms / fadeMs).clamp(0.0, 1.0);
+        expect(tester.widget<GlassMaterializeTransition>(transition).animation.value, closeTo(progress, 0.01));
+        final scale = find.descendant(of: transition, matching: find.byType(Transform)).first;
+        expect(tester.widget<Transform>(scale).transform, Matrix4.identity(), reason: "Scaled at $ms ms");
+      }
+
       command.value = _stagedCommand;
       await tester.pump();
-      await tester.pump();
-      expect(find.byType(GlassChip), findsOneWidget);
-      expect(find.byType(GlassMaterializeTransition), findsNothing);
       expect(
-        find.ancestor(
-          of: find.byKey(const ValueKey("staged-command")),
-          matching: find.byType(AnimatedSwitcher),
-        ),
+        find.ancestor(of: find.byType(AnimatedSwitcher).first, matching: find.byType(AnimatedSize)),
         findsNothing,
+        reason: "The slot takes its new height at once.",
       );
+      expect(find.text("Picker header"), findsOneWidget, reason: "It leaves on a fade rather than at once.");
+      for (var ms = 16; ms <= fadeMs; ms += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectPlainFade(ms: ms);
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(GlassChip), findsOneWidget);
+      expect(find.text("Picker header"), findsNothing);
+
       await tester.tap(find.byIcon(TablerRegular.x));
       await tester.pump();
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      if (fadeMs > 16) {
+        expect(tester.widget<GlassMaterializeTransition>(transition).animation.value, closeTo(1 - 16 / fadeMs, 0.01));
+      }
+      await tester.pumpAndSettle();
       expect(find.byType(GlassChip), findsNothing);
       expect(find.text("Picker header"), findsOneWidget);
     });

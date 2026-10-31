@@ -807,14 +807,14 @@ class const LiveWordsText({
 }
 
 /// One word's opacity, on its way to where its standing says it belongs.
-final class _FadingWord({required String text, required double target, required Duration duration}) {
+final class _FadingWord({required String text, required double target}) {
   String text = text;
 
   /// Runs out once a dim word has stayed the same for long enough to brighten.
   Timer? settling;
   double _from = 0;
   double _to = target;
-  Duration _duration = duration;
+  Duration _duration = _LiveWordsTextState._newWordFade;
   Duration _elapsed = Duration.zero;
   Curve _curve = Curves.easeOut;
 
@@ -827,10 +827,10 @@ final class _FadingWord({required String text, required double target, required 
 
   bool get isFading => _elapsed < _duration;
 
-  void fadeTo({required double target, required Duration duration}) {
+  void fadeTo({required double target}) {
     _from = opacity;
     _to = target;
-    _duration = duration;
+    _duration = _LiveWordsTextState._brightenFade;
     _elapsed = Duration.zero;
     _curve = Curves.ease;
   }
@@ -899,7 +899,6 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
   }
 
   void _syncWords({required LiveWords words, required bool settled}) {
-    final instant = context.isReducedMotion;
     final tentative = settled ? 1.0 : _tentativeOpacity;
     var index = 0;
     // The first word to differ and all those after it have changed. Spacing
@@ -911,7 +910,7 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
       final isConfirmed = match.start + token.trimRight().length <= words.confirmed.length;
       final target = isConfirmed ? 1.0 : tentative;
       if (index == _words.length) {
-        final word = _FadingWord(text: token, target: target, duration: instant ? Duration.zero : _newWordFade);
+        final word = _FadingWord(text: token, target: target);
         _words.add(word);
         _restartSettling(word: word);
       } else {
@@ -920,9 +919,7 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
         word.text = token;
         // A tentative word that hasn't changed stands wherever it has got to.
         if (target == 1 || changed) {
-          if (word.target != target) {
-            word.fadeTo(target: target, duration: instant ? Duration.zero : _brightenFade);
-          }
+          if (word.target != target) word.fadeTo(target: target);
           _restartSettling(word: word);
         }
       }
@@ -939,7 +936,7 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
     word.settling?.cancel();
     if (word.target == 1) return;
     word.settling = Timer(_settleAfter, () {
-      word.fadeTo(target: 1, duration: context.isReducedMotion ? Duration.zero : _brightenFade);
+      word.fadeTo(target: 1);
       _showFades();
     });
   }

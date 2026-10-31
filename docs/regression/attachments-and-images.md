@@ -16,6 +16,7 @@ content the transcript renders live and after reload.
   and transcription still disable the revealed actions. With a pointer the
   actions show without the chevron. On both surfaces they fold back behind the
   chevron once the composer holds text, and the chevron still reopens them.
+  Under reduced motion the pill opens and folds at once.
 - The shared composer offers image staging only for a backend declaring prompt
   attachment support and only when its product shell supplies a real picker.
   Mobile opens its gallery adapter; desktop opens a filtered native file dialog.

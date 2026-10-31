@@ -18,8 +18,10 @@ mobile and desktop shells without turning solid content or product menus into gl
   fallback must not be described as actual iOS Reduce Transparency detection.
 - Only the staged-command chip materializes/dematerializes. Ordinary picker,
   recording-helper, and saved-recording actions keep their ordinary transitions.
-  Prego reduced motion (Remove animations or iOS Reduce Motion) makes this slot
-  change instantly. Staging/clearing retains existing draft and focus behavior.
+  Under Prego reduced motion (Remove animations or iOS Reduce Motion) this slot
+  keeps only the fade: the chip materializes as a plain dissolve, with no scale
+  or blur, and the slot takes its new height at once. Staging/clearing retains
+  existing draft and focus behavior.
 - The scroll-capable Prego glass menu uses tap-only glow, anchors in its nearest
   overlay coordinates, and permits custom rows to dismiss it. This is shared
   dormant-path correctness: all current product menu callers remain flat.

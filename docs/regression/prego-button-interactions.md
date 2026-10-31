@@ -27,7 +27,7 @@ which would race the hold.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: loading preserves release continuity; disabling a held button prevents activation; both reduced-motion sources preserve static press feedback; Android and desktop retain disabled and enabled behavior. |
+| L1 Smoke | Automated: loading preserves release continuity; disabling a held button prevents activation; both reduced-motion sources preserve static press feedback; Android and desktop retain disabled and enabled behavior; each solid and icon-only button is one screen reader node with its name, button flag, enabled state and tap. |
 | L2 Routine | Client end to end on iOS: send feedback and observe the button settle while loading begins; repeat quick taps, holds, cancellation and retry in light and dark mode. |
 | L3 Release | Client end to end: enable Reduce Motion, press a button, and confirm stationary feedback; check Android ripple and web press/hover behavior. |
 | L4 Extended | No additional coverage. |

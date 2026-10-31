@@ -25,8 +25,9 @@ defaults and queued client sends coherent.
   regression matrix, pause reasons and provider-specific scope.
 
 - Staged slash-command chips use a glass-only entrance/exit transition without
-  changing draft, clearing, voice, or picker behavior. The slot changes instantly
-  under reduced motion; presentation coverage lives in [Glass presentation](glass-presentation.md).
+  changing draft, clearing, voice, or picker behavior. Under reduced motion the slot
+  keeps only the fade and takes its new height at once; presentation coverage lives in
+  [Glass presentation](glass-presentation.md).
 
 - Existing chats on mobile and desktop become read-only when harness management
   reports their exact harness unusable. The accessible live notice explains the
@@ -96,8 +97,9 @@ defaults and queued client sends coherent.
   composer growing or shrinking with its text, a needs-you card coming or going, and the first frame of the transcript.
 - A send with the keyboard down, typed or dictated onto a draft, closes the composer as the send's row rises, on the
   rise's timing: the rows above move one way and stop with it, with no drop afterwards. The layout it leaves fades inside
-  the closing box, cut along its top. Under reduced motion the composer lands in one frame. A layout change without a
-  send, such as clearing the text, still holds the box's height through the cross-fade.
+  the closing box, cut along its top. Under reduced motion the composer's height lands in one frame, and the layout
+  it leaves still fades. A layout change without a send, such as clearing the text, still holds the box's height
+  through the cross-fade.
 - DeepSeek preserves that bridge-facing acceptance contract: the shared ACP
   plugin enqueues and returns while the adapter's `session/prompt` response
   remains pending through owned work, projected output, and durability quiesce.
