@@ -2489,6 +2489,326 @@ void main() {
       }
     }
   });
+
+  group("the primary action's send and stop", () {
+    final stop = find.widgetWithIcon(PregoButtonsSolid, TablerSolid.player_stop);
+    final send = find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up);
+    final box = find.byType(EditableText);
+    const draft = "draft words";
+    const touchPlatforms = TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS});
+
+    double arrived(int ms) => Curves.easeOutCubic.transform((ms / 220).clamp(0.0, 1.0));
+
+    double stopOpacity({required WidgetTester tester}) =>
+        tester.widget<Opacity>(find.ancestor(of: stop, matching: find.byType(Opacity)).first).opacity;
+
+    Future<_Composer> pumpBusyWithDraft({
+      required WidgetTester tester,
+      ChatInputMode mode = ChatInputMode.textFirst,
+      ComposerPresentation presentation = ComposerPresentation.touch,
+    }) async {
+      final composer = await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: mode,
+        presentation: presentation,
+        initialText: draft,
+        isBusy: true,
+      );
+      expect(send, findsOneWidget);
+      return composer;
+    }
+
+    Future<_Composer> pumpBusyWithEmptyBox({
+      required WidgetTester tester,
+      ChatInputMode mode = ChatInputMode.textFirst,
+      ComposerPresentation presentation = ComposerPresentation.touch,
+    }) async {
+      final composer = await pumpBusyWithDraft(tester: tester, mode: mode, presentation: presentation);
+      await tester.enterText(box, "");
+      await tester.pumpAndSettle();
+      expect(stop, findsOneWidget);
+      return composer;
+    }
+
+    /// Stop fades over a send that holds at full strength, in the same spot, on
+    /// every frame: never both faint, never a one-frame swap.
+    Future<void> expectDissolve({
+      required WidgetTester tester,
+      required bool stopArrives,
+      required bool sendEnabled,
+      int frameMs = 16,
+    }) async {
+      await tester.pump();
+      final spot = tester.getRect(stop);
+      expect(spot.size, const Size(44, 44));
+      for (var ms = frameMs; ms < 220; ms += frameMs) {
+        await tester.pump(Duration(milliseconds: frameMs));
+        final reason = "at $ms ms";
+        final shown = arrived(ms);
+        expect(stopOpacity(tester: tester), closeTo(stopArrives ? shown : 1 - shown, 0.01), reason: reason);
+        expect(send, findsOneWidget, reason: reason);
+        expect(stop, findsOneWidget, reason: reason);
+        expect(tester.getRect(send), spot, reason: reason);
+        expect(tester.getRect(stop), spot, reason: reason);
+        expect(tester.widget<PregoButtonsSolid>(send).onPressed != null, sendEnabled, reason: "send's look $reason");
+      }
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(stop, stopArrives ? findsOneWidget : findsNothing);
+      expect(send, stopArrives ? findsNothing : findsOneWidget);
+    }
+
+    for (final (surface, mode, presentation) in [
+      ("text-first", ChatInputMode.textFirst, ComposerPresentation.touch),
+      ("voice-first", ChatInputMode.voiceFirst, ComposerPresentation.touch),
+      ("a pointer shell", ChatInputMode.textFirst, ComposerPresentation.pointer),
+    ]) {
+      for (final frameMs in [8, 16]) {
+        testWidgets("dissolve as typing clears and returns, $surface, $frameMs ms frames", (tester) async {
+          await pumpBusyWithDraft(tester: tester, mode: mode, presentation: presentation);
+
+          await tester.enterText(box, "");
+          await expectDissolve(tester: tester, stopArrives: true, sendEnabled: true, frameMs: frameMs);
+          await tester.pumpAndSettle();
+
+          await tester.enterText(box, "a");
+          await expectDissolve(tester: tester, stopArrives: false, sendEnabled: true, frameMs: frameMs);
+        });
+      }
+
+      testWidgets("a tap goes nowhere until the current button shows, $surface", (tester) async {
+        final composer = await pumpBusyWithDraft(tester: tester, mode: mode, presentation: presentation);
+        final spot = tester.getCenter(send);
+
+        Future<void> tapThroughTheFade({required void Function() expectNothingYet}) async {
+          await tester.pump();
+          for (var ms = 16; ms <= 128; ms += 16) {
+            await tester.tapAt(spot);
+            await tester.pump(const Duration(milliseconds: 16));
+            expectNothingYet();
+          }
+          await tester.pump(const Duration(milliseconds: 16));
+          await tester.tapAt(spot);
+          await tester.pump();
+        }
+
+        await tester.enterText(box, "");
+        await tapThroughTheFade(expectNothingYet: () => expect(composer.aborts, 0));
+        expect(composer.aborts, 1, reason: "Stop takes a tap once it shows.");
+        expect(composer.sent, isEmpty);
+        await tester.pumpAndSettle();
+
+        await tester.enterText(box, "typed");
+        await tapThroughTheFade(expectNothingYet: () => expect(composer.sent, isEmpty));
+        expect(composer.sent, [(text: "typed", command: null)], reason: "Send takes a tap once it shows.");
+        expect(composer.aborts, 1);
+        verifyNever(voiceCubit.startRecording);
+      }, variant: touchPlatforms);
+
+      testWidgets("the second tap of a double tap on send stops nothing, $surface", (tester) async {
+        final composer = await pumpBusyWithDraft(tester: tester, mode: mode, presentation: presentation);
+        final spot = tester.getCenter(send);
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.sent, [(text: draft, command: null)]);
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.tapAt(spot);
+        await tester.pumpAndSettle();
+
+        expect(composer.aborts, 0);
+        expect(composer.sent, hasLength(1));
+      }, variant: touchPlatforms);
+
+      testWidgets("a press lifted after its button left does nothing, $surface", (tester) async {
+        final composer = await pumpBusyWithDraft(tester: tester, mode: mode, presentation: presentation);
+
+        final onSend = await tester.startGesture(tester.getCenter(send));
+        await tester.pump();
+        await tester.enterText(box, "");
+        await tester.pump();
+        await onSend.up();
+        await tester.pumpAndSettle();
+        expect(composer.aborts, 0, reason: "A press on send never stops work.");
+        expect(composer.sent, isEmpty, reason: "Nor does it send, once send has gone.");
+
+        final onStop = await tester.startGesture(tester.getCenter(stop));
+        await tester.pump();
+        await tester.enterText(box, "typed");
+        await tester.pump();
+        await onStop.up();
+        await tester.pumpAndSettle();
+        expect(composer.sent, isEmpty, reason: "A press on stop never sends.");
+        expect(composer.aborts, 0);
+      }, variant: touchPlatforms);
+    }
+
+    testWidgets("work starting and ending on an empty box dissolves without greying or brightening send", (
+      tester,
+    ) async {
+      final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
+      expect(find.byType(EditableText), findsNothing, reason: "The resting pill.");
+
+      composer.busy.value = true;
+      await expectDissolve(tester: tester, stopArrives: true, sendEnabled: false);
+      await tester.pumpAndSettle();
+
+      composer.busy.value = false;
+      await expectDissolve(tester: tester, stopArrives: false, sendEnabled: false);
+    });
+
+    testWidgets("disabled send to enabled send stays one button, with no fade", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
+      await tester.tap(find.text("Follow up..."));
+      await tester.pumpAndSettle();
+      final state = tester.state(send);
+      expect(tester.widget<PregoButtonsSolid>(send).onPressed, isNull);
+
+      await tester.enterText(box, "a");
+      await tester.pump();
+
+      expect(tester.state(send), same(state));
+      expect(tester.widget<PregoButtonsSolid>(send).onPressed, isNotNull);
+      expect(stop, findsNothing);
+    });
+
+    for (final (name, flips) in [
+      ("once midway", const [112]),
+      ("three times", const [48, 96, 144]),
+      ("early and late", const [16, 208]),
+    ]) {
+      for (final typing in [false, true]) {
+        testWidgets("turned back $name, by ${typing ? "typing" : "busy"}, retraces with one copy of each", (
+          tester,
+        ) async {
+          final composer = typing
+              ? await pumpBusyWithEmptyBox(tester: tester)
+              : await _pumpComposer(
+                  tester: tester,
+                  voiceCubit: voiceCubit,
+                  mode: ChatInputMode.textFirst,
+                  isBusy: true,
+                );
+          var stopCurrent = true;
+          Future<void> flip() async {
+            stopCurrent = !stopCurrent;
+            if (typing) {
+              await tester.enterText(box, stopCurrent ? "" : "a");
+            } else {
+              composer.busy.value = stopCurrent;
+            }
+          }
+
+          await flip();
+          await tester.pump();
+          var previous = stopOpacity(tester: tester);
+          for (var ms = 16; ms <= 480; ms += 16) {
+            if (flips.contains(ms)) await flip();
+            await tester.pump(const Duration(milliseconds: 16));
+            final reason = "at $ms ms";
+            expect(tester.takeException(), isNull, reason: reason);
+            expect(stop.evaluate().length, lessThanOrEqualTo(1), reason: reason);
+            expect(send.evaluate().length, lessThanOrEqualTo(1), reason: reason);
+            if (stop.evaluate().isEmpty) {
+              expect(send, findsOneWidget, reason: reason);
+              previous = 0;
+              continue;
+            }
+            final now = stopOpacity(tester: tester);
+            // Never faster than a fade's own first frame: no restart from nothing.
+            expect((now - previous).abs(), lessThanOrEqualTo(arrived(16) + 0.01), reason: reason);
+            if (now < 1) expect(send, findsOneWidget, reason: "nothing behind the fading stop $reason");
+            previous = now;
+          }
+          expect(stop, stopCurrent ? findsOneWidget : findsNothing);
+          expect(send, stopCurrent ? findsNothing : findsOneWidget);
+        });
+      }
+    }
+
+    testWidgets("a screen reader sees only the current button, and neither takes focus early", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpBusyWithDraft(tester: tester);
+      final sendFocus = Focus.of(tester.element(find.descendant(of: send, matching: find.byType(Icon))));
+
+      await tester.enterText(box, "");
+      await tester.pump();
+      expect(find.semantics.byLabel("Send"), findsNothing, reason: "From the frame of the swap.");
+      expect(find.semantics.byLabel("Stop"), findsOne, reason: "From the frame of the swap.");
+      expect(sendFocus.canRequestFocus, isFalse, reason: "From the frame of the swap.");
+      for (var ms = 16; ms <= 128; ms += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final reason = "at $ms ms";
+        expect(find.semantics.byLabel("Send"), findsNothing, reason: reason);
+        expect(find.semantics.byLabel("Stop"), findsOne, reason: reason);
+        expect(_offersTap(find.semantics.byLabel("Stop").evaluate().single), isFalse, reason: reason);
+        expect(sendFocus.canRequestFocus, isFalse, reason: reason);
+        expect(
+          Focus.of(tester.element(find.descendant(of: stop, matching: find.byType(Icon)))).canRequestFocus,
+          isFalse,
+          reason: reason,
+        );
+      }
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(_offersTap(find.semantics.byLabel("Stop").evaluate().single), isTrue);
+      expect(Focus.of(tester.element(find.descendant(of: stop, matching: find.byType(Icon)))).canRequestFocus, isTrue);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(box, "a");
+      await tester.pump();
+      expect(find.semantics.byLabel("Stop"), findsNothing, reason: "From the frame of the swap.");
+      expect(find.semantics.byLabel("Send"), findsOne);
+      semantics.dispose();
+    });
+
+    testWidgets("a press's scale carries on through the swap", (tester) async {
+      await pumpBusyWithDraft(tester: tester);
+      double scale() => tester
+          .widget<Transform>(find.descendant(of: send, matching: find.byType(Transform)).first)
+          .transform
+          .getMaxScaleOnAxis();
+
+      final press = await tester.startGesture(tester.getCenter(send));
+      await tester.pump();
+      await tester.pump(kPressTimeout);
+      await tester.pump(const Duration(milliseconds: 100));
+      final pressed = scale();
+      expect(pressed, greaterThan(1));
+
+      await tester.enterText(box, "");
+      await tester.pump();
+      expect(scale(), closeTo(pressed, 0.02), reason: "Send holds its press as it is covered.");
+      await press.up();
+      await tester.pumpAndSettle();
+    }, variant: const TargetPlatformVariant({TargetPlatform.iOS}));
+
+    testWidgets("reduced motion keeps the fade", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await pumpBusyWithDraft(tester: tester);
+
+      await tester.enterText(box, "");
+      await expectDissolve(tester: tester, stopArrives: true, sendEnabled: true);
+    });
+
+    testWidgets("a press on voice-first's resting stop lifted after work ended stops nothing", (tester) async {
+      final composer = await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.voiceFirst,
+        isBusy: true,
+      );
+
+      final press = await tester.startGesture(tester.getCenter(stop));
+      await tester.pump();
+      composer.busy.value = false;
+      await tester.pump();
+      await press.up();
+      await tester.pumpAndSettle();
+
+      expect(composer.aborts, 0);
+    });
+  });
 }
 
 /// The settings that ask for reduced motion, and how long a 220 ms fade then

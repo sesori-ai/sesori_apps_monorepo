@@ -1490,11 +1490,13 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// Keeps [child] inert for the first stretch of its return, while [_fadeInPlace]
   /// still shows nothing: a tap on that empty spot must not send the draft a hold
-  /// left in the box, or stop the running work.
-  Widget _inertUntilShowing({required bool visible, required Widget child}) {
+  /// left in the box, or stop the running work. With [waitsOnArrival] it also waits
+  /// as its layout cross-fades in: a send that collapses the box brings the resting
+  /// stop under the finger.
+  Widget _inertUntilShowing({required bool visible, required bool waitsOnArrival, required Widget child}) {
     final target = visible ? 1.0 : 0.0;
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: target, end: target),
+      tween: Tween(begin: waitsOnArrival ? 0 : target, end: target),
       duration: _morphDuration,
       builder: (context, progress, _) {
         final inert = progress < _trailingReturnCurve.begin;
@@ -1824,7 +1826,7 @@ class _PromptInputState() extends State<PromptInput> {
       ),
       restingActions: _fadeInPlace(
         visible: trailingVisible,
-        child: _inertUntilShowing(visible: trailingVisible, child: trailing),
+        child: _inertUntilShowing(visible: trailingVisible, waitsOnArrival: false, child: trailing),
       ),
       child: Row(
         spacing: PregoSpacing.md,
@@ -1907,7 +1909,17 @@ class _PromptInputState() extends State<PromptInput> {
         children: [
           _fadeInPlace(
             visible: busy,
-            child: _inertUntilShowing(visible: busy, child: _buildStopButton(context)),
+            child: _inertUntilShowing(
+              visible: busy,
+              waitsOnArrival: true,
+              child: _buildStopButton(
+                context,
+                onPressed: () {
+                  // A press can outlast the work: lifting after it ended stops nothing.
+                  if (widget.isBusy) widget.onAbort();
+                },
+              ),
+            ),
           ),
           AnimatedPositionedDirectional(
             duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
@@ -2816,16 +2828,83 @@ class _PromptInputState() extends State<PromptInput> {
   /// so a plain tap deliberately does nothing.
   static void _ignoreTap() {}
 
+  /// Which button rests in the primary action's spot.
+  bool get _showsStop => widget.isBusy && !_hasSendableContent;
+
+  /// Send as it last looked while it was the current button. It keeps that look
+  /// under an arriving stop: emptying the box would otherwise grey it on the first
+  /// frame, under a stop that has barely started to show.
+  Widget? _sendAsLastShown;
+
+  /// How much of the current button shows when it starts taking input, whichever
+  /// way the swap went: 132 ms into a settled fade, the wait [_inertUntilShowing]
+  /// gives. Nobody reacts to a button sooner, so a tap before this was aimed at what
+  /// was there before, such as the second tap of a double tap on send landing on the
+  /// stop that the send brought.
+  static final double _primaryActionShownEnough = _morphCurve.transform(_trailingReturnCurve.begin);
+
   /// The dark action button: sends when there is content to send, otherwise
   /// stops the agent's in-flight work while it is busy.
+  ///
+  /// The two dissolve in one spot. Stop fades over a send that stays opaque until
+  /// it is covered, so the spot never goes faint, and one value carries the fade so
+  /// that a swap turned back midway retraces it with no restart and no third layer.
+  /// Send's own disabled and enabled looks stay one button, with no fade.
   Widget _buildPrimaryActionButton(BuildContext context) {
-    final loc = context.loc;
-    final showStop = widget.isBusy && !_hasSendableContent;
+    final showStop = _showsStop;
+    if (!showStop) _sendAsLastShown = _buildSendButton(context);
+    final send = _sendAsLastShown;
+    final stop = _buildStopButton(
+      context,
+      // A press can outlast the button: lifting after it left stops nothing.
+      onPressed: () {
+        if (_showsStop) widget.onAbort();
+      },
+    );
+    final stopTarget = showStop ? 1.0 : 0.0;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: stopTarget, end: stopTarget),
+      duration: _morphDuration,
+      curve: _morphCurve,
+      builder: (context, stopShown, _) => Stack(
+        children: [
+          if (send != null && (!showStop || stopShown < 1))
+            _buildPrimaryActionLayer(name: "send", current: !showStop, shown: 1 - stopShown, child: send),
+          if (showStop || stopShown > 0)
+            _buildPrimaryActionLayer(
+              name: "stop",
+              current: showStop,
+              shown: stopShown,
+              child: Opacity(opacity: stopShown, alwaysIncludeSemantics: true, child: stop),
+            ),
+        ],
+      ),
+    );
+  }
 
-    if (showStop) return _buildStopButton(context);
+  /// One button of the primary action's spot. Only the current one is there for a
+  /// screen reader, and it takes input once it shows; the other is inert from the
+  /// frame of the swap.
+  Widget _buildPrimaryActionLayer({
+    required String name,
+    required bool current,
+    required double shown,
+    required Widget child,
+  }) {
+    final inert = !current || shown < _primaryActionShownEnough;
+    return ExcludeSemantics(
+      key: ValueKey(name),
+      excluding: !current,
+      child: ExcludeFocus(
+        excluding: inert,
+        child: IgnorePointer(ignoring: inert, child: child),
+      ),
+    );
+  }
 
+  Widget _buildSendButton(BuildContext context) {
     return _buildLabelledIconButton(
-      label: loc.sessionDetailSend,
+      label: context.loc.sessionDetailSend,
       icon: TablerRegular.arrow_up,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
       // An empty composer has nothing to send: show the action as genuinely
@@ -2834,12 +2913,12 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  Widget _buildStopButton(BuildContext context) {
+  Widget _buildStopButton(BuildContext context, {required VoidCallback onPressed}) {
     return _buildLabelledIconButton(
       label: context.loc.sessionDetailAbort,
       icon: TablerSolid.player_stop,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-      onPressed: widget.onAbort,
+      onPressed: onPressed,
     );
   }
 
