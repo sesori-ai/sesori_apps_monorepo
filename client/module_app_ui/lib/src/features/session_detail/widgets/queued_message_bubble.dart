@@ -103,9 +103,11 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     super.didUpdateWidget(oldWidget);
     final previous = oldWidget.presentation;
     final presentation = widget.presentation;
-    // A line that has shown stays, whatever waiting state the message moves on to.
+    final since = _statusClock(presentation);
+    // A line that has shown stays, whatever waiting state the message moves on to,
+    // and a state with no send time of its own carries on from the one before it.
     if (_waitsForStatus(previous) != _waitsForStatus(presentation) ||
-        (!_isStatusDue && _statusClock(previous) != _statusClock(presentation))) {
+        (!_isStatusDue && since != null && since != _statusClock(previous))) {
       _syncStatusTimer();
     }
   }

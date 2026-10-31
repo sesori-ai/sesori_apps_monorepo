@@ -11,11 +11,12 @@ part "launch_follow_up.freezed.dart";
 @Freezed()
 sealed class LaunchFollowUp with _$LaunchFollowUp {
   /// Not sent yet; it waits for the session, or for the one ahead of it. [since]
-  /// is when the user sent it, which its bubble's status line counts from.
+  /// is when the user last sent or retried it, which its bubble's status line
+  /// counts from.
   const factory queued({required QueuedSessionSubmission submission, required DateTime since}) = QueuedLaunchFollowUp;
 
-  /// The one being sent now. [since] is still when the user sent it, so its
-  /// bubble keeps one clock however often it is rebuilt.
+  /// The one being sent now. [since] carries over from [queued], so its bubble
+  /// keeps one clock however often it is rebuilt.
   const factory sending({required QueuedSessionSubmission submission, required DateTime since}) = SendingLaunchFollowUp;
 
   /// The bridge accepted it; held only until a session screen parks it.
