@@ -308,6 +308,7 @@ Future<void> _pumpAccordion({
             isTyping: isTyping,
             onAttachImageTap: onAttachImageTap,
             onSlashCommandsTap: onSlashCommandsTap,
+            onOpenChanged: (_) {},
           ),
         ),
       ),

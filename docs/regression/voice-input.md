@@ -212,6 +212,8 @@ the server. Desktop always uses the server.
   "Transcribing..." while transcribing, or "Finishing..." while a live session finishes, and otherwise its hint, "Hold
   to talk" or, with a draft in the box, "Hold to talk more".
   A semantic tap on it toggles recording.
+- The pill's centred hint keeps clear of the options opened beside it at any text size, shortening rather than running
+  under them; a hint with room to spare stays where it is.
 - The composer's icon buttons are each a named screen reader button that can be activated, in every layout: "Type a
   message", "Stop", "Send", "Cancel transcription", a pointer shell's "Record voice", "More actions", "Attach image",
   "Slash commands" and "Expand editor". Send reads as disabled when there is nothing to send, and "Attach image",

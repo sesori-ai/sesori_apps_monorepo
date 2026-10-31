@@ -1937,6 +1937,70 @@ void main() {
     });
   }
 
+  group("the hold words beside the open options", () {
+    final words = find.text("Hold to talk");
+    final options = find.byType(ComposerOptionsAccordion);
+
+    Future<void> pumpAt({required WidgetTester tester, required double textScale, String initialText = ""}) async {
+      tester.view.physicalSize = const Size(320, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.voiceFirst,
+        initialText: initialText,
+        attachmentsSupported: true,
+      );
+    }
+
+    Future<void> openOptions({required WidgetTester tester}) async {
+      await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "More actions"));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+    }
+
+    for (final textScale in const [2.0, 2.2, 2.5, 3.0]) {
+      testWidgets("keep clear of them and stay centred at text scale $textScale", (tester) async {
+        await pumpAt(tester: tester, textScale: textScale);
+        final centre = tester.getCenter(words).dx;
+
+        await openOptions(tester: tester);
+
+        expect(tester.getTopLeft(words).dx, greaterThanOrEqualTo(tester.getTopRight(options).dx));
+        expect(tester.getCenter(words).dx, moreOrLessEquals(centre));
+      });
+    }
+
+    testWidgets("don't move when they fit", (tester) async {
+      // The test font's wide letters need this to fit as the real ones do at 1.
+      await pumpAt(tester: tester, textScale: 0.6);
+      final closed = tester.getRect(words);
+
+      await openOptions(tester: tester);
+
+      expect(tester.getRect(words), closed);
+    });
+
+    testWidgets("get their room back when typing folds the options", (tester) async {
+      await pumpAt(tester: tester, textScale: 2.5, initialText: "draft");
+      final wordsWithDraft = find.text("Hold to talk more");
+      final closed = tester.getRect(wordsWithDraft);
+      await openOptions(tester: tester);
+      expect(tester.getTopLeft(wordsWithDraft).dx, greaterThan(closed.left));
+
+      final field = tester.widget<EditableText>(find.byType(EditableText));
+      field.controller.text = "";
+      await tester.pumpAndSettle();
+      field.controller.text = "draft";
+      await tester.pumpAndSettle();
+
+      expect(tester.getRect(wordsWithDraft), closed);
+    });
+  });
+
   group("voice-first's trailing room", () {
     final room = find.byWidgetPredicate((widget) => widget is AnimatedSize && widget.child is SizedBox);
     final keyboard = find.byIcon(TablerRegular.keyboard);
@@ -3341,6 +3405,7 @@ Future<_Composer> _pumpComposer({
   Widget? composerTrailing,
   bool isBusy = false,
   ComposerPresentation presentation = ComposerPresentation.touch,
+  bool attachmentsSupported = false,
 }) async {
   final composer = _Composer()..busy.value = isBusy;
   addTearDown(composer.busy.dispose);
@@ -3394,7 +3459,7 @@ Future<_Composer> _pumpComposer({
                   stagedCommand: stagedCommand,
                   onCommandSelected: (_) {},
                   onCommandCleared: () => composer.commandsCleared++,
-                  attachmentsSupported: false,
+                  attachmentsSupported: attachmentsSupported,
                   draftIdentity: "touch-voice-test",
                   restorationKey: null,
                   initialDraft: ComposerDraft.typed(text: initialText),

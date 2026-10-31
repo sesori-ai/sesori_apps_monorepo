@@ -34,6 +34,10 @@ class const ComposerOptionsAccordion({
   /// Null holds the attach action's place disabled, while the harness'
   /// support is still unknown.
   required final VoidCallback? onAttachImageTap,
+
+  /// Says whether the actions show, once it has built and whenever that changes,
+  /// for what sits beside the pill to keep clear of them.
+  required final ValueChanged<bool> onOpenChanged,
 }) extends StatefulWidget {
   static const double _iconButtonSize = 32;
 
@@ -52,6 +56,7 @@ class const ComposerOptionsAccordion({
 
 class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
   bool _isOpen = false;
+  bool? _reportedOpen;
 
   @override
   void didUpdateWidget(ComposerOptionsAccordion oldWidget) {
@@ -66,6 +71,15 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
   }
 
   bool get _isOpenByDefault => widget.alwaysOpen && !widget.isTyping;
+
+  /// After the frame: typing folds the pill while the composer above it builds.
+  void _reportOpen({required bool isOpen}) {
+    if (isOpen == _reportedOpen) return;
+    _reportedOpen = isOpen;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onOpenChanged(isOpen);
+    });
+  }
 
   /// Eases the pill as it opens and folds. Reduced motion resizes at once: a
   /// zero-duration [AnimatedSize] would re-dirty itself mid-layout.
@@ -84,6 +98,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
     final loc = context.loc;
     final isOpen = _isOpen || _isOpenByDefault;
     final onAttachImageTap = widget.onAttachImageTap;
+    _reportOpen(isOpen: isOpen);
 
     return DecoratedBox(
       decoration: BoxDecoration(

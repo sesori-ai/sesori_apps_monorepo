@@ -253,6 +253,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// the picker's search takes focus, and a layout swap would drop the
   /// picker's anchor.
   bool _typingPinnedByPicker = false;
+  bool _optionsOpen = false;
 
   /// Whether the field holds sendable text. Mirrored into state so the
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
@@ -1851,6 +1852,11 @@ class _PromptInputState() extends State<PromptInput> {
             style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
           ),
           extraTrailingWidth: extraTrailingWidth,
+          // Open, the options reach past the room the words keep from the row's
+          // actions. On both sides, so that words with room to spare stay put.
+          extraSideWidth: _optionsOpen && _voicePresentation == _VoicePresentation.idle
+              ? ComposerOptionsAccordion.openWidth(showAttachImage: _offersAttachImage) - _actionButtonSize
+              : 0,
         ),
       ),
       restingActions: _fadeInPlace(
@@ -1887,8 +1893,13 @@ class _PromptInputState() extends State<PromptInput> {
   /// widens as the room for voice-first's trailing actions closes, which would
   /// carry them sideways as they fade. The insets match the row's at rest, so they sit centred between
   /// its actions. [extraTrailingWidth] is how much wider the trailing actions
-  /// rest than the leading ones.
-  Widget _buildVoiceCaption(BuildContext context, {required Widget idle, required double extraTrailingWidth}) {
+  /// rest than the leading ones, [extraSideWidth] more room to keep on each side.
+  Widget _buildVoiceCaption(
+    BuildContext context, {
+    required Widget idle,
+    required double extraTrailingWidth,
+    required double extraSideWidth,
+  }) {
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-caption-idle"), child: idle),
       _VoicePresentation.recording => const SizedBox.shrink(key: ValueKey("voice-caption-recording")),
@@ -1904,7 +1915,7 @@ class _PromptInputState() extends State<PromptInput> {
         child: AnimatedPadding(
           duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
           curve: _morphCurve,
-          padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
+          padding: EdgeInsetsDirectional.only(start: extraSideWidth, end: extraSideWidth + extraTrailingWidth),
           child: Center(
             child: AnimatedSwitcher(
               duration: _morphDuration,
@@ -1975,6 +1986,7 @@ class _PromptInputState() extends State<PromptInput> {
       context,
       idle: idle,
       extraTrailingWidth: pointer ? 0 : _actionButtonSize + PregoSpacing.sm,
+      extraSideWidth: 0,
     );
   }
 
@@ -2502,6 +2514,9 @@ class _PromptInputState() extends State<PromptInput> {
           toggle();
         },
         onAttachImageTap: (widget.attachmentsSupported ?? false) ? _handleAttachImage : null,
+        onOpenChanged: (isOpen) {
+          if (isOpen != _optionsOpen) setState(() => _optionsOpen = isOpen);
+        },
       ),
       contentBuilder: (context, close) => CommandPicker(
         commands: widget.availableCommands,
