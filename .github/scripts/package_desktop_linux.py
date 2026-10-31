@@ -231,6 +231,9 @@ def elf_files(*, root: Path) -> list[Path]:
 # clean Debian 13 and Fedora 44 abort at first frame with "Couldn't open libEGL.so.1" / "libGLESv2.so.2" without these.
 DLOPEN_DEB_DEPENDENCIES = "libegl1, libgles2"
 DLOPEN_RPM_REQUIRES = ("libEGL.so.1()(64bit)", "libGLESv2.so.2()(64bit)")
+# Voice input runs these tools from the PATH, so no scanner sees them. Only voice needs them: recommended, not required.
+VOICE_DEB_RECOMMENDS = "pulseaudio-utils, ffmpeg"
+VOICE_RPM_RECOMMENDS = ("/usr/bin/parecord", "/usr/bin/ffmpeg")
 
 
 def deb_dependencies(*, root: Path, work: Path, identity: dict) -> tuple[str, list[str]]:
@@ -263,7 +266,7 @@ def build_deb(*, root: Path, work: Path, output: Path, arch: str, identity: dict
     control.write_text(
         f"Package: {PACKAGE_NAME}\nVersion: {identity['version']}-{identity['buildNumber']}\n"
         f"Architecture: {debian_arch}\nMaintainer: Sesori <support@sesori.com>\n"
-        f"Section: devel\nPriority: optional\nDepends: {dependencies}\n"
+        f"Section: devel\nPriority: optional\nDepends: {dependencies}\nRecommends: {VOICE_DEB_RECOMMENDS}\n"
         "Description: Sesori desktop cockpit\n",
         encoding="utf-8",
     )
@@ -290,6 +293,7 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
         "Summary: Sesori desktop cockpit\nLicense: Proprietary\n"
         f"BuildArch: {rpm_arch}\nAutoReqProv: yes\n"
         + "".join(f"Requires: {soname}\n" for soname in DLOPEN_RPM_REQUIRES)
+        + "".join(f"Recommends: {path}\n" for path in VOICE_RPM_RECOMMENDS)
         + "\n%description\nSesori desktop cockpit\n\n"
         "%prep\n\n%build\n\n%install\nmkdir -p %{buildroot}\ncp -a %{_sourcedir}/payload/. %{buildroot}/\n\n"
         "%files\n/opt/sesori-desktop\n/usr/bin/sesori-desktop\n"
