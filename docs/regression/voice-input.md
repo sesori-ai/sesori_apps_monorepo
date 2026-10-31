@@ -67,11 +67,12 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   answer: until the mode has loaded and the host has said it can stream, a hold records first. The feedback sheet always
   records first.
 - A live dictation sends its audio as it is spoken. Audio spoken before the server is ready waits in memory, up to
-  30 seconds, and goes first, so a slow start loses nothing. The server refuses more than 5 seconds ahead of real time,
+  30 seconds, and goes first, so a start that reaches `ready` within that loses nothing. The server refuses more than 5 seconds ahead of real time,
   so up to 4 seconds go at once and the rest follows at real time, with new audio behind it. The words lag by that
   backlog until the release, and a release sends what is left at the same pace, up to about 26 seconds under Finishing,
-  before it finishes. A start slower than 30 seconds falls back. A release before `ready` waits for the server, sends
-  what was held the same way, and then finishes. Only confirmed words are the result; a blank result is the
+  before it finishes. With the finger still down, 30 seconds without `ready` falls back and drops what was held. A
+  release before `ready` waits for the server with no client deadline, only the X, then sends what was held the same
+  way and finishes. Only confirmed words are the result; a blank result is the
   empty-transcript error.
 - A live failure before any audio left while the user still holds continues as a recording, without losing the hold.
   Those words land in the box with a cut-off notice and are never sent. A denied microphone permission is not a failure

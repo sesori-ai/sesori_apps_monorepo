@@ -188,8 +188,10 @@ About ten dictations each on Wi-Fi and cellular, including the first after a col
   token read.
 - Sources: `flutter run` or `flutter logs`, `adb logcat`, the Xcode device console, or `<temp dir>/logs/app.log`
   on the phone (no export in the app).
-- Over 4 s, nothing is lost: the words lag by the difference, and a release waits that long under Finishing. Only
-  over about 30 s does it fall back to recording. This Mac saw about 1 s, which says nothing about a phone.
+- Over 4 s, the speech is kept unless the socket or microphone fails during the backlog: the words lag by the
+  difference, and a release waits that long under Finishing. With the finger still down, about 30 s without `ready`
+  falls back to recording and drops what was held. After a release there is no client deadline for `ready`, only the X.
+  This Mac saw about 1 s, which says nothing about a phone.
 - Fails if the wait after a release is unbearable, or the lag in the words feels wrong, at the worst value seen.
 
 ### 4. Feel, in focus then panel (iPhone and Android)
