@@ -40,7 +40,9 @@ import "product_analytics_service.dart";
 ///
 /// The account's bridge list itself is published on [bridges]. A live
 /// connection marks it stale without emitting, so the next
-/// [getRegisteredBridges] refetches while consumers keep the last list. The
+/// [getRegisteredBridges] refetches while consumers keep the last list. Parking
+/// on an offline target refetches at once, since presence notices may have been
+/// missed and nothing else would correct the list. The
 /// relay's presence notices update a listed bridge's status in place, and a
 /// notice for a bridge the list does not know refetches it. [rename] and
 /// [remove] apply a confirmed change to the published list in place.
@@ -336,7 +338,9 @@ class RegisteredBridgesService({
         unawaited(_latch());
       // Parked offline: (re)resolve so a consumer of [isRegistered] alone — the
       // overlay — gets the right answer. Coalesced, and a no-op once latched.
+      // The relay replays no presence on connect, so the list may be stale too.
       case ConnectionBridgeOffline():
+        _refetchAfterRunningFetch();
         unawaited(hasRegisteredBridges());
       // Pre-connection / transient states carry no registration signal. The
       // socket is gone, so presence notices start missing.
