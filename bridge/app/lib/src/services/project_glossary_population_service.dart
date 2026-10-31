@@ -73,15 +73,16 @@ class ProjectGlossaryPopulationService({
 
     final desiredWordSet = desiredWords.toSet();
     final staleWords = existingWords.where((word) => !desiredWordSet.contains(word)).toList(growable: false);
+    var removedCount = 0;
     for (var start = 0; start < staleWords.length; start += _maximumMutationWords) {
       if (!_accepting) return;
       final end = min(start + _maximumMutationWords, staleWords.length);
-      await _publicationRepository.removeWords(
+      removedCount += await _publicationRepository.removeWords(
         scope: scope,
         words: staleWords.sublist(start, end),
       );
     }
-    Log.i("Refreshed the glossary of $projectPath: ${desiredWords.length} words, ${staleWords.length} removed");
+    Log.i("Refreshed the glossary of $projectPath: ${desiredWords.length} words, $removedCount removed");
   }
 
   void beginShutdown() {
