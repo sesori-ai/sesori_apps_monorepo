@@ -81,6 +81,8 @@ import 'package:sesori_desktop/core/platform/no_op_founder_call_config_source.da
     as _i1005;
 import 'package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart'
     as _i393;
+import 'package:sesori_desktop/core/platform/unsupported_on_device_speech_source.dart'
+    as _i567;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
 import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -114,6 +116,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i925.DesktopComposerImagePicker(),
+    );
+    gh.lazySingleton<_i948.OnDeviceSpeechSource>(
+      () => _i567.UnsupportedOnDeviceSpeechSource(),
     );
     gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
       () => _i11.FlutterDesktopApplicationSupportDirectory(),

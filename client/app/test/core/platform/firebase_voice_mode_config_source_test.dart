@@ -33,6 +33,18 @@ void main() {
     expect(FirebaseVoiceModeConfigSource.liveEnabledKey, "voice_live_enabled");
   });
 
+  test("uses the agreed kill switch key", () {
+    expect(FirebaseVoiceModeConfigSource.onDeviceDisabledKey, "voice_on_device_disabled");
+  });
+
+  test("leaves on-device on while the kill switch is unset, and off once it is set", () async {
+    when(() => remoteConfig.getBool(FirebaseVoiceModeConfigSource.onDeviceDisabledKey)).thenReturn(false);
+    expect(await source.fetchOnDeviceEnabled(), isTrue);
+
+    when(() => remoteConfig.getBool(FirebaseVoiceModeConfigSource.onDeviceDisabledKey)).thenReturn(true);
+    expect(await source.fetchOnDeviceEnabled(), isFalse);
+  });
+
   test("passes the activated value through", () async {
     expect(await source.fetchLiveEnabled(), isTrue);
 

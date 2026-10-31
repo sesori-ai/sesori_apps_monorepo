@@ -13,6 +13,11 @@ live on and the host can stream, the same gestures run over a realtime socket in
 Remote Config key `voice_live_enabled` controls the switch. On desktop the build fixes it: the `internal` channel runs live,
 and `stable` records first.
 
+A phone that can do it transcribes on the device instead of using the server: iOS 26 and later through `SpeechAnalyzer`.
+Audio then never leaves the phone, and the gestures stay the same. `voice_live_enabled` still decides whether the words
+show while the user speaks. Setting the Remote Config key `voice_on_device_disabled` to `true` sends every dictation to
+the server. Desktop always uses the server.
+
 ## Required Behavior
 
 - Recording starts only with microphone permission. Denial or a failing check gives a distinct permission error and
@@ -65,6 +70,14 @@ and `stable` records first.
   does not retain the recording or transcript.
 - An unset `voice_live_enabled` means record first. A phone reads it at launch, so a Firebase change applies from its next
   cold launch.
+- Unset, `voice_on_device_disabled` leaves on-device on, and a phone reads it at launch like `voice_live_enabled`. Until
+  it has loaded and the device has answered, a hold uses the server. The feedback sheet always uses the server.
+- A device runs a dictation only when it already has the model for its own language. A model it can get downloads in the
+  background for a later dictation, without any prompt, and that hold uses the server. There is no auto-detect: the
+  engine hears the device language only, and the project glossary does not apply.
+- An on-device engine that won't start falls back to a recording for the server, like a live session that can't start.
+  One that fails mid-dictation lands the words so far in the box with the cut-off notice, or shows a failure with no
+  Retry, since it keeps no recording. One that stops answering after release gives up after 15 seconds the same way.
 - A hold takes the voice mode once, when it starts, and keeps it whatever the switch does next. It never waits for an
   answer: until the mode has loaded and the host has said it can stream, a hold records first. The feedback sheet always
   records first.
@@ -155,8 +168,8 @@ and `stable` records first.
 - Live words that land in the box (the pencil or a cut-off) glide to the field, which holds its text back
   until they arrive. A dictation with nothing to land in, or under reduced motion, fades where it stands.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
-  `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
-  counts as. No audio, transcript, or prompt text reaches logs or analytics.
+  `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live`, `on_device` or `after_recording`, which
+  a fallback counts as. No audio, transcript, or prompt text reaches logs or analytics.
 - A successful current-project load starts a best-effort bridge glossary refresh when that glossary is due: at most once
   every 24 hours, 10 minutes after a failure, and shared by worktrees of one repository. Refreshes run one at a time and
   never delay the route response, recording, or transcription. A bridge restart allows one more refresh, and the bridge
@@ -228,6 +241,9 @@ and confirm they glide into the box; slide out and confirm the fade. Repeat with
 dictation falls back and lands in the box with a notice. On the desktop `internal` build, confirm the same with its
 controls.
 Before the first public release containing this code, confirm `voice_live_enabled` is `false` in Firebase.
+On a phone with on-device support and its language model installed, turn on airplane mode, dictate with live off and then
+on, and confirm usable text with no error. Set `voice_on_device_disabled` to `true`, cold launch, and confirm dictation
+needs the network again.
 On either, send a dictated message and confirm the bubble and the harness transcript show `🎙️ "words"`, while the
 generated session title shows plain words.
 

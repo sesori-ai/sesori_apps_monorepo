@@ -56,8 +56,21 @@ class VoiceTranscriptionService({
     } catch (error, stackTrace) {
       logw("Could not load the voice mode; keeping the last one", error, stackTrace);
     }
+    if (_voiceModeRepository.onDeviceEnabled) {
+      session._canRunOnDevice =
+          await _repository.prepareOnDevice() && await session._captureSession.supportsPcmStream();
+    }
     if (_voiceModeRepository.mode is! VoiceModeLive) return;
     session._canRunLive = await session._captureSession.supportsPcmStream();
+  }
+
+  /// The two switches are independent: the device's engine runs whenever it can,
+  /// and the live switch decides whether the words show while the user speaks.
+  VoiceDictationMode _chooseMode({required VoiceTranscriptionSession session}) {
+    final liveEnabled = _voiceModeRepository.mode is VoiceModeLive;
+    if (session._canRunOnDevice)
+      return liveEnabled ? VoiceDictationMode.onDeviceLive : VoiceDictationMode.onDeviceHidden;
+    return session._canRunLive && liveEnabled ? VoiceDictationMode.live : VoiceDictationMode.afterRecording;
   }
 
   ProjectGlossaryKey? _rememberedProjectGlossaryKey({required String? projectId}) {
@@ -126,8 +139,11 @@ class VoiceTranscriptionService({
   Stream<VoiceLiveEvent> liveEventStream({required VoiceTranscriptionSession session}) =>
       session._liveEventsController.stream;
 
-  /// Whether the dictation is running live.
-  bool isLive({required VoiceTranscriptionSession session}) => session._state is _VoiceSessionLiveRecording;
+  /// Whether the dictation shows its words while the user speaks.
+  bool isLive({required VoiceTranscriptionSession session}) {
+    final state = session._state;
+    return state is _VoiceSessionLiveRecording && state.mode != VoiceDictationMode.onDeviceHidden;
+  }
 
   Future<void> prewarm({required VoiceTranscriptionSession session}) {
     if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) {
@@ -176,8 +192,8 @@ class VoiceTranscriptionService({
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
     if (session._projectGlossaryKey == null) _loadProjectGlossaryKeyIfIdle(session: session);
-    // Read once, here: the dictation keeps this mode whatever the switch does next.
-    final mode = session._canRunLive ? _voiceModeRepository.mode : const VoiceModeAfterRecording();
+    // Read once, here: the dictation keeps this mode whatever the switches do next.
+    final mode = _chooseMode(session: session);
 
     try {
       final prewarmFuture = session._prewarmFuture;
@@ -187,10 +203,26 @@ class VoiceTranscriptionService({
       }
 
       switch (mode) {
-        case VoiceModeAfterRecording():
+        case VoiceDictationMode.afterRecording:
           await _startFileCapture(session: session, generation: generation, fellBackFromLive: false);
-        case VoiceModeLive():
-          await _startLiveCapture(session: session, generation: generation);
+        case VoiceDictationMode.live:
+          _logProjectGlossaryUse(session: session);
+          await _startLiveCapture(
+            session: session,
+            generation: generation,
+            mode: mode,
+            connecting: _repository.openRealtime(
+              sampleRate: voiceCapturePcmSampleRate,
+              projectKey: session._projectGlossaryKey,
+            ),
+          );
+        case VoiceDictationMode.onDeviceLive || VoiceDictationMode.onDeviceHidden:
+          await _startLiveCapture(
+            session: session,
+            generation: generation,
+            mode: mode,
+            connecting: _repository.openOnDevice(sampleRate: voiceCapturePcmSampleRate),
+          );
       }
     } on VoiceCapturePermissionDenied catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
@@ -226,13 +258,13 @@ class VoiceTranscriptionService({
   /// long the microphone takes. Whatever stops the dictation before the run takes
   /// the socket closes it. A microphone that refuses to stream may still record a
   /// file (D21). A denied permission is not that, and goes up as itself.
-  Future<void> _startLiveCapture({required VoiceTranscriptionSession session, required int generation}) async {
+  Future<void> _startLiveCapture({
+    required VoiceTranscriptionSession session,
+    required int generation,
+    required VoiceDictationMode mode,
+    required Future<VoiceRealtimeConnection> connecting,
+  }) async {
     final captureSession = session._captureSession;
-    _logProjectGlossaryUse(session: session);
-    final connecting = _repository.openRealtime(
-      sampleRate: voiceCapturePcmSampleRate,
-      projectKey: session._projectGlossaryKey,
-    );
     // A failure waits for the run or the close below, which is not an unhandled one.
     connecting.ignore();
     final Stream<Uint8List> frames;
@@ -260,9 +292,9 @@ class VoiceTranscriptionService({
       frames: frames,
       connecting: connecting,
     );
-    session._state = _VoiceSessionLiveRecording(run: run);
+    session._state = _VoiceSessionLiveRecording(run: run, mode: mode);
     _startMaxDurationTimer(session: session);
-    unawaited(_handleLiveEndingWhileHolding(session: session, generation: generation, run: run));
+    unawaited(_handleLiveEndingWhileHolding(session: session, generation: generation, run: run, mode: mode));
   }
 
   Future<void> _closeUnusedSocket({required Future<VoiceRealtimeConnection> connecting}) async {
@@ -280,6 +312,7 @@ class VoiceTranscriptionService({
     required VoiceTranscriptionSession session,
     required int generation,
     required LiveDictationRun run,
+    required VoiceDictationMode mode,
   }) async {
     final ending = await run.ended;
     if (!_ownsGeneration(session: session, generation: generation)) return;
@@ -297,7 +330,7 @@ class VoiceTranscriptionService({
         );
       case LiveDictationEnded(:final transcript, :final outcome):
         session._state = const _VoiceSessionIdle();
-        session._liveEventsController.add(VoiceLiveEnded(transcript: transcript, outcome: outcome));
+        session._liveEventsController.add(VoiceLiveEnded(transcript: transcript, outcome: outcome, mode: mode));
       case LiveDictationFailed(:final error):
         session._state = const _VoiceSessionIdle();
         session._liveEventsController.add(VoiceLiveFailed(error: error));
@@ -328,7 +361,8 @@ class VoiceTranscriptionService({
     if (session._state is _VoiceSessionStarting && restart != null) await restart;
 
     final state = session._state;
-    if (state is _VoiceSessionLiveRecording) return await _finishLive(session: session, run: state.run);
+    if (state is _VoiceSessionLiveRecording)
+      return await _finishLive(session: session, run: state.run, mode: state.mode);
     if (state is! _VoiceSessionRecording) throw VoiceTranscriptionError.notRecording();
     return await _stopFileCapture(
       session: session,
@@ -339,6 +373,7 @@ class VoiceTranscriptionService({
   Future<VoiceDictationResult> _finishLive({
     required VoiceTranscriptionSession session,
     required LiveDictationRun run,
+    required VoiceDictationMode mode,
   }) async {
     _cancelMaxDurationTimer(session: session);
     final generation = session._generation;
@@ -352,7 +387,7 @@ class VoiceTranscriptionService({
 
     switch (ending) {
       case LiveDictationEnded(:final transcript, :final outcome):
-        return VoiceDictationResult(transcript: transcript, outcome: outcome, mode: VoiceDictationMode.live);
+        return VoiceDictationResult(transcript: transcript, outcome: outcome, mode: mode);
       // The user has already released, so there is nothing left to record.
       case LiveDictationFailed(:final error) || LiveDictationFellBack(:final error):
         throw error;
@@ -700,6 +735,10 @@ class VoiceTranscriptionSession._({
   /// False until the voice mode says live and this host can stream, which is also
   /// the answer for a session that doesn't allow live.
   bool _canRunLive = false;
+
+  /// False until the kill switch and this device both allow it, which is also the
+  /// answer for a session that doesn't allow live.
+  bool _canRunOnDevice = false;
   int _generation = 0;
 }
 
@@ -712,7 +751,10 @@ final class const _VoiceSessionStarting() extends _VoiceSessionState;
 /// [fellBackFromLive] means the first words may be missing (D33).
 final class const _VoiceSessionRecording({required final bool fellBackFromLive}) extends _VoiceSessionState;
 
-final class const _VoiceSessionLiveRecording({required final LiveDictationRun run}) extends _VoiceSessionState;
+final class const _VoiceSessionLiveRecording({
+  required final LiveDictationRun run,
+  required final VoiceDictationMode mode,
+}) extends _VoiceSessionState;
 
 final class const _VoiceSessionLiveFinishing({required final LiveDictationRun run}) extends _VoiceSessionState;
 

@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_protocol.dart";
 import "package:sesori_shared/sesori_shared.dart" show HealthResponse, Project, ProjectGlossaryKey;
@@ -22,6 +23,35 @@ class _MockVoiceCapture() extends Mock implements VoiceCapture;
 class _MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
 
 class _MockVoiceApi() extends Mock implements VoiceApi;
+
+class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
+
+final class _FakeOnDeviceConnection() implements VoiceRealtimeConnection {
+  final StreamController<VoiceRealtimeEvent> controller = StreamController<VoiceRealtimeEvent>();
+  final List<Uint8List> sent = [];
+  bool finished = false;
+  bool cancelled = false;
+
+  @override
+  Stream<VoiceRealtimeEvent> get events => controller.stream;
+
+  @override
+  bool sendAudio({required Uint8List frame}) {
+    sent.add(frame);
+    return true;
+  }
+
+  @override
+  void finish() {
+    finished = true;
+    controller
+      ..add(const VoiceRealtimeWords(confirmedDelta: "device words", provisional: ""))
+      ..add(const VoiceRealtimeCompleted(outcome: VoiceDictationOutcome.finished));
+  }
+
+  @override
+  Future<void> cancel() async => cancelled = true;
+}
 
 class _MockConnectionService() extends Mock implements ConnectionService;
 
@@ -49,6 +79,8 @@ void main() {
   late VoiceTranscriptionSession session;
   late List<VoiceLiveEvent> events;
   VoiceMode mode = const VoiceModeLive();
+  bool onDeviceEnabled = false;
+  bool onDeviceReady = false;
 
   setUpAll(() {
     registerFallbackValue(_artifact);
@@ -87,6 +119,8 @@ void main() {
     channel = FakeRealtimeVoiceChannel();
     events = [];
     mode = const VoiceModeLive();
+    onDeviceEnabled = false;
+    onDeviceReady = false;
     frames = StreamController<Uint8List>();
     repository = _MockVoiceRepository();
     voiceModeRepository = _MockVoiceModeRepository();
@@ -105,6 +139,7 @@ void main() {
     final platform = _MockVoiceCapture();
     final realRepository = VoiceRepository(
       api: _MockVoiceApi(),
+      onDeviceSpeechApi: _MockOnDeviceSpeechApi(),
       realtimeClient: RealtimeVoiceClient.withChannelConnector(
         tokenProvider: FakeRealtimeVoiceTokenProvider(token: "token"),
         channelConnector: ({required uri, required headers}) => channel,
@@ -115,6 +150,8 @@ void main() {
     when(platform.prewarm).thenAnswer((_) async {});
     when(voiceModeRepository.load).thenAnswer((_) async {});
     when(() => voiceModeRepository.mode).thenAnswer((_) => mode);
+    when(() => voiceModeRepository.onDeviceEnabled).thenAnswer((_) => onDeviceEnabled);
+    when(repository.prepareOnDevice).thenAnswer((_) async => onDeviceReady);
     when(() => capture.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(capture.supportsPcmStream).thenAnswer((_) async => true);
     when(capture.startPcmStream).thenAnswer((_) async => frames.stream);
@@ -160,6 +197,104 @@ void main() {
       ),
     );
   }
+
+  group("on the device", () {
+    late _FakeOnDeviceConnection connection;
+
+    setUp(() {
+      connection = _FakeOnDeviceConnection();
+      onDeviceEnabled = true;
+      onDeviceReady = true;
+      when(
+        () => repository.openOnDevice(sampleRate: any(named: "sampleRate")),
+      ).thenAnswer((_) async {
+        scheduleMicrotask(() => connection.controller.add(const VoiceRealtimeReady()));
+        return connection;
+      });
+    });
+
+    test("runs with the words showing when the live switch is on, and never touches the server", () async {
+      session = await createSession();
+      await service.start(session: session);
+      await pumpEventQueue();
+
+      expect(service.isLive(session: session), isTrue);
+      frames.add(_frame(fill: 1));
+      await pumpEventQueue();
+      expect(connection.sent, hasLength(1));
+
+      final result = await service.stopAndTranscribe(session: session);
+
+      expect(result.transcript, "device words");
+      expect(result.mode, VoiceDictationMode.onDeviceLive);
+      expect(connection.finished, isTrue);
+      expectNoSocket();
+      verifyNever(capture.start);
+    });
+
+    test("hides the words when the live switch is off", () async {
+      mode = const VoiceModeAfterRecording();
+      session = await createSession();
+      await service.start(session: session);
+      await pumpEventQueue();
+
+      expect(service.isLive(session: session), isFalse);
+
+      final result = await service.stopAndTranscribe(session: session);
+
+      expect(result.transcript, "device words");
+      expect(result.mode, VoiceDictationMode.onDeviceHidden);
+      verifyNever(capture.start);
+    });
+
+    test("the kill switch keeps the dictation on the server and never asks the device", () async {
+      onDeviceEnabled = false;
+      mode = const VoiceModeAfterRecording();
+      session = await createSession();
+      await service.start(session: session);
+
+      verify(capture.start).called(1);
+      verifyNever(repository.prepareOnDevice);
+      verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
+    });
+
+    test("a device that can't run it uses the server", () async {
+      onDeviceReady = false;
+      mode = const VoiceModeAfterRecording();
+      session = await createSession();
+      await service.start(session: session);
+
+      verify(capture.start).called(1);
+      verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
+    });
+
+    test("a session that doesn't allow live keeps recording first", () async {
+      session = service.createSession(projectId: null, allowLive: false);
+      await pumpEventQueue();
+      await service.start(session: session);
+
+      verify(capture.start).called(1);
+      verifyNever(repository.prepareOnDevice);
+    });
+
+    test("an engine that won't start falls back to recording for the server", () async {
+      when(
+        () => repository.openOnDevice(sampleRate: any(named: "sampleRate")),
+      ).thenAnswer((_) async => throw VoiceTranscriptionError.recordingFailed(innerError: "engine"));
+      mode = const VoiceModeAfterRecording();
+      session = await createSession();
+      await service.start(session: session);
+      await pumpEventQueue();
+
+      verify(capture.start).called(1);
+      expect(events.whereType<VoiceLiveFellBack>(), hasLength(1));
+
+      final result = await service.stopAndTranscribe(session: session);
+
+      expect(result.transcript, "recorded words");
+      expect(result.mode, VoiceDictationMode.afterRecording);
+    });
+  });
 
   group("the mode decision", () {
     test("a hold before the mode has answered records, and never waits for the answer", () async {

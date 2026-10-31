@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 import "package:test/test.dart";
@@ -8,13 +9,19 @@ class MockVoiceApi() extends Mock implements VoiceApi;
 
 class MockRealtimeVoiceClient() extends Mock implements RealtimeVoiceClient;
 
+class MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
+
 void main() {
   late MockVoiceApi api;
   late VoiceRepository repository;
 
   setUp(() {
     api = MockVoiceApi();
-    repository = VoiceRepository(api: api, realtimeClient: MockRealtimeVoiceClient());
+    repository = VoiceRepository(
+      api: api,
+      realtimeClient: MockRealtimeVoiceClient(),
+      onDeviceSpeechApi: MockOnDeviceSpeechApi(),
+    );
   });
 
   test("maps success and forwards typed artifact and glossary context", () async {

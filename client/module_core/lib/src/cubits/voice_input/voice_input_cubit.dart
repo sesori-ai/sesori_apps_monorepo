@@ -210,12 +210,15 @@ class VoiceInputCubit({
         } else if (current is VoiceInputLiveFinishing) {
           emit(const VoiceInputState.transcribing(limitReached: false));
         }
-      case VoiceLiveEnded(:final transcript, :final outcome):
-        if (current is VoiceInputLiveRecording) {
-          emit(VoiceInputState.completed(transcript: transcript, outcome: outcome, mode: VoiceDictationMode.live));
+      // With the words hidden, a dictation on the device reads as a plain recording.
+      case VoiceLiveEnded(:final transcript, :final outcome, :final mode):
+        if (current is VoiceInputLiveRecording || current is VoiceInputRecording) {
+          emit(VoiceInputState.completed(transcript: transcript, outcome: outcome, mode: mode));
         }
       case VoiceLiveFailed(:final error):
-        if (current is VoiceInputLiveRecording || current is VoiceInputLiveFinishing) {
+        if (current is VoiceInputLiveRecording ||
+            current is VoiceInputLiveFinishing ||
+            current is VoiceInputRecording) {
           _logTranscriptionFailure(error: error, stackTrace: StackTrace.current);
           emit(VoiceInputState.transcriptionFailed(error: error));
         }
