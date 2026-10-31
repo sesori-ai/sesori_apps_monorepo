@@ -25,7 +25,7 @@ while feeling bad to use has failed its purpose.
   separate layer with a transition, over in-place relayouts that must fight to
   restore the position.
 - Judge every user-facing change by how it feels first, and check it for jumps
-  and missing transitions (ideally with a recording on a real device) before
+  and missing transitions (ideally with a recording on a headless iOS simulator) before
   calling it done. Design reviews describe the motion and feel of each option,
   not only its static layout.
 - Do not add sound. Users rarely want audio from these apps, and unexpected
