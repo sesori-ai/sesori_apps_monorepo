@@ -32,12 +32,12 @@ void main() {
   });
 
   for (final (name, value) in [("missing", null), ("zero", 0), ("negative", -3)]) {
-    test("falls back to 10 interactions and 14 days when both values are $name", () async {
+    test("falls back to 5 interactions and 14 days when both values are $name", () async {
       answerValues(interactionThreshold: value, cooldownDays: value);
 
       final config = await repository.readConfig();
 
-      expect(config.interactionThreshold, 10);
+      expect(config.interactionThreshold, 5);
       expect(config.cooldown, const Duration(days: 14));
     });
   }
@@ -47,7 +47,7 @@ void main() {
 
     final config = await repository.readConfig();
 
-    expect(config.interactionThreshold, 10);
+    expect(config.interactionThreshold, 5);
     expect(config.cooldown, const Duration(days: 30));
   });
 

@@ -10,7 +10,7 @@ class FeedbackPromptRepository({
   required final FeedbackPromptConfigApi _configApi,
   required final FeedbackPromptStorage _storage,
 }) {
-  static const defaultInteractionThreshold = 10;
+  static const defaultInteractionThreshold = 5;
   static const defaultCooldownDays = 14;
 
   /// The remote rule, with the defaults for any value that is missing or below

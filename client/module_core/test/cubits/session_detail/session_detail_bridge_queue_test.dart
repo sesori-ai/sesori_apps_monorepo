@@ -1985,6 +1985,7 @@ void main() {
       await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      expect(feedbackPromptService.userStops, 1);
     });
 
     test("a refused confirm stop returns the rejection and leaves queued work untouched", () async {

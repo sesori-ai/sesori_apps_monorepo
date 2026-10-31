@@ -99,11 +99,15 @@ Desktop neither shows the row nor opens the sheet by itself.
     session detail, a new session started with a message, a question answered
     or rejected, and a permission request answered.
   - The count restarts from zero after an AI error reported by any session (a
-    message that ended in an error, a retrying session, or a session error),
-    after a failed send, session creation, or reply, and after an app crash. A
-    crash is detected by the global error handlers or, at the next launch, from
-    Crashlytics' previous-launch report. Crash detection needs Firebase.
-  - At 10 points the sheet opens right away on the root navigator, over
+    message that ended in an error or a session error), after a failed send,
+    session creation, or reply, and after an app crash. A crash is detected at
+    the next launch from Crashlytics' previous-launch report, which needs
+    Firebase.
+  - A retrying session and an uncaught error that does not crash the app keep
+    the count. After the user stops a response in this app, AI errors keep the
+    count until their next point, because some backends report a stop as an
+    error.
+  - At 5 points the sheet opens right away on the root navigator, over
     whatever screen is showing. Opening it restarts the count and records the
     time in the same write.
   - After an answer other than **Yes, love it!**, including a dismissal, the
@@ -111,7 +115,7 @@ Desktop neither shows the row nor opens the sheet by itself.
     many points are earned. Points keep counting during the wait.
   - **Yes, love it!**, from either entry, stops the automatic sheet for good.
     **Rate Sesori** in Settings always works.
-  - Firebase Remote Config can change the 10 points
+  - Firebase Remote Config can change the 5 points
     (`feedback_prompt_interaction_threshold`) and the 14 days
     (`feedback_prompt_cooldown_days`). It is fetched once per launch with a
     short timeout. A missing value or one below 1 uses its default, and a
@@ -173,6 +177,8 @@ Desktop neither shows the row nor opens the sheet by itself.
   section, or misaligned with the account row.
 - The automatic sheet opens on desktop, before the threshold, inside the
   cooldown, after **Yes**, or twice for one threshold crossing.
+- A retry, a stopped response, or an uncaught error that does not crash the app
+  restarts the count.
 - A failed send, creation, or reply, an AI error, or a crash does not restart
   the count, or a request the bridge rejects still earns a point.
 - The count or cooldown is lost on restart.
