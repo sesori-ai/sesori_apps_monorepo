@@ -13,7 +13,8 @@ live on and the host can stream, the same gestures run over a realtime socket in
 Remote Config key `voice_live_enabled` controls the switch. On desktop the build fixes it: the `internal` channel runs live,
 and `stable` records first.
 
-A phone that can do it transcribes on the device instead of using the server: iOS 26 and later through `SpeechAnalyzer`.
+A phone that can do it transcribes on the device instead of using the server: iOS 26 and later through `SpeechAnalyzer`,
+and Android 13 and later through the on-device `SpeechRecognizer`.
 Audio then never leaves the phone, and the gestures stay the same. `voice_live_enabled` still decides whether the words
 show while the user speaks. Setting the Remote Config key `voice_on_device_enabled` to `false` sends every dictation to
 the server. Desktop always uses the server.

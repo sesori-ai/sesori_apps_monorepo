@@ -17,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     private var recorderPrewarmService: RecorderPrewarmService? = null
+    private var onDeviceSpeechService: OnDeviceSpeechService? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -24,6 +25,13 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
             channel = MethodChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 RecorderPrewarmService.channelName,
+            ),
+        )
+        onDeviceSpeechService = OnDeviceSpeechService(
+            context = applicationContext,
+            channel = MethodChannel(
+                flutterEngine.dartExecutor.binaryMessenger,
+                OnDeviceSpeechService.channelName,
             ),
         )
     }
@@ -46,6 +54,8 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     override fun onDestroy() {
         recorderPrewarmService?.dispose()
         recorderPrewarmService = null
+        onDeviceSpeechService?.dispose()
+        onDeviceSpeechService = null
         flutterEngine?.renderer?.removeIsDisplayingFlutterUiListener(this)
         super.onDestroy()
     }
