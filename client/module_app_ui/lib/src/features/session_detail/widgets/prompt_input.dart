@@ -1751,8 +1751,8 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// The composer's centred words, in a layer over its row: the slot beneath
-  /// widens as the trailing actions collapse, which would carry them sideways as
-  /// they fade. The insets match the row's at rest, so they sit centred between
+  /// widens as voice-first's trailing actions collapse, which would carry them
+  /// sideways as they fade. The insets match the row's at rest, so they sit centred between
   /// its actions. [extraTrailingWidth] is how much wider the trailing actions
   /// rest than the leading ones.
   Widget _buildVoiceCaption(BuildContext context, {required Widget idle, required double extraTrailingWidth}) {
@@ -2098,14 +2098,21 @@ class _PromptInputState() extends State<PromptInput> {
         ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
       return _buildPointerVoiceActions(context);
     }
+    final visible = _voicePresentation != _VoicePresentation.recording;
     return Row(
       spacing: PregoSpacing.sm,
       children: [
-        // The mic owns the hold gesture, so only the primary action collapses.
         if (_voiceSupport.isSupported) _buildMicButton(context),
-        _buildCollapsibleTrailing(
-          visible: _voicePresentation != _VoicePresentation.recording,
-          child: _buildPrimaryActionButton(context),
+        // The finger is on the mic, so the primary action fades where it stands
+        // and keeps its room: nothing moves under the hold.
+        AnimatedOpacity(
+          duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+          curve: _morphCurve,
+          opacity: visible ? 1 : 0,
+          child: ExcludeFocus(
+            excluding: !visible,
+            child: IgnorePointer(ignoring: !visible, child: _buildPrimaryActionButton(context)),
+          ),
         ),
       ],
     );

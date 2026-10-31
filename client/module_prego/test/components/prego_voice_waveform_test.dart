@@ -91,6 +91,36 @@ void main() {
     }
   });
 
+  testWidgets("at rest paints no cut-off dot at the leading edge, at a width that leaves one", (tester) async {
+    final samples = StreamController<double>.broadcast();
+    addTearDown(samples.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.dark]),
+        home: Center(
+          child: SizedBox(
+            width: 222,
+            child: PregoVoiceWaveform(
+              amplitudeStream: samples.stream,
+              barColor: Colors.white,
+              dotColor: Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final painter = tester.widget<CustomPaint>(find.byType(CustomPaint).last).painter;
+    if (painter == null) fail("The waveform has no painter");
+    final canvas = _RecordingCanvas();
+    painter.paint(canvas, tester.getSize(find.byType(PregoVoiceWaveform)));
+
+    expect(canvas.rrects, hasLength(34));
+    for (final (rrect, _) in canvas.rrects) {
+      expect(rrect.left, greaterThanOrEqualTo(0));
+    }
+  });
+
   testWidgets("full flatten progress paints every slot as a resting dot", (tester) async {
     const dotColor = Color(0xFF9E9E9E);
     final samples = StreamController<double>.broadcast();
