@@ -120,10 +120,10 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
 - A current-project response carries the project's glossary key from its first load; a failed key lookup leaves it
   out without failing the route.
 - Glossary population derives an exact opaque repository or bridge-local scope, scans bounded local Git/filesystem
-  evidence, filters credential-shaped content before tokenization, and reconciles at most 100 deterministic terms. Terms are whole ASCII identifiers; common English
-  words and their simple inflections, generic scaffolding names, hash/serial fragments, and a plural beside its
-  singular are dropped. Only the opaque scope and filtered terms leave the bridge. Scope, scan, or publication failure
-  leaves voice input available without an updated glossary.
+  evidence, filters credential-shaped content before tokenization, and reconciles at most 100 deterministic terms. Terms
+  are whole ASCII identifiers; common English words and their simple inflections, generic scaffolding names, hash/serial
+  fragments, and a plural beside its singular are dropped. Only the opaque scope and filtered terms leave the bridge.
+  Scope, scan, or publication failure leaves voice input available without an updated glossary.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 - Mobile Settings lists Default input under Preferences, directly after Notifications. The keyboard row shows the live
