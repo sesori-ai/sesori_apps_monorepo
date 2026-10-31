@@ -334,6 +334,34 @@ environment:
       expect(result.stdout, contains('Target client version: 1.0.7'));
     });
 
+    test('keeps the blank line after the pubspec version', () async {
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
+      await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\nversion: 1.0.6+13\n\nenvironment:\n');
+
+      final result = await _runTool(fixture: currentFixture, args: <String>['--type', 'patch']);
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(
+        await File(currentFixture.desktopPubspecPath).readAsString(),
+        equals('name: sesori_desktop\nversion: 1.0.7+13\n\nenvironment:\n'),
+      );
+    });
+
+    test('keeps CRLF line endings in the pubspec', () async {
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
+      await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\r\nversion: 1.0.6+13\r\n\r\nenvironment:\r\n');
+
+      final result = await _runTool(fixture: currentFixture, args: <String>['--type', 'patch']);
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(
+        await File(currentFixture.desktopPubspecPath).readAsString(),
+        equals('name: sesori_desktop\r\nversion: 1.0.7+13\r\n\r\nenvironment:\r\n'),
+      );
+    });
+
     test('rejects invalid inputs and malformed client versions', () async {
       fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
       final currentFixture = fixture!;
