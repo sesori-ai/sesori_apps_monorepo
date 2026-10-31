@@ -46,6 +46,7 @@ export "src/api/founder_call_config_api.dart";
 export "src/api/installed_app_build_api.dart";
 export "src/api/message_image_api.dart";
 export "src/api/notification_preferences_api.dart";
+export "src/api/product_analytics_event_api.dart";
 export "src/api/product_analytics_preference_api.dart";
 export "src/api/project_api.dart";
 export "src/api/session_api.dart";

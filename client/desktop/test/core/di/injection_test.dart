@@ -3,6 +3,7 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
+import "package:sesori_desktop/core/platform/auth_server_analytics_client.dart";
 import "package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart";
 import "package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart";
 import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
@@ -11,7 +12,6 @@ import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
 import "package:sesori_desktop/core/platform/desktop_image_clipboard.dart";
 import "package:sesori_desktop/core/platform/desktop_image_sharer.dart";
 import "package:sesori_desktop/core/platform/desktop_route_source.dart";
-import "package:sesori_desktop/core/platform/no_op_analytics_client.dart";
 import "package:sesori_desktop/core/platform/no_op_feedback_prompt_config_source.dart";
 import "package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
@@ -68,7 +68,7 @@ void main() {
     addTearDown(cubit.close);
 
     expect(getIt.isRegistered<LoginCubit>(), isFalse);
-    expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
+    expect(getIt<AnalyticsClient>(), isA<AuthServerAnalyticsClient>());
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
     expect(getIt<FeedbackPromptConfigSource>(), isA<NoOpFeedbackPromptConfigSource>());

@@ -18,6 +18,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
+import 'package:sesori_desktop/core/platform/auth_server_analytics_client.dart'
+    as _i391;
 import 'package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart'
     as _i456;
 import 'package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart'
@@ -69,8 +71,6 @@ import 'package:sesori_desktop/core/platform/io_installed_desktop_bundle_source.
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
 import 'package:sesori_desktop/core/platform/method_channel_sparkle_update_engine.dart'
     as _i760;
-import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
-    as _i262;
 import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dart'
     as _i804;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
@@ -197,10 +197,15 @@ extension GetItInjectableX on _i174.GetIt {
         fileSaveClient: gh<_i880.DesktopFileSaveClient>(),
       ),
     );
-    gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     gh.lazySingleton<_i903.PersistenceDirectory>(
       () => _i824.DesktopPersistenceDirectory(
         directories: gh<_i316.DesktopApplicationSupportDirectory>(),
+      ),
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i391.AuthServerAnalyticsClient(
+        api: gh<_i948.ProductAnalyticsEventApi>(),
+        authSession: gh<_i948.AuthSession>(),
       ),
     );
     gh.lazySingleton<_i948.VoiceCapture>(

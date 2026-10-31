@@ -40,6 +40,8 @@ import 'package:sesori_dart_core/src/api/on_device_speech_api.dart' as _i736;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i232;
 import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i958;
+import 'package:sesori_dart_core/src/api/product_analytics_event_api.dart'
+    as _i221;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
@@ -324,6 +326,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i396.NotificationPreferencesApi>(
       () => _i396.NotificationPreferencesApi(
+        client: gh<_i442.AuthenticatedHttpApiClient>(),
+      ),
+    );
+    gh.lazySingleton<_i221.ProductAnalyticsEventApi>(
+      () => _i221.ProductAnalyticsEventApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
       ),
     );

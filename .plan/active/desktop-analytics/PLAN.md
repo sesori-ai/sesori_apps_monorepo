@@ -100,7 +100,7 @@ The `os` parameter names the bridge install command's target. The app's own OS i
 | Response | Meaning | Client action |
 | --- | --- | --- |
 | `204`, empty body | Stored, already stored, or dropped because the preference is off. Deliberately not distinguished | Done |
-| `400` | Failed validation. Only `{code, path}` of each zod issue is logged, never values or unrecognized key names | Don't retry. Log the event name |
+| `400` | Failed validation. Only `{code, path}` of each zod issue is logged, never values or unrecognized key names | Don't retry. Log the event name and status |
 | `401` | Bad token | The existing authenticated client refreshes once and retries once |
 | `404` | User no longer exists | Don't retry |
 | `413`, `429` | Oversized or rate limited | Don't retry |
@@ -192,7 +192,9 @@ wiring:
 Behavior:
 
 - `logProductEvent` returns at once. It maps the event, captures the current account from `AuthSession.currentState`,
-  and starts sending in `unawaited`. A failure is logged with the event name only and never reaches the caller.
+  and starts sending in `unawaited`. A failure never reaches the caller. Per `AGENTS.md`, its local log keeps the event
+  name, the failure category or HTTP status, and the original error and stack trace where there is one. It leaves out the
+  request body and credentials.
 - `postForUser` refuses to send if the account changed, before any network call. That covers retries after a sign-out
   or account switch without any new state.
 - Each attempt has a 5 second deadline. There are at most 3 attempts, 5 seconds and then 30 seconds apart, on network
@@ -446,22 +448,24 @@ already rejected by the warehouse for mobile).
 
 ## What counting changes in the numbers
 
-- **Messages:** rise from the start date, partly from more being counted, so charts carry a marker.
+- **Messages:** rise from the start date, partly from more being counted. Desktop is new and has few users, so the owner
+  expects that part to be very small and wants no dedicated marker. The release is already a numbered marker on the
+  `/internal/` Messages chart.
 - **First message:** an existing desktop-only account gets `full_activation_at` at its first counted desktop message, not
   its true first. No SQL changes for this. It stays out of retention and weekly activation, because those require
   `activation_capable_at` within 24 hours of account creation, and an old account fails that. It's visible only in the
   restricted `user_milestones`.
 - **Retention:**
-  - Numerators rise for phone-activated users who also use desktop, which is a real correction, so retention charts carry
-    the marker too.
+  - Numerators rise for phone-activated users who also use desktop, which is a real correction. The retention charts
+    already carry the numbered release markers.
   - New accounts that start on an updated desktop build now enter activation and retention denominators, because they
     send `analytics_activation_ready`. That is also a real correction, and it can move rates in either direction.
   - Accounts created on an old desktop build and updated more than 24 hours later stay out of cohorts permanently. That's
     a small understatement during the adoption ramp, and it's accepted.
-  - Reporting views used outside the website carry no marker. Their readers should use the step 8 date.
-- **Public headline:** `/traction/` says "Messages are up N% over the last 30 days". Comparing windows either side of the
-  start date would overstate growth on a public page, so step 8 hides the percentage until both windows are after it,
-  about 60 days. The headline falls back to its existing new-accounts wording.
+  - Reporting views used outside the website carry no marker. Their readers should use the publish date of the first
+    stable release carrying step 7.b.
+- **Public headline:** `/traction/` keeps "Messages are up N% over the last 30 days" throughout, with no hiding and no
+  note. This is the owner's decision of 2026-10-31.
 
 ## Steps
 
@@ -647,8 +651,9 @@ disclosure.
 1. Steps 2-5 are deployed, including the privacy and export images, and step 6 is merged, with evidence in the tracker.
 2. The pipeline and deletion drill in the verification section has passed. No release has sent real rows yet, so a problem
    here costs nothing.
-3. The owner has decided the privacy wording and legal review, and that wording is in place both in the disclosure below
-   and in the live notice at `https://sesori.com/privacy/`. The disclosure says it isn't itself a published notice. The
+3. The owner approved the privacy wording themselves on 2026-10-31, with no outside review. That wording is in place both
+   in the disclosure below and in the live notice at `https://sesori.com/privacy/`. The disclosure says it isn't itself a
+   published notice. The
    notice's source is `assets/legal/privacy.md` in the auth repo, which `https://api.sesori.com/privacy` serves, so it
    ships as its own auth PR, `🌱 [desktop-analytics] Name the desktop app in the privacy notice [step 7.a/10]`, before this
    switch, which is step 7.b. This condition applies to this step only and blocks nothing earlier.
@@ -657,6 +662,10 @@ Internal builds are hourly, so merging means sending from the next internal buil
 everyone else. Sparkle checks every 6 hours and installs on quit or restart, AppImage uses Velopack, and DEB/RPM use
 signed repositories, so adoption ramps over days after a stable release. Stable last shipped Sep 24, Oct 14 and Oct 27.
 Windows has no public build, so it counts from its first release with no extra analytics work.
+
+People with the desktop app already installed get the same Basic Usage Analytics switch and no new prompt. The notes of the
+first stable release carrying this step say so in one line, added by hand because the generator only lists PR titles:
+"Sesori Desktop now sends the same basic usage analytics as the phone app. You can turn this off in Settings."
 
 - **Complexity:** straightforward. A single switch, but its effect is broad.
 - **What:**
@@ -681,29 +690,20 @@ Windows has no public build, so it counts from its first release with no extra a
 
 Rollback: revert for new builds. For installed apps, removing the route stops storage, and the client doesn't retry.
 
-### Step 8: mark the start date
+### Step 8: correct the traction copy
 
-`🌿 [desktop-analytics] Mark when desktop counting starts on the charts [step 8/10]`. Repo: website. About 120 lines.
+`🌱 [desktop-analytics] Say the traction page counts the desktop app [step 8/10]`. Repo: website. About 2 lines.
 
-Open it when the first stable release carrying step 7 is published, and merge within two days. Warehouse lag means the
+Open it when the first stable release carrying step 7.b is published, and merge within two days. Warehouse lag means the
 numbers can't rise on the charts before that.
 
-- **Complexity:** straightforward. A chart prop, one constant and one copy change.
-- **What:**
-  - `src/lib/analytics/warehouse.ts`: `DESKTOP_COUNTED_FROM`, the UTC date that stable release was published. Internal
-    builds count slightly earlier, but that population is too small to show.
-  - `src/components/analytics/LineChart.astro`: an optional labelled vertical line, hidden when outside the chart's range.
-    It's separate from the numbered release markers, which mean something else.
-  - `src/pages/internal/index.astro`: on the Messages chart and both retention charts. Not on charts from Mongo, which
-    don't change. The daily charts render from a shared loop, so pass the new prop for Messages only.
-  - `src/pages/traction.astro`: on the Messages chart, and the copy at lines 87-88 becomes "Counts the phone apps, and
-    the desktop app from {date}."
-  - `src/lib/analytics/traction.ts`: `changePct` is `null` while the two windows straddle the date.
-- **Why:** numbers rise partly from more being counted, and readers need to see where.
-- **Risk and test focus:** low. `npm test` with a straddling case, `npm run lint`, `npm run verify:site`, and headless
-  browser screenshots at both chart widths for the PR.
-- **Expected result:** user-visible: the line and label on those charts, new `/traction/` copy, and no percentage in the
-  headline for about 60 days. No database change.
+- **Complexity:** trivial. One copy change.
+- **What:** `src/pages/traction.astro`: the copy at lines 87-88 becomes "Counts the phone and desktop apps." Also change any
+  other copy that still says the desktop app isn't counted. No chart marker, date constant, or headline change: the owner
+  decided on 2026-10-31 that none is needed, and `/internal/` already marks the release.
+- **Why:** the current sentence becomes false once desktop counts.
+- **Risk and test focus:** low. `npm test`, `npm run lint`, `npm run verify:site`.
+- **Expected result:** user-visible: the new `/traction/` sentence. No database change.
 
 ### Step 9: reconcile docs
 
@@ -768,7 +768,7 @@ also the honest extent of pipeline verification for Windows.
 | Date alignment | Production | Three complete days after adoption, reconciliation assertion from step 5 | Every eligible desktop row present, once |
 | QA exclusion | Production | Aggregate count of curated rows from the QA accounts after a probe run | Zero |
 | Bytes | Production | `INFORMATION_SCHEMA.JOBS` for 7 days after stable adoption | Each asset under 90% of its allocation, or a follow-up |
-| Website | Production | `/internal/`, `/traction/` | Markers on the named charts, new copy, percentage hidden |
+| Website | Production | `/traction/` | New copy, percentage still showing, no note |
 
 Cells needing an interactive sign-in that an agent can't drive are run on the published internal build after merge, by
 the owner, per the project's testing rule. The Linux cell depends on sign-in working on that package. If it doesn't, that
@@ -795,16 +795,14 @@ still has no attribution SDK.
 | The Mongo delete or the privacy job's delete fails in production | The drill before step 7, while no real rows exist |
 | Release-mode QA probes send events under real accounts | Confirm they're in the permanent internal exclusion |
 | A wrong projection silently drops desktop rows | Fixture for all 23 events, plus the deployed reconciliation assertion |
-| Existing desktop users' preference defaults to enabled, and they start sending on update with no prompt | Owner's privacy decision, the gate on step 7 |
+| Existing desktop users' preference defaults to enabled, and they start sending on update with no prompt | Owner accepted on 2026-10-31: same switch, the updated notice, and one line in the release notes |
 | The contract can't be changed once shipped | Additive only, and `schemaVersion` is on the wire |
-| Readers misread the rise | Markers, and the hidden public percentage |
+| Readers misread the rise | Owner accepted on 2026-10-31: desktop has too few users to move it, and `/internal/` already marks the release |
 
 ## Open decisions
 
-Three questions are with the owner, on a review page dated 2026-10-31: who approves the privacy wording, how existing
-desktop accounts are told, and how the `/traction/` percentage behaves around the start date. The first two gate step 7
-only, and the third shapes step 8 only. The defaults recorded above stand unless the owner overrules them. Everything else
-in this plan is decided, with accepted risks recorded above.
+None. On 2026-10-31 the owner approved the privacy wording themselves, chose the same switch with one line in the release
+notes, and kept the `/traction/` percentage with no note. Accepted risks are recorded above.
 
 ## Review record
 

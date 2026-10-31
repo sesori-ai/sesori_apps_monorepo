@@ -10,10 +10,10 @@ evidence only.
 | 3 Auth endpoint | auth | Not started | | Web deployed; indexes present |
 | 4 Auth export | auth | Not started | | Image rolled after step 2; manual export passed |
 | 5 Warehouse union | warehouse | Not started | | Asset applied; assertions passed; watermark advanced |
-| 6 Desktop client, off | monorepo | Not started | | n/a |
+| 6 Desktop client, off | monorepo | Implemented, capability off | This PR | n/a |
 | Pipeline and deletion drill | none | Waits for steps 2-5 deployed | n/a | Result and date: |
 | 7 Turn it on | monorepo | Blocked on steps 2-6, the drill, the owner's privacy decision and the live notice | | First internal build carrying it: ; first stable: |
-| 8 Mark the start date | website | Waits for the first stable release carrying step 7 | | Date used: |
+| 8 Say the traction page counts the desktop app | website | Waits for the first stable release carrying step 7 | | Date used: |
 | 9 Reconcile docs | monorepo | Not started | | n/a |
 | 10 Verify and retire | monorepo | Not started | | Matrix results below |
 
