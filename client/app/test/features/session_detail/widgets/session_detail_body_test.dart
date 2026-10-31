@@ -6915,6 +6915,71 @@ void main() {
         });
       }
 
+      testWidgets("moves the rows of a far send only with its glide and the composer", (tester) async {
+        final states = await pumpPhone(tester: tester, draft: "draft");
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        final long = loaded.copyWith(
+          messages: [
+            for (var i = 0; i < 80; i++)
+              MessageWithParts(
+                info: Message.user(promptId: null, id: "long-$i", sessionID: "session-1", agent: null, time: null),
+                parts: [
+                  MessagePart.text(id: "long-part-$i", sessionID: "session-1", messageID: "long-$i", text: "Prompt $i"),
+                ],
+              ),
+          ],
+        );
+        when(() => cubit.state).thenReturn(long);
+        states.add(long);
+        await tester.pumpAndSettle();
+        stubSentRow(states: states, text: "draft");
+        final position = tester
+            .state<ScrollableState>(
+              find.descendant(of: find.byType(SessionDetailMessageList), matching: find.byType(Scrollable)).first,
+            )
+            .position;
+        position.jumpTo(2500);
+        await tester.pumpAndSettle();
+
+        final controls = find.ancestor(of: find.byType(PromptInput), matching: find.byType(PregoPageHaloLayer));
+        Map<String, double> rows() => {
+          for (final element in find.textContaining(RegExp(r"^Prompt \d+$")).evaluate())
+            if (element.renderObject case final RenderBox box when box.hasSize)
+              switch (element.widget) {
+                Text(:final textSpan?) => textSpan.toPlainText(),
+                _ => fail("A row's words are rich text."),
+              }: box
+                  .localToGlobal(Offset.zero)
+                  .dy,
+        };
+
+        await tester.tap(find.byIcon(TablerRegular.arrow_up));
+        var rowsBefore = rows();
+        var composerBefore = tester.getTopLeft(controls).dy;
+        var pixelsBefore = position.pixels;
+        var frames = 0;
+        while (true) {
+          await tester.pump(const Duration(milliseconds: 16));
+          // The sent row adds its own rise from here.
+          if (find.text("draft").evaluate().isNotEmpty) break;
+          final rowsNow = rows();
+          final composerNow = tester.getTopLeft(controls).dy;
+          final expected = composerNow - composerBefore + position.pixels - pixelsBefore;
+          for (final MapEntry(key: row, value: y) in rowsNow.entries) {
+            final before = rowsBefore[row];
+            if (before == null) continue;
+            expect(y - before, moreOrLessEquals(expected, epsilon: 0.01), reason: "$row on frame $frames");
+          }
+          rowsBefore = rowsNow;
+          composerBefore = composerNow;
+          pixelsBefore = position.pixels;
+          frames++;
+        }
+
+        expect(frames, greaterThan(8), reason: "The glide carried the list most of the way.");
+      });
+
       testWidgets("eases back open without a step when tapping to type during the close", (tester) async {
         final states = await pumpPhone(tester: tester, draft: "draft");
         stubSentRow(states: states, text: "draft");

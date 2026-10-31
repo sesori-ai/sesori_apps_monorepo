@@ -89,7 +89,9 @@ defaults and queued client sends coherent.
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
   leaves the list following, with no jump-to-latest pill. The list rises for every send's row rather than moving in one
-  frame, typed or dictated, and a send from a little way up rises and glides back as one motion. The first prompt in an
+  frame, typed or dictated, and a send from a little way up rises and glides back as one motion. A send from far up
+  moves the rows only with its glide and the composer, with no step on the send's frame or on reaching its row.
+  The first prompt in an
   empty transcript shows at once, with nothing to move. A row that has fully eased in, or was there when the list opened,
   doesn't ease in again when scrolling brings it back; one dropped before it had opened does. A dictated send's words glide
   down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
