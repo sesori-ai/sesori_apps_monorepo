@@ -484,18 +484,18 @@
   "@projectsDesktopBridgeStillStarting": {
     "description": "Desktop-only line that fades in under the home loader when launching this computer's own bridge has taken longer than 10 seconds and the app has not reached it yet."
   },
-  "desktopViewingComputer": "Viewing: {name}",
-  "@desktopViewingComputer": {
-    "description": "Desktop home header naming the other computer whose projects are shown; opens the computer menu.",
+  "desktopSwitchToComputer": "Switch to {name}",
+  "@desktopSwitchToComputer": {
+    "description": "Desktop command palette command that switches to another computer of the account.",
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "desktopViewingThisComputer": "Viewing: This computer",
-  "@desktopViewingThisComputer": {
-    "description": "Desktop home header when the projects shown are this computer's own; opens the computer menu."
+  "desktopSwitchToThisComputer": "Switch to this computer",
+  "@desktopSwitchToThisComputer": {
+    "description": "Desktop command palette command that switches back to this computer while another is viewed."
   },
   "connectionLostTitle": "Connection lost",
   "connectionLostReconnect": "Reconnect",

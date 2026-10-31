@@ -13,6 +13,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
@@ -27,6 +28,7 @@ void main() {
   late _MockConnectionOverlayCubit overlay;
   late int contentTaps;
   late _MockProjectListCubit projects;
+  late _MockComputerSwitcherCubit computerSwitcher;
   late _MockProjectInventoryService projectInventory;
   late _MockSessionWindowService window;
 
@@ -49,6 +51,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const DesktopSidebarLayout());
+    registerFallbackValue(ComputerSwitchSource.menu);
     registerFallbackValue((projectId: null, query: null, filter: SessionListQuickFilter.all));
   });
   tearDown(GetIt.instance.reset);
@@ -146,6 +149,12 @@ void main() {
         ),
       ),
     );
+    computerSwitcher = _MockComputerSwitcherCubit();
+    whenListen(
+      computerSwitcher,
+      const Stream<ComputerSwitcherState>.empty(),
+      initialState: const ComputerSwitcherState(computers: [], targetId: null, localId: null),
+    );
     filter = BehaviorSubject.seeded(null);
     filterTracker = _MockFilterTracker();
     when(() => filterTracker.projectId).thenAnswer((_) => filter.stream);
@@ -159,6 +168,16 @@ void main() {
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
   });
+
+  void seedComputers({
+    required List<BridgeSummary> computers,
+    required String? targetId,
+    required String? localId,
+  }) => whenListen(
+    computerSwitcher,
+    const Stream<ComputerSwitcherState>.empty(),
+    initialState: ComputerSwitcherState(computers: computers, targetId: targetId, localId: localId),
+  );
 
   Widget app({required BridgeControlState state, Widget? child}) {
     whenListen(bridgeControlCubit, const Stream<BridgeControlState>.empty(), initialState: state);
@@ -179,6 +198,7 @@ void main() {
         home: MultiBlocProvider(
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
+            BlocProvider<ComputerSwitcherCubit>.value(value: computerSwitcher),
             RepositoryProvider<ProjectInventoryService>.value(value: projectInventory),
             RepositoryProvider<SessionWindowService>.value(value: window),
             RepositoryProvider.value(value: launchService),
@@ -208,6 +228,7 @@ void main() {
                 onOpenSession: _openSession,
                 onNewSession: _newSession,
                 sessionActions: _sessionActions,
+                onManageComputers: _noOp,
                 onOpenBridgeSettings: _noOp,
                 onOpenSettings: _noOp,
                 onOpenArchived: _noOp,
@@ -242,6 +263,146 @@ void main() {
   }
 
   final running = _state(processState: const BridgeProcessRunning(pid: 42));
+
+  group("the sidebar's computer row", () {
+    final local = _computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active);
+    final studio = _computer(id: "studio", name: "Studio Mac", status: BridgeRegistrationStatus.active);
+    final gpu = _computer(id: "gpu", name: "gpu-box", status: BridgeRegistrationStatus.inactive);
+    final row = find.byKey(const Key("desktop-sidebar-computer"));
+
+    late _MockComputerSwitchDispatcher switches;
+
+    setUp(() {
+      switches = _MockComputerSwitchDispatcher();
+      when(
+        () => switches.switchTo(
+          bridgeId: any(named: "bridgeId"),
+          source: any(named: "source"),
+        ),
+      ).thenAnswer((_) async {});
+      getIt.registerSingleton<ComputerSwitchDispatcher>(switches);
+      addTearDown(() => getIt.unregister<ComputerSwitchDispatcher>());
+    });
+
+    testWidgets("names the computer being viewed, not this one", (tester) async {
+      seedComputers(computers: [local, studio], targetId: studio.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      expect(find.descendant(of: row, matching: find.text("Studio Mac")), findsOneWidget);
+      expect(
+        tester.widget<Tooltip>(find.descendant(of: row, matching: find.byType(Tooltip))).message,
+        "Studio Mac, Online",
+      );
+      expect(find.text("This computer"), findsNothing);
+    });
+
+    testWidgets("says This computer on this computer, with its own bridge's status", (tester) async {
+      seedComputers(computers: [local, studio], targetId: local.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      expect(find.descendant(of: row, matching: find.text("This computer")), findsOneWidget);
+      expect(find.text("this-mac"), findsNothing);
+    });
+
+    testWidgets("doesn't claim this computer before the list names another", (tester) async {
+      seedComputers(computers: const [], targetId: studio.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      expect(find.descendant(of: row, matching: find.text("Computers")), findsOneWidget);
+      expect(find.text("This computer"), findsNothing);
+    });
+
+    testWidgets("a switch crossfades the name in place", (tester) async {
+      final states = StreamController<ComputerSwitcherState>();
+      addTearDown(states.close);
+      whenListen(
+        computerSwitcher,
+        states.stream,
+        initialState: ComputerSwitcherState(computers: [local, studio], targetId: local.id, localId: local.id),
+      );
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+      final start = tester.getTopLeft(find.text("This computer"));
+
+      states.add(ComputerSwitcherState(computers: [local, studio], targetId: studio.id, localId: local.id));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(find.text("This computer"), findsOneWidget);
+      expect(tester.getTopLeft(find.text("Studio Mac")), start);
+      expect(tester.getTopLeft(find.text("This computer")), start);
+
+      await tester.pumpAndSettle();
+      expect(find.text("This computer"), findsNothing);
+      expect(tester.getTopLeft(find.text("Studio Mac")), start);
+    });
+
+    testWidgets("its menu switches computers above this computer's bridge controls", (tester) async {
+      seedComputers(computers: [local, studio, gpu], targetId: studio.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.text("Manage computers…"), findsOneWidget);
+      expect(find.text("Open logs"), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text("gpu-box")).dy,
+        lessThan(tester.getTopLeft(find.byKey(const Key("desktop-bridge-popover"))).dy),
+      );
+
+      await tester.tap(find.text("gpu-box"));
+      await tester.pumpAndSettle();
+      verify(() => switches.switchTo(bridgeId: gpu.id, source: ComputerSwitchSource.menu)).called(1);
+    });
+
+    testWidgets("its menu names this computer as such", (tester) async {
+      seedComputers(computers: [local, studio], targetId: studio.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.text("This computer"), findsOneWidget);
+      expect(find.text("this-mac"), findsNothing);
+    });
+
+    testWidgets("the account's only computer gets its bridge controls and no list", (tester) async {
+      seedComputers(computers: [local], targetId: local.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
+      expect(find.text("Manage computers…"), findsNothing);
+      expect(find.byKey(const ValueKey("computer-menu-local")), findsNothing);
+    });
+
+    testWidgets("the palette offers the other computers", (tester) async {
+      seedComputers(computers: [local, studio, gpu], targetId: studio.id, localId: local.id);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
+      await tester.pumpAndSettle();
+      expect(find.textContaining("Switch to this computer"), findsOneWidget);
+      expect(find.textContaining("Switch to gpu-box"), findsOneWidget);
+      expect(find.textContaining("Switch to Studio Mac"), findsNothing);
+
+      await tester.enterText(
+        find.descendant(of: find.byKey(const Key("desktop-command-palette")), matching: find.byType(TextField)),
+        "gpu",
+      );
+      await tester.pump();
+      await tester.tap(find.textContaining("Switch to gpu-box"));
+      await tester.pumpAndSettle();
+      verify(() => switches.switchTo(bridgeId: gpu.id, source: ComputerSwitchSource.commandPalette)).called(1);
+    });
+  });
+
   final panel = find.byKey(const Key("desktop-cockpit-sidebar"));
   final resize = find.byKey(const Key("desktop-sidebar-resize"));
   final toggle = find.byKey(const Key("desktop-sidebar-toggle"));
@@ -271,6 +432,7 @@ void main() {
           onOpenSession: _openSession,
           onNewSession: _newSession,
           sessionActions: _sessionActions,
+          onManageComputers: _noOp,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
@@ -347,6 +509,7 @@ void main() {
               opened.add((project.id, displayName, session.id)),
           onNewSession: _newSession,
           sessionActions: _sessionActions,
+          onManageComputers: _noOp,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
@@ -401,6 +564,7 @@ void main() {
           onOpenSession: _openSession,
           onNewSession: _newSession,
           sessionActions: _sessionActions,
+          onManageComputers: _noOp,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
@@ -449,6 +613,7 @@ void main() {
           onOpenSession: _openSession,
           onNewSession: _newSession,
           sessionActions: _sessionActions,
+          onManageComputers: _noOp,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: () => archivedOpens++,
@@ -506,6 +671,7 @@ void main() {
           onOpenSession: _openSession,
           onNewSession: _newSession,
           sessionActions: _sessionActions,
+          onManageComputers: _noOp,
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenSettings: () => settingsOpens++,
           onOpenArchived: _noOp,
@@ -880,6 +1046,7 @@ void main() {
           onNewSession: ({required context, required project, required displayName}) =>
               started.add((project.id, displayName)),
           sessionActions: _sessionActions,
+          onManageComputers: _noOp,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
@@ -1328,6 +1495,7 @@ void main() {
                 opened.add(session.id),
             onNewSession: _newSession,
             sessionActions: _sessionActions,
+            onManageComputers: _noOp,
             onOpenBridgeSettings: _noOp,
             onOpenSettings: _noOp,
             onOpenArchived: () => archivedOpens++,
@@ -1522,6 +1690,19 @@ void _openSession({
   required String displayName,
   required Session session,
 }) {}
+BridgeSummary _computer({required String id, required String name, required BridgeRegistrationStatus status}) =>
+    BridgeSummary(
+      id: id,
+      name: name,
+      hostname: name,
+      platform: BridgePlatform.macos,
+      status: status,
+      addedAt: DateTime.utc(2026),
+      lastSeenAt: null,
+    );
+
+class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 
 void _noOp() {}
@@ -1536,6 +1717,7 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 class _MockLocalBridgeStartupCubit() extends MockCubit<LocalBridgeStartupState> implements LocalBridgeStartupCubit;
+class _MockComputerSwitcherCubit() extends MockCubit<ComputerSwitcherState> implements ComputerSwitcherCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;

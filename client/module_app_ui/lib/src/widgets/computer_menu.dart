@@ -32,8 +32,6 @@ class const ComputerMenu({
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ComputerSwitcherCubit>().state;
-    final currentId = state.currentId;
-    final onManageComputers = this.onManageComputers;
     return PregoAnchorMenu(
       // Flat whatever the trigger, so the menu looks the same from a text row
       // and from the phone home's glass button.
@@ -41,36 +39,54 @@ class const ComputerMenu({
       acquireOpenLease: null,
       menuWidth: 280,
       triggerBuilder: triggerBuilder,
-      entriesBuilder: () => [
-        for (final computer in [
-          if (currentFirst) ...state.computers.where((computer) => computer.id == currentId),
-          ...state.computers.where((computer) => !currentFirst || computer.id != currentId),
-        ])
-          PregoMenuStatusItem(
-            key: ValueKey("computer-menu-${computer.id}"),
-            title: computer.name,
-            status: presenceStatus(computer: computer),
-            statusText: presenceLabel(context: context, computer: computer),
-            leadingIcon: platformIcon(platform: computer.platform),
-            isSelected: computer.id == currentId,
-            onTap: () {
-              if (computer.id != currentId) onSelect(bridgeId: computer.id);
-            },
-          ),
-        if (onManageComputers != null) ...[
-          const PregoMenuDivider(),
-          PregoMenuItem(
-            key: const ValueKey("computer-menu-manage"),
-            title: context.loc.computerMenuManage,
-            subtitle: null,
-            leadingIcon: TablerRegular.settings,
-            isSelected: false,
-            shortcutLabel: null,
-            onTap: onManageComputers,
-          ),
-        ],
-      ],
+      entriesBuilder: () => entries(
+        context: context,
+        state: state,
+        onSelect: onSelect,
+        onManageComputers: onManageComputers,
+        currentFirst: currentFirst,
+      ),
     );
+  }
+
+  /// The menu's rows, for a menu that shows them above rows of its own.
+  static List<PregoMenuEntry> entries({
+    required BuildContext context,
+    required ComputerSwitcherState state,
+    required void Function({required String bridgeId}) onSelect,
+    required VoidCallback? onManageComputers,
+    required bool currentFirst,
+  }) {
+    final currentId = state.currentId;
+    return [
+      for (final computer in [
+        if (currentFirst) ...state.computers.where((computer) => computer.id == currentId),
+        ...state.computers.where((computer) => !currentFirst || computer.id != currentId),
+      ])
+        PregoMenuStatusItem(
+          key: ValueKey("computer-menu-${computer.id}"),
+          title: state.isThisComputer(bridgeId: computer.id) ? context.loc.desktopSettingsThisComputer : computer.name,
+          status: presenceStatus(computer: computer),
+          statusText: presenceLabel(context: context, computer: computer),
+          leadingIcon: platformIcon(platform: computer.platform),
+          isSelected: computer.id == currentId,
+          onTap: () {
+            if (computer.id != currentId) onSelect(bridgeId: computer.id);
+          },
+        ),
+      if (onManageComputers != null) ...[
+        const PregoMenuDivider(),
+        PregoMenuItem(
+          key: const ValueKey("computer-menu-manage"),
+          title: context.loc.computerMenuManage,
+          subtitle: null,
+          leadingIcon: TablerRegular.settings,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: onManageComputers,
+        ),
+      ],
+    ];
   }
 
   /// "Online", or "Offline" with the last-seen time when one is known.

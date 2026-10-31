@@ -82,6 +82,12 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 entry: const NewSessionEntry.platform(),
               ),
             ),
+            onManageComputers: () => unawaited(
+              showDesktopComputersSettings(
+                context: context,
+                onLogoutCompleted: _goDesktopHome,
+              ),
+            ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onOpenArchived: () => _openArchived(context: context),
@@ -116,12 +122,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
           ),
           onOpenHarnessSettings: () => _openHarnessSettings(context: context),
-          onManageComputers: () => unawaited(
-            showDesktopComputersSettings(
-              context: context,
-              onLogoutCompleted: _goDesktopHome,
-            ),
-          ),
         ),
       ),
       GoRoute(

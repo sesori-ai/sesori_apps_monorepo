@@ -108,7 +108,7 @@ and keep native close/quit behavior safe.
   session unchanged, while a failed start or stop leaves the next action
   targeted at retrying that failed operation.
 - The signed-in window opens on project/session guidance and recovery. Its
-  pinned This computer popover presents local process status and relevant controls;
+  pinned computer row's menu presents local process status and relevant controls;
   account information remains in Settings, and the tray retains active-session
   counts, application Quit and launch-at-login. Explicit Start/Stop actions
   preserve their intent even if process state changes before dispatch; failed

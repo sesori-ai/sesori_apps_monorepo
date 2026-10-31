@@ -12,12 +12,11 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_sidebar.dart";
-import "../../core/widgets/desktop_sidebar_expansion.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
 
-/// How long the home's own changes take: the body crossfade and the header
-/// and the slow-start line fading in.
+/// How long the home's own changes take: the body crossfade and the slow-start
+/// line fading in.
 const Duration _homeMotionDuration = Duration(milliseconds: 220);
 
 /// The desktop home: the cockpit's project list states, and otherwise a new
@@ -28,9 +27,6 @@ class const DesktopHomePane({
   /// Opens the session the home just started.
   required final SidebarSessionOpenedCallback onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
-
-  /// Opens the Computers page from the "Viewing:" menu.
-  required final VoidCallback onManageComputers,
 }) extends StatefulWidget {
   @override
   State<DesktopHomePane> createState() => _DesktopHomePaneState();
@@ -42,49 +38,10 @@ class _DesktopHomePaneState() extends State<DesktopHomePane> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        // Not lazy: besides naming the computer, it fetches the account's
-        // computers whenever the relay is reachable. The header relies on that
-        // eager fetch, as nothing else on the home loads the list.
-        BlocProvider(
-          lazy: false,
-          create: (_) => BridgeIdentityCubit(
-            registeredBridgesService: getIt<RegisteredBridgesService>(),
-            connectionService: getIt<ConnectionService>(),
-            selectedComputerService: getIt<SelectedComputerService>(),
-          ),
-        ),
-        BlocProvider(
-          create: (_) => ComputerSwitcherCubit(
-            registeredBridgesService: getIt<RegisteredBridgesService>(),
-            connectionService: getIt<ConnectionService>(),
-            selectedComputerService: getIt<SelectedComputerService>(),
-            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
-          ),
-        ),
-      ],
-      // The body fills the pane from launch, and the header floats over its
-      // top band, so the header appearing never moves the body, and it stays
-      // put while the body changes state. The pane paints the page's
-      // background once, beneath every body.
-      child: ColoredBox(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: Stack(
-          children: [
-            Positioned.fill(child: Builder(builder: _buildBody)),
-            PositionedDirectional(
-              top: 0,
-              start: 0,
-              end: 0,
-              child: _DesktopComputerHeader(
-                onSwitchComputer: _switchComputer,
-                onManageComputers: widget.onManageComputers,
-              ),
-            ),
-          ],
-        ),
-      ),
+    // The pane paints the page's background once, beneath every body.
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _buildBody(context),
     );
   }
 
@@ -292,93 +249,6 @@ class _SlowStartLineState() extends State<_SlowStartLine> {
               textAlign: TextAlign.center,
               style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Viewing: …" over the home's top band: which computer's projects the
-/// desktop shows, and the menu to switch. Hidden while the account's only
-/// computer is this one, where there is nothing to tell apart or switch to; it
-/// fades in when the list says otherwise, and out if the list goes back.
-class const _DesktopComputerHeader({
-  required final ComputerSwitchCallback onSwitchComputer,
-  required final VoidCallback onManageComputers,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<ComputerSwitcherCubit>().state;
-    final current = state.computers.where((computer) => computer.id == state.currentId).firstOrNull;
-    final remote = state.viewsAnotherComputer;
-    return AnimatedSwitcher(
-      duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      // Unkeyed, as the body's, so a line back before its last one has faded
-      // out gets an entry of its own.
-      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
-      child: current == null || !(remote || state.computers.length > 1)
-          ? const SizedBox.shrink()
-          : Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, PregoSpacing.md, PregoSpacing.lg, 0),
-              child: DesktopSidebarRestoreInset(
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: ComputerMenu(
-                    onSelect: ({required bridgeId}) =>
-                        onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
-                    onManageComputers: onManageComputers,
-                    currentFirst: false,
-                    triggerBuilder: (context, toggle) => _ViewingButton(
-                      label: remote
-                          ? context.loc.desktopViewingComputer(current.name)
-                          : context.loc.desktopViewingThisComputer,
-                      icon: ComputerMenu.platformIcon(platform: current.platform),
-                      onPressed: toggle,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
-}
-
-class const _ViewingButton({
-  required final String label,
-  required final IconData icon,
-  required final VoidCallback onPressed,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final color = prego.colors.textSecondary;
-    return Semantics(
-      hint: context.loc.computerMenuSwitchHint,
-      child: InkWell(
-        key: const Key("desktop-computer-header"),
-        mouseCursor: WidgetStateMouseCursor.clickable,
-        borderRadius: BorderRadius.circular(PregoRadius.sm),
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: PregoSpacing.xs,
-            children: [
-              Icon(icon, size: PregoIconSize.md, color: color),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: prego.textTheme.textSm.medium.copyWith(color: color),
-                ),
-              ),
-              Icon(TablerRegular.chevron_down, size: PregoIconSize.sm, color: prego.colors.textTertiary),
-            ],
           ),
         ),
       ),

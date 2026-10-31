@@ -26,7 +26,7 @@ The main pane hosts one full-width routed page.
   drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
   undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
   region overlap, one press still reaches the host once.
-- The sidebar's footer is one 44-point row: This computer, then Settings and collapse, with the
+- The sidebar's footer is one 44-point row: the computer row, then Settings and collapse, with the
   bridge recovery card above it when one applies. Refresh sits beside the project filter at the head of the
   list. The session list clips its rows' highlights, so a highlighted row scrolled under the section above
   never shows through it.
@@ -41,8 +41,8 @@ The main pane hosts one full-width routed page.
   Idle gesture cancellation does not write; explicit sidebar collapse toggles do.
 - Collapse hides the sidebar completely: the panel and its resize gap slide out past the window's start edge
   in 220 ms while the page widens into their room, and the panel never squeezes its rows on the way. A restore
-  button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars and the home's
-  Viewing header move their content past it while it shows, and it slides just ahead of that content, never
+  button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars move
+  their content past it while it shows, and it slides just ahead of that content, never
   over it. The button and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
   screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
@@ -206,14 +206,15 @@ The main pane hosts one full-width routed page.
   normal start never shows it, and no other load does. Recovery appears only once the supervisor leaves starting and
   running (a failed start, a stop, login required, contention), or a bridge the app had reached is lost (a crash restart
   stays disconnected); another computer's offline state shows immediately.
-- Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored menu
-  switches computers through the shared switch flow (source `menu`). It is hidden while the account's only computer is
-  this one. When the list says otherwise it fades in over 220 ms on its own layer over the pane's 54-pixel top band
-  (at once with reduced motion), and fades out the same way if the list goes back to one. The body fills the pane from
-  launch, so the heading, pills, composer and loader never move as the line comes or goes; beside the line, the band
-  leaves clicks to the body, and the file-access card starts below the band, so the line clears it up to 150% text
-  (from about 200% the line's lower edge reaches over the card's top padding, not its text). The line stays put
-  while the body below changes state. The body cross-fades over 220 ms between the composer and the loader
+- The sidebar footer's computer row names the computer being viewed on every page: "This computer" for the local one,
+  otherwise its name, with that computer's status dot. Its name and dot crossfade over 220 ms in place on a switch,
+  moving nothing. Until the account's list names another viewed computer the row says "Computers", never "This
+  computer". Its anchored menu lists the account's computers ("This computer" among them) and "Manage computers…"
+  above this computer's bridge controls, and switches through the shared switch flow (source `menu`); an account
+  whose only computer is this one gets the bridge controls alone. The command palette lists every other computer as
+  "Switch to <computer>" with its online or last-seen state (source `command_palette`), which also serves a collapsed
+  sidebar.
+- The body fills the home pane from launch and cross-fades over 220 ms between the composer and the loader
   or another status page, as when a switch loads the next computer's projects and lands on its composer. Each kind
   of status page (the loader, a failure, recovery, offline) cross-fades into the next, while one whose own content
   changes, such as the slow-start line appearing under the
@@ -234,15 +235,15 @@ The main pane hosts one full-width routed page.
   supervisor leaves starting and running. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
-- The This computer row always exposes its supervised status through a dot and an
-  accessible description. Takeover (another copy of this computer's own bridge, here or on a cloned machine;
+- On this computer, the computer row exposes its supervised status through a dot and an
+  accessible description; while another computer is viewed, that status stays in the row's menu. Takeover (another copy of this computer's own bridge, here or on a cloned machine;
   another computer never causes it), login, start failure and crash-give-up
   recovery lives in the sidebar footer. Long repair guidance scrolls within a
   bounded card whose icon sits centred on the message's first line, with its
   extra-small buttons below: Take over for takeover, Start bridge for login,
   Retry for a start failure, and for crash give-up only, Retry (primary alt)
   beside Open logs (tertiary). In dark mode none reads as disabled. Compact mode keeps the primary action and full tooltip. Open
-  Logs is also available in the This computer popover. Command locks still disable
+  Logs is also available in the computer row's menu. Command locks still disable
   recovery mutations, and start failures do not offer nonexistent child logs.
 - The canonical `/sessions` home receives startup via `/splash` redirect and
   anchors notification route stacks; returning home retains shared inventory
@@ -252,8 +253,8 @@ The main pane hosts one full-width routed page.
   visibility without replacing the session controller, element or composer.
   Notification activation dismisses root popups before revealing its session:
   the same session retains its page and Back stack; another gets the typed stack.
-- This computer opens a flat, screen-clamped popover from the sidebar's footer
-  without replacing the main pane. A Local bridge heading and the sidebar's
+- The computer row opens a flat, screen-clamped menu from the sidebar's footer
+  without replacing the main pane. Below any computers, a Local bridge heading and the sidebar's
   status dot with the process status precede the actions. Start, Retry and Take
   Over are one solid button; Stop is a quiet row beside logs and configuration. A crashed helper offers Retry despite retained On intent. A
   displaced running helper also offers Stop without requiring takeover. Explicit
@@ -262,7 +263,7 @@ The main pane hosts one full-width routed page.
   Outside click and Escape dismiss without an action. App Quit and startup
   preferences belong to application controls, not local bridge controls.
 - Settings is a root modal, preserving the current route, session element and
-  live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the This computer popover
+  live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the computer row's menu
   opens Bridge; every harness settings entry (the home and New session composers' notices, a session's harness
   notice) opens Bridge with its Harnesses page already open. All tabs and Close remain usable
   at 560 × 480, with independently scrollable tabs/content through 250% text scale and no scale reduction.
@@ -324,8 +325,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
-- Home computer header shown, hidden for a lone local computer, fading in and out over the top band without moving the
-  composer (at once with reduced motion), and switching from its menu; disconnected home for a remote target (offline
+- Sidebar computer row naming the viewed computer on every page, crossfading in place on a switch, and switching from
+  its menu; the bridge controls alone for a lone local computer; the palette listing the other computers; disconnected
+  home for a remote target (offline
   body, other computers, no Start, also while this computer's bridge launches) versus
   this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
   recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
@@ -412,8 +414,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Fresh-account autostart, login-item registration, optional Full Disk Access grant/deny/focus-return
   and helper inheritance.
 - Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer.
-- Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings.
-- Viewing a remote computer from the home header while the local bridge keeps serving a phone, and the remote
+- The computer row's menu: Start/Stop/Retry, Take Over versus Stop, logs and Settings.
+- Viewing a remote computer from the sidebar's computer row while the local bridge keeps serving a phone, and the remote
   offline body when that computer's bridge stops.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
 - Archived from the sidebar: the page fades in over the open page with nothing closing first, a row opens
@@ -458,8 +460,8 @@ On home, watch for a session starting in a project other than the one picked, a 
 reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
 the prompt while the list loads on launch, the composer building up part by part or its heading shifting
 after the bridge connects, a Start button
-offered for another computer, a header that pops in on each load, the heading, pills, composer or loader sliding
-as the "Viewing:" line appears or leaves, that line covering the file-access card, or the desktop jumping back to
+offered for another computer, the computer row saying This computer while another computer is viewed, its name
+jumping on a switch, or the desktop jumping back to
 this computer after the user picked another one.
 
 ## Maintenance Sources

@@ -14,6 +14,9 @@ import "desktop_sidebar.dart";
 /// shortcut, when it has one.
 class const DesktopCommand({
   required final String label,
+
+  /// Quiet words after the label, which the palette does not search.
+  final String? detail,
   required final IconData icon,
   required final SingleActivator? shortcut,
   required final VoidCallback run,
@@ -157,7 +160,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                         child: _PaletteRow(
                           icon: command.icon,
                           title: command.label,
-                          detail: null,
+                          detail: command.detail,
                           trailing: switch (command.shortcut) {
                             final shortcut? => desktopShortcutLabel(shortcut: shortcut),
                             null => null,

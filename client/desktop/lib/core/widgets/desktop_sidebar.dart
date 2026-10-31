@@ -36,6 +36,8 @@ class const DesktopSidebar({
   required final VoidCallback onOpenArchived,
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onToggleCollapsed,
+  required final ComputerSwitchCallback onSwitchComputer,
+  required final VoidCallback onManageComputers,
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
@@ -52,9 +54,6 @@ class const DesktopSidebar({
     };
     final loc = context.loc;
     final newSessionShortcut = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
-    final prego = context.prego;
-    final bridge = context.watch<BridgeControlCubit>().state;
-    final bridgeColor = desktopBridgeStatusColor(colors: prego.colors, state: bridge);
     // The shell's floating panel paints the surface.
     return Material(
       type: MaterialType.transparency,
@@ -152,9 +151,9 @@ class const DesktopSidebar({
               ),
             ),
             _SidebarFooter(
-              bridge: bridge,
-              bridgeColor: bridgeColor,
               onToggleCollapsed: onToggleCollapsed,
+              onSwitchComputer: onSwitchComputer,
+              onManageComputers: onManageComputers,
               onOpenBridgeSettings: onOpenBridgeSettings,
               onOpenSettings: onOpenSettings,
             ),
@@ -282,9 +281,9 @@ class const _SidebarRefreshButton({
 }
 
 class const _SidebarFooter({
-  required final BridgeControlState bridge,
-  required final Color bridgeColor,
   required final VoidCallback onToggleCollapsed,
+  required final ComputerSwitchCallback onSwitchComputer,
+  required final VoidCallback onManageComputers,
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
@@ -321,26 +320,10 @@ class const _SidebarFooter({
               child: Row(
                 children: [
                   Expanded(
-                    child: PregoPopover(
-                      popoverWidth: 300,
-                      popoverMaxHeight: null,
-                      contentScrolls: false,
-                      onClosed: null,
-                      triggerBuilder: (context, toggle) => _SidebarButton(
-                        label: loc.desktopSettingsThisComputer,
-                        icon: const Icon(TablerRegular.server, size: PregoIconSize.md),
-                        // A status dot, not a glyph: no icon token applies.
-                        status: (
-                          icon: Icon(TablerSolid.circle, size: 8, color: bridgeColor),
-                          label: bridge.statusLabel,
-                        ),
-                        shortcut: null,
-                        onPressed: toggle,
-                      ),
-                      contentBuilder: (context, close) => DesktopBridgePopover(
-                        close: close,
-                        onOpenSettings: onOpenBridgeSettings,
-                      ),
+                    child: _SidebarComputerRow(
+                      onSwitchComputer: onSwitchComputer,
+                      onManageComputers: onManageComputers,
+                      onOpenBridgeSettings: onOpenBridgeSettings,
                     ),
                   ),
                   control(
@@ -372,24 +355,97 @@ class const _SidebarFooter({
   }
 }
 
+/// Names the computer the app works on, with its status, and opens the menu
+/// to switch computers above this computer's own bridge controls. The menu
+/// lists no computers while this one is the account's only one.
+class const _SidebarComputerRow({
+  required final ComputerSwitchCallback onSwitchComputer,
+  required final VoidCallback onManageComputers,
+  required final VoidCallback onOpenBridgeSettings,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.prego.colors;
+    final loc = context.loc;
+    final bridge = context.watch<BridgeControlCubit>().state;
+    final computers = context.watch<ComputerSwitcherCubit>().state;
+    final remote = computers.viewsAnotherComputer;
+    final current = computers.computers.where((computer) => computer.id == computers.currentId).firstOrNull;
+    final (:name, :dot, :statusLabel) = switch ((remote, current)) {
+      (false, _) => (
+        name: loc.desktopSettingsThisComputer,
+        dot: desktopBridgeStatusColor(colors: colors, state: bridge),
+        statusLabel: bridge.statusLabel,
+      ),
+      (true, final BridgeSummary current) => (
+        name: current.name,
+        dot: ComputerMenu.presenceStatus(computer: current).dotColor(colors: colors),
+        statusLabel: ComputerMenu.presenceLabel(context: context, computer: current),
+      ),
+      // Another computer, until the account's list names it.
+      (true, null) => (name: loc.computersTitle, dot: colors.textDisabled, statusLabel: loc.computerMenuSwitchHint),
+    };
+    return PregoAnchorMenu(
+      flat: true,
+      acquireOpenLease: null,
+      menuWidth: 300,
+      triggerBuilder: (context, toggle) => _SidebarButton(
+        key: const Key("desktop-sidebar-computer"),
+        label: name,
+        // A status dot, not a glyph: no icon token applies. Keyed so a change
+        // of colour crossfades with the name.
+        icon: AnimatedSwitcher(
+          duration: _SidebarButton._statusFade,
+          child: Icon(TablerSolid.circle, key: ValueKey(dot), size: 8, color: dot),
+        ),
+        status: statusLabel,
+        shortcut: null,
+        trailing: Icon(TablerRegular.chevron_down, size: PregoIconSize.sm, color: colors.textTertiary),
+        onPressed: toggle,
+      ),
+      entriesBuilder: () => [
+        if (remote || computers.computers.length > 1) ...[
+          ...ComputerMenu.entries(
+            context: context,
+            state: computers,
+            onSelect: ({required bridgeId}) => onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+            onManageComputers: onManageComputers,
+            currentFirst: false,
+          ),
+          const PregoMenuDivider(),
+        ],
+        PregoMenuCustom(
+          // Only the glass menu reads the height; this one is flat.
+          height: 0,
+          builder: (context, close) => DesktopBridgePopover(close: close, onOpenSettings: onOpenBridgeSettings),
+        ),
+      ],
+    );
+  }
+}
+
 class const _SidebarButton({
   super.key,
   required final String label,
   required final Widget icon,
 
-  /// Shown at the row's end; its label joins the row's tooltip and spoken
-  /// label.
-  required final ({Widget icon, String label})? status,
+  /// Joins the row's tooltip and spoken label.
+  required final String? status,
 
   /// Shown at the row's end.
   required final String? shortcut,
+
+  /// Shown at the row's end: what a press opens.
+  final Widget? trailing,
   required final VoidCallback? onPressed,
 }) extends StatelessWidget {
+  static const Duration _statusFade = Duration(milliseconds: 220);
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final status = this.status;
-    final description = status == null ? label : "$label, ${status.label}";
+    final description = status == null ? label : "$label, $status";
     final shortcut = this.shortcut;
     final color = onPressed == null ? prego.colors.textDisabled : prego.colors.textPrimary;
     final textStyle = prego.textTheme.textSm.medium.copyWith(color: color);
@@ -423,7 +479,21 @@ class const _SidebarButton({
                   padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
                   child: status == null
                       ? _TooltipWhenTruncated(message: label, style: textStyle)
-                      : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+                      // A new computer's name crossfades in the same place.
+                      : AnimatedSwitcher(
+                          duration: _statusFade,
+                          layoutBuilder: (current, previous) => Stack(
+                            alignment: AlignmentDirectional.centerStart,
+                            children: [...previous, ?current],
+                          ),
+                          child: Text(
+                            label,
+                            key: ValueKey(label),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textStyle,
+                          ),
+                        ),
                 ),
               ),
               if (shortcut != null)
@@ -436,7 +506,7 @@ class const _SidebarButton({
                     ),
                   ),
                 ),
-              if (status != null) SizedBox(width: 24, height: 20, child: Center(child: status.icon)),
+              ?trailing,
             ],
           ),
         ),

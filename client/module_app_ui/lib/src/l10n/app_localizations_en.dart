@@ -503,12 +503,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsDesktopBridgeStillStarting => 'Still starting this computer\'s bridge…';
 
   @override
-  String desktopViewingComputer(String name) {
-    return 'Viewing: $name';
+  String desktopSwitchToComputer(String name) {
+    return 'Switch to $name';
   }
 
   @override
-  String get desktopViewingThisComputer => 'Viewing: This computer';
+  String get desktopSwitchToThisComputer => 'Switch to this computer';
 
   @override
   String get connectionLostTitle => 'Connection lost';

@@ -114,7 +114,7 @@ presents.
   disconnected, and returns to connected when the bridge is back. The desktop shell
   roots the same `ConnectionService` beside the supervised control channel, shows
   its relay-client state separately from helper relay status, and overlays a connection pill on the main pane
-  without moving its contents. The sidebar's This computer popover describes only the supervised local helper.
+  without moving its contents. The bridge section of the sidebar's computer menu describes only the supervised local helper.
   When project loading reports either no
   registered bridge or a registered-but-offline bridge while the desktop views
   this computer, desktop recovery asks the supervisor to Start and establishes an
