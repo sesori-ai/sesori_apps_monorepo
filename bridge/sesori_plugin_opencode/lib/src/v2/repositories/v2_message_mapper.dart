@@ -262,7 +262,7 @@ class const V2MessageMapper() {
           ),
         ];
       default:
-        Log.w("OpenCode v2 transcript contains an unsupported message variant; omitting that message");
+        Log.w("OpenCode v2 transcript contains an unsupported ${message.runtimeType}; omitting that message");
         return null;
     }
     return PluginMessageWithParts(
