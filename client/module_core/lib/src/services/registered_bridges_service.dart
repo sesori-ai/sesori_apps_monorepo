@@ -339,7 +339,7 @@ class RegisteredBridgesService({
       // overlay — gets the right answer. Coalesced, and a no-op once latched.
       // The relay replays no presence on connect, so the list may be stale too.
       case ConnectionBridgeOffline():
-        _bridgesCurrent = false;
+        _refetchAfterRunningFetch();
         unawaited(hasRegisteredBridges());
       // Pre-connection / transient states carry no registration signal. The
       // socket is gone, so presence notices start missing.
