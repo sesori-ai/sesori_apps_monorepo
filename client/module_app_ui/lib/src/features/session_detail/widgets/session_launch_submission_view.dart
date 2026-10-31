@@ -88,7 +88,10 @@ class const SessionLaunchSubmissionView({
           presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: sendingSince),
         ),
       for (final submission in awaitingBridgeSubmissions)
-        queued(submission: submission, presentation: const QueuedMessageBubblePresentation.pendingReadOnly()),
+        queued(
+          submission: submission,
+          presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
+        ),
       for (final followUp in launchFollowUps)
         queued(
           submission: followUp.submission,
@@ -170,7 +173,9 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
       onCancel: () => onRemove(promptId: promptId),
     ),
-    QueuedLaunchFollowUp() || AcceptedLaunchFollowUp() => const QueuedMessageBubblePresentation.pendingReadOnly(),
+    QueuedLaunchFollowUp() => const QueuedMessageBubblePresentation.pendingReadOnly(),
+    // Accepted but not yet listed reads as still sending, as the session's own do.
+    AcceptedLaunchFollowUp() => QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
     // A lost response may already have reached the bridge, so only an
     // authoritative rejection can be removed; Retry is safe either way,
     // since the bridge drops a promptId it already took.

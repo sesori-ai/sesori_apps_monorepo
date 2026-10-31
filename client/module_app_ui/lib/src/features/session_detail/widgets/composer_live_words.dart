@@ -178,11 +178,10 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   /// kept until it comes within the list's cache.
   static const int _bubbleFrames = 5;
 
-  /// From the composer's body up to the foot of a bubble still being sent, less
-  /// the status caption, which grows with the text: the selectors above the body
-  /// and their gap (52), the list's end padding (8), the caption's padding (xs),
-  /// and the row's margin (xs).
-  static const double _estimatedSlotGap = 52 + 8 + PregoSpacing.xs * 2;
+  /// From the composer's body up to the foot of a bubble still being sent: the
+  /// selectors above the body and their gap (52), the list's end padding (8), and
+  /// the row's margin (xs).
+  static const double _estimatedSlotGap = 52 + 8 + PregoSpacing.xs;
 
   /// How far the composer keeps in from the sides of its column.
   static const double _composerSideInset = 16;
@@ -393,21 +392,14 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     final composer = _composerRect;
     if (layer is! _Gliding || composer == null) return const _InPlace();
     final text = wrapDictatedText(text: transcript.trim());
-    final textDirection = Directionality.of(context);
-    final textScaler = MediaQuery.textScalerOf(context);
     final sideInset = _composerSideInset + SentBubbleRowReach.of(context: context);
     final painter = TextPainter(
       text: TextSpan(text: text, style: _bubbleLook().style),
-      textDirection: textDirection,
-      textScaler: textScaler,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
     )..layout(maxWidth: UserMessageBubble.maxContentWidth(rowWidth: composer.width + sideInset * 2));
-    final caption = TextPainter(
-      text: TextSpan(text: context.loc.sessionDetailSendingMessage, style: context.prego.textTheme.textXs.medium),
-      textDirection: textDirection,
-      textScaler: textScaler,
-    )..layout();
     final right = composer.right + sideInset - UserMessageBubble.margin.right;
-    final bottom = composer.top - _estimatedSlotGap - caption.height;
+    final bottom = composer.top - _estimatedSlotGap;
     final rect = Rect.fromLTRB(
       right - painter.width - UserMessageBubble.padding * 2,
       bottom - painter.height - UserMessageBubble.padding * 2,
@@ -415,7 +407,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       bottom,
     );
     painter.dispose();
-    caption.dispose();
     return _Estimate(rect: rect, text: text);
   }
 

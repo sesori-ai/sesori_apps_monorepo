@@ -335,6 +335,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
     }
     _syncSurfaceStyle();
+    _releaseHintHeight = _measureReleaseHintHeight();
   }
 
   @override
@@ -1555,7 +1556,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return body;
     return ComposerLiveWords(
       cancelProgress: _cancelDragProgress,
-      hintHeight: _releaseHintHeight(context),
+      hintHeight: _releaseHintHeight,
       box: _wordsBox,
       boxStyle: _fieldStyle(context),
       child: body,
@@ -1572,7 +1573,9 @@ class _PromptInputState() extends State<PromptInput> {
   static const _releaseHintPadding = EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl);
 
   /// The height of [_buildReleaseHint], which stays one line whatever it says.
-  double _releaseHintHeight(BuildContext context) {
+  double _releaseHintHeight = 0;
+
+  double _measureReleaseHintHeight() {
     final line = TextPainter(
       text: TextSpan(style: context.prego.textTheme.textMd.regular),
       textDirection: Directionality.of(context),

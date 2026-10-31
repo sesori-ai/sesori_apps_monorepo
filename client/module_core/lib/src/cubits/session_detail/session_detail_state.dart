@@ -108,7 +108,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Memory-only, bounded previews retained from this surface's submissions.
     required Map<String, List<ComposerAttachment>> bridgePromptAttachments,
     // Accepted sends whose bridge-side representation has not arrived yet.
-    // Rendered as read-only queue rows so a prompt never blanks between
+    // Rendered as rows still sending so a prompt never blanks between
     // its acceptance response and the bridge's queue event listing it.
     @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     // Messages sent before this session existed that its launch has not

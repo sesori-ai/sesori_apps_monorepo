@@ -59,7 +59,9 @@ class const QueuedMessageBubble({
 }
 
 class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
-  /// How long a send runs before its status names the harness it waits on.
+  /// How long a send runs before it shows a status at all. Until then its row has
+  /// no status line, the same height as the delivered message, so a fast send
+  /// moves nothing.
   static const _slowSendDelay = Duration(seconds: 2);
 
   Timer? _slowSendTimer;
@@ -116,7 +118,8 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         presentation is ReadOnlyPendingMessageBubblePresentation ||
         presentation is UnavailableCommandBubblePresentation ||
         presentation is FailedMessageBubblePresentation;
-    final status = switch (presentation) {
+    final Widget? status = switch (presentation) {
+      SendingMessageBubblePresentation() when !_isSlowSend => null,
       // The label names the harness, so it wraps rather than overflowing a
       // narrow pane at large text.
       SendingMessageBubblePresentation(:final harnessName) => Row(
@@ -131,9 +134,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           const SizedBox(width: PregoSpacing.xs),
           Flexible(
             child: Text(
-              _isSlowSend && harnessName != null
-                  ? loc.sessionDetailSendingToHarness(harnessName)
-                  : loc.sessionDetailSendingMessage,
+              harnessName != null ? loc.sessionDetailSendingToHarness(harnessName) : loc.sessionDetailSendingMessage,
               style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
             ),
           ),
@@ -241,6 +242,21 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       ),
     };
 
+    // Nothing at all without a status, padding included, so that the row is the
+    // same height as the delivered message.
+    final statusRail = status == null
+        ? const SizedBox.shrink()
+        : KeyedSubtree(
+            key: ValueKey(presentation.runtimeType),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(
+                end: PregoSpacing.x2l,
+                bottom: PregoSpacing.xs,
+              ),
+              child: status,
+            ),
+          );
+
     return Column(
       crossAxisAlignment: .end,
       mainAxisSize: MainAxisSize.min,
@@ -255,26 +271,12 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           outlined: isPending,
           transitionDuration: duration,
         ),
-        Padding(
-          padding: const EdgeInsetsDirectional.only(
-            end: PregoSpacing.x2l,
-            bottom: PregoSpacing.xs,
-          ),
-          // Cross-fade the status rail between sending/queued so the swap
-          // reads as one row changing state; the enclosing prompt row eases
-          // the height difference. Reduced motion swaps instantly.
-          // Cancelling a queued prompt must not dismiss an in-progress draft.
-          child: TextFieldTapRegion(
-            child: reducedMotion
-                ? status
-                : AnimatedSwitcher(
-                    duration: duration,
-                    child: KeyedSubtree(
-                      key: ValueKey(presentation.runtimeType),
-                      child: status,
-                    ),
-                  ),
-          ),
+        // Cross-fade the status rail between its states, a slow send's arrival
+        // among them, so the swap reads as one row changing state; the enclosing
+        // prompt row eases the height difference. Reduced motion swaps instantly.
+        // Cancelling a queued prompt must not dismiss an in-progress draft.
+        TextFieldTapRegion(
+          child: reducedMotion ? statusRail : AnimatedSwitcher(duration: duration, child: statusRail),
         ),
       ],
     );

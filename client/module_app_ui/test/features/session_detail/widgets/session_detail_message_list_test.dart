@@ -597,6 +597,108 @@ void main() {
     expect(easing(), isTrue);
   });
 
+  group("a send's status line", () {
+    MessageWithParts delivered() =>
+        _message(messageId: "echo", role: "user", text: "Fresh", createdAtMs: 200, promptId: "prm_sent");
+
+    /// Where the row above the send's is on each of the next [frames] frames.
+    Future<List<double>> tops(WidgetTester tester, {required int frames}) async {
+      final tops = <double>[];
+      for (var frame = 0; frame < frames; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        tops.add(tester.getTopLeft(find.text("Earlier")).dy);
+      }
+      return tops;
+    }
+
+    void expectAllAt(List<double> tops, double top) => expect(tops, everyElement(moreOrLessEquals(top, epsilon: 0.01)));
+
+    testWidgets("a normal send shows none, and the chat stays put when it is delivered", (tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+      );
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.textContaining("Sending"), findsNothing);
+      final risen = tester.getTopLeft(find.text("Earlier")).dy;
+
+      harness.appendNewestMessage(delivered());
+      expectAllAt(await tops(tester, frames: 40), risen);
+    });
+
+    testWidgets("nor does the bridge accepting it bring one, ahead of its echo", (tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+      );
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final risen = tester.getTopLeft(find.text("Earlier")).dy;
+
+      harness.acceptSendingSubmission();
+      expectAllAt(await tops(tester, frames: 20), risen);
+      expect(find.text("Queued"), findsNothing);
+      expect(
+        tester.widget<UserMessageBubble>(find.byType(UserMessageBubble).last).outlined,
+        isFalse,
+        reason: "Nothing says it is queued.",
+      );
+
+      harness.appendNewestMessage(delivered());
+      expectAllAt(await tops(tester, frames: 40), risen);
+    });
+
+    testWidgets("a slow send's fades in while the chat eases up for it", (tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+      );
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1990));
+      expect(find.textContaining("Sending"), findsNothing);
+      final risen = tester.getTopLeft(find.text("Earlier")).dy;
+
+      await tester.pump(const Duration(milliseconds: 16));
+      final line = find.text("Sending to OpenCode…");
+      expect(line, findsOneWidget);
+      double lineOpacity() => tester
+          .widget<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)).first)
+          .opacity
+          .value;
+      expect(lineOpacity(), lessThan(0.1));
+
+      final path = [risen, ...await tops(tester, frames: 30)];
+      expect(lineOpacity(), 1);
+      expect(path.last, moreOrLessEquals(risen - 22, epsilon: 0.01));
+      for (var frame = 1; frame < path.length; frame++) {
+        final step = path[frame - 1] - path[frame];
+        expect(step, inInclusiveRange(0, 5), reason: "Frame $frame of ${path.join(", ")}");
+      }
+    });
+
+    testWidgets("under reduced motion a slow send's shows at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final harness = await _pumpTurns(
+        tester,
+        messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+      );
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      final before = tester.getTopLeft(find.text("Earlier")).dy;
+      expect(find.textContaining("Sending"), findsNothing);
+
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text("Sending to OpenCode…"), findsOneWidget);
+      expect(tester.getTopLeft(find.text("Earlier")).dy, moreOrLessEquals(before - 22, epsilon: 0.01));
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
   group("a dictated send's landing", () {
     SentBubbleLandingController landing(WidgetTester tester) =>
         SentBubbleLanding.of(context: tester.element(find.byType(SessionDetailMessageList)));
@@ -768,7 +870,6 @@ void main() {
       expectThumbnails();
       harnessKey.currentState!.beginSending();
       await tester.pump();
-      expect(find.text("Sending"), findsOneWidget);
       expectThumbnails();
 
       harnessKey.currentState!.acceptSendingSubmission();
@@ -786,7 +887,6 @@ void main() {
       await tester.pump();
       expectThumbnails();
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text("Sending"), findsOneWidget);
       expectThumbnails();
       expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
@@ -874,7 +974,6 @@ void main() {
     // The bounded owner may evict an older preview while its row is pending.
     harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: const {});
     await _pumpListUpdate(tester);
-    expect(find.text("Sending"), findsOneWidget);
     expect(find.text("1 image"), findsOneWidget);
     expect(find.byType(Image), findsNothing);
     expect(tester.takeException(), isNull);
@@ -942,7 +1041,7 @@ void main() {
 
     expect(harnessKey.currentState!.retriedFailedSends, 1);
     expect(find.text("Couldn’t send"), findsNothing);
-    expect(find.text("Sending"), findsOneWidget);
+    expect(find.text("first"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -1010,9 +1109,21 @@ void main() {
       expect(find.text("Sending to $harnessName…"), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     });
+
+    testWidgets("a slow send with no harness name yet just says it is sending", (tester) async {
+      await pumpNarrowBubble(
+        tester,
+        presentation: const QueuedMessageBubblePresentation.sending(harnessName: null, sendingSince: null),
+      );
+      expect(find.text("Sending"), findsNothing);
+
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text("Sending"), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
   });
 
-  testWidgets("a slow send names the harness after a short delay", (tester) async {
+  testWidgets("a send shows no line until it is slow, and then names the harness", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
@@ -1026,8 +1137,10 @@ void main() {
     harnessKey.currentState!.beginSending();
     await tester.pump();
 
-    expect(find.text("Sending"), findsOneWidget);
+    expect(find.text("slow"), findsOneWidget);
+    expect(find.text("Sending"), findsNothing);
     await tester.pump(const Duration(milliseconds: 1900));
+    expect(find.text("Sending"), findsNothing);
     expect(find.text("Sending to OpenCode…"), findsNothing);
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text("Sending"), findsNothing);
@@ -2773,7 +2886,6 @@ void main() {
     harnessKey.currentState!.beginSending();
     await _pumpListUpdate(tester);
 
-    expect(find.text("Sending"), findsOneWidget);
     // The outgoing status rail cross-fades out; settle it before asserting
     // the cancel affordance is gone.
     await tester.pump(const Duration(milliseconds: 300));
@@ -2890,7 +3002,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 201));
 
     expect(find.text("Direct sending prompt"), findsOneWidget);
-    expect(find.text("Sending"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
     expect(_position(tester).pixels, 0);
   });

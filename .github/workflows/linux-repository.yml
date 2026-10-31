@@ -131,3 +131,8 @@ jobs:
         run: |
           python .github/scripts/publish_linux_repository.py publish --channel "$CHANNEL" \
             --root build/linux-repository-publication
+      # Housekeeping after publication: a failure shows on the step but must not block the update feeds.
+      - name: Prune internal packages older than the newest five builds
+        if: matrix.channel == 'internal'
+        continue-on-error: true
+        run: python .github/scripts/publish_linux_repository.py prune-internal
