@@ -187,7 +187,8 @@ About ten dictations each on Wi-Fi and cellular, including the first after a col
 - Sources: `flutter run` or `flutter logs`, `adb logcat`, the Xcode device console, or `<temp dir>/logs/app.log`
   on the phone (no export in the app).
 - Fails if the worst value is near **4 s**, because a slightly slower start is close. Over 4 s, the dictation falls
-  back to recording and its first live words are lost. This Mac saw about 1 s, which says nothing about a phone.
+  back to recording and drops the audio it held, so the first 4 s or so are missing from what's sent. This Mac saw
+  about 1 s, which says nothing about a phone.
 
 ### 4. Feel, in focus then panel (iPhone and Android)
 
