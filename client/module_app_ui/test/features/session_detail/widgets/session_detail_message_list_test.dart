@@ -4033,6 +4033,60 @@ void main() {
         await tester.pumpAndSettle();
       });
     });
+
+    group("while rows move in the frame its copies change", () {
+      /// Rests 2000 px up from the latest edge, then drags on up far enough to
+      /// build new rows, whose copies join the pins next frame.
+      Future<TestGesture> dragUpThroughRows(WidgetTester tester) async {
+        final position = _position(tester);
+        for (var step = 0; step < 4; step++) {
+          position.jumpTo(position.pixels + 500);
+          await tester.pump();
+        }
+        await tester.pumpAndSettle();
+        final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+        await gesture.moveBy(const Offset(0, 100));
+        await tester.pump();
+        await gesture.moveBy(const Offset(0, 500));
+        await tester.pump();
+        return gesture;
+      }
+
+      testWidgets("a send mid-drag pins from where the rows moved to, one bubble per prompt", (tester) async {
+        final harness = await _pumpTurns(tester, messages: _userMessages(count: 40));
+        final openerIds = [for (var index = 0; index < 40; index++) "user-$index"];
+        final gesture = await dragUpThroughRows(tester);
+        final pixels = _position(tester).pixels;
+
+        harness.sendDirectly(_textSubmission(promptId: "new-prompt", text: "New prompt"));
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(_position(tester).pixels, pixels);
+        final current = pins(tester).stickyLayout.pinned.last;
+        final next = ownBubble(tester, openerIds[openerIds.indexOf(current.openerId) + 1]);
+        expect(ownBubble(tester, current.openerId).top, lessThanOrEqualTo(pinTop));
+        expect(next.top, greaterThan(pinTop));
+        expect(current.top + current.height, lessThanOrEqualTo(next.top - transcriptStickyGap + 0.01));
+        seenBubbles(tester, openerIds: openerIds, screen: tester.getRect(find.byKey(_listViewKey)));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(_position(tester).pixels, 0);
+        expect(find.text("New prompt"), findsOneWidget);
+      });
+
+      testWidgets("answers landing on consecutive frames leave a following reader at the latest edge", (tester) async {
+        final harness = await _pumpTurns(tester, messages: _userMessages(count: 40));
+
+        for (var answer = 0; answer < 30; answer++) {
+          harness.appendNewestMessage(_message(messageId: "answer-$answer", role: "assistant", text: "Answer $answer"));
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.takeException(), isNull);
+          expect(_position(tester).pixels, 0);
+        }
+      });
+    });
   });
 
   testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
