@@ -56,6 +56,7 @@ class RealtimeVoiceClient._({
     required VoiceRealtimeSampleRate sampleRate,
     required ProjectGlossaryKey? projectKey,
   }) async {
+    final sinceConnect = Stopwatch()..start();
     final String? token;
     try {
       token = await _tokenProvider.getFreshAccessToken();
@@ -75,7 +76,7 @@ class RealtimeVoiceClient._({
     );
     // Upgrade failures reach both the stream and `ready`, so the session
     // subscribes first to drain the stream, and `ready` owns the error.
-    final session = RealtimeVoiceSession._(channel: channel);
+    final session = RealtimeVoiceSession._(channel: channel, sinceConnect: sinceConnect);
     try {
       await channel.ready.timeout(_upgradeTimeout);
     } on Object catch (error, stackTrace) {
@@ -106,7 +107,10 @@ enum _SessionPhase() {
 /// the server end the session, so those calls throw [StateError]. Their order is
 /// the caller's to hold. Once the session has ended, sends do nothing: the
 /// microphone can outrun the terminal event, and the caller hears that event.
-final class RealtimeVoiceSession._({required final WebSocketChannel _channel}) {
+final class RealtimeVoiceSession._({
+  required final WebSocketChannel _channel,
+  required final Stopwatch _sinceConnect,
+}) {
   final StreamController<RealtimeVoiceEvent> _events = StreamController<RealtimeVoiceEvent>();
   late final StreamSubscription<void> _subscription;
   _SessionPhase _phase = _SessionPhase.awaitingReady;
@@ -185,7 +189,11 @@ final class RealtimeVoiceSession._({required final WebSocketChannel _channel}) {
 
     switch (event) {
       case RealtimeVoiceReadyEvent():
-        if (_phase == _SessionPhase.awaitingReady) _phase = _SessionPhase.streaming;
+        if (_phase == _SessionPhase.awaitingReady) {
+          _phase = _SessionPhase.streaming;
+          // Audio waits in memory until now (D29), so this sizes that buffer.
+          logi("[voice] realtime ready ${_sinceConnect.elapsedMilliseconds} ms after connect");
+        }
         _events.add(event);
       case RealtimeVoiceTranscriptEvent():
         _events.add(event);

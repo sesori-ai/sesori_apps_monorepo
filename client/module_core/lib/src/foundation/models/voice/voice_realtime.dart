@@ -9,6 +9,11 @@ enum VoiceRealtimeSampleRate({required final int hertz}) {
   hz48000(hertz: 48000),
 }
 
+/// The size of one audio frame the realtime endpoint accepts. A frame also has to
+/// be even, since it holds whole PCM16 samples.
+const int realtimeVoiceMinFrameBytes = 2;
+const int realtimeVoiceMaxFrameBytes = 65536;
+
 /// What a live dictation hears from the server. [VoiceRealtimeCompleted] and
 /// [VoiceRealtimeFailed] are terminal: nothing follows either one.
 sealed class const VoiceRealtimeEvent();

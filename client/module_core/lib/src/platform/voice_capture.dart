@@ -1,3 +1,11 @@
+import "dart:typed_data";
+
+import "../foundation/models/voice/voice_realtime.dart";
+
+/// The rate of [VoiceCaptureSession.startPcmStream]'s frames, to announce to the
+/// realtime endpoint.
+const VoiceRealtimeSampleRate voiceCapturePcmSampleRate = VoiceRealtimeSampleRate.hz16000;
+
 abstract interface class VoiceCapture() {
   Future<void> prewarm();
 
@@ -8,6 +16,28 @@ abstract interface class VoiceCaptureSession() {
   Stream<double> get amplitudeStream;
 
   Future<void> start();
+
+  /// Whether this host can attempt [startPcmStream]: the recorder implements it
+  /// and the tools it runs are installed. A yes is not proof that a microphone
+  /// delivers audio here, so [startPcmStream] and its frames can still fail.
+  Future<bool> supportsPcmStream();
+
+  /// Starts capturing PCM16 little-endian mono at [voiceCapturePcmSampleRate], kept
+  /// in memory only. Throws a [VoiceCaptureError] if capture can't start.
+  ///
+  /// Every frame is even and within the realtime endpoint's frame size. The stream
+  /// is single-subscription and closes after [stopPcmStream] or [cancel]. If capture
+  /// fails, or the recorder ends it or changes its format, the stream delivers a
+  /// [VoiceCaptureFailed] and closes, and the caller still has to [cancel].
+  ///
+  /// After [cancel], [start] works, which is how a dictation falls back to
+  /// recording a file.
+  Future<Stream<Uint8List>> startPcmStream();
+
+  /// Stops the microphone. Frames still on their way arrive before the stream
+  /// closes. A last half sample is dropped. Like [stop], this keeps the operation
+  /// held until [releaseOperation].
+  Future<void> stopPcmStream();
 
   Future<VoiceRecordingArtifact> stop();
 

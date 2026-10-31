@@ -11,8 +11,6 @@ import "../../foundation/models/voice/voice_realtime.dart";
 /// `tests/fixtures/voice-realtime-protocol-v1.json` is the authority, copied to
 /// `test/fixtures/voice_realtime_protocol_v1.json`.
 const int realtimeVoiceProtocolVersion = 1;
-const int realtimeVoiceMinFrameBytes = 2;
-const int realtimeVoiceMaxFrameBytes = 65536;
 
 const int _maxSessionSeconds = 900;
 const int _maxTextLength = 32768;
