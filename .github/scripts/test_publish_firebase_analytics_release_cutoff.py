@@ -29,10 +29,10 @@ class _FakeRemoteConfigClient:
 class PublishCutoffTest(unittest.TestCase):
     def test_parameter_key_matches_the_mobile_source(self) -> None:
         mobile_source = Path(
-            "client/app/lib/core/platform/firebase_analytics_release_cutoff_source.dart"
+            "client/app/lib/core/platform/remote_config_flags.dart"
         ).read_text()
 
-        self.assertIn(f'parameterKey = "{PARAMETER_KEY}"', mobile_source)
+        self.assertIn(f'key: "{PARAMETER_KEY}"', mobile_source)
 
     def test_release_workflow_requires_the_cutoff_after_android_production_submission(self) -> None:
         workflow = Path(".github/workflows/submit-release.yml").read_text()

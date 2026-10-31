@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_mobile/core/platform/firebase_feedback_prompt_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase_remote_config_client.dart";
+import "package:sesori_mobile/core/platform/remote_config_flags.dart";
 
 class _MockFirebaseRemoteConfig() extends Mock implements FirebaseRemoteConfig;
 
@@ -24,10 +25,11 @@ void main() {
     source = FirebaseFeedbackPromptConfigSource(
       remoteConfigClient: FirebaseRemoteConfigClient(remoteConfig: remoteConfig),
     );
+    when(() => remoteConfig.setDefaults(any())).thenAnswer((_) async {});
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetchAndActivate()).thenAnswer((_) async => true);
-    when(() => remoteConfig.getInt(FirebaseFeedbackPromptConfigSource.interactionThresholdKey)).thenReturn(2);
-    when(() => remoteConfig.getInt(FirebaseFeedbackPromptConfigSource.cooldownDaysKey)).thenReturn(1);
+    when(() => remoteConfig.getInt(IntRemoteConfig.feedbackPromptInteractionThreshold.key)).thenReturn(2);
+    when(() => remoteConfig.getInt(IntRemoteConfig.feedbackPromptCooldownDays.key)).thenReturn(1);
   });
 
   test("fetches with a short timeout, then reads the activated values", () async {
@@ -37,8 +39,8 @@ void main() {
     expect(settings.fetchTimeout, const Duration(seconds: 3));
     verifyInOrder([
       () => remoteConfig.fetchAndActivate(),
-      () => remoteConfig.getInt(FirebaseFeedbackPromptConfigSource.interactionThresholdKey),
-      () => remoteConfig.getInt(FirebaseFeedbackPromptConfigSource.cooldownDaysKey),
+      () => remoteConfig.getInt(IntRemoteConfig.feedbackPromptInteractionThreshold.key),
+      () => remoteConfig.getInt(IntRemoteConfig.feedbackPromptCooldownDays.key),
     ]);
   });
 

@@ -20,7 +20,7 @@
   precede stable admission. Windows signing/winget, six-target onboarding and final
   reconciliation/retirement remain open; Linux stays ahead of Windows.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
-  plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
+  plan PR merges, using `plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Delivery:** 14 planned PRs; original steps 3 and 4 are split into 3.a/3.b and 4.a/4.b. Exact titles below.
