@@ -1,5 +1,5 @@
 ---
-name: sesori-plan-maker
+name: plan-maker
 description: >-
   Create or update practical, code-informed plans and trackers. Use before every
   substantial change as required by AGENTS.md, including work that fits one step
