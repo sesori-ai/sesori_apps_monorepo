@@ -6485,6 +6485,31 @@ void main() {
         });
       }
 
+      testWidgets("eases back open without a step when tapping to type during the close", (tester) async {
+        final states = await pumpPhone(tester: tester, draft: "draft");
+        stubSentRow(states: states, text: "draft");
+        await tester.tap(find.byIcon(TablerRegular.arrow_up));
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        await tester.tap(find.byIcon(TablerRegular.keyboard));
+        await tester.pump(const Duration(milliseconds: 16));
+        final heights = [measure(tester: tester).height];
+        for (var frame = 0; frame < 30; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          heights.add(measure(tester: tester).height);
+        }
+
+        var largest = 0.0;
+        for (final (index, height) in heights.indexed.skip(1)) {
+          final step = height - heights[index - 1];
+          expect(step, greaterThanOrEqualTo(-0.01), reason: "Frame $index closes again.");
+          if (index > 2) expect(step, lessThanOrEqualTo(largest + 0.01), reason: "Frame $index steps.");
+          if (step > largest) largest = step;
+        }
+      });
+
       testWidgets("makes them one motion when dictating more onto a draft", (tester) async {
         when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
         when(

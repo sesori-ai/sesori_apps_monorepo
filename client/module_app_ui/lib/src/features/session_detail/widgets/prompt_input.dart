@@ -284,10 +284,13 @@ class _PromptInputState() extends State<PromptInput> {
   /// [AnimatedSize] that [_morphSize] adds or drops as reduced motion toggles.
   final GlobalKey _composerBodyKey = GlobalKey();
 
-  /// Whether a send has just left the keyboard down, so that the composer closes
-  /// with the send's row rising in the transcript. Lasts while the layout the
+  /// Whether a send has just left the keyboard down. Lasts while the layout the
   /// send left fades, see [_layoutComposerBody].
-  bool _closesWithSend = false;
+  bool _sendLeftKeyboardDown = false;
+
+  /// Whether the composer closes with the send's row rising in the transcript. A
+  /// tap back into typing during that fade ends it, as the box then opens again.
+  bool get _closesWithSend => _sendLeftKeyboardDown && _layout != ComposerSurfaceLayout.typing;
 
   /// Images staged for the next submission. Not part of the persisted
   /// draft — they live and die with this composer.
@@ -610,7 +613,7 @@ class _PromptInputState() extends State<PromptInput> {
       if (wasFocused || (!_isVoiceFirst && !fromDictation)) {
         _focusNode.requestFocus();
       } else {
-        setState(() => _closesWithSend = true);
+        setState(() => _sendLeftKeyboardDown = true);
       }
       return true;
     } finally {
@@ -1259,9 +1262,9 @@ class _PromptInputState() extends State<PromptInput> {
   /// The same [Align] carries a layout from current to outgoing, so that it keeps
   /// its state when it starts to fade.
   Widget _layoutComposerBody({required Widget? currentChild, required List<Widget> previousChildren}) {
-    if (_closesWithSend && previousChildren.isEmpty) {
+    if (_sendLeftKeyboardDown && previousChildren.isEmpty) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _closesWithSend = false);
+        if (mounted) setState(() => _sendLeftKeyboardDown = false);
       });
     }
     Widget place({required Widget child, required double heightFactor}) => Align(
