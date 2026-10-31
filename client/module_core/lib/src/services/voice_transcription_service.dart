@@ -68,8 +68,9 @@ class VoiceTranscriptionService({
   /// and the live switch decides whether the words show while the user speaks.
   VoiceDictationMode _chooseMode({required VoiceTranscriptionSession session}) {
     final liveEnabled = _voiceModeRepository.mode is VoiceModeLive;
-    if (session._canRunOnDevice)
+    if (session._canRunOnDevice) {
       return liveEnabled ? VoiceDictationMode.onDeviceLive : VoiceDictationMode.onDeviceHidden;
+    }
     return session._canRunLive && liveEnabled ? VoiceDictationMode.live : VoiceDictationMode.afterRecording;
   }
 
@@ -361,8 +362,9 @@ class VoiceTranscriptionService({
     if (session._state is _VoiceSessionStarting && restart != null) await restart;
 
     final state = session._state;
-    if (state is _VoiceSessionLiveRecording)
+    if (state is _VoiceSessionLiveRecording) {
       return await _finishLive(session: session, run: state.run, mode: state.mode);
+    }
     if (state is! _VoiceSessionRecording) throw VoiceTranscriptionError.notRecording();
     return await _stopFileCapture(
       session: session,

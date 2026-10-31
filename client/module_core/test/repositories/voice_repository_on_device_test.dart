@@ -129,7 +129,7 @@ void main() {
   });
 
   test("a start that fails is a recording failure, so the dictation can fall back", () async {
-    when(() => api.open(sampleRate: any(named: "sampleRate"))).thenThrow(StateError("busy"));
+    when(() => api.open(sampleRate: any(named: "sampleRate"))).thenAnswer((_) async => throw StateError("busy"));
 
     await expectLater(open(), throwsA(isA<RecordingFailedError>()));
   });
