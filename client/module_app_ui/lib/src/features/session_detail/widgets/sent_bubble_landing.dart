@@ -55,10 +55,11 @@ final class SentBubbleLandingController() {
     _Idle() || _Expecting() || _Lost() => null,
   };
 
-  /// Where that bubble's row is now, in [ancestor]'s coordinates. The list can
-  /// be moving under it, so this is read afresh on every frame of the glide.
+  /// Where that bubble's row comes to rest, in [ancestor]'s coordinates. Its
+  /// place in the list can still be changing, so this is read afresh on every
+  /// frame of the glide.
   Rect? heldRect({required RenderObject ancestor}) => switch (_phase) {
-    _Held(:final slot) => slot.rectIn(ancestor: ancestor),
+    _Held(:final slot) => slot.restingRectIn(ancestor: ancestor),
     _Idle() || _Expecting() || _Lost() => null,
   };
 
@@ -129,6 +130,21 @@ class RenderLandingSlot({
 
   Rect? rectIn({required RenderObject ancestor}) =>
       hasSize ? MatrixUtils.transformRect(getTransformTo(ancestor), Offset.zero & size) : null;
+
+  /// Where this ends up once its reversed list is back at its latest edge, as a
+  /// send always takes it. Words aimed at where the row is now would dive towards
+  /// the composer and come back up with it.
+  Rect? restingRectIn({required RenderObject ancestor}) {
+    final rect = rectIn(ancestor: ancestor);
+    if (rect == null) return null;
+    // The offset of the layout that placed the row, which the position is ahead
+    // of while a glide's frame has yet to lay out.
+    final toEdge = switch (RenderAbstractViewport.maybeOf(this)) {
+      RenderViewportBase(:final firstChild?) => firstChild.constraints.scrollOffset,
+      _ => 0.0,
+    };
+    return rect.translate(0, -toEdge);
+  }
 
   @override
   void attach(PipelineOwner owner) {

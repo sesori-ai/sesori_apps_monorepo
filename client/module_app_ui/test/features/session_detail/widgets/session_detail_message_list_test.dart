@@ -2997,6 +2997,38 @@ void main() {
 
       expect(taken.where((held) => held != "Dictated from history"), isEmpty);
     });
+
+    testWidgets("with a dictated send's words aimed at where its row comes to rest", (tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      await tester.drag(find.byKey(_listViewKey), const Offset(0, 280));
+      await tester.pumpAndSettle();
+      final from = _position(tester).pixels;
+      expect(from, greaterThan(100));
+      final landing = SentBubbleLanding.of(context: tester.element(find.byType(SessionDetailMessageList)));
+      final overlay = tester.renderObject(find.byType(SessionDetailMessageList));
+
+      landing.expect();
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Dictated near the end"));
+      // Read as the words do, when the glide's tick has moved the position and
+      // the frame has yet to lay out the rows.
+      final aims = <double>[];
+      void readAim() {
+        if (landing.heldRect(ancestor: overlay) case final rect?) aims.add(rect.top);
+      }
+
+      _position(tester).addListener(readAim);
+      final offsets = <double>[];
+      for (var frame = 0; frame < 16; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        offsets.add(_position(tester).pixels);
+      }
+      _position(tester).removeListener(readAim);
+
+      expect(offsets.first, greaterThan(from / 2), reason: "The list is still on its way: $offsets");
+      expect(offsets.last, 0);
+      expect(aims, isNotEmpty);
+      expect(aims.every((aim) => (aim - aims.last).abs() < 1), isTrue, reason: "$aims");
+    });
   });
 
   // --- Regression tests for the old "jump to top" / "view shifts" bugs ---
