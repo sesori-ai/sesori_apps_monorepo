@@ -50,6 +50,11 @@ class ScrollFollowTracker({
   bool _snapScheduled = false;
   bool _detachSuppressed = false;
 
+  /// Where [animateToEdge] is heading, while it's under way. Going back to following
+  /// rebuilds the scrollable, and the pin that rebuild schedules must not cut the glide
+  /// short. Content that grows meanwhile moves the edge away from this target.
+  double? _glideTarget;
+
   /// Whether the scrollable is currently pinned to [edge].
   bool get following => _following;
 
@@ -133,11 +138,12 @@ class ScrollFollowTracker({
       notifyListeners();
     }
     if (!scrollController.hasClients) return;
-    await scrollController.animateTo(
-      _edgeOffset(metrics: scrollController.position),
-      duration: duration,
-      curve: curve,
-    );
+    final target = _edgeOffset(metrics: scrollController.position);
+    _glideTarget = target;
+    await scrollController.animateTo(target, duration: duration, curve: curve);
+    _glideTarget = null;
+    // Content that grew during the glide moved the edge it set out for.
+    scheduleJumpToEdge();
   }
 
   /// Coalesces a single post-frame `jumpTo(edge)` while following. Safe
@@ -157,7 +163,7 @@ class ScrollFollowTracker({
     _snapScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _snapScheduled = false;
-      if (!_following || !scrollController.hasClients) return;
+      if (!_following || _glideTarget != null || !scrollController.hasClients) return;
       final position = scrollController.position;
       final target = _edgeOffset(metrics: position);
       if ((position.pixels - target).abs() > 0.5) {
@@ -199,6 +205,9 @@ class ScrollFollowTracker({
     // state (it would flash the jump-to-latest pill on a short transcript).
     // Pairs with the same guard on the detach path in [_isUserScrollStart].
     if (metrics.maxScrollExtent <= metrics.minScrollExtent) return;
+    // A glide that reached its target has arrived, however far the edge has moved
+    // since, and [animateToEdge] pins next. One stopped short was stopped by a touch.
+    if (_glideTarget case final target? when (metrics.pixels - target).abs() <= _edgeTolerance) return;
     final distance = (metrics.pixels - _edgeOffset(metrics: metrics)).abs();
     final shouldFollow = distance <= _edgeTolerance;
     if (shouldFollow == _following) return;
