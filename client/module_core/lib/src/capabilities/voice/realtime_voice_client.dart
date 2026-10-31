@@ -127,9 +127,10 @@ final class RealtimeVoiceSession._({
   /// Single subscription. Closes after a terminal event or [cancel].
   Stream<RealtimeVoiceEvent> get events => _events.stream;
 
-  /// Sends one PCM16 frame. Throws [ArgumentError] unless it is even-length and
-  /// within the protocol's frame size.
-  void sendAudio({required Uint8List frame}) {
+  /// Sends one PCM16 frame, and returns whether it went out: an ended session drops
+  /// it. Throws [ArgumentError] unless it is even-length and within the protocol's
+  /// frame size.
+  bool sendAudio({required Uint8List frame}) {
     if (frame.length < realtimeVoiceMinFrameBytes || frame.length > realtimeVoiceMaxFrameBytes || frame.length.isOdd) {
       throw ArgumentError.value(frame.length, "frame.length", "Not a valid PCM16 frame size");
     }
@@ -140,8 +141,9 @@ final class RealtimeVoiceSession._({
         throw StateError("Realtime voice audio after finish");
       case _SessionPhase.streaming:
         _channel.sink.add(frame);
+        return true;
       case _SessionPhase.ended:
-        break;
+        return false;
     }
   }
 

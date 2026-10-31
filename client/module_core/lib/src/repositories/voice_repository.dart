@@ -73,10 +73,10 @@ class VoiceRepository({required final VoiceApi _api, required final RealtimeVoic
 class VoiceRealtimeConnection._({required final RealtimeVoiceSession _session}) {
   Stream<VoiceRealtimeEvent> get events => _session.events.map(_mapRealtimeEvent);
 
+  /// Returns whether the frame went out; once the session has ended it doesn't.
   /// Throws [StateError] before [VoiceRealtimeReady] or after [finish], and
-  /// [ArgumentError] for a frame the protocol does not allow. Does nothing once
-  /// the session has ended.
-  void sendAudio({required Uint8List frame}) => _session.sendAudio(frame: frame);
+  /// [ArgumentError] for a frame the protocol does not allow.
+  bool sendAudio({required Uint8List frame}) => _session.sendAudio(frame: frame);
 
   /// Throws [StateError] before [VoiceRealtimeReady].
   void finish() => _session.finish();
