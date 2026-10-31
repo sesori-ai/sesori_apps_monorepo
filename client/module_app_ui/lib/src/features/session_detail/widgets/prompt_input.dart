@@ -2830,8 +2830,8 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Keeps the mic rendering in its enabled look; recording is press-and-hold,
-  /// so a plain tap deliberately does nothing.
+  /// Keeps a button rendering in its enabled look when a plain tap deliberately
+  /// does nothing: the mic records on press-and-hold, and send may be fading out.
   static void _ignoreTap() {}
 
   /// Which button rests in the primary action's spot.
@@ -2855,7 +2855,6 @@ class _PromptInputState() extends State<PromptInput> {
   /// The two dissolve in one spot. Stop fades over a send that stays opaque until
   /// it is covered, so the spot never goes faint, and one value carries the fade so
   /// that a swap turned back midway retraces it with no restart and no third layer.
-  /// Send's own disabled and enabled looks stay one button, with no fade.
   Widget _buildPrimaryActionButton(BuildContext context) {
     final showStop = _showsStop;
     if (!showStop) _sendAsLastShown = _buildSendButton(context);
@@ -2908,14 +2907,65 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  /// Send's enabled look fades over its opaque disabled look, so the spot never goes
+  /// faint, and one value carries the fade, so a change turned back midway retraces
+  /// it. It takes a tap from the first frame of enabling. Fading out it keeps the
+  /// enabled look, so that a press carries on where it was, but sends nothing.
   Widget _buildSendButton(BuildContext context) {
-    return _buildLabelledIconButton(
-      label: context.loc.sessionDetailSend,
-      icon: TablerRegular.arrow_up,
+    // An empty composer has nothing to send: show the action as genuinely
+    // unavailable instead of accepting a tap that does nothing.
+    final enabled = _hasSendableContent && !_isAwaitingDictatedWords;
+    final enabledTarget = enabled ? 1.0 : 0.0;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: enabledTarget, end: enabledTarget),
+      duration: _morphDuration,
+      curve: _morphCurve,
+      builder: (context, enabledShown, _) {
+        final settled = enabledShown == enabledTarget;
+        return Stack(
+          children: [
+            if (!settled)
+              _buildPrimaryActionLayer(
+                name: "disabled send",
+                current: false,
+                shown: 0,
+                child: _buildSendLook(onPressed: null),
+              ),
+            Opacity(
+              key: const ValueKey("send look"),
+              opacity: settled ? 1 : enabledShown,
+              alwaysIncludeSemantics: true,
+              child: IgnorePointer(
+                // Only the fade out: a disabled send at rest still shows its tooltip.
+                ignoring: !enabled && !settled,
+                child: PregoButtonSemantics(
+                  label: context.loc.sessionDetailSend,
+                  enabled: enabled,
+                  showsTooltip: true,
+                  child: _buildSendLook(
+                    onPressed: enabled
+                        ? _handleSend
+                        : settled
+                        ? null
+                        : _ignoreTap,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Send's look for [onPressed], with no screen reader node of its own.
+  Widget _buildSendLook({required VoidCallback? onPressed}) {
+    return PregoButtonsSolid.iconOnly(
+      leadingIcon: TablerRegular.arrow_up,
+      semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-      // An empty composer has nothing to send: show the action as genuinely
-      // unavailable instead of accepting a tap that does nothing.
-      onPressed: _hasSendableContent && !_isAwaitingDictatedWords ? _handleSend : null,
+      size: PregoButtonsSolidSize.lg,
+      onPressed: onPressed,
     );
   }
 
