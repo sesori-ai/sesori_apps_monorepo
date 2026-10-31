@@ -423,6 +423,7 @@ class Orchestrator({
     final currentProjectService = CurrentProjectService(
       projectRepository: projectRepository,
       projectGlossaryScopeTracker: projectGlossaryScopeTracker,
+      projectGlossaryScopeService: projectGlossaryScopeService,
     );
     final sesoriServerApi = SesoriServerApi(
       authBackendUrl: config.authBackendURL,

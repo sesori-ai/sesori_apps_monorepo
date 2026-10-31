@@ -24,9 +24,10 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
 - Starting, recording, transcribing, and cancelling are mutually exclusive composer interactions; input from a stale
   interaction cannot reset or append text into a newer one.
 - Each composer requests current-project context in the background, refreshes missing context for later interactions,
-  and snapshots only a validated, bridge-issued opaque glossary key when an interaction starts. Missing, pending,
-  invalid, unsupported, or failed context remains unscoped without delaying capture. Retry preserves the original
-  snapshot, and raw project identity never reaches auth.
+  and takes only a validated, bridge-issued opaque glossary key for an interaction: at the start of a live dictation,
+  or by the upload of a recording, so a key that arrives while recording still counts. Missing, pending, invalid,
+  unsupported, or failed context remains unscoped without delaying capture. Retry preserves what the first attempt
+  sent, raw project identity never reaches auth, and the client log says whether each transcription used a glossary.
 - While recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
   drag-to-cancel; recording reaches a maximum duration and signals auto-stop instead of running indefinitely.
 - Initial cancel stops the recorder, releases the wake lock, attempts audio-file deletion, and invalidates any
@@ -116,8 +117,9 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   transcription.
 - Apps older than v1.10.0 still send `project_view`. The bridge decodes it, with a project id or null, and ignores it:
   no reply, no warning, and later requests are still answered.
-- Glossary population derives an exact opaque repository or bridge-local scope, caches the validated key for later
-  current-project responses, scans bounded local Git/filesystem evidence, filters credential-shaped content before
+- A current-project response carries the project's glossary key from its first load; a failed key lookup leaves it
+  out without failing the route.
+- Glossary population derives an exact opaque repository or bridge-local scope, scans bounded local Git/filesystem evidence, filters credential-shaped content before
   tokenization, and reconciles at most 100 deterministic terms. Terms are whole ASCII identifiers; common English
   words and their simple inflections, generic scaffolding names, hash/serial fragments, and a plural beside its
   singular are dropped. Only the opaque scope and filtered terms leave the bridge. Scope, scan, or publication failure
