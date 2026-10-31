@@ -6337,6 +6337,34 @@ void main() {
 
         expect(measure(tester: tester).height, greaterThan(before.height), reason: "The composer has grown.");
       });
+
+      testWidgets("a needs-you card coming and going keeps the newest row's gap on every frame, $pane", (tester) async {
+        final states = await pumpSession(
+          tester: tester,
+          draft: "draft",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        final before = measure(tester: tester);
+
+        Future<void> expectGapHeld() async {
+          for (var frame = 0; frame < 30; frame++) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(measure(tester: tester).gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
+          }
+        }
+
+        states.add(loaded.copyWith(pendingQuestions: [_question]));
+        await expectGapHeld();
+        expect(measure(tester: tester).height, greaterThan(before.height), reason: "The card has arrived.");
+
+        states.add(loaded);
+        await expectGapHeld();
+        expect(measure(tester: tester).height, moreOrLessEquals(before.height), reason: "The card has gone.");
+      });
     });
 
     testWidgets("the first frame already clears the composer", (tester) async {
