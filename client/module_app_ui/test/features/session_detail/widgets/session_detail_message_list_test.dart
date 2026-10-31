@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:math" as math;
 
 import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
@@ -2886,6 +2887,8 @@ void main() {
 
     harnessKey.currentState!.sendDirectly(submission);
     await tester.pump();
+    // The glide starts counting on the frame after the row appears.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 181));
     await tester.pump();
 
@@ -2893,6 +2896,107 @@ void main() {
     expect(find.text("Sending"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
     expect(_position(tester).pixels, 0);
+  });
+
+  group("returning to latest from history glides there", () {
+    Future<_SessionDetailMessageListHarnessState> scrollUp(WidgetTester tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      await tester.drag(find.byKey(_listViewKey), const Offset(0, 2500));
+      await tester.pumpAndSettle();
+      expect(_position(tester).pixels, greaterThan(2000));
+      return harness;
+    }
+
+    /// The scroll offset after each frame of the 180 ms glide and a little more.
+    Future<List<double>> offsetsOverGlide(WidgetTester tester) async {
+      final offsets = <double>[];
+      for (var frame = 0; frame < 16; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        offsets.add(_position(tester).pixels);
+      }
+      return offsets;
+    }
+
+    void expectGlide(List<double> offsets, {required double from}) {
+      final steps = [for (final (index, offset) in offsets.indexed) (index == 0 ? from : offsets[index - 1]) - offset];
+      expect(steps.every((step) => step >= 0), isTrue, reason: "$offsets");
+      expect(steps.reduce(math.max), lessThan(from / 4), reason: "No frame covers much of the way: $offsets");
+      expect(offsets.last, 0);
+    }
+
+    testWidgets("after a send", (tester) async {
+      final harness = await scrollUp(tester);
+      final from = _position(tester).pixels;
+
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Sent from history"));
+      final offsets = await offsetsOverGlide(tester);
+
+      expectGlide(offsets, from: from);
+      expect(find.text("Sent from history"), findsOneWidget);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
+
+    testWidgets("after a tap on Jump to latest", (tester) async {
+      await scrollUp(tester);
+      final from = _position(tester).pixels;
+
+      await tester.tap(find.byKey(_jumpToLatestKey), warnIfMissed: false);
+      final offsets = await offsetsOverGlide(tester);
+
+      expectGlide(offsets, from: from);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
+
+    testWidgets("through a rebuild on the way", (tester) async {
+      final harness = await scrollUp(tester);
+      final from = _position(tester).pixels;
+
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Sent from history"));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      final partWay = _position(tester).pixels;
+      expect(partWay, inExclusiveRange(0, from));
+      harness.setBusy(true);
+      await tester.pump(const Duration(milliseconds: 16));
+
+      final next = _position(tester).pixels;
+      expect(next, inExclusiveRange(0, partWay));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_position(tester).pixels, 0);
+    });
+
+    testWidgets("until a touch stops it, leaving the reader where it did", (tester) async {
+      final harness = await scrollUp(tester);
+
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Sent from history"));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+      await tester.pump(const Duration(milliseconds: 16));
+      final stopped = _position(tester).pixels;
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(stopped, greaterThan(0));
+      expect(_position(tester).pixels, stopped);
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("past old bubbles a dictated send's words must not land on", (tester) async {
+      final harness = await scrollUp(tester);
+      final landing = SentBubbleLanding.of(context: tester.element(find.byType(SessionDetailMessageList)));
+
+      landing.expect();
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Dictated from history"));
+      final taken = <String>{};
+      for (var frame = 0; frame < 16; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (landing.heldText case final held?) taken.add(held);
+      }
+
+      expect(taken.where((held) => held != "Dictated from history"), isEmpty);
+    });
   });
 
   // --- Regression tests for the old "jump to top" / "view shifts" bugs ---

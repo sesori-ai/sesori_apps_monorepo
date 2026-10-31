@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/widgets.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -117,6 +119,37 @@ void main() {
         ),
       );
       expect(tracker.following, isFalse);
+    });
+
+    testWidgets("a rebuild during animateToEdge leaves the glide to reach an edge that moved", (tester) async {
+      final tailing = ScrollFollowTracker(edge: ScrollFollowEdge.max);
+      addTearDown(tailing.dispose);
+      Widget list({required double height}) => Directionality(
+        textDirection: TextDirection.ltr,
+        child: ListView(
+          controller: tailing.scrollController,
+          children: [SizedBox(height: height)],
+        ),
+      );
+      await tester.pumpWidget(list(height: 5000));
+      tailing.detach();
+
+      unawaited(tailing.animateToEdge());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final partWay = tailing.scrollController.position.pixels;
+      expect(partWay, greaterThan(0));
+
+      // The modal's rebuild while following, with content that has grown.
+      await tester.pumpWidget(list(height: 6000));
+      tailing.scheduleJumpToEdge();
+      await tester.pump(const Duration(milliseconds: 16));
+      final position = tailing.scrollController.position;
+      expect(position.pixels, inExclusiveRange(partWay, position.maxScrollExtent));
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump();
+      expect(position.pixels, position.maxScrollExtent);
     });
   });
 }

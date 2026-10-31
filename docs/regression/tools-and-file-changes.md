@@ -194,7 +194,8 @@ sub-agent parts, plus the signal that a tool changed files.
   below it moves. A finished thought is one row, “Thought” and its first line,
   that opens the full text. While the reader is
   scrolled away, the jump button reads “Jump to latest”, whatever the session
-  is doing.
+  is doing. Tapping it, or sending a prompt, glides back to the latest edge
+  instead of cutting there, and a touch on the way stops the glide where it is.
 - Tapping or keyboard-activating a command opens a Shell panel, on the same
   raised inset as other tool output and code blocks, with the
   full available command, output and error in a two-axis scroll viewport that

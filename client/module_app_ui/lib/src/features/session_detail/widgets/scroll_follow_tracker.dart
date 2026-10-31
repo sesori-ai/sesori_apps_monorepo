@@ -50,6 +50,10 @@ class ScrollFollowTracker({
   bool _snapScheduled = false;
   bool _detachSuppressed = false;
 
+  /// Whether [animateToEdge] is under way. Going back to following rebuilds the
+  /// scrollable, and the pin that rebuild schedules must not cut the glide short.
+  bool _gliding = false;
+
   /// Whether the scrollable is currently pinned to [edge].
   bool get following => _following;
 
@@ -133,11 +137,15 @@ class ScrollFollowTracker({
       notifyListeners();
     }
     if (!scrollController.hasClients) return;
+    _gliding = true;
     await scrollController.animateTo(
       _edgeOffset(metrics: scrollController.position),
       duration: duration,
       curve: curve,
     );
+    _gliding = false;
+    // Content that grew during the glide moved the edge it set out for.
+    scheduleJumpToEdge();
   }
 
   /// Coalesces a single post-frame `jumpTo(edge)` while following. Safe
@@ -157,7 +165,7 @@ class ScrollFollowTracker({
     _snapScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _snapScheduled = false;
-      if (!_following || !scrollController.hasClients) return;
+      if (!_following || _gliding || !scrollController.hasClients) return;
       final position = scrollController.position;
       final target = _edgeOffset(metrics: position);
       if ((position.pixels - target).abs() > 0.5) {
