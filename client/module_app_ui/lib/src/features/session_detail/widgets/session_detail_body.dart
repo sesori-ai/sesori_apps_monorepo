@@ -80,7 +80,7 @@ class const SessionDetailActionSwitcher({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-    duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+    duration: transcriptMotionDuration,
     switchInCurve: transcriptMotionCurve,
     switchOutCurve: transcriptMotionReverseCurve,
     transitionBuilder: switch (surface) {
@@ -558,7 +558,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // The leaving notice holds still, so its Recheck keeps the spinner rather
     // than turning back as it fades, and it no longer takes taps.
     final content = AnimatedSwitcher(
-      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      duration: transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
       layoutBuilder: (current, previous) => Stack(

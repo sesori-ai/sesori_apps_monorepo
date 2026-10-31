@@ -129,7 +129,6 @@ class _RecheckButtonState() extends State<_RecheckButton> {
   @override
   Widget build(BuildContext context) {
     final checking = _phase == _RecheckPhase.checking;
-    final duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
     // While checking, screen readers hear a disabled Recheck in the button's
     // place. Disabling the button itself would also drop its hover highlight
     // and keyboard focus at once.
@@ -150,14 +149,14 @@ class _RecheckButtonState() extends State<_RecheckButton> {
               // The label keeps the button its size while the spinner stands in.
               AnimatedOpacity(
                 opacity: checking ? 0 : 1,
-                duration: duration,
+                duration: transcriptMotionDuration,
                 curve: transcriptMotionCurve,
                 alwaysIncludeSemantics: true,
                 child: Text(context.loc.sessionDetailRecheck),
               ),
               Positioned.fill(
                 child: AnimatedSwitcher(
-                  duration: duration,
+                  duration: transcriptMotionDuration,
                   switchInCurve: transcriptMotionCurve,
                   switchOutCurve: transcriptMotionReverseCurve,
                   child: checking

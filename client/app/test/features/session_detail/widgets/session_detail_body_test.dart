@@ -3103,21 +3103,57 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets("swaps at once with reduced motion", (tester) async {
+    testWidgets("keeps only the cross-fade with reduced motion", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       final states = StreamController<SessionDetailState>();
       addTearDown(states.close);
       final answer = Completer<void>();
-      await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
 
       states.add(
         _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
       );
       answer.complete();
-      await tester.pump(frame);
+      await tester.pump();
+      var together = 0;
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += frame) {
+        await tester.pump(frame);
+        if (notice.evaluate().isEmpty) continue;
+        expect(tester.getRect(notice), noticeRect);
+        final leaving = opacityOf(tester: tester, finder: notice);
+        final arriving = opacityOf(tester: tester, finder: transcript);
+        if (leaving > 0 && leaving < 1 && arriving > 0 && arriving < 1) together++;
+      }
+      expect(together, greaterThanOrEqualTo(5));
       expect(notice, findsNothing);
       expect(opacityOf(tester: tester, finder: transcript), 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("Prompts still materializes and leaves gradually with reduced motion", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: shell());
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pump(const Duration(seconds: 1));
+      final prompts = find.byKey(const Key("session-detail-prompts"));
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      expectGradual(
+        progress: await materializing(tester: tester, button: prompts, leaving: false),
+        arriving: true,
+      );
+
+      states.add(shell());
+      expectGradual(
+        progress: await materializing(tester: tester, button: prompts, leaving: true),
+        arriving: false,
+      );
       expect(tester.takeException(), isNull);
     });
 

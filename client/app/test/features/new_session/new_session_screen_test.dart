@@ -3669,27 +3669,130 @@ void main() {
       expect(find.text("half-written idea"), findsOneWidget);
     });
 
-    testWidgets("reduced motion swaps the login card for the composer in one frame", (tester) async {
-      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-        disableAnimations: true,
-      );
-      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      final recheck = stubOptions(first: loginRequired);
-      await pumpPhone(tester);
-      final cardRect = tester.getRect(card);
-      await tester.tap(find.byKey(const Key("session_harness_recheck")));
-      await tester.pump();
+    group("under reduced motion", () {
+      setUp(() {
+        TestWidgetsFlutterBinding.instance.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(TestWidgetsFlutterBinding.instance.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      });
 
-      recheck.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
-      await tester.pump();
-      expect(card, findsNothing);
-      expect(opacityOf(tester, composer), 1);
-      final settledTop = roomTop(tester);
-      expect(settledTop - cardRect.top, cardRect.height - tester.getRect(composer).height);
-      for (var index = 0; index < 15; index++) {
-        await tester.pump(frame);
-        expect(roomTop(tester), settledTop);
+      void expectFade({required List<double?> opacities, required bool arriving}) {
+        final between = [
+          for (final opacity in opacities)
+            if (opacity != null && opacity > 0 && opacity < 1) opacity,
+        ];
+        expect(between.length, greaterThan(5), reason: "$opacities");
+        expect(between, orderedEquals(between.toList()..sort((a, b) => arriving ? a.compareTo(b) : b.compareTo(a))));
       }
+
+      testWidgets("the login card and the composer cross-fade in a room at its height at once", (tester) async {
+        final recheck = stubOptions(first: loginRequired);
+        await pumpPhone(tester);
+        final cardRect = tester.getRect(card);
+        await tester.tap(find.byKey(const Key("session_harness_recheck")));
+        await tester.pump();
+
+        recheck.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+        await tester.pump();
+        final composerRect = tester.getRect(composer);
+        final frames = await stepThroughSwap(tester: tester, cardRect: cardRect, composerRect: composerRect);
+
+        expectFade(opacities: [for (final frame in frames) frame.card], arriving: false);
+        expectFade(opacities: [for (final frame in frames) frame.composer], arriving: true);
+        expect(card, findsNothing);
+        expect(opacityOf(tester, composer), 1);
+        expect(frames.first.roomTop - cardRect.top, cardRect.height - composerRect.height);
+        for (final frame in frames) {
+          expect(frame.roomTop, frames.first.roomTop);
+        }
+      });
+
+      testWidgets("Recheck fades into its spinner", (tester) async {
+        stubOptions(first: loginRequired);
+        await pumpPhone(tester);
+        final label = find.descendant(
+          of: find.byKey(const Key("session_harness_recheck")),
+          matching: find.text("Recheck"),
+        );
+        await tester.tap(find.byKey(const Key("session_harness_recheck")));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        final opacities = [opacityOf(tester, label)];
+        for (var index = 0; index < 15; index++) {
+          await tester.pump(frame);
+          opacities.add(opacityOf(tester, label));
+        }
+
+        expectFade(opacities: opacities, arriving: false);
+      });
+
+      testWidgets("a send fades its bubble in with the composer unmoved", (tester) async {
+        when(
+          () => sessionService.createSessionWithMessage(
+            attachments: const [],
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+          ),
+        ).thenAnswer((_) => Completer<ApiResponse<Session>>().future);
+        await pumpPhone(tester);
+        await enterTypingMode(tester);
+        await enterTextAndSend(tester: tester, text: "test message");
+        await tester.pump();
+        final bubble = find.byType(QueuedMessageBubble);
+        final bubbleRect = tester.getRect(bubble);
+        final composerBottom = tester.getRect(composer).bottom;
+
+        final opacities = [opacityOf(tester, bubble)];
+        for (var index = 0; index < 20; index++) {
+          await tester.pump(frame);
+          opacities.add(opacityOf(tester, bubble));
+          expect(tester.getRect(bubble).top, bubbleRect.top);
+          expect(tester.getRect(composer).bottom, composerBottom);
+        }
+
+        expectFade(opacities: opacities, arriving: true);
+        expect(opacities.last, 1);
+      });
+
+      testWidgets("the composer folding for a harness notice fades, the page changing once", (tester) async {
+        final discovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+        when(pluginRepository.listPlugins).thenAnswer((_) => discovery.future);
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(_buildApp());
+        await tester.pump(const Duration(milliseconds: 300));
+        final notice = find.byKey(const Key("new_session_no_harness_notice"));
+        final composerFold = find.byType(PromptInput, skipOffstage: false);
+
+        discovery.complete(
+          ApiResponse.success(
+            PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+          ),
+        );
+        await tester.pump();
+        final noticeTop = tester.getTopLeft(notice).dy;
+
+        final notices = [opacityOf(tester, notice)];
+        final composers = [opacityOf(tester, composerFold)];
+        for (var index = 0; index < 11; index++) {
+          await tester.pump(frame);
+          notices.add(opacityOf(tester, notice));
+          composers.add(opacityOf(tester, composerFold));
+          expect(tester.getTopLeft(notice).dy, noticeTop, reason: "Frame $index moved the page.");
+        }
+
+        expectFade(opacities: notices, arriving: true);
+        expectFade(opacities: composers, arriving: false);
+      });
     });
   });
 }
