@@ -13,6 +13,7 @@ import android.speech.RecognitionSupport
 import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -296,8 +297,8 @@ internal class OnDeviceSpeechService(
             writer.execute {
                 try {
                     output.close()
-                } catch (_: IOException) {
-                    // Already closed by finish, or the reader went first.
+                } catch (error: IOException) {
+                    Log.w("OnDeviceSpeechService", "Could not close the audio pipe", error)
                 }
             }
             writer.shutdown()
