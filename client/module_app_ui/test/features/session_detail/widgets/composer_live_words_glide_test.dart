@@ -113,7 +113,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     // Long enough to show them, not for a word that hasn't changed to brighten.
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 300));
     return gesture;
   }
 
@@ -641,8 +641,8 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pump(const Duration(milliseconds: 310));
+      await tester.pump(const Duration(milliseconds: 180));
+      await tester.pump(const Duration(milliseconds: 30));
       await tester.pump(const Duration(milliseconds: 140));
 
       InlineSpan live() => tester
