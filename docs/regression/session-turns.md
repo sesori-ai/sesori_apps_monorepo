@@ -119,8 +119,11 @@ defaults and queued client sends coherent.
   prompt id, so the bridge's dedup never runs it twice. A stale-options
   rejection still refreshes and retries once automatically, and a send cut off
   by a dropped connection is still re-sent after reconnect without a failure.
-  A send still in flight after two seconds says "Sending to <harness>…"; before
-  that, and when the harness name is unknown, it says "Sending".
+  A send shows no status line for its first two seconds, its row as tall as the
+  delivered message's, so that a normal send never moves the chat when it lands.
+  One still in flight then says "Sending to <harness>…", or "Sending" when the
+  harness name is unknown: the line fades in while the row eases its height, and
+  shows at once under reduced motion.
 - Sends to an archived session are refused in the serialized lane archiving
   uses, so a send cannot slip past a concurrent archive.
 - Work enters a short per-plugin admission lane in arrival order, then execution
@@ -608,7 +611,8 @@ defaults and queued client sends coherent.
   Entries still waiting for process startup, an earlier turn or command, or a
   selection boundary can be cancelled individually; cancellation after dispatch
   is refused because the prompt is then governed by Stop. Dispatched entries
-  remain visible with a Sending indicator, not a cancel action. Older public
+  remain visible without a cancel action, and take a slow send's status line
+  after two seconds. Older public
   bridges without dispatch ownership retain best-effort cancellation.
   A refused/not-found cancellation surfaces a notice; only success removes a
   row as cancelled. Existing queue events and reconnect snapshots update the
@@ -617,7 +621,8 @@ defaults and queued client sends coherent.
   generating a false refusal, and a failed attempt can be retried. Aborting the
   session clears every remaining plugin-owned entry.
 - One prompt renders as one bubble that transforms in place: sending (staged
-  locally while the POST is in flight) → queued (bridge-owned) → sent (the
+  locally while the POST is in flight, and accepted but not yet listed by the
+  bridge) → queued (bridge-owned) → sent (the
   transcript message). The dispatched message carries the prompt id and
   replaces the queued entry in the same client state emission, so no frame
   shows the prompt twice or not at all. Client-staged sends preserve order,
@@ -831,6 +836,7 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   content read, or omits its reason/settings path. A live block blanks already
   rendered content, drops buffered events, or allows pagination to trigger a
   backend read while blocked.
+- A normal send shows a status line, or the chat moves when its message lands.
 - A failed send silently returns to "Queued", sends a later message ahead of
   it, gets a new prompt id on Retry, or shows "Couldn’t send" for a send that
   only lost its connection or had stale options.

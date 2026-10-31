@@ -378,13 +378,19 @@ void main() {
           "properly without changing how the list moves today";
 
       /// From a dictation that has just finished, with its words about to go.
-      Future<void> expectToLandOnTheBubbleThatComes({required WidgetTester tester, required String text}) async {
+      /// [onTheWay] runs as they set off.
+      Future<void> expectToLandOnTheBubbleThatComes({
+        required WidgetTester tester,
+        required String text,
+        VoidCallback? onTheWay,
+      }) async {
         await complete(tester: tester, transcript: text);
 
         for (var frame = 0; frame < 6; frame++) {
           await tester.pump(_frame);
         }
         expect(find.byType(QueuedMessageBubble), findsNothing, reason: "The words have stopped waiting for it.");
+        onTheWay?.call();
 
         var landed = tester.getRect(_glide);
         while (_glide.evaluate().isNotEmpty) {
@@ -393,18 +399,20 @@ void main() {
         }
         await tester.pump(const Duration(seconds: 1));
 
-        final row = find.byType(QueuedMessageBubble);
+        // The newest row is the lowest, whichever bubble it has by now.
         final surface = UserMessageBubble.margin.deflateRect(
-          tester.getRect(find.descendant(of: row, matching: find.byType(SentBubbleSlot))),
+          find
+              .byType(SentBubbleSlot)
+              .evaluate()
+              .map((slot) => tester.getRect(find.byElementPredicate((element) => element == slot)))
+              .reduce((lowest, rect) => rect.bottom > lowest.bottom ? rect : lowest),
         );
         _expectRect(landed, surface);
-        final status = tester.getRect(find.descendant(of: row, matching: find.textContaining("Sending")));
-        expect(landed.bottom, lessThanOrEqualTo(status.top));
       }
 
       for (final (length, text) in const [("few words", "spoken words"), ("words that wrap", longWords)]) {
         for (final from in const [2500.0, 20000.0]) {
-          testWidgets("$length sent from $from up end on the bubble that comes, clear of its status", (tester) async {
+          testWidgets("$length sent from $from up end on the bubble that comes", (tester) async {
             await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: from);
             final gesture = await hold(
               tester: tester,
@@ -465,6 +473,20 @@ void main() {
           });
         }
       }
+
+      testWidgets("words whose message is delivered on their way end on its bubble", (tester) async {
+        final moveSendOn = await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: 2500);
+        final gesture = await hold(tester: tester);
+        await gesture.up();
+        await tester.pump();
+
+        await expectToLandOnTheBubbleThatComes(
+          tester: tester,
+          text: "spoken words",
+          onTheWay: () => moveSendOn(_delivered),
+        );
+        expect(find.byType(QueuedMessageBubble), findsNothing);
+      });
 
       testWidgets("the words read as the bubble will, marker and all", (tester) async {
         await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: 2500);
@@ -804,9 +826,39 @@ Future<_ScreenState> _pumpScreen({
   return tester.state<_ScreenState>(find.byType(_Screen));
 }
 
+/// The state once the message of the send has come back.
+SessionDetailLoaded _delivered(SessionDetailLoaded sent) {
+  final localSend = sent.localSend;
+  if (localSend is! LocalSendSending) throw StateError("Nothing is being sent");
+  return sent.copyWith(
+    localSend: const LocalSendPhase.idle(),
+    messages: [
+      ...sent.messages,
+      MessageWithParts(
+        info: Message.user(
+          promptId: localSend.submission.promptId,
+          id: "user-sent",
+          sessionID: "session-1",
+          agent: null,
+          time: null,
+        ),
+        parts: [
+          MessagePart.text(
+            id: "part-sent",
+            sessionID: "session-1",
+            messageID: "user-sent",
+            text: localSend.submission.outgoingText,
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 /// The session's own list and composer controls, scrolled [scrolledUp] from the
-/// list's end, whose send puts a sending row at that end as the cubit does.
-Future<void> _pumpSessionScreen({
+/// list's end, whose send puts a sending row at that end as the cubit does. What it
+/// returns moves that send on to the state its callback makes of the current one.
+Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next)> _pumpSessionScreen({
   required WidgetTester tester,
   required VoiceInputCubit voiceCubit,
   required double scrolledUp,
@@ -874,6 +926,7 @@ Future<void> _pumpSessionScreen({
   final detailCubit = _MockSessionDetailCubit();
   addTearDown(detailCubit.close);
   whenListen(detailCubit, detailStates.stream, initialState: initial);
+  var latest = initial;
   when(() => detailCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
   when(() => detailCubit.saveComposerDraft(draft: any(named: "draft"))).thenReturn(null);
   when(detailCubit.clearComposerDraft).thenReturn(null);
@@ -891,21 +944,20 @@ Future<void> _pumpSessionScreen({
       attachments: any(named: "attachments"),
     ),
   ).thenAnswer((call) async {
-    detailStates.add(
-      initial.copyWith(
-        localSend: LocalSendPhase.sending(
-          submission: QueuedSessionSubmission.text(
-            promptId: "prm_sent",
-            text: call.namedArguments[#text] as String,
-            inputMode: call.namedArguments[#inputMode] as ComposerInputMode,
-            attachments: const [],
-            agent: null,
-            agentModel: null,
-            fastMode: false,
-          ),
+    latest = initial.copyWith(
+      localSend: LocalSendPhase.sending(
+        submission: QueuedSessionSubmission.text(
+          promptId: "prm_sent",
+          text: call.namedArguments[#text] as String,
+          inputMode: call.namedArguments[#inputMode] as ComposerInputMode,
+          attachments: const [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
         ),
       ),
     );
+    detailStates.add(latest);
   });
   final currentPromptId = ValueNotifier<String?>(null);
   addTearDown(currentPromptId.dispose);
@@ -976,6 +1028,10 @@ Future<void> _pumpSessionScreen({
     await tester.pump();
   }
   await tester.pump(const Duration(milliseconds: 100));
+  return (SessionDetailLoaded Function(SessionDetailLoaded sent) next) {
+    latest = next(latest);
+    detailStates.add(latest);
+  };
 }
 
 /// A session screen reduced to what the words touch: a landing over a list of

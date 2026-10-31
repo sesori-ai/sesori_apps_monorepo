@@ -5843,7 +5843,9 @@ void main() {
     expect(find.byType(QueuedMessageBubble), findsNWidgets(3));
     expect(find.text("Cancel"), findsNWidgets(2));
     expect(find.text("Queued"), findsNWidgets(2));
-    expect(find.text("Sending"), findsOneWidget);
+    // A dispatched row takes a slow send's line, without a cancel action.
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text("Sending to Claude Code…"), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const ValueKey("session-detail-prompt-dispatched")),
@@ -6135,7 +6137,6 @@ void main() {
           .outlined,
       isFalse,
     );
-    expect(find.text("Sending"), findsOneWidget);
     expect(find.text("Cancel"), findsOneWidget);
     expect(find.descendant(of: submissionFinder, matching: find.text("Cancel")), findsNothing);
   });
@@ -6175,7 +6176,10 @@ void main() {
     await tester.pump();
 
     expect(find.text("Cancel"), findsNothing);
-    expect(find.text("Sending"), findsOneWidget);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
+
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text("Sending to Claude Code…"), findsOneWidget);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
   });
 
@@ -6200,7 +6204,6 @@ void main() {
     await tester.pump();
 
     expect(find.text("Cold-start prompt"), findsOneWidget);
-    expect(find.text("Sending"), findsOneWidget);
     expect(find.text("Cancel"), findsNothing);
   });
 
