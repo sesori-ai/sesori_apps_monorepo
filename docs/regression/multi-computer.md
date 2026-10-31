@@ -86,7 +86,9 @@ area documents linked below own the detail.
 - **Presence and linking.** The relay sends every app of the account `bridge_presence {bridgeId, online}` whenever
   any of its bridges connects or disconnects. The app applies it to the computer list at once, so the menu, the
   offline card, Settings and the desktop row update live, and refetches the list for a computer it does not know.
-  A notice never changes the app's own connection state ([bridge connectivity](bridge-connectivity.md)). A computer
+  A notice never changes the app's own connection state ([bridge connectivity](bridge-connectivity.md)). The relay
+  replays no presence on connect, so every return to the relay, even one parked on an offline target, refetches the
+  list for what was missed. A computer
   that newly joins the list while the app is open is announced once as "<name> is now linked" with a Switch action
   ([popup alerts](popup-alerts.md)).
 - **Pushes.** Session pushes carry the id of the computer they came from; tapping one for another computer switches

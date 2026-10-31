@@ -463,6 +463,24 @@ void main() {
 
       expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.active);
     });
+
+    test("are refetched after a reconnect that parks on the offline target", () async {
+      final desktop = testBridgeSummary(id: "desktop", status: BridgeRegistrationStatus.inactive);
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) async => ApiResponse.success([desktop]));
+      final service = build();
+      await service.getRegisteredBridges();
+
+      // The desktop came back while the socket was down, so its notice was missed.
+      statusSubject.add(const ConnectionStatus.reconnecting(config: _config));
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "desktop", status: BridgeRegistrationStatus.active)]),
+      );
+      statusSubject.add(_bridgeOffline);
+      await pumpEventQueue();
+
+      final bridges = await service.getRegisteredBridges();
+      expect(bridges.single.status, BridgeRegistrationStatus.active);
+    });
   });
 
   group("rename and remove", () {
