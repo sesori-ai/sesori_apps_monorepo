@@ -453,6 +453,30 @@ void main() {
       expect(_alphaOf(tester, word: "bravo"), closeTo(0.46, 0.01));
     });
 
+    testWidgets("a word confirmed partway through changes nothing, and turns bright once it's all confirmed", (
+      tester,
+    ) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _focus, provisional: "alpha bravo charlie");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1010));
+      await tester.pump(fadeHalf + fadeRest);
+      await live(tester: tester, presentation: _focus, provisional: "alpha bravo charlie delta");
+      await tester.pump(const Duration(milliseconds: 500));
+      final deltaBefore = _alphaOf(tester, word: "delta");
+
+      await live(tester: tester, presentation: _focus, confirmed: "alpha bra", provisional: "vo charlie delta");
+      await tester.pump(fadeHalf);
+      expect(_alphaOf(tester, word: "bravo"), 1);
+      expect(_alphaOf(tester, word: "charlie"), 1);
+      expect(_alphaOf(tester, word: "delta"), deltaBefore);
+
+      await tester.pump(fadeRest + const Duration(milliseconds: 300));
+      await live(tester: tester, presentation: _focus, confirmed: "alpha bravo charlie delta");
+      await tester.pump(fadeHalf + fadeRest);
+      expect(_alphaOf(tester, word: "delta"), 1);
+    });
+
     testWidgets("brightening moves no text and rebuilds nothing but the words", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       final body = find.byType(PregoVoiceWaveform);
