@@ -248,9 +248,11 @@ void main() {
           voiceCubit: voiceCubit,
           mode: mode,
           composerHeader: const SizedBox(key: Key("header"), height: 44),
+          composerTrailing: const SizedBox(key: Key("trailing"), width: 90, height: 36),
         );
         final watched = <String, Finder>{
           "header": find.byKey(const Key("header")),
+          "trailing": find.byKey(const Key("trailing")),
           "accordion": find.byIcon(TablerRegular.chevron_right),
           "idle slot": switch (mode) {
             ChatInputMode.voiceFirst => find.textContaining("Hold to talk"),

@@ -1396,18 +1396,27 @@ class _PromptInputState() extends State<PromptInput> {
   /// mounted and keeps its room, so nothing in the row moves.
   Widget _buildComposerTrailing({required BuildContext context, required Widget trailing}) {
     final visible = _voicePresentation != _VoicePresentation.recording;
+    final duration = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
+    final opacity = visible ? 1.0 : 0.0;
+    // Leaves on the house curve and comes back once the hint over its place has
+    // mostly gone: each fade holds one curve, as an implicit animation given a
+    // new curve restarts from the wrong value when a quick tap turns it back.
     return AnimatedOpacity(
-      duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
-      // Comes back once the hint over its place has mostly gone.
-      curve: visible ? _trailingReturnCurve : _morphCurve,
-      opacity: visible ? 1 : 0,
-      child: ExcludeFocus(
-        excluding: !visible,
-        child: IgnorePointer(
-          ignoring: !visible,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-            child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+      duration: duration,
+      curve: _morphCurve,
+      opacity: opacity,
+      child: AnimatedOpacity(
+        duration: duration,
+        curve: _trailingReturnCurve,
+        opacity: opacity,
+        child: ExcludeFocus(
+          excluding: !visible,
+          child: IgnorePointer(
+            ignoring: !visible,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+              child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+            ),
           ),
         ),
       ),
