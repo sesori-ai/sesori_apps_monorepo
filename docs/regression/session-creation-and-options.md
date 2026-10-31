@@ -275,7 +275,7 @@ variant, and worktree mode, and creating the session with its first input.
   connection drops keep their shimmer, with no Retry, until the reconnect's answer, and the "project cannot be
   checked" card holds still, with creation blocked, until the bridge answers its recheck. On either card, when
   the bridge has not answered the check a Recheck starts within about 300 ms, "Recheck" cross-fades into a spinner
-  in its own room (at once under reduced motion), so nothing moves, and takes no press, reading to screen readers
+  in its own room (reduced motion keeps the fades), so nothing moves, and takes no press, reading to screen readers
   as disabled, until the answer, whichever it is, and a card the answer clears fades out with the spinner still
   standing, never saying "Recheck" again; a faster answer never shows the spinner. When options cannot
   be loaded, one "Retry loading models" button stands in the pills' place; a bridge that can load options only by
@@ -286,7 +286,8 @@ variant, and worktree mode, and creating the session with its first input.
   pills glide, by under 1.5 px a frame, with the project pill riding under the heading
   (`desktop_new_session_screen_test`); on the phone the pills hold their place as the composer's top edge rises
   (`new_session_screen_test`). Another error while one shows replaces the words in place without fading, its room
-  easing to the new height. Reduced motion shows and clears the error at once.
+  easing to the new height. Reduced motion keeps the fades, and the page changes once, as the state does, with options
+  and the composer's room changing in that same frame.
 - The "New worktree" toggle opens with the value the last session on this device
   was started with (on when none was ever started), whatever the project or
   bridge. Only a Send where the toggle was shown updates the remembered value.
@@ -384,7 +385,8 @@ variant, and worktree mode, and creating the session with its first input.
   its text, staged images, voice
   and focus; on a pointer surface it moves once from the centred column to the
   bottom edge at the session page's composer width (240 ms, instant under
-  reduced motion) while the top bar, header, options and footer fade out. A
+  reduced motion) while the top bar, header, options and footer fade out, also
+  under reduced motion. A
   second Send never creates a second session: it queues a follow-up below the
   first bubble, removable until it sends, carrying the options committed at the
   first Send. The pills stay visible but read-only while sending: they keep
@@ -609,10 +611,11 @@ startup-extension file failure, retry once the filesystem is usable.
   a second press, or reads to screen readers as enabled; its spinner flashes on a fast answer, outlives the
   answer (logged in, still blocked, or failed), or moves the button or the card.
 - The error above the composer appears or clears in one frame, so the desktop heading and pills jump or the
-  phone's pills shift; one error replacing another flashes; or the error animates under reduced motion.
+  phone's pills shift; one error replacing another flashes; or under reduced motion the error cuts instead of fading,
+  or the page moves more than once for one change.
 - A card and the composer trade places in one frame, so the phone's options or the desktop heading jump; the
   pills loading, typing, or pressing Recheck fades them again; the composer loses its draft or staged images
-  behind a card; or the swap animates under reduced motion.
+  behind a card; or under reduced motion the swap cuts instead of fading, or its room eases.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
   session cannot be deleted, deletes before the scratch process exits, or hides
   a real CLI/database failure as benign absence.

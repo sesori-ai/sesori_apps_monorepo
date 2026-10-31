@@ -347,7 +347,7 @@ void main() {
       }
     });
 
-    testWidgets("with reduced motion, the line shows and leaves at once", (tester) async {
+    testWidgets("with reduced motion, the line still fades in and out", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
@@ -360,12 +360,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 9999));
       expect(lineOpacity(tester), 0);
       await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(lineOpacity(tester), inExclusiveRange(0, 1));
+      await tester.pumpAndSettle();
       expect(lineOpacity(tester), 1);
 
       updates.add(const ProjectListState.loading());
       starts.add(LocalBridgeStartupState.settled);
       await tester.pump();
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(lineOpacity(tester), inExclusiveRange(0, 1));
+      await tester.pumpAndSettle();
       expect(lineOpacity(tester), 0);
     });
 
@@ -612,16 +618,21 @@ void main() {
       }
     });
 
-    testWidgets("with reduced motion, swaps at once", (tester) async {
+    testWidgets("with reduced motion, still cross-fades", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       await pumpReadyHome(tester: tester);
 
       await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      await tester.pumpAndSettle();
       expect(composer, findsNothing);
       expect(opacityOf(tester: tester, finder: loader), 1);
 
       await land(tester: tester, state: ready);
+      await tester.pumpAndSettle();
       expect(loader, findsNothing);
       expect(opacityOf(tester: tester, finder: composer), 1);
     });

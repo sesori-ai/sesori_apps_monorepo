@@ -68,7 +68,7 @@ enum SessionDetailActionSurface() {
 
 /// A header action present only while [child] is non-null, such as Prompts on
 /// a loaded session. It arrives and leaves with the transcript, in its time,
-/// rather than popping as the page changes state; at once under reduced motion.
+/// rather than popping as the page changes state.
 ///
 /// The action brings [gapAfter], its space before the next one, so an absent
 /// action costs the header nothing: place these in a row without spacing.
@@ -80,7 +80,7 @@ class const SessionDetailActionSwitcher({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-    duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+    duration: transcriptMotionDuration,
     switchInCurve: transcriptMotionCurve,
     switchOutCurve: transcriptMotionReverseCurve,
     transitionBuilder: switch (surface) {
@@ -109,13 +109,16 @@ class const SessionDetailActionSwitcher({
 }
 
 /// An [AnimatedSwitcher] child as its layout holds it. Once leaving, it takes no
-/// taps and drops out of semantics, so nothing acts on the state it leaves. The
+/// taps or focus and drops out of semantics, so nothing acts on the state it leaves. The
 /// same wrapper, keyed like the child, holds it either way, so turning from
 /// current to previous does not remount it.
 Widget _switcherEntry({required Key? key, required bool leaving, required Widget child}) => IgnorePointer(
   key: key,
   ignoring: leaving,
-  child: ExcludeSemantics(excluding: leaving, child: child),
+  child: ExcludeFocus(
+    excluding: leaving,
+    child: ExcludeSemantics(excluding: leaving, child: child),
+  ),
 );
 
 class const SessionDetailBody({
@@ -558,7 +561,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // The leaving notice holds still, so its Recheck keeps the spinner rather
     // than turning back as it fades, and it no longer takes taps.
     final content = AnimatedSwitcher(
-      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      duration: transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
       layoutBuilder: (current, previous) => Stack(

@@ -308,24 +308,26 @@ void main() {
       ),
       phase: NewSessionPhase.discoveryError(reason: reason),
     );
-    const found = NewSessionState.composing(
-      config: NewSessionComposeConfig(
-        availablePlugins: [plugin],
-        selectedPlugin: plugin,
-        options: NewSessionOptionsLoadState.unsupported(),
-        backendScope: NewSessionBackendScope.verified(bridgeId: null),
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
-      ),
-      phase: NewSessionPhase.idle(),
+    const foundConfig = NewSessionComposeConfig(
+      availablePlugins: [plugin],
+      selectedPlugin: plugin,
+      options: NewSessionOptionsLoadState.unsupported(),
+      backendScope: NewSessionBackendScope.verified(bridgeId: null),
+      isPluginDiscoveryInFlight: false,
+      projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
     );
+    const found = NewSessionState.composing(config: foundConfig, phase: NewSessionPhase.idle());
     const networkDown = "Connection failed — check your network and try again.";
     const serverRejected = "The server returned an error. Please try again.";
     final heading = find.text("What should we work on?");
     final project = find.byKey(const Key("new_session_project"));
 
     /// The desktop page over a cubit that emits what the test adds.
-    Future<StreamController<NewSessionState>> pumpPage(WidgetTester tester, {required NewSessionState initial}) async {
+    Future<StreamController<NewSessionState>> pumpPage(
+      WidgetTester tester, {
+      required NewSessionState initial,
+      Future<bool>? worktreePreference,
+    }) async {
       tester.view.physicalSize = const Size(1400, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -344,7 +346,7 @@ void main() {
             ? const NewSessionComposerPending()
             : const NewSessionComposerReady(),
       );
-      when(cubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
+      when(cubit.readDedicatedWorktreePreference).thenAnswer((_) => worktreePreference ?? Future.value(true));
       when(() => cubit.canSubmit).thenReturn(false);
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
       when(() => cubit.projectKind).thenReturn(ProjectKind.folder);
@@ -457,20 +459,96 @@ void main() {
       expect(find.text(serverRejected), findsNothing);
     });
 
-    testWidgets("at once under reduced motion", (tester) async {
-      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-        disableAnimations: true,
-      );
-      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      final states = await pumpPage(tester, initial: discovering);
+    group("under reduced motion", () {
+      setUp(() {
+        TestWidgetsFlutterBinding.instance.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(TestWidgetsFlutterBinding.instance.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      });
 
-      for (final next in [failed(reason: RemoteFailureReason.networkDown), found]) {
-        final frames = await framesAfter(tester, states: states, next: next, checkFirstFrame: null);
-        // The frame that applies the change already shows the page at rest.
-        expect(frames[1].$1, frames.last.$1);
-        expect(frames[1].$1, isNot(frames.first.$1));
-        expect(find.text(networkDown), next == found ? findsNothing : findsOneWidget);
-      }
+      testWidgets("the banner fades, and the page changes once, with the state", (tester) async {
+        final states = await pumpPage(tester, initial: discovering);
+
+        final opening = await framesAfter(
+          tester,
+          states: states,
+          next: failed(reason: RemoteFailureReason.networkDown),
+          checkFirstFrame: null,
+        );
+        expect(opening[1].$1, isNot(opening.first.$1));
+        expect(opening.skip(1).map((frame) => frame.$1).toSet(), hasLength(1));
+        expect(opacityOf(tester, find.text(networkDown)), 1);
+
+        states.add(found);
+        await tester.pump(Duration.zero);
+        final resting = tester.getRect(heading);
+        expect(resting, isNot(opening.last.$1));
+        final fading = <double>[];
+        for (var frame = 0; frame < 10; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          fading.add(opacityOf(tester, find.text(networkDown)));
+          expect(tester.getRect(heading), resting);
+        }
+        expect(fading.where((opacity) => opacity > 0 && opacity < 1), hasLength(greaterThan(5)));
+        expect(fading, orderedEquals(fading.toList()..sort((a, b) => b.compareTo(a))));
+
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.text(networkDown), findsNothing);
+        expect(tester.getRect(heading), resting);
+      });
+
+      testWidgets("the worktree row fades from its shimmer", (tester) async {
+        final preference = Completer<bool>();
+        await pumpPage(tester, initial: found, worktreePreference: preference.future);
+        final toggle = find.byType(PregoSwitch);
+        expect(toggle, findsNothing);
+
+        preference.complete(true);
+        await tester.pump();
+        final opacities = [opacityOf(tester, toggle)];
+        for (var frame = 0; frame < 15; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          opacities.add(opacityOf(tester, toggle));
+        }
+
+        expect(opacities.where((opacity) => opacity > 0 && opacity < 1), hasLength(greaterThan(5)));
+        expect(opacities.last, 1);
+      });
+
+      testWidgets("Send lands the composer at once as the pages fade", (tester) async {
+        final states = await pumpPage(tester, initial: found);
+        final composer = find.byType(PromptInput);
+        final idleTop = tester.getTopLeft(composer).dy;
+
+        states.add(
+          NewSessionState.composing(
+            config: foundConfig,
+            phase: NewSessionPhase.sending(
+              submission: NewSessionSubmissionSnapshot.text(
+                draft: ComposerDraft.typed(text: "Go"),
+                attachments: const [],
+              ),
+              launchId: "launch-1",
+              startedAt: DateTime.utc(2026, 9, 27),
+              followUps: const [],
+            ),
+          ),
+        );
+        await tester.pump(Duration.zero);
+        final landedTop = tester.getTopLeft(composer).dy;
+        expect(landedTop, greaterThan(idleTop));
+
+        final bubble = find.byType(QueuedMessageBubble);
+        final opacities = [opacityOf(tester, bubble)];
+        for (var frame = 0; frame < 15; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.getTopLeft(composer).dy, landedTop);
+          opacities.add(opacityOf(tester, bubble));
+        }
+
+        expect(opacities.where((opacity) => opacity > 0 && opacity < 1), hasLength(greaterThan(5)));
+        expect(opacities.last, 1);
+      });
     });
   });
 

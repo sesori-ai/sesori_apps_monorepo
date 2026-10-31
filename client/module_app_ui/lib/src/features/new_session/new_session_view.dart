@@ -472,12 +472,9 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     );
   }
 
-  /// Plays the page's change at Send, or back after a failure; reduced motion
-  /// makes it at once.
+  /// Plays the page's change at Send, or back after a failure.
   void _onSendingChanged({required bool sending}) {
-    if (context.isReducedMotion) {
-      _sendingMotion.value = sending ? 1 : 0;
-    } else if (sending) {
+    if (sending) {
       _sendingMotion.forward();
     } else {
       _sendingMotion.reverse();
@@ -487,25 +484,23 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   /// Send turns the options into the session it is creating, showing the
   /// message as it will sit in the session's transcript above the composer,
   /// and a failed creation turns it back. Both directions cross-fade with the
-  /// transcript's own motion rather than cutting; reduced motion swaps at once.
+  /// transcript's own motion rather than cutting.
   Widget _crossFadeSending({required Widget? sending, required Widget composing}) {
     final child = sending == null
         ? KeyedSubtree(key: const ValueKey("new_session_composing"), child: composing)
         : KeyedSubtree(key: const ValueKey("new_session_sending"), child: sending);
     return ExcludeFocus(
       excluding: sending != null,
-      child: context.isReducedMotion
-          ? child
-          : AnimatedSwitcher(
-              duration: transcriptMotionDuration,
-              switchInCurve: transcriptMotionCurve,
-              switchOutCurve: transcriptMotionReverseCurve,
-              layoutBuilder: (current, previous) => Stack(
-                fit: StackFit.expand,
-                children: [...previous, ?current],
-              ),
-              child: child,
-            ),
+      child: AnimatedSwitcher(
+        duration: transcriptMotionDuration,
+        switchInCurve: transcriptMotionCurve,
+        switchOutCurve: transcriptMotionReverseCurve,
+        layoutBuilder: (current, previous) => Stack(
+          fit: StackFit.expand,
+          children: [...previous, ?current],
+        ),
+        child: child,
+      ),
     );
   }
 
@@ -652,9 +647,9 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       child: widget.pageChrome == null
           ? composerPlace
           // The composer's one move between the centred column and the
-          // bottom edge (D8).
+          // bottom edge (D8). Reduced motion lands it there as the pages fade.
           : PregoSlideFromLastPosition(
-              progress: _sendingMotion,
+              progress: context.isReducedMotion ? AlwaysStoppedAnimation(isSending ? 1.0 : 0.0) : _sendingMotion,
               forward: isSending,
               horizontalOnly: false,
               child: composerPlace,
@@ -866,29 +861,52 @@ class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner
 /// rather than jumps as a project's answer adds or removes them. Options that
 /// replace others open above them as they fold, so the two heights trade
 /// evenly instead of the taller holding the room. A first build shows them as
-/// they are, and reduced motion changes them at once.
+/// they are. Reduced motion keeps only the fades, in a [_RoomAtOnce].
 class const _AnimatedOptions({super.key, required final double gap, required final Widget? options})
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final reducedMotion = context.isReducedMotion;
     return AnimatedSwitcher(
-      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      duration: transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
-      layoutBuilder: (current, previous) => Column(mainAxisSize: MainAxisSize.min, children: [?current, ...previous]),
-      transitionBuilder: (child, animation) => SizeTransition(
-        sizeFactor: animation,
-        alignment: Alignment.topCenter,
-        child: FadeTransition(
+      layoutBuilder: (current, previous) => reducedMotion
+          ? Stack(alignment: Alignment.topCenter, children: [...previous, ?current])
+          : Column(mainAxisSize: MainAxisSize.min, children: [?current, ...previous]),
+      transitionBuilder: (child, animation) {
+        final fade = FadeTransition(
           opacity: animation,
           child: Padding(
             padding: EdgeInsetsDirectional.only(top: gap),
             // As wide as the column, as the options were before they moved.
             child: SizedBox(width: double.infinity, child: child),
           ),
-        ),
-      ),
+        );
+        return reducedMotion
+            ? _RoomAtOnce(animation: animation, child: fade)
+            : SizeTransition(sizeFactor: animation, alignment: Alignment.topCenter, child: fade);
+      },
       child: options,
+    );
+  }
+}
+
+/// Reduced motion's place for what a switcher fades: the page changes once, with
+/// the state, so what arrives has its room at once and what leaves gives its room
+/// up at once and fades where it stood.
+class const _RoomAtOnce({required final Animation<double> animation, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) => Align(
+        alignment: Alignment.topCenter,
+        heightFactor: animation.status.isForwardOrCompleted ? 1 : 0,
+        child: child,
+      ),
+      child: child,
     );
   }
 }
@@ -897,23 +915,25 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
 /// its room opens as it fades in and folds away as it fades out, so the pills
 /// and a centred page glide rather than jump as an error comes or clears.
 /// Another error while one shows takes its place without fading, its room
-/// easing to the new text's height. Reduced motion changes it at once, with
-/// no [AnimatedSize], which would re-dirty itself mid-layout at zero duration.
+/// easing to the new text's height. Reduced motion keeps only the fade, in a
+/// [_RoomAtOnce].
 class const _AnimatedBanner({required final Widget? banner}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    if (context.isReducedMotion) return banner ?? const SizedBox.shrink();
+    final reducedMotion = context.isReducedMotion;
     return AnimatedSwitcher(
       duration: transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
-      transitionBuilder: (child, animation) => SizeTransition(
-        sizeFactor: animation,
-        alignment: Alignment.topCenter,
-        child: FadeTransition(opacity: animation, child: child),
-      ),
+      transitionBuilder: (child, animation) {
+        final fade = FadeTransition(opacity: animation, child: child);
+        return reducedMotion
+            ? _RoomAtOnce(animation: animation, child: fade)
+            : SizeTransition(sizeFactor: animation, alignment: Alignment.topCenter, child: fade);
+      },
       child: switch (banner) {
         null => null,
+        final banner when reducedMotion => banner,
         final banner => AnimatedSize(
           duration: transcriptMotionDuration,
           curve: transcriptMotionCurve,
@@ -931,7 +951,7 @@ class const _AnimatedBanner({required final Widget? banner}) extends StatelessWi
 /// included, until it opens again. One child that comes and goes rather than a
 /// switch between children, so a change mid-motion turns back from where it is
 /// with the child's state intact; a switcher would hold the composer's global
-/// key twice. Reduced motion changes it at once.
+/// key twice. Reduced motion keeps only the fade, its room changing at once.
 class const _AnimatedFold({required final bool shown, required final double gap, required final Widget child})
     extends StatefulWidget {
   @override
@@ -958,9 +978,7 @@ class _AnimatedFoldState() extends State<_AnimatedFold> with SingleTickerProvide
   void didUpdateWidget(_AnimatedFold oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.shown == oldWidget.shown) return;
-    if (context.isReducedMotion) {
-      _controller.value = widget.shown ? 1 : 0;
-    } else if (widget.shown) {
+    if (widget.shown) {
       _controller.forward();
     } else {
       _controller.reverse();
@@ -977,17 +995,24 @@ class _AnimatedFoldState() extends State<_AnimatedFold> with SingleTickerProvide
   @override
   Widget build(BuildContext context) {
     final shown = widget.shown;
+    final reducedMotion = context.isReducedMotion;
     return Visibility(
       visible: !_controller.isDismissed,
       maintainState: true,
       // Clipped only while it moves: at rest a focus ring or glass may paint
       // past the child's box.
       child: ClipRect(
-        clipBehavior: _controller.isCompleted ? Clip.none : Clip.hardEdge,
+        clipBehavior: reducedMotion || _controller.isCompleted ? Clip.none : Clip.hardEdge,
         child: AnimatedBuilder(
           animation: _animation,
-          builder: (context, child) =>
-              Align(alignment: Alignment.topCenter, heightFactor: math.max(_animation.value, 0), child: child),
+          builder: (context, child) => Align(
+            alignment: Alignment.topCenter,
+            heightFactor: switch (reducedMotion) {
+              true => shown ? 1 : 0,
+              false => math.max(_animation.value, 0),
+            },
+            child: child,
+          ),
           child: FadeTransition(
             opacity: _animation,
             // Leaving, it takes no taps and gives its focus up at once.
@@ -1014,7 +1039,7 @@ class _AnimatedFoldState() extends State<_AnimatedFold> with SingleTickerProvide
 /// over it, while the room they share eases from one's height to the other's,
 /// so the page around them glides rather than jumps. A change within one,
 /// such as its pills loading or its Recheck being pressed, shows in place.
-/// Reduced motion swaps them at once.
+/// Reduced motion keeps the cross-fade and gives the room its new height at once.
 ///
 /// A notice hides the composer rather than replacing it, so staged images,
 /// which live only in the composer, survive until the notice clears.
@@ -1112,10 +1137,7 @@ class _ComposerOrNoticeState() extends State<_ComposerOrNotice> with TickerProvi
       arriving = placed.presence;
     }
     for (final presence in [_composer, for (final placed in _notices) placed.presence]) {
-      final shown = identical(presence, arriving);
-      if (context.isReducedMotion) {
-        presence.controller.value = shown ? 1 : 0;
-      } else if (shown) {
+      if (identical(presence, arriving)) {
         presence.controller.forward();
       } else {
         presence.controller.reverse();
@@ -1195,7 +1217,10 @@ class const _CrossFadeRoomOccupant({
     );
     return AnimatedBuilder(
       animation: presence,
-      builder: (context, _) => _CrossFadeRoomPresence(presence: presence.value, child: occupant),
+      builder: (context, _) => _CrossFadeRoomPresence(
+        presence: context.isReducedMotion ? (shown ? 1 : 0) : presence.value,
+        child: occupant,
+      ),
     );
   }
 }
@@ -1299,7 +1324,7 @@ class const _DedicatedWorkspaceRow({
     return SizedBox(
       height: height,
       child: AnimatedSwitcher(
-        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        duration: transcriptMotionDuration,
         switchInCurve: transcriptMotionCurve,
         switchOutCurve: transcriptMotionReverseCurve,
         child: switch (value) {

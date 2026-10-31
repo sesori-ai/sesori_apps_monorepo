@@ -34,7 +34,7 @@ defaults and queued client sends coherent.
   reason, opens Harness Settings when setup is relevant, and offers Recheck only
   when authentication is required. When the bridge has not answered the check a
   Recheck starts within about 300 ms, Recheck cross-fades into a spinner in its
-  own room (at once under reduced motion), so nothing moves, and takes no press,
+  own room (reduced motion keeps the fades), so nothing moves, and takes no press,
   reading to screen readers as disabled, until the check ends, which after a
   login includes the refresh that brings the composer back; a faster answer
   never shows the spinner. An old bridge that cannot report availability
@@ -57,7 +57,7 @@ defaults and queued client sends coherent.
   for reasons enabling the harness would not fix. The notice stays up and unmoved
   while that read runs, with no loading view; a load then cross-fades the transcript
   and composer in over it, and on a failure the error view fades in over it; neither
-  view moves (at once under reduced motion). The leaving notice keeps its
+  view moves (under reduced motion the fades stay). The leaving notice keeps its
   Recheck spinner and takes no taps as it fades, and a read that still finds nothing
   leaves the notice as it was. The phone bar's menu, which the error view and the
   loading view have no session for, materializes and dematerializes in the same
@@ -89,7 +89,9 @@ defaults and queued client sends coherent.
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
   leaves the list following, with no jump-to-latest pill. The list rises for every send's row rather than moving in one
-  frame, typed or dictated, and a send from a little way up rises and glides back as one motion. The first prompt in an
+  frame, typed or dictated, and a send from a little way up rises and glides back as one motion. A send from far up
+  moves the rows only with its glide and the composer, with no step on the send's frame or on reaching its row.
+  The first prompt in an
   empty transcript shows at once, with nothing to move. A row that has fully eased in, or was there when the list opened,
   doesn't ease in again when scrolling brings it back; one dropped before it had opened does. A dictated send's words glide
   down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
