@@ -5,6 +5,18 @@ mirror PR state: live status is GitHub
 (`gh pr list --state all --search "[voice-live]"`). Evidence for a finished step
 lives in `steps/step-NN.md`, written only by that step's own PR.
 
+## Final Disposition
+
+Retired on 2026-10-31. All steps merged, and the user confirmed that live voice works on their phone, asking to retire
+the plan and saying they will follow up on anything they notice.
+
+- **User's half of the matrix:** the rows in [step 12](steps/step-12.md#for-the-user) were not recorded one by one. The
+  user accepted that on retirement.
+- **Step 12's open decisions:** finding 1 (a very short hold or mid-word release still sends) and finding 3 (the list's
+  bounce after a send) stay as they are, with no change made, unless the user raises them.
+- **Ongoing:** `docs/regression/voice-input.md` owns live voice's behaviour and its release check. The User Actions below
+  still apply until each is done.
+
 ## Decisions In Force
 
 D1–D27 are the user's, from review pages `voice-live-r1` and `voice-live-r2`
