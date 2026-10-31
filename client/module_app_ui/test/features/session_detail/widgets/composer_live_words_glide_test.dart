@@ -423,6 +423,20 @@ void main() {
 
         expect(_glideString(tester), wrapDictatedText(text: "spoken words"));
       });
+
+      testWidgets("the words land as the final transcript when it differs from the last ones shown", (tester) async {
+        await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: 2500);
+        final gesture = await hold(tester: tester);
+        await gesture.up();
+        await tester.pump();
+        await complete(tester: tester, transcript: "the final words");
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(_frame);
+        }
+        await tester.pump(_flight ~/ 2);
+
+        expect(_glideString(tester), wrapDictatedText(text: "the final words"));
+      });
     });
   });
 

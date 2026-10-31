@@ -315,7 +315,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     });
     _presence.reverse();
     if (landing.isExpecting) {
-      _awaitBubble(landing: landing, frames: _bubbleFrames);
+      _awaitBubble(landing: landing, frames: _bubbleFrames, transcript: transcript);
     } else {
       widget.box._hold(held: true);
       SchedulerBinding.instance.addPostFrameCallback((_) => _glideToBox());
@@ -329,18 +329,18 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     return MatrixUtils.transformRect(words.getTransformTo(overlay), Offset.zero & words.size);
   }
 
-  void _awaitBubble({required SentBubbleLandingController landing, required int frames}) {
+  void _awaitBubble({required SentBubbleLandingController landing, required int frames, required String transcript}) {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _layer is! _Gliding) return;
       final text = landing.heldText;
       if (text != null) {
         _startGlide(destination: _Bubble(text: text));
       } else if (frames > 1) {
-        _awaitBubble(landing: landing, frames: frames - 1);
+        _awaitBubble(landing: landing, frames: frames - 1, transcript: transcript);
         SchedulerBinding.instance.scheduleFrame();
       } else {
         landing.handOver();
-        _startGlide(destination: _estimatedSlot());
+        _startGlide(destination: _estimatedSlot(transcript: transcript));
       }
     });
   }
@@ -392,13 +392,13 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   }
 
   /// Right-aligned above the composer, where the bubble goes when the list is at
-  /// its end. The words, with the marker a bubble adds, are what there is to size
-  /// it by.
-  _Destination _estimatedSlot() {
+  /// its end. The [transcript], with the marker a bubble adds, is what there is to
+  /// size it by.
+  _Destination _estimatedSlot({required String transcript}) {
     final layer = _layer;
     final composer = _composerRect;
     if (layer is! _Gliding || composer == null) return const _InPlace();
-    final text = wrapDictatedText(text: layer.last.words.text.trim());
+    final text = wrapDictatedText(text: transcript.trim());
     final painter = TextPainter(
       text: TextSpan(text: text, style: _bubbleLook().style),
       textDirection: Directionality.of(context),
