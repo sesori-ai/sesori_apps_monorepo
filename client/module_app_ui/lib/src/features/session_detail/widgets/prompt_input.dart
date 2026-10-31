@@ -2686,6 +2686,8 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
     final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
+    // The accordion leaves the tree for these and comes back closed.
+    if (_voicePresentation != _VoicePresentation.idle) _optionsOpen = false;
 
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),

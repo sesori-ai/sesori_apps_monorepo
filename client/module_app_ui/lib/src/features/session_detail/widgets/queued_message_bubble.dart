@@ -187,6 +187,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         alignment: WrapAlignment.end,
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: PregoSpacing.xs,
+        runSpacing: PregoSpacing.xs,
         children: [
           _status(
             prego: prego,
@@ -229,6 +230,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         alignment: WrapAlignment.end,
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: PregoSpacing.xs,
+        runSpacing: PregoSpacing.xs,
         children: [
           _status(
             prego: prego,
@@ -264,6 +266,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         alignment: WrapAlignment.end,
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: PregoSpacing.xs,
+        runSpacing: PregoSpacing.xs,
         children: [
           // Inside the Wrap the label is bounded, so it may wrap itself.
           Row(

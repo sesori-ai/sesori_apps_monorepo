@@ -6997,15 +6997,16 @@ void main() {
         var frames = 0;
         while (true) {
           await tester.pump(const Duration(milliseconds: 16));
-          // The sent row adds its own rise from here.
-          if (find.text("draft").evaluate().isNotEmpty) break;
+          // The sent row adds its own eased rise from here, and no step.
+          final riseAllowance = find.text("draft").evaluate().isEmpty ? 0.01 : 7.0;
+          if (position.pixels == 0 && riseAllowance > 1) break;
           final rowsNow = rows();
           final composerNow = tester.getTopLeft(controls).dy;
           final expected = composerNow - composerBefore + position.pixels - pixelsBefore;
           for (final MapEntry(key: row, value: y) in rowsNow.entries) {
             final before = rowsBefore[row];
             if (before == null) continue;
-            expect(y - before, moreOrLessEquals(expected, epsilon: 0.01), reason: "$row on frame $frames");
+            expect(y - before, moreOrLessEquals(expected, epsilon: riseAllowance), reason: "$row on frame $frames");
           }
           rowsBefore = rowsNow;
           composerBefore = composerNow;
