@@ -1,3 +1,4 @@
+import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
@@ -10,7 +11,7 @@ class FirebaseVoiceModeConfigSource({
   required final FirebaseRemoteConfigClient _remoteConfigClient,
 }) implements VoiceModeConfigSource {
   static const String liveEnabledKey = "voice_live_enabled";
-  static const String onDeviceDisabledKey = "voice_on_device_disabled";
+  static const String onDeviceEnabledKey = "voice_on_device_enabled";
 
   /// Firebase reports an unset key as false.
   @override
@@ -19,11 +20,12 @@ class FirebaseVoiceModeConfigSource({
     return remoteConfig.getBool(liveEnabledKey);
   }
 
-  /// A kill switch, so an unset key, which Firebase reports as false, leaves
-  /// on-device transcription on.
+  /// True unless the console sets it to false. `getBool` can't tell, since it
+  /// reports an unset key as false.
   @override
   Future<bool> fetchOnDeviceEnabled() async {
     final remoteConfig = await _remoteConfigClient.activated();
-    return !remoteConfig.getBool(onDeviceDisabledKey);
+    final value = remoteConfig.getValue(onDeviceEnabledKey);
+    return value.source == ValueSource.valueStatic || value.asBool();
   }
 }

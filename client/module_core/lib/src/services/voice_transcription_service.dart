@@ -744,7 +744,7 @@ class VoiceTranscriptionSession._({
   /// the answer for a session that doesn't allow live.
   bool _canRunLive = false;
 
-  /// False until the kill switch and this device both allow it, which is also the
+  /// False until the on-device switch and this device both allow it, which is also the
   /// answer for a session that doesn't allow live.
   bool _canRunOnDevice = false;
   int _generation = 0;

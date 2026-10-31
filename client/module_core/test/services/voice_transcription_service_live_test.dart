@@ -247,7 +247,7 @@ void main() {
       verifyNever(capture.start);
     });
 
-    test("the kill switch keeps the dictation on the server and never asks the device", () async {
+    test("the on-device switch keeps the dictation on the server and never asks the device", () async {
       onDeviceEnabled = false;
       mode = const VoiceModeAfterRecording();
       session = await createSession();
