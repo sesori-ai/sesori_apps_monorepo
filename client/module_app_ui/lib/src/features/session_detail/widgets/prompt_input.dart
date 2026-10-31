@@ -1264,6 +1264,13 @@ class _PromptInputState() extends State<PromptInput> {
   static AnimatedSwitcherTransitionBuilder get _fadeEachEntry =>
       (child, animation) => FadeTransition(opacity: animation, child: child);
 
+  /// What a hold shows a screen reader ends with the hold, not with its fade, whose
+  /// instructions and pencil no longer apply. A switcher reaches an outgoing entry
+  /// only through a transition builder that differs from the last build's, so pass
+  /// a closure rather than a method's tear-off.
+  Widget _holdOnlyForScreenReaders({required Widget child}) =>
+      ExcludeSemantics(excluding: _voicePresentation != _VoicePresentation.recording, child: child);
+
   /// Eases [child]'s size changes. Reduced motion resizes at once: a
   /// zero-duration [AnimatedSize] would re-dirty itself mid-layout.
   Widget _morphSize({
@@ -1591,7 +1598,8 @@ class _PromptInputState() extends State<PromptInput> {
           if (transitionChild.key == const ValueKey("staged-command")) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
-          return _fadeEachEntry(transitionChild, animation);
+          final fade = _fadeEachEntry(transitionChild, animation);
+          return transitionChild.key == const ValueKey("release-hint") ? _holdOnlyForScreenReaders(child: fade) : fade;
         },
         // Sat on the pill: centred, a taller hint at large text would lift the
         // fading header off it by half the difference in one frame.
@@ -2690,7 +2698,10 @@ class _PromptInputState() extends State<PromptInput> {
       clipBehavior: Clip.none,
       child: AnimatedSwitcher(
         duration: _morphDuration,
-        transitionBuilder: _fadeEachEntry,
+        transitionBuilder: (transitionChild, animation) {
+          final fade = _fadeEachEntry(transitionChild, animation);
+          return transitionChild.key == const ValueKey("edit-target") ? _holdOnlyForScreenReaders(child: fade) : fade;
+        },
         // Pinned to the leading edge: centred, the narrower child would jump
         // sideways when the wider one leaves at the fade's end.
         layoutBuilder: (currentChild, previousChildren) => Stack(

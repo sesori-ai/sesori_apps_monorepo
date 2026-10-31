@@ -1223,6 +1223,59 @@ void main() {
       semantics.dispose();
     });
 
+    final holdWords = find.semantics.byPredicate((node) {
+      final label = node.getSemanticsData().label;
+      return label.contains("Release to") || label.contains("Put the words in the box");
+    });
+
+    for (final mode in ChatInputMode.values) {
+      final holdControl = find.semantics.byPredicate((node) {
+        final data = node.getSemanticsData();
+        return data.hasAction(SemanticsAction.tap) && RegExp("Hold to talk|Record voice").hasMatch(data.label);
+      });
+
+      for (final (ending, slidesOut) in [("a release", false), ("a cancel", true)]) {
+        testWidgets("${mode.name}: the hold's words end with the hold, on $ending", (tester) async {
+          final semantics = tester.ensureSemantics();
+          await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          if (slidesOut) {
+            await gesture.moveTo(abovePill(tester: tester, by: 64));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 300));
+          }
+          expect(holdWords, findsAny);
+
+          await gesture.up();
+          await tester.pump();
+          for (var ms = 0; ms <= 240; ms += 16) {
+            expect(holdWords, findsNothing, reason: "$ms ms after the release");
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          semantics.dispose();
+        });
+      }
+
+      testWidgets("${mode.name}: the hold's words end with a screen reader's stop", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+        tester.semantics.tap(holdControl);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(holdWords, findsAny);
+
+        tester.semantics.tap(holdControl);
+        await tester.pump();
+        for (var ms = 0; ms <= 240; ms += 16) {
+          expect(holdWords, findsNothing, reason: "$ms ms after the stop");
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        semantics.dispose();
+      });
+    }
+
     testWidgets("a pointer shell's mic is a named button that starts recording", (tester) async {
       final semantics = tester.ensureSemantics();
       await _pumpComposer(

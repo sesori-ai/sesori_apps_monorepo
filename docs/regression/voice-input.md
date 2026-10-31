@@ -97,7 +97,8 @@ and `stable` records first.
   waveform. A release is clean: the hint and the waveform leave first, then the header and the words or shimmer return
   in the same place, evenly and with no step in any frame, for a send, a cancel, and a pointer shell's Send or X. A tap
   released before the press's fade ends dissolves back from where it had reached and never shows nothing. Pressing again
-  mid-release carries on from there.
+  mid-release carries on from there. Screen readers lose the hint and the touch pencil on the frame the hold ends, while
+  they still fade on screen, including when a screen reader's own tap stopped the recording.
 - When a transcription or a live finish ends, "Transcribing..." or "Finishing..." leaves first, then the resting words
   return in the same place, with a release's timing, in every layout. One ending before those words finished fading in
   retraces from where they had reached while the resting words rise from the first frame, so nothing waits. A failure's
