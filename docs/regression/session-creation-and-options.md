@@ -375,7 +375,8 @@ variant, and worktree mode, and creating the session with its first input.
   the stable project identifier and carries title, defaults, and worktree facts.
 - Send immediately cross-fades the options into the submitted message, shown as
   the session transcript's sending bubble (text, `/command args`, and local image
-  previews) at the transcript's newest-row position above the composer, while the
+  previews) at the transcript's newest-row position above the composer (live
+  dictated words glide onto it first; see `voice-input.md`), while the
   unresolved URI remains `/sessions/new?project=<projectId>`. It never shows a
   spinner page. After about two seconds the bubble reads "Sending to
   `<harness>`…". The composer stays mounted with its text, staged images, voice

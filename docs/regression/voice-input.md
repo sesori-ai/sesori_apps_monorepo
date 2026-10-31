@@ -9,7 +9,9 @@ text-first and adds the mic as an extra control on the same pipeline: one click 
 the same place or Enter sends; the pencil or Shift+Enter puts the words in the prompt field, and the X or Escape
 cancels. The device microphone and transcription endpoint are external. The bridge independently prepares optional
 project-scoped vocabulary from bounded local evidence; no backend plugin participates. When the voice mode switch turns
-live on and the host can stream, the same gestures run over a realtime socket instead of an upload.
+live on and the host can stream, the same gestures run over a realtime socket instead of an upload. On a phone the switch
+is the Firebase Remote Config keys `voice_live_enabled` and `voice_live_presentation`. On desktop the build fixes it: the
+`internal` channel runs live with focus, and `stable` records first.
 
 ## Required Behavior
 
@@ -59,6 +61,8 @@ live on and the host can stream, the same gestures run over a realtime socket in
   transcription disposes and invalidates the voice interaction, releases its resources, and prevents a late
   completion from restoring or sending input. Availability recovery creates a fresh eligible composer; the gate
   does not retain the recording or transcript.
+- An unset `voice_live_enabled` means record first. `voice_live_presentation` is `focus` or `panel`, and any other value
+  means focus. A phone reads both at launch, so a Firebase change applies from its next cold launch.
 - A hold takes the voice mode once, when it starts, and keeps it whatever the switch does next. It never waits for an
   answer: until the mode has loaded and the host has said it can stream, a hold records first. The feedback sheet always
   records first.
@@ -134,7 +138,7 @@ live on and the host can stream, the same gestures run over a realtime socket in
 | L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, reduced motion, and the glide: the bubble's handover with one copy on every frame, the two-frame fallback above the composer, the screen or row going mid-glide, the box holding its text back, and no travel under reduced motion. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
-| L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, and music from another app keeps playing when a chat opens. |
+| L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, music from another app keeps playing when a chat opens, and live words keep up with speech with first words not clipped, on a real microphone. |
 
 ### Client release coverage (L3)
 
@@ -146,6 +150,13 @@ On the macOS desktop build, grant the first microphone prompt, click the mic, sp
 mouse to send; start again and press Enter to send, with text already in the box; start again and use Shift+Enter, then
 the pencil, and edit the inserted transcript; start again and cancel with Escape, then the X, and confirm the box keeps
 its text; click into the transcript mid-recording and confirm the recording continues.
+With live on, in focus and in panel, hold and speak on the mobile platform, and confirm the words appear as they are
+spoken and nothing under them moves. Release to send and confirm the words glide into the bubble; slide onto the pencil
+and confirm they glide into the box; slide out and confirm the fade. Repeat with the server unreachable, and confirm the
+dictation falls back and lands in the box with a notice. On the desktop `internal` build, confirm the same with its
+controls.
+Before a public release containing this code, confirm the release's intended live state in Firebase: `voice_live_enabled`
+was agreed off for the first one.
 On either, send a dictated message and confirm the bubble and the harness transcript show `🎙️ "words"`, while the
 generated session title shows plain words.
 
