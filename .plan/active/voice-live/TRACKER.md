@@ -27,7 +27,7 @@ D1–D27 are the user's, from review pages `voice-live-r1` and `voice-live-r2`
   to `false`. It applies at each phone's next cold launch.
 - Step 12: run the real-microphone checks on an iPhone and an Android device, and the
   connect-to-`ready` measurement. The exact list is in `steps/step-07.md`, plus
-  `steps/step-08.md`.
+  `steps/step-08.md` and `steps/step-09.md`.
 
 ## PR Titles
 
