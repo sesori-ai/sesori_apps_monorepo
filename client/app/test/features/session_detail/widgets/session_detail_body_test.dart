@@ -6393,7 +6393,7 @@ void main() {
       final typingSurface = find.ancestor(
         of: find.byType(EditableText),
         matching: find.byWidgetPredicate((widget) {
-          if (widget is! Container) return false;
+          if (widget is! DecoratedBox) return false;
           final decoration = widget.decoration;
           return decoration is BoxDecoration && decoration.boxShadow != null;
         }),
