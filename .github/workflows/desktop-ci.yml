@@ -165,6 +165,8 @@ jobs:
 
       - name: Install native asset build dependencies
         if: matrix.command == 'flutter test'
+        # A stuck install otherwise holds the job until the 6 hour default.
+        timeout-minutes: 10
         # `flutter test` runs cnativeapi's (tray_manager) native-asset build
         # hook, which needs GTK 3, X11, and Xi headers.
         run: |
