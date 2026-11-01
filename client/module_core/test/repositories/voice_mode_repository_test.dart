@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     configApi = _MockVoiceModeConfigApi();
     engineStorage = _MockVoiceEnginePreferenceStorage();
-    when(engineStorage.read).thenAnswer((_) async => VoiceEngine.embedded);
+    when(engineStorage.read).thenAnswer((_) async => VoiceEngine.remote);
     when(() => engineStorage.write(engine: any(named: "engine"))).thenAnswer((_) async {});
     repository = VoiceModeRepository(configApi: configApi, engineStorage: engineStorage);
     when(configApi.fetchOnDeviceEnabled).thenAnswer((_) async => true);
@@ -47,7 +47,7 @@ void main() {
       await repository.loadEngine();
       await repository.loadEngine();
 
-      expect(repository.engine, VoiceEngine.embedded);
+      expect(repository.engine, VoiceEngine.remote);
       verify(engineStorage.read).called(1);
     });
 
@@ -57,7 +57,7 @@ void main() {
       await expectLater(repository.load(), throwsStateError);
       await repository.loadEngine();
 
-      expect(repository.engine, VoiceEngine.embedded);
+      expect(repository.engine, VoiceEngine.remote);
     });
 
     test("a pick made during the first read survives it, and is persisted", () async {
@@ -66,7 +66,7 @@ void main() {
       unawaited(repository.loadEngine());
 
       final picking = repository.setEngine(engine: VoiceEngine.remote);
-      read.complete(VoiceEngine.embedded);
+      read.complete(VoiceEngine.remote);
       await picking;
 
       expect(repository.engine, VoiceEngine.remote);

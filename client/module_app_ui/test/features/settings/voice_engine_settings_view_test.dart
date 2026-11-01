@@ -32,7 +32,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (final title in ["Embedded", "Device", "Remote"]) {
+    for (final title in ["Device", "Remote"]) {
       expect(find.text(title), findsOneWidget);
     }
     expect(tester.getSemantics(find.text("Device")), isSemantics(isChecked: true));

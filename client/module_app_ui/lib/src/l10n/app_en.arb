@@ -767,11 +767,6 @@
     "description": "Settings entry and page title for picking the engine that transcribes dictation"
   },
   "settingsVoiceEngineDescription": "A temporary comparison. If the one you pick can't run, dictation uses the server.",
-  "settingsVoiceEngineEmbedded": "Embedded",
-  "@settingsVoiceEngineEmbedded": {
-    "description": "Dictation engine option: the speech model shipped inside the app"
-  },
-  "settingsVoiceEngineEmbeddedDescription": "The model inside this app. English only. Stays on this phone.",
   "settingsVoiceEngineDevice": "Device",
   "@settingsVoiceEngineDevice": {
     "description": "Dictation engine option: the operating system's own speech engine"

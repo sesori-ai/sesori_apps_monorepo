@@ -24,7 +24,6 @@ import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/connection_notification_observation_api.dart'
     as _i479;
-import 'package:sesori_dart_core/src/api/embedded_speech_api.dart' as _i191;
 import 'package:sesori_dart_core/src/api/feedback_api.dart' as _i872;
 import 'package:sesori_dart_core/src/api/feedback_prompt_config_api.dart'
     as _i373;
@@ -93,8 +92,6 @@ import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart
     as _i14;
 import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.dart'
     as _i65;
-import 'package:sesori_dart_core/src/foundation/platform/embedded_speech_source.dart'
-    as _i527;
 import 'package:sesori_dart_core/src/foundation/platform/feedback_prompt_config_source.dart'
     as _i294;
 import 'package:sesori_dart_core/src/foundation/platform/founder_call_config_source.dart'
@@ -487,9 +484,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i385.BridgeApi>()),
     );
-    gh.lazySingleton<_i191.EmbeddedSpeechApi>(
-      () => _i191.EmbeddedSpeechApi(source: gh<_i527.EmbeddedSpeechSource>()),
-    );
     gh.lazySingleton<_i843.LegacyNativeStorageMigrationService>(
       () => _i843.LegacyNativeStorageMigrationService(
         source: gh<_i695.LegacyNativeStorageMigrationRepository>(),
@@ -528,6 +522,13 @@ extension GetItInjectableX on _i174.GetIt {
         deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
       ),
     );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(
+        api: gh<_i176.VoiceApi>(),
+        realtimeClient: gh<_i231.RealtimeVoiceClient>(),
+        onDeviceSpeechApi: gh<_i736.OnDeviceSpeechApi>(),
+      ),
+    );
     gh.lazySingleton<_i804.ProductAnalyticsPreferenceRepository>(
       () => _i804.ProductAnalyticsPreferenceRepository(
         api: gh<_i560.ProductAnalyticsPreferenceApi>(),
@@ -538,14 +539,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i993.AttributionRepository(
         api: gh<_i556.AttributionApi>(),
         claimStorage: gh<_i275.AttributionClaimStorage>(),
-      ),
-    );
-    gh.lazySingleton<_i107.VoiceRepository>(
-      () => _i107.VoiceRepository(
-        api: gh<_i176.VoiceApi>(),
-        realtimeClient: gh<_i231.RealtimeVoiceClient>(),
-        onDeviceSpeechApi: gh<_i736.OnDeviceSpeechApi>(),
-        embeddedSpeechApi: gh<_i191.EmbeddedSpeechApi>(),
       ),
     );
     gh.lazySingleton<_i479.ConnectionNotificationObservationApi>(

@@ -3,7 +3,6 @@ import "dart:io" show WebSocketException;
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/api/embedded_speech_api.dart";
 import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_protocol.dart";
@@ -24,7 +23,6 @@ class _ThrowingTokenProvider({required final Exception failure}) implements Auth
 
 class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
 
-class _MockEmbeddedSpeechApi() extends Mock implements EmbeddedSpeechApi;
 
 void main() {
   late FakeRealtimeVoiceChannel channel;
@@ -32,7 +30,6 @@ void main() {
   Future<VoiceRealtimeConnection> open({required String? token}) => VoiceRepository(
     api: _MockVoiceApi(),
     onDeviceSpeechApi: _MockOnDeviceSpeechApi(),
-    embeddedSpeechApi: _MockEmbeddedSpeechApi(),
     realtimeClient: RealtimeVoiceClient.withChannelConnector(
       tokenProvider: FakeRealtimeVoiceTokenProvider(token: token),
       channelConnector: ({required uri, required headers}) => channel,
@@ -94,7 +91,6 @@ void main() {
       final repository = VoiceRepository(
         api: _MockVoiceApi(),
         onDeviceSpeechApi: _MockOnDeviceSpeechApi(),
-        embeddedSpeechApi: _MockEmbeddedSpeechApi(),
         realtimeClient: RealtimeVoiceClient(tokenProvider: _ThrowingTokenProvider(failure: failure)),
       );
 

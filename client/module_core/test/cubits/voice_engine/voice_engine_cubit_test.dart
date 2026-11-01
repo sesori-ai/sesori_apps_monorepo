@@ -13,7 +13,7 @@ void main() {
 
   setUp(() {
     repository = _MockVoiceModeRepository();
-    when(() => repository.engine).thenReturn(VoiceEngine.embedded);
+    when(() => repository.engine).thenReturn(VoiceEngine.remote);
     when(() => repository.setEngine(engine: any(named: "engine"))).thenAnswer((_) async {});
   });
 
@@ -28,7 +28,7 @@ void main() {
     load.complete();
     await pumpEventQueue();
 
-    expect(cubit.state, VoiceEngine.embedded);
+    expect(cubit.state, VoiceEngine.remote);
   });
 
   test("a pick shows at once and goes to the repository", () async {

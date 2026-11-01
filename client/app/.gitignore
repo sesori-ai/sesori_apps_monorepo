@@ -47,6 +47,3 @@ app.*.map.json
 # Sisyphus (oh my opencode)
 .sisyphus
 
-# Speech model, fetched by tool/fetch_speech_model.sh and never committed
-/assets/speech_model/*
-!/assets/speech_model/.gitkeep
