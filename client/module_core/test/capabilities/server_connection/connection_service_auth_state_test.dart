@@ -212,5 +212,118 @@ void main() {
       expect(service.currentStatus, isA<ConnectionDisconnected>());
       verify(roomKeyStorage.clearRoomKey).called(1);
     });
+
+    group("first connect failure", () {
+      _MockRelayClient failingClient({required int? closeCode}) {
+        final client = _MockRelayClient();
+        when(client.connect).thenThrow(Exception("Failed host lookup"));
+        when(() => client.lastCloseCode).thenReturn(closeCode);
+        when(client.disconnect).thenAnswer((_) async {});
+        return client;
+      }
+
+      _MockRelayClient workingClient() {
+        final client = _MockRelayClient();
+        when(client.connect).thenAnswer((_) async {});
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
+        when(() => client.didResume).thenReturn(false);
+        when(() => client.reportedBridgeId).thenReturn(null);
+        when(() => client.lastCloseCode).thenReturn(null);
+        when(
+          () => client.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
+          (_) async => const RelayResponse(
+            id: "r",
+            status: 200,
+            headers: {},
+            body: '{"healthy":true,"version":"1","filesystemAccessDegraded":false}',
+          ),
+        );
+        when(() => client.subscribeSse(any())).thenAnswer((_) => const Stream.empty());
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream.empty());
+        when(() => client.bridgePresence).thenAnswer((_) => const Stream.empty());
+        when(client.disconnect).thenAnswer((_) async {});
+        return client;
+      }
+
+      ConnectionService serviceWith({required List<_MockRelayClient> clients}) {
+        final remaining = clients.iterator;
+        final service = ConnectionService(
+          cryptoService,
+          roomKeyStorage,
+          FakeTargetBridgeStorage(),
+          authTokenProvider,
+          authSession,
+          lifecycleSource,
+          failureReporter,
+          relayClientFactory: _RecordingRelayClientFactory(() {
+            remaining.moveNext();
+            return remaining.current;
+          }),
+        );
+        addTearDown(service.dispose);
+        return service;
+      }
+
+      setUp(() {
+        when(() => authSession.currentState).thenReturn(const AuthState.initial());
+        when(
+          () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
+        ).thenAnswer((_) async => "token");
+      });
+
+      test("an unreachable relay is retried until it connects", () async {
+        final service = serviceWith(clients: [failingClient(closeCode: null), workingClient()]);
+
+        expect(await service.connectWithFreshAuthToken(), isFalse);
+        expect(service.currentStatus, isA<ConnectionReconnecting>());
+
+        await service.status.firstWhere((status) => status is ConnectionConnected).timeout(const Duration(seconds: 5));
+      });
+
+      test("a token that cannot refresh yet is retried until it connects", () async {
+        final tokens = <String?>[null, "token"].iterator;
+        when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).thenAnswer((_) async {
+          tokens.moveNext();
+          return tokens.current;
+        });
+        final service = serviceWith(clients: [workingClient()]);
+
+        expect(await service.connectWithFreshAuthToken(), isFalse);
+        expect(service.currentStatus, isA<ConnectionReconnecting>());
+
+        await service.status.firstWhere((status) => status is ConnectionConnected).timeout(const Duration(seconds: 5));
+      });
+
+      test("a terminal close code is not retried", () async {
+        final service = serviceWith(clients: [failingClient(closeCode: RelayCloseCodes.accountFull)]);
+
+        expect(await service.connectWithFreshAuthToken(), isFalse);
+
+        expect(service.currentStatus, isA<ConnectionDisconnected>());
+      });
+
+      test("a sign-out during the attempt is not retried", () async {
+        when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
+        final service = serviceWith(clients: [failingClient(closeCode: null)]);
+
+        expect(await service.connectWithFreshAuthToken(), isFalse);
+
+        expect(service.currentStatus, isA<ConnectionDisconnected>());
+      });
+
+      test("a connect while the retry is pending opens no second socket", () async {
+        final service = serviceWith(clients: [failingClient(closeCode: null), workingClient()]);
+        await service.connectWithFreshAuthToken();
+
+        expect(await service.connectWithFreshAuthToken(), isFalse);
+
+        await service.status.firstWhere((status) => status is ConnectionConnected).timeout(const Duration(seconds: 5));
+      });
+    });
   });
 }
