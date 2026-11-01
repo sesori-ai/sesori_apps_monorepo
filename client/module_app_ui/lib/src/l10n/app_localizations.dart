@@ -2056,7 +2056,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsVoiceEngineEmbeddedDescription.
   ///
   /// In en, this message translates to:
-  /// **'The model inside this app. English only, stays on this phone.'**
+  /// **'The model inside this app. English only. Stays on this phone.'**
   String get settingsVoiceEngineEmbeddedDescription;
 
   /// Dictation engine option: the operating system's own speech engine
@@ -2068,7 +2068,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsVoiceEngineDeviceDescription.
   ///
   /// In en, this message translates to:
-  /// **'This phone\'s own speech engine, stays on this phone.'**
+  /// **'This phone\'s own speech engine. Stays on this phone.'**
   String get settingsVoiceEngineDeviceDescription;
 
   /// Dictation engine option: transcription on the server

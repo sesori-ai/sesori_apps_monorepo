@@ -186,11 +186,12 @@ void main() {
       );
       final children = settingsRoute.routes;
       expect((children[0] as GoRoute).path, "default-input");
-      expect((children[1] as GoRoute).path, "notifications");
-      expect((children[2] as GoRoute).path, "profile");
-      expect((children[3] as GoRoute).path, "computers");
-      expect((children[4] as GoRoute).path, "projects");
-      expect(children, hasLength(5));
+      expect((children[1] as GoRoute).path, "voice-engine");
+      expect((children[2] as GoRoute).path, "notifications");
+      expect((children[3] as GoRoute).path, "profile");
+      expect((children[4] as GoRoute).path, "computers");
+      expect((children[5] as GoRoute).path, "projects");
+      expect(children, hasLength(6));
       final harnessShell = _signedInRoutes().whereType<ShellRoute>().singleWhere(
         (shell) => shell.routes.whereType<GoRoute>().any((route) => route.path == AppRouteDef.settingsHarnesses.path),
       );
@@ -291,6 +292,7 @@ void main() {
           AppRouteDef.settingsHarnessDetail.path,
           AppRouteDef.settings.path,
           AppRouteDef.settingsDefaultInput.path,
+          AppRouteDef.settingsVoiceEngine.path,
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsProfile.path,
           AppRouteDef.settingsComputers.path,

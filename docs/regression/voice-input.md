@@ -91,7 +91,7 @@ decision.
 - A switch of engine applies from the next hold that finds it ready. The first hold after switching to an engine this
   composer hasn't found ready uses the server and checks it; holds never wait for that check. An engine that can't run uses the server, like the other
   on-device cases.
-- Embedded copies the model out of the app's assets once, on its first check. Each dictation then loads the model in a
+- Embedded copies the model out of the app's assets on its first check, and again if the system has cleared it. Each dictation then loads the model in a
   worker isolate that exits when the dictation ends. The words are lowercase with the first letter of each segment
   and the pronoun "I" capitalized, and no punctuation. A build with the model missing from its assets answers that
   Embedded can't run; `client/app/tool/fetch_speech_model.sh` puts it there.

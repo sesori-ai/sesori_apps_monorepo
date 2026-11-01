@@ -27,7 +27,7 @@ const Duration _finishSilence = Duration(milliseconds: 800);
 /// files, so [prepare] copies the model out once. Each dictation loads it in a
 /// worker isolate that exits when the dictation ends, which frees its memory.
 @LazySingleton(as: EmbeddedSpeechSource)
-class SherpaEmbeddedSpeechSource({required final TemporaryDirectoryProvider _directories})
+class SherpaEmbeddedSpeechSource({required final TemporaryDirectoryClient _temporaryDirectory})
     implements EmbeddedSpeechSource {
   _SherpaSpeechSession? _active;
   Future<bool>? _preparing;
@@ -63,7 +63,7 @@ class SherpaEmbeddedSpeechSource({required final TemporaryDirectoryProvider _dir
 
   Future<Directory> _modelDirectory() async {
     // Stays out of iCloud backups. If the system clears it, the next prepare copies the model again.
-    final temporary = await _directories.temporaryDirectory();
+    final temporary = await _temporaryDirectory.directory;
     return Directory(p.join(temporary.path, "speech_model", _modelName));
   }
 

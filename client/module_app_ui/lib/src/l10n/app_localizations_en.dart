@@ -1091,13 +1091,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVoiceEngineEmbedded => 'Embedded';
 
   @override
-  String get settingsVoiceEngineEmbeddedDescription => 'The model inside this app. English only, stays on this phone.';
+  String get settingsVoiceEngineEmbeddedDescription => 'The model inside this app. English only. Stays on this phone.';
 
   @override
   String get settingsVoiceEngineDevice => 'Device';
 
   @override
-  String get settingsVoiceEngineDeviceDescription => 'This phone\'s own speech engine, stays on this phone.';
+  String get settingsVoiceEngineDeviceDescription => 'This phone\'s own speech engine. Stays on this phone.';
 
   @override
   String get settingsVoiceEngineRemote => 'Remote';
