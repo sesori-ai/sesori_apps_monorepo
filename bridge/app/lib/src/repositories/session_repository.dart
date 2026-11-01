@@ -206,11 +206,12 @@ class SessionRepository({
     final projects = [
       for (final row in await _projectsDao.getCatalogProjects())
         if (projectId == null || row.projectId == projectId)
-          // Only the name and kind feed the search; the flags are unused.
+          // Only the name and kind feed the search; the flags and count are unused.
           _projectCatalogMapper.mapSummary(
             row: row,
             hasUnseenChanges: false,
             directoryMissing: false,
+            sessionCount: 0,
             kind: _projectCatalogIdentityCalculator.isScratchRoot(path: row.projectId)
                 ? ProjectKind.scratch
                 : ProjectKind.folder,

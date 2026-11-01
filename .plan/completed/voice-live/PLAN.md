@@ -2,8 +2,8 @@
 
 ## Status
 
-Agreed through review pages `voice-live-r1` and `voice-live-r2` (2026-10-30).
-Implementation has not started.
+Agreed through review pages `voice-live-r1` and `voice-live-r2` (2026-10-30). Implemented and retired on 2026-10-31.
+See the [tracker's final disposition](TRACKER.md#final-disposition).
 
 ## Goal
 

@@ -1,6 +1,7 @@
 # Step 12 — Run coverage
 
-The agent's half of the matrix. The plan isn't retired: that waits for the user's half below.
+The agent's half of the matrix. The user's half below was accepted without per-row results when the plan was retired on
+2026-10-31; see the [tracker](../TRACKER.md#final-disposition).
 
 One bug came out of it, fixed in its own commit.
 
@@ -255,4 +256,4 @@ each phone's next cold launch. Desktop `stable` stays after-recording by build.
 - Finding 1: whether a very short hold or a mid-word release should still send on finish.
 - Finding 3: whether the list's bounce after a send gets its own fix.
 - Accept, or not, any part of the matrix you won't run. The plan requires that recorded before retirement.
-- Then retirement: update the auth plan's pointer and move this plan to `.plan/completed/`. Not done here.
+- Then retirement: update the auth plan's pointer and move this plan to `.plan/completed/`.

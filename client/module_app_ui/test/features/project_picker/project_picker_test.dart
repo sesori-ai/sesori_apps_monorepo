@@ -106,6 +106,68 @@ void main() {
 
   double topOf({required WidgetTester tester, required Finder finder}) => tester.getTopLeft(finder).dy;
 
+  group("session counts", () {
+    ProjectSummary project({required String id, required int sessionCount}) => testProjectSummary(
+      id: id,
+      name: id,
+      path: "/work/$id",
+    ).copyWith(sessionCount: sessionCount);
+
+    final longList = [
+      project(id: "newest", sessionCount: 6),
+      project(id: "second", sessionCount: 1),
+      project(id: "third", sessionCount: 0),
+      project(id: "tie-recent", sessionCount: 18),
+      project(id: "tie-older", sessionCount: 18),
+      project(id: "biggest", sessionCount: 431),
+    ];
+
+    testWidgets("a long list splits into recent and the rest by count, ties most recent first", (tester) async {
+      // A phone sheet, tall enough to build every row.
+      await pumpPicker(tester: tester, projects: longList, size: const Size(500, 1400));
+
+      final order = ["RECENT", "newest", "second", "third", "MOST SESSIONS", "biggest", "tie-recent", "tie-older"];
+      final tops = [for (final text in order) topOf(tester: tester, finder: find.text(text))];
+      expect(tops, [...tops]..sort());
+    });
+
+    testWidgets("a row counts its sessions, and shows nothing at zero", (tester) async {
+      await pumpPicker(tester: tester, projects: longList);
+
+      expect(find.text("6 sessions"), findsOneWidget);
+      expect(find.text("1 session"), findsOneWidget);
+      expect(find.text("0 sessions"), findsNothing);
+    });
+
+    testWidgets("a search keeps one list in recency order", (tester) async {
+      await pumpPicker(tester: tester, projects: longList);
+
+      await search(tester: tester, query: "tie");
+      expect(find.text("RECENT"), findsNothing);
+      expect(find.text("MOST SESSIONS"), findsNothing);
+      expect(
+        topOf(tester: tester, finder: find.text("tie-recent")),
+        lessThan(topOf(tester: tester, finder: find.text("tie-older"))),
+      );
+    });
+
+    testWidgets("a short list has no sections", (tester) async {
+      await pumpPicker(tester: tester, projects: longList.take(5).toList());
+
+      expect(find.text("RECENT"), findsNothing);
+      expect(find.text("MOST SESSIONS"), findsNothing);
+    });
+
+    testWidgets("a shared name shows its count before the path", (tester) async {
+      await pumpPicker(
+        tester: tester,
+        projects: [_clientWeb.copyWith(sessionCount: 34), _serverWeb],
+      );
+
+      expect(find.textContaining(RegExp(r"^34 sessions · .*client/web$")), findsOneWidget);
+    });
+  });
+
   testWidgets("search narrows the projects by name and path", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi, _clientWeb]);
     expect(find.text("Search projects"), findsOneWidget);

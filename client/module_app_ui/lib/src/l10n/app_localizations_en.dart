@@ -102,6 +102,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectPickerNoMatches => 'No projects match';
 
   @override
+  String projectPickerSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions',
+      one: '1 session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get projectPickerRecent => 'Recent';
+
+  @override
+  String get projectPickerMostSessions => 'Most sessions';
+
+  @override
   String get sessionChangesLabel => 'Changes';
 
   @override

@@ -32,6 +32,7 @@ _ProjectSummary _$ProjectSummaryFromJson(Map json) => _ProjectSummary(
         unknownValue: ProjectKind.folder,
       ) ??
       ProjectKind.folder,
+  sessionCount: (json['sessionCount'] as num?)?.toInt() ?? 0,
 );
 
 Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
@@ -43,6 +44,7 @@ Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
       'hasUnseenChanges': instance.hasUnseenChanges,
       'directoryMissing': instance.directoryMissing,
       'kind': _$ProjectKindEnumMap[instance.kind]!,
+      'sessionCount': instance.sessionCount,
     };
 
 const _$ProjectKindEnumMap = {

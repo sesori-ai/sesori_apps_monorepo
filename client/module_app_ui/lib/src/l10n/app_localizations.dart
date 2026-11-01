@@ -265,6 +265,24 @@ abstract class AppLocalizations {
   /// **'No projects match'**
   String get projectPickerNoMatches;
 
+  /// Under a project's name in the project picker: how many top-level, non-archived sessions it has.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 session} other{{count} sessions}}'**
+  String projectPickerSessionCount(int count);
+
+  /// Project picker section heading above the most recently used projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get projectPickerRecent;
+
+  /// Project picker section heading above the remaining projects, sorted by how many sessions they have.
+  ///
+  /// In en, this message translates to:
+  /// **'Most sessions'**
+  String get projectPickerMostSessions;
+
   /// Control that opens the session's file changes: the desktop toolbar button and the phone's menu row.
   ///
   /// In en, this message translates to:

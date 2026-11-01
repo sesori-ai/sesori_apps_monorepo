@@ -26,6 +26,10 @@ typedef NewSessionProjectSelected = void Function({required String projectId, re
 /// then selects the project that adds. Filtering a list instead
 /// ([onAllProjects] set), it sits beside "All projects", checked while no
 /// project is chosen. A path shows only under a name another project shares.
+///
+/// A row counts the project's sessions under its name. A list long enough to
+/// need it splits into the most recent projects and the rest by session count;
+/// a search keeps one list, most recent first.
 class const ProjectPicker({
   super.key,
 
@@ -130,6 +134,29 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
       nameCounts.update(nameOf(project), (count) => count + 1, ifAbsent: () => 1);
     }
     final pathLabels = projectPathLabels(projects: projects, nameOf: nameOf);
+    PregoPickerSearchOption optionFor(ProjectSummary project) {
+      final details = [
+        if (project.sessionCount > 0) loc.projectPickerSessionCount(project.sessionCount),
+        // Only a shared name needs its path to be told apart.
+        if ((nameCounts[nameOf(project)] ?? 0) > 1) pathLabels[project.id] ?? project.path,
+      ];
+      return PregoPickerSearchOption(
+        isSelected: project.id == widget.selectedProjectId,
+        onPick: () => _pickProject(project: project, name: nameOf(project)),
+        child: _PickerRow(title: nameOf(project), detail: details.isEmpty ? null : details.join(" · ")),
+      );
+    }
+
+    if (query.isEmpty) {
+      if (projectPickerSections(projects: projects) case (:final recent, :final bySessionCount)) {
+        return [
+          PregoPickerSearchHeading(text: loc.projectPickerRecent),
+          for (final project in recent) optionFor(project),
+          PregoPickerSearchHeading(text: loc.projectPickerMostSessions),
+          for (final project in bySessionCount) optionFor(project),
+        ];
+      }
+    }
     final matches = [
       for (final project in projects)
         if (query.isEmpty ||
@@ -139,16 +166,7 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
     ];
     return [
       if (matches.isEmpty && query.isNotEmpty) PregoPickerSearchNote(text: loc.projectPickerNoMatches),
-      for (final project in matches)
-        PregoPickerSearchOption(
-          isSelected: project.id == widget.selectedProjectId,
-          onPick: () => _pickProject(project: project, name: nameOf(project)),
-          child: _PickerRow(
-            title: nameOf(project),
-            // Only a shared name needs its path to be told apart.
-            detail: (nameCounts[nameOf(project)] ?? 0) > 1 ? pathLabels[project.id] ?? project.path : null,
-          ),
-        ),
+      for (final project in matches) optionFor(project),
     ];
   }
 
@@ -218,8 +236,8 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
   }
 }
 
-/// A project's folder icon and name, over the path that tells it apart when it
-/// has one.
+/// A project's folder icon and name, over its session count and the path that
+/// tells it apart, whichever it has.
 class const _PickerRow({required final String title, required final String? detail}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

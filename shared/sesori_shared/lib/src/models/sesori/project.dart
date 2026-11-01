@@ -31,6 +31,9 @@ sealed class ProjectSummary with _$ProjectSummary {
     @Default(false) bool directoryMissing,
     // COMPATIBILITY 2026-10-25 (v1.9.2): Older bridges omit kind, and every project they list is a folder. Require the field once those bridges are unsupported.
     @JsonKey(unknownEnumValue: ProjectKind.folder) @Default(ProjectKind.folder) ProjectKind kind,
+    // Top-level, non-archived sessions: what opening the project lists.
+    // COMPATIBILITY 2026-10-31 (v1.11.0): Older bridges omit the count, so their projects show none and sort by recency alone. Require the field once those bridges are unsupported.
+    @Default(0) int sessionCount,
   }) = _ProjectSummary;
 
   // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Pass the payload directly once those bridges are unsupported.

@@ -52,6 +52,15 @@
   "@projectPickerOpenFolder": {"description": "Button pinned below the new-session project picker's list. Opens the folder browser; the picker then selects the folder it adds as the project."},
   "projectPickerNoMatches": "No projects match",
   "@projectPickerNoMatches": {"description": "Shown as the project picker's list when no project name or path matches the search."},
+  "projectPickerSessionCount": "{count, plural, =1{1 session} other{{count} sessions}}",
+  "@projectPickerSessionCount": {
+    "description": "Under a project's name in the project picker: how many top-level, non-archived sessions it has.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "projectPickerRecent": "Recent",
+  "@projectPickerRecent": {"description": "Project picker section heading above the most recently used projects."},
+  "projectPickerMostSessions": "Most sessions",
+  "@projectPickerMostSessions": {"description": "Project picker section heading above the remaining projects, sorted by how many sessions they have."},
   "sessionChangesLabel": "Changes",
   "@sessionChangesLabel": {"description": "Control that opens the session's file changes: the desktop toolbar button and the phone's menu row."},
   "desktopSessionParentBreadcrumb": "Main session",
