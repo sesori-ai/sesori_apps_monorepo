@@ -6,7 +6,6 @@ import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:injectable/injectable.dart";
 import "package:path/path.dart" as p;
-import "package:path_provider/path_provider.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sherpa_onnx/sherpa_onnx.dart" as sherpa;
 
@@ -28,7 +27,8 @@ const Duration _finishSilence = Duration(milliseconds: 800);
 /// files, so [prepare] copies the model out once. Each dictation loads it in a
 /// worker isolate that exits when the dictation ends, which frees its memory.
 @LazySingleton(as: EmbeddedSpeechSource)
-class SherpaEmbeddedSpeechSource() implements EmbeddedSpeechSource {
+class SherpaEmbeddedSpeechSource({required final TemporaryDirectoryProvider _directories})
+    implements EmbeddedSpeechSource {
   _SherpaSpeechSession? _active;
   Future<bool>? _preparing;
 
@@ -62,9 +62,9 @@ class SherpaEmbeddedSpeechSource() implements EmbeddedSpeechSource {
   }
 
   Future<Directory> _modelDirectory() async {
-    // Caches stay out of iCloud backups. If the system clears them, the next prepare copies the model again.
-    final cache = await getApplicationCacheDirectory();
-    return Directory(p.join(cache.path, "speech_model", _modelName));
+    // Stays out of iCloud backups. If the system clears it, the next prepare copies the model again.
+    final temporary = await _directories.temporaryDirectory();
+    return Directory(p.join(temporary.path, "speech_model", _modelName));
   }
 
   /// Returns once the model has loaded, because audio can then flow at once.

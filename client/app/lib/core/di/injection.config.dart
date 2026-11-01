@@ -175,6 +175,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i437.PathProviderTemporaryDirectoryProvider(),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
+    gh.lazySingleton<_i948.EmbeddedSpeechSource>(
+      () => _i793.SherpaEmbeddedSpeechSource(
+        directories: gh<_i948.TemporaryDirectoryProvider>(),
+      ),
+    );
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i877.MobileActiveBridgeLocality(),
     );
@@ -200,9 +205,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i903.MasterKeyStore>(
       () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
-    );
-    gh.lazySingleton<_i948.EmbeddedSpeechSource>(
-      () => _i793.SherpaEmbeddedSpeechSource(),
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
