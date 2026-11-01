@@ -303,10 +303,10 @@ final class _SherpaRecognition({
 }
 
 /// The model answers in capitals with no punctuation, so a segment reads as one
-/// lowercase sentence with its first letter capitalized.
+/// lowercase sentence with its first letter and the pronoun "I" capitalized.
 @visibleForTesting
 String formatEmbeddedSpeechSegment({required String text}) {
-  final lowered = text.trim().toLowerCase();
+  final lowered = text.trim().toLowerCase().replaceAll(RegExp(r"\bi\b"), "I");
   if (lowered.isEmpty) return lowered;
   return "${lowered[0].toUpperCase()}${lowered.substring(1)}";
 }

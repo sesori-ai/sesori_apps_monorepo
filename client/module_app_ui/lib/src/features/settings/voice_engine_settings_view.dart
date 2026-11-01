@@ -8,7 +8,7 @@ import "../../extensions/build_context_x.dart";
 const Duration _selectionFadeDuration = Duration(milliseconds: 150);
 
 /// Picks the engine that transcribes dictation; the product shell owns navigation.
-/// Temporary, for comparing the engines on internal builds.
+/// Temporary, for comparing the engines. Not gated to internal builds, so decide before the next public release.
 class const VoiceEngineSettingsView({
   super.key,
   required final VoidCallback onBack,

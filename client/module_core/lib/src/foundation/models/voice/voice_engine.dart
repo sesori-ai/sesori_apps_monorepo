@@ -1,5 +1,5 @@
 /// Which engine transcribes a dictation, as picked in Settings. Temporary, for
-/// comparing the three on internal builds.
+/// comparing the three until one is decided.
 enum VoiceEngine({
   /// The persisted spelling. Pinned here rather than derived from the enum name so
   /// renaming a case cannot orphan a stored preference.

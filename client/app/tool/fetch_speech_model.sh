@@ -29,7 +29,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
 
 curl --fail --location --retry 3 --silent --show-error --output "${work}/model.tar.bz2" "${url}"
-echo "${sha256}  ${work}/model.tar.bz2" | shasum --algorithm 256 --check --status
+echo "${sha256}  ${work}/model.tar.bz2" | shasum --algorithm 256 --check
 
 members=()
 for file in "${files[@]}"; do

@@ -9,6 +9,10 @@ void main() {
       expect(formatEmbeddedSpeechSegment(text: " FIX THE LOGIN BUG "), "Fix the login bug");
     });
 
+    test("keeps the pronoun capitalized, alone and in contractions", () {
+      expect(formatEmbeddedSpeechSegment(text: "SO I THINK I'M DONE IN IT"), "So I think I'm done in it");
+    });
+
     test("an empty result stays empty", () {
       expect(formatEmbeddedSpeechSegment(text: "  "), "");
     });
