@@ -172,21 +172,45 @@ class ConnectionService(
       if (_status.value is ConnectionConnected || _status.value is ConnectionBridgeOffline) {
         return true;
       }
+      // The reconnect cycle already owns this connection; a second attempt here
+      // would race it for the account's socket.
+      if (_status.value is ConnectionReconnecting) return false;
       final token = await _authTokenProvider.getFreshAccessToken(minTtl: const Duration(minutes: 2));
-      if (token == null) {
-        logw("Auto-connect after auth skipped: no valid token");
-        return false;
-      }
       final config = ServerConnectionConfig(
         relayHost: relayHost,
         authToken: token,
         bridgeId: await _targetBridgeStorage.read(),
       );
-      final result = await connect(config);
-      return result is SuccessResponse<HealthResponse>;
+      if (token == null) {
+        logw("Auto-connect after auth has no valid token yet");
+        _retryFirstConnect(config: config);
+        return false;
+      }
+      final (:response, :closeCode) = await _connectViaRelay(
+        config,
+        isStale: () => _authSession.currentState is AuthUnauthenticated,
+      );
+      if (response is SuccessResponse<HealthResponse>) return true;
+      if (RelayCloseCodes.shouldReconnect(closeCode)) _retryFirstConnect(config: config);
+      return false;
     } catch (error, stackTrace) {
       loge("Auto-connect after auth failed", error, stackTrace);
       return false;
+    }
+  }
+
+  /// A connection that never came up has no drop to recover from, so without
+  /// this it stays disconnected for good, as when the app launches at login
+  /// before the network is up. Hands it to the reconnect cycle instead.
+  void _retryFirstConnect({required ServerConnectionConfig config}) {
+    if (_status.value is! ConnectionDisconnected) return;
+    switch (_authSession.currentState) {
+      case AuthInitial() || AuthAuthenticated():
+        _status.add(ConnectionStatus.reconnecting(config: config));
+        unawaited(_reconnectRelayWithRefresh(config));
+      // A sign-out during the attempt has already disconnected this service.
+      case AuthUnauthenticated() || AuthAuthenticating() || AuthFailed():
+        break;
     }
   }
 
@@ -957,9 +981,11 @@ class ConnectionService(
       }
       if (_status.value is ConnectionDisconnected) return;
 
+      // A refresh cannot succeed while offline, so this is a failed attempt like
+      // any other. A rejected session signs out, which ends the cycle above.
       if (authToken == null) {
-        logw("Relay reconnect skipped: no valid auth token");
-        _status.add(ConnectionStatus.connectionLost(config: config));
+        logw("Relay reconnect has no valid auth token yet");
+        handleFailure(closeCode: null);
         return;
       }
 

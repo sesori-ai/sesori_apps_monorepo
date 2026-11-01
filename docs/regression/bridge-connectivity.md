@@ -111,7 +111,9 @@ presents.
 - Bridge registration uses a stable machine name. On macOS, transient
   network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
-  disconnected, and returns to connected when the bridge is back. The desktop shell
+  disconnected, and returns to connected when the bridge is back. A first connection
+  that fails, such as a launch at login before the network is up, retries through the
+  same reconnect cycle unless the relay closed it with a terminal code. The desktop shell
   roots the same `ConnectionService` beside the supervised control channel, shows
   its relay-client state separately from helper relay status, and overlays a connection pill on the main pane
   without moving its contents. The bridge section of the sidebar's computer menu describes only the supervised local helper.

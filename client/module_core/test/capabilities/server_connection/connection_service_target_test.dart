@@ -108,6 +108,7 @@ void main() {
     final authSession = _MockAuthSession();
     final lifecycleSource = _MockLifecycleSource();
     when(() => authSession.authStateStream).thenAnswer((_) => auth.stream);
+    when(() => authSession.currentState).thenReturn(const AuthState.initial());
     when(() => lifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycle.stream);
     final service = ConnectionService(
       _MockRelayCryptoService(),
