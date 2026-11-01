@@ -2,19 +2,28 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/storage/voice_engine_preference_storage.dart";
 import "package:test/test.dart";
 
 class _MockVoiceModeConfigApi() extends Mock implements VoiceModeConfigApi;
 
+class _MockVoiceEnginePreferenceStorage() extends Mock implements VoiceEnginePreferenceStorage;
+
 void main() {
   late _MockVoiceModeConfigApi configApi;
+  late _MockVoiceEnginePreferenceStorage engineStorage;
   late VoiceModeRepository repository;
 
   setUp(() {
     configApi = _MockVoiceModeConfigApi();
-    repository = VoiceModeRepository(configApi: configApi);
+    engineStorage = _MockVoiceEnginePreferenceStorage();
+    when(engineStorage.read).thenAnswer((_) async => VoiceEngine.embedded);
+    when(() => engineStorage.write(engine: any(named: "engine"))).thenAnswer((_) async {});
+    repository = VoiceModeRepository(configApi: configApi, engineStorage: engineStorage);
     when(configApi.fetchOnDeviceEnabled).thenAnswer((_) async => true);
   });
+
+  setUpAll(() => registerFallbackValue(VoiceEngine.device));
 
   void answerLiveEnabled({required bool liveEnabled}) =>
       when(configApi.fetchLiveEnabled).thenAnswer((_) async => liveEnabled);
@@ -29,6 +38,40 @@ void main() {
     when(configApi.fetchOnDeviceEnabled).thenAnswer((_) async => false);
     await repository.load();
     expect(repository.onDeviceEnabled, isFalse);
+  });
+
+  group("engine", () {
+    test("is device until the stored pick has been read, and the read happens once", () async {
+      expect(repository.engine, VoiceEngine.device);
+
+      await repository.loadEngine();
+      await repository.loadEngine();
+
+      expect(repository.engine, VoiceEngine.embedded);
+      verify(engineStorage.read).called(1);
+    });
+
+    test("a load whose Remote Config fails leaves the engine read working", () async {
+      when(configApi.fetchLiveEnabled).thenThrow(StateError("no config"));
+
+      await expectLater(repository.load(), throwsStateError);
+      await repository.loadEngine();
+
+      expect(repository.engine, VoiceEngine.embedded);
+    });
+
+    test("a pick made during the first read survives it, and is persisted", () async {
+      final read = Completer<VoiceEngine>();
+      when(engineStorage.read).thenAnswer((_) => read.future);
+      unawaited(repository.loadEngine());
+
+      final picking = repository.setEngine(engine: VoiceEngine.remote);
+      read.complete(VoiceEngine.embedded);
+      await picking;
+
+      expect(repository.engine, VoiceEngine.remote);
+      verify(() => engineStorage.write(engine: VoiceEngine.remote)).called(1);
+    });
   });
 
   test("live on gives live", () async {

@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/embedded_speech_api.dart";
 import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_protocol.dart";
@@ -25,6 +26,8 @@ class _MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
 class _MockVoiceApi() extends Mock implements VoiceApi;
 
 class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
+
+class _MockEmbeddedSpeechApi() extends Mock implements EmbeddedSpeechApi;
 
 final class _FakeOnDeviceConnection() implements VoiceRealtimeConnection {
   final StreamController<VoiceRealtimeEvent> controller = StreamController<VoiceRealtimeEvent>();
@@ -80,6 +83,8 @@ void main() {
   late List<VoiceLiveEvent> events;
   VoiceMode mode = const VoiceModeLive();
   bool onDeviceEnabled = false;
+  VoiceEngine engine = VoiceEngine.device;
+  bool embeddedReady = false;
   bool onDeviceReady = false;
 
   setUpAll(() {
@@ -121,6 +126,8 @@ void main() {
     mode = const VoiceModeLive();
     onDeviceEnabled = false;
     onDeviceReady = false;
+    engine = VoiceEngine.device;
+    embeddedReady = false;
     frames = StreamController<Uint8List>();
     repository = _MockVoiceRepository();
     voiceModeRepository = _MockVoiceModeRepository();
@@ -140,6 +147,7 @@ void main() {
     final realRepository = VoiceRepository(
       api: _MockVoiceApi(),
       onDeviceSpeechApi: _MockOnDeviceSpeechApi(),
+      embeddedSpeechApi: _MockEmbeddedSpeechApi(),
       realtimeClient: RealtimeVoiceClient.withChannelConnector(
         tokenProvider: FakeRealtimeVoiceTokenProvider(token: "token"),
         channelConnector: ({required uri, required headers}) => channel,
@@ -149,9 +157,12 @@ void main() {
     when(platform.createSession).thenReturn(capture);
     when(platform.prewarm).thenAnswer((_) async {});
     when(voiceModeRepository.load).thenAnswer((_) async {});
+    when(voiceModeRepository.loadEngine).thenAnswer((_) async {});
+    when(() => voiceModeRepository.engine).thenAnswer((_) => engine);
     when(() => voiceModeRepository.mode).thenAnswer((_) => mode);
     when(() => voiceModeRepository.onDeviceEnabled).thenAnswer((_) => onDeviceEnabled);
     when(repository.prepareOnDevice).thenAnswer((_) async => onDeviceReady);
+    when(repository.prepareEmbedded).thenAnswer((_) async => embeddedReady);
     when(() => capture.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(capture.supportsPcmStream).thenAnswer((_) async => true);
     when(capture.startPcmStream).thenAnswer((_) async => frames.stream);
@@ -284,6 +295,104 @@ void main() {
       await service.start(session: session);
 
       verify(() => repository.openOnDevice(sampleRate: any(named: "sampleRate"))).called(1);
+    });
+
+    group("with an engine picked", () {
+      setUp(() {
+        mode = const VoiceModeAfterRecording();
+        when(
+          () => repository.openEmbedded(sampleRate: any(named: "sampleRate")),
+        ).thenAnswer((_) async {
+          scheduleMicrotask(() => connection.controller.add(const VoiceRealtimeReady()));
+          return connection;
+        });
+      });
+
+      test("Embedded runs on the embedded engine and never asks the device's", () async {
+        engine = VoiceEngine.embedded;
+        embeddedReady = true;
+        session = await createSession();
+        await service.start(session: session);
+
+        verify(() => repository.openEmbedded(sampleRate: any(named: "sampleRate"))).called(1);
+        verifyNever(repository.prepareOnDevice);
+        verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
+        verifyNever(capture.start);
+      });
+
+      test("Embedded without its model uses the server", () async {
+        engine = VoiceEngine.embedded;
+        session = await createSession();
+        await service.start(session: session);
+
+        verify(capture.start).called(1);
+        verifyNever(() => repository.openEmbedded(sampleRate: any(named: "sampleRate")));
+      });
+
+      test("Device never asks the embedded engine", () async {
+        session = await createSession();
+        await service.start(session: session);
+
+        verify(() => repository.openOnDevice(sampleRate: any(named: "sampleRate"))).called(1);
+        verifyNever(repository.prepareEmbedded);
+      });
+
+      test("Remote uses the server and asks neither engine", () async {
+        engine = VoiceEngine.remote;
+        embeddedReady = true;
+        session = await createSession();
+        await service.start(session: session);
+        await pumpEventQueue();
+
+        verify(capture.start).called(1);
+        verifyNever(repository.prepareOnDevice);
+        verifyNever(repository.prepareEmbedded);
+      });
+
+      test("the on-device switch sends Embedded to the server too", () async {
+        engine = VoiceEngine.embedded;
+        embeddedReady = true;
+        onDeviceEnabled = false;
+        session = await createSession();
+        await service.start(session: session);
+
+        verify(capture.start).called(1);
+        verifyNever(repository.prepareEmbedded);
+      });
+
+      test("the first hold after a switch uses the server, and the next the new engine", () async {
+        embeddedReady = true;
+        session = await createSession();
+
+        engine = VoiceEngine.embedded;
+        await service.start(session: session);
+        await pumpEventQueue();
+
+        verify(capture.start).called(1);
+        verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
+        verifyNever(() => repository.openEmbedded(sampleRate: any(named: "sampleRate")));
+
+        await service.cancel(session: session);
+        await service.start(session: session);
+
+        verify(() => repository.openEmbedded(sampleRate: any(named: "sampleRate"))).called(1);
+      });
+
+      test("a check answered after the pick moved on marks nothing ready", () async {
+        final preparing = Completer<bool>();
+        when(repository.prepareOnDevice).thenAnswer((_) => preparing.future);
+        session = await createSession();
+
+        engine = VoiceEngine.embedded;
+        preparing.complete(true);
+        await pumpEventQueue();
+        engine = VoiceEngine.device;
+        when(repository.prepareOnDevice).thenAnswer((_) async => false);
+        await service.start(session: session);
+
+        verify(capture.start).called(1);
+        verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
+      });
     });
 
     test("a session that doesn't allow live keeps recording first", () async {

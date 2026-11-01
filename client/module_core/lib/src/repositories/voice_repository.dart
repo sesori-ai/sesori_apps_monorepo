@@ -5,6 +5,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
+import "../api/embedded_speech_api.dart";
 import "../api/on_device_speech_api.dart";
 import "../capabilities/voice/realtime_voice_client.dart";
 import "../capabilities/voice/realtime_voice_protocol.dart";
@@ -27,6 +28,7 @@ class VoiceRepository({
   required final VoiceApi _api,
   required final RealtimeVoiceClient _realtimeClient,
   required final OnDeviceSpeechApi _onDeviceSpeechApi,
+  required final EmbeddedSpeechApi _embeddedSpeechApi,
 }) {
   Future<VoiceTranscriptionOutcome> transcribe({
     required String audioFilePath,
@@ -68,20 +70,31 @@ class VoiceRepository({
 
   /// Whether this device can transcribe right now. Never throws: any doubt means
   /// the dictation stays on the server.
-  Future<bool> prepareOnDevice() async {
+  Future<bool> prepareOnDevice() => _prepareEngine(preparing: _onDeviceSpeechApi.prepare());
+
+  /// Like [prepareOnDevice], for the speech model shipped inside the app.
+  Future<bool> prepareEmbedded() => _prepareEngine(preparing: _embeddedSpeechApi.prepare());
+
+  /// Opens a dictation on the device's own engine. It is ready as soon as this
+  /// returns. Throws a [VoiceTranscriptionError] holding the original as its
+  /// `innerError`.
+  Future<VoiceRealtimeConnection> openOnDevice({required VoiceRealtimeSampleRate sampleRate}) =>
+      _openEngine(opening: _onDeviceSpeechApi.open(sampleRate: sampleRate));
+
+  /// Like [openOnDevice], for the speech model shipped inside the app.
+  Future<VoiceRealtimeConnection> openEmbedded({required VoiceRealtimeSampleRate sampleRate}) =>
+      _openEngine(opening: _embeddedSpeechApi.open(sampleRate: sampleRate));
+
+  Future<bool> _prepareEngine({required Future<bool> preparing}) async {
     try {
-      return await _onDeviceSpeechApi.prepare();
+      return await preparing;
     } catch (error, stackTrace) {
       logw("Could not check on-device speech; staying on the server", error, stackTrace);
       return false;
     }
   }
 
-  /// Opens a dictation on the device's own engine. It is ready as soon as this
-  /// returns. Throws a [VoiceTranscriptionError] holding the original as its
-  /// `innerError`.
-  Future<VoiceRealtimeConnection> openOnDevice({required VoiceRealtimeSampleRate sampleRate}) async {
-    final opening = _onDeviceSpeechApi.open(sampleRate: sampleRate);
+  Future<VoiceRealtimeConnection> _openEngine({required Future<OnDeviceSpeechSession> opening}) async {
     try {
       return _OnDeviceVoiceConnection(session: await opening.timeout(_onDeviceStartTimeout));
     } catch (error, stackTrace) {
@@ -149,7 +162,7 @@ final class _ServerVoiceConnection({required final RealtimeVoiceSession _session
   Future<void> cancel() => _session.cancel();
 }
 
-/// A dictation on the device's engine. It owns the engine's session, and [events]
+/// A dictation on an engine on the device. It owns the engine's session, and [events]
 /// always ends with exactly one terminal event unless [cancel] came first.
 final class _OnDeviceVoiceConnection({required final OnDeviceSpeechSession _session})
     implements VoiceRealtimeConnection {

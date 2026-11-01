@@ -65,6 +65,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       // Rises over Settings, which its close returns to.
       onOpenArchived: () => context.pushRoute(const AppRoute.archivedSessions()),
       onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
+      onOpenVoiceEngine: () => context.pushRoute(const AppRoute.settingsVoiceEngine()),
       onOpenRateSesori: () => unawaited(_openRateSesori(context: context)),
       // The dispatcher lands on the new computer's home, which
       // replaces this page.

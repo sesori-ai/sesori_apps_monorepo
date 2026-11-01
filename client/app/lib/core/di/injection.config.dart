@@ -103,6 +103,8 @@ import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart'
     as _i437;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
+import 'package:sesori_mobile/core/platform/sherpa_embedded_speech_source.dart'
+    as _i793;
 import 'package:sesori_mobile/core/platform/singular/singular_attribution_client.dart'
     as _i681;
 import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dart'
@@ -216,6 +218,11 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
+    gh.lazySingleton<_i948.EmbeddedSpeechSource>(
+      () => _i793.SherpaEmbeddedSpeechSource(
+        temporaryDirectory: gh<_i948.TemporaryDirectoryClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.OnDeviceSpeechSource>(
       () => _i140.ChannelOnDeviceSpeechSource(),
     );

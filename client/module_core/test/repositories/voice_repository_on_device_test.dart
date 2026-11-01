@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/embedded_speech_api.dart";
 import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:test/test.dart";
@@ -13,6 +14,8 @@ class _MockVoiceApi() extends Mock implements VoiceApi;
 class _MockRealtimeVoiceClient() extends Mock implements RealtimeVoiceClient;
 
 class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
+
+class _MockEmbeddedSpeechApi() extends Mock implements EmbeddedSpeechApi;
 
 final class _FakeSession() implements OnDeviceSpeechSession {
   final StreamController<OnDeviceSpeechEvent> controller = StreamController<OnDeviceSpeechEvent>();
@@ -49,6 +52,7 @@ void main() {
       api: _MockVoiceApi(),
       realtimeClient: _MockRealtimeVoiceClient(),
       onDeviceSpeechApi: api,
+      embeddedSpeechApi: _MockEmbeddedSpeechApi(),
     );
   });
 
@@ -173,7 +177,7 @@ void main() {
   });
 
   test("a check that fails answers false instead of throwing", () async {
-    when(api.prepare).thenThrow(StateError("channel"));
+    when(api.prepare).thenAnswer((_) async => throw StateError("channel"));
 
     expect(await repository.prepareOnDevice(), isFalse);
   });

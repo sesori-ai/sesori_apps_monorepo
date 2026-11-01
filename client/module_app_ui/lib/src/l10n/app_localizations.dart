@@ -2035,6 +2035,54 @@ abstract class AppLocalizations {
   /// **'Ask Sesori'**
   String get settingsDefaultInputTextPreview;
 
+  /// Settings entry and page title for picking the engine that transcribes dictation
+  ///
+  /// In en, this message translates to:
+  /// **'Dictation engine'**
+  String get settingsVoiceEngineTitle;
+
+  /// No description provided for @settingsVoiceEngineDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A temporary comparison. If the one you pick can\'t run, dictation uses the server.'**
+  String get settingsVoiceEngineDescription;
+
+  /// Dictation engine option: the speech model shipped inside the app
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded'**
+  String get settingsVoiceEngineEmbedded;
+
+  /// No description provided for @settingsVoiceEngineEmbeddedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The model inside this app. English only. Stays on this phone.'**
+  String get settingsVoiceEngineEmbeddedDescription;
+
+  /// Dictation engine option: the operating system's own speech engine
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get settingsVoiceEngineDevice;
+
+  /// No description provided for @settingsVoiceEngineDeviceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone\'s own speech engine. Stays on this phone.'**
+  String get settingsVoiceEngineDeviceDescription;
+
+  /// Dictation engine option: transcription on the server
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get settingsVoiceEngineRemote;
+
+  /// No description provided for @settingsVoiceEngineRemoteDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio goes to the Sesori server.'**
+  String get settingsVoiceEngineRemoteDescription;
+
   /// No description provided for @settingsSectionSupport.
   ///
   /// In en, this message translates to:

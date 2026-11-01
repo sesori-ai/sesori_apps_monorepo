@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show Project, ProjectGlossaryK
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/voice/voice_dictation_outcome.dart";
+import "../foundation/models/voice/voice_engine.dart";
 import "../foundation/models/voice/voice_live.dart";
 import "../foundation/models/voice/voice_mode.dart";
 import "../foundation/models/voice/voice_transcription_error.dart";
@@ -52,6 +53,7 @@ class VoiceTranscriptionService({
   /// Both answers can take seconds, so a hold never waits for them (D26). The
   /// support check spawns a process on Linux, so it runs only when live is on.
   Future<void> _loadLiveAvailability({required VoiceTranscriptionSession session}) async {
+    await _voiceModeRepository.loadEngine();
     try {
       await _voiceModeRepository.load();
     } catch (error, stackTrace) {
@@ -62,16 +64,26 @@ class VoiceTranscriptionService({
     session._canRunLive = await session._captureSession.supportsPcmStream();
   }
 
+  /// Asks the engine picked. A pick that changes meanwhile is checked by its next
+  /// hold, so this answer can't mark the wrong engine as ready.
   Future<void> _checkOnDevice({required VoiceTranscriptionSession session}) async {
     if (!_voiceModeRepository.onDeviceEnabled) return;
-    session._canRunOnDevice = await _repository.prepareOnDevice() && await session._captureSession.supportsPcmStream();
+    final engine = _voiceModeRepository.engine;
+    final engineReady = switch (engine) {
+      VoiceEngine.embedded => await _repository.prepareEmbedded(),
+      VoiceEngine.device => await _repository.prepareOnDevice(),
+      VoiceEngine.remote => false,
+    };
+    final ready = engineReady && await session._captureSession.supportsPcmStream();
+    if (ready && _voiceModeRepository.engine == engine) session._readyEngine = engine;
   }
 
-  /// The two switches are independent: the device's engine runs whenever it can,
-  /// and the live switch decides whether the words show while the user speaks.
+  /// The two switches are independent: an engine on the device runs whenever the
+  /// one picked can, and the live switch decides whether the words show while the
+  /// user speaks.
   VoiceDictationMode _chooseMode({required VoiceTranscriptionSession session}) {
     final liveEnabled = _voiceModeRepository.mode is VoiceModeLive;
-    if (session._canRunOnDevice) {
+    if (session._readyEngine == _voiceModeRepository.engine) {
       return liveEnabled ? VoiceDictationMode.onDeviceLive : VoiceDictationMode.onDeviceHidden;
     }
     return session._canRunLive && liveEnabled ? VoiceDictationMode.live : VoiceDictationMode.afterRecording;
@@ -198,8 +210,12 @@ class VoiceTranscriptionService({
     if (session._projectGlossaryKey == null) _loadProjectGlossaryKeyIfIdle(session: session);
     // Read once, here: the dictation keeps this mode whatever the switches do next.
     final mode = _chooseMode(session: session);
-    // The model may have finished downloading, which the next hold can then use.
-    if (session._allowLive && !session._canRunOnDevice) unawaited(_checkOnDevice(session: session));
+    final readyEngine = session._readyEngine;
+    // The model may have finished downloading or the pick changed, which the next
+    // hold can then use.
+    if (session._allowLive && readyEngine != _voiceModeRepository.engine) {
+      unawaited(_checkOnDevice(session: session));
+    }
 
     try {
       final prewarmFuture = session._prewarmFuture;
@@ -227,7 +243,12 @@ class VoiceTranscriptionService({
             session: session,
             generation: generation,
             mode: mode,
-            connecting: _repository.openOnDevice(sampleRate: voiceCapturePcmSampleRate),
+            connecting: switch (readyEngine) {
+              VoiceEngine.embedded => _repository.openEmbedded(sampleRate: voiceCapturePcmSampleRate),
+              VoiceEngine.device || VoiceEngine.remote || null => _repository.openOnDevice(
+                sampleRate: voiceCapturePcmSampleRate,
+              ),
+            },
           );
       }
     } on VoiceCapturePermissionDenied catch (error) {
@@ -744,9 +765,10 @@ class VoiceTranscriptionSession._({
   /// the answer for a session that doesn't allow live.
   bool _canRunLive = false;
 
-  /// False until the on-device switch and this device both allow it, which is also the
-  /// answer for a session that doesn't allow live.
-  bool _canRunOnDevice = false;
+  /// The engine on the device whose check last passed. Null until the on-device
+  /// switch and this device both allow one, which is also the answer for a session
+  /// that doesn't allow live. Remote is never ready.
+  VoiceEngine? _readyEngine;
   int _generation = 0;
 }
 

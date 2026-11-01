@@ -1081,6 +1081,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDefaultInputTextPreview => 'Ask Sesori';
 
   @override
+  String get settingsVoiceEngineTitle => 'Dictation engine';
+
+  @override
+  String get settingsVoiceEngineDescription =>
+      'A temporary comparison. If the one you pick can\'t run, dictation uses the server.';
+
+  @override
+  String get settingsVoiceEngineEmbedded => 'Embedded';
+
+  @override
+  String get settingsVoiceEngineEmbeddedDescription => 'The model inside this app. English only. Stays on this phone.';
+
+  @override
+  String get settingsVoiceEngineDevice => 'Device';
+
+  @override
+  String get settingsVoiceEngineDeviceDescription => 'This phone\'s own speech engine. Stays on this phone.';
+
+  @override
+  String get settingsVoiceEngineRemote => 'Remote';
+
+  @override
+  String get settingsVoiceEngineRemoteDescription => 'Audio goes to the Sesori server.';
+
+  @override
   String get settingsSectionSupport => 'Support';
 
   @override
