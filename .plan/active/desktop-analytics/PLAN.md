@@ -100,7 +100,7 @@ The `os` parameter names the bridge install command's target. The app's own OS i
 | Response | Meaning | Client action |
 | --- | --- | --- |
 | `204`, empty body | Stored, already stored, or dropped because the preference is off. Deliberately not distinguished | Done |
-| `400` | Failed validation. Only `{code, path}` of each zod issue is logged, never values or unrecognized key names | Don't retry. Log the event name |
+| `400` | Failed validation. Only `{code, path}` of each zod issue is logged, never values or unrecognized key names | Don't retry. Log the event name and status |
 | `401` | Bad token | The existing authenticated client refreshes once and retries once |
 | `404` | User no longer exists | Don't retry |
 | `413`, `429` | Oversized or rate limited | Don't retry |
@@ -178,30 +178,48 @@ list and modes.
 
 ### Client
 
-Two small classes, because `client/AGENTS.md` forbids `client/desktop` from importing `module_auth` types outside DI
-wiring:
+It follows the project's layers, because `client/AGENTS.md` keeps desktop logic out of `client/desktop`, forbids it and
+`module_desktop_core` from importing `module_auth` types, and requires an API and a repository below any service:
 
-- `ProductAnalyticsEventApi` in `client/module_core/lib/src/api/product_analytics_event_api.dart`, next to and patterned on
-  `product_analytics_preference_api.dart`, with the Freezed request model. It makes one attempt through a new
-  `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, and returns a sealed result: delivered, permanent
-  failure or transient failure.
-- `AuthServerAnalyticsClient` in `client/desktop/lib/core/platform/`, replacing `NoOpAnalyticsClient` at the same
-  registration point as the `AnalyticsClient` platform capability. It owns the event mapping, OS, version and retry. It
-  reads the account from `AuthSession`, which `module_core` already exports.
+- `ProductAnalyticsEventApi` in `client/module_core/lib/src/api/product_analytics_event_api.dart`, with the Freezed request
+  model. It makes one attempt through a new `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, under the
+  5 second deadline, and returns its `ApiResponse<bool>`. It decides nothing.
+- `ProductAnalyticsEventDeliveryResult`, a sealed delivered, permanent failure or transient failure result, and
+  `ProductAnalyticsEventPlatform` in
+  `client/module_core/lib/src/foundation/models/product_analytics/product_analytics_event_delivery.dart`, so the layers
+  above can use them without reaching into `api/`.
+- `ProductAnalyticsEventRepository` in `client/module_core/lib/src/repositories/` builds the request from the envelope,
+  calls the API, and maps the response or anything thrown to that result, with the first 500 characters of any response
+  body.
+- `DesktopProductAnalyticsDeliveryService` in `client/module_desktop_core/lib/src/services/` owns the event allowlist and
+  mapping, the OS mapping, the account decision and the retry schedule. It reads the account from `AuthSession`, which
+  `module_core` already exports, and the OS and app version from `InstalledDesktopBundleSource.compiledIdentity`.
+- `DesktopAnalyticsClient` in `client/desktop/lib/core/platform/`, replacing `NoOpAnalyticsClient` as the desktop's
+  `AnalyticsClient`. It has no dependencies and registers in DI phase 1. `logProductEvent` only adds the envelope to a
+  stream, exposed through `DesktopProductEventSource` in `client/module_desktop_core/lib/src/foundation/platform/`, the
+  same shape as `SystemTray.commands`. The service subscribes in `start()`, which desktop startup calls on every launch.
 
 Behavior:
 
-- `logProductEvent` returns at once. It maps the event, captures the current account from `AuthSession.currentState`,
-  and starts sending in `unawaited`. A failure is logged with the event name only and never reaches the caller.
-- `postForUser` refuses to send if the account changed, before any network call. That covers retries after a sign-out
-  or account switch without any new state.
+- `logProductEvent` returns at once. The service, listening synchronously, maps the event, captures the current account
+  from `AuthSession.currentState`, and starts sending in `unawaited`. A failure never reaches the caller. Per `AGENTS.md`,
+  its local log keeps the event name, the failure category or HTTP status with the first 500 characters of any non-2xx response body, and the original
+  error and stack trace where there is one. It leaves out the request body and credentials.
+- Events logged before the service starts wait in the stream's single-subscription controller and arrive in order. That
+  buffer has no limit of its own and needs none. `ProductAnalyticsService` can't deliver anything until its `start()`, and
+  desktop startup starts this service first, so the buffer stays empty on every launch. A test pins that order. A process
+  that fails earlier in startup never starts either service, so it logs nothing. Once the service has stopped listening,
+  later events are dropped rather than held.
+- `postForUser` refuses to send if the account changed, before any network call, and answers with
+  `NotAuthenticatedError`, as a failed token refresh does. The service tells the two apart by rechecking the account.
 - Each attempt has a 5 second deadline. There are at most 3 attempts, 5 seconds and then 30 seconds apart, on network
   errors, timeouts, `5xx` and `NotAuthenticatedError`. The last one is how a failed token refresh surfaces, so it's the
-  usual failure after waking from sleep, when the 15 minute access token has expired and the network isn't back yet. After
-  a real sign-out those attempts stop locally and send nothing.
+  usual failure after waking from sleep, when the 15 minute access token has expired and the network isn't back yet.
+  Before each retry, and before giving up, the service checks that the captured account is still signed in. If it isn't,
+  it stops and logs at info level, because a sign-out isn't a failure.
 - Retry scheduling ends after about 50 seconds even if the endpoint is dead. `.timeout()` abandons a request instead of
   cancelling it, so a socket can outlive its attempt. That's harmless, because the server ignores the duplicate.
-- No queue, batch, timer or flush hook. Events in flight when the app quits are lost, and so are events during an outage
+- No queue beyond that startup buffer, and no batch, timer or flush hook. Events in flight when the app quits are lost, and so are events during an outage
   longer than the retry budget. That loss is accepted: the numbers are product trends, and Sparkle's install on quit
   loses at most what was in flight.
 - An exhaustive `switch` over the sealed `ProductAnalyticsEvent` returns the wire params or `null`, so a new client event
@@ -212,9 +230,11 @@ Behavior:
   - `voice_transcription_completed` sends `{}`. The warehouse has no `finish` or `mode` column, and a server enum would
     reject the next new mode, as `on_device` was added this week.
   - Everything else sends `event.parameters` unchanged.
-- `platform` comes from a `switch` on `defaultTargetPlatform`. iOS, Android and Fuchsia are unreachable in this shell and
-  send nothing. `appVersion` comes from `PackageInfo.version`, read once, with anything from a `+` onward removed, because
-  no Windows app can be run to confirm its format. If that read fails, the event is dropped and a warning logged.
+- `platform` and `appVersion` come from `compiledIdentity`, read once at `start()`. The service maps its `os` to the wire
+  enum. Its `version` is plain `major.minor.patch` on every channel, because `stage_desktop_bundle.dart` takes it from
+  `pubspec.yaml` without the build number, and the release tooling requires the identity on every published bundle.
+- Source builds send nothing, because they have no identity. `start()` logs that once and still listens, so events don't
+  wait in the buffer. Only release-mode source builds lose counting, since the capability already keeps debug runs out.
 - `logInstallationEvent` and `activateAfterInteractiveAuthentication` stay no-ops. Asset 15's login diagnostics therefore
   remain mobile-only, and the `userKey` argument is unused because the server derives it.
 - Sending turns on through the capability: `kReleaseMode ? enabled() : disabled(reason: debugOrProfile)`, the same rule as
@@ -361,8 +381,9 @@ assertion restricts that column's values, and `app_distribution` already groups 
 - **In-flight export:** a run that observes a suppression change after its cutoff aborts, as today. A suppression after
   that check can still promote a row, but the tombstone keeps it out of curated tables, and the sweep's auth cleanup waits
   for a run whose cutoff covers the tombstone, then deletes it.
-- **Insert racing `deleteMany`:** an event in flight in the same milliseconds could store one row after the delete.
-  The tombstone blocks it from curated tables, the sweep removes it from BigQuery, and the TTL ends it. Accepted.
+- **Insert racing `deleteMany`:** `record()` re-reads the tombstone from the primary after inserting, and deletes the row
+  if it's there. Only a crash or failed recheck in those milliseconds leaves a row. The tombstone blocks it from curated
+  tables, the sweep removes it from BigQuery, and the TTL ends it. Accepted.
 
 ### Abuse
 
@@ -440,28 +461,29 @@ Deliberately left out:
 | `postForUser` account check | Ordinary flow, reused | Sign-out during the retry window. An event would be sent under the wrong account |
 | `deleteMany` on suppression | Requirement | Mongo rows would stay until the TTL and could reach BigQuery again |
 
-Accepted without a safeguard, all theoretical: same-microsecond collision, an insert racing `deleteMany`, a
-`PackageInfo` failure dropping events, and a device clock over 72 hours behind or over 5 minutes ahead (the latter is
-already rejected by the warehouse for mobile).
+Accepted without a safeguard, all theoretical: same-microsecond collision, an insert racing `deleteMany`, and a device
+clock over 72 hours behind or over 5 minutes ahead (the latter is already rejected by the warehouse for mobile).
 
 ## What counting changes in the numbers
 
-- **Messages:** rise from the start date, partly from more being counted, so charts carry a marker.
+- **Messages:** rise from the start date, partly from more being counted. Desktop is new and has few users, so the owner
+  expects that part to be very small and wants no dedicated marker. The release is already a numbered marker on the
+  `/internal/` Messages chart.
 - **First message:** an existing desktop-only account gets `full_activation_at` at its first counted desktop message, not
   its true first. No SQL changes for this. It stays out of retention and weekly activation, because those require
   `activation_capable_at` within 24 hours of account creation, and an old account fails that. It's visible only in the
   restricted `user_milestones`.
 - **Retention:**
-  - Numerators rise for phone-activated users who also use desktop, which is a real correction, so retention charts carry
-    the marker too.
+  - Numerators rise for phone-activated users who also use desktop, which is a real correction. The retention charts
+    already carry the numbered release markers.
   - New accounts that start on an updated desktop build now enter activation and retention denominators, because they
     send `analytics_activation_ready`. That is also a real correction, and it can move rates in either direction.
   - Accounts created on an old desktop build and updated more than 24 hours later stay out of cohorts permanently. That's
     a small understatement during the adoption ramp, and it's accepted.
-  - Reporting views used outside the website carry no marker. Their readers should use the step 8 date.
-- **Public headline:** `/traction/` says "Messages are up N% over the last 30 days". Comparing windows either side of the
-  start date would overstate growth on a public page, so step 8 hides the percentage until both windows are after it,
-  about 60 days. The headline falls back to its existing new-accounts wording.
+  - Reporting views used outside the website carry no marker. Their readers should use the publish date of the first
+    stable release carrying step 7.b.
+- **Public headline:** `/traction/` keeps "Messages are up N% over the last 30 days" throughout, with no hiding and no
+  note. This is the owner's decision of 2026-10-31.
 
 ## Steps
 
@@ -619,22 +641,28 @@ stay, and they are valid. If they ever need removing, use the rescan procedure.
 - **Complexity:** moderate. A new sink, a new auth client method, and retry behavior.
 - **What:**
   - `module_auth/.../authenticated_http_api_client.dart`: `postForUser`.
-  - `client/module_core/lib/src/api/product_analytics_event_api.dart`, its sealed Freezed request model with `toJson`, and
-    its sealed result.
-  - `client/desktop/lib/core/platform/auth_server_analytics_client.dart`, importing no `module_auth` types.
+  - `client/module_core/lib/src/api/product_analytics_event_api.dart` and its sealed Freezed request model with `toJson`.
+  - `client/module_core/lib/src/foundation/models/product_analytics/product_analytics_event_delivery.dart`, with the
+    sealed result and the platform enum.
+  - `client/module_core/lib/src/repositories/product_analytics_event_repository.dart`.
+  - `client/module_desktop_core/lib/src/services/desktop_product_analytics_delivery_service.dart`, importing no
+    `module_auth` types, and a `start()` call in `client/desktop/lib/main.dart`.
+  - `client/module_desktop_core/lib/src/foundation/platform/desktop_product_event_source.dart`, and its adapter
+    `client/desktop/lib/core/platform/desktop_analytics_client.dart`.
   - Deletes `no_op_analytics_client.dart`.
-  - `injection_test.dart`: expects the new client, capability still disabled.
+  - `injection_test.dart`: expects the new adapter under both interfaces, capability still disabled.
 - **Why:** it can be reviewed and merged with no release risk, ahead of the privacy decision.
 - **Risk and test focus:** low, since the capability stays off and nothing calls it. Tests with a fake HTTP client:
   - The exact body against the pinned contract, for a sample of events.
   - `logProductEvent` completes before a never-completing POST does.
+  - Events logged before the service starts wait for it and arrive in order, and teardown doesn't hang when nothing ever
+    listened.
   - Retry happens on network error, timeout, `500` and `NotAuthenticatedError`, and not on `400`, `404`, `413` or `429`.
   - A retry after an account change sends nothing.
   - The 7 outside events send nothing, and voice sends `{}`.
-  - Platform mapping for all three OSes, with `debugDefaultTargetPlatformOverride`.
-  - A `1.11.0+1066` version is sent as `1.11.0`.
-  - A `PackageInfo` failure sends nothing and doesn't throw.
-  - `flutter test` and analyze across `client/desktop`, `module_auth` and `module_core`.
+  - Platform mapping for all three OSes.
+  - A source build sends nothing, logs that once, and still listens.
+  - Tests and analyze across `client/desktop`, `client/app`, `module_auth`, `module_core` and `module_desktop_core`.
 - **Expected result:** no user-visible or database change.
 
 ### Step 7: turn it on
@@ -647,8 +675,9 @@ disclosure.
 1. Steps 2-5 are deployed, including the privacy and export images, and step 6 is merged, with evidence in the tracker.
 2. The pipeline and deletion drill in the verification section has passed. No release has sent real rows yet, so a problem
    here costs nothing.
-3. The owner has decided the privacy wording and legal review, and that wording is in place both in the disclosure below
-   and in the live notice at `https://sesori.com/privacy/`. The disclosure says it isn't itself a published notice. The
+3. The owner approved the privacy wording themselves on 2026-10-31, with no outside review. That wording is in place both
+   in the disclosure below and in the live notice at `https://sesori.com/privacy/`. The disclosure says it isn't itself a
+   published notice. The
    notice's source is `assets/legal/privacy.md` in the auth repo, which `https://api.sesori.com/privacy` serves, so it
    ships as its own auth PR, `🌱 [desktop-analytics] Name the desktop app in the privacy notice [step 7.a/10]`, before this
    switch, which is step 7.b. This condition applies to this step only and blocks nothing earlier.
@@ -657,6 +686,10 @@ Internal builds are hourly, so merging means sending from the next internal buil
 everyone else. Sparkle checks every 6 hours and installs on quit or restart, AppImage uses Velopack, and DEB/RPM use
 signed repositories, so adoption ramps over days after a stable release. Stable last shipped Sep 24, Oct 14 and Oct 27.
 Windows has no public build, so it counts from its first release with no extra analytics work.
+
+People with the desktop app already installed get the same Basic Usage Analytics switch and no new prompt. The notes of the
+first stable release carrying this step say so in one line, added by hand because the generator only lists PR titles:
+"Sesori Desktop now sends the same basic usage analytics as the phone app. You can turn this off in Settings."
 
 - **Complexity:** straightforward. A single switch, but its effect is broad.
 - **What:**
@@ -681,29 +714,20 @@ Windows has no public build, so it counts from its first release with no extra a
 
 Rollback: revert for new builds. For installed apps, removing the route stops storage, and the client doesn't retry.
 
-### Step 8: mark the start date
+### Step 8: correct the traction copy
 
-`🌿 [desktop-analytics] Mark when desktop counting starts on the charts [step 8/10]`. Repo: website. About 120 lines.
+`🌱 [desktop-analytics] Say the traction page counts the desktop app [step 8/10]`. Repo: website. About 2 lines.
 
-Open it when the first stable release carrying step 7 is published, and merge within two days. Warehouse lag means the
+Open it when the first stable release carrying step 7.b is published, and merge within two days. Warehouse lag means the
 numbers can't rise on the charts before that.
 
-- **Complexity:** straightforward. A chart prop, one constant and one copy change.
-- **What:**
-  - `src/lib/analytics/warehouse.ts`: `DESKTOP_COUNTED_FROM`, the UTC date that stable release was published. Internal
-    builds count slightly earlier, but that population is too small to show.
-  - `src/components/analytics/LineChart.astro`: an optional labelled vertical line, hidden when outside the chart's range.
-    It's separate from the numbered release markers, which mean something else.
-  - `src/pages/internal/index.astro`: on the Messages chart and both retention charts. Not on charts from Mongo, which
-    don't change. The daily charts render from a shared loop, so pass the new prop for Messages only.
-  - `src/pages/traction.astro`: on the Messages chart, and the copy at lines 87-88 becomes "Counts the phone apps, and
-    the desktop app from {date}."
-  - `src/lib/analytics/traction.ts`: `changePct` is `null` while the two windows straddle the date.
-- **Why:** numbers rise partly from more being counted, and readers need to see where.
-- **Risk and test focus:** low. `npm test` with a straddling case, `npm run lint`, `npm run verify:site`, and headless
-  browser screenshots at both chart widths for the PR.
-- **Expected result:** user-visible: the line and label on those charts, new `/traction/` copy, and no percentage in the
-  headline for about 60 days. No database change.
+- **Complexity:** trivial. One copy change.
+- **What:** `src/pages/traction.astro`: the copy at lines 87-88 becomes "Counts the phone and desktop apps." Also change any
+  other copy that still says the desktop app isn't counted. No chart marker, date constant, or headline change: the owner
+  decided on 2026-10-31 that none is needed, and `/internal/` already marks the release.
+- **Why:** the current sentence becomes false once desktop counts.
+- **Risk and test focus:** low. `npm test`, `npm run lint`, `npm run verify:site`.
+- **Expected result:** user-visible: the new `/traction/` sentence. No database change.
 
 ### Step 9: reconcile docs
 
@@ -768,7 +792,7 @@ also the honest extent of pipeline verification for Windows.
 | Date alignment | Production | Three complete days after adoption, reconciliation assertion from step 5 | Every eligible desktop row present, once |
 | QA exclusion | Production | Aggregate count of curated rows from the QA accounts after a probe run | Zero |
 | Bytes | Production | `INFORMATION_SCHEMA.JOBS` for 7 days after stable adoption | Each asset under 90% of its allocation, or a follow-up |
-| Website | Production | `/internal/`, `/traction/` | Markers on the named charts, new copy, percentage hidden |
+| Website | Production | `/traction/` | New copy, percentage still showing, no note |
 
 Cells needing an interactive sign-in that an agent can't drive are run on the published internal build after merge, by
 the owner, per the project's testing rule. The Linux cell depends on sign-in working on that package. If it doesn't, that
@@ -795,16 +819,14 @@ still has no attribution SDK.
 | The Mongo delete or the privacy job's delete fails in production | The drill before step 7, while no real rows exist |
 | Release-mode QA probes send events under real accounts | Confirm they're in the permanent internal exclusion |
 | A wrong projection silently drops desktop rows | Fixture for all 23 events, plus the deployed reconciliation assertion |
-| Existing desktop users' preference defaults to enabled, and they start sending on update with no prompt | Owner's privacy decision, the gate on step 7 |
+| Existing desktop users' preference defaults to enabled, and they start sending on update with no prompt | Owner accepted on 2026-10-31: same switch, the updated notice, and one line in the release notes |
 | The contract can't be changed once shipped | Additive only, and `schemaVersion` is on the wire |
-| Readers misread the rise | Markers, and the hidden public percentage |
+| Readers misread the rise | Owner accepted on 2026-10-31: desktop has too few users to move it, and `/internal/` already marks the release |
 
 ## Open decisions
 
-Three questions are with the owner, on a review page dated 2026-10-31: who approves the privacy wording, how existing
-desktop accounts are told, and how the `/traction/` percentage behaves around the start date. The first two gate step 7
-only, and the third shapes step 8 only. The defaults recorded above stand unless the owner overrules them. Everything else
-in this plan is decided, with accepted risks recorded above.
+None. On 2026-10-31 the owner approved the privacy wording themselves, chose the same switch with one line in the release
+notes, and kept the `/traction/` percentage with no note. Accepted risks are recorded above.
 
 ## Review record
 
@@ -815,15 +837,15 @@ no redesign is needed. This revised version was not re-reviewed, because the fix
 | Finding | Outcome |
 | --- | --- |
 | Rated blocking: the Mongo delete may be denied for a separate suppression identity | Downgraded. The owner's 2026-08-08 decision runs suppression under the app's production environment. Kept the doc updates and proof by drill |
-| The client imported `module_auth` types into `client/desktop`, against a project rule | Fixed. The API moved to `module_core` |
+| The client imported `module_auth` types into `client/desktop`, against a project rule | Fixed. The request moved to `module_core`, as `ProductAnalyticsEventApi` |
 | Rolling back the export after step 7 can leave a permanent gap | Fixed. Added a bounded rescan procedure |
 | The QA check in step 7 was wrong, because release probes do sign in to production | Fixed. Replaced with an exclusion check |
 | The privacy gate didn't name the live public notice | Fixed. Added to the gate |
 | Deletion would first be proven after real rows exist | Fixed. Added the drill to step 7's gate, which made a separate ACL check unnecessary |
 | Deployment order named only the sweep job | Fixed. It now names both paths |
-| Retry missed a failed token refresh | Fixed. The reviewer proposed comparing account ids, but no comparison is needed: `postForUser` already refuses a changed account before any network call |
+| Retry missed a failed token refresh | Fixed. `NotAuthenticatedError` is retried. Step 6's reviews later added the account check before each retry, so a sign-out stops the retries |
 | Minor: schema type names, first clamp deploy, denominators, single clock read, timeout wording, docs lists, date table wording, `+build` suffix, Messages-only prop in the shared chart loop | Fixed |
 | Removals: the `-internal` version group and the `platform` assertion | Applied. The version group was confirmed dead in `stage_desktop_bundle.dart` |
 
-Not verified by anyone yet, and left to the steps named: `NULL` coercion in the `UNNEST` tuple (step 5's dry run), the
-GCP and Mongo roles (the drill), and Windows' real `PackageInfo` value (its first release).
+Not verified by anyone yet, and left to the steps named: `NULL` coercion in the `UNNEST` tuple (step 5's dry run) and the
+GCP and Mongo roles (the drill).

@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
+import "package:http/testing.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/src/auth_manager.dart";
 import "package:sesori_auth/src/client/api_error.dart";
@@ -231,6 +232,162 @@ void main() {
         {"Authorization": "Bearer $accessToken"},
         {"Authorization": "Bearer $refreshedToken"},
       ]);
+    });
+  });
+
+  group("postForUser", () {
+    const body = '{"name":"session_message_sent"}';
+
+    void stubPost({required Future<ApiResponse<String>> Function(Invocation invocation) answer}) {
+      when(
+        () => mockHttpApiClient.post<String>(
+          testUrl,
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer(answer);
+    }
+
+    void verifyNoPost() {
+      verifyNever(
+        () => mockHttpApiClient.post<String>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      );
+    }
+
+    test("sends the bearer token and body, verbatim, to a real HTTP client and accepts an empty 204", () async {
+      late http.Request sent;
+      final realClient = AuthenticatedHttpApiClient(
+        HttpApiClient(
+          MockClient((request) async {
+            sent = request;
+            return http.Response("", 204);
+          }),
+        ),
+        mockAuth,
+      );
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userA));
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+
+      final response = await realClient.postForUser<bool>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: (_) => true,
+        body: body,
+      );
+
+      expect(response, isA<SuccessResponse<bool>>().having((it) => it.data, "data", isTrue));
+      expect(sent.method, "POST");
+      expect(sent.url, testUrl);
+      expect(sent.body, body);
+      expect(sent.headers["Authorization"], "Bearer $accessToken");
+      expect(sent.headers["content-type"], startsWith("application/json"));
+    });
+
+    test("refuses before any token read or network call when the account changed", () async {
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userB));
+
+      final response = await client.postForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
+      verifyNever(() => mockAuth.getFreshAccessToken());
+      verifyNoPost();
+    });
+
+    test("refuses before any token read or network call after a sign-out", () async {
+      when(() => mockAuth.currentState).thenReturn(const AuthState.unauthenticated());
+
+      final response = await client.postForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
+      verifyNever(() => mockAuth.getFreshAccessToken());
+      verifyNoPost();
+    });
+
+    test("a failed token refresh surfaces as not authenticated and sends nothing", () async {
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userA));
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => null);
+
+      final response = await client.postForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
+      verifyNoPost();
+    });
+
+    test("refreshes once and retries once on 401", () async {
+      when(() => mockAuth.currentState).thenReturn(const AuthState.authenticated(user: _userA));
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async => refreshedToken);
+      stubPost(
+        answer: (invocation) async {
+          final headers = invocation.namedArguments[#headers];
+          if (headers is Map<String, String> && headers["Authorization"] == "Bearer $accessToken") {
+            return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized"));
+          }
+          return ApiResponse.success("retried");
+        },
+      );
+
+      final response = await client.postForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect(response, isA<SuccessResponse<String>>().having((it) => it.data, "data", "retried"));
+      verify(() => mockAuth.getFreshAccessToken(forceRefresh: true)).called(1);
+    });
+
+    test("drops the 401 retry when the account changes during the refresh", () async {
+      var currentState = const AuthState.authenticated(user: _userA);
+      when(() => mockAuth.currentState).thenAnswer((_) => currentState);
+      when(() => mockAuth.getFreshAccessToken()).thenAnswer((_) async => accessToken);
+      when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async {
+        currentState = const AuthState.authenticated(user: _userB);
+        return refreshedToken;
+      });
+      var posts = 0;
+      stubPost(
+        answer: (_) async {
+          posts++;
+          return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized"));
+        },
+      );
+
+      final response = await client.postForUser<String>(
+        url: testUrl,
+        userId: _userA.id,
+        fromJson: _parseString,
+        body: body,
+      );
+
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
+      expect(posts, 1);
     });
   });
 

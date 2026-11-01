@@ -6,9 +6,11 @@ import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart" show createFlutterVoiceCapture;
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../platform/desktop_analytics_client.dart";
 import "../platform/desktop_master_key_store.dart";
 
 // Injectable module providers require a class; bootstrap registers this enum value explicitly.
@@ -27,6 +29,12 @@ abstract class RegisterModule() {
 
   @lazySingleton
   NotificationCanceller notificationCanceller({required LocalNotificationClient client}) => client;
+
+  @lazySingleton
+  AnalyticsClient analyticsClient({required DesktopAnalyticsClient client}) => client;
+
+  @lazySingleton
+  DesktopProductEventSource desktopProductEventSource({required DesktopAnalyticsClient client}) => client;
 
   @lazySingleton
   RelayCryptoService get relayCryptoService => RelayCryptoService();

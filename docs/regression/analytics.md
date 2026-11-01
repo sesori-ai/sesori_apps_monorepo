@@ -7,7 +7,8 @@ adoption questions. Account-linked events carry a server-derived pseudonymous ke
 preference; five bounded account-less authentication events are the only exception: a three-event attempt funnel and
 Firebase's recommended `sign_up`/`login` outcomes. Separately, eligible Android/iOS release builds start Singular for
 install/session attribution, standard authentication conversion events, and two parameter-free activation milestones
-with release-injected credentials. Desktop uses a no-op sink, the bridge is excluded, and the warehouse is external.
+with release-injected credentials. Desktop's analytics capability is disabled, so its auth-server delivery sends nothing;
+the bridge is excluded, and the warehouse is external.
 
 ## Required Behavior
 

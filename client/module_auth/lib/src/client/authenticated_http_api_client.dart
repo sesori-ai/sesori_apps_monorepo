@@ -78,6 +78,26 @@ class AuthenticatedHttpApiClient(
     );
   }
 
+  /// Makes an authenticated POST only while [userId] remains the current
+  /// account, including across a forced token refresh and 401 retry.
+  Future<ApiResponse<T>> postForUser<T>({
+    required Uri url,
+    required String userId,
+    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
+    required T Function(dynamic json) fromJson,
+    required String body,
+  }) {
+    return _withAuth(
+      expectedUserId: userId,
+      makeRequest: (token) => _client.post(
+        url,
+        fromJson: fromJson,
+        headers: _withAuthHeader(null, token: token),
+        body: body,
+      ),
+    );
+  }
+
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> put<T>({

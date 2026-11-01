@@ -40,6 +40,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
     as _i746;
+import 'package:sesori_desktop_core/src/foundation/platform/desktop_product_event_source.dart'
+    as _i781;
 import 'package:sesori_desktop_core/src/foundation/platform/installed_desktop_bundle_source.dart'
     as _i234;
 import 'package:sesori_desktop_core/src/foundation/platform/launch_at_login.dart'
@@ -78,6 +80,8 @@ import 'package:sesori_desktop_core/src/services/desktop_attention_service.dart'
     as _i404;
 import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
+import 'package:sesori_desktop_core/src/services/desktop_product_analytics_delivery_service.dart'
+    as _i1045;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
 import 'package:sesori_desktop_core/src/services/desktop_update_service.dart'
@@ -180,6 +184,15 @@ extension GetItInjectableX on _i174.GetIt {
         applicationSupportDirectory:
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
+    );
+    gh.lazySingleton<_i1045.DesktopProductAnalyticsDeliveryService>(
+      () => _i1045.DesktopProductAnalyticsDeliveryService(
+        eventSource: gh<_i781.DesktopProductEventSource>(),
+        repository: gh<_i948.ProductAnalyticsEventRepository>(),
+        authSession: gh<_i948.AuthSession>(),
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i210.DesktopInstanceRepository>(
       () => _i210.DesktopInstanceRepository(
