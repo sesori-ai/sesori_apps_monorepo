@@ -62,8 +62,9 @@ class SherpaEmbeddedSpeechSource() implements EmbeddedSpeechSource {
   }
 
   Future<Directory> _modelDirectory() async {
-    final support = await getApplicationSupportDirectory();
-    return Directory(p.join(support.path, "speech_model", _modelName));
+    // Caches stay out of iCloud backups. If the system clears them, the next prepare copies the model again.
+    final cache = await getApplicationCacheDirectory();
+    return Directory(p.join(cache.path, "speech_model", _modelName));
   }
 
   /// Returns once the model has loaded, because audio can then flow at once.
