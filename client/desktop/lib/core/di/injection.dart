@@ -31,9 +31,12 @@ void configureDesktopDependencies({required GoRouter router, required Future<voi
     () => DesktopRouteDispatcher(router: router, routerReady: routerReady),
   );
   getIt.registerSingleton<AnalyticsRuntimeCapability>(
-    kReleaseMode
+    !kReleaseMode
+        ? const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.debugOrProfile)
+        // Source builds have no bundle identity, so delivery would drop every event.
+        : const bool.hasEnvironment(DesktopBundleIdentity.defineName)
         ? const AnalyticsRuntimeCapability.enabled()
-        : const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.debugOrProfile),
+        : const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable),
   );
   getIt.init();
   configurePersistenceDependencies(getIt: getIt);
