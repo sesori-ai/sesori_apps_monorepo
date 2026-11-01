@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart" show kReleaseMode;
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:injectable/injectable.dart";
@@ -30,7 +31,9 @@ void configureDesktopDependencies({required GoRouter router, required Future<voi
     () => DesktopRouteDispatcher(router: router, routerReady: routerReady),
   );
   getIt.registerSingleton<AnalyticsRuntimeCapability>(
-    const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.unsupportedPlatform),
+    kReleaseMode
+        ? const AnalyticsRuntimeCapability.enabled()
+        : const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.debugOrProfile),
   );
   getIt.init();
   configurePersistenceDependencies(getIt: getIt);
