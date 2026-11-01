@@ -1,6 +1,5 @@
 enum AnalyticsRuntimeDisabledReason() {
   debugOrProfile,
-  unsupportedPlatform,
   analyticsSinkUnavailable,
 }
 

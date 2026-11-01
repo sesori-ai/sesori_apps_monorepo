@@ -52,20 +52,16 @@ void main() {
   });
 
   test("keeps collection off for ineligible processes", () async {
-    for (final reason in [
-      AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.unsupportedPlatform,
-    ]) {
-      final capability = await startup.prepare(ineligibilityReason: reason);
+    const reason = AnalyticsRuntimeDisabledReason.debugOrProfile;
+    final capability = await startup.prepare(ineligibilityReason: reason);
 
-      expect(
-        capability,
-        isA<AnalyticsRuntimeDisabled>().having((value) => value.reason, "reason", reason),
-      );
-      await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
-    }
+    expect(
+      capability,
+      isA<AnalyticsRuntimeDisabled>().having((value) => value.reason, "reason", reason),
+    );
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
 
-    verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(2);
+    verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
     verifyNoMoreInteractions(analytics);
   });
 

@@ -71,7 +71,16 @@ void main() {
     expect(getIt<AnalyticsClient>(), isA<DesktopAnalyticsClient>());
     expect(getIt<DesktopProductEventSource>(), same(getIt<AnalyticsClient>()));
     expect(getIt<DesktopProductAnalyticsDeliveryService>(), isNotNull);
-    expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
+    // `flutter test` runs in debug mode, so this pins the side of the switch that
+    // keeps debug and profile builds from sending anything.
+    expect(
+      getIt<AnalyticsRuntimeCapability>(),
+      isA<AnalyticsRuntimeDisabled>().having(
+        (value) => value.reason,
+        "reason",
+        AnalyticsRuntimeDisabledReason.debugOrProfile,
+      ),
+    );
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
     expect(getIt<FeedbackPromptConfigSource>(), isA<NoOpFeedbackPromptConfigSource>());
     expect(getIt<FeedbackPromptService>(), isA<FeedbackPromptService>());

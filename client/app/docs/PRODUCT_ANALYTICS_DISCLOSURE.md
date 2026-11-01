@@ -19,6 +19,32 @@ provider/model/agent/tool/command names, raw error text, OAuth identity, email,
 IP address, or raw/hashed project, session, bridge, device, notification, or
 account identifiers.
 
+## Desktop app
+
+The owner approved this wording themselves on 2026-10-31, with no outside review.
+It is live in sections 3.5 and 10 of `https://sesori.com/privacy/`:
+
+> The Sesori desktop app sends these same account-linked product analytics
+> events directly to Sesori's servers, not to Firebase or Singular. Each event
+> also carries the operating system (macOS, Linux, or Windows) and the app
+> version. We derive the pseudonymous account key on our servers. Your IP address
+> is visible to us when an event arrives and is used to limit abusive traffic,
+> but we do not store it with these events.
+
+> **Desktop product analytics events**: retained for up to 9 days in our
+> operational database and up to 90 days in a restricted analytics dataset, after
+> which only the curated facts described below remain
+
+Those curated facts follow the 14-month limit under "Retention and deletion
+limits".
+
+- Desktop release builds report from the same closed event set. Debug and profile
+  builds, and source builds without a bundle identity, send nothing.
+- The same Basic Usage Analytics switch governs these events, and the auth server
+  rechecks the account's preference when each event arrives.
+- The desktop app has no Firebase or Singular SDK, so the items below that name
+  them apply only to the mobile app.
+
 ## Data outside that control
 
 The control does not stop:
