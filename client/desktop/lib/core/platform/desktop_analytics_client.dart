@@ -11,6 +11,9 @@ class DesktopAnalyticsClient() implements AnalyticsClient, DesktopProductEventSo
   // Single-subscription, so events logged before the listener arrives wait for
   // it. Synchronous, so from then on the listener runs in the caller's stack and
   // sees the account that was current when the event was logged.
+  // ponytail: unbounded buffer, but it holds zero events in production because
+  // `main.dart` starts the delivery service first. Bound it if a launch path ever
+  // skips `start()`.
   final StreamController<ProductAnalyticsEnvelope> _events = StreamController<ProductAnalyticsEnvelope>(sync: true);
 
   @override

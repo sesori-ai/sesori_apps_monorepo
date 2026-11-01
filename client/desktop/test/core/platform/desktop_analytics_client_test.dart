@@ -12,31 +12,37 @@ import "package:sesori_shared/sesori_shared.dart";
 const _userA = AuthUser(id: "user-a", provider: AuthProvider.github, providerUserId: "a", providerUsername: "alpha");
 const _userB = AuthUser(id: "user-b", provider: AuthProvider.github, providerUserId: "b", providerUsername: "beta");
 const _userKey = "user-key-that-must-not-be-sent";
-const _delivered = ProductAnalyticsEventDeliveryResult.delivered();
+const _identity = DesktopBundleIdentity(
+  version: "1.11.0",
+  buildNumber: 1066,
+  sourceSha: "source-sha",
+  os: DesktopBundleOs.macos,
+  architecture: DesktopBundleArchitecture.arm64,
+);
 
 class _MockAuthSession() extends Mock implements AuthSession;
 
-class _MockAppInfoSource() extends Mock implements DesktopAppInfoSource;
+class _MockBundleSource() extends Mock implements InstalledDesktopBundleSource;
 
-class _FakeEventApi({required final ProductAnalyticsEventDeliveryResult result}) implements ProductAnalyticsEventApi {
+class _FakeEventApi() implements ProductAnalyticsEventApi {
   final List<({String userId, ProductAnalyticsEventRequest request})> attempts = [];
-  Future<ProductAnalyticsEventDeliveryResult>? never;
+  Future<ApiResponse<bool>>? never;
+  Object? thrown;
 
   @override
-  Future<ProductAnalyticsEventDeliveryResult> send({
-    required String userId,
-    required ProductAnalyticsEventRequest request,
-  }) async {
+  Future<ApiResponse<bool>> send({required String userId, required ProductAnalyticsEventRequest request}) async {
     attempts.add((userId: userId, request: request));
+    final thrown = this.thrown;
+    if (thrown != null) throw thrown;
     final pending = never;
     if (pending != null) return await pending;
-    return result;
+    return ApiResponse.success(true);
   }
 }
 
 void main() {
   late _MockAuthSession authSession;
-  late _MockAppInfoSource appInfo;
+  late _MockBundleSource bundleSource;
   late DesktopAnalyticsClient client;
 
   DesktopProductAnalyticsDeliveryService serviceFor({required _FakeEventApi api}) =>
@@ -44,7 +50,7 @@ void main() {
         eventSource: client,
         repository: ProductAnalyticsEventRepository(api: api),
         authSession: authSession,
-        appInfoSource: appInfo,
+        bundleSource: bundleSource,
       );
 
   Future<void> log({required ProductAnalyticsEvent event}) => client.logProductEvent(
@@ -61,15 +67,14 @@ void main() {
   setUp(() {
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
-    appInfo = _MockAppInfoSource();
-    when(() => appInfo.platform).thenReturn(DesktopBundleOs.macos);
-    when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0");
+    bundleSource = _MockBundleSource();
+    when(() => bundleSource.compiledIdentity).thenReturn(_identity);
     client = DesktopAnalyticsClient();
   });
 
   group("events logged before the service starts", () {
     test("wait for it, and are delivered in order", () async {
-      final api = _FakeEventApi(result: _delivered);
+      final api = _FakeEventApi();
       final service = serviceFor(api: api);
 
       await logAnswered();
@@ -87,7 +92,7 @@ void main() {
     });
 
     test("stay ahead of an event logged while they are being delivered", () async {
-      final api = _FakeEventApi(result: _delivered);
+      final api = _FakeEventApi();
       final service = serviceFor(api: api);
 
       await logAnswered();
@@ -104,20 +109,23 @@ void main() {
       ]);
     });
 
-    test("desktop startup starts the service before anything can log an event", () {
-      final main = File("lib/main.dart").readAsStringSync();
-      final delivery = main.indexOf("getIt<DesktopProductAnalyticsDeliveryService>().start()");
-      final analytics = main.indexOf("productAnalyticsService.start()");
+    test("desktop startup calls the service's start() once, ahead of the analytics service's", () {
+      final code = File("lib/main.dart")
+          .readAsStringSync()
+          .replaceAll(RegExp(r"/\*.*?\*/", dotAll: true), "")
+          .replaceAll(RegExp("//.*"), "");
+      const delivery = "getIt<DesktopProductAnalyticsDeliveryService>().start()";
+      const analytics = "productAnalyticsService.start()";
 
-      expect(delivery, isNot(-1));
-      expect(analytics, isNot(-1));
-      expect(delivery, lessThan(analytics));
+      expect(delivery.allMatches(code), hasLength(1));
+      expect(analytics.allMatches(code), hasLength(1));
+      expect(code.indexOf(delivery), lessThan(code.indexOf(analytics)));
     });
   });
 
   group("once the service has started", () {
     test("an event carries the account current when it was logged", () async {
-      final api = _FakeEventApi(result: _delivered);
+      final api = _FakeEventApi();
       serviceFor(api: api).start();
 
       final logged = logAnswered();
@@ -129,7 +137,7 @@ void main() {
     });
 
     test("the user key stays behind", () async {
-      final api = _FakeEventApi(result: _delivered);
+      final api = _FakeEventApi();
       serviceFor(api: api).start();
 
       await logAnswered();
@@ -141,8 +149,8 @@ void main() {
 
   group("not blocking the caller", () {
     test("returns before a POST that never completes", () async {
-      final api = _FakeEventApi(result: _delivered);
-      api.never = Completer<ProductAnalyticsEventDeliveryResult>().future;
+      final api = _FakeEventApi();
+      api.never = Completer<ApiResponse<bool>>().future;
       serviceFor(api: api).start();
 
       await logAnswered();
@@ -151,26 +159,16 @@ void main() {
       expect(api.attempts, hasLength(1));
     });
 
-    test("returns before an app version read that never completes", () async {
-      when(() => appInfo.readVersion()).thenAnswer((_) => Completer<String>().future);
-      final api = _FakeEventApi(result: _delivered);
+    testWidgets("a send that throws never reaches the caller", (tester) async {
+      final api = _FakeEventApi();
+      api.thrown = StateError("the connection went away");
       serviceFor(api: api).start();
 
       await logAnswered();
+      await tester.pump(const Duration(hours: 1));
 
-      expect(api.attempts, isEmpty);
-    });
-
-    test("a failed send never reaches the caller", () async {
-      final api = _FakeEventApi(
-        result: const ProductAnalyticsEventDeliveryResult.permanentFailure(description: "HTTP 400", cause: null),
-      );
-      serviceFor(api: api).start();
-
-      await expectLater(logAnswered(), completes);
-      await pumpEventQueue();
-
-      expect(api.attempts, hasLength(1));
+      // Each retry threw too. An error that escaped would fail this test.
+      expect(api.attempts, hasLength(3));
     });
   });
 
@@ -183,8 +181,8 @@ void main() {
       await expectLater(logAnswered(), completes);
     });
 
-    test("disposing in DI order, service first, delivers nothing further", () async {
-      final api = _FakeEventApi(result: _delivered);
+    test("cancelling the service and then closing the client delivers nothing further", () async {
+      final api = _FakeEventApi();
       final service = serviceFor(api: api);
       service.start();
 

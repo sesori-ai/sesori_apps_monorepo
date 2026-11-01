@@ -80,9 +80,7 @@ sealed class Project with _$Project {
   // Invalid optional glossary context must not make the project or voice input unavailable.
   factory fromJson(Map<String, dynamic> json) {
     final rawGlossaryKey = json["voiceGlossaryKey"];
-    final glossaryKey = rawGlossaryKey is String
-        ? ProjectGlossaryKey.tryParse(value: rawGlossaryKey)
-        : null;
+    final glossaryKey = rawGlossaryKey is String ? ProjectGlossaryKey.tryParse(value: rawGlossaryKey) : null;
     return _$ProjectFromJson({
       ...json,
       "voiceGlossaryKey": glossaryKey?.value,

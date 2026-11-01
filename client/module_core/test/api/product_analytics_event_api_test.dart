@@ -58,9 +58,9 @@ void main() {
   });
 
   test("posts the pinned contract's exact body to the pinned URL for the given account", () async {
-    final result = await api.send(userId: _userId, request: _request);
+    final response = await api.send(userId: _userId, request: _request);
 
-    expect(result, isA<ProductAnalyticsEventDelivered>());
+    expect(response, isA<SuccessResponse<bool>>());
     expect(client.lastUrl, Uri.parse("https://api.sesori.com/product-analytics/events"));
     expect(client.lastUserId, _userId);
     expect(jsonDecode(client.lastBody ?? ""), {
@@ -86,132 +86,38 @@ void main() {
     expect(ProductAnalyticsEventPlatform.values.map((platform) => platform.wireValue), ["MACOS", "LINUX", "WINDOWS"]);
   });
 
-  group("a status that won't change on a retry is a permanent failure", () {
-    for (final status in [400, 401, 404, 413, 429]) {
-      test("$status keeps the status and the response body", () async {
-        client.error = ApiError.nonSuccessCode(errorCode: status, rawErrorString: '{"error":"bad_request"}');
+  test("hands back an error response as it is", () async {
+    final error = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "unavailable");
+    client.error = error;
 
-        final result = await api.send(userId: _userId, request: _request);
+    final response = await api.send(userId: _userId, request: _request);
 
-        expect(
-          result,
-          ProductAnalyticsEventDeliveryResult.permanentFailure(
-            description: 'HTTP $status: {"error":"bad_request"}',
-            cause: null,
-          ),
-        );
-      });
-    }
-
-    for (final body in ["", null]) {
-      test("a 400 with the body ${body == null ? "missing" : "empty"} keeps only the status", () async {
-        client.error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: body);
-
-        final result = await api.send(userId: _userId, request: _request);
-
-        expect(
-          result,
-          const ProductAnalyticsEventDeliveryResult.permanentFailure(description: "HTTP 400", cause: null),
-        );
-      });
-    }
+    expect(response, isA<ErrorResponse<bool>>().having((response) => response.error, "error", same(error)));
   });
 
-  test("a 2xx body that isn't JSON is a permanent failure that omits the body", () async {
-    client.error = ApiError.jsonParsing(
-      jsonString: "<html>",
-      innerError: const FormatException("bad", "<html>", 0),
-    );
+  test("lets a failure the HTTP client doesn't wrap through", () async {
+    const cause = HandshakeException("bad certificate");
+    client.thrown = cause;
 
-    final result = await api.send(userId: _userId, request: _request);
-
-    expect(
-      result,
-      isA<ProductAnalyticsEventPermanentFailure>()
-          .having((failure) => failure.description, "description", "unusable response")
-          .having(
-            (failure) => failure.cause.toString(),
-            "cause",
-            allOf(contains("offset=0"), isNot(contains("<html>"))),
-          ),
-    );
+    await expectLater(api.send(userId: _userId, request: _request), throwsA(same(cause)));
   });
 
-  group("a failure that can pass is a transient failure", () {
-    Matcher transientFailure({required String description, required Matcher cause, required Matcher stackTrace}) =>
-        isA<ProductAnalyticsEventTransientFailure>()
-            .having((failure) => failure.description, "description", description)
-            .having((failure) => failure.cause, "cause", cause)
-            .having((failure) => failure.stackTrace, "stackTrace", stackTrace);
-
-    for (final status in [500, 502, 503]) {
-      test("$status keeps the status and the response body", () async {
-        client.error = ApiError.nonSuccessCode(errorCode: status, rawErrorString: '{"error":"internal_server_error"}');
-
-        expect(
-          await api.send(userId: _userId, request: _request),
-          transientFailure(
-            description: 'HTTP $status: {"error":"internal_server_error"}',
-            cause: isNull,
-            stackTrace: isNull,
-          ),
-        );
-      });
-    }
-
-    test("a long response body keeps only its first 500 characters", () async {
-      client.error = ApiError.nonSuccessCode(errorCode: 502, rawErrorString: "x" * 2000);
-
-      expect(
-        await api.send(userId: _userId, request: _request),
-        transientFailure(description: "HTTP 502: ${"x" * 500}", cause: isNull, stackTrace: isNull),
+  test("throws at the attempt's 5 second deadline, not before", () {
+    fakeAsync((async) {
+      client.hang = true;
+      Object? thrown;
+      unawaited(
+        api.send(userId: _userId, request: _request).catchError((Object error) {
+          thrown = error;
+          return ApiResponse<bool>.success(true);
+        }),
       );
-    });
 
-    test("a network error keeps the original error", () async {
-      const cause = SocketException("unreachable");
-      client.error = ApiError.dartHttpClient(cause);
+      async.elapse(const Duration(seconds: 4, milliseconds: 999));
+      expect(thrown, isNull);
 
-      expect(
-        await api.send(userId: _userId, request: _request),
-        transientFailure(description: "network error", cause: same(cause), stackTrace: isNull),
-      );
-    });
-
-    test("a failed token refresh or changed account", () async {
-      client.error = ApiError.notAuthenticated();
-
-      expect(
-        await api.send(userId: _userId, request: _request),
-        transientFailure(description: "not authenticated", cause: isNull, stackTrace: isNull),
-      );
-    });
-
-    test("a transport failure the HTTP client doesn't wrap keeps its error and stack trace", () async {
-      const cause = HandshakeException("bad certificate");
-      client.thrown = cause;
-
-      expect(
-        await api.send(userId: _userId, request: _request),
-        transientFailure(description: "no response", cause: same(cause), stackTrace: isNotNull),
-      );
-    });
-
-    test("an attempt still pending at its 5 second deadline", () {
-      fakeAsync((async) {
-        client.hang = true;
-        ProductAnalyticsEventDeliveryResult? result;
-        unawaited(api.send(userId: _userId, request: _request).then((value) => result = value));
-
-        async.elapse(const Duration(seconds: 4, milliseconds: 999));
-        expect(result, isNull);
-
-        async.elapse(const Duration(milliseconds: 1));
-        expect(
-          result,
-          transientFailure(description: "no response", cause: isA<TimeoutException>(), stackTrace: isNotNull),
-        );
-      });
+      async.elapse(const Duration(milliseconds: 1));
+      expect(thrown, isA<TimeoutException>());
     });
   });
 }

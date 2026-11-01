@@ -182,22 +182,22 @@ It follows the project's layers, because `client/AGENTS.md` keeps desktop logic 
 `module_desktop_core` from importing `module_auth` types, and requires an API and a repository below any service:
 
 - `ProductAnalyticsEventApi` in `client/module_core/lib/src/api/product_analytics_event_api.dart`, with the Freezed request
-  model. It makes one attempt through a new `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, and returns
-  a sealed result: delivered, permanent failure or transient failure.
-- `ProductAnalyticsEventDeliveryResult` and `ProductAnalyticsEventPlatform` in
+  model. It makes one attempt through a new `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, under the
+  5 second deadline, and returns its `ApiResponse<bool>`. It decides nothing.
+- `ProductAnalyticsEventDeliveryResult`, a sealed delivered, permanent failure or transient failure result, and
+  `ProductAnalyticsEventPlatform` in
   `client/module_core/lib/src/foundation/models/product_analytics/product_analytics_event_delivery.dart`, so the layers
   above can use them without reaching into `api/`.
-- `ProductAnalyticsEventRepository` in `client/module_core/lib/src/repositories/` builds the request from the envelope and
-  delegates to the API.
+- `ProductAnalyticsEventRepository` in `client/module_core/lib/src/repositories/` builds the request from the envelope,
+  calls the API, and maps the response or anything thrown to that result, with the first 500 characters of any response
+  body.
 - `DesktopProductAnalyticsDeliveryService` in `client/module_desktop_core/lib/src/services/` owns the event allowlist and
-  mapping, the OS mapping, version handling, the account decision and retry. It reads the account from `AuthSession`,
-  which `module_core` already exports.
+  mapping, the OS mapping, the account decision and the retry schedule. It reads the account from `AuthSession`, which
+  `module_core` already exports, and the OS and app version from `InstalledDesktopBundleSource.compiledIdentity`.
 - `DesktopAnalyticsClient` in `client/desktop/lib/core/platform/`, replacing `NoOpAnalyticsClient` as the desktop's
   `AnalyticsClient`. It has no dependencies and registers in DI phase 1. `logProductEvent` only adds the envelope to a
   stream, exposed through `DesktopProductEventSource` in `client/module_desktop_core/lib/src/foundation/platform/`, the
   same shape as `SystemTray.commands`. The service subscribes in `start()`, which desktop startup calls on every launch.
-- `DesktopAppInfoSource` in `client/module_desktop_core/lib/src/foundation/platform/` supplies the OS, as `DesktopBundleOs`,
-  and the app version. `FlutterDesktopAppInfoSource` in `client/desktop/lib/core/platform/` is its dumb adapter.
 
 Behavior:
 
@@ -230,10 +230,11 @@ Behavior:
   - `voice_transcription_completed` sends `{}`. The warehouse has no `finish` or `mode` column, and a server enum would
     reject the next new mode, as `on_device` was added this week.
   - Everything else sends `event.parameters` unchanged.
-- `platform` comes from a `switch` on `defaultTargetPlatform` in the adapter, which the service maps to the wire enum. iOS,
-  Android and Fuchsia are unreachable in this shell and send nothing. `appVersion` comes from `PackageInfo.version`, read once, with anything from a `+` onward
-  removed, because no Windows app can be run to confirm its format. If that read fails, one warning has the error and stack
-  trace, and each dropped event logs a warning naming it.
+- `platform` and `appVersion` come from `compiledIdentity`, read once at `start()`. The service maps its `os` to the wire
+  enum. Its `version` is plain `major.minor.patch` on every channel, because `stage_desktop_bundle.dart` takes it from
+  `pubspec.yaml` without the build number, and the release tooling requires the identity on every published bundle.
+- Source builds send nothing, because they have no identity. `start()` logs that once and still listens, so events don't
+  wait in the buffer. Only release-mode source builds lose counting, since the capability already keeps debug runs out.
 - `logInstallationEvent` and `activateAfterInteractiveAuthentication` stay no-ops. Asset 15's login diagnostics therefore
   remain mobile-only, and the `userKey` argument is unused because the server derives it.
 - Sending turns on through the capability: `kReleaseMode ? enabled() : disabled(reason: debugOrProfile)`, the same rule as
@@ -460,9 +461,8 @@ Deliberately left out:
 | `postForUser` account check | Ordinary flow, reused | Sign-out during the retry window. An event would be sent under the wrong account |
 | `deleteMany` on suppression | Requirement | Mongo rows would stay until the TTL and could reach BigQuery again |
 
-Accepted without a safeguard, all theoretical: same-microsecond collision, an insert racing `deleteMany`, a
-`PackageInfo` failure dropping events, and a device clock over 72 hours behind or over 5 minutes ahead (the latter is
-already rejected by the warehouse for mobile).
+Accepted without a safeguard, all theoretical: same-microsecond collision, an insert racing `deleteMany`, and a device
+clock over 72 hours behind or over 5 minutes ahead (the latter is already rejected by the warehouse for mobile).
 
 ## What counting changes in the numbers
 
@@ -649,8 +649,6 @@ stay, and they are valid. If they ever need removing, use the rescan procedure.
     `module_auth` types, and a `start()` call in `client/desktop/lib/main.dart`.
   - `client/module_desktop_core/lib/src/foundation/platform/desktop_product_event_source.dart`, and its adapter
     `client/desktop/lib/core/platform/desktop_analytics_client.dart`.
-  - `client/module_desktop_core/lib/src/foundation/platform/desktop_app_info_source.dart`, and its adapter
-    `client/desktop/lib/core/platform/flutter_desktop_app_info_source.dart`.
   - Deletes `no_op_analytics_client.dart`.
   - `injection_test.dart`: expects the new adapter under both interfaces, capability still disabled.
 - **Why:** it can be reviewed and merged with no release risk, ahead of the privacy decision.
@@ -662,9 +660,8 @@ stay, and they are valid. If they ever need removing, use the rescan procedure.
   - Retry happens on network error, timeout, `500` and `NotAuthenticatedError`, and not on `400`, `404`, `413` or `429`.
   - A retry after an account change sends nothing.
   - The 7 outside events send nothing, and voice sends `{}`.
-  - Platform mapping for all three OSes, with `debugDefaultTargetPlatformOverride`.
-  - A `1.11.0+1066` version is sent as `1.11.0`.
-  - A `PackageInfo` failure sends nothing and doesn't throw.
+  - Platform mapping for all three OSes.
+  - A source build sends nothing, logs that once, and still listens.
   - Tests and analyze across `client/desktop`, `client/app`, `module_auth`, `module_core` and `module_desktop_core`.
 - **Expected result:** no user-visible or database change.
 
@@ -850,5 +847,5 @@ no redesign is needed. This revised version was not re-reviewed, because the fix
 | Minor: schema type names, first clamp deploy, denominators, single clock read, timeout wording, docs lists, date table wording, `+build` suffix, Messages-only prop in the shared chart loop | Fixed |
 | Removals: the `-internal` version group and the `platform` assertion | Applied. The version group was confirmed dead in `stage_desktop_bundle.dart` |
 
-Not verified by anyone yet, and left to the steps named: `NULL` coercion in the `UNNEST` tuple (step 5's dry run), the
-GCP and Mongo roles (the drill), and Windows' real `PackageInfo` value (its first release).
+Not verified by anyone yet, and left to the steps named: `NULL` coercion in the `UNNEST` tuple (step 5's dry run) and the
+GCP and Mongo roles (the drill).

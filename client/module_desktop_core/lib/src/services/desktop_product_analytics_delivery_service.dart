@@ -4,8 +4,8 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../foundation/models/desktop_bundle_identity.dart";
-import "../foundation/platform/desktop_app_info_source.dart";
 import "../foundation/platform/desktop_product_event_source.dart";
+import "../foundation/platform/installed_desktop_bundle_source.dart";
 
 // With the 5 second attempt deadline, retrying ends after about 50 seconds.
 const _retryDelays = [Duration(seconds: 5), Duration(seconds: 30)];
@@ -15,26 +15,26 @@ const _retryDelays = [Duration(seconds: 5), Duration(seconds: 30)];
 /// token.
 ///
 /// It decides which events reach the warehouse, which account and app version
-/// they carry, and whether a failed attempt is retried. Sending happens in the
-/// background so a dead endpoint can't stall the caller. Events still in flight
-/// when the app quits, or outlasting the retries during an outage, are lost by
-/// design.
+/// they carry, and when a failure the repository calls transient is retried.
+/// Sending happens in the background so a dead endpoint can't stall the caller.
+/// Events still in flight when the app quits, or outlasting the retries during an
+/// outage, are lost by design.
 @lazySingleton
 class DesktopProductAnalyticsDeliveryService({
   required final DesktopProductEventSource _eventSource,
   required final ProductAnalyticsEventRepository _repository,
   required final AuthSession _authSession,
-  required final DesktopAppInfoSource _appInfoSource,
+  required final InstalledDesktopBundleSource _bundleSource,
 }) {
-  late final Future<String?> _appVersion = _readAppVersion();
   StreamSubscription<ProductAnalyticsEnvelope>? _subscription;
 
   void start() {
-    if (_subscription != null) {
-      logw("DesktopProductAnalyticsDeliveryService.start() called more than once; ignoring");
-      return;
-    }
-    _subscription = _eventSource.events.listen((envelope) => _onEvent(envelope: envelope));
+    final identity = _bundleSource.compiledIdentity;
+    if (identity == null) logi("This is a source build, so it sends no product analytics events");
+    // Listens even then, because events would otherwise wait in the source's buffer.
+    _subscription = _eventSource.events.listen((envelope) {
+      if (identity != null) _onEvent(envelope: envelope, identity: identity);
+    });
   }
 
   @disposeMethod
@@ -42,10 +42,9 @@ class DesktopProductAnalyticsDeliveryService({
     await _subscription?.cancel();
   }
 
-  void _onEvent({required ProductAnalyticsEnvelope envelope}) {
+  void _onEvent({required ProductAnalyticsEnvelope envelope, required DesktopBundleIdentity identity}) {
     final params = _wireParams(event: envelope.event);
-    final os = _appInfoSource.platform;
-    if (params == null || os == null) return;
+    if (params == null) return;
     final authState = _authSession.currentState;
     if (authState is! AuthAuthenticated) {
       logw("Dropped a product analytics event with no signed-in account: ${envelope.event.wireName}");
@@ -56,7 +55,8 @@ class DesktopProductAnalyticsDeliveryService({
         userId: authState.user.id,
         envelope: envelope,
         params: params,
-        platform: _wirePlatform(os: os),
+        platform: _wirePlatform(os: identity.os),
+        appVersion: identity.version,
       ),
     );
   }
@@ -66,13 +66,9 @@ class DesktopProductAnalyticsDeliveryService({
     required ProductAnalyticsEnvelope envelope,
     required Map<String, String> params,
     required ProductAnalyticsEventPlatform platform,
+    required String appVersion,
   }) async {
     final name = envelope.event.wireName;
-    final appVersion = await _appVersion;
-    if (appVersion == null) {
-      logw("Dropped a product analytics event with no app version: $name");
-      return;
-    }
     Future<ProductAnalyticsEventDeliveryResult> attempt() => _repository.send(
       userId: userId,
       platform: platform,
@@ -106,17 +102,6 @@ class DesktopProductAnalyticsDeliveryService({
   bool _isSignedIn({required String userId}) {
     final authState = _authSession.currentState;
     return authState is AuthAuthenticated && authState.user.id == userId;
-  }
-
-  /// Read once for the process, so a failed read drops every event.
-  Future<String?> _readAppVersion() async {
-    try {
-      final version = await _appInfoSource.readVersion();
-      return version.split("+").first;
-    } on Object catch (error, stackTrace) {
-      logw("Failed to read the app version for product analytics", error, stackTrace);
-      return null;
-    }
   }
 
   ProductAnalyticsEventPlatform _wirePlatform({required DesktopBundleOs os}) => switch (os) {

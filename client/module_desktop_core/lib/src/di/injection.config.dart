@@ -36,8 +36,6 @@ import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_pa
     as _i962;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_process_environment.dart'
     as _i961;
-import 'package:sesori_desktop_core/src/foundation/platform/desktop_app_info_source.dart'
-    as _i893;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_support_directory.dart'
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
@@ -164,15 +162,6 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
     );
-    gh.lazySingleton<_i1045.DesktopProductAnalyticsDeliveryService>(
-      () => _i1045.DesktopProductAnalyticsDeliveryService(
-        eventSource: gh<_i781.DesktopProductEventSource>(),
-        repository: gh<_i948.ProductAnalyticsEventRepository>(),
-        authSession: gh<_i948.AuthSession>(),
-        appInfoSource: gh<_i893.DesktopAppInfoSource>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i227.BridgeStatusTracker>(
       () => _i227.BridgeStatusTracker(
         bridgeIdStorage: gh<_i73.BridgeIdStorage>(),
@@ -195,6 +184,15 @@ extension GetItInjectableX on _i174.GetIt {
         applicationSupportDirectory:
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
+    );
+    gh.lazySingleton<_i1045.DesktopProductAnalyticsDeliveryService>(
+      () => _i1045.DesktopProductAnalyticsDeliveryService(
+        eventSource: gh<_i781.DesktopProductEventSource>(),
+        repository: gh<_i948.ProductAnalyticsEventRepository>(),
+        authSession: gh<_i948.AuthSession>(),
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i210.DesktopInstanceRepository>(
       () => _i210.DesktopInstanceRepository(

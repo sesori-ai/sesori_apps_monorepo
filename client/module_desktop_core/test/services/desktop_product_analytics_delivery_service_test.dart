@@ -20,28 +20,28 @@ const _userB = AuthUser(
   providerUserId: "google-b",
   providerUsername: "beta",
 );
-const _transient = ProductAnalyticsEventDeliveryResult.transientFailure(
-  description: 'HTTP 503: {"error":"unavailable"}',
-  cause: null,
-  stackTrace: null,
+const _identity = DesktopBundleIdentity(
+  version: "1.11.0",
+  buildNumber: 1066,
+  sourceSha: "source-sha",
+  os: DesktopBundleOs.macos,
+  architecture: DesktopBundleArchitecture.arm64,
 );
-const _permanent = ProductAnalyticsEventDeliveryResult.permanentFailure(
-  description: 'HTTP 400: {"error":"bad_request"}',
-  cause: null,
+final _transient = ApiResponse<bool>.error(
+  ApiError.nonSuccessCode(errorCode: 503, rawErrorString: '{"error":"unavailable"}'),
 );
-const _delivered = ProductAnalyticsEventDeliveryResult.delivered();
+final _permanent = ApiResponse<bool>.error(
+  ApiError.nonSuccessCode(errorCode: 400, rawErrorString: '{"error":"bad_request"}'),
+);
+final _delivered = ApiResponse<bool>.success(true);
 // How a failed refresh and a changed account both arrive from `postForUser`.
-const _notAuthenticated = ProductAnalyticsEventDeliveryResult.transientFailure(
-  description: "not authenticated",
-  cause: null,
-  stackTrace: null,
-);
+final _notAuthenticated = ApiResponse<bool>.error(ApiError.notAuthenticated());
 
 final _occurredAtUtc = DateTime.fromMicrosecondsSinceEpoch(1793232000000000, isUtc: true);
 
 class _MockAuthSession() extends Mock implements AuthSession;
 
-class _MockAppInfoSource() extends Mock implements DesktopAppInfoSource;
+class _MockBundleSource() extends Mock implements InstalledDesktopBundleSource;
 
 class _RecordingLogSink() implements LogSink {
   final List<LogRecord> records = [];
@@ -61,28 +61,21 @@ class _FakeEventSource() implements DesktopProductEventSource {
 }
 
 /// Answers each attempt from [results], then keeps answering with the last one.
-class _FakeEventApi({required final List<ProductAnalyticsEventDeliveryResult> results})
-    implements ProductAnalyticsEventApi {
+class _FakeEventApi({required final List<ApiResponse<bool>> results}) implements ProductAnalyticsEventApi {
   final List<({String userId, ProductAnalyticsEventRequest request})> attempts = [];
-  Future<ProductAnalyticsEventDeliveryResult>? never;
   void Function({required int attempt})? onAttempt;
 
   @override
-  Future<ProductAnalyticsEventDeliveryResult> send({
-    required String userId,
-    required ProductAnalyticsEventRequest request,
-  }) async {
+  Future<ApiResponse<bool>> send({required String userId, required ProductAnalyticsEventRequest request}) async {
     attempts.add((userId: userId, request: request));
     onAttempt?.call(attempt: attempts.length);
-    final pending = never;
-    if (pending != null) return await pending;
     return results[attempts.length > results.length ? results.length - 1 : attempts.length - 1];
   }
 }
 
 void main() {
   late _MockAuthSession authSession;
-  late _MockAppInfoSource appInfo;
+  late _MockBundleSource bundleSource;
   late _RecordingLogSink logs;
   late _FakeEventSource source;
 
@@ -91,7 +84,7 @@ void main() {
         eventSource: source,
         repository: ProductAnalyticsEventRepository(api: events),
         authSession: authSession,
-        appInfoSource: appInfo,
+        bundleSource: bundleSource,
       );
 
   void logEvent({required ProductAnalyticsEvent event}) =>
@@ -106,9 +99,8 @@ void main() {
   setUp(() {
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
-    appInfo = _MockAppInfoSource();
-    when(() => appInfo.platform).thenReturn(DesktopBundleOs.macos);
-    when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0");
+    bundleSource = _MockBundleSource();
+    when(() => bundleSource.compiledIdentity).thenReturn(_identity);
     logs = _RecordingLogSink();
     setLogSink(sink: logs);
     source = _FakeEventSource();
@@ -430,7 +422,7 @@ void main() {
       (DesktopBundleOs.windows, "WINDOWS"),
     ]) {
       test("$platform reports $wire", () async {
-        when(() => appInfo.platform).thenReturn(platform);
+        when(() => bundleSource.compiledIdentity).thenReturn(_identity.copyWith(os: platform));
         final events = _FakeEventApi(results: [_delivered]);
 
         serviceFor(events: events).start();
@@ -440,31 +432,9 @@ void main() {
         expect(events.attempts.single.request.toJson()["platform"], wire);
       });
     }
-
-    test("no desktop OS sends nothing", () async {
-      when(() => appInfo.platform).thenReturn(null);
-      final events = _FakeEventApi(results: [_delivered]);
-
-      serviceFor(events: events).start();
-      logSample();
-      await pumpEventQueue();
-
-      expect(events.attempts, isEmpty);
-    });
   });
 
-  group("app version", () {
-    test("removes a build suffix", () async {
-      when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0+1066");
-      final events = _FakeEventApi(results: [_delivered]);
-
-      serviceFor(events: events).start();
-      logSample();
-      await pumpEventQueue();
-
-      expect(events.attempts.single.request.appVersion, "1.11.0");
-    });
-
+  group("build identity", () {
     test("is read once", () async {
       final events = _FakeEventApi(results: [_delivered]);
 
@@ -474,51 +444,30 @@ void main() {
       await pumpEventQueue();
 
       expect(events.attempts, hasLength(2));
-      verify(() => appInfo.readVersion()).called(1);
+      verify(() => bundleSource.compiledIdentity).called(1);
     });
 
-    test("a failed read warns once with the error, and each dropped event is named", () async {
-      when(() => appInfo.readVersion()).thenAnswer((_) async => throw StateError("no package info"));
-      final events = _FakeEventApi(results: [_delivered]);
+    group("missing, in a source build", () {
+      setUp(() => when(() => bundleSource.compiledIdentity).thenReturn(null));
 
-      serviceFor(events: events).start();
-      logSample();
-      logSample();
-      await pumpEventQueue();
+      test("says so once at startup and sends nothing", () async {
+        final events = _FakeEventApi(results: [_delivered]);
 
-      expect(events.attempts, isEmpty);
-      expect(logs.records.map((record) => record.level), everyElement(LogLevel.warning));
-      final [readFailure, firstDrop, secondDrop] = logs.records;
-      expect(readFailure.diagnosticError, contains("no package info"));
-      expect(readFailure.stackTrace, isNotNull);
-      for (final drop in [firstDrop, secondDrop]) {
-        expect(drop.message, contains("session_message_sent"));
-        expect(drop.diagnosticError, isNull);
-      }
-      verify(() => appInfo.readVersion()).called(1);
-    });
-  });
+        serviceFor(events: events).start();
+        logSample();
+        logSample();
+        await pumpEventQueue();
 
-  group("sending in the background", () {
-    test("returns before a POST that never completes", () async {
-      final events = _FakeEventApi(results: [_delivered]);
-      events.never = Completer<ProductAnalyticsEventDeliveryResult>().future;
+        expect(events.attempts, isEmpty);
+        expect(logs.records.single.level, LogLevel.info);
+        expect(logs.records.single.message, contains("source build"));
+      });
 
-      serviceFor(events: events).start();
-      logSample();
-      await pumpEventQueue();
+      test("still listens, so events don't pile up in the source's buffer", () {
+        serviceFor(events: _FakeEventApi(results: [_delivered])).start();
 
-      expect(events.attempts, hasLength(1));
-    });
-
-    test("returns before an app version read that never completes", () async {
-      when(() => appInfo.readVersion()).thenAnswer((_) => Completer<String>().future);
-      final events = _FakeEventApi(results: [_delivered]);
-
-      serviceFor(events: events).start();
-      logSample();
-
-      expect(events.attempts, isEmpty);
+        expect(source.controller.hasListener, isTrue);
+      });
     });
   });
 
@@ -710,9 +659,8 @@ void main() {
       serviceFor(
         events: _FakeEventApi(
           results: [
-            ProductAnalyticsEventDeliveryResult.permanentFailure(
-              description: "unusable response",
-              cause: ApiError.jsonParsing(jsonString: "<html>", innerError: const FormatException("not json")),
+            ApiResponse<bool>.error(
+              ApiError.jsonParsing(jsonString: "<html>", innerError: const FormatException("not json")),
             ),
           ],
         ),
@@ -729,17 +677,10 @@ void main() {
     test("each failed attempt logs its category, original error and stack trace", () {
       fakeAsync((async) {
         final stackTrace = StackTrace.fromString("the original stack");
-        serviceFor(
-          events: _FakeEventApi(
-            results: [
-              ProductAnalyticsEventDeliveryResult.transientFailure(
-                description: "no response",
-                cause: TimeoutException("attempt deadline"),
-                stackTrace: stackTrace,
-              ),
-            ],
-          ),
-        ).start();
+        final events = _FakeEventApi(results: [_delivered]);
+        events.onAttempt = ({required attempt}) =>
+            Error.throwWithStackTrace(TimeoutException("attempt deadline"), stackTrace);
+        serviceFor(events: events).start();
         logSample();
 
         async.elapse(const Duration(hours: 1));
@@ -791,20 +732,7 @@ void main() {
       expect(source.controller.hasListener, isFalse);
     });
 
-    test("a second start warns and keeps the one listener", () async {
-      final events = _FakeEventApi(results: [_delivered]);
-      final service = serviceFor(events: events);
-
-      service.start();
-      service.start();
-      logSample();
-      await pumpEventQueue();
-
-      expect(events.attempts, hasLength(1));
-      expect(logs.records.single.level, LogLevel.warning);
-    });
-
-    test("stops listening when disposed, and a later start doesn't listen again", () async {
+    test("stops listening when disposed, and later events go nowhere", () async {
       final events = _FakeEventApi(results: [_delivered]);
       final service = serviceFor(events: events);
 
@@ -812,7 +740,6 @@ void main() {
       await service.dispose();
       expect(source.controller.hasListener, isFalse);
 
-      service.start();
       logSample();
       await pumpEventQueue();
 

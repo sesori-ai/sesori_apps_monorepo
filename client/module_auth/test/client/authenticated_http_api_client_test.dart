@@ -285,7 +285,7 @@ void main() {
         body: body,
       );
 
-      expect((response as SuccessResponse<bool>).data, isTrue);
+      expect(response, isA<SuccessResponse<bool>>().having((it) => it.data, "data", isTrue));
       expect(sent.method, "POST");
       expect(sent.url, testUrl);
       expect(sent.body, body);
@@ -303,7 +303,7 @@ void main() {
         body: body,
       );
 
-      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
       verifyNever(() => mockAuth.getFreshAccessToken());
       verifyNoPost();
     });
@@ -318,7 +318,7 @@ void main() {
         body: body,
       );
 
-      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
       verifyNever(() => mockAuth.getFreshAccessToken());
       verifyNoPost();
     });
@@ -334,7 +334,7 @@ void main() {
         body: body,
       );
 
-      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
       verifyNoPost();
     });
 
@@ -344,8 +344,8 @@ void main() {
       when(() => mockAuth.getFreshAccessToken(forceRefresh: true)).thenAnswer((_) async => refreshedToken);
       stubPost(
         answer: (invocation) async {
-          final headers = invocation.namedArguments[#headers] as Map<String, String>?;
-          if (headers?["Authorization"] == "Bearer $accessToken") {
+          final headers = invocation.namedArguments[#headers];
+          if (headers is Map<String, String> && headers["Authorization"] == "Bearer $accessToken") {
             return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 401, rawErrorString: "unauthorized"));
           }
           return ApiResponse.success("retried");
@@ -359,7 +359,7 @@ void main() {
         body: body,
       );
 
-      expect((response as SuccessResponse<String>).data, "retried");
+      expect(response, isA<SuccessResponse<String>>().having((it) => it.data, "data", "retried"));
       verify(() => mockAuth.getFreshAccessToken(forceRefresh: true)).called(1);
     });
 
@@ -386,7 +386,7 @@ void main() {
         body: body,
       );
 
-      expect((response as ErrorResponse<String>).error, isA<NotAuthenticatedError>());
+      expect(response, isA<ErrorResponse<String>>().having((it) => it.error, "error", isA<NotAuthenticatedError>()));
       expect(posts, 1);
     });
   });

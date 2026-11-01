@@ -42,7 +42,6 @@ export "src/foundation/models/desktop_release_channel.dart";
 export "src/foundation/models/desktop_update_state.dart";
 export "src/foundation/platform/bridge_executable_path_resolver.dart";
 export "src/foundation/platform/bridge_process_environment.dart";
-export "src/foundation/platform/desktop_app_info_source.dart";
 export "src/foundation/platform/desktop_application_support_directory.dart";
 export "src/foundation/platform/desktop_application_terminator.dart";
 export "src/foundation/platform/desktop_product_event_source.dart";

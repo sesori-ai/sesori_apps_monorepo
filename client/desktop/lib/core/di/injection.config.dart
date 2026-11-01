@@ -56,8 +56,6 @@ import 'package:sesori_desktop/core/platform/desktop_share_client.dart'
     as _i692;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
-import 'package:sesori_desktop/core/platform/flutter_desktop_app_info_source.dart'
-    as _i265;
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
     as _i11;
 import 'package:sesori_desktop/core/platform/flutter_system_tray.dart' as _i81;
@@ -177,9 +175,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
-    gh.lazySingleton<_i316.DesktopAppInfoSource>(
-      () => _i265.FlutterDesktopAppInfoSource(),
-    );
     gh.lazySingleton<_i316.SparkleUpdateEngine>(
       () => _i760.MethodChannelSparkleUpdateEngine(),
     );
