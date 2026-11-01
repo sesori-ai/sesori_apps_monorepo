@@ -19,6 +19,11 @@ Audio then never leaves the phone, and the gestures stay the same. `voice_live_e
 show while the user speaks. Setting the Remote Config key `voice_on_device_enabled` to `false` sends every dictation to
 the server. Desktop always uses the server.
 
+For now, a temporary comparison lets a phone pick the engine under Settings, Preferences, Dictation engine: Embedded (an
+English speech model shipped inside the app, through sherpa-onnx), Device (the phone's own engine, as above, and the
+default) or Remote (the server). Which engines stay is decided after the comparison, and the picker goes with that
+decision.
+
 ## Required Behavior
 
 - Recording starts only with microphone permission. Denial or a failing check gives a distinct permission error and
@@ -80,6 +85,16 @@ the server. Desktop always uses the server.
   with no model for its language rejects the dictation, which uses the server, and the app requests that model in the
   background for a later one.
 - There is no auto-detect, and the project glossary does not apply.
+- The picked engine is a plaintext device preference that survives sign-out, and an unknown or unreadable value means
+  Device. A dictation running on Embedded or Device reports the same `on_device` analytics mode. Whichever is picked,
+  `voice_on_device_enabled` set to `false` sends every dictation to the server.
+- A switch of engine applies from the next hold that finds it ready. The first hold after a switch uses the server and
+  checks the new engine; holds never wait for that check. An engine that can't run uses the server, like the other
+  on-device cases.
+- Embedded copies the model out of the app's assets once, on its first check. Each dictation then loads the model in a
+  worker isolate that exits when the dictation ends. The words are lowercase with the first letter of each segment
+  capitalized and no punctuation. A build without the model, which is any build that skipped
+  `client/app/tool/fetch_speech_model.sh`, answers that Embedded can't run.
 - An on-device engine that won't start during the hold falls back to a recording for the server, like a live session
   that can't start. After a release there is nothing left to record, so it shows a failure.
   One that fails mid-dictation lands the words so far in the box with the cut-off notice, or shows a failure with no
@@ -256,6 +271,8 @@ Before the first public release containing this code, confirm `voice_live_enable
 On a phone with on-device support and its language model installed, turn on airplane mode, dictate with live off and then
 on, and confirm usable text with no error. Set `voice_on_device_enabled` to `false`, cold launch, and confirm dictation
 needs the network again.
+In Settings, pick Embedded, Device and Remote in turn. For each, hold twice, and confirm the second hold's words came from
+the engine picked: Embedded and Device work in airplane mode, and Remote doesn't. Confirm the pick survives a cold launch.
 On either, send a dictated message and confirm the bubble and the harness transcript show `🎙️ "words"`, while the
 generated session title shows plain words.
 

@@ -79,6 +79,7 @@ dependencies:
   image_picker: ^1.2.4
   flutter_keyboard_visibility: ^7.0.1
   flutter_web_auth_2: 5.1.0
+  sherpa_onnx: 2.0.1
 
 dev_dependencies:
   cryptography: ^2.9.0
@@ -136,6 +137,7 @@ flutter:
     - assets/images/projects_onboarding/info_graphic/
     - assets/images/projects_onboarding/info_graphic/2.0x/
     - assets/images/projects_onboarding/info_graphic/3.0x/
+    - assets/speech_model/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

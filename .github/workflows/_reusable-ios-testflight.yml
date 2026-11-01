@@ -97,6 +97,9 @@ jobs:
           bundler-cache: true
           working-directory: client/app/ios
 
+      - name: Fetch the embedded speech model
+        run: client/app/tool/fetch_speech_model.sh
+
       - name: Generate iOS build config
         env:
           SINGULAR_SDK_KEY: ${{ secrets.SINGULAR_SDK_KEY }}

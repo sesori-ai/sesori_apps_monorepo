@@ -43,6 +43,7 @@ enum AppRouteDef(final String path) {
   settings("/settings"),
   settingsNotifications("/settings/notifications"),
   settingsDefaultInput("/settings/default-input"),
+  settingsVoiceEngine("/settings/voice-engine"),
   settingsComputers("/settings/computers"),
   settingsProjects("/settings/projects"),
   settingsHarnesses("/settings/harnesses"),
@@ -87,6 +88,7 @@ sealed class const AppRoute() {
   const factory settings() = AppRouteSettings;
   const factory settingsNotifications() = AppRouteSettingsNotifications;
   const factory settingsDefaultInput() = AppRouteSettingsDefaultInput;
+  const factory settingsVoiceEngine() = AppRouteSettingsVoiceEngine;
   const factory settingsComputers() = AppRouteSettingsComputers;
   const factory settingsProjects() = AppRouteSettingsProjects;
   const factory settingsHarnesses({
@@ -137,6 +139,7 @@ sealed class const AppRoute() {
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
       AppRouteDef.settingsDefaultInput => const AppRoute.settingsDefaultInput(),
+      AppRouteDef.settingsVoiceEngine => const AppRoute.settingsVoiceEngine(),
       AppRouteDef.settingsComputers => const AppRoute.settingsComputers(),
       AppRouteDef.settingsProjects => const AppRoute.settingsProjects(),
       AppRouteDef.settingsHarnesses => AppRouteSettingsHarnesses.fromParams(queryParams: queryParams),
@@ -199,6 +202,14 @@ class const AppRouteSettings() extends AppRoute {
 class const AppRouteSettingsDefaultInput() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.settingsDefaultInput;
+
+  @override
+  String buildPath() => def.path;
+}
+
+class const AppRouteSettingsVoiceEngine() extends AppRoute {
+  @override
+  AppRouteDef get def => AppRouteDef.settingsVoiceEngine;
 
   @override
   String buildPath() => def.path;

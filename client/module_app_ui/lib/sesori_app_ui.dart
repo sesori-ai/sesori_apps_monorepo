@@ -86,6 +86,7 @@ export "src/features/settings/notification_settings_view.dart";
 export "src/features/settings/profile_view.dart";
 export "src/features/settings/projects_settings_view.dart";
 export "src/features/settings/settings_view.dart";
+export "src/features/settings/voice_engine_settings_view.dart";
 export "src/features/settings/widgets/appearance_picker.dart";
 export "src/features/settings/widgets/bridge_settings_section.dart";
 export "src/features/settings/widgets/chat_input_mode_picker.dart";

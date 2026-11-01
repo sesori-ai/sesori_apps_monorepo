@@ -63,6 +63,9 @@ jobs:
           bundler-cache: true
           working-directory: client/app/android
 
+      - name: Fetch the embedded speech model
+        run: client/app/tool/fetch_speech_model.sh
+
       - name: Build and Deploy to Internal Track
         working-directory: client/app/android
         env:

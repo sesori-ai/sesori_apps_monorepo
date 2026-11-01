@@ -22,6 +22,7 @@ import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
 import "../../features/settings/projects_settings_screen.dart";
 import "../../features/settings/settings_screen.dart";
+import "../../features/settings/voice_engine_settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
 import "circular_reveal_page.dart";
@@ -42,6 +43,7 @@ const _newSessionRouteSegment = "new";
 const _sessionDetailRouteSegment = ":$projectIdPathParam/:$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 const _settingsDefaultInputRouteSegment = "default-input";
+const _settingsVoiceEngineRouteSegment = "voice-engine";
 const _settingsNotificationsRouteSegment = "notifications";
 const _settingsProfileRouteSegment = "profile";
 const _settingsComputersRouteSegment = "computers";
@@ -114,6 +116,7 @@ extension on AppRoute {
       AppRouteHome() => const HomeScreen(),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
+      AppRouteSettingsVoiceEngine() => const VoiceEngineSettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
       AppRouteSettingsHarnesses() ||
       AppRouteSettingsHarnessDetail() => throw StateError("Harness pages belong to their flow shell"),
@@ -462,6 +465,10 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
         GoRoute(
           path: _settingsDefaultInputRouteSegment,
           builder: (context, state) => AppRouteDef.settingsDefaultInput._buildScreen(context: context, state: state),
+        ),
+        GoRoute(
+          path: _settingsVoiceEngineRouteSegment,
+          builder: (context, state) => AppRouteDef.settingsVoiceEngine._buildScreen(context: context, state: state),
         ),
         GoRoute(
           path: _settingsNotificationsRouteSegment,
