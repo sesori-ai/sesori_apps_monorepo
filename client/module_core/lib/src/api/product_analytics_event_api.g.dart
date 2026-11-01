@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'product_analytics_event_client.dart';
+part of 'product_analytics_event_api.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator

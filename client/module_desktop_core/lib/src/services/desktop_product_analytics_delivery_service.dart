@@ -3,43 +3,63 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../foundation/models/desktop_bundle_identity.dart";
 import "../foundation/platform/desktop_app_info_source.dart";
+import "../foundation/platform/desktop_product_event_source.dart";
 
 // With the 5 second attempt deadline, retrying ends after about 50 seconds.
 const _retryDelays = [Duration(seconds: 5), Duration(seconds: 30)];
 
-/// Posts product events to the auth server, which rechecks the account's
-/// preference and derives the user key from the access token.
+/// Layer-3 owner of delivering desktop product events to the auth server, which
+/// rechecks the account's preference and derives the user key from the access
+/// token.
 ///
-/// Sending happens in the background so a dead endpoint can't stall the caller.
-/// Events still in flight when the app quits, or outlasting the retries during
-/// an outage, are lost by design.
-@LazySingleton(as: AnalyticsClient)
-class AuthServerAnalyticsClient({
-  required final ProductAnalyticsEventClient _eventClient,
+/// It decides which events reach the warehouse, which account and app version
+/// they carry, and whether a failed attempt is retried. Sending happens in the
+/// background so a dead endpoint can't stall the caller. Events still in flight
+/// when the app quits, or outlasting the retries during an outage, are lost by
+/// design.
+@lazySingleton
+class DesktopProductAnalyticsDeliveryService({
+  required final DesktopProductEventSource _eventSource,
+  required final ProductAnalyticsEventRepository _repository,
   required final AuthSession _authSession,
   required final DesktopAppInfoSource _appInfoSource,
-}) implements AnalyticsClient {
+}) {
   late final Future<String?> _appVersion = _readAppVersion();
+  StreamSubscription<ProductAnalyticsEnvelope>? _subscription;
 
-  @override
-  Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) async {
+  void start() {
+    if (_subscription != null) {
+      logw("DesktopProductAnalyticsDeliveryService.start() called more than once; ignoring");
+      return;
+    }
+    _subscription = _eventSource.events.listen((envelope) => _onEvent(envelope: envelope));
+  }
+
+  @disposeMethod
+  Future<void> dispose() async {
+    await _subscription?.cancel();
+  }
+
+  void _onEvent({required ProductAnalyticsEnvelope envelope}) {
     final params = _wireParams(event: envelope.event);
-    final platform = _appInfoSource.platform;
-    if (params == null || platform == null) return;
+    final os = _appInfoSource.platform;
+    if (params == null || os == null) return;
     final authState = _authSession.currentState;
     if (authState is! AuthAuthenticated) {
       logw("Dropped a product analytics event with no signed-in account: ${envelope.event.wireName}");
       return;
     }
-    unawaited(_send(userId: authState.user.id, envelope: envelope, params: params, platform: platform));
+    unawaited(
+      _send(
+        userId: authState.user.id,
+        envelope: envelope,
+        params: params,
+        platform: _wirePlatform(os: os),
+      ),
+    );
   }
-
-  @override
-  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) async {}
-
-  @override
-  Future<void> activateAfterInteractiveAuthentication() async {}
 
   Future<void> _send({
     required String userId,
@@ -47,42 +67,38 @@ class AuthServerAnalyticsClient({
     required Map<String, String> params,
     required ProductAnalyticsEventPlatform platform,
   }) async {
+    final name = envelope.event.wireName;
     final appVersion = await _appVersion;
     if (appVersion == null) {
-      logw("Dropped a product analytics event with no app version: ${envelope.event.wireName}");
+      logw("Dropped a product analytics event with no app version: $name");
       return;
     }
-    final request = ProductAnalyticsEventRequest(
-      schemaVersion: ProductAnalyticsEventSchemaVersion.v1,
+    Future<ProductAnalyticsEventDeliveryResult> attempt() => _repository.send(
+      userId: userId,
       platform: platform,
       appVersion: appVersion,
-      name: envelope.event.wireName,
-      occurredAtMicros: envelope.occurredAtUtc.microsecondsSinceEpoch,
+      envelope: envelope,
       params: params,
     );
 
-    var result = await _eventClient.send(userId: userId, request: request);
+    var result = await attempt();
     for (final delay in _retryDelays) {
-      if (result is! ProductAnalyticsEventClientTransientFailure) break;
-      logw(
-        "A product analytics attempt failed: ${request.name} (${result.description})",
-        result.cause,
-        result.stackTrace,
-      );
+      if (result is! ProductAnalyticsEventTransientFailure) break;
+      logw("A product analytics attempt failed: $name (${result.description})", result.cause, result.stackTrace);
       await Future<void>.delayed(delay);
       if (!_isSignedIn(userId: userId)) break;
-      result = await _eventClient.send(userId: userId, request: request);
+      result = await attempt();
     }
     switch (result) {
-      case ProductAnalyticsEventClientDelivered():
+      case ProductAnalyticsEventDelivered():
         break;
-      case ProductAnalyticsEventClientPermanentFailure(:final description, :final cause):
-        loge("Dropped a product analytics event without retrying: ${request.name} ($description)", cause);
-      case ProductAnalyticsEventClientTransientFailure(:final description, :final cause, :final stackTrace):
+      case ProductAnalyticsEventPermanentFailure(:final description, :final cause):
+        loge("Dropped a product analytics event without retrying: $name ($description)", cause);
+      case ProductAnalyticsEventTransientFailure(:final description, :final cause, :final stackTrace):
         if (_isSignedIn(userId: userId)) {
-          loge("Gave up sending a product analytics event: ${request.name} ($description)", cause, stackTrace);
+          loge("Gave up sending a product analytics event: $name ($description)", cause, stackTrace);
         } else {
-          logi("Stopped sending a product analytics event after a sign-out: ${request.name}");
+          logi("Stopped sending a product analytics event after a sign-out: $name");
         }
     }
   }
@@ -102,6 +118,12 @@ class AuthServerAnalyticsClient({
       return null;
     }
   }
+
+  ProductAnalyticsEventPlatform _wirePlatform({required DesktopBundleOs os}) => switch (os) {
+    DesktopBundleOs.macos => ProductAnalyticsEventPlatform.macos,
+    DesktopBundleOs.linux => ProductAnalyticsEventPlatform.linux,
+    DesktopBundleOs.windows => ProductAnalyticsEventPlatform.windows,
+  };
 
   /// The event's params on the wire, or null for an event the warehouse doesn't
   /// allow. Listing every event makes a new one fail to compile until someone

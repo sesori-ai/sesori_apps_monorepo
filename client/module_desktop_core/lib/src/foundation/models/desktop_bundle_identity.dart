@@ -7,7 +7,8 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 part "desktop_bundle_identity.freezed.dart";
 part "desktop_bundle_identity.g.dart";
 
-/// Supported installed desktop layouts, not client/bridge transport platforms.
+/// The supported desktop OSes, each with its installed layout. These are not
+/// client/bridge transport platforms.
 enum DesktopBundleOs() {
   macos,
   windows,

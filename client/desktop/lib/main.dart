@@ -72,6 +72,10 @@ Future<void> main(List<String> arguments) async {
   // The tray and Settings read the update state from the first frame.
   logi("Desktop startup: starting desktop updates");
   await getIt<DesktopUpdateService>().start();
+  // Product events can only be logged once the analytics service below has
+  // started, so listening first leaves none waiting in the sink's buffer.
+  logi("Desktop startup: starting analytics delivery");
+  getIt<DesktopProductAnalyticsDeliveryService>().start();
   // Start local analytics state before building. Authenticated reconciliation
   // waits until after the first frame so a slow server cannot blank startup;
   // Account reflects the service's synchronization state until it settles.

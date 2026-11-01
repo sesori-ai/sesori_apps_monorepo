@@ -16,8 +16,6 @@ import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/logging.dart' as _i798;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop_core/src/api/app_log_storage.dart' as _i1024;
-import 'package:sesori_desktop_core/src/api/auth_server_analytics_client.dart'
-    as _i991;
 import 'package:sesori_desktop_core/src/api/bridge_id_storage.dart' as _i73;
 import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
@@ -44,6 +42,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
     as _i746;
+import 'package:sesori_desktop_core/src/foundation/platform/desktop_product_event_source.dart'
+    as _i781;
 import 'package:sesori_desktop_core/src/foundation/platform/installed_desktop_bundle_source.dart'
     as _i234;
 import 'package:sesori_desktop_core/src/foundation/platform/launch_at_login.dart'
@@ -82,6 +82,8 @@ import 'package:sesori_desktop_core/src/services/desktop_attention_service.dart'
     as _i404;
 import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
+import 'package:sesori_desktop_core/src/services/desktop_product_analytics_delivery_service.dart'
+    as _i1045;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
 import 'package:sesori_desktop_core/src/services/desktop_update_service.dart'
@@ -162,12 +164,14 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
     );
-    gh.lazySingleton<_i948.AnalyticsClient>(
-      () => _i991.AuthServerAnalyticsClient(
-        eventClient: gh<_i948.ProductAnalyticsEventClient>(),
+    gh.lazySingleton<_i1045.DesktopProductAnalyticsDeliveryService>(
+      () => _i1045.DesktopProductAnalyticsDeliveryService(
+        eventSource: gh<_i781.DesktopProductEventSource>(),
+        repository: gh<_i948.ProductAnalyticsEventRepository>(),
         authSession: gh<_i948.AuthSession>(),
         appInfoSource: gh<_i893.DesktopAppInfoSource>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i227.BridgeStatusTracker>(
       () => _i227.BridgeStatusTracker(

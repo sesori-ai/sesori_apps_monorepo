@@ -20,17 +20,22 @@ const _userB = AuthUser(
   providerUserId: "google-b",
   providerUsername: "beta",
 );
-const _userKey = "user-key-that-must-not-be-sent";
-const _transient = ProductAnalyticsEventClientResult.transientFailure(
+const _transient = ProductAnalyticsEventDeliveryResult.transientFailure(
   description: 'HTTP 503: {"error":"unavailable"}',
   cause: null,
   stackTrace: null,
 );
-const _permanent = ProductAnalyticsEventClientResult.permanentFailure(
+const _permanent = ProductAnalyticsEventDeliveryResult.permanentFailure(
   description: 'HTTP 400: {"error":"bad_request"}',
   cause: null,
 );
-const _delivered = ProductAnalyticsEventClientResult.delivered();
+const _delivered = ProductAnalyticsEventDeliveryResult.delivered();
+// How a failed refresh and a changed account both arrive from `postForUser`.
+const _notAuthenticated = ProductAnalyticsEventDeliveryResult.transientFailure(
+  description: "not authenticated",
+  cause: null,
+  stackTrace: null,
+);
 
 final _occurredAtUtc = DateTime.fromMicrosecondsSinceEpoch(1793232000000000, isUtc: true);
 
@@ -48,15 +53,22 @@ class _RecordingLogSink() implements LogSink {
   Future<void> flush() async {}
 }
 
+class _FakeEventSource() implements DesktopProductEventSource {
+  final StreamController<ProductAnalyticsEnvelope> controller = StreamController<ProductAnalyticsEnvelope>(sync: true);
+
+  @override
+  Stream<ProductAnalyticsEnvelope> get events => controller.stream;
+}
+
 /// Answers each attempt from [results], then keeps answering with the last one.
-class _FakeEventClient({required final List<ProductAnalyticsEventClientResult> results})
-    implements ProductAnalyticsEventClient {
+class _FakeEventApi({required final List<ProductAnalyticsEventDeliveryResult> results})
+    implements ProductAnalyticsEventApi {
   final List<({String userId, ProductAnalyticsEventRequest request})> attempts = [];
-  Future<ProductAnalyticsEventClientResult>? never;
+  Future<ProductAnalyticsEventDeliveryResult>? never;
   void Function({required int attempt})? onAttempt;
 
   @override
-  Future<ProductAnalyticsEventClientResult> send({
+  Future<ProductAnalyticsEventDeliveryResult> send({
     required String userId,
     required ProductAnalyticsEventRequest request,
   }) async {
@@ -72,44 +84,48 @@ void main() {
   late _MockAuthSession authSession;
   late _MockAppInfoSource appInfo;
   late _RecordingLogSink logs;
+  late _FakeEventSource source;
 
-  AuthServerAnalyticsClient clientFor({required _FakeEventClient events}) =>
-      AuthServerAnalyticsClient(eventClient: events, authSession: authSession, appInfoSource: appInfo);
+  DesktopProductAnalyticsDeliveryService serviceFor({required _FakeEventApi events}) =>
+      DesktopProductAnalyticsDeliveryService(
+        eventSource: source,
+        repository: ProductAnalyticsEventRepository(api: events),
+        authSession: authSession,
+        appInfoSource: appInfo,
+      );
 
-  ProductAnalyticsEnvelope envelopeOf({required ProductAnalyticsEvent event}) =>
-      ProductAnalyticsEnvelope(event: event, occurredAtUtc: _occurredAtUtc);
+  void logEvent({required ProductAnalyticsEvent event}) =>
+      source.controller.add(ProductAnalyticsEnvelope(event: event, occurredAtUtc: _occurredAtUtc));
 
   const sampleEvent = ProductAnalyticsEvent.sessionMessageSent(
     submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
   );
 
-  Future<void> logSample({required AuthServerAnalyticsClient client}) => client.logProductEvent(
-    envelope: envelopeOf(event: sampleEvent),
-    userKey: _userKey,
-  );
+  void logSample() => logEvent(event: sampleEvent);
 
   setUp(() {
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     appInfo = _MockAppInfoSource();
-    when(() => appInfo.platform).thenReturn(ProductAnalyticsEventPlatform.macos);
+    when(() => appInfo.platform).thenReturn(DesktopBundleOs.macos);
     when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0");
     logs = _RecordingLogSink();
     setLogSink(sink: logs);
+    source = _FakeEventSource();
   });
 
   tearDown(() => setLogSink(sink: const StdoutLogSink()));
 
   group("pinned contract", () {
-    test("sends the exact body, and never the user key", () async {
-      final events = _FakeEventClient(results: [_delivered]);
+    test("sends the exact body", () async {
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: clientFor(events: events));
+      serviceFor(events: events).start();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts.single.userId, _userA.id);
-      final body = jsonEncode(events.attempts.single.request.toJson());
-      expect(jsonDecode(body), {
+      expect(jsonDecode(jsonEncode(events.attempts.single.request.toJson())), {
         "schemaVersion": 1,
         "platform": "MACOS",
         "appVersion": "1.11.0",
@@ -117,7 +133,6 @@ void main() {
         "occurredAtMicros": 1793232000000000,
         "params": {"submission_kind": "text", "input_mode": "typed"},
       });
-      expect(body, isNot(contains(_userKey)));
     });
 
     const surface = OnboardingSurface.connectSetup;
@@ -264,12 +279,10 @@ void main() {
 
     for (final sent in sentEvents) {
       test("sends ${sent.name} with exactly its params, within the 1 KiB limit", () async {
-        final events = _FakeEventClient(results: [_delivered]);
+        final events = _FakeEventApi(results: [_delivered]);
 
-        await clientFor(events: events).logProductEvent(
-          envelope: envelopeOf(event: sent.event),
-          userKey: _userKey,
-        );
+        serviceFor(events: events).start();
+        logEvent(event: sent.event);
         await pumpEventQueue();
 
         final request = events.attempts.single.request;
@@ -312,12 +325,10 @@ void main() {
 
     for (final notSent in notSentEvents) {
       test("doesn't send ${notSent.reason}, which is outside the warehouse allowlist", () async {
-        final events = _FakeEventClient(results: [_delivered]);
+        final events = _FakeEventApi(results: [_delivered]);
 
-        await clientFor(events: events).logProductEvent(
-          envelope: envelopeOf(event: notSent.event),
-          userKey: _userKey,
-        );
+        serviceFor(events: events).start();
+        logEvent(event: notSent.event);
         await pumpEventQueue();
 
         expect(notSent.event.wireName, notSent.reason);
@@ -414,15 +425,16 @@ void main() {
 
   group("platform", () {
     for (final (platform, wire) in const [
-      (ProductAnalyticsEventPlatform.macos, "MACOS"),
-      (ProductAnalyticsEventPlatform.linux, "LINUX"),
-      (ProductAnalyticsEventPlatform.windows, "WINDOWS"),
+      (DesktopBundleOs.macos, "MACOS"),
+      (DesktopBundleOs.linux, "LINUX"),
+      (DesktopBundleOs.windows, "WINDOWS"),
     ]) {
       test("$platform reports $wire", () async {
         when(() => appInfo.platform).thenReturn(platform);
-        final events = _FakeEventClient(results: [_delivered]);
+        final events = _FakeEventApi(results: [_delivered]);
 
-        await logSample(client: clientFor(events: events));
+        serviceFor(events: events).start();
+        logSample();
         await pumpEventQueue();
 
         expect(events.attempts.single.request.toJson()["platform"], wire);
@@ -431,9 +443,10 @@ void main() {
 
     test("no desktop OS sends nothing", () async {
       when(() => appInfo.platform).thenReturn(null);
-      final events = _FakeEventClient(results: [_delivered]);
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: clientFor(events: events));
+      serviceFor(events: events).start();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts, isEmpty);
@@ -443,20 +456,21 @@ void main() {
   group("app version", () {
     test("removes a build suffix", () async {
       when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0+1066");
-      final events = _FakeEventClient(results: [_delivered]);
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: clientFor(events: events));
+      serviceFor(events: events).start();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts.single.request.appVersion, "1.11.0");
     });
 
     test("is read once", () async {
-      final events = _FakeEventClient(results: [_delivered]);
-      final client = clientFor(events: events);
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: client);
-      await logSample(client: client);
+      serviceFor(events: events).start();
+      logSample();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts, hasLength(2));
@@ -465,11 +479,11 @@ void main() {
 
     test("a failed read warns once with the error, and each dropped event is named", () async {
       when(() => appInfo.readVersion()).thenAnswer((_) async => throw StateError("no package info"));
-      final events = _FakeEventClient(results: [_delivered]);
-      final client = clientFor(events: events);
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: client);
-      await logSample(client: client);
+      serviceFor(events: events).start();
+      logSample();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts, isEmpty);
@@ -485,12 +499,13 @@ void main() {
     });
   });
 
-  group("not blocking the caller", () {
+  group("sending in the background", () {
     test("returns before a POST that never completes", () async {
-      final events = _FakeEventClient(results: [_delivered]);
-      events.never = Completer<ProductAnalyticsEventClientResult>().future;
+      final events = _FakeEventApi(results: [_delivered]);
+      events.never = Completer<ProductAnalyticsEventDeliveryResult>().future;
 
-      await logSample(client: clientFor(events: events));
+      serviceFor(events: events).start();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts, hasLength(1));
@@ -498,28 +513,21 @@ void main() {
 
     test("returns before an app version read that never completes", () async {
       when(() => appInfo.readVersion()).thenAnswer((_) => Completer<String>().future);
-      final events = _FakeEventClient(results: [_delivered]);
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: clientFor(events: events));
+      serviceFor(events: events).start();
+      logSample();
 
       expect(events.attempts, isEmpty);
-    });
-
-    test("a failed send never reaches the caller", () async {
-      final events = _FakeEventClient(results: [_permanent]);
-
-      await expectLater(logSample(client: clientFor(events: events)), completes);
-      await pumpEventQueue();
-
-      expect(events.attempts, hasLength(1));
     });
   });
 
   group("retry", () {
     test("waits 5 and then 30 seconds, and stops after 3 attempts", () {
       fakeAsync((async) {
-        final events = _FakeEventClient(results: [_transient]);
-        unawaited(logSample(client: clientFor(events: events)));
+        final events = _FakeEventApi(results: [_transient]);
+        serviceFor(events: events).start();
+        logSample();
         async.flushMicrotasks();
         expect(events.attempts, hasLength(1));
 
@@ -541,8 +549,9 @@ void main() {
 
     test("stops once an attempt is delivered", () {
       fakeAsync((async) {
-        final events = _FakeEventClient(results: [_transient, _delivered]);
-        unawaited(logSample(client: clientFor(events: events)));
+        final events = _FakeEventApi(results: [_transient, _delivered]);
+        serviceFor(events: events).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -552,8 +561,9 @@ void main() {
 
     test("stops at a permanent failure reached during a retry", () {
       fakeAsync((async) {
-        final events = _FakeEventClient(results: [_transient, _permanent]);
-        unawaited(logSample(client: clientFor(events: events)));
+        final events = _FakeEventApi(results: [_transient, _permanent]);
+        serviceFor(events: events).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -563,8 +573,9 @@ void main() {
 
     test("doesn't retry a permanent failure", () {
       fakeAsync((async) {
-        final events = _FakeEventClient(results: [_permanent]);
-        unawaited(logSample(client: clientFor(events: events)));
+        final events = _FakeEventApi(results: [_permanent]);
+        serviceFor(events: events).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -575,8 +586,9 @@ void main() {
 
     test("resends the same request with the same occurrence time", () {
       fakeAsync((async) {
-        final events = _FakeEventClient(results: [_transient]);
-        unawaited(logSample(client: clientFor(events: events)));
+        final events = _FakeEventApi(results: [_transient]);
+        serviceFor(events: events).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -591,8 +603,9 @@ void main() {
     ]) {
       test("stops before a retry once the account $name, logging at info and no error", () {
         fakeAsync((async) {
-          final events = _FakeEventClient(results: [_transient]);
-          unawaited(logSample(client: clientFor(events: events)));
+          final events = _FakeEventApi(results: [_transient]);
+          serviceFor(events: events).start();
+          logSample();
           async.flushMicrotasks();
 
           when(() => authSession.currentState).thenReturn(state);
@@ -606,13 +619,49 @@ void main() {
       });
     }
 
+    // `postForUser` answers a changed account and a failed refresh the same way.
+    for (final (name, state) in const [
+      ("signed out", AuthState.unauthenticated()),
+      ("switched to another account", AuthState.authenticated(user: _userB)),
+    ]) {
+      test("doesn't retry a not-authenticated failure caused by having $name", () {
+        fakeAsync((async) {
+          final events = _FakeEventApi(results: [_notAuthenticated]);
+          events.onAttempt = ({required attempt}) => when(() => authSession.currentState).thenReturn(state);
+          serviceFor(events: events).start();
+          logSample();
+
+          async.elapse(const Duration(hours: 1));
+
+          expect(events.attempts, hasLength(1));
+          expect(logs.records.map((record) => record.level), [LogLevel.warning, LogLevel.info]);
+          expect(async.pendingTimers, isEmpty);
+        });
+      });
+    }
+
+    test("retries a not-authenticated failure while the account stays signed in, as after a failed refresh", () {
+      fakeAsync((async) {
+        final events = _FakeEventApi(results: [_notAuthenticated]);
+        serviceFor(events: events).start();
+        logSample();
+
+        async.elapse(const Duration(hours: 1));
+
+        expect(events.attempts, hasLength(3));
+        expect(events.attempts.map((attempt) => attempt.userId), everyElement(_userA.id));
+        expect(logs.records.map((record) => record.level), [LogLevel.warning, LogLevel.warning, LogLevel.error]);
+      });
+    });
+
     test("a sign-out during the last attempt logs at info, not as giving up", () {
       fakeAsync((async) {
-        final events = _FakeEventClient(results: [_transient]);
+        final events = _FakeEventApi(results: [_transient]);
         events.onAttempt = ({required attempt}) {
           if (attempt == 3) when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
         };
-        unawaited(logSample(client: clientFor(events: events)));
+        serviceFor(events: events).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -625,9 +674,10 @@ void main() {
   group("signed-out account", () {
     test("sends nothing and logs the event name", () async {
       when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
-      final events = _FakeEventClient(results: [_delivered]);
+      final events = _FakeEventApi(results: [_delivered]);
 
-      await logSample(client: clientFor(events: events));
+      serviceFor(events: events).start();
+      logSample();
       await pumpEventQueue();
 
       expect(events.attempts, isEmpty);
@@ -640,15 +690,14 @@ void main() {
       expect(record.level, level);
       expect(record.message, contains("session_message_sent"));
       expect(record.message, contains(description));
-      for (final leaked in [_userA.id, _userKey, "submission_kind", "input_mode", "typed", "1.11.0"]) {
+      for (final leaked in [_userA.id, "submission_kind", "input_mode", "typed", "1.11.0"]) {
         expect(record.formatted, isNot(contains(leaked)));
       }
     }
 
     test("a 400 logs the event name, status and response body, and no error it doesn't have", () async {
-      await logSample(
-        client: clientFor(events: _FakeEventClient(results: [_permanent])),
-      );
+      serviceFor(events: _FakeEventApi(results: [_permanent])).start();
+      logSample();
       await pumpEventQueue();
 
       final record = logs.records.single;
@@ -658,43 +707,40 @@ void main() {
     });
 
     test("a permanent failure keeps its original error", () async {
-      await logSample(
-        client: clientFor(
-          events: _FakeEventClient(
-            results: [
-              const ProductAnalyticsEventClientResult.permanentFailure(
-                description: "unusable response",
-                cause: FormatException("not json"),
-              ),
-            ],
-          ),
+      serviceFor(
+        events: _FakeEventApi(
+          results: [
+            ProductAnalyticsEventDeliveryResult.permanentFailure(
+              description: "unusable response",
+              cause: ApiError.jsonParsing(jsonString: "<html>", innerError: const FormatException("not json")),
+            ),
+          ],
         ),
-      );
+      ).start();
+      logSample();
       await pumpEventQueue();
 
       final record = logs.records.single;
       expectDiagnostics(record: record, level: LogLevel.error, description: "unusable response");
-      expect(record.diagnosticError, contains("not json"));
+      expect(record.diagnosticError, contains("FormatException"));
+      expect(record.formatted, isNot(contains("<html>")));
     });
 
     test("each failed attempt logs its category, original error and stack trace", () {
       fakeAsync((async) {
         final stackTrace = StackTrace.fromString("the original stack");
-        unawaited(
-          logSample(
-            client: clientFor(
-              events: _FakeEventClient(
-                results: [
-                  ProductAnalyticsEventClientResult.transientFailure(
-                    description: "no response",
-                    cause: TimeoutException("attempt deadline"),
-                    stackTrace: stackTrace,
-                  ),
-                ],
+        serviceFor(
+          events: _FakeEventApi(
+            results: [
+              ProductAnalyticsEventDeliveryResult.transientFailure(
+                description: "no response",
+                cause: TimeoutException("attempt deadline"),
+                stackTrace: stackTrace,
               ),
-            ),
+            ],
           ),
-        );
+        ).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -709,11 +755,8 @@ void main() {
 
     test("a transient status names the status once the retries run out", () {
       fakeAsync((async) {
-        unawaited(
-          logSample(
-            client: clientFor(events: _FakeEventClient(results: [_transient])),
-          ),
-        );
+        serviceFor(events: _FakeEventApi(results: [_transient])).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -727,11 +770,8 @@ void main() {
 
     test("a failure that a retry recovers from stays visible as a warning", () {
       fakeAsync((async) {
-        unawaited(
-          logSample(
-            client: clientFor(events: _FakeEventClient(results: [_transient, _delivered])),
-          ),
-        );
+        serviceFor(events: _FakeEventApi(results: [_transient, _delivered])).start();
+        logSample();
 
         async.elapse(const Duration(hours: 1));
 
@@ -744,16 +784,39 @@ void main() {
     });
   });
 
-  test("the installation and activation calls send nothing", () async {
-    final events = _FakeEventClient(results: [_delivered]);
-    final client = clientFor(events: events);
+  group("lifecycle", () {
+    test("doesn't listen until started", () {
+      serviceFor(events: _FakeEventApi(results: [_delivered]));
 
-    await client.logInstallationEvent(
-      event: const InstallationAnalyticsEvent.loginAttemptStarted(provider: AnalyticsLoginProvider.github),
-    );
-    await client.activateAfterInteractiveAuthentication();
-    await pumpEventQueue();
+      expect(source.controller.hasListener, isFalse);
+    });
 
-    expect(events.attempts, isEmpty);
+    test("a second start warns and keeps the one listener", () async {
+      final events = _FakeEventApi(results: [_delivered]);
+      final service = serviceFor(events: events);
+
+      service.start();
+      service.start();
+      logSample();
+      await pumpEventQueue();
+
+      expect(events.attempts, hasLength(1));
+      expect(logs.records.single.level, LogLevel.warning);
+    });
+
+    test("stops listening when disposed, and a later start doesn't listen again", () async {
+      final events = _FakeEventApi(results: [_delivered]);
+      final service = serviceFor(events: events);
+
+      service.start();
+      await service.dispose();
+      expect(source.controller.hasListener, isFalse);
+
+      service.start();
+      logSample();
+      await pumpEventQueue();
+
+      expect(events.attempts, isEmpty);
+    });
   });
 }

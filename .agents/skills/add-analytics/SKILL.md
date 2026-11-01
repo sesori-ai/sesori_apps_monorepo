@@ -48,8 +48,9 @@ state under `services/models/`:
 - Delivery flows `Client (Foundation) -> API -> Repository -> Service ->
   Consumer`. Cubits/widgets/listeners never hold `AnalyticsClient` or
   `AnalyticsApi` directly.
-- Mobile implements `AnalyticsClient` with Firebase; desktop implements it with
-  an auth-server sink, and its disabled capability keeps that sink from sending.
+- Mobile implements `AnalyticsClient` with Firebase. Desktop implements it with
+  an adapter that streams events to `DesktopProductAnalyticsDeliveryService`, which
+  posts to the auth server. Its disabled capability keeps events from reaching them.
 
 ## Choose the authoritative hook
 

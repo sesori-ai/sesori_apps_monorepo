@@ -5,6 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart";
 import "package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart";
+import "package:sesori_desktop/core/platform/desktop_analytics_client.dart";
 import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
 import "package:sesori_desktop/core/platform/desktop_failure_reporter.dart";
 import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
@@ -67,7 +68,9 @@ void main() {
     addTearDown(cubit.close);
 
     expect(getIt.isRegistered<LoginCubit>(), isFalse);
-    expect(getIt<AnalyticsClient>(), isA<AuthServerAnalyticsClient>());
+    expect(getIt<AnalyticsClient>(), isA<DesktopAnalyticsClient>());
+    expect(getIt<DesktopProductEventSource>(), same(getIt<AnalyticsClient>()));
+    expect(getIt<DesktopProductAnalyticsDeliveryService>(), isNotNull);
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
     expect(getIt<FeedbackPromptConfigSource>(), isA<NoOpFeedbackPromptConfigSource>());

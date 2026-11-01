@@ -178,36 +178,48 @@ list and modes.
 
 ### Client
 
-Three small classes, because `client/AGENTS.md` keeps desktop logic out of `client/desktop`, and forbids it and
-`module_desktop_core` from importing `module_auth` types:
+It follows the project's layers, because `client/AGENTS.md` keeps desktop logic out of `client/desktop`, forbids it and
+`module_desktop_core` from importing `module_auth` types, and requires an API and a repository below any service:
 
-- `ProductAnalyticsEventClient` in
-  `client/module_core/lib/src/foundation/transport/product_analytics_event_client.dart`, a Layer 0 `Client` with the
-  Freezed request model. It makes one attempt through a new
-  `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, and returns a sealed result: delivered, permanent
-  failure or transient failure.
-- `AuthServerAnalyticsClient` in `client/module_desktop_core/lib/src/api/`, replacing `NoOpAnalyticsClient` as the desktop's
-  `AnalyticsClient`. It owns the event allowlist and mapping, version handling, the account decision and retry. It reads the
-  account from `AuthSession`, which `module_core` already exports.
-- `DesktopAppInfoSource` in `client/module_desktop_core/lib/src/foundation/platform/` supplies the OS and app version.
-  `FlutterDesktopAppInfoSource` in `client/desktop/lib/core/platform/` is its dumb adapter.
+- `ProductAnalyticsEventApi` in `client/module_core/lib/src/api/product_analytics_event_api.dart`, with the Freezed request
+  model. It makes one attempt through a new `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, and returns
+  a sealed result: delivered, permanent failure or transient failure.
+- `ProductAnalyticsEventDeliveryResult` and `ProductAnalyticsEventPlatform` in
+  `client/module_core/lib/src/foundation/models/product_analytics/product_analytics_event_delivery.dart`, so the layers
+  above can use them without reaching into `api/`.
+- `ProductAnalyticsEventRepository` in `client/module_core/lib/src/repositories/` builds the request from the envelope and
+  delegates to the API.
+- `DesktopProductAnalyticsDeliveryService` in `client/module_desktop_core/lib/src/services/` owns the event allowlist and
+  mapping, the OS mapping, version handling, the account decision and retry. It reads the account from `AuthSession`,
+  which `module_core` already exports.
+- `DesktopAnalyticsClient` in `client/desktop/lib/core/platform/`, replacing `NoOpAnalyticsClient` as the desktop's
+  `AnalyticsClient`. It has no dependencies and registers in DI phase 1. `logProductEvent` only adds the envelope to a
+  stream, exposed through `DesktopProductEventSource` in `client/module_desktop_core/lib/src/foundation/platform/`, the
+  same shape as `SystemTray.commands`. The service subscribes in `start()`, which desktop startup calls on every launch.
+- `DesktopAppInfoSource` in `client/module_desktop_core/lib/src/foundation/platform/` supplies the OS, as `DesktopBundleOs`,
+  and the app version. `FlutterDesktopAppInfoSource` in `client/desktop/lib/core/platform/` is its dumb adapter.
 
 Behavior:
 
-- `logProductEvent` returns at once. It maps the event, captures the current account from `AuthSession.currentState`,
-  and starts sending in `unawaited`. A failure never reaches the caller. Per `AGENTS.md`, its local log keeps the event
-  name, the failure category or HTTP status with the first 500 characters of any non-2xx response body, and the original
+- `logProductEvent` returns at once. The service, listening synchronously, maps the event, captures the current account
+  from `AuthSession.currentState`, and starts sending in `unawaited`. A failure never reaches the caller. Per `AGENTS.md`,
+  its local log keeps the event name, the failure category or HTTP status with the first 500 characters of any non-2xx response body, and the original
   error and stack trace where there is one. It leaves out the request body and credentials.
-- `postForUser` refuses to send if the account changed, before any network call. That covers retries after a sign-out
-  or account switch without any new state.
+- Events logged before the service starts wait in the stream's single-subscription controller and arrive in order. That
+  buffer has no limit of its own and needs none. `ProductAnalyticsService` can't deliver anything until its `start()`, and
+  desktop startup starts this service first, so the buffer stays empty on every launch. A test pins that order. A process
+  that fails earlier in startup never starts either service, so it logs nothing. Once the service has stopped listening,
+  later events are dropped rather than held.
+- `postForUser` refuses to send if the account changed, before any network call, and answers with
+  `NotAuthenticatedError`, as a failed token refresh does. The service tells the two apart by rechecking the account.
 - Each attempt has a 5 second deadline. There are at most 3 attempts, 5 seconds and then 30 seconds apart, on network
   errors, timeouts, `5xx` and `NotAuthenticatedError`. The last one is how a failed token refresh surfaces, so it's the
   usual failure after waking from sleep, when the 15 minute access token has expired and the network isn't back yet.
-  Before each retry, and before giving up, the client checks that the captured account is still signed in. If it isn't, it
-  stops and logs at info level, because a sign-out isn't a failure.
+  Before each retry, and before giving up, the service checks that the captured account is still signed in. If it isn't,
+  it stops and logs at info level, because a sign-out isn't a failure.
 - Retry scheduling ends after about 50 seconds even if the endpoint is dead. `.timeout()` abandons a request instead of
   cancelling it, so a socket can outlive its attempt. That's harmless, because the server ignores the duplicate.
-- No queue, batch, timer or flush hook. Events in flight when the app quits are lost, and so are events during an outage
+- No queue beyond that startup buffer, and no batch, timer or flush hook. Events in flight when the app quits are lost, and so are events during an outage
   longer than the retry budget. That loss is accepted: the numbers are product trends, and Sparkle's install on quit
   loses at most what was in flight.
 - An exhaustive `switch` over the sealed `ProductAnalyticsEvent` returns the wire params or `null`, so a new client event
@@ -218,8 +230,8 @@ Behavior:
   - `voice_transcription_completed` sends `{}`. The warehouse has no `finish` or `mode` column, and a server enum would
     reject the next new mode, as `on_device` was added this week.
   - Everything else sends `event.parameters` unchanged.
-- `platform` comes from a `switch` on `defaultTargetPlatform` in the adapter. iOS, Android and Fuchsia are unreachable in
-  this shell and send nothing. `appVersion` comes from `PackageInfo.version`, read once, with anything from a `+` onward
+- `platform` comes from a `switch` on `defaultTargetPlatform` in the adapter, which the service maps to the wire enum. iOS,
+  Android and Fuchsia are unreachable in this shell and send nothing. `appVersion` comes from `PackageInfo.version`, read once, with anything from a `+` onward
   removed, because no Windows app can be run to confirm its format. If that read fails, one warning has the error and stack
   trace, and each dropped event logs a warning naming it.
 - `logInstallationEvent` and `activateAfterInteractiveAuthentication` stay no-ops. Asset 15's login diagnostics therefore
@@ -368,8 +380,9 @@ assertion restricts that column's values, and `app_distribution` already groups 
 - **In-flight export:** a run that observes a suppression change after its cutoff aborts, as today. A suppression after
   that check can still promote a row, but the tombstone keeps it out of curated tables, and the sweep's auth cleanup waits
   for a run whose cutoff covers the tombstone, then deletes it.
-- **Insert racing `deleteMany`:** an event in flight in the same milliseconds could store one row after the delete.
-  The tombstone blocks it from curated tables, the sweep removes it from BigQuery, and the TTL ends it. Accepted.
+- **Insert racing `deleteMany`:** `record()` re-reads the tombstone from the primary after inserting, and deletes the row
+  if it's there. Only a crash or failed recheck in those milliseconds leaves a row. The tombstone blocks it from curated
+  tables, the sweep removes it from BigQuery, and the TTL ends it. Accepted.
 
 ### Abuse
 
@@ -628,17 +641,24 @@ stay, and they are valid. If they ever need removing, use the rescan procedure.
 - **Complexity:** moderate. A new sink, a new auth client method, and retry behavior.
 - **What:**
   - `module_auth/.../authenticated_http_api_client.dart`: `postForUser`.
-  - `client/module_core/lib/src/foundation/transport/product_analytics_event_client.dart`, its sealed Freezed request
-    model with `toJson`, and its sealed result.
-  - `client/module_desktop_core/lib/src/api/auth_server_analytics_client.dart`, importing no `module_auth` types.
+  - `client/module_core/lib/src/api/product_analytics_event_api.dart` and its sealed Freezed request model with `toJson`.
+  - `client/module_core/lib/src/foundation/models/product_analytics/product_analytics_event_delivery.dart`, with the
+    sealed result and the platform enum.
+  - `client/module_core/lib/src/repositories/product_analytics_event_repository.dart`.
+  - `client/module_desktop_core/lib/src/services/desktop_product_analytics_delivery_service.dart`, importing no
+    `module_auth` types, and a `start()` call in `client/desktop/lib/main.dart`.
+  - `client/module_desktop_core/lib/src/foundation/platform/desktop_product_event_source.dart`, and its adapter
+    `client/desktop/lib/core/platform/desktop_analytics_client.dart`.
   - `client/module_desktop_core/lib/src/foundation/platform/desktop_app_info_source.dart`, and its adapter
     `client/desktop/lib/core/platform/flutter_desktop_app_info_source.dart`.
   - Deletes `no_op_analytics_client.dart`.
-  - `injection_test.dart`: expects the new client, capability still disabled.
+  - `injection_test.dart`: expects the new adapter under both interfaces, capability still disabled.
 - **Why:** it can be reviewed and merged with no release risk, ahead of the privacy decision.
 - **Risk and test focus:** low, since the capability stays off and nothing calls it. Tests with a fake HTTP client:
   - The exact body against the pinned contract, for a sample of events.
   - `logProductEvent` completes before a never-completing POST does.
+  - Events logged before the service starts wait for it and arrive in order, and teardown doesn't hang when nothing ever
+    listened.
   - Retry happens on network error, timeout, `500` and `NotAuthenticatedError`, and not on `400`, `404`, `413` or `429`.
   - A retry after an account change sends nothing.
   - The 7 outside events send nothing, and voice sends `{}`.
@@ -820,13 +840,13 @@ no redesign is needed. This revised version was not re-reviewed, because the fix
 | Finding | Outcome |
 | --- | --- |
 | Rated blocking: the Mongo delete may be denied for a separate suppression identity | Downgraded. The owner's 2026-08-08 decision runs suppression under the app's production environment. Kept the doc updates and proof by drill |
-| The client imported `module_auth` types into `client/desktop`, against a project rule | Fixed. The request moved to `module_core`, as `ProductAnalyticsEventClient` after step 6's architecture review |
+| The client imported `module_auth` types into `client/desktop`, against a project rule | Fixed. The request moved to `module_core`, as `ProductAnalyticsEventApi` |
 | Rolling back the export after step 7 can leave a permanent gap | Fixed. Added a bounded rescan procedure |
 | The QA check in step 7 was wrong, because release probes do sign in to production | Fixed. Replaced with an exclusion check |
 | The privacy gate didn't name the live public notice | Fixed. Added to the gate |
 | Deletion would first be proven after real rows exist | Fixed. Added the drill to step 7's gate, which made a separate ACL check unnecessary |
 | Deployment order named only the sweep job | Fixed. It now names both paths |
-| Retry missed a failed token refresh | Fixed. The reviewer proposed comparing account ids, but no comparison is needed: `postForUser` already refuses a changed account before any network call |
+| Retry missed a failed token refresh | Fixed. `NotAuthenticatedError` is retried. Step 6's reviews later added the account check before each retry, so a sign-out stops the retries |
 | Minor: schema type names, first clamp deploy, denominators, single clock read, timeout wording, docs lists, date table wording, `+build` suffix, Messages-only prop in the shared chart loop | Fixed |
 | Removals: the `-internal` version group and the `platform` assertion | Applied. The version group was confirmed dead in `stage_desktop_bundle.dart` |
 

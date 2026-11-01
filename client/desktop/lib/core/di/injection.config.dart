@@ -22,6 +22,8 @@ import 'package:sesori_desktop/core/platform/channel_voice_mode_config_source.da
     as _i456;
 import 'package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart'
     as _i202;
+import 'package:sesori_desktop/core/platform/desktop_analytics_client.dart'
+    as _i221;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
 import 'package:sesori_desktop/core/platform/desktop_composer_image_picker.dart'
@@ -105,6 +107,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
     );
+    gh.lazySingleton<_i221.DesktopAnalyticsClient>(
+      () => _i221.DesktopAnalyticsClient(),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i880.DesktopFileSaveClient>(
       () => _i880.DesktopFileSaveClient(),
     );
@@ -133,6 +139,16 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i191.NoOpFeedbackPromptConfigSource(),
     );
     gh.lazySingleton<_i316.LaunchAtLogin>(() => _i122.IoLaunchAtLogin());
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => registerModule.analyticsClient(
+        client: gh<_i221.DesktopAnalyticsClient>(),
+      ),
+    );
+    gh.lazySingleton<_i316.DesktopProductEventSource>(
+      () => registerModule.desktopProductEventSource(
+        client: gh<_i221.DesktopAnalyticsClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
       () => _i393.PathProviderTemporaryDirectoryProvider(),
     );

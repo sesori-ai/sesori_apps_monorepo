@@ -1,8 +1,8 @@
 import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:package_info_plus/package_info_plus.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/flutter_desktop_app_info_source.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 void main() {
   final source = FlutterDesktopAppInfoSource();
@@ -10,9 +10,9 @@ void main() {
   tearDown(() => debugDefaultTargetPlatformOverride = null);
 
   for (final (target, platform) in const [
-    (TargetPlatform.macOS, ProductAnalyticsEventPlatform.macos),
-    (TargetPlatform.linux, ProductAnalyticsEventPlatform.linux),
-    (TargetPlatform.windows, ProductAnalyticsEventPlatform.windows),
+    (TargetPlatform.macOS, DesktopBundleOs.macos),
+    (TargetPlatform.linux, DesktopBundleOs.linux),
+    (TargetPlatform.windows, DesktopBundleOs.windows),
   ]) {
     test("$target is $platform", () {
       debugDefaultTargetPlatformOverride = target;

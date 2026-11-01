@@ -6,7 +6,6 @@ library;
 // so shell consumers don't need a direct sesori_shared import for it).
 export "package:sesori_shared/sesori_shared.dart" show AuthUser, BridgeSupervisedExitCode;
 
-export "src/api/auth_server_analytics_client.dart";
 export "src/api/bridge_id_storage.dart";
 export "src/api/bridge_process_api.dart";
 export "src/api/bridge_process_log_storage.dart";
@@ -46,6 +45,7 @@ export "src/foundation/platform/bridge_process_environment.dart";
 export "src/foundation/platform/desktop_app_info_source.dart";
 export "src/foundation/platform/desktop_application_support_directory.dart";
 export "src/foundation/platform/desktop_application_terminator.dart";
+export "src/foundation/platform/desktop_product_event_source.dart";
 export "src/foundation/platform/file_access_permission.dart";
 export "src/foundation/platform/installed_desktop_bundle_source.dart";
 export "src/foundation/platform/launch_at_login.dart";
@@ -69,6 +69,7 @@ export "src/services/bridge_process_state.dart";
 export "src/services/control_command_service.dart";
 export "src/services/desktop_attention_service.dart";
 export "src/services/desktop_instance_service.dart";
+export "src/services/desktop_product_analytics_delivery_service.dart";
 export "src/services/desktop_relay_connection_service.dart";
 export "src/services/desktop_update_service.dart";
 export "src/services/window_bounds_service.dart";
