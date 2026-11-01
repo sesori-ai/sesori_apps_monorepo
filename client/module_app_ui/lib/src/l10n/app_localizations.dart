@@ -2047,18 +2047,6 @@ abstract class AppLocalizations {
   /// **'A temporary comparison. If the one you pick can\'t run, dictation uses the server.'**
   String get settingsVoiceEngineDescription;
 
-  /// Dictation engine option: the speech model shipped inside the app
-  ///
-  /// In en, this message translates to:
-  /// **'Embedded'**
-  String get settingsVoiceEngineEmbedded;
-
-  /// No description provided for @settingsVoiceEngineEmbeddedDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'The model inside this app. English only. Stays on this phone.'**
-  String get settingsVoiceEngineEmbeddedDescription;
-
   /// Dictation engine option: the operating system's own speech engine
   ///
   /// In en, this message translates to:

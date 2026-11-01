@@ -1,13 +1,10 @@
 /// Which engine transcribes a dictation, as picked in Settings. Temporary, for
-/// comparing the three until one is decided.
+/// comparing the two until one is decided.
 enum VoiceEngine({
   /// The persisted spelling. Pinned here rather than derived from the enum name so
   /// renaming a case cannot orphan a stored preference.
   required final String storageValue,
 }) {
-  /// The speech model shipped inside the app.
-  embedded(storageValue: "embedded"),
-
   /// The operating system's own engine.
   device(storageValue: "device"),
 

@@ -47,12 +47,10 @@ class const VoiceEngineSettingsView({
                     for (final engine in VoiceEngine.values)
                       _VoiceEngineOption(
                         title: switch (engine) {
-                          VoiceEngine.embedded => loc.settingsVoiceEngineEmbedded,
                           VoiceEngine.device => loc.settingsVoiceEngineDevice,
                           VoiceEngine.remote => loc.settingsVoiceEngineRemote,
                         },
                         subtitle: switch (engine) {
-                          VoiceEngine.embedded => loc.settingsVoiceEngineEmbeddedDescription,
                           VoiceEngine.device => loc.settingsVoiceEngineDeviceDescription,
                           VoiceEngine.remote => loc.settingsVoiceEngineRemoteDescription,
                         },

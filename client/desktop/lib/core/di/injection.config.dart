@@ -81,8 +81,6 @@ import 'package:sesori_desktop/core/platform/no_op_founder_call_config_source.da
     as _i1005;
 import 'package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart'
     as _i393;
-import 'package:sesori_desktop/core/platform/unsupported_embedded_speech_source.dart'
-    as _i763;
 import 'package:sesori_desktop/core/platform/unsupported_on_device_speech_source.dart'
     as _i567;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
@@ -170,9 +168,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i903.MasterKeyStore>(
       () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
-    );
-    gh.lazySingleton<_i948.EmbeddedSpeechSource>(
-      () => _i763.UnsupportedEmbeddedSpeechSource(),
     );
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i202.DesktopActiveBridgeLocality(

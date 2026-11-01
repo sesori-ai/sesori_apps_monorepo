@@ -46,9 +46,9 @@ void main() {
 
   test("a failed write is recovered", () async {
     when(
-      () => persister.writeString(key: StringPreferenceKey.voiceEngine, value: "embedded"),
+      () => persister.writeString(key: StringPreferenceKey.voiceEngine, value: "remote"),
     ).thenThrow(StateError("locked"));
 
-    await expectLater(storage.write(engine: VoiceEngine.embedded), completes);
+    await expectLater(storage.write(engine: VoiceEngine.remote), completes);
   });
 }

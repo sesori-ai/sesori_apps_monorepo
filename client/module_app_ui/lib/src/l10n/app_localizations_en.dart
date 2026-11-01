@@ -1088,12 +1088,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'A temporary comparison. If the one you pick can\'t run, dictation uses the server.';
 
   @override
-  String get settingsVoiceEngineEmbedded => 'Embedded';
-
-  @override
-  String get settingsVoiceEngineEmbeddedDescription => 'The model inside this app. English only. Stays on this phone.';
-
-  @override
   String get settingsVoiceEngineDevice => 'Device';
 
   @override

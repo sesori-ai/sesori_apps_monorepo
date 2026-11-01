@@ -1,6 +1,5 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/api/embedded_speech_api.dart";
 import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
@@ -12,7 +11,6 @@ class MockRealtimeVoiceClient() extends Mock implements RealtimeVoiceClient;
 
 class MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
 
-class MockEmbeddedSpeechApi() extends Mock implements EmbeddedSpeechApi;
 
 void main() {
   late MockVoiceApi api;
@@ -24,7 +22,6 @@ void main() {
       api: api,
       realtimeClient: MockRealtimeVoiceClient(),
       onDeviceSpeechApi: MockOnDeviceSpeechApi(),
-      embeddedSpeechApi: MockEmbeddedSpeechApi(),
     );
   });
 
