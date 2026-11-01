@@ -74,6 +74,7 @@ void main() {
 
       when(() => lifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleController.stream);
       when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
+      when(() => authSession.currentState).thenReturn(const AuthState.initial());
       when(roomKeyStorage.clearRoomKey).thenAnswer((_) async {});
     });
 
@@ -270,7 +271,6 @@ void main() {
       }
 
       setUp(() {
-        when(() => authSession.currentState).thenReturn(const AuthState.initial());
         when(
           () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
         ).thenAnswer((_) async => "token");
@@ -314,6 +314,19 @@ void main() {
         expect(await service.connectWithFreshAuthToken(), isFalse);
 
         expect(service.currentStatus, isA<ConnectionDisconnected>());
+      });
+
+      test("a sign-out during the handshake tears the socket down instead of connecting", () async {
+        final client = workingClient();
+        when(client.connect).thenAnswer((_) async {
+          when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
+        });
+        final service = serviceWith(clients: [client]);
+
+        expect(await service.connectWithFreshAuthToken(), isFalse);
+
+        expect(service.currentStatus, isA<ConnectionDisconnected>());
+        verify(client.disconnect).called(1);
       });
 
       test("a connect while the retry is pending opens no second socket", () async {

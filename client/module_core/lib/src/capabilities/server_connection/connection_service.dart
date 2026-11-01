@@ -186,7 +186,10 @@ class ConnectionService(
         _retryFirstConnect(config: config);
         return false;
       }
-      final (:response, :closeCode) = await _connectViaRelay(config);
+      final (:response, :closeCode) = await _connectViaRelay(
+        config,
+        isStale: () => _authSession.currentState is AuthUnauthenticated,
+      );
       if (response is SuccessResponse<HealthResponse>) return true;
       if (RelayCloseCodes.shouldReconnect(closeCode)) _retryFirstConnect(config: config);
       return false;
