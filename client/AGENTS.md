@@ -128,7 +128,8 @@ Desktop uses five phases, without mobile migration:
 4. `configureCoreDependencies(getIt)`
 5. `configureDesktopCoreDependencies(getIt)`
 
-Retain primary-process admission before storage I/O and disabled desktop analytics.
+Retain primary-process admission before storage I/O. Desktop analytics is enabled only in release builds with a compiled
+bundle identity.
 
 Desktop services register in `module_desktop_core`, not in `client/desktop`.
 
