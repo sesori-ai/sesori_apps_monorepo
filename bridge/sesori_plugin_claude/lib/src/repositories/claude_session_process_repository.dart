@@ -689,7 +689,12 @@ String _newMessageId() {
 /// re-encodes large images (a ~900 KB PNG comes back as a smaller JPEG), so
 /// image bytes cannot identify the prompt. An image block matches any image
 /// block in the same position; text and block order keep exact JSON matching.
+/// Claude can also echo a single text block as plain string content (seen on
+/// 2.1.316 for prompts starting with an absolute path), which matches its text.
 bool _samePromptContent(Object? expected, Object? actual) {
+  if (expected case [{"type": "text", "text": final String text}] when actual is String) {
+    return text == actual;
+  }
   if (expected is List && actual is List) {
     if (expected.length != actual.length) return false;
     for (var index = 0; index < expected.length; index++) {
