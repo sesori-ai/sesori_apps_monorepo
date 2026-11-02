@@ -238,6 +238,27 @@ void main() {
       expect(starts, 0);
     });
 
+    test("keeps a deleted session folder typed so the bridge can serve stored history", () async {
+      final repository = _repository(
+        processFactory: ({required spec}) async => throw PluginWorkingDirectoryMissingException(
+          "spawn Pi",
+          path: spec.workingDirectory,
+          cause: const ProcessException("pi", [], "No such file or directory", 2),
+        ),
+      );
+
+      final warnings = await _captureWarnings(
+        () => expectLater(
+          repository.loadHistory(sessionId: "session", resolved: _resolved()),
+          throwsA(
+            isA<PluginWorkingDirectoryMissingException>().having((error) => error.path, "path", "/exact/header-cwd"),
+          ),
+        ),
+      );
+      // The bridge logs the typed failure when it serves stored history.
+      expect(warnings, isEmpty);
+    });
+
     test("falls back to file only for exact no-model startup failure and logs cause plus path", () async {
       final root = Directory.systemTemp.createTempSync("pi-history-repository-");
       addTearDown(() => root.deleteSync(recursive: true));

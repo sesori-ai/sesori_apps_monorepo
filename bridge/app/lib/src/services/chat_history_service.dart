@@ -178,7 +178,9 @@ class ChatHistoryService({
       // store already holds with the plugin's explanation. Nothing is written:
       // the store stays stale, so a later open retries and recovers once the
       // backend can restore the session again.
-      Log.w("Backend cannot restore session $sessionId; serving stored history", error.cause, stackTrace);
+      // The typed error's description keeps its cause and any local detail,
+      // such as a missing folder's path.
+      Log.w("Backend cannot restore session $sessionId; serving stored history", error, stackTrace);
       // No backfill will finalize a dead turn's open tool parts while the
       // session stays unrestorable, so sweep them here as the success path does.
       await _sweepUnlessTurnRunning(sessionId: sessionId);

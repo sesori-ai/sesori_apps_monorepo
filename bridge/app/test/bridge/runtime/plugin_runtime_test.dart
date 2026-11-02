@@ -1,9 +1,11 @@
 import "dart:async";
+import "dart:io";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -49,6 +51,36 @@ void main() {
     await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
 
     expect(factory.plugins.single.onStartedCount, 1);
+  });
+
+  test("logs entering degraded and recovering once per transition", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    final logs = BufferingStdout();
+
+    await IOOverrides.runZoned(() async {
+      await runtime.startEager(pluginIds: const ["one"]);
+      final statuses = factory.plugins.single.statuses;
+      for (final hint in ["Retry once.", "Retry twice."]) {
+        statuses.add(
+          PluginDegraded(
+            since: DateTime.utc(2026, 11, 2),
+            recoverable: true,
+            requiresUserAction: true,
+            userActionHint: hint,
+          ),
+        );
+        await pumpEventQueue();
+      }
+      expect(runtime.snapshot.single.state, PluginRuntimeState.degraded);
+      statuses.add(const PluginReady());
+      await pumpEventQueue();
+    }, stderr: () => logs);
+
+    expect(RegExp('Plugin "one" degraded: PluginDegraded').allMatches(logs.text), hasLength(1));
+    expect(logs.text, contains("Retry once."));
+    expect(RegExp('Plugin "one" recovered: PluginReady').allMatches(logs.text), hasLength(1));
   });
 
   test("a warm-up that fails or hangs neither fails nor delays the start", () async {

@@ -66,6 +66,7 @@ export "src/plugin_operation_exception.dart";
 export "src/plugin_permission_reply.dart";
 export "src/plugin_session_unrestorable_exception.dart";
 export "src/plugin_stale_options_exception.dart";
+export "src/plugin_working_directory_missing_exception.dart";
 export "src/process/process_identity.dart";
 export "src/process/process_user.dart";
 export "src/process/server_clock.dart";

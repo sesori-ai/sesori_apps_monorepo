@@ -1123,6 +1123,9 @@ final class PiSessionProcessRepository({
   );
 
   Never _throwLoadFailure({required String path, required Object error, required StackTrace stack}) {
+    // The typed failure lets the bridge serve the history it already holds;
+    // the bridge logs it there, so it is not logged twice.
+    if (error is PluginSessionUnrestorableException) Error.throwWithStackTrace(error, stack);
     final localError = switch (error) {
       PiInvalidSessionHistoryException(:final cause) => PiSessionHistoryParseException(innerError: cause),
       PiRpcCommandFailureException(:final error) => PiSessionHistoryCommandDiagnostic(detail: error),

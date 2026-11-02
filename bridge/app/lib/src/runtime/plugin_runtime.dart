@@ -1964,12 +1964,19 @@ class PluginRuntime({
       _publishSnapshots();
       return;
     }
+    final previousState = slot.state;
     slot.state = switch (status) {
       PluginStarting() || PluginReady() => PluginRuntimeState.active,
       PluginDegraded() || PluginRestarting() => PluginRuntimeState.degraded,
       PluginStopping() => throw StateError("handled above"),
       PluginFailed() || PluginStopped() => throw StateError("handled above"),
     };
+    final pluginId = slot.registration.descriptor.id;
+    if (slot.state == PluginRuntimeState.degraded && previousState != PluginRuntimeState.degraded) {
+      Log.w('Plugin "$pluginId" degraded: $status');
+    } else if (slot.state == PluginRuntimeState.active && previousState == PluginRuntimeState.degraded) {
+      Log.i('Plugin "$pluginId" recovered: $status');
+    }
     _publishSnapshots();
   }
 
