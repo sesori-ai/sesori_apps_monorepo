@@ -255,7 +255,8 @@ void main() {
           ),
         ),
       );
-      expect(warnings, contains("'/exact/header-cwd' does not exist"));
+      // The bridge logs the typed failure when it serves stored history.
+      expect(warnings, isEmpty);
     });
 
     test("falls back to file only for exact no-model startup failure and logs cause plus path", () async {
