@@ -368,6 +368,35 @@ void main() {
       await subscription.cancel();
     });
 
+    test("correlates a replay that echoes a text prompt as string content", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final promptIds = <String?>[];
+      final subscription = repository.events
+          .where((event) => event is ClaudeSessionProcessMessage)
+          .cast<ClaudeSessionProcessMessage>()
+          .where((event) => event.message is ClaudeUserMessage)
+          .listen((event) => promptIds.add(event.promptId));
+      const text = "/Users/dev/Downloads/clip.mov convert this to mp4";
+      final turn = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: text)],
+        promptId: "prompt-path",
+      );
+      final written = await waitForFrame(process, "user");
+
+      process.emit({
+        ..._replayOf(written, uuid: "replay-path"),
+        "message": {"role": "user", "content": text},
+      });
+      await pump();
+
+      expect(promptIds, ["prompt-path"]);
+      process.emit(_result());
+      expect(await turn.outcome, isA<ClaudeTurnCompleted>());
+      await subscription.cancel();
+    });
+
     test("does not correlate an unmarked text user message", () async {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
