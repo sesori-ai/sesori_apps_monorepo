@@ -1508,6 +1508,42 @@ void main() {
       );
     });
 
+    test("a relay reconnect refreshes the transcript once; the initial connect does not", () async {
+      // The bridge drops SSE events it handed to a dying socket, so only this
+      // refresh brings back the replies and tool states missed during the drop.
+      final connected = mockConnectionService.currentStatus;
+      Future<ApiResponse<MessageWithPartsResponse>> fetchTranscript() => mockSessionService.getMessages(
+        sessionId: sessionId,
+        limit: any(named: "limit"),
+        before: any(named: "before"),
+        storedOnly: any(named: "storedOnly"),
+      );
+      // The real status stream replays the current status to a new listener.
+      connectionStatus.add(connected);
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      await _awaitNotRefreshing(cubit);
+      verify(fetchTranscript).called(1);
+
+      const reconnecting = ConnectionStatus.reconnecting(
+        config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
+      );
+      when(() => mockConnectionService.currentStatus).thenReturn(reconnecting);
+      connectionStatus.add(reconnecting);
+      await Future<void>.delayed(Duration.zero);
+      when(() => mockConnectionService.currentStatus).thenReturn(connected);
+      connectionStatus.add(connected);
+      await untilCalled(fetchTranscript);
+      await _awaitNotRefreshing(cubit);
+      for (var turn = 0; turn < 5; turn++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      verify(fetchTranscript).called(1);
+      expect(cubit.state, isA<SessionDetailLoaded>().having((state) => state.messages, "messages", hasLength(1)));
+    });
+
     test("metadata refresh failure preserves the loaded transcript and buffered events", () async {
       final cubit = buildCubit();
       addTearDown(cubit.close);

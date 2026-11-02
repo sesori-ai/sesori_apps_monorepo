@@ -97,6 +97,9 @@ class ConnectionService(
   int _reconnectAttemptId = 0;
   bool _isInBackground = false;
   DateTime? _backgroundedAt;
+  // When the live relay socket dropped, so the next connect can log how long
+  // events were not reaching this device.
+  DateTime? _droppedAt;
 
   static const _maxRelayReconnectBackoff = Duration(seconds: 30);
 
@@ -462,6 +465,10 @@ class ConnectionService(
           closeCode: relayClient.lastCloseCode,
         );
       }
+      final droppedAt = _droppedAt;
+      _droppedAt = null;
+      final downFor = droppedAt == null ? "" : ", down=${_clock().difference(droppedAt).inMilliseconds}ms";
+      logi("Relay connected (resumed=${relayClient.didResume}$downFor)");
       _status.add(ConnectionStatus.connected(config: committedConfig, health: health));
       return (response: ApiResponse.success(health), closeCode: null);
     } catch (error, stackTrace) {
@@ -513,6 +520,7 @@ class ConnectionService(
     _cancelReconnectDelay();
     unawaited(_disconnectRelayClient());
     _lastHealth.add(null);
+    _droppedAt = null;
     _status.add(const ConnectionStatus.disconnected());
   }
 
@@ -852,14 +860,16 @@ class ConnectionService(
     if (config == null) return;
     if (_status.value is ConnectionDisconnected) return;
 
+    final closeCode = _relayClient?.lastCloseCode;
+    logi("Relay dropped closeCode=$closeCode");
+    _droppedAt ??= _clock();
+
     if (_isInBackground) {
       logd("App is backgrounded — deferring reconnect to foreground resume");
       unawaited(_disconnectRelayClient());
       _status.add(ConnectionStatus.connectionLost(config: config));
       return;
     }
-
-    final closeCode = _relayClient?.lastCloseCode;
 
     if (!RelayCloseCodes.shouldReconnect(closeCode)) {
       final isAuthCode = closeCode == RelayCloseCodes.authFailure || closeCode == RelayCloseCodes.authRequired;
