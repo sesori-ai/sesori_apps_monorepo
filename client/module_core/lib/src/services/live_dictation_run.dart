@@ -76,15 +76,24 @@ final class LiveDictationRun({
 }) {
   final Completer<LiveDictationEnding> _ended = Completer<LiveDictationEnding>();
   final Queue<Uint8List> _heldAudio = Queue<Uint8List>();
+  final Stopwatch _sinceStart = Stopwatch()..start();
   late final StreamSubscription<Uint8List> _frameSubscription;
   _SocketPhase _phase = const _SocketConnecting();
   LiveWords _words = LiveWords.none;
+
+  /// Everything that waited for `ready`, including what has since gone out.
   int _heldBytes = 0;
-  bool _audioForwarded = false;
+  int _forwardedFrames = 0;
+  int _forwardedBytes = 0;
+
+  /// The loudest sample the microphone delivered, so a silent input shows in the
+  /// log: 0 is digital silence and 32768 is full scale.
+  int _peakSample = 0;
   bool _micDone = false;
 
   /// Set once the user has released.
   Future<void>? _micStop;
+  Duration? _heldFor;
 
   this {
     _frameSubscription = frames.listen(
@@ -104,14 +113,37 @@ final class LiveDictationRun({
   /// out, which waits for `ready` after a quick release and for the allowed pace
   /// after a slow start.
   Future<LiveDictationEnding> finish() {
-    if (_phase is! _SocketEnded) _micStop ??= _stopMic();
+    if (_phase is! _SocketEnded) {
+      _heldFor ??= _sinceStart.elapsed;
+      _micStop ??= _stopMic();
+    }
     return _ended.future;
   }
 
   /// Sends `cancel` when the socket is streaming, and releases everything.
   Future<void> cancel() async {
-    if (_phase is! _SocketEnded) unawaited(_end(ending: const LiveDictationCancelled()));
+    if (_phase is! _SocketEnded) {
+      logi("Live dictation cancelled: ${_audioSummary(dailySecondsRemaining: null)}");
+      unawaited(_end(ending: const LiveDictationCancelled()));
+    }
     await _ended.future;
+  }
+
+  /// One line that tells no audio sent, a silent microphone and a provider that
+  /// heard nothing apart. It never holds the words.
+  String _audioSummary({required int? dailySecondsRemaining}) {
+    final heldFor = _heldFor;
+    final forwardedSeconds = (_forwardedBytes / _pcmBytesPerSecond).toStringAsFixed(1);
+    return [
+      "forwarded $_forwardedFrames frames, $_forwardedBytes bytes ($forwardedSeconds s)",
+      "$_heldBytes bytes waited for ready",
+      "peak sample $_peakSample",
+      if (heldFor == null)
+        "not released, ${_sinceStart.elapsedMilliseconds} ms in"
+      else
+        "released after ${heldFor.inMilliseconds} ms",
+      if (dailySecondsRemaining != null) "$dailySecondsRemaining daily seconds remaining",
+    ].join(", ");
   }
 
   Future<void> _connect({required Future<VoiceRealtimeConnection> connecting}) async {
@@ -131,6 +163,7 @@ final class LiveDictationRun({
   }
 
   void _onFrame(Uint8List frame) {
+    if (_phase is! _SocketEnded) _trackPeak(frame: frame);
     switch (_phase) {
       case _SocketStreaming(:final connection):
         _forward(connection: connection, frame: frame);
@@ -150,6 +183,15 @@ final class LiveDictationRun({
     }
   }
 
+  /// Frames hold whole PCM16 little-endian samples.
+  void _trackPeak({required Uint8List frame}) {
+    final samples = ByteData.sublistView(frame);
+    for (var offset = 0; offset + _pcmBytesPerSample <= frame.length; offset += _pcmBytesPerSample) {
+      final level = samples.getInt16(offset, Endian.little).abs();
+      if (level > _peakSample) _peakSample = level;
+    }
+  }
+
   void _onFramesDone() {
     _micDone = true;
     if (_phase case _SocketStreaming(:final connection)) connection.finish();
@@ -163,8 +205,8 @@ final class LiveDictationRun({
       case VoiceRealtimeWords(:final confirmedDelta, :final provisional):
         _words = LiveWords(confirmed: _words.confirmed + confirmedDelta, provisional: provisional);
         _onWords(words: _words);
-      case VoiceRealtimeCompleted(:final outcome):
-        _onCompleted(outcome: outcome);
+      case VoiceRealtimeCompleted(:final outcome, :final dailySecondsRemaining):
+        _onCompleted(outcome: outcome, dailySecondsRemaining: dailySecondsRemaining);
       case VoiceRealtimeFailed(:final error):
         _fail(error: error, stackTrace: StackTrace.current);
     }
@@ -212,13 +254,21 @@ final class LiveDictationRun({
   }
 
   void _forward({required VoiceRealtimeConnection connection, required Uint8List frame}) {
-    if (connection.sendAudio(frame: frame)) _audioForwarded = true;
+    if (!connection.sendAudio(frame: frame)) return;
+    _forwardedFrames++;
+    _forwardedBytes += frame.length;
   }
 
   /// The server finalizes before it completes, so what is still provisional is
   /// not part of the result.
-  void _onCompleted({required VoiceDictationOutcome outcome}) {
+  void _onCompleted({required VoiceDictationOutcome outcome, required int? dailySecondsRemaining}) {
     final transcript = _words.confirmed.trim();
+    final summary = "outcome ${outcome.name}, ${_audioSummary(dailySecondsRemaining: dailySecondsRemaining)}";
+    if (transcript.isEmpty) {
+      logw("Live dictation completed with no words: $summary");
+    } else {
+      logi("Live dictation completed: $summary");
+    }
     unawaited(
       _end(
         ending: transcript.isEmpty && outcome == VoiceDictationOutcome.finished
@@ -232,12 +282,16 @@ final class LiveDictationRun({
   /// can be recovered, since live keeps no recording (D20).
   void _fail({required VoiceTranscriptionError error, required StackTrace stackTrace}) {
     if (_phase is _SocketEnded) return;
-    logw("Live dictation failed", _diagnosticCause(error: error), stackTrace);
+    logw(
+      "Live dictation failed: ${_audioSummary(dailySecondsRemaining: null)}",
+      _diagnosticCause(error: error),
+      stackTrace,
+    );
 
     final words = _words.text.trim();
     unawaited(
       _end(
-        ending: !_audioForwarded
+        ending: _forwardedFrames == 0
             ? LiveDictationFellBack(error: error)
             : words.isEmpty
             ? LiveDictationFailed(error: error)
