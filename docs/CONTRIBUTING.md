@@ -4,7 +4,7 @@ Thanks for your interest in Sesori. This repo contains the Bridge, the mobile cl
 
 ## Prerequisites
 
-- **asdf** — recommended for version management. The repo's [`.tool-versions`](../.tool-versions) pins the Flutter SDK and its bundled Dart SDK automatically.
+- **asdf** — recommended for version management. The repo's [`.tool-versions`](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/.tool-versions) pins the Flutter SDK and its bundled Dart SDK automatically.
 - **Flutter** — used by the `client/` workspace.
 - **Dart SDK** — used by the `bridge/` workspace. It ships with the pinned Flutter version, so no separate install is needed.
 - **Make** — each workspace uses a Makefile for common tasks.
@@ -76,8 +76,8 @@ make bump-version-check        # preview the bump without writing changes
 - Use enums for closed scalar sets and sealed classes for variants with different data.
 - Never use an empty string to represent missing data when `null` is more honest.
 - Never hand-edit generated files. Change the source and run `make codegen`.
-- The Bridge workspace follows a strict layered architecture: Foundation → API → Repository → Service → Consumer. See [bridge/ARCHITECTURE.md](../bridge/ARCHITECTURE.md) for details.
-- Read the repo root [AGENTS.md](../AGENTS.md) and workspace-specific `AGENTS.md` files when your change touches that area.
+- The Bridge workspace follows a strict layered architecture: Foundation → API → Repository → Service → Consumer. See [bridge/ARCHITECTURE.md](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/bridge/ARCHITECTURE.md) for details.
+- Read the repo root [AGENTS.md](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/AGENTS.md) and workspace-specific `AGENTS.md` files when your change touches that area.
 
 ## Running tests
 
@@ -98,7 +98,7 @@ cd ../client && make analyze && make test
 
 ### Contributor License Agreement
 
-This repository requires a Contributor License Agreement (CLA). Before your first pull request can be merged, please read [CLA.md](../CLA.md) and comment on the pull request with:
+This repository requires a Contributor License Agreement (CLA). Before your first pull request can be merged, please read [CLA.md](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/CLA.md) and comment on the pull request with:
 
 ```text
 I have read the CLA Document and I hereby sign the CLA
@@ -106,4 +106,4 @@ I have read the CLA Document and I hereby sign the CLA
 
 The CLA Assistant bot will then record your agreement. This is a one-time requirement.
 
-By contributing, you agree that your contributions will be licensed under the same [Functional Source License, Version 1.1, Apache 2.0 Future License](../LICENSE) that covers this project.
+By contributing, you agree that your contributions will be licensed under the same [Functional Source License, Version 1.1, Apache 2.0 Future License](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/LICENSE) that covers this project.
