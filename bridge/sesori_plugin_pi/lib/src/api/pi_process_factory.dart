@@ -45,7 +45,14 @@ final class HostPiProcessFactory({required final HostProcessService _processes})
       );
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);
       return _HostPiProcessHandle(process: process, processes: _processes);
-    } on Object {
+    } on Object catch (error, stack) {
+      // A deleted session folder fails only that session, not the Pi runtime.
+      if (!io.Directory(spec.workingDirectory).existsSync()) {
+        Error.throwWithStackTrace(
+          PluginWorkingDirectoryMissingException("spawn Pi", path: spec.workingDirectory, cause: error),
+          stack,
+        );
+      }
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.failed);
       rethrow;
     }

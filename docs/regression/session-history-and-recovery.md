@@ -23,7 +23,8 @@ reconnect or restart.
   advanced outside Sesori is detected as stale, re-read, and re-cached.
 - When a backfill fails because the plugin reports that the backend cannot
   restore the session as stored (`PluginSessionUnrestorableException`; today
-  only OMP's "Could not restore model"), an ordinary page or load-through read
+  OMP's "Could not restore model", and Pi when the session's recorded folder
+  was deleted), an ordinary page or load-through read
   serves what the store holds instead of failing: flagged `awaitingHarnessSync`
   and carrying the plugin's `cannotContinueMessage`. An empty store serves an
   empty page with that message when the bridge has the session's row but no

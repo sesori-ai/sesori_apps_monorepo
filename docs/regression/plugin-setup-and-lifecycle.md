@@ -225,6 +225,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     the password flags do not turn sharing off; they shape only the private
     fallback server, and a degraded private start reports `mode: managed`.
   - **Rediscovery:** the next plugin start looks for the service again.
+- Pi and Claude Code report degraded when their binary fails to spawn and ready
+  on the next successful spawn. A spawn that fails because the session's
+  recorded folder no longer exists (for example a deleted worktree) fails only
+  that session's request with a typed "folder no longer exists" error and leaves
+  plugin health unchanged; the local log keeps the path.
+- The bridge log records each plugin entering degraded (warning, with the
+  degraded status and hint) and returning to active (info), once per transition.
 - A managed harness whose first handshake stalls does not hang bridge startup.
   Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
   within it reports connected, failing within it reports degraded, and exceeding

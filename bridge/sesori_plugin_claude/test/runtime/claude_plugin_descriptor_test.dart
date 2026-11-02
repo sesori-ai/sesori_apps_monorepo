@@ -321,6 +321,39 @@ void main() {
       expect(plugin.currentStatus, const PluginReady());
       expect(plugin.describe().details, {"transport": "claude-stream-json"});
     });
+
+    test("fails a spawn in a deleted session folder without reporting a spawn failure", () async {
+      final directory = await Directory.systemTemp.createTemp("claude-missing-cwd-");
+      await directory.delete();
+      final factory = HostClaudeProcessFactory(
+        processes: _ProcessService([const ProcessException("claude", [], "No such file or directory", 2)]),
+        environment: const {},
+      );
+      final outcomes = <ProcessSpawnOutcome>[];
+      final subscription = factory.events.listen(outcomes.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await factory.dispose();
+      });
+
+      await expectLater(
+        factory.spawn(
+          ClaudeProcessLaunch(
+            binaryPath: "claude",
+            arguments: const [],
+            workingDirectory: directory.path,
+            environment: const {},
+          ),
+        ),
+        throwsA(
+          isA<PluginWorkingDirectoryMissingException>()
+              .having((error) => error.path, "path", directory.path)
+              .having((error) => error.cause, "cause", isA<ProcessException>()),
+        ),
+      );
+      await _pump();
+      expect(outcomes, isEmpty);
+    });
   });
 
   group("ClaudePluginDescriptor.authenticate", () {

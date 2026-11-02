@@ -1129,6 +1129,8 @@ final class PiSessionProcessRepository({
       _ => error,
     };
     Log.w("[pi] failed to load session history at '$path'", localError, stack);
+    // The typed failure lets the bridge serve the history it already holds.
+    if (error is PluginSessionUnrestorableException) Error.throwWithStackTrace(error, stack);
     Error.throwWithStackTrace(
       PluginOperationException(
         "load Pi session history",

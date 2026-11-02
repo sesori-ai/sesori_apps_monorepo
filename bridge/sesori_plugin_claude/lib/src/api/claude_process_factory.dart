@@ -65,7 +65,14 @@ final class HostClaudeProcessFactory({
       final process = await spawnCommand(launch: launch);
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);
       return process;
-    } on Object {
+    } on Object catch (error, stack) {
+      // A deleted session folder fails only that session, not the Claude runtime.
+      if (!io.Directory(launch.workingDirectory).existsSync()) {
+        Error.throwWithStackTrace(
+          PluginWorkingDirectoryMissingException("spawn Claude", path: launch.workingDirectory, cause: error),
+          stack,
+        );
+      }
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.failed);
       rethrow;
     }

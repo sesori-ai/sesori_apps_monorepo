@@ -419,7 +419,7 @@ void main() {
       addTearDown(factory.dispose);
       final spec = PiLaunchSpec(
         binaryPath: "pi",
-        workingDirectory: "/project",
+        workingDirectory: directory.path,
         launch: const PiNoSession(),
         model: null,
         thinkingLevel: null,
@@ -461,6 +461,45 @@ void main() {
 
       expect(processes.arguments[0].last, processes.arguments[1].last);
       expect(File(processes.arguments[0].last).existsSync(), isTrue);
+    });
+
+    test("fails a spawn in a deleted session folder without reporting a spawn failure", () async {
+      final existing = await Directory.systemTemp.createTemp("pi-cwd-");
+      addTearDown(() => existing.delete(recursive: true));
+      final missing = await Directory.systemTemp.createTemp("pi-missing-cwd-");
+      await missing.delete();
+      final factory = HostPiProcessFactory(
+        processes: _Processes(spawnError: const ProcessException("pi", [], "No such file or directory", 2)),
+      );
+      final outcomes = <ProcessSpawnOutcome>[];
+      final subscription = factory.events.listen(outcomes.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await factory.dispose();
+      });
+      PiLaunchSpec spec({required String workingDirectory}) => PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: workingDirectory,
+        launch: const PiNoSession(),
+        model: null,
+        thinkingLevel: null,
+        environment: const {},
+      );
+
+      await expectLater(
+        factory.spawn(spec: spec(workingDirectory: missing.path)),
+        throwsA(
+          isA<PluginWorkingDirectoryMissingException>()
+              .having((error) => error.path, "path", missing.path)
+              .having((error) => error.cause, "cause", isA<ProcessException>()),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(outcomes, isEmpty);
+
+      await expectLater(factory.spawn(spec: spec(workingDirectory: existing.path)), throwsA(isA<ProcessException>()));
+      await Future<void>.delayed(Duration.zero);
+      expect(outcomes, [ProcessSpawnOutcome.failed]);
     });
   });
 }
