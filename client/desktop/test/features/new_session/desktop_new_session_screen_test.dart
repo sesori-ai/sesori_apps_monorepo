@@ -637,6 +637,7 @@ void main() {
           trayAvailability: SystemTrayAvailability.available,
           activity: BridgeControlActivity.idle,
           statusLabel: "Off",
+          statusDetail: null,
           processState: BridgeProcessStopped(),
           desiredState: BridgeProcessDesiredState.off,
           toggleTarget: BridgeProcessDesiredState.on,

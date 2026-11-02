@@ -102,7 +102,7 @@ void main() {
           const ControlMessage.status(
             startup: ControlStartupState.ready,
             relay: ControlRelayConnectionState.connected,
-            plugin: ControlPluginHealthState.healthy,
+            unhealthyPlugins: [],
           ),
         ),
       );

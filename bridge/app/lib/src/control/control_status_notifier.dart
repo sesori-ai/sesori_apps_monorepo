@@ -16,8 +16,8 @@ import "../foundation/relay_client.dart";
 /// Observed triggers — all push-based, no timers:
 /// - startup: authentication/registration/relay progress, including server waits;
 /// - plugin health: the lifecycle service's ordered eligible-plugin metadata
-///   snapshots, reduced to degraded when any eligible plugin is degraded or
-///   failed and healthy otherwise (eligibility is not runtime residency);
+///   snapshots, reduced to the degraded or failed plugins with their action
+///   hints (eligibility is not runtime residency);
 /// - relay connection state: [RelayClient.connectionState];
 /// - registration success: the auth-subsystem `registrations` stream, mapped
 ///   to a `registered{bridgeId}` push so the GUI can persist a readable copy
@@ -40,10 +40,10 @@ class ControlStatusNotifier({
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   // The relay is genuinely not connected before the orchestrator's first
-  // connect attempt; the plugin's health is unknown until its replay-latest
-  // status stream delivers the current value (immediately on subscribe).
+  // connect attempt. No plugin is reported unhealthy until the replay-latest
+  // metadata stream delivers the current value (immediately on subscribe).
   ControlRelayConnectionState _relay = ControlRelayConnectionState.disconnected;
-  ControlPluginHealthState _plugin = ControlPluginHealthState.unknown;
+  List<ControlUnhealthyPlugin> _unhealthyPlugins = const [];
   int _activeSessionCount = 0;
   ControlStartupState _startup = ControlStartupState.starting;
   ControlStatus? _lastSentStatus;
@@ -99,9 +99,8 @@ class ControlStatusNotifier({
   }
 
   void _handlePluginMetadata(List<PluginMetadata> metadata) {
-    final mapped = _mapPluginMetadata(metadata);
-    if (mapped == _plugin) return;
-    _plugin = mapped;
+    // _pushStatus dedupes an unchanged list by value.
+    _unhealthyPlugins = _mapPluginMetadata(metadata);
     _pushStatus();
   }
 
@@ -135,7 +134,7 @@ class ControlStatusNotifier({
     final status = ControlStatus(
       startup: _startup,
       relay: _relay,
-      plugin: _plugin,
+      unhealthyPlugins: _unhealthyPlugins,
       activeSessionCount: _activeSessionCount,
     );
     if (!force && status == _lastSentStatus) return;
@@ -157,12 +156,11 @@ class ControlStatusNotifier({
     }
   }
 
-  ControlPluginHealthState _mapPluginMetadata(List<PluginMetadata> metadata) {
-    final hasUnhealthyEligiblePlugin = metadata.any(
-      (plugin) => plugin.state == PluginLifecycleState.degraded || plugin.state == PluginLifecycleState.failed,
-    );
-    return hasUnhealthyEligiblePlugin ? ControlPluginHealthState.degraded : ControlPluginHealthState.healthy;
-  }
+  List<ControlUnhealthyPlugin> _mapPluginMetadata(List<PluginMetadata> metadata) => [
+    for (final plugin in metadata)
+      if (plugin.state == PluginLifecycleState.degraded || plugin.state == PluginLifecycleState.failed)
+        ControlUnhealthyPlugin(displayName: plugin.displayName, actionHint: plugin.actionHint),
+  ];
 
   ControlRelayConnectionState _mapRelayState(RelayConnectionState state) {
     return switch (state) {

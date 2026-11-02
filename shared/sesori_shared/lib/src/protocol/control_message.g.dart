@@ -53,23 +53,26 @@ ControlStatus _$ControlStatusFromJson(Map json) => ControlStatus(
     json['relay'],
     unknownValue: ControlRelayConnectionState.unknown,
   ),
-  plugin: $enumDecode(
-    _$ControlPluginHealthStateEnumMap,
-    json['plugin'],
-    unknownValue: ControlPluginHealthState.unknown,
-  ),
+  unhealthyPlugins: (json['unhealthyPlugins'] as List<dynamic>)
+      .map(
+        (e) => ControlUnhealthyPlugin.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+      .toList(),
   activeSessionCount: (json['activeSessionCount'] as num?)?.toInt() ?? 0,
   $type: json['type'] as String?,
 );
 
-Map<String, dynamic> _$ControlStatusToJson(ControlStatus instance) =>
-    <String, dynamic>{
-      'startup': _$ControlStartupStateEnumMap[instance.startup]!,
-      'relay': _$ControlRelayConnectionStateEnumMap[instance.relay]!,
-      'plugin': _$ControlPluginHealthStateEnumMap[instance.plugin]!,
-      'activeSessionCount': instance.activeSessionCount,
-      'type': instance.$type,
-    };
+Map<String, dynamic> _$ControlStatusToJson(
+  ControlStatus instance,
+) => <String, dynamic>{
+  'startup': _$ControlStartupStateEnumMap[instance.startup]!,
+  'relay': _$ControlRelayConnectionStateEnumMap[instance.relay]!,
+  'unhealthyPlugins': instance.unhealthyPlugins.map((e) => e.toJson()).toList(),
+  'activeSessionCount': instance.activeSessionCount,
+  'type': instance.$type,
+};
 
 const _$ControlStartupStateEnumMap = {
   ControlStartupState.unknown: 'unknown',
@@ -85,12 +88,6 @@ const _$ControlRelayConnectionStateEnumMap = {
   ControlRelayConnectionState.disconnected: 'disconnected',
   ControlRelayConnectionState.takenOver: 'taken_over',
   ControlRelayConnectionState.unknown: 'unknown',
-};
-
-const _$ControlPluginHealthStateEnumMap = {
-  ControlPluginHealthState.healthy: 'healthy',
-  ControlPluginHealthState.degraded: 'degraded',
-  ControlPluginHealthState.unknown: 'unknown',
 };
 
 ControlPromptRequest _$ControlPromptRequestFromJson(Map json) =>
@@ -155,3 +152,16 @@ ControlRegistered _$ControlRegisteredFromJson(Map json) => ControlRegistered(
 
 Map<String, dynamic> _$ControlRegisteredToJson(ControlRegistered instance) =>
     <String, dynamic>{'bridgeId': instance.bridgeId, 'type': instance.$type};
+
+_ControlUnhealthyPlugin _$ControlUnhealthyPluginFromJson(Map json) =>
+    _ControlUnhealthyPlugin(
+      displayName: json['displayName'] as String,
+      actionHint: json['actionHint'] as String?,
+    );
+
+Map<String, dynamic> _$ControlUnhealthyPluginToJson(
+  _ControlUnhealthyPlugin instance,
+) => <String, dynamic>{
+  'displayName': instance.displayName,
+  'actionHint': ?instance.actionHint,
+};

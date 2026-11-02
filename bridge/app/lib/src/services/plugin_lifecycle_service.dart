@@ -1215,10 +1215,13 @@ class PluginLifecycleService({
     required PluginRuntimeState? runtimeState,
     required PluginLifecycleState unavailableState,
   }) => switch (runtimeState) {
+    // A stopping runtime (idle suspension, restart, disable drain) is a
+    // deliberate transition like starting, not an impairment.
     PluginRuntimeState.dormant ||
     PluginRuntimeState.active ||
-    PluginRuntimeState.starting => PluginLifecycleState.ready,
-    PluginRuntimeState.degraded || PluginRuntimeState.stopping => PluginLifecycleState.degraded,
+    PluginRuntimeState.starting ||
+    PluginRuntimeState.stopping => PluginLifecycleState.ready,
+    PluginRuntimeState.degraded => PluginLifecycleState.degraded,
     PluginRuntimeState.failed => PluginLifecycleState.failed,
     PluginRuntimeState.disabled || PluginRuntimeState.blocked || null => unavailableState,
   };

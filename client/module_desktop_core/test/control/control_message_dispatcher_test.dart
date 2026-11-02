@@ -132,7 +132,7 @@ void main() {
       const ControlMessage.status(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        plugin: ControlPluginHealthState.healthy,
+        unhealthyPlugins: [],
         activeSessionCount: 2,
       ),
     );
@@ -140,7 +140,7 @@ void main() {
       (status) => status.relay == ControlRelayConnectionState.connected,
     );
 
-    expect(statusTracker.status.plugin, ControlPluginHealthState.healthy);
+    expect(statusTracker.status.unhealthyPlugins, isEmpty);
     expect(statusTracker.status.activeSessionCount, 2);
   });
 

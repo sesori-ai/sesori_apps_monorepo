@@ -330,12 +330,18 @@ as String,
 @JsonSerializable()
 
 class ControlStatus implements ControlMessage {
-  const ControlStatus({required this.startup, @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required this.plugin, this.activeSessionCount = 0,  String? $type}): $type = $type ?? 'status';
+  const ControlStatus({required this.startup, @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, required  List<ControlUnhealthyPlugin> unhealthyPlugins, this.activeSessionCount = 0,  String? $type}): _unhealthyPlugins = unhealthyPlugins,$type = $type ?? 'status';
   factory ControlStatus.fromJson(Map<String, dynamic> json) => _$ControlStatusFromJson(json);
 
  final  ControlStartupState startup;
 @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) final  ControlRelayConnectionState relay;
-@JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) final  ControlPluginHealthState plugin;
+ final  List<ControlUnhealthyPlugin> _unhealthyPlugins;
+ List<ControlUnhealthyPlugin> get unhealthyPlugins {
+  if (_unhealthyPlugins is EqualUnmodifiableListView) return _unhealthyPlugins;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_unhealthyPlugins);
+}
+
 @JsonKey() final  int activeSessionCount;
 
 @JsonKey(name: 'type')
@@ -355,18 +361,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlStatus&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlStatus&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&const DeepCollectionEquality().equals(other.unhealthyPlugins, _unhealthyPlugins)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,startup,relay,plugin,activeSessionCount);
+    return Object.hash(runtimeType,startup,relay,const DeepCollectionEquality().hash(_unhealthyPlugins),activeSessionCount);
 }
 
 @override
 String toString() {
-    return 'ControlMessage.status(startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount)';
+    return 'ControlMessage.status(startup: $startup, relay: $relay, unhealthyPlugins: $unhealthyPlugins, activeSessionCount: $activeSessionCount)';
 }
 
 
@@ -377,7 +383,7 @@ abstract mixin class $ControlStatusCopyWith<$Res> implements $ControlMessageCopy
   factory $ControlStatusCopyWith(ControlStatus value, $Res Function(ControlStatus) _then) = _$ControlStatusCopyWithImpl;
 @useResult
 $Res call({
- ControlStartupState startup,@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) ControlRelayConnectionState relay,@JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) ControlPluginHealthState plugin, int activeSessionCount
+ ControlStartupState startup,@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) ControlRelayConnectionState relay, List<ControlUnhealthyPlugin> unhealthyPlugins, int activeSessionCount
 });
 
 
@@ -394,12 +400,12 @@ class _$ControlStatusCopyWithImpl<$Res>
 
 /// Create a copy of ControlMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? startup = null,Object? relay = null,Object? plugin = null,Object? activeSessionCount = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? startup = null,Object? relay = null,Object? unhealthyPlugins = null,Object? activeSessionCount = null,}) {
   return _then(ControlStatus(
 startup: null == startup ? _self.startup : startup // ignore: cast_nullable_to_non_nullable
 as ControlStartupState,relay: null == relay ? _self.relay : relay // ignore: cast_nullable_to_non_nullable
-as ControlRelayConnectionState,plugin: null == plugin ? _self.plugin : plugin // ignore: cast_nullable_to_non_nullable
-as ControlPluginHealthState,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
+as ControlRelayConnectionState,unhealthyPlugins: null == unhealthyPlugins ? _self._unhealthyPlugins : unhealthyPlugins // ignore: cast_nullable_to_non_nullable
+as List<ControlUnhealthyPlugin>,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -710,6 +716,152 @@ class _$ControlRegisteredCopyWithImpl<$Res>
   return _then(ControlRegistered(
 bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$ControlUnhealthyPlugin {
+
+ String get displayName;/// What the user can do about it, when the bridge has a hint.
+ String? get actionHint;
+/// Create a copy of ControlUnhealthyPlugin
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ControlUnhealthyPluginCopyWith<ControlUnhealthyPlugin> get copyWith => _$ControlUnhealthyPluginCopyWithImpl<ControlUnhealthyPlugin>(this as ControlUnhealthyPlugin, _$identity);
+
+  /// Serializes this ControlUnhealthyPlugin to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as ControlUnhealthyPlugin;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlUnhealthyPlugin&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as ControlUnhealthyPlugin;
+  return Object.hash(runtimeType,_this.displayName,_this.actionHint);
+}
+
+@override
+String toString() {
+  final _this = this as ControlUnhealthyPlugin;
+  return 'ControlUnhealthyPlugin(displayName: ${_this.displayName}, actionHint: ${_this.actionHint})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ControlUnhealthyPluginCopyWith<$Res>  {
+  factory $ControlUnhealthyPluginCopyWith(ControlUnhealthyPlugin value, $Res Function(ControlUnhealthyPlugin) _then) = _$ControlUnhealthyPluginCopyWithImpl;
+@useResult
+$Res call({
+ String displayName, String? actionHint
+});
+
+
+
+
+}
+/// @nodoc
+class _$ControlUnhealthyPluginCopyWithImpl<$Res>
+    implements $ControlUnhealthyPluginCopyWith<$Res> {
+  _$ControlUnhealthyPluginCopyWithImpl(this._self, this._then);
+
+  final ControlUnhealthyPlugin _self;
+  final $Res Function(ControlUnhealthyPlugin) _then;
+
+/// Create a copy of ControlUnhealthyPlugin
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? displayName = null,Object? actionHint = freezed,}) {
+  return _then(ControlUnhealthyPlugin(
+displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _ControlUnhealthyPlugin implements ControlUnhealthyPlugin {
+  const _ControlUnhealthyPlugin({required this.displayName, required this.actionHint});
+  factory _ControlUnhealthyPlugin.fromJson(Map<String, dynamic> json) => _$ControlUnhealthyPluginFromJson(json);
+
+@override final  String displayName;
+/// What the user can do about it, when the bridge has a hint.
+@override final  String? actionHint;
+
+/// Create a copy of ControlUnhealthyPlugin
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ControlUnhealthyPluginCopyWith<_ControlUnhealthyPlugin> get copyWith => __$ControlUnhealthyPluginCopyWithImpl<_ControlUnhealthyPlugin>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ControlUnhealthyPluginToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ControlUnhealthyPlugin&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,displayName,actionHint);
+}
+
+@override
+String toString() {
+    return 'ControlUnhealthyPlugin(displayName: $displayName, actionHint: $actionHint)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ControlUnhealthyPluginCopyWith<$Res> implements $ControlUnhealthyPluginCopyWith<$Res> {
+  factory _$ControlUnhealthyPluginCopyWith(_ControlUnhealthyPlugin value, $Res Function(_ControlUnhealthyPlugin) _then) = __$ControlUnhealthyPluginCopyWithImpl;
+@override @useResult
+$Res call({
+ String displayName, String? actionHint
+});
+
+
+
+
+}
+/// @nodoc
+class __$ControlUnhealthyPluginCopyWithImpl<$Res>
+    implements _$ControlUnhealthyPluginCopyWith<$Res> {
+  __$ControlUnhealthyPluginCopyWithImpl(this._self, this._then);
+
+  final _ControlUnhealthyPlugin _self;
+  final $Res Function(_ControlUnhealthyPlugin) _then;
+
+/// Create a copy of ControlUnhealthyPlugin
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? displayName = null,Object? actionHint = freezed,}) {
+  return _then(_ControlUnhealthyPlugin(
+displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

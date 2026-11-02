@@ -64,6 +64,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   reload it. Disabled, authentication-required, missing-runtime, unavailable,
   stopping, uninspected, unknown and missing-harness states block interaction. Ready
   setup with dormant, starting, active or degraded runtime remains routable.
+  The plugin list reports a stopping runtime as ready, like a starting one, so the
+  new-session chooser and the desktop bridge status never show a merely stopping
+  harness as degraded; only a degraded runtime reports degraded with its hint.
 - Only an authentication-required block offers Recheck. It requests fresh management
   evidence when authentication may have been restored elsewhere; it does not authenticate.
   Disabled and every other blocked reason omit that action. A first check failure

@@ -10,7 +10,10 @@ void main() {
       "status": const ControlMessage.status(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        plugin: ControlPluginHealthState.degraded,
+        unhealthyPlugins: [
+          ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the configured Pi binary and retry."),
+          ControlUnhealthyPlugin(displayName: "Codex", actionHint: null),
+        ],
         activeSessionCount: 3,
       ),
       "prompt_request": const ControlMessage.promptRequest(
@@ -68,24 +71,13 @@ void main() {
           "type": "status",
           "startup": "ready",
           "relay": "rebooting",
-          "plugin": "healthy",
+          "unhealthyPlugins": <Object>[],
         });
 
         final status = parsed as ControlStatus;
         expect(status.relay, equals(ControlRelayConnectionState.unknown));
-        expect(status.plugin, equals(ControlPluginHealthState.healthy));
+        expect(status.unhealthyPlugins, isEmpty);
         expect(status.activeSessionCount, equals(0));
-      });
-
-      test("plugin-health enum falls back to unknown for an unrecognized value", () {
-        final parsed = ControlMessage.fromJson({
-          "type": "status",
-          "startup": "ready",
-          "relay": "connected",
-          "plugin": "future_health",
-        });
-
-        expect((parsed as ControlStatus).plugin, equals(ControlPluginHealthState.unknown));
       });
 
       test("prompt-kind enum falls back to unknown for an unrecognized value", () {
@@ -105,7 +97,7 @@ void main() {
         final original = ControlMessage.status(
           startup: startup,
           relay: ControlRelayConnectionState.disconnected,
-          plugin: ControlPluginHealthState.unknown,
+          unhealthyPlugins: const [],
         );
         expect(ControlMessage.fromJson(original.toJson()), original);
       });
@@ -115,7 +107,7 @@ void main() {
       const original = ControlMessage.status(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.takenOver,
-        plugin: ControlPluginHealthState.healthy,
+        unhealthyPlugins: [],
       );
 
       final json = original.toJson();

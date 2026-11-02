@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$BridgeControlStatus {
 
 /// Whether a helper is currently connected to the GUI's control channel.
- bool get helperOnline; ControlStartupState get startup; ControlRelayConnectionState get relay; ControlPluginHealthState get plugin; int get activeSessionCount;/// Readable copy of the helper's bridge id (from the `registered` event).
+ bool get helperOnline; ControlStartupState get startup; ControlRelayConnectionState get relay; List<ControlUnhealthyPlugin> get unhealthyPlugins; int get activeSessionCount;/// Readable copy of the helper's bridge id (from the `registered` event).
 /// Retained across helper disconnects — the offline-unregister fallback
 /// needs it exactly when the helper is gone.
  String? get bridgeId;
@@ -31,20 +31,20 @@ $BridgeControlStatusCopyWith<BridgeControlStatus> get copyWith => _$BridgeContro
 @override
 bool operator ==(Object other) {
   final _this = this as BridgeControlStatus;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeControlStatus&&(identical(other.helperOnline, _this.helperOnline) || other.helperOnline == _this.helperOnline)&&(identical(other.startup, _this.startup) || other.startup == _this.startup)&&(identical(other.relay, _this.relay) || other.relay == _this.relay)&&(identical(other.plugin, _this.plugin) || other.plugin == _this.plugin)&&(identical(other.activeSessionCount, _this.activeSessionCount) || other.activeSessionCount == _this.activeSessionCount)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeControlStatus&&(identical(other.helperOnline, _this.helperOnline) || other.helperOnline == _this.helperOnline)&&(identical(other.startup, _this.startup) || other.startup == _this.startup)&&(identical(other.relay, _this.relay) || other.relay == _this.relay)&&const DeepCollectionEquality().equals(other.unhealthyPlugins, _this.unhealthyPlugins)&&(identical(other.activeSessionCount, _this.activeSessionCount) || other.activeSessionCount == _this.activeSessionCount)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 
 @override
 int get hashCode {
   final _this = this as BridgeControlStatus;
-  return Object.hash(runtimeType,_this.helperOnline,_this.startup,_this.relay,_this.plugin,_this.activeSessionCount,_this.bridgeId);
+  return Object.hash(runtimeType,_this.helperOnline,_this.startup,_this.relay,const DeepCollectionEquality().hash(_this.unhealthyPlugins),_this.activeSessionCount,_this.bridgeId);
 }
 
 @override
 String toString() {
   final _this = this as BridgeControlStatus;
-  return 'BridgeControlStatus(helperOnline: ${_this.helperOnline}, startup: ${_this.startup}, relay: ${_this.relay}, plugin: ${_this.plugin}, activeSessionCount: ${_this.activeSessionCount}, bridgeId: ${_this.bridgeId})';
+  return 'BridgeControlStatus(helperOnline: ${_this.helperOnline}, startup: ${_this.startup}, relay: ${_this.relay}, unhealthyPlugins: ${_this.unhealthyPlugins}, activeSessionCount: ${_this.activeSessionCount}, bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -55,7 +55,7 @@ abstract mixin class $BridgeControlStatusCopyWith<$Res>  {
   factory $BridgeControlStatusCopyWith(BridgeControlStatus value, $Res Function(BridgeControlStatus) _then) = _$BridgeControlStatusCopyWithImpl;
 @useResult
 $Res call({
- bool helperOnline, ControlStartupState startup, ControlRelayConnectionState relay, ControlPluginHealthState plugin, int activeSessionCount, String? bridgeId
+ bool helperOnline, ControlStartupState startup, ControlRelayConnectionState relay, List<ControlUnhealthyPlugin> unhealthyPlugins, int activeSessionCount, String? bridgeId
 });
 
 
@@ -72,13 +72,13 @@ class _$BridgeControlStatusCopyWithImpl<$Res>
 
 /// Create a copy of BridgeControlStatus
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? helperOnline = null,Object? startup = null,Object? relay = null,Object? plugin = null,Object? activeSessionCount = null,Object? bridgeId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? helperOnline = null,Object? startup = null,Object? relay = null,Object? unhealthyPlugins = null,Object? activeSessionCount = null,Object? bridgeId = freezed,}) {
   return _then(BridgeControlStatus(
 helperOnline: null == helperOnline ? _self.helperOnline : helperOnline // ignore: cast_nullable_to_non_nullable
 as bool,startup: null == startup ? _self.startup : startup // ignore: cast_nullable_to_non_nullable
 as ControlStartupState,relay: null == relay ? _self.relay : relay // ignore: cast_nullable_to_non_nullable
-as ControlRelayConnectionState,plugin: null == plugin ? _self.plugin : plugin // ignore: cast_nullable_to_non_nullable
-as ControlPluginHealthState,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
+as ControlRelayConnectionState,unhealthyPlugins: null == unhealthyPlugins ? _self.unhealthyPlugins : unhealthyPlugins // ignore: cast_nullable_to_non_nullable
+as List<ControlUnhealthyPlugin>,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
 as int,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -92,14 +92,20 @@ as String?,
 
 
 class _BridgeControlStatus implements BridgeControlStatus {
-  const _BridgeControlStatus({required this.helperOnline, required this.startup, required this.relay, required this.plugin, required this.activeSessionCount, required this.bridgeId});
+  const _BridgeControlStatus({required this.helperOnline, required this.startup, required this.relay, required  List<ControlUnhealthyPlugin> unhealthyPlugins, required this.activeSessionCount, required this.bridgeId}): _unhealthyPlugins = unhealthyPlugins;
   
 
 /// Whether a helper is currently connected to the GUI's control channel.
 @override final  bool helperOnline;
 @override final  ControlStartupState startup;
 @override final  ControlRelayConnectionState relay;
-@override final  ControlPluginHealthState plugin;
+ final  List<ControlUnhealthyPlugin> _unhealthyPlugins;
+@override List<ControlUnhealthyPlugin> get unhealthyPlugins {
+  if (_unhealthyPlugins is EqualUnmodifiableListView) return _unhealthyPlugins;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_unhealthyPlugins);
+}
+
 @override final  int activeSessionCount;
 /// Readable copy of the helper's bridge id (from the `registered` event).
 /// Retained across helper disconnects — the offline-unregister fallback
@@ -116,18 +122,18 @@ _$BridgeControlStatusCopyWith<_BridgeControlStatus> get copyWith => __$BridgeCon
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeControlStatus&&(identical(other.helperOnline, helperOnline) || other.helperOnline == helperOnline)&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeControlStatus&&(identical(other.helperOnline, helperOnline) || other.helperOnline == helperOnline)&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&const DeepCollectionEquality().equals(other.unhealthyPlugins, _unhealthyPlugins)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,helperOnline,startup,relay,plugin,activeSessionCount,bridgeId);
+    return Object.hash(runtimeType,helperOnline,startup,relay,const DeepCollectionEquality().hash(_unhealthyPlugins),activeSessionCount,bridgeId);
 }
 
 @override
 String toString() {
-    return 'BridgeControlStatus(helperOnline: $helperOnline, startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount, bridgeId: $bridgeId)';
+    return 'BridgeControlStatus(helperOnline: $helperOnline, startup: $startup, relay: $relay, unhealthyPlugins: $unhealthyPlugins, activeSessionCount: $activeSessionCount, bridgeId: $bridgeId)';
 }
 
 
@@ -138,7 +144,7 @@ abstract mixin class _$BridgeControlStatusCopyWith<$Res> implements $BridgeContr
   factory _$BridgeControlStatusCopyWith(_BridgeControlStatus value, $Res Function(_BridgeControlStatus) _then) = __$BridgeControlStatusCopyWithImpl;
 @override @useResult
 $Res call({
- bool helperOnline, ControlStartupState startup, ControlRelayConnectionState relay, ControlPluginHealthState plugin, int activeSessionCount, String? bridgeId
+ bool helperOnline, ControlStartupState startup, ControlRelayConnectionState relay, List<ControlUnhealthyPlugin> unhealthyPlugins, int activeSessionCount, String? bridgeId
 });
 
 
@@ -155,13 +161,13 @@ class __$BridgeControlStatusCopyWithImpl<$Res>
 
 /// Create a copy of BridgeControlStatus
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? helperOnline = null,Object? startup = null,Object? relay = null,Object? plugin = null,Object? activeSessionCount = null,Object? bridgeId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? helperOnline = null,Object? startup = null,Object? relay = null,Object? unhealthyPlugins = null,Object? activeSessionCount = null,Object? bridgeId = freezed,}) {
   return _then(_BridgeControlStatus(
 helperOnline: null == helperOnline ? _self.helperOnline : helperOnline // ignore: cast_nullable_to_non_nullable
 as bool,startup: null == startup ? _self.startup : startup // ignore: cast_nullable_to_non_nullable
 as ControlStartupState,relay: null == relay ? _self.relay : relay // ignore: cast_nullable_to_non_nullable
-as ControlRelayConnectionState,plugin: null == plugin ? _self.plugin : plugin // ignore: cast_nullable_to_non_nullable
-as ControlPluginHealthState,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
+as ControlRelayConnectionState,unhealthyPlugins: null == unhealthyPlugins ? _self._unhealthyPlugins : unhealthyPlugins // ignore: cast_nullable_to_non_nullable
+as List<ControlUnhealthyPlugin>,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
 as int,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

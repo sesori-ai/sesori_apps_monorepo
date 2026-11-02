@@ -124,7 +124,7 @@ void main() {
           helperOnline: true,
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.takenOver,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
           activeSessionCount: 0,
           bridgeId: "demo",
         ),
@@ -177,6 +177,54 @@ void main() {
     expect(find.text("Bridge settings…").hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets("a degraded plugin's hint grows the panel under the status and fades away on recovery", (
+    tester,
+  ) async {
+    const hint = "Check the bridge console if this plugin needs attention.";
+    const connected = BridgeControlStatus(
+      helperOnline: true,
+      startup: ControlStartupState.ready,
+      relay: ControlRelayConnectionState.connected,
+      unhealthyPlugins: [],
+      activeSessionCount: 0,
+      bridgeId: "demo",
+    );
+    await pumpPopover(
+      tester: tester,
+      state: _state(process: const BridgeProcessRunning(pid: 42), status: connected, label: "Connected"),
+    );
+    final healthyHeight = tester.getSize(popover).height;
+    final statusLeft = tester.getTopLeft(find.text("Connected")).dx;
+
+    updates.add(
+      _state(
+        process: const BridgeProcessRunning(pid: 42),
+        status: connected.copyWith(
+          unhealthyPlugins: const [ControlUnhealthyPlugin(displayName: "Pi", actionHint: hint)],
+        ),
+        label: "Degraded · Pi",
+        detail: hint,
+      ),
+    );
+    // Deliver the state, then start the transition.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // Mid-transition: the panel is growing rather than snapping to its new height.
+    final midHeight = tester.getSize(popover).height;
+    await tester.pumpAndSettle();
+    final degradedHeight = tester.getSize(popover).height;
+    expect(find.text("Degraded · Pi"), findsOneWidget);
+    expect(find.text(hint), findsOneWidget);
+    expect(tester.getTopLeft(find.text(hint)).dx, statusLeft);
+    expect(midHeight, inExclusiveRange(healthyHeight, degradedHeight));
+
+    updates.add(_state(process: const BridgeProcessRunning(pid: 42), status: connected, label: "Connected"));
+    await tester.pumpAndSettle();
+    expect(find.text(hint), findsNothing);
+    expect(tester.getSize(popover).height, healthyHeight);
+  });
 }
 
 BridgeControlState _state({
@@ -184,10 +232,13 @@ BridgeControlState _state({
   BridgeControlActivity activity = BridgeControlActivity.idle,
   BridgeProcessDesiredState target = BridgeProcessDesiredState.on,
   BridgeControlStatus status = BridgeControlStatus.offline,
+  String label = "Off",
+  String? detail,
 }) => BridgeControlState(
   trayAvailability: SystemTrayAvailability.available,
   activity: activity,
-  statusLabel: "Off",
+  statusLabel: label,
+  statusDetail: detail,
   processState: process,
   desiredState: BridgeProcessDesiredState.on,
   toggleTarget: target,

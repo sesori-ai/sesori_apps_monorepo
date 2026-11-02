@@ -27,14 +27,14 @@ void main() {
       status: const ControlStatus(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        plugin: ControlPluginHealthState.healthy,
+        unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Retry.")],
         activeSessionCount: 3,
       ),
     );
 
     expect(tracker.status.helperOnline, isTrue);
     expect(tracker.status.relay, ControlRelayConnectionState.connected);
-    expect(tracker.status.plugin, ControlPluginHealthState.healthy);
+    expect(tracker.status.unhealthyPlugins, const [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Retry.")]);
     expect(tracker.status.activeSessionCount, 3);
   });
 
@@ -46,7 +46,7 @@ void main() {
       status: const ControlStatus(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        plugin: ControlPluginHealthState.healthy,
+        unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: null)],
         activeSessionCount: 2,
       ),
     );
@@ -56,7 +56,7 @@ void main() {
     expect(tracker.status.helperOnline, isFalse);
     expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.status.relay, ControlRelayConnectionState.disconnected);
-    expect(tracker.status.plugin, ControlPluginHealthState.unknown);
+    expect(tracker.status.unhealthyPlugins, isEmpty);
     expect(tracker.status.activeSessionCount, 0);
     expect(tracker.status.bridgeId, "bridge-1");
   });
@@ -67,13 +67,12 @@ void main() {
       status: const ControlStatus(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.unknown,
-        plugin: ControlPluginHealthState.unknown,
+        unhealthyPlugins: [],
         activeSessionCount: 0,
       ),
     );
 
     expect(tracker.status.relay, ControlRelayConnectionState.unknown);
-    expect(tracker.status.plugin, ControlPluginHealthState.unknown);
   });
 
   test("a stale status frame processed after disconnect is ignored", () {
@@ -84,7 +83,7 @@ void main() {
       status: const ControlStatus(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        plugin: ControlPluginHealthState.healthy,
+        unhealthyPlugins: [],
         activeSessionCount: 5,
       ),
     );
@@ -173,7 +172,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
           activeSessionCount: 1,
         ),
       ),

@@ -2801,6 +2801,47 @@ void main() {
     expect(service.selectableMetadataSnapshot.map((entry) => entry.id), ["one"]);
   });
 
+  test("a stopping runtime reports ready metadata while a degraded one reports degraded", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+
+    repository.publish(
+      state: PluginRuntimeState.stopping,
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+      transition: PluginRuntimeTransition.stopping,
+    );
+    expect(service.metadataSnapshot.single.state, PluginLifecycleState.ready);
+    expect(service.metadataSnapshot.single.actionHint, isNull);
+
+    repository.publish(state: PluginRuntimeState.degraded, workState: PluginWorkState.idle, leaseCount: 0);
+    expect(service.metadataSnapshot.single.state, PluginLifecycleState.degraded);
+    expect(service.metadataSnapshot.single.actionHint, isNotNull);
+  });
+
   test("idle suspension requires every safe-stop gate and a full timeout", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
