@@ -26,7 +26,6 @@ class _MockVoiceApi() extends Mock implements VoiceApi;
 
 class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
 
-
 final class _FakeOnDeviceConnection() implements VoiceRealtimeConnection {
   final StreamController<VoiceRealtimeEvent> controller = StreamController<VoiceRealtimeEvent>();
   final List<Uint8List> sent = [];
@@ -47,7 +46,7 @@ final class _FakeOnDeviceConnection() implements VoiceRealtimeConnection {
     finished = true;
     controller
       ..add(const VoiceRealtimeWords(confirmedDelta: "device words", provisional: ""))
-      ..add(const VoiceRealtimeCompleted(outcome: VoiceDictationOutcome.finished));
+      ..add(const VoiceRealtimeCompleted(outcome: VoiceDictationOutcome.finished, dailySecondsRemaining: null));
   }
 
   @override
@@ -55,6 +54,14 @@ final class _FakeOnDeviceConnection() implements VoiceRealtimeConnection {
 }
 
 class _MockConnectionService() extends Mock implements ConnectionService;
+
+class _RecordingSink({required final List<LogRecord> _records}) implements LogSink {
+  @override
+  void write({required LogRecord record}) => _records.add(record);
+
+  @override
+  Future<void> flush() async {}
+}
 
 const _ready = '{"type":"ready","protocolVersion":1,"maxSessionSeconds":900,"dailySecondsRemaining":420}';
 const _finished = '{"type":"complete","reason":"finished","dailySecondsRemaining":400}';
@@ -590,6 +597,44 @@ void main() {
       hear(_finished);
 
       await expectLater(result, throwsA(isA<EmptyTranscriptError>()));
+    });
+
+    test("logs one line at the end with what was sent and heard, and never the words", () async {
+      final records = <LogRecord>[];
+      setLogSink(sink: _RecordingSink(records: records));
+      addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+      await holdLive();
+      frames
+        ..add(_frame(fill: 1))
+        ..add(_frame(fill: 2));
+      await pumpEventQueue();
+      hear(_ready);
+      await pumpEventQueue();
+      frames.add(_frame(fill: 3));
+      await pumpEventQueue();
+
+      final result = service.stopAndTranscribe(session: session);
+      await pumpEventQueue();
+      hear(_words(confirmed: "secret words", provisional: ""));
+      hear(_finished);
+      await result;
+
+      final summaries = records.where((record) => record.message.startsWith("Live dictation")).toList();
+      expect(summaries, hasLength(1));
+      expect(summaries.single.level, LogLevel.info);
+      expect(
+        summaries.single.message,
+        allOf(
+          contains("outcome finished"),
+          contains("forwarded 3 frames, 6 bytes"),
+          contains("4 bytes waited for ready"),
+          // The loudest frame is 0x0303 as a little-endian sample.
+          contains("peak sample 771"),
+          contains("released after"),
+          contains("400 daily seconds remaining"),
+          isNot(contains("secret")),
+        ),
+      );
     });
 
     test("a microphone that fails to stop is cancelled, and the audio already sent still finishes", () async {

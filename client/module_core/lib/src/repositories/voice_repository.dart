@@ -213,7 +213,11 @@ final class _OnDeviceVoiceConnection({required final OnDeviceSpeechSession _sess
           ),
         );
       case OnDeviceSpeechCompleted():
-        unawaited(_endWith(event: const VoiceRealtimeCompleted(outcome: VoiceDictationOutcome.finished)));
+        unawaited(
+          _endWith(
+            event: const VoiceRealtimeCompleted(outcome: VoiceDictationOutcome.finished, dailySecondsRemaining: null),
+          ),
+        );
       case OnDeviceSpeechFailed(:final cause):
         _fail(cause: cause);
     }
@@ -254,12 +258,13 @@ VoiceRealtimeEvent _mapRealtimeEvent(RealtimeVoiceEvent event) => switch (event)
     confirmedDelta: confirmedDelta,
     provisional: provisional,
   ),
-  RealtimeVoiceCompleteEvent(:final reason) => VoiceRealtimeCompleted(
+  RealtimeVoiceCompleteEvent(:final reason, :final dailySecondsRemaining) => VoiceRealtimeCompleted(
     outcome: switch (reason) {
       RealtimeVoiceCompleteReason.finished => VoiceDictationOutcome.finished,
       RealtimeVoiceCompleteReason.sessionLimit ||
       RealtimeVoiceCompleteReason.quotaLimit => VoiceDictationOutcome.limitReached,
     },
+    dailySecondsRemaining: dailySecondsRemaining,
   ),
   RealtimeVoiceErrorEvent(:final code) => VoiceRealtimeFailed(
     // The server closes with this code, so it stands in for an HTTP status.

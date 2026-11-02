@@ -31,6 +31,12 @@ final class const VoiceRealtimeWords({
   required final String provisional,
 }) extends VoiceRealtimeEvent;
 
-final class const VoiceRealtimeCompleted({required final VoiceDictationOutcome outcome}) extends VoiceRealtimeEvent;
+final class const VoiceRealtimeCompleted({
+  required final VoiceDictationOutcome outcome,
+
+  /// The server's daily allowance left, for the run's log. The device's engine
+  /// has none.
+  required final int? dailySecondsRemaining,
+}) extends VoiceRealtimeEvent;
 
 final class const VoiceRealtimeFailed({required final VoiceTranscriptionError error}) extends VoiceRealtimeEvent;
