@@ -100,9 +100,10 @@ content the transcript renders live and after reload.
   copy and save on the original, plus share where the product shell has a
   registered platform implementation; unsupported actions are omitted, and an
   unknown shape degrades safely. The shared transcript receives these
-  capabilities from its product shell: mobile keeps its existing platform
-  adapters, while desktop uses the native file selector and pasteboard and uses
-  the system share sheet on macOS and Windows. Linux omits Share because the
+  capabilities from its product shell: both shells register the same pasteboard
+  copy and system share-sheet adapters, mobile keeps its own save adapter, and
+  desktop saves through the native file selector and shares on macOS and
+  Windows. Linux omits Share because the
   current share plugin has no Linux implementation. The root image-viewer route
   retains the same injected capability scope even when it is above the session
   route's navigator.
@@ -247,5 +248,6 @@ per-plugin image mappers, including Cursor generated-image reading, Antigravity 
 ACP image mapping used by Antigravity and Copilot, and descriptor capability declarations;
 shared client composer validation, attachment cache, loader, viewer, and
 surface tests under `client/module_core` and `client/module_app_ui`; mobile
-picker, voice, and keyboard composition under `client/app`; and desktop picker,
-file, pasteboard, share, and session-detail adapters under `client/desktop`.
+picker, voice, and keyboard composition under `client/app`; desktop picker,
+file, and session-detail adapters under `client/desktop`; and the shared
+pasteboard and share adapters under `client/module_app_ui/lib/src/platform/`.

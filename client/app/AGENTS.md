@@ -100,7 +100,10 @@ The only exception is reading `Theme.of(context).brightness` for light/dark chec
 
 ## Platform Adapters
 
-This package provides concrete implementations of `sesori_dart_core` platform interfaces:
+This package provides concrete implementations of `sesori_dart_core` platform interfaces.
+Adapters desktop uses unchanged (route dispatcher, image clipboard and sharer, temporary
+directory) live in `module_app_ui/lib/src/platform/`; the app only registers them in
+`lib/core/di/register_module.dart`.
 
 Third-party static plugin APIs are hidden dependencies. Always wrap them in an
 injectable client or service and inject that wrapper into the platform adapter,

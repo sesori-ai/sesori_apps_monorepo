@@ -1,9 +1,7 @@
-import "package:injectable/injectable.dart";
 import "package:share_plus/share_plus.dart";
 
-/// Injectable seam around the desktop SharePlus singleton.
-@lazySingleton
-class DesktopShareClient() {
+/// Seam around the SharePlus singleton, so tests can replace it.
+class SharePlusClient() {
   Future<void> share({required ShareParams params}) async {
     await SharePlus.instance.share(params);
   }

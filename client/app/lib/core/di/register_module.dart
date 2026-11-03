@@ -1,11 +1,19 @@
 import "package:device_info_plus/device_info_plus.dart";
 import "package:flutter/foundation.dart" show kReleaseMode;
+import "package:flutter/widgets.dart" show WidgetsBinding;
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:image_picker/image_picker.dart";
 import "package:injectable/injectable.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart" show createFlutterVoiceCapture;
+import "package:sesori_app_ui/sesori_app_ui.dart"
+    show
+        GoRouterRouteDispatcher,
+        NoOpFeedbackPromptConfigSource,
+        PathProviderTemporaryDirectoryProvider,
+        createFlutterImageClipboard,
+        createFlutterImageSharer,
+        createFlutterVoiceCapture;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -18,6 +26,8 @@ import "../platform/file_save_client.dart";
 import "../platform/flutter_master_key_store.dart";
 import "../platform/gal_client.dart";
 import "../platform/mobile_photo_image_saver.dart";
+import "../routing/app_router.dart";
+import "firebase_register_module.dart";
 
 // Injectable module providers require a class; bootstrap registers this enum value explicitly.
 const clientPersistenceScope = kReleaseMode ? PersistenceScope.production : PersistenceScope.development;
@@ -41,6 +51,27 @@ abstract class RegisterModule() {
 
   @lazySingleton
   NotificationCanceller notificationCanceller(LocalNotificationClient client) => client;
+
+  @lazySingleton
+  RouteDispatcher get routeDispatcher => GoRouterRouteDispatcher(
+    router: appRouter,
+    routerReady: WidgetsBinding.instance.endOfFrame,
+    // Signed-in routes open their sheets on the signed-in navigator.
+    popupNavigatorKeys: [appSignedInNavigatorKey, appRootNavigatorKey],
+  );
+
+  @lazySingleton
+  TemporaryDirectoryProvider get temporaryDirectoryProvider => PathProviderTemporaryDirectoryProvider();
+
+  @lazySingleton
+  ImageClipboard get imageClipboard => createFlutterImageClipboard();
+
+  @lazySingleton
+  ImageSharer get imageSharer => createFlutterImageSharer();
+
+  @firebaseDisabledEnvironment
+  @lazySingleton
+  FeedbackPromptConfigSource get disabledFeedbackPromptConfigSource => NoOpFeedbackPromptConfigSource();
 
   @lazySingleton
   ImageSaver imageSaver({required GalClient galClient, required FileSaveClient fileSaveClient}) =>

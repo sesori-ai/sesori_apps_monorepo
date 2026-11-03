@@ -490,7 +490,7 @@ this computer after the user picked another one.
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/desktop/test/core/routing/desktop_router_test.dart`
 - `client/module_app_ui/lib/src/features/session_list/archived_sessions_view.dart`
-- `client/desktop/lib/core/platform/desktop_route_dispatcher.dart`
+- `client/module_app_ui/lib/src/platform/go_router_route_dispatcher.dart`
 - `client/module_app_ui/lib/src/features/session_detail/session_detail_activity_owner.dart`
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/settings/desktop_settings_modal.dart`
