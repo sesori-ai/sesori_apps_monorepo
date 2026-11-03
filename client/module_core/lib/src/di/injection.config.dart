@@ -155,6 +155,8 @@ import 'package:sesori_dart_core/src/repositories/founder_call_repository.dart'
     as _i734;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
+import 'package:sesori_dart_core/src/repositories/last_new_session_project_store.dart'
+    as _i617;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
 import 'package:sesori_dart_core/src/repositories/mcp_repository.dart' as _i349;
@@ -216,6 +218,8 @@ import 'package:sesori_dart_core/src/services/founder_call_service.dart'
     as _i1013;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/last_new_session_project_tracker.dart'
+    as _i395;
 import 'package:sesori_dart_core/src/services/mcp_authentication_service.dart'
     as _i585;
 import 'package:sesori_dart_core/src/services/mcp_service.dart' as _i948;
@@ -466,6 +470,11 @@ extension GetItInjectableX on _i174.GetIt {
         persister: gh<_i903.PersisterRepository>(),
       ),
     );
+    gh.lazySingleton<_i617.LastNewSessionProjectStore>(
+      () => _i617.LastNewSessionProjectStore(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
+    );
     gh.lazySingleton<_i507.InstalledAppBuildRepository>(
       () => _i507.InstalledAppBuildRepository(
         api: gh<_i258.InstalledAppBuildApi>(),
@@ -521,6 +530,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
+    );
+    gh.lazySingleton<_i395.LastNewSessionProjectTracker>(
+      () => _i395.LastNewSessionProjectTracker(
+        connectionService: gh<_i369.ConnectionService>(),
+        store: gh<_i617.LastNewSessionProjectStore>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i860.FeedbackRepository>(
       () => _i860.FeedbackRepository(

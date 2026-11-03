@@ -227,6 +227,7 @@ void main() {
                     authSession: FakeAuthSession(initialState: const AuthState.initial()),
                   ),
                   dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
+                  lastProjectTracker: FakeLastNewSessionProjectTracker(),
                   project: project,
                 ),
             onOpenSession: ({required context, required project, required displayName, required session}) {},

@@ -212,6 +212,7 @@ Widget testHome() {
     sessionLaunchService: idleSessionLaunchService(),
     connectionService: getIt<ConnectionService>(),
     filterTracker: filterTracker,
+    lastProjectTracker: FakeLastNewSessionProjectTracker(),
     sseEventTracker: getIt<SseEventTracker>(),
     sessionUnseenTracker: getIt<SessionUnseenTracker>(),
     alertNavigatorKey: null,
