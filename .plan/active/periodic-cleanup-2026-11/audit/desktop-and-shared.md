@@ -1,5 +1,7 @@
 # Desktop shell, desktop core, sesori_shared and no_slop_linter cleanup audit
 
+`inpub.sh <regex> <paths>` below is a local helper: it runs `git grep -E <regex> <tag> -- <paths>` for every public tag (`bridge-v0.3.0`…`bridge-v1.0.7` and `v1.0.8`…`v1.11.0`, without v1.9.2, v1.10.0 and v1.10.2).
+
 ## Summary
 Overall these four packages are healthy. Desktop production code has no null assertions, and its wire types carry fewer leftovers than expected. Every update engine and every bundled-bridge resolver path is still live, so the retired desktop plans left no bundled-bridge leftovers. Nearly all the debt is dead library code that nothing calls, plus linter rules that never run.
 
@@ -177,7 +179,7 @@ About 2,500 lines can go without a product decision. With the decisions below th
   - Nine client pubspecs declare `no_slop_linter: path:`: app, design_catalog, desktop, module_app_ui, module_auth, module_core, module_desktop_core, module_persistence and module_prego.
   - The plugin is loaded through the `plugins:` section of `client/analysis_options.yaml`, the same way `bridge/analysis_options.yaml` loads it. Bridge packages have no such dependency and CI analysis there works.
   - deps.tsv reports `module_persistence` as "no import".
-  - The dependency pulls the linter's tight `analysis_server_plugin &gt;=0.3.18 &lt;0.3.19` and `analyzer &gt;=13.3.0 &lt;14` constraints into the client's dependency resolution, which constrains codegen and analyzer upgrades.
+  - The dependency pulls the linter's tight `analysis_server_plugin >=0.3.18 <0.3.19` and `analyzer >=13.3.0 <14` constraints into the client's dependency resolution, which constrains codegen and analyzer upgrades.
 - Proposal: remove the nine dev dependencies, then confirm with `dart analyze --fatal-infos` in one client package that plugin diagnostics still appear.
 - Size: about 18–27 lines across 9 pubspecs, plus lockfiles.
 - Risk: low. If the analysis server needs the dependency, plugin diagnostics would silently disappear, so the verification step is required.
@@ -239,11 +241,11 @@ About 2,500 lines can go without a product decision. With the decisions below th
 - Category: simplification (linter weight)
 - Evidence:
   - The repo has 252 `no_slop_linter/prefer_specific_type` suppressions, against 56 for the next most-suppressed rule, `prefer_required_named_parameters`.
-  - About 150 justify a JSON or wire boundary ("json parsing callback", "ACP JSON object values are heterogeneous", `Map&lt;String, Object?&gt;` typedefs).
+  - About 150 justify a JSON or wire boundary ("json parsing callback", "ACP JSON object values are heterogeneous", `Map<String, Object?>` typedefs).
   - About 47 justify a caught-error or `cause` value ("caught Dart failures can be Error or Exception", "causes can be any object"). That pattern is exactly what AGENTS.md asks for: keep the original in `innerError` or `cause`.
   - The rule already exempts `fromJson` and `toJson` signatures; see `prefer_specific_type_rule.dart:14-30`.
 - Proposal: widen the exemptions to:
-  - `Map&lt;String, Object?&gt;` and `Map&lt;String, dynamic&gt;` JSON maps;
+  - `Map<String, Object?>` and `Map<String, dynamic>` JSON maps;
   - `dynamic` and `Object?` parameters of JSON decode callbacks;
   - `Object` error, cause and innerError fields and parameters, including `(Object error, StackTrace)` handlers.
 

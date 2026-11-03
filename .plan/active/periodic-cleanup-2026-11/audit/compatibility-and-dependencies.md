@@ -23,7 +23,7 @@ Compatibility code and stalled plans are the main debt; dependencies, CI and reg
     - The CLI bridge updates itself at start and every 4 h (`bridge/app/lib/src/updater/services/update_service.dart`).
   - **Prior decisions:**
     - CONSOLIDATION item 7 requires a supported-peer decision plus per-field release evidence.
-    - #1296 proposed D1 (`&gt;= v1.6.0`), but that PR was closed and D1 was never decided.
+    - #1296 proposed D1 (`>= v1.6.0`), but that PR was closed and D1 was never decided.
     - The decision is still missing. The evidence now exists: the table below traces every marker to the first public release involved.
   - **Largest blocks:**
     - The complete-list mode in `client/module_core/lib/src/services/session_window_service.dart` (891 lines in total) serves bridges without `/sessions/page`. It is about 150 lines and goes at a v1.11.0 bridge floor.
@@ -137,7 +137,7 @@ Totals: 7 to retire now, 15 to keep or outside peer policy, 36 at an app floor, 
 - Category: leftover
 - Evidence:
   - **Dead branch:** in `bridge/app/lib/src/repositories/app_client_status_repository.dart:17-23`, the marked 404/405 branch and the fallthrough return the same `AppClientStatusUnavailable(...)`.
-  - **Plan markers:** they retire "once no catalog captured before this date can still be served". Catalogs go stale after 10 minutes (`orchestrator.dart:295`) and are kept for 30 days (`session_options_service.dart:727`). So the condition was met on 2026-10-21.
+  - **Plan markers:** they retire "once no catalog captured before this date can still be served". Catalogs go stale after 10 minutes (`session_options_service.dart:15`) and are kept for 30 days (`orchestrator.dart:295`). So the condition was met on 2026-10-21.
   - **How current clients pick agents:** they resolve agent candidates against the served catalog (`session_detail_cubit.dart:1763,3383`, `session_selection_calculator.dart:37,150`).
   - **After removal:**
     - Claude rejects an unknown agent with an explicit stale-options error.
@@ -145,7 +145,7 @@ Totals: 7 to retire now, 15 to keep or outside peer policy, 36 at an app floor, 
 - Proposal:
   - Collapse the `if`.
   - Delete `ClaudeAgentSelection.plan` and the plan-exit branch at `claude_plugin_impl.dart:457`.
-  - Delete the Codex `"plan" =&gt; plan` mapping. The `plan` enum value stays, because plan mode still uses it (`codex_session_service.dart:745,952`).
+  - Delete the Codex `"plan" => plan` mapping. The `plan` enum value stays, because plan mode still uses it (`codex_session_service.dart:745,952`).
   - Delete the stale-Plan acceptance in Copilot, Cursor and OMP.
 - Size: about 55 lib and 80 test lines; 7 files plus tests.
 - Risk: low. If a v1.8.x app sends a saved "Plan" agent without checking the catalog:
@@ -165,7 +165,7 @@ Totals: 7 to retire now, 15 to keep or outside peer policy, 36 at an app floor, 
   - **Codex (#26):** the marker at `codex_collaboration_mode.dart:23` says "Older apps omit the agent". But `agent` is `String?` on the current wire (`send_prompt_request.dart:15`, `create_session_request.dart:18`), and `session_api.dart` passes it nullable, so the path is live.
 - Proposal:
   - Reword the OpenCode marker now. With the next OpenCode runtime update, derive `BridgeSseSessionIdle` from `session.status` idle, then delete the deprecated variant and the generator branch (`tool/generate_sse_events.dart:266`).
-  - Drop the marker from Codex `null =&gt; defaultMode`.
+  - Drop the marker from Codex `null => defaultMode`.
 - Size: about 4 comment lines now. The later OpenCode change is about 10–20 lines net, plus regenerating the generated code.
 - Risk: none for the comments. Medium for the later change, which needs a live check of an OpenCode turn ending.
 - Confidence: verified. Not verified: whether OpenCode ≥1.14 always emits `session.status` idle.
@@ -232,7 +232,7 @@ Totals: 7 to retire now, 15 to keep or outside peer policy, 36 at an app floor, 
     - #11 ("when out of support")
   - **Wrong boundary:**
     - #134 says pre-v1.5.1, but the field first went public in v1.6.0.
-    - #48 says "older than v1.5.0", which has no public release.
+    - #48 says "older than v1.5.0", which may never have been public (see below).
   - **Boundaries at versions that were never public:** "v1.10.0" in #0, #64, #138 and "v1.9.2" in #2, #3, #8, #10. Both mean v1.10.1.
   - **Possibly never public:** v1.5.0 and v1.6.1 have no GitHub release, but the brief doesn't list them as never public.
 - Proposal: fix each one the next time its group is touched (XC-1 PRs or a Codex runtime update), not in a standalone PR.

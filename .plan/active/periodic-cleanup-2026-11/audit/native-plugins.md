@@ -19,7 +19,7 @@ Runtime floors (PATH minimum / managed target):
 The OpenCode v1 adapter can still run and is kept on purpose (PN-22). Upstream `opencode-ai` and GitHub latest are still v1 (1.19.5, 2026-10-28), so most PATH users run the path that live checks don't cover.
 
 Top 3:
-1. **PN-1:** v2 never emits `BridgeSseSessionIdle`. This is a parity bug found by the audit, not cleanup, and the fix is about 6 lines.
+1. **PN-1:** v2 never emitted `BridgeSseSessionIdle`. Fixed outside the series by #2309, including the v1 comment.
 2. **PN-2:** about 5.9k unused generated v1 OpenAPI lines.
 3. **PN-3:** Pi's duplicate history DTO tree, about 320 written and 2.1k generated lines.
 
@@ -28,6 +28,7 @@ Estimated removable: about 1.7–1.9k written lines and about 8.3k generated lin
 ## Findings
 
 ### PN-1 OpenCode v2 never emits `BridgeSseSessionIdle`, so v2 turns skip completion recency and tool finalization
+- **Status:** fixed by #2309 (merged 2026-11-03), which added the v2 idle emission and rewrote the v1 comment. The evidence below is the audit snapshot.
 - **Category:** leftover. It is a parity gap left by the v2 adapter, and a bug, raised under the findings rule.
 - **Evidence:**
   - `lib/src/v2/sse/v2_event_mapper.dart:20-44` maps `V2SessionExecutionSucceeded`, `Failed` and `Interrupted` only to `BridgeSseSessionStatus(idle)`.

@@ -18,7 +18,7 @@ Estimated total removable: about 800 to 900 lines, roughly 45% lib and 55% tests
   - `client/module_core/lib/src/services/models/project_list_state.dart:23-30` declares `runningByProjectId` and `unseenByProjectId` on `ProjectListLoaded`.
   - I ran `rg 'runningByProjectId|unseenByProjectId'` over `client/app/lib`, `client/desktop/lib`, `client/module_app_ui/lib` and `client/module_desktop_core/lib`: 0 hits. The UI readers were removed by app-simplification step 8 (635cbe8bb6, Projects screen) and step 10.
   - These writers still run for nobody, all in `project_inventory_service.dart`:
-    - :103 is the `_sessionUnseenTracker.projectUnseen.listen((_) =&gt; _onUnseenUpdated())` subscription. It re-emits the whole `ProjectListLoaded` on every `SesoriSessionUnseenChanged`.
+    - :103 is the `_sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated())` subscription. It re-emits the whole `ProjectListLoaded` on every `SesoriSessionUnseenChanged`.
     - :203-219 are `_onUnseenUpdated` and `_unseenByProjectId`.
     - :599-610 is `_emitOrdered`, which copies both maps.
     - :862-880 is the `_refreshProjects` seed plus `seedProjects`.
@@ -79,7 +79,7 @@ Estimated total removable: about 800 to 900 lines, roughly 45% lib and 55% tests
 
 ### MC-3 Remove production APIs that only tests call (their production callers were removed)
 - Category: leftover
-- Evidence: for each item I ran `rg '&lt;name&gt;'` across `client/*/lib` and found only the declaration; the remaining callers are tests.
+- Evidence: for each item I ran `rg '<name>'` across `client/*/lib` and found only the declaration; the remaining callers are tests.
   - `NewSessionCubit.canRefreshOptions` (`cubits/new_session/new_session_cubit.dart:656-664`). Its UI consumer was removed in app-simplification 11.ii (e439670974). The UI calls `refreshOptions` directly (`new_session_view.dart:229,342,350`).
   - `NewSessionState.isComposerDataLoading` (`new_session_state.dart:231`).
   - `SessionDetailCubit.reassertViewingSession` (`session_detail_cubit.dart:2965-2972`). The caller was removed in #1400 (fb8308e12a). Tests that use it: `session_detail_cubit_test:2444,2451` and `app/test/.../archived_sessions_navigation_test:332`.

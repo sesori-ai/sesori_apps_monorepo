@@ -115,7 +115,7 @@ Estimated total removable: roughly 800-1,100 production lines plus about 350 tes
 ### BS-6 `UpdateLock` dead options and legacy parse
 - Category: leftover
 - Evidence (`updater/foundation/update_lock.dart`, 320 lines):
-  - `shouldReleaseLock` is dead: both production callers pass `(_) =&gt; true`.
+  - `shouldReleaseLock` is dead: both production callers pass `(_) => true`.
   - The plain-pid lock parse at 295-301 is dead, because bridge-v0.3.0 already wrote JSON.
   - `isProcessAlive` is public but used only in this file and in tests.
   - `_LockOwner.fromJson` parses JSON by hand.
@@ -368,7 +368,7 @@ Estimated total removable: roughly 800-1,100 production lines plus about 350 tes
 - Category: leftover
 - Evidence:
   - `foundation/relay_client.dart:45-52, 68-74, 187` carry `closeReason` only for this fallback, according to their own doc comments.
-  - `shared/sesori_shared/lib/src/protocol/close_codes.dart:63-65` matches `1000 &amp;&amp; reason == "replaced"`.
+  - `shared/sesori_shared/lib/src/protocol/close_codes.dart:63-65` matches `1000 && reason == "replaced"`.
   - `control/control_status_notifier.dart:173-174` consumes it.
   - The relay server has emitted the dedicated code 4007 since d2face7 (2026-07-07); `handler.go:266` sends 4007 with reason "replaced".
 - Proposal: once the relay deployment is confirmed, drop `closeReason` from `RelayDisconnected` and `RelayClient`, delete the fallback branch in `close_codes.dart`, and keep the reason only in the orchestrator log line if useful.
@@ -394,7 +394,7 @@ Estimated total removable: roughly 800-1,100 production lines plus about 350 tes
 - Splitting `BridgeRuntimeRunner.run` (about 880 lines) or `plugin_runtime.dart` (2.3k): size alone is not a concrete benefit, consistent with the previous audit.
 - `chat_history_service.backfillSession`: used internally (line 992). The `_inFlightBackfills` dedupe has a named reconnect flow.
 - The `chat_history_service.dart:605` "legacy shape": the inline-image aggregate for released apps, a real wire contract.
-- `SessionAbortService` with three `Stream&lt;String&gt;` streams: each consumer needs one, and merging them into a sealed stream is marginal.
+- `SessionAbortService` with three `Stream<String>` streams: each consumer needs one, and merging them into a sealed stream is marginal.
 - `listeners/chat_history_listener.dart:42`, `onError: (Object _) {}`: the orchestrator logs the same stream's errors.
 - `session_options_service.dart:797, 831`: catch-and-continue sites with a retry or remove flow.
 - `session_unseen_service.dart:363`, a positional `operation` in the private `_serialize`: a marginal rule nit, so fix it only when the file is touched.

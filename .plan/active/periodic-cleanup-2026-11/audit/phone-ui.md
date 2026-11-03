@@ -65,7 +65,7 @@ Estimated removable without decisions: about 1,300 hand-written lines plus about
     - `module_core/lib/src/platform/deep_link_source.dart` (3 lines, interface).
     - `MockDeepLinkSource` at `module_core/lib/src/testing/test_helpers.dart:259`.
     - `app/test/core/routing/deep_link_service_test.dart` (128 lines).
-    - The `initializeDeepLinks: () =&gt; getIt&lt;DeepLinkService&gt;().init()` wiring at `app/lib/main.dart:111`, plus the `bootstrapSesoriApp` parameter (`main.dart:136,149`) and its use in `app/test/main_startup_notification_wiring_test.dart`.
+    - The `initializeDeepLinks: () => getIt<DeepLinkService>().init()` wiring at `app/lib/main.dart:111`, plus the `bootstrapSesoriApp` parameter (`main.dart:136,149`) and its use in `app/test/main_startup_notification_wiring_test.dart`.
     - The `app_links` dependency in `app/pubspec.yaml`.
   - The constructor `DeepLinkService(final DeepLinkSource _deepLinkSource)` is also positional, which violates the named-parameter rule.
 - Proposal:
@@ -116,7 +116,7 @@ Estimated removable without decisions: about 1,300 hand-written lines plus about
 
 ### UI-4 Delete 17 unused l10n keys
 - Category: leftover
-- Evidence: in `client/module_app_ui/lib/src/l10n/app_en.arb`, these keys have no `.&lt;key&gt;` use in any `client/**/lib`:
+- Evidence: in `client/module_app_ui/lib/src/l10n/app_en.arb`, these keys have no `.<key>` use in any `client/**/lib`:
   - Orphaned by the harness-settings redesign (69e276cc44, #1355, and fb6447b59c):
     - `harnessManagementDescription`, `harnessManagementInstall`, `harnessManagementInstallDescription`, `harnessManagementClearOverride`, `harnessManagementForceRestartTitle`
     - `harnessesRegisteredSection`, `harnessesDefaultBadge`, `harnessesSetupStatus`, `harnessesRuntimeVersion`, `harnessesRuntimeStatus`, `harnessesWorkStatus`

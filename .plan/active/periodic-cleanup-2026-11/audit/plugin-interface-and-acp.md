@@ -44,13 +44,13 @@ Estimated removable code: about 600 lines across production, tests and docs, plu
 ### PI-2 Remove dead ACP turn-policy switches and the process-wide prompt lane
 - Category: leftover
 - Evidence:
-  - `serializesPromptsProcessWide =&gt; false` (`acp_plugin.dart:252`): OMP was the last override, and #1075 dropped it on 2026-08-24. The `true` path is dead:
+  - `serializesPromptsProcessWide => false` (`acp_plugin.dart:252`): OMP was the last override, and #1075 dropped it on 2026-08-24. The `true` path is dead:
     - `_processTurnTail` at `:171`
     - `_runOnProcessLane` at `:1139-1147`
     - the call at `:1087`
     - the ternary at `:1450`
-  - `cancelsActiveTurnForQueuedInput =&gt; true` (`:263`): no override anywhere, not even in tests. Its own doc says `false` "is not valid production behavior". The `false` arm at `:1267` is dead.
-  - `failsTurnOnSelectionError =&gt; true` (`:268`): no production override. Cursor only mentions it in a comment (`cursor_plugin_impl.dart:22-26`). The dead fail-open arms are at `:1099` and `:1560-1564`.
+  - `cancelsActiveTurnForQueuedInput => true` (`:263`): no override anywhere, not even in tests. Its own doc says `false` "is not valid production behavior". The `false` arm at `:1267` is dead.
+  - `failsTurnOnSelectionError => true` (`:268`): no production override. Cursor only mentions it in a comment (`cursor_plugin_impl.dart:22-26`). The dead fail-open arms are at `:1099` and `:1560-1564`.
   - Analyzer check: no production library references these switches. Only 9 test assertions broke: the hermes, omp, copilot, grok and deepseek plugin tests, plus `acp_step5_policy_test.dart:31,34`.
   - The header doc at `:55-56` lists all three.
 - Proposal:
@@ -94,7 +94,7 @@ Estimated removable code: about 600 lines across production, tests and docs, plu
 - Category: leftover
 - Evidence:
   - `PluginRuntimeUpdateSpec` and `runtimeUpdateSpec` (`bridge_plugin_descriptor.dart:21-28,107-112`) are documented as "inert until the bridge adds an explicit runtime-update command".
-  - The app maps `PluginControlCapability.runtimeUpdate =&gt; null` (`plugin_lifecycle_service.dart:1308`), so it never exposes the capability.
+  - The app maps `PluginControlCapability.runtimeUpdate => null` (`plugin_lifecycle_service.dart:1308`), so it never exposes the capability.
   - Even so, 8 descriptors compute both: `claude:121`, `codex:254`, `cursor:140,144`, `grok:68-79`, `hermes:79-90`, `omp:118`, `opencode:321` and `pi:127`.
   - 14 test files assert them.
   - The owning plan, `.plan/active/path-runtime-authority-split/`, merged step 6 (#1474) on 2026-09-13, but its tracker still says "Step 6 In progress". Step 7 ("Execute sanitized global runtime updates") has not started.
@@ -107,7 +107,7 @@ Estimated removable code: about 600 lines across production, tests and docs, plu
 ### PI-5 Throwing convenience accessors on `PluginMessagePart` are forced casts used only by tests
 - Category: rule-violation
 - Evidence:
-  - `plugin_message.dart:164-222` adds `text`, `tool`, `state`, `attachment`, `agentName`, `attempt`, `retryError` and `asText`/`asReasoning`/`asTool`/`asFile`/`asAgent`/`asRetry` to the union. Each throws a `StateError` on the wrong variant, which is the forced-cast pattern AGENTS.md bans. They came from #1107 (2026-08-25).
+  - `plugin_message.dart:164-222` adds `text`, `tool`, `state`, `attachment`, `agentName`, `attempt`, `retryError` and `asText`/`asReasoning`/`asTool`/`asFile`/`asAgent`/`asRetry` to the union. Each throws a `StateError` on the wrong variant, a throwing-accessor pattern that only tests use. They came from #1107 (2026-08-25).
   - Analyzer check (block deleted in the scratch copy): no production library uses them. About 400 test uses break:
     - `state` 223
     - `text` 99

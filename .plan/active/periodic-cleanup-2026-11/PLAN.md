@@ -56,7 +56,7 @@ never emitted the session-idle signal (#2309, merged 2026-11-03).
   - **Relay and bridge.** The relay deploys on its own schedule. Check what the deployed relay sends (`sesori_relay_server` main), and keep unknown-type handling.
   - **Desktop app and its bundled bridge.** They ship together, and the bundled bridge never self-updates. No tag check is needed.
   - **Internal Dart contracts** (plugin interface, packages): no check and no markers. Update every consumer together.
-- **Behavior.** Steps preserve behavior except where a step names a user-visible change. Each PR updates its affected `docs/regression/` documents in the same PR.
+- **Behavior.** Steps preserve behavior except where a step names a user-visible change. Each PR updates its affected `docs/regression/` documents in the same PR; step 27 only reconciles what the series left inconsistent across documents.
 - **New findings.** Anything found mid-step follows the user's findings rule:
   - fix it when it follows from an existing decision or rule;
   - raise it on a review page when it is a design choice;
@@ -129,7 +129,7 @@ authored and generated.
 | 17 | 🌿 Share the platform adapters between phone and desktop | UI-3, DS-7 | ~610 | 16 |
 | 18 | 🌿 Delete dead sesori_shared code | DS-1, DS-3, DS-5, DS-8 | ~1,300 + ~390 gen | 1 |
 | 19 | 🌿 Remove the unrendered login control prompt and share notification routing | DS-4, DS-6a | ~125 | 12, 17, 18 |
-| 20 | 🌿 Retire dead lint rules and tighten the live ones | DS-2, DS-9, DS-13, DS-14, XC-6 (linter part) | ~1,150 | 22, 24, 25, 26 |
+| 20 | 🌿 Retire dead lint rules and tighten the live ones | DS-2, DS-9, DS-13, DS-14, XC-6 (linter part) | ~1,150 | 2–19, 22, 24–26 |
 | 21 | 🌱 Remove CI leftovers | XC-CI-1…12 | ~250 | 1 |
 | 22 | 🌱 Correct compatibility markers | XC-2 (auth branch), XC-3 (Codex), XC-5, XC-7, BA-8, DS-11, PN-16, PI-7 | ~220 | 4, 6, 18 |
 | 23 | 🌱 Retire finished plans and fix stale docs | XC-DOC-1, XC-DOC-2, XC-DOC-3…14, DS-10, PI-6 | docs | 1 |
@@ -143,8 +143,11 @@ The "After" column lists hard dependencies; dependencies are transitive. They
 keep parallel PRs out of the same files and types. In particular:
 - step 11 lands the final runtime-selection types (BS-10, BS-15) before any
   plugin step switches over them (PN-17);
-- steps 3–7 and 25 all edit the plugin implementations and
-  `plugin_lifecycle_service.dart`, so they run in sequence.
+- step 3 removes the shared interface members first; steps 4, 5 and 6 then
+  each own a different plugin package and run in parallel;
+- step 7 follows step 4, and step 25 (which edits
+  `plugin_lifecycle_service.dart` like step 3) follows step 4. Small overlaps
+  with step 5 or 6 in plugin descriptors are resolved by merging main in.
 
 Steps without a path between them run in parallel worktrees, about four to
 six PRs at a time. The first wave is steps 2, 8, 10, 13, 15, 18, 21 and 23.

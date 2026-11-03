@@ -46,7 +46,7 @@ Estimated effect:
     - docs/HARNESS_CAPABILITIES.md:128,130,838
     - tool/mcp-contracts/README.md:56
     - docs/regression/session-turns.md:1137
-    - docs/cleanup-audit-2026-09-04.md:90
+    - .plan/completed/periodic-cleanup/AUDIT.md:90 (moved from docs/cleanup-audit-2026-09-04.md in step 1)
     - docs/ROADMAP.md and docs/VISION.md, which are covered by XC-DOC-5
 - Proposal:
   - Make one docs-only PR that uses `git mv` to move the 8 directories to `.plan/completed/`.
@@ -276,7 +276,7 @@ Estimated effect:
 - Evidence:
   - docs/HARNESS_CAPABILITIES.md:661-967 ("MCP management native evidence", about 300 lines) is implementation-narrative prose. It overlaps docs/regression/mcp-management.md (890 lines) and links into `.plan/active/mcp-management/evidence/`.
   - The rest of the file was spot-checked and is accurate (see Checked and kept).
-  - docs/cleanup-audit-2026-09-04.md (444 lines) is the record of the previous audit. Its plan, periodic-cleanup, is completed.
+  - docs/cleanup-audit-2026-09-04.md (444 lines, moved to .plan/completed/periodic-cleanup/AUDIT.md in step 1) is the record of the previous audit. Its plan, periodic-cleanup, is completed.
 - Proposal:
   - Reduce the MCP section to a per-harness gap table of about 60 lines and point to the regression doc.
   - When this audit's record lands, move the 2026-09-04 record into `.plan/completed/periodic-cleanup/` so docs/ holds at most one current audit record.
