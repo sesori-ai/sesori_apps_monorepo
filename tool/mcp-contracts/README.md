@@ -49,8 +49,11 @@ completion/cancellation, and snapshot decoding. It fails on decoder drift rather
 than silently testing a current decoder as an older peer. Native mixed-client
 ownership and competing-reply tests belong with the production pending owner.
 
-Focused tooling tests: `node --test tool/mcp-contracts/*.test.mjs`. HTTP fixtures
-advertise only the echo tool; form/URL elicitation is exercised through stdio.
+Focused tooling tests: `node --test tool/mcp-contracts/*.test.mjs`. Release Workflow CI
+runs all of them except `released-peer.test.mjs`: the shared question/SSE codecs have
+differed from v1.9.0 since 2026-10-15, so the released-peer runner stops at its drift
+check on `main`. HTTP fixtures advertise only the echo tool; form/URL elicitation is
+exercised through stdio.
 
 Versioned results and the remaining qualification boundaries are in
 [the contract evidence](../../.plan/active/mcp-management/evidence/native-contracts.md).

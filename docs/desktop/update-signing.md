@@ -37,7 +37,7 @@ Internal and stable are separate feeds. Internal builds never reach the stable f
 | Target | Files | Published by |
 |---|---|---|
 | `linux-x64`, `linux-arm64` (AppImage) | `releases.<channel>.json`, its `.sig` and the full `.nupkg` | the internal cycle and production `submit-release`, after the Linux release assets are public |
-| `macos-arm64`, `macos-x64` | `appcast.xml`; its one enclosure is the public release ZIP | the same workflows, after the macOS release assets are public, while `DESKTOP_MACOS_PUBLICATION_ENABLED` is on |
+| `macos-arm64`, `macos-x64` | `appcast.xml`; its one enclosure is the public release ZIP | the same workflows, after the macOS release assets are public |
 | `windows-*` | not published | Windows installers are not on GitHub Releases yet |
 
 `desktop-update-feed.yml` does the work in two jobs:

@@ -40,15 +40,11 @@ jobs:
 
           git fetch --tags --force
           internal_tag="$(git tag --list "v*-internal.${BUILD_NUMBER}" | head -1)"
-          legacy_tag="build-${BUILD_NUMBER}"
-          if [[ -n "$internal_tag" ]]; then
-            echo "Verified ${internal_tag}"
-          elif git rev-parse -q --verify "refs/tags/${legacy_tag}" >/dev/null; then
-            echo "Verified ${legacy_tag}"
-          else
-            echo "::error::No v*-internal.${BUILD_NUMBER} or ${legacy_tag} tag exists"
+          if [[ -z "$internal_tag" ]]; then
+            echo "::error::No v*-internal.${BUILD_NUMBER} tag exists"
             exit 1
           fi
+          echo "Verified ${internal_tag}"
 
       - name: Authenticate to Google Cloud
         id: auth

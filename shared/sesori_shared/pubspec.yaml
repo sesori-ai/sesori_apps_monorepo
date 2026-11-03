@@ -1,4 +1,5 @@
 name: sesori_shared
+publish_to: none
 repository: https://github.com/sesori-ai/sesori_apps_monorepo
 description: Shared crypto and protocol for Sesori relay. Pure Dart, no Flutter.
 version: 0.3.0

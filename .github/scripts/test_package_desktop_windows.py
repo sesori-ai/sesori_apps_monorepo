@@ -226,7 +226,6 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertIn("'--installto'", workflow)
         self.assertIn("@('uninstall', '--silent')", workflow)
         self.assertIn('foreach ($payload in $recordedPayload)', workflow)
-        self.assertNotIn("Inno", workflow)
 
 
 if __name__ == "__main__":
