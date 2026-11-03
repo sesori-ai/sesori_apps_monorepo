@@ -8,12 +8,11 @@ void main() {
     required String os,
     String version = "",
     String? osRelease,
-  }) =>
-      formatter.format(
-        operatingSystem: os,
-        operatingSystemVersion: version,
-        osReleaseContents: osRelease,
-      );
+  }) => formatter.format(
+    operatingSystem: os,
+    operatingSystemVersion: version,
+    osReleaseContents: osRelease,
+  );
 
   group("macOS", () {
     test("extracts the version number from the raw version string", () {

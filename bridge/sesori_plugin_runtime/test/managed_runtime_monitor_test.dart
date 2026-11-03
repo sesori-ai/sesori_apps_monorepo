@@ -254,7 +254,8 @@ void main() {
       expect(
         disarmSettled,
         isFalse,
-        reason: "disarm must wait the in-flight restart episode out, or the owner's "
+        reason:
+            "disarm must wait the in-flight restart episode out, or the owner's "
             "shutdown reads a stale handle while the respawn is still in flight",
       );
       gate.complete();
@@ -418,7 +419,6 @@ _TestRecord _record({required int pid, required int port}) {
 }
 
 class _Fakes({ServerClock? clock}) {
-
   final _FakeOwnershipRepository ownership = _FakeOwnershipRepository();
   final _FakeHostProcessService processes = _FakeHostProcessService();
   final _FakeBridgeHostInfo bridge = _FakeBridgeHostInfo();
@@ -515,16 +515,16 @@ enum _TestStatus() {
 }
 
 class const _TestRecord({
-    required final String ownerSessionId,
-    required final int openCodePid,
-    required final String? openCodeStartMarker,
-    required final String openCodeExecutablePath,
-    required final List<String> args,
-    required final int port,
-    required final int bridgePid,
-    required final String? bridgeStartMarker,
-    required final _TestStatus status,
-  }) {
+  required final String ownerSessionId,
+  required final int openCodePid,
+  required final String? openCodeStartMarker,
+  required final String openCodeExecutablePath,
+  required final List<String> args,
+  required final int port,
+  required final int bridgePid,
+  required final String? bridgeStartMarker,
+  required final _TestStatus status,
+}) {
   _TestRecord withStatus(_TestStatus status) {
     return _TestRecord(
       ownerSessionId: ownerSessionId,
@@ -716,11 +716,11 @@ class _NeverElapsingServerClock() implements ServerClock {
 }
 
 class _MonitorSpawnedProcess({
-    required final ProcessIdentity _identity,
-    required bool exitImmediately,
-    Stream<List<int>>? stderr,
-  }) implements SpawnedProcess {
-  this{
+  required final ProcessIdentity _identity,
+  required bool exitImmediately,
+  Stream<List<int>>? stderr,
+}) implements SpawnedProcess {
+  this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);
     }

@@ -6,10 +6,9 @@ import "mappers/plugin_agent_mapper.dart";
 import "models/project_not_found_exception.dart";
 
 class AgentRepository({
-    required final PluginRuntime _runtime,
-    required final ProjectsDao _projectsDao,
-  }) {
-
+  required final PluginRuntime _runtime,
+  required final ProjectsDao _projectsDao,
+}) {
   Future<Agents> getAgents({required String projectId, required String pluginId}) async {
     return await _runtime.use(
       pluginId: pluginId,
@@ -31,4 +30,6 @@ class AgentRepository({
   }
 }
 
-enum _AgentOperation() { getAgents }
+enum _AgentOperation() {
+  getAgents,
+}

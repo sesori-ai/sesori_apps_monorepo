@@ -20,12 +20,13 @@ sealed class const CodexImageAttachmentCandidate() {
 }
 
 final class const CodexBase64ImageAttachmentCandidate({
-    required final String data,
-    required final String mime,
-    required final String? filenameHint,
-  }) extends CodexImageAttachmentCandidate;
+  required final String data,
+  required final String mime,
+  required final String? filenameHint,
+}) extends CodexImageAttachmentCandidate;
 
-final class const CodexImageUrlAttachmentCandidate({required final String imageUrl}) extends CodexImageAttachmentCandidate;
+final class const CodexImageUrlAttachmentCandidate({required final String imageUrl})
+    extends CodexImageAttachmentCandidate;
 
 final class const CodexImageAttachmentMapper() {
   static const int _maxDataUrlHeaderCharacters = 256;
@@ -345,11 +346,11 @@ enum _ImageDegradationReason() {
 sealed class const _ImageMappingResult();
 
 final class const _InlineImageResult({
-    required final PluginMessageAttachment attachment,
-    required final int decodedBytes,
-  }) extends _ImageMappingResult;
+  required final PluginMessageAttachment attachment,
+  required final int decodedBytes,
+}) extends _ImageMappingResult;
 
 final class const _MetadataImageResult({
-    required final PluginMessageAttachment attachment,
-    required final _ImageDegradationReason reason,
-  }) extends _ImageMappingResult;
+  required final PluginMessageAttachment attachment,
+  required final _ImageDegradationReason reason,
+}) extends _ImageMappingResult;

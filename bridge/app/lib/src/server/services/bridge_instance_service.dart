@@ -9,20 +9,24 @@ import '../repositories/process_repository.dart';
 
 const Duration _bridgeShutdownWait = Duration(seconds: 5);
 
-enum BridgeInstanceResolutionStatus() { allowed, declined, nonInteractive }
+enum BridgeInstanceResolutionStatus() {
+  allowed,
+  declined,
+  nonInteractive,
+}
 
 class const BridgeInstanceResolution({
-    required final BridgeInstanceResolutionStatus status,
-    required final List<ProcessIdentity> existingBridges,
-    required final List<ProcessIdentity> terminatedBridges,
-  });
+  required final BridgeInstanceResolutionStatus status,
+  required final List<ProcessIdentity> existingBridges,
+  required final List<ProcessIdentity> terminatedBridges,
+});
 
 class BridgeInstanceService({
-    required final BridgeInstanceRepository _bridgeInstanceRepository,
-    required final BridgeReplacePrompt _replacePrompt,
-    required final ProcessRepository _processRepository,
-    required final ServerClock _clock,
-  }) {
+  required final BridgeInstanceRepository _bridgeInstanceRepository,
+  required final BridgeReplacePrompt _replacePrompt,
+  required final ProcessRepository _processRepository,
+  required final ServerClock _clock,
+}) {
   Future<BridgeInstanceResolution> enforceSingleLiveBridge({required int currentPid}) async {
     final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
     if (existingBridges.isEmpty) {

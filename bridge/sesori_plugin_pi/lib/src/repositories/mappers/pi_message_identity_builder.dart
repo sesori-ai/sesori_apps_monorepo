@@ -3,7 +3,7 @@ enum PiMessageIdentityRole(final String segment) {
   assistant("assistant"),
   custom("custom"),
   bashExecution("bashExecution"),
-  compaction("compaction");
+  compaction("compaction"),
 }
 
 final class PiMessageIdentityBuilder({

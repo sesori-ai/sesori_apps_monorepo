@@ -8,7 +8,10 @@ import "package:web_socket_channel/io.dart";
 ///
 /// This is internal lifecycle state, NOT a wire-protocol type — the
 /// control-protocol DTOs live in `sesori_shared`.
-enum ControlChannelConnectionState() { connected, disconnected }
+enum ControlChannelConnectionState() {
+  connected,
+  disconnected,
+}
 
 /// Thrown by [ControlChannelClient.send] when the channel is not currently
 /// connected (GUI outage or mid-reconnect). This is a transient runtime
@@ -36,12 +39,12 @@ class const ControlChannelNotConnectedException({required final String message})
 /// policy (`ControlChannelLossListener`, ADR A9) that observes
 /// [connectionState].
 class ControlChannelClient({
-    required final Uri _url,
-    required final String _secret,
-    final Duration _connectTimeout = const Duration(seconds: 15),
-    final Duration _initialReconnectDelay = const Duration(seconds: 1),
-    final Duration _maxReconnectDelay = const Duration(seconds: 30),
-  }) {
+  required final Uri _url,
+  required final String _secret,
+  final Duration _connectTimeout = const Duration(seconds: 15),
+  final Duration _initialReconnectDelay = const Duration(seconds: 1),
+  final Duration _maxReconnectDelay = const Duration(seconds: 30),
+}) {
   final StreamController<String> _inbound = StreamController<String>.broadcast();
   final StreamController<ControlChannelConnectionState> _connectionState =
       StreamController<ControlChannelConnectionState>.broadcast();

@@ -133,16 +133,16 @@ bool _isWindowsSubsystemForLinux(Map<String, String> env) {
 }
 
 class LoginOAuthService({
-    required final AuthApi _api,
-    required final AuthClientType _clientType,
-    required final DeviceInfo _device,
-    required final Future<void> Function({required String url}) _browserLauncher,
-    required final BrowserOpenability Function() _browserOpenability,
-    @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
-    @visibleForTesting final Duration _pollTimeout = _defaultPollTimeout,
-    @visibleForTesting final Duration _perRequestTimeout = _defaultPerRequestTimeout,
-    @visibleForTesting Future<void> Function(Duration duration)? delay,
-  }) {
+  required final AuthApi _api,
+  required final AuthClientType _clientType,
+  required final DeviceInfo _device,
+  required final Future<void> Function({required String url}) _browserLauncher,
+  required final BrowserOpenability Function() _browserOpenability,
+  @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
+  @visibleForTesting final Duration _pollTimeout = _defaultPollTimeout,
+  @visibleForTesting final Duration _perRequestTimeout = _defaultPerRequestTimeout,
+  @visibleForTesting Future<void> Function(Duration duration)? delay,
+}) {
   final Future<void> Function(Duration duration) _delay = delay ?? Future<void>.delayed;
 
   /// Starts the OAuth login flow through the auth backend's pending-session API.

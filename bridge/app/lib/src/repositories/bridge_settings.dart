@@ -12,9 +12,9 @@ enum SleepPreventionMode() {
 }
 
 class const PluginLifecycleSettings({
-    required final int? idleTimeoutMins,
-    final Map<String, Object?> additionalProperties = const {},
-  }) {
+  required final int? idleTimeoutMins,
+  final Map<String, Object?> additionalProperties = const {},
+}) {
   factory fromJson({
     required String entryName,
     required Map<String, dynamic> json,
@@ -55,10 +55,10 @@ class const PluginLifecycleSettings({
 }
 
 class const BridgePluginSettings({
-    final Set<String> disabledPluginIds = const {},
-    final PluginLifecycleSettings defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
-    final Map<String, PluginLifecycleSettings> settingsByPluginId = const {},
-  }) {
+  final Set<String> disabledPluginIds = const {},
+  final PluginLifecycleSettings defaults = const PluginLifecycleSettings(idleTimeoutMins: null),
+  final Map<String, PluginLifecycleSettings> settingsByPluginId = const {},
+}) {
   factory fromJson({required Object? rawValue}) {
     if (rawValue is! Map || rawValue.keys.any((key) => key is! String)) {
       throw const PluginSettingsFormatException(message: '"plugins" must be an object');
@@ -170,21 +170,26 @@ class const BridgePluginSettings({
 }
 
 class const BridgeSettings({
-    final SleepPreventionMode sleepPrevention = SleepPreventionMode.always,
-    /// Automatically approves permission requests at the bridge without
+  final SleepPreventionMode sleepPrevention = SleepPreventionMode.always,
+
+  /// Automatically approves permission requests at the bridge without
   /// forwarding them to connected clients.
   final bool yolo = false,
-    /// Plugin eligibility and lifecycle settings.
+
+  /// Plugin eligibility and lifecycle settings.
   final BridgePluginSettings plugins = const BridgePluginSettings(),
-    /// Which release channel the auto-updater follows.
+
+  /// Which release channel the auto-updater follows.
   final ReleaseTrack releaseTrack = ReleaseTrack.stable,
-    /// Pull request refresh interval that released apps read and save; it has no effect.
+
+  /// Pull request refresh interval that released apps read and save; it has no effect.
   // COMPATIBILITY 2026-10-25 (v1.10.0): Released apps read and save this interval through the settings routes, so
   // it is still persisted. Remove once public apps older than v1.10.1 are unsupported.
   final int pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
-    /// Whether opening a session should start its plugin before the first operation needs it.
+
+  /// Whether opening a session should start its plugin before the first operation needs it.
   final bool warmUpPluginsOnSessionOpen = defaultWarmUpPluginsOnSessionOpen,
-  }) {
+}) {
   factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
       sleepPrevention: _parseSleepPrevention(json['sleepPrevention']),
@@ -271,8 +276,7 @@ class const PluginSettingsFormatException({required String message}) extends For
 }
 
 class PluginIdleTimeoutFormatException({required final String entryName}) extends PluginSettingsFormatException {
-  this
-    : super(message: '"plugins.$entryName.idleTimeoutMins" must be an integer');
+  this : super(message: '"plugins.$entryName.idleTimeoutMins" must be an integer');
 }
 
 class const PullRequestRefreshIntervalFormatException() extends FormatException {
@@ -284,6 +288,5 @@ class const PullRequestRefreshIntervalFormatException() extends FormatException 
 }
 
 class const WarmUpPluginsOnSessionOpenFormatException() extends FormatException {
-  this
-    : super('"warmUpPluginsOnSessionOpen" must be a boolean');
+  this : super('"warmUpPluginsOnSessionOpen" must be a boolean');
 }

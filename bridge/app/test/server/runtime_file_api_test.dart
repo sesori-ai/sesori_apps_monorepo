@@ -85,7 +85,9 @@ void main() {
       final api = RuntimeFileApi(runtimeDirectory: p.join(tempDir.path, 'runtime'));
       await api.writeFile(name: stateFileName, contents: '{ invalid json }');
 
-      await api.renameFile(fromName: stateFileName, toName: 'plugin-processes.invalid.2026-05-15T10-00-00Z.json',
+      await api.renameFile(
+        fromName: stateFileName,
+        toName: 'plugin-processes.invalid.2026-05-15T10-00-00Z.json',
       );
 
       expect(File(p.join(api.runtimeDirectory, stateFileName)).existsSync(), isFalse);

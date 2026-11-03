@@ -18,14 +18,14 @@ final class const AcpMappedTextContentBlock({required final String text}) extend
 sealed class const AcpMappedImageContentBlock() extends AcpMappedContentBlock;
 
 final class const AcpMappedInlineImageContentBlock({
-    required final PluginMessageAttachmentInlineImage attachment,
-    required final int decodedBytes,
-  }) extends AcpMappedImageContentBlock;
+  required final PluginMessageAttachmentInlineImage attachment,
+  required final int decodedBytes,
+}) extends AcpMappedImageContentBlock;
 
 final class const AcpMappedMetadataImageContentBlock({
-    required final PluginMessageAttachmentMetadata attachment,
-    required final AcpImageDegradationReason reason,
-  }) extends AcpMappedImageContentBlock;
+  required final PluginMessageAttachmentMetadata attachment,
+  required final AcpImageDegradationReason reason,
+}) extends AcpMappedImageContentBlock;
 
 final class const AcpMappedUnsupportedContentBlock() extends AcpMappedContentBlock;
 
@@ -40,10 +40,10 @@ enum AcpImageDegradationReason() {
 sealed class const AcpToolContentMutation();
 
 final class const AcpReplaceToolContentMutation({
-    required final String? output,
-    required final List<AcpMappedImageContentBlock> imageCandidates,
-    required final bool hasDiff,
-  }) extends AcpToolContentMutation;
+  required final String? output,
+  required final List<AcpMappedImageContentBlock> imageCandidates,
+  required final bool hasDiff,
+}) extends AcpToolContentMutation;
 
 final class const AcpUpdateToolOutputMutation({required final String? output}) extends AcpToolContentMutation;
 
@@ -65,6 +65,7 @@ final class const AcpContentMapper() {
   static const int _maxUriCharactersForFilename = 4096;
   static const int _maxMimeCharacters = 255;
   static const String _fallbackMime = "application/octet-stream";
+
   /// The closed set of raster mime essences the client renders inline. Public
   /// so harness-local image sources (e.g. Cursor's generated-image reader)
   /// share this one enumeration instead of drifting copies.

@@ -395,7 +395,7 @@ void main() {
         spec: fakes.spec(
           portPolicy: const ExplicitPortPolicy(port: 50150),
           healthPolicy: RuntimeHealthPolicy(
-            deadline: const Duration(seconds:5),
+            deadline: const Duration(seconds: 5),
             pollInterval: const Duration(seconds: 1),
           ),
         ),
@@ -424,7 +424,7 @@ void main() {
           spec: fakes.spec(
             portPolicy: const ExplicitPortPolicy(port: 50151),
             healthPolicy: RuntimeHealthPolicy(
-              deadline: const Duration(seconds:2),
+              deadline: const Duration(seconds: 2),
               pollInterval: const Duration(seconds: 1),
             ),
           ),
@@ -712,7 +712,6 @@ _TestRecord _buildRecord(RuntimeRecordDraft draft) {
 }
 
 class _Fakes({_RecordingClock? clock}) {
-
   final _FakeOwnershipRepository ownership = _FakeOwnershipRepository();
   final _FakeHostProcessService processes = _FakeHostProcessService();
   final _FakeBridgeHostInfo bridge = _FakeBridgeHostInfo(
@@ -815,18 +814,18 @@ enum _TestStatus() {
 }
 
 class const _TestRecord({
-    required final String ownerSessionId,
-    required final int openCodePid,
-    required final String? openCodeStartMarker,
-    required final String openCodeExecutablePath,
-    required final String openCodeCommand,
-    required final List<String> openCodeArgs,
-    required final int port,
-    required final int bridgePid,
-    required final String? bridgeStartMarker,
-    required final DateTime startedAt,
-    required final _TestStatus status,
-  }) {
+  required final String ownerSessionId,
+  required final int openCodePid,
+  required final String? openCodeStartMarker,
+  required final String openCodeExecutablePath,
+  required final String openCodeCommand,
+  required final List<String> openCodeArgs,
+  required final int port,
+  required final int bridgePid,
+  required final String? bridgeStartMarker,
+  required final DateTime startedAt,
+  required final _TestStatus status,
+}) {
   _TestRecord copyWith({required _TestStatus status}) {
     return _TestRecord(
       ownerSessionId: ownerSessionId,
@@ -1000,7 +999,6 @@ class _FakeServerClock() implements _RecordingClock {
 }
 
 class _AdvancingServerClock({DateTime? start}) implements _RecordingClock {
-
   DateTime _now = start ?? DateTime.utc(2026, 5, 15, 12);
 
   @override
@@ -1016,7 +1014,8 @@ class _AdvancingServerClock({DateTime? start}) implements _RecordingClock {
   DateTime now() => _now;
 }
 
-class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately}) implements SpawnedProcess {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately})
+    implements SpawnedProcess {
   this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);

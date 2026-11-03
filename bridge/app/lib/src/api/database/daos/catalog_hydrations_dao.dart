@@ -6,7 +6,9 @@ import "../tables/catalog_hydrations_table.dart";
 part "catalog_hydrations_dao.g.dart";
 
 @DriftAccessor(tables: [CatalogHydrationsTable])
-class CatalogHydrationsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$CatalogHydrationsDaoMixin {
+class CatalogHydrationsDao(super.attachedDatabase)
+    extends DatabaseAccessor<AppDatabase>
+    with _$CatalogHydrationsDaoMixin {
   Future<CatalogHydrationDto?> getCompletion({
     required String pluginId,
     required int projectionVersion,

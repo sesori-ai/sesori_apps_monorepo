@@ -447,7 +447,12 @@ final class _PushTrackedSessionState() {
   DateTime? lastTouchedAt;
 }
 
-enum _PushMessageRole() { user, assistant, system, error }
+enum _PushMessageRole() {
+  user,
+  assistant,
+  system,
+  error,
+}
 
 final class const _PushTrackedMessageRole({
   required final _PushMessageRole role,

@@ -10,7 +10,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 4 ACP family | Merged | #2336 | Also fixes the OMP persisted-session cleanup, which had always aborted since #846 (OMP 18.15.0 never echoes `sessionId` on `session/resume`). |
 | 5 Claude plugin | Merged | #2335 | Unread stream-json variants collapse into one silent `ClaudeIgnoredMessage`. |
 | 6 Codex plugin | Merged | #2334, #2338, #2339, #2342, #2343 | 6.b: an approval without `threadId` fails with -32602, and a failed login status is logged. 6.d: permission id generators and probe timeouts are required. 6.e: the bridge version lives in `sesori_bridge_foundation` `bridgeVersion`, and Codex and the ACP family report it in `clientInfo` instead of "0.0.0". |
-| 7 Pi, OMP and OpenCode plugins | Merged | #2346, #2347, #2351, #2354 | 7.a also fixes the OpenCode `password` option's `defaultsTo: ""` and the flaky Pi tests. 7.b reads Pi file history into the generated RPC DTO (−2.1k generated). 7.d: ownership-record builders throw `StateError` on a missing executable path; the record format is unchanged, because older public bridges reject the whole shared file on a null path. Owed: see below. |
+| 7 Pi, OMP and OpenCode plugins | Merged | #2346, #2347, #2351, #2354, #2376 | 7.a also fixes the OpenCode `password` option's `defaultsTo: ""` and the flaky Pi tests. 7.b reads Pi file history into the generated RPC DTO (−2.1k generated). 7.d: ownership-record builders throw `StateError` on a missing executable path; the record format is unchanged, because older public bridges reject the whole shared file on a null path. 7.e removes the test-only `OpenCodeV2Api.getServerInfo`, the generated v2 `ServerInfo` model, and `server.info` and `project.update` from the v2 surface; dropping `project.update` from the v1 surface changes no generated output. |
 | 8 OpenCode v1 generated models | Merged | #2312 | Also removes the unused `--with-client` generator mode. |
 | 9 Bridge persistence and plugin fakes | Merged | #2333, #2337 | 9.b drops the unused `idx_projects_path` index (schema v23, no row change). |
 | 10 Push and updater | Merged | #2319, #2320 | Push maintenance logs one debug summary line per pass. Rollback failures and updater warnings now carry stacks. A cached release track this bridge does not know reads as a cache miss. |
@@ -30,8 +30,8 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 24 Restart route | Merged | #2350 | Removes the route and the whole restart subsystem (Q1), including exit code 86; `/global/restart` returns 404. |
 | 25 Runtime-update seam | Merged | #2341 | Removed (Q2). The management snapshot sent to apps is byte-identical. |
 | 26 Phone desktop/web runners | Merged | #2340 | Deleted (Q3), about 3.6k lines rather than the audit's ~9.9k. `firebase_options.dart` and `firebase.json` stay as generated; the next `flutterfire configure` for Android and iOS trims them. |
-| Format-only PR | Dropped | | A full `dart format` touches 172 files (about 2,750 lines), CI does not check formatting, and it would conflict with many open PRs. Whether to add a CI format gate is an open question for the user at step 28. |
-| 27 Regression docs | PR open | | Also runs the retired step-timers plan's step-6 reconciliation (Q6), and applies #2374's accepted README row. |
+| 20.k, 20.l Dart format check (Q11 A) | PR open | | `tool/dart_format.sh` owns the generated-file exclusions; the CI jobs that analyze each workspace run it with `--check`. 20.k checks and reformats the bridge; 20.l, stacked on it, does the client and shared packages. Formatter output only: 172 files, about 2,750 lines. |
+| 27 Regression docs | Merged | #2375 | Also runs the retired step-timers plan's step-6 reconciliation (Q6), and applies #2374's accepted README row. |
 | 28 Verify and retire | Pending | | Includes the retired opencode-v2 and step-timers live rows (Q6). |
 
 Out of series:
@@ -40,6 +40,7 @@ Out of series:
 - #2355: ownership records match on pid, start marker and a live command line that ends with the recorded args, so interpreter-shim, execve and native launches all match. Without a start marker (Windows) a record still falls back to pid + path.
 - #2359: a Windows graceful stop that throws falls back to force on every stop path and skips the grace wait.
 - #2365 (Q8 A): backend runtimes on Windows join a kill-on-close job object, so they end with the bridge.
+- Q12 B, in progress: on Windows a runtime starts suspended, is bound to the job object, then resumes, so it cannot escape the job before it is bound.
 
 ## Step 20
 
@@ -67,6 +68,7 @@ Behaviour changes from step 20 (all edge cases of malformed input):
 - #2365: a per-executor lifetime split declined, because short commands end on their own. The architecture review's question about the host port and JSON-store adapters was decided as no change: they are small boundary adapters, and a pass-through repository adds no behaviour.
 - #2360–#2364: the README CRLF-to-LF complaint declined; the file is published as is.
 - #2374: three cubic findings declined. The legacy `case null:` node cannot appear, since every package requires Dart 3.13. Typed object-pattern fields and logical-or catch-alls have no site in the repository. Its README row was accepted and lands in step 27.
+- BA-12 (step 9): no change. 12.a (#2344) already replaced the orchestrator's three bare `DateTime.now()` calls with `clock.now()`. `ServerClock` (the plugin-host contract `SessionOptionsService` uses) and package `clock` return the same instant in production, and each test's fake controls every time-dependent path. Unifying them would be 40–60 lines of churn with no behaviour gain.
 
 ## Dropped or corrected findings
 
@@ -83,9 +85,3 @@ Findings disproved during a step are recorded here with the reason.
 - UI-2 (step 16): GoRouter does receive deep links and its `onException` ignores them, so removing `app_links` still changes nothing visible.
 - DS-10 (step 23): macOS shipped publicly in v1.9.1, not v1.10.1; the conclusion holds, because the shared store predates v1.9.1.
 - Shared `CommandExecutor` test fake (bridge-services audit): dropped. The 18 fakes across 7 packages behave differently, and one configurable fake would need a test-support library in a production package.
-
-## Owed
-
-- Step 7 carried item, not done: `OpenCodeV2Api.getServerInfo` is still called only by tests, and `tool/opencode_v2_surface.json` still lists `server.info` and `project.update`.
-- BA-12 (step 9): the orchestrator uses three time sources (`ServerClock`, package `clock` and `DateTime.now()`). Choosing one is a design question for the user.
-- CI format gate: open question for the user at step 28.

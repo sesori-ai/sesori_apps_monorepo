@@ -13,9 +13,21 @@ enum ClaudeMcpStatus() {
   needsAuth,
 }
 
-enum ClaudeMcpConfigurationScope() { unknown, user, local, project, dynamic, managed }
+enum ClaudeMcpConfigurationScope() {
+  unknown,
+  user,
+  local,
+  project,
+  dynamic,
+  managed,
+}
 
-enum ClaudeMcpTransportType() { unknown, stdio, http, sse }
+enum ClaudeMcpTransportType() {
+  unknown,
+  stdio,
+  http,
+  sse,
+}
 
 /// Selective native DTO: never retain launch arguments, environment or headers.
 @Freezed(copyWith: false, fromJson: true, toJson: false, toStringOverride: false)

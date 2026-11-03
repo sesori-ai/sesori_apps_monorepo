@@ -4,10 +4,10 @@ import "mappers/git_diff_output_mapper.dart";
 sealed class SessionDiffQueryResult();
 
 class SessionDiffQuerySuccess({
-    required final String baseRevision,
-    required final List<SessionDiffEntry> entries,
-    required final Map<String, SessionDiffLineCounts> lineCountsByFile,
-  }) extends SessionDiffQueryResult;
+  required final String baseRevision,
+  required final List<SessionDiffEntry> entries,
+  required final Map<String, SessionDiffLineCounts> lineCountsByFile,
+}) extends SessionDiffQueryResult;
 
 class SessionDiffBaseUnreachable() extends SessionDiffQueryResult;
 
@@ -15,7 +15,10 @@ class SessionDiffNoCommonAncestor() extends SessionDiffQueryResult;
 
 class SessionDiffQueryFailure({required final String message}) extends SessionDiffQueryResult;
 
-enum SessionDiffComparisonMode() { exactRevision, mergeBase }
+enum SessionDiffComparisonMode() {
+  exactRevision,
+  mergeBase,
+}
 
 sealed class SessionDiffRevisionFileReadResult();
 
@@ -28,10 +31,9 @@ class SessionDiffRevisionFileTooLarge() extends SessionDiffRevisionFileReadResul
 class SessionDiffRevisionFileReadFailure() extends SessionDiffRevisionFileReadResult;
 
 class SessionDiffRepository({
-    required final GitCliApi _gitCliApi,
-    required final GitDiffOutputMapper _outputMapper,
-  }) {
-
+  required final GitCliApi _gitCliApi,
+  required final GitDiffOutputMapper _outputMapper,
+}) {
   Future<SessionDiffQueryResult> query({
     required String worktreePath,
     required String revision,

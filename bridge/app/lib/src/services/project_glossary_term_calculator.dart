@@ -319,8 +319,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
         .split(_xmlNameSeparatorPattern);
     for (var index = 0; index < components.length; index++) {
       if (_credentialNameComponents.contains(components[index])) return true;
-      final isApiKey =
-          components[index] == "api" && index + 1 < components.length && components[index + 1] == "key";
+      final isApiKey = components[index] == "api" && index + 1 < components.length && components[index + 1] == "key";
       if (isApiKey) return true;
     }
     return false;

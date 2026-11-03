@@ -467,8 +467,7 @@ void main() {
       expect(parts.whereType<PluginMessagePartText>().last.text, "Finished");
     });
 
-    const unrestorableMessage =
-        "Oh My Pi can no longer restore this session's model (anthropic/claude-old).";
+    const unrestorableMessage = "Oh My Pi can no longer restore this session's model (anthropic/claude-old).";
     const unrestorableError = {
       "code": -32603,
       "message": "Internal error",

@@ -103,6 +103,8 @@ User decisions (review page, 2026-11-02):
 | Q5 | XC-DOC-1 eight finished or stalled plans | Retire all eight. The user accepts these unexecuted checks: quota-auto-continuation macOS QA; mcp-management step 37 L4 and external checks; desktop-sign-in full Apple sign-in on a macOS build; user-analytics Looker report and 3-day reconciliation. | 23 |
 | Q6 | Round 2: the retired plans skipped more checks than Q5 listed (opencode-v2 and step-timers never ran their final live matrices; desktop-sign-in and quota-auto-continuation skipped more rows) | Fold the opencode-v2 and step-timers live rows into step 28's matrix and step-timers' reconciliation into step 27. Every other gap stays accepted as recorded in each retired tracker. | 27, 28 |
 | Q7 | Round 2: ROADMAP's same-machine loopback transport for the desktop cockpit | Keep it as an unscheduled idea with a concrete trigger: users needing the desktop app offline, or relay latency hurting same-machine use. | 23 |
+| Q11 | The dropped format-only PR: should CI check `dart format`? | Yes (A). CI checks `dart format` on hand-written Dart files, and one reformat lands at a quiet time, while few PRs are open. | 20.k, 20.l |
+| Q12 | Windows job object: a runtime can escape it before it is bound | B: close the escape with a suspended start. Start the runtime suspended, bind it to the job object, then resume it. | Out of series |
 
 ## Phase 1 steps
 

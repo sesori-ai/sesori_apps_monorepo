@@ -614,19 +614,19 @@ class _MockLoginEmailApi._(final AuthResponse _response, final int? _errorStatus
 }
 
 class _OAuthRequestRecord({
-    required final String method,
-    required final String path,
-    required final Map<String, String> queryParameters,
-    required final String? sessionToken,
-    required final String? contentType,
-    required final Map<String, dynamic>? body,
-  });
+  required final String method,
+  required final String path,
+  required final Map<String, String> queryParameters,
+  required final String? sessionToken,
+  required final String? contentType,
+  required final Map<String, dynamic>? body,
+});
 
 class _OAuthLongPollTestServer._({
-    required final HttpServer _server,
-    required final String authUrl,
-    required List<AuthSessionStatusResponse> statusResponses,
-  }) {
+  required final HttpServer _server,
+  required final String authUrl,
+  required List<AuthSessionStatusResponse> statusResponses,
+}) {
   final List<AuthSessionStatusResponse> _statusResponses = List.of(statusResponses);
   final http.Client client = http.Client();
   final List<_OAuthRequestRecord> initRequests = [];
@@ -634,7 +634,7 @@ class _OAuthLongPollTestServer._({
   final List<_OAuthRequestRecord> ackRequests = [];
   final List<String> unexpectedPaths = [];
 
-  this{
+  this {
     _listen();
   }
 
@@ -718,15 +718,18 @@ class _OAuthLongPollTestServer._({
   }
 }
 
-enum _PasswordLoginResultType() { success, failure }
+enum _PasswordLoginResultType() {
+  success,
+  failure,
+}
 
 class _PasswordLoginResult._({
-    required final _PasswordLoginResultType type,
-    final String? accessToken,
-    final String? refreshToken,
-    final String? username,
-    final int? statusCode,
-  }) {
+  required final _PasswordLoginResultType type,
+  final String? accessToken,
+  final String? refreshToken,
+  final String? username,
+  final int? statusCode,
+}) {
   factory success({
     required String accessToken,
     required String refreshToken,

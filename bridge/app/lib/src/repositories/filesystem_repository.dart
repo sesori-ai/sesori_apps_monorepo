@@ -31,11 +31,19 @@ class FilesystemDirectoryNotFoundException({required final String path}) impleme
 }
 
 /// The kind of entity at a path, as resolved by [FilesystemRepository.classifyPath].
-enum FilesystemEntityKind() { notFound, notDirectory, directory }
+enum FilesystemEntityKind() {
+  notFound,
+  notDirectory,
+  directory,
+}
 
 /// The outcome of preparing a directory for creation. [alreadyExists] covers
 /// any entity occupying the target path, not only a directory.
-enum CreatableDirectoryStatus() { creatable, parentMissing, alreadyExists }
+enum CreatableDirectoryStatus() {
+  creatable,
+  parentMissing,
+  alreadyExists,
+}
 
 sealed class BoundedTextFileReadResult();
 
@@ -54,10 +62,10 @@ class BoundedTextFileReadFailure() extends BoundedTextFileReadResult;
 /// [FileSystemException]s into typed domain errors. Handlers consume the typed
 /// results/exceptions and map them to HTTP statuses.
 class FilesystemRepository({
-    required final FilesystemApi _filesystemApi,
-    required final FilesystemPermissionValidator _permissionValidator,
-    required final DriveRootsApi _driveRootsApi,
-  }) {
+  required final FilesystemApi _filesystemApi,
+  required final FilesystemPermissionValidator _permissionValidator,
+  required final DriveRootsApi _driveRootsApi,
+}) {
   static const _driveProbeTimeout = Duration(seconds: 2);
 
   static const _binaryExtensions = <String>{

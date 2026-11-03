@@ -9,6 +9,7 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - 'tool/sync_versions.dart'
+      - 'tool/dart_format.sh'
       # Read by bridge/app/test/updater/release_contract_test.dart.
       - '.github/workflows/bridge-npm-publish.yml'
       - '.github/workflows/submit-release.yml'
@@ -84,6 +85,10 @@ jobs:
         if: matrix.task == 'analyze'
         run: dart analyze --fatal-infos
         working-directory: bridge
+
+      - name: Check bridge formatting
+        if: matrix.task == 'analyze'
+        run: tool/dart_format.sh --check bridge
 
       - name: Run bridge tests
         if: startsWith(matrix.task, 'test-')

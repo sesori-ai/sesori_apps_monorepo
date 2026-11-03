@@ -6,22 +6,22 @@ import "../mappers/acp_content_mapper.dart";
 sealed class const AcpContentMutation({required final String partIdSuffix});
 
 final class const AcpTextDeltaMutation({
-    required super.partIdSuffix,
-    required final String delta,
-  }) extends AcpContentMutation;
+  required super.partIdSuffix,
+  required final String delta,
+}) extends AcpContentMutation;
 
 final class const AcpImageMutation({
-    required super.partIdSuffix,
-    required final PluginMessageAttachment attachment,
-  }) extends AcpContentMutation;
+  required super.partIdSuffix,
+  required final PluginMessageAttachment attachment,
+}) extends AcpContentMutation;
 
 final class const AcpContentSnapshot({
-    required final int textPartCount,
-    required final String? activeTextPartIdSuffix,
-    required final int imageCandidateCount,
-    required final int decodedImageBytes,
-    required final AcpContentComposition composition,
-  });
+  required final int textPartCount,
+  required final String? activeTextPartIdSuffix,
+  required final int imageCandidateCount,
+  required final int decodedImageBytes,
+  required final AcpContentComposition composition,
+});
 
 enum AcpContentComposition() {
   empty,

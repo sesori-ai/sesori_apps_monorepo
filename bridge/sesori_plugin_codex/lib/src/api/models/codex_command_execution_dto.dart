@@ -43,8 +43,7 @@ sealed class CodexCommandExecutionParamsDto with _$CodexCommandExecutionParamsDt
     required CodexCommandExecutionItemDto item,
   }) = _CodexCommandExecutionParamsDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexCommandExecutionParamsDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexCommandExecutionParamsDtoFromJson(json);
 }
 
 @freezed
@@ -62,6 +61,5 @@ sealed class CodexCommandExecutionItemDto with _$CodexCommandExecutionItemDto {
     @JsonKey(fromJson: _commandExecutionExitCodeFromJson) required int? exitCode,
   }) = _CodexCommandExecutionItemDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexCommandExecutionItemDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexCommandExecutionItemDtoFromJson(json);
 }

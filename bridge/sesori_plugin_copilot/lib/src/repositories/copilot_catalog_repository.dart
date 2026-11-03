@@ -10,7 +10,7 @@ import "../models/copilot_session_options.dart";
 enum CopilotConfigOptionKind({required final String category}) {
   model(category: "model"),
   mode(category: "mode"),
-  thoughtLevel(category: "thought_level");
+  thoughtLevel(category: "thought_level"),
 }
 
 class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
