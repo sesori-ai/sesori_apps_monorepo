@@ -491,8 +491,8 @@ void main() {
         bindHost: "127.0.0.1",
       );
 
-      expect(recording.environment, isNotNull);
-      expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
+      final environment = recording.environment ?? fail("expected a spawn environment");
+      expect(environment.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
     });
 
     test("removes password env vars case-insensitively when password is empty", () async {
@@ -515,11 +515,11 @@ void main() {
         bindHost: "127.0.0.1",
       );
 
-      expect(recording.environment, isNotNull);
-      expect(recording.environment!.containsKey("Opencode_Server_Password"), isFalse);
-      expect(recording.environment!.containsKey("opencode_server_password"), isFalse);
-      expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
-      expect(recording.environment!["PATH"], equals("/usr/bin"));
+      final environment = recording.environment ?? fail("expected a spawn environment");
+      expect(environment.containsKey("Opencode_Server_Password"), isFalse);
+      expect(environment.containsKey("opencode_server_password"), isFalse);
+      expect(environment.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
+      expect(environment["PATH"], equals("/usr/bin"));
     });
   });
 

@@ -113,7 +113,8 @@ class _Observation({required final PluginMcpNativeSettlementAuthentication opera
 void main() {
   test("minimal configuration decoding discards OAuth secrets and unknown fields", () async {
     final fixture = _Fixture(override: null);
-    final server = (await fixture.api.getMcpConfiguration(directory: _directory)).mcp[_name]!;
+    final server =
+        (await fixture.api.getMcpConfiguration(directory: _directory)).mcp[_name] ?? fail("missing the fixture server");
     expect(server.transport, OpenCodeMcpTransport.remote);
     expect(server.oauth, isA<OpenCodeMcpOAuthEnabled>());
     expect(server.toString(), isNot(contains("fixture-sensitive")));
@@ -176,7 +177,7 @@ void main() {
     test("unsupported redirect blocks sign-in before native start but permits forgetting: $redirect", () async {
       final fixture = _Fixture(override: null)..oauth = {"redirectUri": redirect, "clientSecret": "fixture-sensitive"};
       final configuration = await fixture.api.getMcpConfiguration(directory: _directory);
-      final oauth = configuration.mcp[_name]!.oauth as OpenCodeMcpOAuthEnabled;
+      final oauth = (configuration.mcp[_name] ?? fail("missing the fixture server")).oauth as OpenCodeMcpOAuthEnabled;
       expect(oauth.parameters.redirectUri, redirect);
       expect(oauth.parameters.toString(), isNot(contains("fixture-sensitive")));
       final inventory = await fixture.service.getMcpInventory(scope: _target.scope) as PluginMcpInventorySnapshot;

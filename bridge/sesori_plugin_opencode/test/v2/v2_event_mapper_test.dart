@@ -27,39 +27,41 @@ V2EventEnvelope frame({required String type, required Map<String, dynamic> data}
   },
 );
 
-PluginMessageWithParts assistant({required bool retry}) => messages.mapMessage(
-  sessionId: "s",
-  agentNames: names,
-  message: SessionMessageInfo.fromJson(<String, dynamic>{
-    "id": "m",
-    "type": "assistant",
-    "agent": "build",
-    "model": const <String, dynamic>{"id": "model", "providerID": "provider"},
-    "time": const <String, int>{"created": 1, "completed": 2},
-    "content": const <Object>[
-      <String, dynamic>{"type": "text", "text": "Later text must not be replayed"},
-      <String, dynamic>{
-        "type": "tool",
-        "id": "tool",
-        "name": "shell",
-        "time": <String, int>{"created": 1},
-        "state": <String, dynamic>{
-          "status": "completed",
-          "input": <String, dynamic>{"command": "pwd"},
-          "content": <Object>[
-            <String, dynamic>{"type": "text", "text": "Fixture output"},
-          ],
-        },
-      },
-    ],
-    if (retry)
-      "retry": <String, dynamic>{
-        "attempt": 2,
-        "at": 90,
-        "error": <String, dynamic>{"type": "fixture", "message": "Retry fixture"},
-      },
-  }),
-)!;
+PluginMessageWithParts assistant({required bool retry}) =>
+    messages.mapMessage(
+      sessionId: "s",
+      agentNames: names,
+      message: SessionMessageInfo.fromJson(<String, dynamic>{
+        "id": "m",
+        "type": "assistant",
+        "agent": "build",
+        "model": const <String, dynamic>{"id": "model", "providerID": "provider"},
+        "time": const <String, int>{"created": 1, "completed": 2},
+        "content": const <Object>[
+          <String, dynamic>{"type": "text", "text": "Later text must not be replayed"},
+          <String, dynamic>{
+            "type": "tool",
+            "id": "tool",
+            "name": "shell",
+            "time": <String, int>{"created": 1},
+            "state": <String, dynamic>{
+              "status": "completed",
+              "input": <String, dynamic>{"command": "pwd"},
+              "content": <Object>[
+                <String, dynamic>{"type": "text", "text": "Fixture output"},
+              ],
+            },
+          },
+        ],
+        if (retry)
+          "retry": <String, dynamic>{
+            "attempt": 2,
+            "at": 90,
+            "error": <String, dynamic>{"type": "fixture", "message": "Retry fixture"},
+          },
+      }),
+    ) ??
+    fail("expected a mapped assistant message");
 
 void main() {
   test("ends a turn with session idle, but not on shutdown or an unknown interrupt reason", () {
@@ -215,16 +217,16 @@ void main() {
     final info = (result.first as BridgeSseMessageUpdated).info as PluginMessageAssistant;
     expect(info.agent, "Build");
     expect(info.variant, "high");
-    expect(info.time!.created, 100);
+    expect((info.time ?? fail("expected a message time")).created, 100);
     expect((result.last as BridgeSseMessagePartRemoved).partID, "m:retry");
-    expect(V2EventMapper.status(event: step)!.status, const PluginSessionStatus.busy());
+    expect((V2EventMapper.status(event: step) ?? fail("expected a status")).status, const PluginSessionStatus.busy());
   });
 
   test("terminal assistant hydration updates only the header and authoritative retry state", () {
     for (final retry in [false, true]) {
       final result = mapper.mapAssistantSnapshot(message: assistant(retry: retry));
       expect(result, hasLength(2));
-      expect((result.first as BridgeSseMessageUpdated).info.time!.completed, 2);
+      expect(((result.first as BridgeSseMessageUpdated).info.time ?? fail("expected a message time")).completed, 2);
       if (retry) {
         expect((result.last as BridgeSseMessagePartUpdated).part.id, "m:retry");
       } else {
@@ -248,7 +250,7 @@ void main() {
     final info = (result.first as BridgeSseMessageUpdated).info as PluginMessageAssistant;
     expect(info.id, "msg_notice");
     expect(info.sender, PluginMessageSender.system);
-    expect(info.time!.completed, 42);
+    expect((info.time ?? fail("expected a message time")).completed, 42);
     expect((result.last as BridgeSseMessagePartUpdated).part.id, "msg_notice:0");
     expect((result.last as BridgeSseMessagePartUpdated).part.agentName, "Explore");
     final synthetic = mapper.mapNotice(
@@ -271,39 +273,43 @@ void main() {
       expect(event.data, isA<V2SessionEventData>());
       expect(mapper.map(envelope: event), isEmpty);
     }
-    final delivered = messages.mapMessage(
-      sessionId: "s",
-      agentNames: names,
-      message: SessionMessageInfo.fromJson(
-        const <String, dynamic>{
-          "id": "msg_input",
-          "type": "user",
-          "text": "Fixture",
-          "time": <String, int>{"created": 50},
-        },
-      ),
-    )!;
+    final delivered =
+        messages.mapMessage(
+          sessionId: "s",
+          agentNames: names,
+          message: SessionMessageInfo.fromJson(
+            const <String, dynamic>{
+              "id": "msg_input",
+              "type": "user",
+              "text": "Fixture",
+              "time": <String, int>{"created": 50},
+            },
+          ),
+        ) ??
+        fail("expected a mapped message");
     final result = mapper.mapMessageSnapshot(message: delivered);
     expect((result.first as BridgeSseMessageUpdated).info.id, "msg_input");
     expect((result.last as BridgeSseMessagePartUpdated).part.id, "msg_input:0");
   });
 
   test("completed compaction uses its native message ID rather than the completion event", () {
-    final message = messages.mapMessage(
-      sessionId: "s",
-      agentNames: names,
-      message: SessionMessageInfo.fromJson(
-        const <String, dynamic>{
-          "id": "msg_compaction_started",
-          "type": "compaction",
-          "status": "completed",
-          "reason": "manual",
-          "summary": "Fixture summary",
-          "recent": "",
-          "time": <String, int>{"created": 1},
-        },
-      ),
-    )!;
+    final message =
+        messages.mapMessage(
+          sessionId: "s",
+          agentNames: names,
+          message: SessionMessageInfo.fromJson(
+            const <String, dynamic>{
+              "id": "msg_compaction_started",
+              "type": "compaction",
+              "status": "completed",
+              "reason": "manual",
+              "summary": "Fixture summary",
+              "recent": "",
+              "time": <String, int>{"created": 1},
+            },
+          ),
+        ) ??
+        fail("expected a mapped message");
     final result = mapper.mapMessageSnapshot(message: message);
     expect((result.first as BridgeSseMessageUpdated).info.id, "msg_compaction_started");
     expect((result[1] as BridgeSseMessagePartUpdated).part.id, "msg_compaction_started:0");
@@ -313,20 +319,22 @@ void main() {
   test("named compaction settles its prompt only after a terminal native snapshot", () {
     final id = V2MessageMapper.withPromptId(messageId: "msg_fixture", promptId: "compact-fixture");
     for (final status in ["running", "completed", "failed"]) {
-      final message = messages.mapMessage(
-        sessionId: "s",
-        agentNames: names,
-        message: SessionMessageInfo.fromJson(<String, dynamic>{
-          "id": id,
-          "type": "compaction",
-          "status": status,
-          "reason": "manual",
-          "summary": "Fixture",
-          "recent": "",
-          "time": const <String, int>{"created": 1},
-          if (status == "failed") "error": const <String, String>{"type": "fixture", "message": "Failed"},
-        }),
-      )!;
+      final message =
+          messages.mapMessage(
+            sessionId: "s",
+            agentNames: names,
+            message: SessionMessageInfo.fromJson(<String, dynamic>{
+              "id": id,
+              "type": "compaction",
+              "status": status,
+              "reason": "manual",
+              "summary": "Fixture",
+              "recent": "",
+              "time": const <String, int>{"created": 1},
+              if (status == "failed") "error": const <String, String>{"type": "fixture", "message": "Failed"},
+            }),
+          ) ??
+          fail("expected a mapped message");
       final events = mapper.mapMessageSnapshot(message: message);
       final settled = events.whereType<BridgeSsePromptSettled>();
       expect(settled, status == "running" ? isEmpty : hasLength(1));
@@ -466,20 +474,18 @@ void main() {
       "version": "2.0.16",
       "title": "Fixture",
     };
-    final created =
-        mapper.mapSession(
-              event: frame(type: "session.created", data: data).data,
-              session: session,
-            )!
-            as BridgeSseSessionCreated;
+    final created = mapper.mapSession(
+      event: frame(type: "session.created", data: data).data,
+      session: session,
+    );
+    if (created is! BridgeSseSessionCreated) fail("expected a session created event");
     expect(created.info["projectID"], "/fixture/project");
     expect(created.info["pluginId"], "fixture-plugin");
-    final renamed =
-        mapper.mapSession(
-              event: frame(type: "session.renamed", data: data).data,
-              session: session,
-            )!
-            as BridgeSseSessionUpdated;
+    final renamed = mapper.mapSession(
+      event: frame(type: "session.renamed", data: data).data,
+      session: session,
+    );
+    if (renamed is! BridgeSseSessionUpdated) fail("expected a session updated event");
     expect(renamed.titleChanged, isTrue);
     expect(
       mapper.mapSession(

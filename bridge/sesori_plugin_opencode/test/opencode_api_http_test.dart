@@ -357,7 +357,7 @@ void main() {
       );
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
       expect(jsonDecodeMap(capturedBody)["noReply"], isTrue);
-      expect((reserved!.info as UserMessage).id, equals("msg-server-reserved"));
+      expect(((reserved ?? fail("expected a reserved message")).info as UserMessage).id, equals("msg-server-reserved"));
     });
   });
 

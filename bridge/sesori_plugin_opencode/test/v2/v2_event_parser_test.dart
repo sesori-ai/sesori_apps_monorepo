@@ -7,7 +7,8 @@ void main() {
   const parser = V2EventParser();
 
   test("decodes server.connected frames, which carry no created or location", () {
-    final event = parser.parse(rawData: '{"id":"event-1","type":"server.connected","data":{}}')!;
+    final event =
+        parser.parse(rawData: '{"id":"event-1","type":"server.connected","data":{}}') ?? fail("expected an event");
     expect(event.id, "event-1");
     expect(event.created, isNull);
     expect(event.location, isNull);
@@ -15,15 +16,17 @@ void main() {
   });
 
   test("uses the outer event type and retains location and session identity", () {
-    final event = parser.parse(
-      rawData: '''
+    final event =
+        parser.parse(
+          rawData: '''
     {
       "id":"event-2","created":2,"type":"session.text.delta",
       "location":{"directory":"/fixture/project"},
       "data":{"type":"server.connected","sessionID":"s","assistantMessageID":"m","ordinal":0,"delta":"Hi"}
     }''',
-    )!;
-    expect(event.location!.directory, "/fixture/project");
+        ) ??
+        fail("expected an event");
+    expect((event.location ?? fail("expected a location")).directory, "/fixture/project");
     final delta = event.data as V2SessionTextDelta;
     expect(delta.sessionID, "s");
     expect(delta.delta, "Hi");

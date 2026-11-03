@@ -44,33 +44,35 @@ final form = FormInfo.fromJson(const <String, dynamic>{
     <String, dynamic>{"type": "boolean", "key": "flag"},
   ],
 });
-final assistant = messages.mapMessage(
-  sessionId: "child",
-  agentNames: names,
-  message: SessionMessageInfo.fromJson(const <String, dynamic>{
-    "id": "m",
-    "type": "assistant",
-    "agent": "build",
-    "model": <String, String>{"id": "m", "providerID": "p"},
-    "time": <String, int>{"created": 1, "completed": 2},
-    "content": <Object>[
-      <String, dynamic>{"type": "text", "text": "Unrelated snapshot text"},
-      <String, dynamic>{
-        "type": "tool",
-        "id": "tool",
-        "name": "shell",
-        "time": <String, int>{"created": 1},
-        "state": <String, dynamic>{
-          "status": "completed",
-          "input": <String, String>{"command": "pwd"},
-          "content": <Object>[
-            <String, String>{"type": "text", "text": "Fixture output"},
-          ],
-        },
-      },
-    ],
-  }),
-)!;
+final assistant =
+    messages.mapMessage(
+      sessionId: "child",
+      agentNames: names,
+      message: SessionMessageInfo.fromJson(const <String, dynamic>{
+        "id": "m",
+        "type": "assistant",
+        "agent": "build",
+        "model": <String, String>{"id": "m", "providerID": "p"},
+        "time": <String, int>{"created": 1, "completed": 2},
+        "content": <Object>[
+          <String, dynamic>{"type": "text", "text": "Unrelated snapshot text"},
+          <String, dynamic>{
+            "type": "tool",
+            "id": "tool",
+            "name": "shell",
+            "time": <String, int>{"created": 1},
+            "state": <String, dynamic>{
+              "status": "completed",
+              "input": <String, String>{"command": "pwd"},
+              "content": <Object>[
+                <String, String>{"type": "text", "text": "Fixture output"},
+              ],
+            },
+          },
+        ],
+      }),
+    ) ??
+    fail("expected a mapped assistant message");
 
 V2EventEnvelope frame({required String type, required Map<String, dynamic> data}) => V2EventEnvelope.fromJson(
   <String, dynamic>{
@@ -421,19 +423,21 @@ void main() {
   test("execution and compaction terminal events request only their newest message type", () async {
     repository.active = {"child"};
     repository.latest[V2MessageFilter.assistant] = assistant;
-    repository.latest[V2MessageFilter.compaction] = messages.mapMessage(
-      sessionId: "child",
-      agentNames: names,
-      message: SessionMessageInfo.fromJson(const <String, dynamic>{
-        "id": "msg_compaction",
-        "type": "compaction",
-        "status": "completed",
-        "reason": "manual",
-        "summary": "Fixture summary",
-        "recent": "",
-        "time": <String, int>{"created": 1},
-      }),
-    )!;
+    repository.latest[V2MessageFilter.compaction] =
+        messages.mapMessage(
+          sessionId: "child",
+          agentNames: names,
+          message: SessionMessageInfo.fromJson(const <String, dynamic>{
+            "id": "msg_compaction",
+            "type": "compaction",
+            "status": "completed",
+            "reason": "manual",
+            "summary": "Fixture summary",
+            "recent": "",
+            "time": <String, int>{"created": 1},
+          }),
+        ) ??
+        fail("expected a mapped compaction message");
     await service.coldStart();
     repository.calls.clear();
     final settled = await service.handleEvent(
@@ -457,19 +461,21 @@ void main() {
   });
 
   test("a compaction streams its words into the running row until it settles in place", () async {
-    void snapshot({required String status}) => repository.latest[V2MessageFilter.compaction] = messages.mapMessage(
-      sessionId: "child",
-      agentNames: names,
-      message: SessionMessageInfo.fromJson(<String, dynamic>{
-        "id": "msg_compaction",
-        "type": "compaction",
-        "status": status,
-        "reason": "auto",
-        "summary": status == "running" ? "" : "Fixture summary",
-        "recent": "",
-        "time": const <String, int>{"created": 1},
-      }),
-    )!;
+    void snapshot({required String status}) => repository.latest[V2MessageFilter.compaction] =
+        messages.mapMessage(
+          sessionId: "child",
+          agentNames: names,
+          message: SessionMessageInfo.fromJson(<String, dynamic>{
+            "id": "msg_compaction",
+            "type": "compaction",
+            "status": status,
+            "reason": "auto",
+            "summary": status == "running" ? "" : "Fixture summary",
+            "recent": "",
+            "time": const <String, int>{"created": 1},
+          }),
+        ) ??
+        fail("expected a mapped compaction message");
     Future<List<BridgeSseEvent>> handle({required String type, required Map<String, dynamic> data}) =>
         service.handleEvent(
           envelope: frame(type: type, data: {"sessionID": "child", ...data}),
@@ -512,19 +518,21 @@ void main() {
   });
 
   test("after a reconnect mid-compaction the first delta loads the running row", () async {
-    repository.latest[V2MessageFilter.compaction] = messages.mapMessage(
-      sessionId: "child",
-      agentNames: names,
-      message: SessionMessageInfo.fromJson(const <String, dynamic>{
-        "id": "msg_compaction",
-        "type": "compaction",
-        "status": "running",
-        "reason": "auto",
-        "summary": "",
-        "recent": "",
-        "time": <String, int>{"created": 1},
-      }),
-    )!;
+    repository.latest[V2MessageFilter.compaction] =
+        messages.mapMessage(
+          sessionId: "child",
+          agentNames: names,
+          message: SessionMessageInfo.fromJson(const <String, dynamic>{
+            "id": "msg_compaction",
+            "type": "compaction",
+            "status": "running",
+            "reason": "auto",
+            "summary": "",
+            "recent": "",
+            "time": <String, int>{"created": 1},
+          }),
+        ) ??
+        fail("expected a mapped compaction message");
     await service.coldStart();
     Future<List<BridgeSseEvent>> delta({required String text}) => service.handleEvent(
       envelope: frame(type: "session.compaction.delta", data: {"sessionID": "child", "text": text}),

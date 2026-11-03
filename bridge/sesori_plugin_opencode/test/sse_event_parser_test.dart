@@ -26,7 +26,8 @@ void main() {
       expect(result.rawData, equals(rawData));
       expect(result.event, isA<SseSessionStatus>());
 
-      final event = result.event! as SseSessionStatus;
+      final event = result.event;
+      if (event is! SseSessionStatus) fail("expected an SseSessionStatus event");
       expect(event.sessionID, equals("s1"));
       expect(event.status, isA<SessionStatusBusy>());
     });
@@ -54,7 +55,8 @@ void main() {
       expect(result.outcome, equals(SseParseOutcome.validKnownEvent));
       expect(result.event, isA<SseSessionCreated>());
       expect(result.eventType, equals("session.created"));
-      final event = result.event! as SseSessionCreated;
+      final event = result.event;
+      if (event is! SseSessionCreated) fail("expected an SseSessionCreated event");
       expect(event.info.id, equals("s1"));
       expect(event.info.projectID, equals("p1"));
       expect(event.info.directory, equals("/repo"));
@@ -83,7 +85,8 @@ void main() {
       expect(result.directory, equals("/repo"));
       expect(result.event, isA<SseCommandExecuted>());
 
-      final event = result.event! as SseCommandExecuted;
+      final event = result.event;
+      if (event is! SseCommandExecuted) fail("expected an SseCommandExecuted event");
       expect(event.name, equals("review"));
       expect(event.sessionID, equals("s1"));
       expect(event.arguments, equals("lib/main.dart"));
@@ -133,7 +136,8 @@ void main() {
       expect(result.event, isA<SseSessionDiff>());
       expect(result.eventType, equals("session.diff"));
 
-      final event = result.event! as SseSessionDiff;
+      final event = result.event;
+      if (event is! SseSessionDiff) fail("expected an SseSessionDiff event");
       expect(event.sessionID, equals("s1"));
       expect(event.diff, hasLength(1));
       expect(event.diff.single.file, equals("lib/main.dart"));
@@ -327,7 +331,8 @@ void main() {
       expect(result.eventType, equals("session.status"));
       expect(result.rawData, equals(rawData));
 
-      final event = result.event! as SseSessionStatus;
+      final event = result.event;
+      if (event is! SseSessionStatus) fail("expected an SseSessionStatus event");
       expect(event.status, isA<SessionStatusUnknown>());
     });
 

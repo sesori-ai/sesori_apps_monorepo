@@ -561,9 +561,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.project.activity, isNotNull);
-      expect(projects.first.project.activity!.updatedAt, equals(9000));
-      expect(projects.first.project.activity!.createdAt, equals(1500));
+      final activity = projects.first.project.activity ?? fail("expected project activity");
+      expect(activity.updatedAt, equals(9000));
+      expect(activity.createdAt, equals(1500));
     });
 
     test("derives activity from global sessions into matching real project", () async {
@@ -611,9 +611,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.project.activity, isNotNull);
-      expect(projects.first.project.activity!.updatedAt, equals(3000));
-      expect(projects.first.project.activity!.createdAt, equals(500));
+      final activity = projects.first.project.activity ?? fail("expected project activity");
+      expect(activity.updatedAt, equals(3000));
+      expect(activity.createdAt, equals(500));
     });
 
     test("activity is null when no sessions exist", () async {
@@ -717,9 +717,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.project.activity, isNotNull);
-      expect(projects.first.project.activity!.updatedAt, equals(8000));
-      expect(projects.first.project.activity!.createdAt, equals(500));
+      final activity = projects.first.project.activity ?? fail("expected project activity");
+      expect(activity.updatedAt, equals(8000));
+      expect(activity.createdAt, equals(500));
     });
 
     test("creates virtual projects only from global sessions", () async {
@@ -771,9 +771,9 @@ void main() {
       expect(projects, hasLength(2));
       final virtual = projects.where((p) => p.project.id == "/no-git-repo");
       expect(virtual, hasLength(1));
-      expect(virtual.first.project.activity, isNotNull);
-      expect(virtual.first.project.activity!.updatedAt, equals(3000));
-      expect(virtual.first.project.activity!.createdAt, equals(500));
+      final activity = virtual.first.project.activity ?? fail("expected project activity");
+      expect(activity.updatedAt, equals(3000));
+      expect(activity.createdAt, equals(500));
     });
 
     test("does not create virtual project for real-project sessions without matching project", () async {
@@ -863,9 +863,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.project.activity, isNotNull);
-      expect(projects.first.project.activity!.updatedAt, equals(9000));
-      expect(projects.first.project.activity!.createdAt, equals(2000));
+      final activity = projects.first.project.activity ?? fail("expected project activity");
+      expect(activity.updatedAt, equals(9000));
+      expect(activity.createdAt, equals(2000));
     });
 
     test("attributes sandbox session activity to the canonical project", () async {

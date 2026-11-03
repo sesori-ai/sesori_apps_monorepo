@@ -95,7 +95,8 @@ void main() {
   });
 
   test("creation sends exact first-prompt parts and finishes on acceptance without fabricating busy", () async {
-    repository.promptAccepted = Completer<void>();
+    final promptAccepted = Completer<void>();
+    repository.promptAccepted = promptAccepted;
     var completed = false;
     final result = service
         .createSession(
@@ -114,7 +115,7 @@ void main() {
     expect(completed, isFalse);
     tracker.apply(event: V2SessionExecutionStarted(sessionID: root.id));
     tracker.apply(event: V2SessionExecutionSucceeded(sessionID: root.id));
-    repository.promptAccepted!.complete();
+    promptAccepted.complete();
     expect(await result, session);
     expect(repository.calls, ["create", "prompt"]);
     expect(repository.parts, parts);
@@ -257,7 +258,7 @@ void main() {
       ],
     );
     expect(repository.calls.last, "reply:child/form");
-    expect(repository.reply!.answer.toJson(), {"count": 2});
+    expect((repository.reply ?? fail("expected a form reply")).answer.toJson(), {"count": 2});
     expect(tracker.forms, isEmpty);
     await service.replyToPermission(requestId: "permission", sessionId: "child", reply: PluginPermissionReply.always);
     expect(tracker.permissions, isEmpty);
