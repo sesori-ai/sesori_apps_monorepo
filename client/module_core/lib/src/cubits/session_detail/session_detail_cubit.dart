@@ -490,7 +490,7 @@ class SessionDetailCubit(
     // load can never require them.
     var interactionAtLoad = _interaction;
     try {
-      metadataResult = await _loadService.loadMetadata(sessionId: _sessionId);
+      metadataResult = await _loadMetadata();
       if (metadataResult case SessionDetailMetadataFound(:final session)
           when !isClosed && connectionGeneration == _connectionGeneration) {
         _sessionMetadata = session;
@@ -1085,7 +1085,7 @@ class SessionDetailCubit(
 
     final parkEpochAtFetch = _parkEpoch;
     try {
-      final metadata = await _loadService.loadMetadata(sessionId: _sessionId);
+      final metadata = await _loadMetadata();
       if (isClosed) return _SessionRefreshResult.closed;
       if (connectionGeneration != _connectionGeneration) {
         _emitRefreshEnded();
@@ -1654,12 +1654,25 @@ class SessionDetailCubit(
     if (_sessionMetadata case final session?) _onSessionUpdated(session.copyWith(title: title));
   }
 
+  /// [session] as its row shows it: a rename the bridge has not answered keeps
+  /// its title over what a load or an update read.
+  Session _withPendingTitle({required Session session}) => switch (_window.pendingTitle(sessionId: _sessionId)) {
+    final title? => session.copyWith(title: title),
+    null => session,
+  };
+
+  Future<SessionDetailMetadataLoadResult> _loadMetadata() async =>
+      switch (await _loadService.loadMetadata(sessionId: _sessionId)) {
+        SessionDetailMetadataFound(:final session) => SessionDetailMetadataFound(
+          session: _withPendingTitle(session: session),
+        ),
+        final other => other,
+      };
+
   void _onSessionUpdated(Session update) {
     final current = state;
     if (isClosed) return;
-    // A rename the bridge has not answered keeps its title over the update.
-    final pendingTitle = _window.pendingTitle(sessionId: _sessionId);
-    final session = pendingTitle == null ? update : update.copyWith(title: pendingTitle);
+    final session = _withPendingTitle(session: update);
     _sessionMetadata = session;
     // The unavailable shell still offers the session's actions, so a rename or
     // an archive has to reach it too.

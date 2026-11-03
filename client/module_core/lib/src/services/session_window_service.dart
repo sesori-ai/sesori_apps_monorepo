@@ -355,7 +355,8 @@ class SessionWindowService({
       _renameTitles.add((sessionId: sessionId, title: rename.visibleValue));
     }
     final renamed = await _requestRename(sessionId: sessionId, title: title);
-    if (rename != null) {
+    // A window closed meanwhile has no row or page left to show the title.
+    if (rename != null && !_state.isClosed) {
       rename.complete(token: token, value: title, succeeded: renamed);
       if (rename.isSettled) {
         _renameBySessionId.remove(sessionId);

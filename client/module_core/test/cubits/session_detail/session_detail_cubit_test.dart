@@ -2618,6 +2618,19 @@ void main() {
       expect(cubit.state, titled("Old title"));
     });
 
+    test("opens on the title of a rename the bridge has not answered", () async {
+      final window = idleSessionWindow();
+      when(() => window.pendingTitle(sessionId: sessionId)).thenReturn("New title");
+      final cubit = buildCubit(window: window);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having((state) => state.sessionTitle, "sessionTitle", "New title"),
+      );
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "children are sorted most-recent-first on initial load",
       build: () {

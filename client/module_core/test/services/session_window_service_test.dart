@@ -847,6 +847,23 @@ void main() {
       });
     });
 
+    test("answers a rename the bridge accepts after the window has closed", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 1);
+        final window = create();
+        async.flushMicrotasks();
+        final reply = replies(["New"])["New"];
+        bool? renamed;
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "New").then((value) => renamed = value));
+        unawaited(window.dispose());
+        async.flushMicrotasks();
+        reply?.complete(ApiResponse.success(bridge.sessions.first.copyWith(title: "New")));
+        async.flushMicrotasks();
+        expect(renamed, isTrue);
+      });
+    });
+
     test("overlapping renames settle on the newest one the bridge accepted", () {
       inFakeTime((async) {
         bridge.sessions = [_session(id: "s0000", updatedAt: 1).copyWith(title: null)];
