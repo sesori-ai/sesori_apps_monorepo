@@ -78,6 +78,7 @@ class const OpenCodeSharedServerRepository({
         port: uri.port,
         password: registration.password,
         clientFactory: probeClientFactory,
+        timeout: openCodeProbeTimeout,
       );
     } on Object catch (error, stackTrace) {
       Log.w("[opencode] not using the shared OpenCode service: $address did not answer", error, stackTrace);

@@ -373,18 +373,16 @@ class OpenCodePlugin._({
     Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
     final sw = Stopwatch()..start();
-    Object? closeError;
-    StackTrace? closeStackTrace;
+    (Object, StackTrace)? closeFailure;
     for (final close in <Future<void> Function()>[_eventBuffer.close, _workState.close]) {
       try {
         await close();
       } on Object catch (error, stackTrace) {
-        closeError ??= error;
-        closeStackTrace ??= stackTrace;
+        closeFailure ??= (error, stackTrace);
       }
     }
     Log.d("[shutdown] OpenCodePlugin.dispose: event buffer closed in ${sw.elapsedMilliseconds}ms");
-    if (closeError != null) Error.throwWithStackTrace(closeError, closeStackTrace!);
+    if (closeFailure case (final error, final stackTrace)) Error.throwWithStackTrace(error, stackTrace);
   }
 
   @override
