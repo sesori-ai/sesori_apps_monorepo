@@ -26,10 +26,11 @@ class AuthApiException({
 }
 
 /// An auth endpoint answered with a body the bridge could not decode; [cause]
-/// keeps the decoding error.
+/// keeps the decoding error. [toString] leaves the cause out because a decoding
+/// error can quote the response body.
 class AuthResponseFormatException({required final String endpoint, required final Object cause}) implements Exception {
   @override
-  String toString() => "AuthResponseFormatException: $endpoint response malformed: $cause";
+  String toString() => "AuthResponseFormatException: $endpoint response malformed";
 }
 
 class BridgeRegistrationException({required final int statusCode, required String body}) implements Exception {

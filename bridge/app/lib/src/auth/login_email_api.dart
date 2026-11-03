@@ -25,6 +25,9 @@ class LoginEmailApi({required final String authBackendUrl}) {
 
 abstract class EmailLoginException() implements Exception {
   String get message;
+
+  /// The error this login failure was translated from, when there is one.
+  Object? get cause;
 }
 
 class EmailAuthApiException({required final int statusCode, required final String body})
@@ -33,10 +36,13 @@ class EmailAuthApiException({required final int statusCode, required final Strin
   final String message = "EmailAuthApiException: status $statusCode | body $body";
 
   @override
+  Object? get cause => null;
+
+  @override
   String toString() => message;
 }
 
-class EmailLoginExceptionImpl({@override required final String message, required final Object? cause})
+class EmailLoginExceptionImpl({@override required final String message, @override required final Object? cause})
     implements EmailLoginException {
   @override
   String toString() => "EmailLoginException: $message";
@@ -45,6 +51,9 @@ class EmailLoginExceptionImpl({@override required final String message, required
 class RateLimitException() implements EmailLoginException {
   @override
   final String message = "Rate limit exceeded. Please try again later.";
+
+  @override
+  Object? get cause => null;
 
   @override
   String toString() => "RateLimitException: $message";

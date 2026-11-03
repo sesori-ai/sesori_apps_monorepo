@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:http/http.dart' show ClientException;
+import 'package:meta/meta.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 
 import '../../foundation/filesystem_permission_validator.dart';
@@ -76,11 +77,16 @@ bool shouldSkipUpdates({
 /// Whether a filesystem error means the updater cannot write the install.
 /// The shared validator covers EPERM(1)/EACCES(13) and permission messages.
 /// Code 5 is ERROR_ACCESS_DENIED on Windows and EIO on POSIX; the updater
-/// aborts on both just like a permission error. Code 30 is EROFS on POSIX: the
-/// install sits on a read-only filesystem, which no retry can fix either.
-bool isUpdatePermissionDenied({required FileSystemException error}) {
+/// aborts on both just like a permission error. A read-only install is a
+/// denial too, since no retry can fix it: EROFS (30) on POSIX and
+/// ERROR_WRITE_PROTECT (19) on Windows.
+bool isUpdatePermissionDenied({required FileSystemException error}) =>
+    isUpdatePermissionDeniedOn(error: error, isWindows: Platform.isWindows);
+
+@visibleForTesting
+bool isUpdatePermissionDeniedOn({required FileSystemException error, required bool isWindows}) {
   final code = error.osError?.errorCode;
-  return const FilesystemPermissionValidator().isPermissionDenied(error) || code == 5 || code == 30;
+  return const FilesystemPermissionValidator().isPermissionDenied(error) || code == 5 || code == (isWindows ? 19 : 30);
 }
 
 /// Whether an HTTP status from a release check or artifact download is a
