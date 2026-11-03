@@ -8,8 +8,7 @@ a successful main-branch run and anonymous verification of its actual output.
 
 ## Accepted internal delivery
 
-[Run 38754986125](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38754986125),
-from merged #1997 (`50e59ba739f9cddae58e5b0ddc325b0d40e628a5`), published
+The publishing run from merged #1997 published
 `1.9.2-1022` on 2026-10-15 using protected production signing and the scoped Google identity.
 Independent anonymous retrieval verified the pinned signatures, expiry and complete
 index/package reference tree. Real APT and DNF clients refreshed and downloaded both
@@ -19,7 +18,7 @@ in an ARM64 Fedora container, without installing or executing the application.
 [Retained verification summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863)
 include the independent verifier revision and the exact evidence boundary. This accepts
 internal repository delivery only. Stable repository delivery first published with `v1.10.1`
-(run 40582445355, 2026-10-27); its anonymous `InRelease` and both `repomd.xml` files served
+(2026-10-27); its anonymous `InRelease` and both `repomd.xml` files served
 `1.10.1-1082`, but no real APT/DNF client check was recorded for it.
 
 ## Package registration

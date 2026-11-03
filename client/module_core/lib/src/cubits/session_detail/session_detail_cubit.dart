@@ -2952,21 +2952,16 @@ class SessionDetailCubit(
   /// A root-level route can cover the nested session navigator without
   /// disposing this cubit, so shell-reported visibility fences both the initial
   /// load and later refresh declarations.
+  ///
+  /// Becoming visible restores only a loaded session as the active view. The
+  /// initial load and refresh paths own their own declarations; an unloaded or
+  /// failed route must not mark the session seen.
   void setRouteVisible({required bool isVisible}) {
     if (_routeVisible == isVisible) return;
     _routeVisible = isVisible;
-    if (isVisible) {
-      reassertViewingSession();
-    } else {
+    if (!isVisible) {
       _sessionViewingService.clearViewingSession(_sessionId);
-    }
-  }
-
-  /// Restores this loaded session as the active view after a pushed child route
-  /// is removed. The initial load and refresh paths own their own declarations;
-  /// an unloaded or failed route must not mark the session seen.
-  void reassertViewingSession() {
-    if (_routeVisible && state is SessionDetailLoaded) {
+    } else if (state is SessionDetailLoaded) {
       _sessionViewingService.setViewingSession(_sessionId);
     }
   }

@@ -507,6 +507,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i385.BridgeApi>()),
     );
+    gh.lazySingleton<_i28.SessionUnseenTracker>(
+      () => _i28.SessionUnseenTracker(
+        connectionService: gh<_i369.ConnectionService>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+      ),
+    );
     gh.lazySingleton<_i843.LegacyNativeStorageMigrationService>(
       () => _i843.LegacyNativeStorageMigrationService(
         source: gh<_i695.LegacyNativeStorageMigrationRepository>(),
@@ -628,12 +634,6 @@ extension GetItInjectableX on _i174.GetIt {
         pushMessagingSource: gh<_i330.PushMessagingSource>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i28.SessionUnseenTracker>(
-      () => _i28.SessionUnseenTracker(
-        gh<_i369.ConnectionService>(),
-        failureReporter: gh<_i553.FailureReporter>(),
-      ),
     );
     gh.lazySingleton<_i734.FounderCallRepository>(
       () => _i734.FounderCallRepository(

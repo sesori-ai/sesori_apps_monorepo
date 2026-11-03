@@ -186,8 +186,6 @@ class OpenCodeV2Plugin._({
   }
 
   @override
-  Future<bool> healthCheck() => _service.healthCheck();
-  @override
   Future<List<PluginProject>> getProjects() => _service.getProjects();
   @override
   Future<PluginCatalogSnapshotResult> readCatalogSnapshot({required PluginCatalogCancellationSignal cancellation}) =>
@@ -195,11 +193,7 @@ class OpenCodeV2Plugin._({
   @override
   Future<PluginProject> getProject(String projectId) => _service.getProject(projectId: projectId);
   @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) =>
-      _service.renameProject(projectId: projectId, name: name);
-  @override
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
-      _service.getSessions(projectId: projectId, start: start, limit: limit);
+  Future<List<PluginSession>> getSessions({required String projectId}) => _service.getSessions(projectId: projectId);
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) => _service.getChildSessions(sessionId: sessionId);
   @override

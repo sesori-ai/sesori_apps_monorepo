@@ -52,8 +52,7 @@ class UpdateCommandFormatter({
     final String headline;
     switch (outcome.kind) {
       case UpdateAppliedKind.upgrade:
-        final from = outcome.fromVersion;
-        headline = from == null ? 'Updated to v${outcome.toVersion}.' : 'Updated v$from $_arrow v${outcome.toVersion}';
+        headline = 'Updated v${outcome.fromVersion} $_arrow v${outcome.toVersion}';
       case UpdateAppliedKind.reinstall:
         headline = 'Reinstalled v${outcome.toVersion} ($track).';
       case UpdateAppliedKind.downgrade:

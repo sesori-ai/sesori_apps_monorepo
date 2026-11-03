@@ -119,7 +119,6 @@ void main() {
         queue.enqueue("b");
         await pumpEventQueue();
 
-        expect(queue.hasListener, isFalse);
         expect(queue.length, 2);
         queue.dispose();
       });
@@ -158,161 +157,6 @@ void main() {
         await pumpEventQueue();
 
         expect(processed, ["v1:a", "v2:b", "v2:c"]);
-        queue.dispose();
-      });
-    });
-
-    // -----------------------------------------------------------------------
-    // Pause / Resume
-    // -----------------------------------------------------------------------
-    group("pause / resume", () {
-      test("pause prevents dequeuing", () async {
-        final processed = <String>[];
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async => processed.add(e));
-
-        sub.pause();
-        queue.enqueue("a");
-        queue.enqueue("b");
-        await pumpEventQueue();
-
-        expect(processed, isEmpty);
-        expect(queue.length, 2);
-        expect(queue.isPaused, isTrue);
-        sub.cancel();
-        queue.dispose();
-      });
-
-      test("resume processes the backlog", () async {
-        final processed = <String>[];
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async => processed.add(e));
-
-        sub.pause();
-        queue.enqueue("a");
-        queue.enqueue("b");
-        await pumpEventQueue();
-        expect(processed, isEmpty);
-
-        sub.resume();
-        await pumpEventQueue();
-
-        expect(processed, ["a", "b"]);
-        expect(queue.length, 0);
-        sub.cancel();
-        queue.dispose();
-      });
-
-      test("pause during active drain — current event completes, next is held", () async {
-        final processed = <String>[];
-        final firstStarted = Completer<void>();
-        final firstGate = Completer<void>();
-
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async {
-          if (e == "a") {
-            firstStarted.complete();
-            await firstGate.future;
-          }
-          processed.add(e);
-        });
-
-        queue.enqueue("a");
-        queue.enqueue("b");
-
-        await firstStarted.future;
-        sub.pause();
-        firstGate.complete();
-        await pumpEventQueue();
-
-        expect(processed, ["a"]);
-        expect(queue.length, 1);
-
-        sub.resume();
-        await pumpEventQueue();
-
-        expect(processed, ["a", "b"]);
-        queue.dispose();
-      });
-
-      test("multiple pause/resume cycles preserve order", () async {
-        final processed = <String>[];
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async => processed.add(e));
-
-        // Pause immediately before any enqueue
-        sub.pause();
-        queue.enqueue("a");
-        sub.resume();
-        await pumpEventQueue();
-        expect(processed, ["a"]);
-
-        sub.pause();
-        queue.enqueue("b");
-        queue.enqueue("c");
-        await pumpEventQueue();
-        expect(processed, ["a"]); // no change
-
-        sub.resume();
-        await pumpEventQueue();
-        expect(processed, ["a", "b", "c"]);
-
-        sub.pause();
-        queue.enqueue("d");
-        sub.resume();
-        await pumpEventQueue();
-        expect(processed, ["a", "b", "c", "d"]);
-
-        sub.cancel();
-        queue.dispose();
-      });
-
-      test("resume when not paused is a no-op", () async {
-        final processed = <String>[];
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async => processed.add(e));
-
-        queue.resume(); // should not throw
-        queue.enqueue("a");
-        await pumpEventQueue();
-        expect(processed, ["a"]);
-        sub.cancel();
-        queue.dispose();
-      });
-
-      test("double pause is a no-op", () async {
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async {});
-
-        sub.pause();
-        sub.pause(); // already paused — no-op
-        expect(queue.isPaused, isTrue);
-
-        sub.resume();
-        expect(queue.isPaused, isFalse);
-        sub.cancel();
-        queue.dispose();
-      });
-
-      test("events accumulate during pause and drain in order on resume", () async {
-        final processed = <String>[];
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async => processed.add(e));
-
-        sub.pause();
-        for (var i = 0; i < 50; i++) {
-          queue.enqueue("event-$i");
-        }
-        expect(queue.length, 50);
-
-        sub.resume();
-        await pumpEventQueue(100);
-
-        expect(processed.length, 50);
-        for (var i = 0; i < 50; i++) {
-          expect(processed[i], "event-$i");
-        }
-        sub.cancel();
         queue.dispose();
       });
     });
@@ -594,31 +438,6 @@ void main() {
         expect(queue.length, 0);
       });
 
-      test("dispose unblocks paused drain and stops processing", () async {
-        final processed = <String>[];
-        final firstDone = Completer<void>();
-
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async {
-          processed.add(e);
-          if (e == "a") firstDone.complete();
-        });
-
-        queue.enqueue("a");
-        queue.enqueue("b");
-
-        await firstDone.future;
-
-        sub.pause();
-        await pumpEventQueue();
-        expect(processed, ["a"]);
-
-        queue.dispose();
-        await pumpEventQueue();
-
-        expect(processed, ["a"]);
-      });
-
       test("dispose during active drain stops after current event", () async {
         final processed = <String>[];
         final gate = Completer<void>();
@@ -641,12 +460,6 @@ void main() {
 
         expect(processed, ["a"]);
       });
-
-      test("pause after dispose is a no-op", () {
-        final queue = EventQueue<String>();
-        queue.dispose();
-        queue.pause(); // should not throw
-      });
     });
 
     // -----------------------------------------------------------------------
@@ -661,41 +474,6 @@ void main() {
         expect(queue.length, 1);
         queue.enqueue("b");
         expect(queue.length, 2);
-        queue.dispose();
-      });
-
-      test("isPaused reflects pause state transitions", () {
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async {});
-
-        expect(queue.isPaused, isFalse);
-        sub.pause();
-        expect(queue.isPaused, isTrue);
-        sub.resume();
-        expect(queue.isPaused, isFalse);
-        sub.cancel();
-        queue.dispose();
-      });
-
-      test("isPaused is false after dispose even if paused before", () {
-        final queue = EventQueue<String>();
-        final sub = queue.listen((e) async {});
-
-        sub.pause();
-        expect(queue.isPaused, isTrue);
-        queue.dispose();
-        expect(queue.isPaused, isFalse);
-      });
-
-      test("hasListener reflects listener state", () {
-        final queue = EventQueue<String>();
-        expect(queue.hasListener, isFalse);
-
-        final sub = queue.listen((e) async {});
-        expect(queue.hasListener, isTrue);
-
-        sub.cancel();
-        expect(queue.hasListener, isFalse);
         queue.dispose();
       });
     });
@@ -773,54 +551,7 @@ void main() {
         queue.enqueue("a");
         await pumpEventQueue();
 
-        expect(queue.hasListener, isTrue);
         expect(log, ["v2:a"]);
-        active.cancel();
-        queue.dispose();
-      });
-
-      test("stale subscription pause does not pause newer listener", () async {
-        final log = <String>[];
-        final queue = EventQueue<String>();
-
-        final stale = queue.listen((e) async => log.add("v1:$e"));
-        stale.cancel();
-
-        final active = queue.listen((e) async => log.add("v2:$e"));
-        stale.pause(); // stale — should be a no-op
-
-        queue.enqueue("a");
-        await pumpEventQueue();
-
-        expect(queue.isPaused, isFalse);
-        expect(log, ["v2:a"]);
-        active.cancel();
-        queue.dispose();
-      });
-
-      test("stale subscription resume does not affect newer listener", () async {
-        final log = <String>[];
-        final queue = EventQueue<String>();
-
-        final stale = queue.listen((e) async => log.add("v1:$e"));
-        stale.cancel();
-
-        final active = queue.listen((e) async => log.add("v2:$e"));
-        active.pause();
-        expect(queue.isPaused, isTrue);
-
-        stale.resume(); // stale — should be a no-op
-
-        queue.enqueue("a");
-        await pumpEventQueue();
-
-        expect(queue.isPaused, isTrue);
-        expect(log, isEmpty);
-
-        active.resume();
-        await pumpEventQueue();
-        expect(log, ["v2:a"]);
-
         active.cancel();
         queue.dispose();
       });

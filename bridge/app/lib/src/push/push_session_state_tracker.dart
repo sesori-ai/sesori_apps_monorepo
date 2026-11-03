@@ -2,12 +2,19 @@ import "dart:collection";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "push_session_state_tracker_types.dart";
+class PushSessionMaintenancePolicy() {
+  static const rootIdlePruneTtl = Duration(minutes: 30);
+  static const messageRoleTtl = Duration(minutes: 30);
+  static const messageRoleHardCap = 10000;
+}
 
 class PushSessionStateTracker({required final DateTime Function() _now}) {
   final Map<String, _PushTrackedSessionState> _sessions = {};
   final Map<String, _PushTrackedMessageRole> _messageRoles = {};
-  final Map<String, String> _permissionRequestToSession = {};
+
+  int get sessionCount => _sessions.length;
+
+  int get messageRoleCount => _messageRoles.length;
 
   void handleEvent(SesoriSseEvent event) {
     final now = _now();
@@ -68,10 +75,9 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
       case SesoriQuestionRejected(:final requestID, :final sessionID):
         _clearPendingQuestion(sessionId: sessionID, questionId: requestID, touchedAt: now);
       case SesoriPermissionAsked(:final requestID, :final sessionID):
-        _permissionRequestToSession[requestID] = sessionID;
         _stateForSession(sessionId: sessionID, touchedAt: now).pendingPermissionRequestIds.add(requestID);
-      case SesoriPermissionReplied(:final requestID):
-        _clearPendingPermission(requestId: requestID, touchedAt: now);
+      case SesoriPermissionReplied(:final requestID, :final sessionID):
+        _clearPendingPermission(sessionId: sessionID, requestId: requestID, touchedAt: now);
       case SesoriProjectsSummary(:final projects):
         _applyProjectsSummaryChildLinks(projects: projects, touchedAt: now);
       default:
@@ -106,51 +112,27 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     return _sessions[sessionId]?.latestAssistantText;
   }
 
-  DateTime? getRootIdleSince({required String rootSessionId}) {
-    return _resolveRootIdleSince(rootSessionId: rootSessionId);
-  }
-
-  List<PushPrunableRoot> findPrunableRoots() {
-    return _findPrunableRoots();
-  }
-
-  List<PushPrunableRoot> _findPrunableRoots() {
+  /// Root session ids whose whole subtree has been idle for at least
+  /// [PushSessionMaintenancePolicy.rootIdlePruneTtl].
+  List<String> findPrunableRoots() {
     final cutoff = _now().subtract(PushSessionMaintenancePolicy.rootIdlePruneTtl);
-    final prunableRoots = <PushPrunableRoot>[];
-
-    for (final rootSessionId in _findRootSessionIds()) {
-      final idleSince = _resolveRootIdleSince(rootSessionId: rootSessionId);
-      if (idleSince == null || idleSince.isAfter(cutoff)) {
-        continue;
-      }
-
-      prunableRoots.add(
-        PushPrunableRoot(
-          rootSessionId: rootSessionId,
-          idleSince: idleSince,
-          retainedSessionCount: _collectSubtreeSessionIds(
-            rootSessionId: rootSessionId,
-          ).length,
-        ),
-      );
-    }
-    return prunableRoots;
+    return _findRootSessionIds()
+        .where((rootSessionId) {
+          final idleSince = _resolveRootIdleSince(rootSessionId: rootSessionId);
+          return idleSince != null && !idleSince.isAfter(cutoff);
+        })
+        .toList(growable: false);
   }
 
-  PushPrunedSubtree pruneRootSubtree({required String rootSessionId}) {
+  /// Forgets the subtree under [rootSessionId] and returns its session ids.
+  List<String> pruneRootSubtree({required String rootSessionId}) {
     final subtreeSessionIds = _collectSubtreeSessionIds(rootSessionId: rootSessionId);
+    if (subtreeSessionIds.isEmpty) {
+      return const <String>[];
+    }
     final subtreeMessageIds = subtreeSessionIds
         .expand((sessionId) => _sessions[sessionId]?.messageIds ?? const <String>{})
         .toList(growable: false);
-    if (subtreeSessionIds.isEmpty) {
-      return PushPrunedSubtree(
-        rootSessionId: rootSessionId,
-        prunedSessionIds: const <String>[],
-        removedSessionCount: 0,
-        removedMessageRoleCount: 0,
-        removedPermissionMappingCount: 0,
-      );
-    }
 
     final rootParentId = _sessions[rootSessionId]?.parentId;
     _sessions[rootParentId]?.childIds.remove(rootSessionId);
@@ -160,29 +142,9 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
       sessionState.childIds.removeWhere(subtreeSessionIds.contains);
     }
 
-    var removedMessageRoleCount = 0;
-    for (final messageId in subtreeMessageIds) {
-      if (_messageRoles.remove(messageId) != null) {
-        removedMessageRoleCount += 1;
-      }
-    }
+    subtreeMessageIds.forEach(_messageRoles.remove);
 
-    var removedPermissionMappingCount = 0;
-    _permissionRequestToSession.removeWhere((_, value) {
-      final shouldRemove = subtreeSessionIds.contains(value);
-      if (shouldRemove) {
-        removedPermissionMappingCount += 1;
-      }
-      return shouldRemove;
-    });
-
-    return PushPrunedSubtree(
-      rootSessionId: rootSessionId,
-      prunedSessionIds: subtreeSessionIds.toList(growable: false),
-      removedSessionCount: subtreeSessionIds.length,
-      removedMessageRoleCount: removedMessageRoleCount,
-      removedPermissionMappingCount: removedPermissionMappingCount,
-    );
+    return subtreeSessionIds.toList(growable: false);
   }
 
   void clearLatestAssistantTextForRootSubtree({required String rootSessionId}) {
@@ -213,74 +175,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     }
   }
 
-  PushSessionTelemetrySnapshot createTelemetrySnapshot() {
-    final rootSessionIds = _findRootSessionIds();
-    var idleRootCount = 0;
-    for (final rootSessionId in rootSessionIds) {
-      if (_resolveRootIdleSince(rootSessionId: rootSessionId) != null) {
-        idleRootCount += 1;
-      }
-    }
-
-    var busySessionCount = 0;
-    var pendingQuestionCount = 0;
-    var pendingPermissionCount = 0;
-    var previouslyBusyCount = 0;
-    var latestAssistantTextCount = 0;
-    var latestAssistantTextCharCount = 0;
-    DateTime? oldestSessionActivityAt;
-    for (final sessionState in _sessions.values) {
-      if (sessionState.status != null) {
-        busySessionCount += 1;
-      }
-      if (sessionState.pendingQuestionIds.isNotEmpty) {
-        pendingQuestionCount += 1;
-      }
-      if (sessionState.pendingPermissionRequestIds.isNotEmpty) {
-        pendingPermissionCount += 1;
-      }
-      if (sessionState.previouslyBusy) {
-        previouslyBusyCount += 1;
-      }
-      final latestAssistantText = sessionState.latestAssistantText;
-      if (latestAssistantText != null) {
-        latestAssistantTextCount += 1;
-        latestAssistantTextCharCount += latestAssistantText.length;
-      }
-      final touchedAt = sessionState.lastTouchedAt;
-      if (touchedAt != null && (oldestSessionActivityAt == null || touchedAt.isBefore(oldestSessionActivityAt))) {
-        oldestSessionActivityAt = touchedAt;
-      }
-    }
-
-    DateTime? oldestMessageRoleUpdatedAt;
-    for (final messageRole in _messageRoles.values) {
-      if (oldestMessageRoleUpdatedAt == null || messageRole.updatedAt.isBefore(oldestMessageRoleUpdatedAt)) {
-        oldestMessageRoleUpdatedAt = messageRole.updatedAt;
-      }
-    }
-
-    return PushSessionTelemetrySnapshot(
-      sessionCount: _sessions.length,
-      rootSessionCount: rootSessionIds.length,
-      idleRootCount: idleRootCount,
-      busySessionCount: busySessionCount,
-      pendingQuestionCount: pendingQuestionCount,
-      pendingPermissionCount: pendingPermissionCount,
-      permissionRequestCount: _permissionRequestToSession.length,
-      previouslyBusyCount: previouslyBusyCount,
-      latestAssistantTextCount: latestAssistantTextCount,
-      latestAssistantTextCharCount: latestAssistantTextCharCount,
-      messageRoleCount: _messageRoles.length,
-      assistantMessageRoleCount: _messageRoles.values
-          .where((messageRole) => messageRole.role == _PushMessageRole.assistant)
-          .length,
-      oldestSessionActivityAt: oldestSessionActivityAt,
-      oldestMessageRoleUpdatedAt: oldestMessageRoleUpdatedAt,
-      prunableRoots: _findPrunableRoots(),
-    );
-  }
-
   String resolveRootSessionId(String sessionId) {
     var current = sessionId;
     final visited = <String>{};
@@ -297,12 +191,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
 
       current = parentId;
     }
-  }
-
-  void reset() {
-    _sessions.clear();
-    _messageRoles.clear();
-    _permissionRequestToSession.clear();
   }
 
   void _applyProjectsSummaryChildLinks({
@@ -358,12 +246,11 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     ).map((sessionId) => _sessions[sessionId]).nonNulls;
   }
 
-  void _clearPendingPermission({required String requestId, required DateTime touchedAt}) {
-    final sessionId = _permissionRequestToSession.remove(requestId);
-    if (sessionId == null) {
-      return;
-    }
-
+  void _clearPendingPermission({
+    required String sessionId,
+    required String requestId,
+    required DateTime touchedAt,
+  }) {
     final sessionState = _sessions[sessionId];
     if (sessionState != null) {
       sessionState.pendingPermissionRequestIds.remove(requestId);
@@ -406,8 +293,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
         childState.parentId = null;
       }
     }
-
-    _permissionRequestToSession.removeWhere((_, value) => value == sessionId);
   }
 
   Set<String> _findRootSessionIds() {

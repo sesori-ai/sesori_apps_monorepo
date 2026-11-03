@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
-import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
@@ -22,7 +21,6 @@ import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
-import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
@@ -45,29 +43,14 @@ import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/server/services/windows_restart_successor_launcher.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
-import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
-import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
-import 'package:sesori_bridge/src/updater/api/managed_runtime_manifest_api.dart';
-import 'package:sesori_bridge/src/updater/api/platform_update_api.dart';
-import 'package:sesori_bridge/src/updater/api/update_attempt_api.dart';
-import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
-import 'package:sesori_bridge/src/updater/api/update_log_api.dart';
 import 'package:sesori_bridge/src/updater/formatters/terminal_download_progress_listener.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
-import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
-import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
-import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
-import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
-import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository.dart';
-import 'package:sesori_bridge/src/updater/repositories/update_installation_repository.dart';
-import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dart';
 import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
 import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
-import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
-import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
+import 'package:sesori_bridge/src/updater/updater_composition.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
@@ -687,23 +670,7 @@ class UpdateCommand() extends cli.Command<void> {
     final bool force = argResults!['force'] as bool;
     final environment = Platform.environment;
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(environment: environment);
-    final installRoot = managedRuntimePaths.installRoot;
-    const clock = Clock();
-    const filesystemCleaner = FilesystemCleaner();
     final releaseTrack = await _resolveReleaseTrack();
-
-    // Opportunistically authenticate GitHub release checks; the first non-empty
-    // of GITHUB_TOKEN / GH_TOKEN lifts the 60/hour anonymous limit to 5000/hour.
-    final githubToken =
-        [
-              environment['GITHUB_TOKEN'],
-              environment['GH_TOKEN'],
-            ]
-            .map((token) => token?.trim())
-            .firstWhere(
-              (token) => token != null && token.isNotEmpty,
-              orElse: () => null,
-            );
 
     final httpClient = http.Client();
     final progressController = StreamController<DownloadProgress>();
@@ -717,53 +684,23 @@ class UpdateCommand() extends cli.Command<void> {
       out: stderr,
     );
     try {
-      final processRunner = ProcessRunner();
-      final logRepository = UpdateLogRepository(
-        api: UpdateLogApi(installRoot: installRoot, clock: clock),
+      final updater = composeUpdater(
+        httpClient: httpClient,
+        processRunner: ProcessRunner(),
+        managedRuntimePaths: managedRuntimePaths,
+        releaseTrack: releaseTrack,
+        environment: environment,
+        progressSink: progressController.sink,
+        // Stage into a per-process workspace so a manual update can't clobber
+        // (or be clobbered by) a resident bridge's background staging.
+        workspaceLabel: 'manual.$pid',
       );
-      final attemptRepository = UpdateAttemptRepository(api: UpdateAttemptApi(installRoot: installRoot));
-      final installationRepository = UpdateInstallationRepository(
-        platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
-        manifestApi: const ManagedRuntimeManifestApi(),
-      );
-      final updateLock = UpdateLock(currentPid: pid, processRunner: processRunner, clock: clock);
-      final distributionTarget = currentDistributionTarget();
-      final commandExecutor = ProcessRunnerCommandExecutor(processRunner: processRunner);
-
       final manualUpdateService = ManualUpdateService(
-        releaseRepository: ReleaseRepository(
-          api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
-          cache: UpdateCacheApi(cacheDirectory: managedRuntimePaths.cacheDirectory, clock: clock),
-          currentVersion: appVersion,
-          target: distributionTarget,
-          track: releaseTrack,
-        ),
-        updateInstallService: UpdateInstallService(
-          updateArtifactRepository: UpdateArtifactRepository(
-            downloadClient: BinaryDownloadClient(httpClient: httpClient),
-            checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
-            checksumValidator: ChecksumValidator(),
-            archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-            archiveFormat: distributionTarget.archiveFormat,
-            progressSink: progressController.sink,
-          ),
-          filesystemCleaner: filesystemCleaner,
-          // Stage into a per-process workspace so a manual update can't clobber
-          // (or be clobbered by) a resident bridge's background staging.
-          workspaceLabel: 'manual.$pid',
-        ),
-        updateApplyService: UpdateApplyService(
-          installationRepository: installationRepository,
-          attemptRepository: attemptRepository,
-          logRepository: logRepository,
-          updateLock: updateLock,
-          filesystemCleaner: filesystemCleaner,
-          clock: clock,
-          currentVersion: appVersion,
-          installRoot: installRoot,
-        ),
+        releaseRepository: updater.releaseRepository,
+        updateInstallService: updater.installService,
+        updateApplyService: updater.applyService,
         track: releaseTrack,
-        installRoot: installRoot,
+        installRoot: managedRuntimePaths.installRoot,
         executablePath: Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
       );

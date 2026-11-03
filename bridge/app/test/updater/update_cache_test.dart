@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:test/test.dart';
 
@@ -36,8 +37,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: now.subtract(const Duration(days: 1)),
+        track: ReleaseTrack.stable,
         checkedAt: now,
       );
 
@@ -52,9 +52,26 @@ void main() {
       expect(cached.downloadUrl, equals('https://example.com/download/1.2.3'));
       expect(cached.checksumsUrl, equals('https://example.com/checksums/1.2.3'));
       expect(cached.assetName, equals('sesori-bridge-macos-arm64.tar.gz'));
-      expect(cached.track, equals('stable'));
-      expect(cached.publishedAt, equals(now.subtract(const Duration(days: 1))));
+      expect(cached.track, equals(ReleaseTrack.stable));
       expect(cached.checkedAt, equals(now));
+    });
+
+    test('an unknown track from a newer bridge is a cache miss', () async {
+      final now = DateTime(2024, 1, 1, 12, 0, 0);
+      final cache = UpdateCacheApi(
+        cacheDirectory: tempDir,
+        clock: Clock.fixed(now),
+      );
+
+      await Directory(tempDir).create(recursive: true);
+      await File('$tempDir/update_cache.json').writeAsString(
+        '{"latestVersion":"1.2.3","downloadUrl":"https://example.com/d",'
+        '"checksumsUrl":"https://example.com/c",'
+        '"assetName":"sesori-bridge-macos-arm64.tar.gz",'
+        '"track":"nightly","checkedAt":"2024-01-01T12:00:00.000"}',
+      );
+
+      expect(await cache.read(ttl: const Duration(hours: 1)), isNull);
     });
 
     test('legacy cache without track field defaults to stable without throwing', () async {
@@ -76,7 +93,7 @@ void main() {
       final cached = await cache.read(ttl: const Duration(hours: 1));
 
       expect(cached, isNotNull);
-      expect(cached!.track, equals('stable'));
+      expect(cached!.track, equals(ReleaseTrack.stable));
       expect(cached.latestVersion, equals('1.2.3'));
     });
 
@@ -94,8 +111,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: checkedAt.subtract(const Duration(days: 1)),
+        track: ReleaseTrack.stable,
         checkedAt: checkedAt,
       );
 
@@ -128,8 +144,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: checkedAt.subtract(const Duration(days: 1)),
+        track: ReleaseTrack.stable,
         checkedAt: checkedAt,
       );
 
@@ -191,8 +206,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: DateTime.now(),
+        track: ReleaseTrack.stable,
         checkedAt: DateTime.now(),
       );
 
@@ -220,8 +234,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: checkedAt.subtract(const Duration(days: 1)),
+        track: ReleaseTrack.stable,
         checkedAt: checkedAt,
       );
 
@@ -255,8 +268,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: now.subtract(const Duration(days: 2)),
+        track: ReleaseTrack.stable,
         checkedAt: now,
       );
       await cache.write(release: release1);
@@ -267,8 +279,7 @@ void main() {
         downloadUrl: 'https://example.com/download/2.0.0',
         checksumsUrl: 'https://example.com/checksums/2.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: now.subtract(const Duration(days: 1)),
+        track: ReleaseTrack.stable,
         checkedAt: now,
       );
       await cache.write(release: release2);
@@ -291,8 +302,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
-        track: 'stable',
-        publishedAt: DateTime.now(),
+        track: ReleaseTrack.stable,
         checkedAt: DateTime.now(),
       );
 

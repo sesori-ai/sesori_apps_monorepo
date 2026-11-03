@@ -985,7 +985,7 @@ void main() {
         final originalIndex = index.readAsStringSync();
 
         expect(
-          (await catalogRepository.getSessions(projectId: "/repo/app", start: null, limit: null)).map((s) => s.id),
+          (await catalogRepository.getSessions(projectId: "/repo/app")).map((s) => s.id),
           [otherId, resumedId],
         );
 
@@ -1001,7 +1001,7 @@ void main() {
         File(resumedPath).setLastModifiedSync(activityAt);
         late List<PluginSession> sessions;
         final logs = await _captureWarningsAsync(() async {
-          sessions = await catalogRepository.getSessions(projectId: "/repo/app", start: null, limit: null);
+          sessions = await catalogRepository.getSessions(projectId: "/repo/app");
         }, level: LogLevel.debug);
 
         expect(logs, contains("parsedHeaders=0,"));
@@ -2669,13 +2669,13 @@ void main() {
         keepaliveInterval: const Duration(seconds: 30),
       );
 
-      final sessions = await plugin.getSessions(projectId: "/work/sample-app", start: null, limit: null);
+      final sessions = await plugin.getSessions(projectId: "/work/sample-app");
       expect(sessions, hasLength(1));
       expect(sessions.single.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(sessions.single.directory, equals("/work/sample-app"));
 
       // Filtering by a different CWD returns empty.
-      final none = await plugin.getSessions(projectId: "/somewhere/else", start: null, limit: null);
+      final none = await plugin.getSessions(projectId: "/somewhere/else");
       expect(none, isEmpty);
       await plugin.dispose();
     });

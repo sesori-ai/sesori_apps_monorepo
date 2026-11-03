@@ -34,7 +34,6 @@ class FakeOpenCodeApi({
   String? lastGetProjectDirectory;
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
-  int updateProjectCalls = 0;
 
   Future<Map<String, MCPStatus>> getMcpStatus({required String directory}) async => throw UnimplementedError();
   Future<OpenCodeMcpConfigurationDto> getMcpConfiguration({required String directory}) async =>
@@ -54,7 +53,6 @@ class FakeOpenCodeApi({
   Future<void> disconnectMcpServer({required String directory, required String name}) async =>
       throw UnimplementedError();
 
-  Future<bool> healthCheck() async => true;
   Future<List<Project>> listProjects() async => projects;
   Future<List<Session>> listRootSessions() async => sessions;
   Future<List<Session>> listSessions({String? directory, required bool roots}) async =>
@@ -172,15 +170,6 @@ class FakeOpenCodeApi({
       const ProviderListResponse(all: [], defaultValue: {}, connected: []);
   Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
       const ConfigProvidersResponse(providers: [], defaultValue: {});
-  Future<Project> updateProject({
-    required String projectId,
-    required String directory,
-    required UpdateProjectBody body,
-  }) async {
-    updateProjectCalls += 1;
-    throw UnimplementedError();
-  }
-
   Future<Session> forkSession({required String sessionId, required String directory}) async =>
       throw UnimplementedError();
 }

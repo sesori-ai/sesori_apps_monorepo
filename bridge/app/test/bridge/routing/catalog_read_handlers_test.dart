@@ -161,7 +161,7 @@ class _NeverCompletingPlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) {
+  Future<List<PluginSession>> getSessions({required String projectId}) {
     calls++;
     return Completer<List<PluginSession>>().future;
   }

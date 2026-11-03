@@ -12,7 +12,10 @@ import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dar
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_service.dart';
+import 'package:sesori_plugin_interface/plugin_interface_testing.dart';
 import 'package:test/test.dart';
+
+import '../helpers/log_capture.dart';
 
 const String _managedPath = '/usr/local/bin/sesori-bridge';
 
@@ -53,9 +56,6 @@ class _FakeApplyService() implements UpdateApplyService {
   bool supportsInSessionChaining = true;
 
   @override
-  void Function(String message) logWarning = (_) {};
-
-  @override
   Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     appliedVersions.add(release.version);
     return onApply?.call(release) ?? UpdateApplied(version: release.version, durablyRecorded: true);
@@ -79,7 +79,6 @@ ReleaseInfo _release({String version = '2.0.0'}) => ReleaseInfo(
   version: version,
   assetUrl: 'https://example.com/bridge.tar.gz',
   checksumsUrl: 'https://example.com/checksums.txt',
-  publishedAt: DateTime.utc(2026),
 );
 
 void main() {
@@ -89,7 +88,7 @@ void main() {
   late _FakeLogRepository logs;
   late List<String> infoMessages;
   late List<String> errors;
-  late List<String> warnings;
+  late BufferingStdout logOutput;
 
   UpdateService buildService({
     String executablePath = _managedPath,
@@ -110,7 +109,6 @@ void main() {
       isSupervised: isSupervised,
     );
     service.emitLine = (line) => (line.isError ? errors : infoMessages).add(line.text);
-    service.logWarning = warnings.add;
     return service;
   }
 
@@ -121,7 +119,7 @@ void main() {
     logs = _FakeLogRepository();
     infoMessages = <String>[];
     errors = <String>[];
-    warnings = <String>[];
+    logOutput = captureLogOutput();
   });
 
   void runStarted(UpdateService service, void Function(FakeAsync async) body) {
@@ -279,7 +277,7 @@ void main() {
     runStarted(buildService(), (async) {
       expect(apply.appliedVersions, isEmpty);
       expect(errors, isEmpty);
-      expect(warnings, hasLength(1));
+      expect(logOutput.text, contains('Skipping update to 2.0.0: networkError'));
     });
   });
 
@@ -287,8 +285,7 @@ void main() {
     release.onCheck = () async => throw GitHubRateLimitException(resetAt: DateTime(2030), authenticated: false);
 
     runStarted(buildService(), (async) {
-      expect(warnings, hasLength(1));
-      expect(warnings.single, contains('rate limit'));
+      expect(logOutput.text, contains('GitHub API rate limit reached'));
       expect(errors, isEmpty);
       expect(install.stageCount, 0);
     });

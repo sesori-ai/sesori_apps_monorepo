@@ -91,8 +91,9 @@ extension PregoDesignExtension on BuildContext {
   /// Automatically resolves to light or dark mode based on the current [Theme].
   PregoDesignSystem get prego {
     final design = Theme.of(this).extension<PregoDesignSystem>();
-    assert(design != null, "PregoDesignSystem not found in ThemeData.extensions. Add it to your ThemeData.");
-    // ignore: no_slop_linter/avoid_bang_operator, assert above guarantees the theme extension is present in debug builds
-    return design!;
+    if (design == null) {
+      throw StateError("PregoDesignSystem not found in ThemeData.extensions. Add it to your ThemeData.");
+    }
+    return design;
   }
 }

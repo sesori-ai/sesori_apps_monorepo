@@ -38,23 +38,29 @@ BridgePlugin { api, status, currentStatus, describe(), shutdown(budget) }
 
 Two rules carry the weight: **no `Failed` after `Stopping`** (a clean shutdown must never be reported as a failure by a racy exit monitor), and **the stream closes after `Stopped`**. `PluginStatusController` implements the machine with a replay-latest stream: `set()` throws on illegal transitions (deliberate steps), `trySet()` drops them silently (racy sources).
 
-`status` is the *debounced* lifecycle signal for orchestration; `BridgePluginApi.healthCheck()` stays an instantaneous, mobile-facing probe.
+`status` is the *debounced* lifecycle signal for orchestration.
 
 ### `start()` contract
 
 - Runs under the bridge's cross-instance startup mutex; the mutex is held until `start()` settles. The bridge never abandons a start with `Future.timeout` — long phases must check `host.startAborted` at every phase boundary and roll back when aborted. An aborted start settles by throwing `PluginStartAbortedException` after the rollback.
 - On failure, release everything acquired (processes, records, sockets) before throwing — `PluginStartException` for expected failure modes.
 
-### `shutdown()` / `dispose()` contract
+### `shutdown()` contract
 
-`BridgePlugin.shutdown({budget})` owns ordered teardown and must be idempotent. `BridgePluginApi.dispose()` is kept for the migration window — the bridge core may still call it directly, before or after `shutdown()`, so both must be safe in either order. Prefer `shutdown()`; `dispose()` will be removed once the core stops calling it.
+`BridgePlugin.shutdown({budget})` owns ordered teardown and must be idempotent.
 
 ### Steady plugins in a few lines
 
-Direct-CLI and remote-server plugins have no managed runtime; mix in `SteadyPluginLifecycle` and supply only `api`, `describe()`, and (optionally) `onShutdown`:
+Direct-CLI and remote-server plugins have no managed runtime; mix in `SteadyPluginLifecycle` and supply only `api`, `describe()`, `interruptActiveWork()`, and (optionally) `onShutdown`:
 
 ```dart
 class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
+  RemotePlugin({required RemoteApi api, required String url}) : _api = api, _url = url;
+
+  /// The plugin's own `BridgePluginApi`, which owns its HTTP client.
+  final RemoteApi _api;
+  final String _url;
+
   @override
   BridgePluginApi get api => _api;
 
@@ -63,15 +69,15 @@ class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
       PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 
   @override
-  Future<void> onShutdown({required Duration? budget}) => _api.dispose();
+  Future<Set<String>> interruptActiveWork({required Duration budget}) =>
+      _api.interruptActiveSessions(budget: budget);
+
+  @override
+  Future<void> onShutdown({required Duration? budget}) => _api.close();
 }
 ```
 
 The mixin debounces the degraded side (`markDegraded` surfaces only after the degradation persists; `markReady` recovers immediately) and enforces the state machine on every transition.
-
-### Migration status
-
-The bridge core still constructs the OpenCode plugin through a legacy factory; the runner adopts descriptors in a follow-up change. New code should target the descriptor contract.
 
 ## BridgePluginApi
 
@@ -80,11 +86,10 @@ The request surface (`lib/src/bridge_plugin.dart`), grouped:
 | Area | Members |
 |------|---------|
 | Identity & events | `id`, `events` (buffered `Stream<BridgeSseEvent>` — use `BufferedUntilFirstListener`) |
-| Projects | `getProjects`, `getProject`, `renameProject`, `deleteWorkspace` |
+| Projects | `getProjects`, `getProject`, `deleteWorkspace` |
 | Sessions | `getSessions`, `getChildSessions`, `createSession`, `renameSession`, `deleteSession`, `archiveSession`, `getSessionStatuses`, `getSessionMessages`, `getActiveSessionsSummary` |
 | Prompting | `sendPrompt`, `sendCommand`, `abortSession`, `getCommands`, `getAgents`, `getProviders` |
 | Questions & permissions | `getPendingQuestions`, `getProjectQuestions`, `replyToQuestion`, `rejectQuestion`, `replyToPermission` |
-| Health & teardown | `healthCheck` (instantaneous probe), `dispose` (prefer `BridgePlugin.shutdown`) |
 
 Failures are signaled with `PluginOperationException` (transport-agnostic; optional `statusCode`) or its HTTP-flavored subclass `PluginApiException`. Use `PluginOperationException.notFound` so idempotent deletes work for non-HTTP plugins.
 

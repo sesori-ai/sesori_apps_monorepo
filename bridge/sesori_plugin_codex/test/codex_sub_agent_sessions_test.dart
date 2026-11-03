@@ -105,7 +105,7 @@ void main() {
         ],
       );
 
-      final page = await repository.getSessions(projectId: "/repo/app", start: null, limit: null);
+      final page = await repository.getSessions(projectId: "/repo/app");
       expect(page.map((session) => session.id), ["root-1"]);
 
       final all = await repository.listAllSessions(knownDirectories: const {});

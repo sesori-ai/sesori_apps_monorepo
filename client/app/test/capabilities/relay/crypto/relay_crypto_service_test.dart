@@ -123,23 +123,22 @@ void main() {
       expect(encoded.length, greaterThan(0));
     });
 
-    test("decodePublicKey round-trip returns same bytes", () async {
+    test("encoded public key decodes back to the same key", () async {
       final keyPair = await service.generateKeyPair();
       final publicKey = await keyPair.extractPublicKey();
       final encoded = await service.encodePublicKey(publicKey);
-      final decoded = service.decodePublicKey(encoded);
+      final decoded = service.decodePublicKeyFromBytes(base64Url.decode(base64Url.normalize(encoded)));
 
       expect(decoded.bytes, equals(publicKey.bytes));
       expect(decoded.type, equals(KeyPairType.x25519));
     });
 
-    test("decodePublicKey rejects keys that are not 32 bytes", () async {
-      // Encode fewer than 32 bytes — not a valid X25519 key
+    test("decodePublicKeyFromBytes rejects keys that are not 32 bytes", () async {
+      // Fewer than 32 bytes — not a valid X25519 key
       final shortBytes = Uint8List.fromList(List.generate(16, (i) => i));
-      final encoded = base64Url.encode(shortBytes).replaceAll("=", "");
 
       expect(
-        () => service.decodePublicKey(encoded),
+        () => service.decodePublicKeyFromBytes(shortBytes),
         throwsA(isA<FormatException>()),
       );
     });

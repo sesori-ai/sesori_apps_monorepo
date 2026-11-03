@@ -329,7 +329,6 @@ void main() {
     harness.routeSource.emitRoute(AppRouteDef.archivedSessions);
     await tester.pumpAndSettle();
     verify(() => viewingService.clearViewingSession("live")).called(1);
-    openerCubit.reassertViewingSession();
     verifyNever(() => viewingService.setViewingSession("live"));
     await tester.tap(find.text("Archived record"));
     await tester.pumpAndSettle();

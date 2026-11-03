@@ -338,9 +338,9 @@ class CodexPlugin._({
   }
 
   /// Invoked when the underlying transport drops unexpectedly. Resets the
-  /// cached connection state (so [healthCheck]/[_ensureConnected] no longer
-  /// hand back a stale successful future for a dead socket and instead
-  /// re-establish on the next call), clears connection-scoped activity, then
+  /// cached connection state (so [_ensureConnected] no longer hands back a
+  /// stale successful future for a dead socket and instead re-establishes on
+  /// the next call), clears connection-scoped activity, then
   /// forwards the signal to the runtime descriptor's status reporter.
   void _handleClientDisconnected() {
     final registry = _approvalRegistry;
@@ -917,16 +917,6 @@ class CodexPlugin._({
     _syncWorkState();
   }
 
-  @override
-  Future<bool> healthCheck() async {
-    try {
-      return await _ensureConnected();
-    } on Object catch (error, stackTrace) {
-      Log.w("[codex] health check failed", error, stackTrace);
-      return false;
-    }
-  }
-
   /// codex is a [BridgeDerivedProjectsPluginApi], so the bridge derives the
   /// project list from these sessions. Each carries its real rollout cwd as its
   /// directory so the bridge groups it under the right project.
@@ -948,15 +938,8 @@ class CodexPlugin._({
   void primeSessionDirectory({required String sessionId, required String directory}) {}
 
   @override
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async => await _sessionService.getSessions(
-    projectId: projectId,
-    start: start,
-    limit: limit,
-  );
+  Future<List<PluginSession>> getSessions({required String projectId}) async =>
+      await _sessionService.getSessions(projectId: projectId);
 
   @override
   Future<List<PluginCommand>> getCommands({

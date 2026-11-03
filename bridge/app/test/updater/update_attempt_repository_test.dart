@@ -11,7 +11,6 @@ void main() {
   late UpdateAttemptRepository repository;
 
   UpdateAttempt attempt({
-    UpdateStage stage = UpdateStage.swapping,
     UpdateAttemptStatus status = UpdateAttemptStatus.inFlight,
     String? reason,
   }) {
@@ -19,7 +18,6 @@ void main() {
       fromVersion: '1.0.0',
       toVersion: '2.0.0',
       startedAt: DateTime.utc(2026, 6, 17, 12),
-      stage: stage,
       status: status,
       reason: reason,
     );
@@ -47,19 +45,17 @@ void main() {
     expect(loaded, isNotNull);
     expect(loaded!.fromVersion, '1.0.0');
     expect(loaded.toVersion, '2.0.0');
-    expect(loaded.stage, UpdateStage.swapping);
     expect(loaded.status, UpdateAttemptStatus.inFlight);
   });
 
   test('save overwrites with a status transition', () async {
     await repository.saveAttempt(attempt: attempt());
     await repository.saveAttempt(
-      attempt: attempt(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
+      attempt: attempt(status: UpdateAttemptStatus.appliedPendingActivation),
     );
 
     final loaded = await repository.readAttempt();
     expect(loaded!.status, UpdateAttemptStatus.appliedPendingActivation);
-    expect(loaded.stage, UpdateStage.activated);
   });
 
   test('clear removes the record', () async {

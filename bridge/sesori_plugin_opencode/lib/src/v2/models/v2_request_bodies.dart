@@ -3,8 +3,6 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "openapi/location_public_ref.g.dart";
 import "openapi/model_ref.g.dart";
 import "openapi/permission_reply.g.dart";
-import "openapi/project_commands.g.dart";
-import "openapi/project_icon.g.dart";
 import "openapi/prompt_agent_attachment.g.dart";
 import "openapi/prompt_input_file_attachment.g.dart";
 import "openapi/prompt_input_skill_attachment.g.dart";
@@ -82,14 +80,4 @@ sealed class V2CompactBody with _$V2CompactBody {
 @Freezed(toJson: true, copyWith: false)
 sealed class V2PermissionReplyBody with _$V2PermissionReplyBody {
   const factory({required PermissionReply decision, required String? message}) = _V2PermissionReplyBody;
-}
-
-@Freezed(toJson: true, copyWith: false)
-sealed class V2UpdateProjectBody with _$V2UpdateProjectBody {
-  const factory({
-    required String? canonical,
-    required String? name,
-    required ProjectIcon? icon,
-    required ProjectCommands? commands,
-  }) = _V2UpdateProjectBody;
 }

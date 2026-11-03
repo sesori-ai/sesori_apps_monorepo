@@ -52,11 +52,7 @@ Protocol constants (message type strings, role identifiers) and close codes are 
 
 ## Concurrency
 
-`ConcurrentCache` — async-safe cache with per-key locking to prevent duplicate concurrent fetches.
-
 `EventQueue` — ordered async event dispatcher.
-
-`SingleTaskIsolate` / `MultiTaskIsolate` — typed isolate wrappers with persistent and transient pool variants. Constructed via factory constructors that select the right implementation based on `minPoolSize`/`maxPoolSize`.
 
 ## Adding as a Dependency
 

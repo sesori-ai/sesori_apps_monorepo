@@ -183,7 +183,6 @@ typedef AgentModelData = ({
   PluginMetadata? plugin,
   NewSessionOptionsLoadState optionsState,
   NewSessionBackendScope backendScope,
-  bool isLoading,
   bool isPluginDiscoveryInFlight,
   List<AgentInfo> agents,
   List<ProviderInfo> providers,
@@ -217,7 +216,6 @@ extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
       plugin: selectedPlugin,
       optionsState: options,
       backendScope: backendScope,
-      isLoading: options.isLoading || projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading,
       isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
       agents: data?.agents ?? const [],
       providers: providers,
@@ -249,7 +247,6 @@ extension NewSessionStateAgentModel on NewSessionState {
 
   AgentModelData? get agentModelData => config?.agentModelData;
 
-  bool get isComposerDataLoading => agentModelData?.isLoading ?? false;
   List<AgentInfo> get availableAgents => agentModelData?.agents ?? const [];
   List<ProviderInfo> get availableProviders => agentModelData?.providers ?? const [];
   List<CommandInfo> get availableCommands => agentModelData?.commands ?? const [];

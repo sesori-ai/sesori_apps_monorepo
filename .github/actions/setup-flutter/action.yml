@@ -1,11 +1,5 @@
 name: 'Setup Flutter'
-description: 'Cache and install asdf tools + Flutter pub dependencies'
-
-inputs:
-  workspace:
-    description: 'Workspace directory to run `dart pub get` in ("none" skips it — toolchain install only)'
-    required: false
-    default: 'client'
+description: 'Cache and install asdf tools + client workspace pub dependencies'
 
 runs:
   using: 'composite'
@@ -46,7 +40,6 @@ runs:
           ${{ runner.os }}-${{ runner.arch }}-pub-
 
     - name: Get dependencies (workspace)
-      if: inputs.workspace != 'none'
       shell: bash
       run: dart pub get
-      working-directory: ${{ inputs.workspace }}
+      working-directory: client

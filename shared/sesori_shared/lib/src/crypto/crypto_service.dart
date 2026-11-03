@@ -86,14 +86,6 @@ class RelayCryptoService() {
     return await Future.value(base64Url.encode(bytes).replaceAll("=", ""));
   }
 
-  /// Decodes a base64url-encoded public key.
-  SimplePublicKey decodePublicKey(String encoded) {
-    // Add padding back if needed
-    final padded = encoded + "=" * ((4 - encoded.length % 4) % 4);
-    final bytes = base64Url.decode(padded);
-    return decodePublicKeyFromBytes(Uint8List.fromList(bytes));
-  }
-
   /// Decodes a raw X25519 public key from bytes.
   SimplePublicKey decodePublicKeyFromBytes(Uint8List bytes) {
     if (bytes.length != 32) {

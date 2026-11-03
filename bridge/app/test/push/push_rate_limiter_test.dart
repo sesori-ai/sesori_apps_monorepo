@@ -11,7 +11,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -19,7 +18,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-b",
           rateLimitKey: "session_message-session-b",
         ),
         isTrue,
@@ -28,7 +26,7 @@ void main() {
 
       now = now.add(const Duration(minutes: 31));
 
-      expect(limiter.pruneStaleEntries(), 2);
+      limiter.pruneStaleEntries();
       expect(limiter.retainedKeyCount, 0);
     });
 
@@ -39,7 +37,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -47,7 +44,7 @@ void main() {
 
       now = now.add(const Duration(minutes: 29, seconds: 59));
 
-      expect(limiter.pruneStaleEntries(), 0);
+      limiter.pruneStaleEntries();
       expect(limiter.retainedKeyCount, 1);
     });
 
@@ -58,7 +55,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -68,7 +64,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isFalse,
@@ -78,7 +73,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -91,7 +85,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -99,7 +92,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-b",
           rateLimitKey: "session_message-session-b",
         ),
         isTrue,
@@ -113,7 +105,6 @@ void main() {
         expect(
           limiter.shouldSend(
             category: NotificationCategory.aiInteraction,
-            sessionId: "session-a",
             rateLimitKey: "ai_interaction-session-a",
           ),
           isTrue,
@@ -128,7 +119,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.systemUpdate,
-          sessionId: null,
           rateLimitKey: "system_update-global",
         ),
         isTrue,
@@ -136,7 +126,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.systemUpdate,
-          sessionId: null,
           rateLimitKey: "system_update-global",
         ),
         isTrue,
@@ -151,7 +140,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -159,7 +147,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-b",
           rateLimitKey: "session_message-session-b",
         ),
         isTrue,
@@ -168,13 +155,12 @@ void main() {
 
       now = now.add(const Duration(minutes: 31));
 
-      expect(limiter.pruneStaleEntries(), 2);
+      limiter.pruneStaleEntries();
       expect(limiter.retainedKeyCount, 0);
 
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isTrue,
@@ -186,7 +172,6 @@ void main() {
       expect(
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
-          sessionId: "session-a",
           rateLimitKey: "session_message-session-a",
         ),
         isFalse,

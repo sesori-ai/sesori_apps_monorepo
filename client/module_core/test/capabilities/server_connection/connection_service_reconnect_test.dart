@@ -5,6 +5,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
+import "package:sesori_dart_core/src/capabilities/relay/relay_config.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
@@ -81,9 +82,10 @@ void main() {
     late BehaviorSubject<LifecycleState> lifecycleController;
     late BehaviorSubject<AuthState> authStateController;
 
+    // The config connectWithFreshAuthToken builds from the stubbed token.
     const config = ServerConnectionConfig(
-      relayHost: "relay.example.com",
-      authToken: "token",
+      relayHost: relayHost,
+      authToken: "fresh-token",
       bridgeId: null,
     );
 
@@ -102,6 +104,7 @@ void main() {
 
       when(() => lifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleController.stream);
       when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
+      when(() => authSession.currentState).thenReturn(const AuthState.initial());
       when(
         () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
       ).thenAnswer((_) async => "fresh-token");
@@ -257,7 +260,7 @@ void main() {
       expect(factory.callCount, 0);
     });
 
-    test("SSE setup failure disconnects relay and returns error response", () async {
+    test("SSE setup failure disconnects relay and reports the connect as failed", () async {
       final relayClient = MockRelayClient();
 
       when(relayClient.connect).thenAnswer((_) async {});
@@ -302,9 +305,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final result = await service.connect(config);
-
-      expect(result, isA<ErrorResponse<HealthResponse>>());
+      expect(await service.connectWithFreshAuthToken(), isFalse);
       expect(service.relayClient, isNull);
       expect(service.currentStatus, isNot(isA<ConnectionConnected>()));
       verify(relayClient.disconnect).called(greaterThanOrEqualTo(1));
@@ -358,7 +359,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
 
       verify(
         () => relayClient.sendRequest(
@@ -424,7 +425,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       final initialStatus = service.currentStatus;
       expect(initialStatus, isA<ConnectionConnected>());
       expect((initialStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
@@ -509,7 +510,7 @@ void main() {
         addTearDown(service.dispose);
 
         expect(service.lastHealth.value, isNull);
-        await service.connect(config);
+        await service.connectWithFreshAuthToken();
         expect(service.lastHealth.value?.bridgeKind, BridgeKind.desktop);
 
         bridgeStatuses.add(BridgeStatus.offline);
@@ -592,7 +593,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect((service.currentStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
 
       // A fresh reconnect to a different bridge re-probes /health and rejects
@@ -648,7 +649,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
 
       verify(
         () => relayClient.sendRequest(
@@ -708,7 +709,7 @@ void main() {
         addTearDown(service.dispose);
 
         // Establish the initial connection (1st factory call).
-        await service.connect(config);
+        await service.connectWithFreshAuthToken();
         expect(factory.callCount, 1);
         expect(service.currentStatus, isA<ConnectionConnected>());
 
@@ -873,13 +874,14 @@ void main() {
       when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
 
-      // Attempt 1's token refresh is held pending; Attempt 2's resolves
-      // immediately, so Attempt 2 supersedes Attempt 1 while it is still parked.
+      // After the initial connect, Attempt 1's token refresh is held pending;
+      // Attempt 2's resolves immediately, so Attempt 2 supersedes Attempt 1
+      // while it is still parked.
       final firstToken = Completer<String?>();
       var tokenCalls = 0;
       when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).thenAnswer((_) {
         tokenCalls++;
-        return tokenCalls == 1 ? firstToken.future : Future<String?>.value("token");
+        return tokenCalls == 2 ? firstToken.future : Future<String?>.value("token");
       });
 
       var now = DateTime(2025, 1, 1, 12, 0, 0);
@@ -904,7 +906,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect(factory.callCount, 1);
 
       // Attempt 1: resume past the threshold → immediate reconnect, parks at token.
@@ -991,7 +993,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect(service.relayClient, same(initialClient));
 
       lifecycleController.add(LifecycleState.paused);
@@ -1079,7 +1081,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect(service.currentStatus, isA<ConnectionConnected>());
 
       lifecycleController.add(LifecycleState.paused);
@@ -1138,9 +1140,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      final result = await service.connect(config);
-
-      expect(result, isA<SuccessResponse<HealthResponse>>());
+      expect(await service.connectWithFreshAuthToken(), isTrue);
       expect(service.currentStatus, isA<ConnectionBridgeOffline>());
       expect(service.relayClient, same(relayClient));
       // No E2E session yet, so neither the health probe nor SSE should run.
@@ -1209,7 +1209,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect(service.currentStatus, isA<ConnectionBridgeOffline>());
 
       // The relay pushes bridge_connected over the still-open socket.
@@ -1281,7 +1281,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect(service.currentStatus, isA<ConnectionConnected>());
 
       final refreshedToken = Completer<String?>();
@@ -1353,7 +1353,7 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       expect(service.currentStatus, isA<ConnectionBridgeOffline>());
 
       // No SSE stream exists while parked, so the socket-closed signal is what

@@ -169,10 +169,10 @@ void main() {
       (
         const ProductAnalyticsEvent.supportLinkOpened(
           channel: SupportChannel.discord,
-          surface: OnboardingSurface.connectedEmpty,
+          surface: OnboardingSurface.bridgeOffline,
         ),
         "onboarding_support_link_opened",
-        const {"channel": "discord", "surface": "connected_empty"},
+        const {"channel": "discord", "surface": "bridge_offline"},
       ),
       (
         const ProductAnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.bridgeOffline),

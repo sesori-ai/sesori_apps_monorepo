@@ -296,18 +296,21 @@ bin/bridge.dart       CLI entry point: flag parsing, auth, plugin loading, signa
 lib/src/
 ├── api/              Dumb data-access classes (HTTP, DB, shell, plugins)
 ├── auth/             OAuth PKCE login, token persistence, validation
-├── bridge/           Core bridge (plugin-agnostic)
-│   ├── relay_client.dart      WebSocket connection to relay, message routing
-│   ├── orchestrator.dart      Coordinates relay + plugin lifecycle + key exchange
-│   ├── key_exchange.dart      X25519 DH key exchange with phones, room key delivery
-│   ├── routing/               Explicit request handler chain (one class per API route); unmatched routes return 404
-│   ├── sse/                   SSE stream multiplexing and per-subscriber event buffers
-│   └── debug_server.dart      Debug HTTP server for local testing
+├── control/          Desktop control channel: message dispatch, status, channel loss
+├── foundation/       Low-level helpers: relay client, key exchange, process runners, codecs
+├── listeners/        Event listeners that react to plugin, session and catalog events
+├── models/           Bridge configuration
+├── persistence/      Bridge diagnostics
 ├── push/             Outgoing push notification subsystem
 ├── repositories/     Aggregators + mappers over APIs
+├── routing/          Explicit request handler chain (one class per API route); unmatched routes return 404
+├── runtime/          CLI dispatch, bridge runtime lifecycle, plugin registry and generations
 ├── server/           Bridge instance / host services: single-live-bridge enforcement, startup mutex, plugin host abstractions
 ├── services/         Business logic and coordination
-└── updater/          Packaged-install auto-update logic
+├── sse/              SSE stream multiplexing and per-subscriber event buffers
+├── updater/          Packaged-install auto-update logic
+├── orchestrator.dart Coordinates relay + plugin lifecycle + key exchange
+└── debug_server.dart Debug HTTP server for local testing
 ```
 
 The crypto and protocol types live in `sesori_shared`, shared with the Flutter mobile app. Backend-specific logic lives in plugin packages (e.g. `bridge/sesori_plugin_opencode`).

@@ -35,7 +35,7 @@ endef
 bump-version-check:
 	$(call run_sync_versions,--dry-run)
 
-# Bump the version of the bridge and client (mobile) apps
+# Bump the version of the bridge, mobile and desktop apps
 #
 # Two options to use it 
 # a) make bump-version TYPE=patch|minor|major 

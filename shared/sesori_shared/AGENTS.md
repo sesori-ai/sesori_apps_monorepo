@@ -12,28 +12,34 @@ native binaries and Flutter apps.
 
 ```
 lib/
-├── sesori_shared.dart         Barrel export (24 exports — crypto, models, protocol)
+├── sesori_shared.dart   Barrel export of the public API
 └── src/
-    ├── crypto/
-    │   ├── crypto_service.dart      RelayCryptoService — X25519 keygen, HKDF derivation, XChaCha20 encrypt/decrypt
-    │   └── session_encryptor.dart   SessionEncryptor — stateful encryptor tied to derived session key
+    ├── crypto/          RelayCryptoService (X25519, HKDF, XChaCha20), SessionEncryptor, SHA-256
+    ├── protocol/        Relay framing, RelayMessage and RelayNoticeMessage, close codes,
+    │                    desktop↔bridge ControlMessage, BridgeSupervisedExitCode
     ├── models/
-    │   ├── auth/                    Auth models — AuthResponse, AuthUser, LogoutUrlResponse (Freezed)
-    │   └── opencode/               OpenCode models — Session, Project, Message, AgentInfo, Provider, etc. (Freezed)
-    └── protocol/
-        ├── close_codes.dart         WebSocket close codes for relay protocol
-        ├── constants.dart           Role strings, message type identifiers
-        ├── framing.dart             frame()/unframe() — binary wire format with version byte
-        └── messages.dart            RelayMessage sealed class — 11 variants (request, response, sseEvent, keyExchange, etc.)
+    │   ├── auth/        Auth-server API models (login, account, bridge registration, …)
+    │   └── sesori/      Backend-neutral client↔bridge wire models (sessions, projects,
+    │                    messages, plugins, MCP, settings, …)
+    ├── auth/            JWT claim parsing
+    ├── transcript/      Prompt-turn and transcript search helpers
+    ├── voice/           Dictation and project-glossary types
+    ├── notifications/   Session notification identifiers
+    ├── search/          Title matching
+    ├── reporting/       Failure reporter interface
+    ├── concurrency/     Small async helpers
+    ├── constants/       SSE constants
+    ├── converters/      JSON converters
+    └── extensions/      Dart extensions
 ```
 
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Add message variant | `src/protocol/messages.dart` | Add to RelayMessage sealed class, run build_runner |
+| Add message variant | `src/protocol/messages.dart` | Add to the RelayMessage sealed class, run build_runner |
 | Modify encryption | `src/crypto/crypto_service.dart` | HKDF info string: `"sesori-relay-v1"` |
-| Add OpenCode model | `src/models/opencode/` | Freezed sealed class, add export to barrel |
+| Add a client↔bridge wire model | `src/models/sesori/` | Backend-neutral only; backend models belong in their plugin. Freezed sealed class, add export to barrel |
 | Change wire format | `src/protocol/framing.dart` | Version byte 0x01, 24-byte nonce prefix |
 
 ## CONVENTIONS
@@ -68,5 +74,4 @@ dart pub get                                                         # Install d
 dart run build_runner build --delete-conflicting-outputs             # Regenerate .freezed.dart / .g.dart
 dart test                                                            # Run tests
 dart analyze                                                         # Static analysis
-make publish                                                         # Publish to pub.dev
 ```

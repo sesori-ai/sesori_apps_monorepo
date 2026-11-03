@@ -3,17 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'update_attempt.freezed.dart';
 part 'update_attempt.g.dart';
 
-/// The pipeline stage an [UpdateAttempt] reached. Recorded so a failure or an
-/// interrupted (crashed) attempt can be described precisely on the next launch.
-enum UpdateStage() {
-  downloading,
-  verifying,
-  extracting,
-  staging,
-  swapping,
-  activated,
-}
-
 /// Lifecycle status of a persisted [UpdateAttempt].
 enum UpdateAttemptStatus() {
   /// The apply is in progress (binary/lib swap underway). A record left in
@@ -44,9 +33,6 @@ sealed class UpdateAttempt with _$UpdateAttempt {
 
     /// When the attempt began.
     required DateTime startedAt,
-
-    /// The furthest pipeline stage the attempt reached.
-    required UpdateStage stage,
 
     /// The attempt's current lifecycle status.
     required UpdateAttemptStatus status,

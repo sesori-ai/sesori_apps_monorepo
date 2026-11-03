@@ -38,7 +38,7 @@ sealed class BridgePluginApi() {
   Stream<BridgeSseEvent> get events;
 
   /// Get sessions for a project directory.
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit});
+  Future<List<PluginSession>> getSessions({required String projectId});
 
   /// Get the slash commands available to the current project.
   Future<List<PluginCommand>> getCommands({required String? projectId});
@@ -265,15 +265,6 @@ sealed class BridgePluginApi() {
     required PluginPermissionReply reply,
   });
 
-  /// Health check — returns `true` when the backend is healthy, `false`
-  /// otherwise.
-  ///
-  /// This is an *instantaneous*, plugin-scoped probe: it reflects backend
-  /// reachability right now and is not debounced. It is not part of the
-  /// bridge-level `/global/health` response. The debounced lifecycle signal
-  /// used for orchestration decisions is `BridgePlugin.status`.
-  Future<bool> healthCheck();
-
   /// Get connected providers and their models from the backend.
   Future<PluginProvidersResult> getProviders({
     required String projectId,
@@ -292,9 +283,6 @@ abstract class NativeProjectsPluginApi() extends BridgePluginApi {
 
   /// Get a project by its ID.
   Future<PluginProject> getProject(String projectId);
-
-  /// Rename a project.
-  Future<PluginProject> renameProject({required String projectId, required String name});
 
   /// Reads every project and every root and descendant session in one bulk
   /// listing, for catalog import.

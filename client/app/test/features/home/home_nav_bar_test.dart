@@ -26,7 +26,7 @@ class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDisp
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
-  const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
+  const bridgeOffline = ConnectionStatus.bridgeOffline(config: config);
   const connected = ConnectionStatus.connected(config: config, health: health);
 
   late BehaviorSubject<ConnectionStatus> statusController;

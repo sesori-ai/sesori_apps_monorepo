@@ -52,8 +52,6 @@ class ProductAnalyticsService({
   Future<void> setPreference({required ProductAnalyticsPreference preference}) =>
       _preferenceService.setPreference(preference: preference);
 
-  Future<void> retryPendingDisable() => _preferenceService.retryPendingDisable();
-
   Future<void> prepareForLogout() => _preferenceService.prepareForLogout();
 
   Future<void> resumeAfterFailedLogout() => _preferenceService.resumeAfterFailedLogout();

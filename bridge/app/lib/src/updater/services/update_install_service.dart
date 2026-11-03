@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../foundation/filesystem_cleaner.dart';
-import '../../foundation/filesystem_permission_validator.dart';
 import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
 import '../models/update_install_result.dart';
@@ -71,7 +70,7 @@ class UpdateInstallService({
       staged = true;
       return UpdateInstallStaged(stagingPath: stagingPath);
     } on FileSystemException catch (error) {
-      if (isPermissionDenied(error: error)) {
+      if (isUpdatePermissionDenied(error: error)) {
         return const UpdateInstallStageFailed(result: UpdateResult.permissionDenied);
       }
       return const UpdateInstallStageFailed(result: UpdateResult.downloadFailed);
@@ -103,15 +102,5 @@ class UpdateInstallService({
     } on FileSystemException {
       return false;
     }
-  }
-
-  static bool isPermissionDenied({required FileSystemException error}) {
-    // The shared validator covers EPERM(1)/EACCES(13) and permission messages.
-    // The updater additionally treats EIO(5) as a denial because a read-only or
-    // failing install volume must abort the apply just like a permission error.
-    if (const FilesystemPermissionValidator().isPermissionDenied(error)) {
-      return true;
-    }
-    return error.osError?.errorCode == 5;
   }
 }

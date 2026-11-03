@@ -385,9 +385,9 @@ class const AppRouteSessionDetail({
     required Map<String, String> queryParams,
   }) {
     return AppRouteSessionDetail(
-      projectId: pathParams[_projectIdPathParam] ?? "",
+      projectId: pathParams[_projectIdPathParam] ?? (throw ArgumentError("Missing project identity")),
       projectName: queryParams[_nameQueryParam],
-      sessionId: pathParams[_sessionIdPathParam] ?? "",
+      sessionId: pathParams[_sessionIdPathParam] ?? (throw ArgumentError("Missing session identity")),
       sessionTitle: queryParams[_titleQueryParam],
       readOnly: queryParams[_readOnlyQueryParam] == "true",
       fromLaunch: queryParams[_fromLaunchQueryParam] == "1",
@@ -442,9 +442,9 @@ class const AppRouteSessionDiffs({
     required Map<String, String> queryParams,
   }) {
     return AppRouteSessionDiffs(
-      projectId: pathParams[_projectIdPathParam] ?? "",
+      projectId: pathParams[_projectIdPathParam] ?? (throw ArgumentError("Missing project identity")),
       projectName: queryParams[_nameQueryParam],
-      sessionId: pathParams[_sessionIdPathParam] ?? "",
+      sessionId: pathParams[_sessionIdPathParam] ?? (throw ArgumentError("Missing session identity")),
     );
   }
 

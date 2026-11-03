@@ -1,20 +1,12 @@
 import "dart:async";
 import "dart:io" as io;
 
-import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show
-        ArchiveExtractor,
-        BinaryDownloadClient,
-        ChecksumValidator,
-        DownloadProgress,
-        OsVersionFormatter,
-        PlatformOs,
-        sesoriAttachmentsDirectory;
+    show DownloadProgress, OsVersionFormatter, PlatformOs, sesoriAttachmentsDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
@@ -59,7 +51,6 @@ import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
-import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
@@ -98,31 +89,16 @@ import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
 import "../services/plugin_lifecycle_service.dart";
 import "../sse/sse_manager.dart";
-import "../updater/api/checksum_manifest_api.dart";
-import "../updater/api/github_releases_api.dart";
-import "../updater/api/managed_runtime_manifest_api.dart";
-import "../updater/api/platform_update_api.dart";
-import "../updater/api/update_attempt_api.dart";
-import "../updater/api/update_cache_api.dart";
-import "../updater/api/update_log_api.dart";
 import "../updater/formatters/update_message_formatter.dart";
 import "../updater/formatters/update_output_formatter.dart";
 import "../updater/foundation/release_track.dart";
-import "../updater/foundation/update_lock.dart";
 import "../updater/foundation/update_policy.dart";
-import "../updater/models/distribution_target.dart";
 import "../updater/models/managed_runtime_paths.dart";
-import "../updater/repositories/release_repository.dart";
-import "../updater/repositories/update_artifact_repository.dart";
-import "../updater/repositories/update_attempt_repository.dart";
-import "../updater/repositories/update_installation_repository.dart";
-import "../updater/repositories/update_log_repository.dart";
 import "../updater/services/managed_runtime_path_service.dart";
-import "../updater/services/update_apply_service.dart";
-import "../updater/services/update_install_service.dart";
 import "../updater/services/update_lifecycle_service.dart";
 import "../updater/services/update_reconciliation_service.dart";
 import "../updater/services/update_service.dart";
+import "../updater/updater_composition.dart";
 import "../version.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
@@ -1184,12 +1160,10 @@ class const BridgeRuntimeRunner._() {
     required ReleaseTrack releaseTrack,
     required bool isSupervised,
   }) {
-    const clock = Clock();
     final messageFormatter = UpdateMessageFormatter(
       outFormatter: UpdateOutputFormatter.forStream(out: io.stdout, environment: io.Platform.environment),
       errFormatter: UpdateOutputFormatter.forStream(out: io.stderr, environment: io.Platform.environment),
     );
-    const filesystemCleaner = FilesystemCleaner();
     final installRoot = managedRuntimePaths.installRoot;
 
     // The unattended auto-updater must not hijack the terminal with a
@@ -1199,74 +1173,22 @@ class const BridgeRuntimeRunner._() {
     // unnecessary for a broadcast controller that retains nothing).
     final progressController = StreamController<DownloadProgress>.broadcast();
 
-    // Opportunistically authenticate GitHub release checks when a token is
-    // present in the environment. Unauthenticated requests share a 60/hour
-    // per-IP budget that is easily exhausted behind shared/NAT'd networks; a
-    // token lifts the bridge to the authenticated 5000/hour limit. Resolve the
-    // first non-empty value so a blank GITHUB_TOKEN does not shadow a valid
-    // GH_TOKEN.
-    final githubToken =
-        [
-              io.Platform.environment['GITHUB_TOKEN'],
-              io.Platform.environment['GH_TOKEN'],
-            ]
-            .map((token) => token?.trim())
-            .firstWhere(
-              (token) => token != null && token.isNotEmpty,
-              orElse: () => null,
-            );
-
-    final logRepository = UpdateLogRepository(
-      api: UpdateLogApi(installRoot: installRoot, clock: clock),
+    final updater = composeUpdater(
+      httpClient: httpClient,
+      processRunner: processRunner,
+      managedRuntimePaths: managedRuntimePaths,
+      releaseTrack: releaseTrack,
+      environment: io.Platform.environment,
+      progressSink: progressController.sink,
+      // The background updater uses the shared, fixed staging paths.
+      workspaceLabel: null,
     );
-    final attemptRepository = UpdateAttemptRepository(
-      api: UpdateAttemptApi(installRoot: installRoot),
-    );
-    final installationRepository = UpdateInstallationRepository(
-      platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
-      manifestApi: const ManagedRuntimeManifestApi(),
-    );
-    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner, clock: clock);
-    final updateApplyService = UpdateApplyService(
-      installationRepository: installationRepository,
-      attemptRepository: attemptRepository,
-      logRepository: logRepository,
-      updateLock: updateLock,
-      filesystemCleaner: filesystemCleaner,
-      clock: clock,
-      currentVersion: appVersion,
-      installRoot: installRoot,
-    );
-
-    final distributionTarget = currentDistributionTarget();
-    final commandExecutor = ProcessRunnerCommandExecutor(processRunner: processRunner);
 
     final updateService = UpdateService(
-      releaseRepository: ReleaseRepository(
-        api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
-        cache: UpdateCacheApi(
-          cacheDirectory: managedRuntimePaths.cacheDirectory,
-          clock: clock,
-        ),
-        currentVersion: appVersion,
-        target: distributionTarget,
-        track: releaseTrack,
-      ),
-      updateInstallService: UpdateInstallService(
-        updateArtifactRepository: UpdateArtifactRepository(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          archiveFormat: distributionTarget.archiveFormat,
-          progressSink: progressController.sink,
-        ),
-        filesystemCleaner: filesystemCleaner,
-        // The background updater uses the shared, fixed staging paths.
-        workspaceLabel: null,
-      ),
-      updateApplyService: updateApplyService,
-      logRepository: logRepository,
+      releaseRepository: updater.releaseRepository,
+      updateInstallService: updater.installService,
+      updateApplyService: updater.applyService,
+      logRepository: updater.logRepository,
       messageFormatter: messageFormatter,
       installRoot: installRoot,
       executablePath: io.Platform.resolvedExecutable,
@@ -1276,11 +1198,11 @@ class const BridgeRuntimeRunner._() {
     );
 
     final reconciliationService = UpdateReconciliationService(
-      attemptRepository: attemptRepository,
-      logRepository: logRepository,
-      installationRepository: installationRepository,
+      attemptRepository: updater.attemptRepository,
+      logRepository: updater.logRepository,
+      installationRepository: updater.installationRepository,
       messageFormatter: messageFormatter,
-      updateLock: updateLock,
+      updateLock: updater.updateLock,
       currentVersion: appVersion,
       installRoot: installRoot,
     );

@@ -7,8 +7,6 @@ import "routing_test_helpers.dart";
 
 void main() {
   group("HealthCheckHandler", () {
-    late FakeBridgePlugin plugin;
-
     HealthCheckHandler buildHandler({bool filesystemAccessOk = true, BridgeKind bridgeKind = BridgeKind.cli}) {
       return HealthCheckHandler(
         healthRepository: HealthRepository(
@@ -18,12 +16,6 @@ void main() {
         ),
       );
     }
-
-    setUp(() {
-      plugin = FakeBridgePlugin();
-    });
-
-    tearDown(() => plugin.close());
 
     test("canHandle GET /global/health", () {
       expect(buildHandler().canHandle(makeRequest("GET", "/global/health")), isTrue);
@@ -59,16 +51,6 @@ void main() {
         makeRequest("GET", "/global/health"),
       );
       expect(response.filesystemAccessDegraded, isTrue);
-    });
-
-    test("returns bridge health without probing plugins", () async {
-      plugin.throwOnHealthCheck = true;
-      final response = await buildHandler().handle(
-        makeRequest("GET", "/global/health"),
-      );
-
-      expect(response.healthy, isTrue);
-      expect(plugin.healthCheckCallCount, isZero);
     });
   });
 }

@@ -48,12 +48,6 @@ class UpdateService({
   void Function(RenderedLine line) emitLine = writeRenderedLine;
 
   @visibleForTesting
-  void Function(String message) logWarning = Log.w;
-
-  @visibleForTesting
-  void Function(String message, Object error, StackTrace stackTrace) logError = Log.e;
-
-  @visibleForTesting
   Duration pollInterval = const Duration(hours: 4);
 
   /// Begins the initial + periodic check/stage/apply pipeline in the
@@ -74,7 +68,7 @@ class UpdateService({
             .listen(
               (_) {},
               onError: (Object error, StackTrace stackTrace) {
-                logError('Update cycle stream error', error, stackTrace);
+                Log.e('Update cycle stream error', error, stackTrace);
               },
             );
   }
@@ -100,11 +94,11 @@ class UpdateService({
       release = await _releaseRepository.checkForNewerRelease();
     } on GitHubRateLimitException catch (error) {
       // Expected, benign for a best-effort updater — stays quiet in Log.
-      logWarning(_rateLimitMessage(error));
+      Log.w(_rateLimitMessage(error));
       return;
     } on Object catch (error, stackTrace) {
       if (isTransientNetworkError(error)) {
-        logWarning('Skipping update check — network error: $error');
+        Log.w('Skipping update check — network error', error);
         return;
       }
       await _reportGenuineFailure(
@@ -214,9 +208,8 @@ class UpdateService({
   Future<void> _reportStageFailure({required ReleaseInfo release, required UpdateResult result}) async {
     switch (result) {
       case UpdateResult.networkError:
-      case UpdateResult.alreadyLocked:
-        // Transient/contended — benign; the next cycle retries.
-        logWarning('Skipping update to ${release.version}: ${result.name}');
+        // Transient — benign; the next cycle retries.
+        Log.w('Skipping update to ${release.version}: ${result.name}');
       case UpdateResult.permissionDenied:
       case UpdateResult.checksumFailed:
       case UpdateResult.downloadFailed:
@@ -239,7 +232,7 @@ class UpdateService({
     try {
       await _logRepository.log(message: logDetail);
     } on Object catch (error, stackTrace) {
-      logError('Failed to persist update failure log', error, stackTrace);
+      Log.e('Failed to persist update failure log', error, stackTrace);
     }
     _emitLines(
       _messageFormatter.failureGuidance(

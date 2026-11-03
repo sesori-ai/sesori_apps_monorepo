@@ -75,8 +75,6 @@ class OpenCodeV2Service({
 
   void invalidateBaseline() => _tracker.invalidateBaseline();
 
-  Future<bool> healthCheck() => _repository.healthCheck();
-
   Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) async {
     final directory = await _mcpDirectory(scope: target.scope);
     if (directory == null) {
@@ -150,8 +148,6 @@ class OpenCodeV2Service({
   Future<PluginCatalogSnapshotResult> readCatalogSnapshot({required PluginCatalogCancellationSignal cancellation}) =>
       _repository.readCatalogSnapshot(cancellation: cancellation);
   Future<PluginProject> getProject({required String projectId}) => _repository.getProject(directory: projectId);
-  Future<PluginProject> renameProject({required String projectId, required String name}) =>
-      _repository.renameProject(directory: projectId, name: name);
   Future<List<PluginAgent>> getAgents({required String projectId}) => _repository.getAgents(directory: projectId);
   Future<PluginProvidersResult> getProviders({required String projectId}) =>
       _repository.getProviders(directory: projectId);
@@ -160,10 +156,7 @@ class OpenCodeV2Service({
   Future<List<PluginMessageWithParts>> getMessages({required String sessionId}) =>
       _repository.getMessages(sessionId: sessionId);
 
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
-    final sessions = await _repository.getSessions(directory: projectId);
-    return sessions.skip(start ?? 0).take(limit ?? sessions.length).toList();
-  }
+  Future<List<PluginSession>> getSessions({required String projectId}) => _repository.getSessions(directory: projectId);
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {
     for (final id in await _repository.getActiveSessionIds())

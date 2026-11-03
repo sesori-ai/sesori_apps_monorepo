@@ -50,16 +50,11 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
     return _sessions;
   }
 
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
+  Future<List<PluginSession>> getSessions({required String projectId}) async {
     final target = normalizeProjectDirectory(directory: projectId);
-    final sessions = (await listAllSessions(knownDirectories: {target}))
+    return (await listAllSessions(knownDirectories: {target}))
         .where((session) => session.directory == target)
         .toList(growable: false);
-    return _page(sessions: sessions, start: start, limit: limit);
   }
 
   /// Direct children from the last scan, unless the parent is not in it, plus
@@ -263,13 +258,5 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
         archived: null,
       ),
     );
-  }
-
-  List<PluginSession> _page({required List<PluginSession> sessions, required int? start, required int? limit}) {
-    final from = (start ?? 0).clamp(0, sessions.length);
-    if (from >= sessions.length) return const [];
-    final pageSize = limit?.clamp(0, sessions.length);
-    final until = pageSize == null ? sessions.length : (from + pageSize).clamp(from, sessions.length);
-    return sessions.sublist(from, until);
   }
 }

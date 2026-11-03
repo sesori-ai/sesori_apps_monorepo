@@ -3,7 +3,7 @@ name: Release Workflow CI
 on:
   push:
     branches: [main]
-    paths:
+    paths: &paths
       - '.github/workflows/linux-repository.yml'
       - '.github/scripts/publish_linux_repository.py'
       - '.github/scripts/test_publish_linux_repository.py'
@@ -22,7 +22,6 @@ on:
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
       - '.github/workflows/desktop-qualification.yml'
-      - '.github/workflows/migrate-macos-signing-secrets.yml'
       - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/actions/**'
       - '.github/workflows/_reusable-*.yml'
@@ -45,49 +44,13 @@ on:
       - '.github/scripts/test_publish_desktop_update_feed.py'
       - '.github/scripts/sign_desktop_update.py'
       - '.github/scripts/test_sign_desktop_update.py'
+      - '.github/workflows/publish-firebase-analytics-release-cutoff.yml'
+      - '.github/scripts/publish_firebase_analytics_release_cutoff.py'
+      - '.github/scripts/test_publish_firebase_analytics_release_cutoff.py'
+      - 'client/app/lib/core/platform/remote_config_flags.dart'
+      - 'tool/mcp-contracts/**'
   pull_request:
-    paths:
-      - '.github/workflows/linux-repository.yml'
-      - '.github/scripts/publish_linux_repository.py'
-      - '.github/scripts/test_publish_linux_repository.py'
-      - '.github/scripts/provision_linux_repository.sh'
-      - '.github/workflows/desktop-linux-release.yml'
-      - '.github/scripts/publish_desktop_linux.py'
-      - '.github/scripts/test_publish_desktop_linux.py'
-      - '.github/scripts/github_release_assets.py'
-      - '.github/scripts/linux_signing.py'
-      - '.github/scripts/sign_bridge_linux.py'
-      - '.github/scripts/publish_bridge_linux_signatures.py'
-      - '.github/scripts/test_bridge_linux_signatures.py'
-      - '.github/workflows/sign-linux-release.yml'
-      - '.github/workflows/bridge-npm-publish.yml'
-      - '.github/scripts/test_bridge_build_workflow.py'
-      - '.github/workflows/verify-macos-signing.yml'
-      - '.github/workflows/submit-release.yml'
-      - '.github/workflows/desktop-qualification.yml'
-      - '.github/workflows/migrate-macos-signing-secrets.yml'
-      - '.github/scripts/test_macos_signing_workflows.py'
-      - '.github/actions/**'
-      - '.github/workflows/_reusable-*.yml'
-      - '.github/scripts/check_internal_release.sh'
-      - '.github/scripts/test_check_internal_release.py'
-      - '.github/workflows/release-all-platforms.yml'
-      - '.github/workflows/release-workflow-ci.yml'
-      - '.github/workflows/desktop-release.yml'
-      - '.github/scripts/prepare_desktop_release.py'
-      - '.github/scripts/test_prepare_desktop_release.py'
-      - 'tool/release_scheduler/**'
-      - 'docs/regression/bridge-installation-and-updates.md'
-      - 'client/app/fastlane/**'
-      - 'client/app/ios/fastlane/Fastfile'
-      - 'client/app/android/fastlane/Fastfile'
-      - '.github/scripts/publish_desktop_release.py'
-      - '.github/scripts/test_publish_desktop_release.py'
-      - '.github/workflows/desktop-update-feed.yml'
-      - '.github/scripts/publish_desktop_update_feed.py'
-      - '.github/scripts/test_publish_desktop_update_feed.py'
-      - '.github/scripts/sign_desktop_update.py'
-      - '.github/scripts/test_sign_desktop_update.py'
+    paths: *paths
 
 permissions:
   contents: read
@@ -123,6 +86,8 @@ jobs:
         run: shellcheck .github/scripts/check_internal_release.sh .github/scripts/provision_linux_repository.sh
       - name: Test automatic release decisions and attempt recording
         run: python3 .github/scripts/test_check_internal_release.py
+      - name: Test Firebase analytics release cutoff publisher
+        run: python3 .github/scripts/test_publish_firebase_analytics_release_cutoff.py
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -134,6 +99,8 @@ jobs:
         run: npm run typecheck --prefix tool/release_scheduler
       - name: Test release dispatcher
         run: npm test --prefix tool/release_scheduler
+      - name: Test MCP contract probe tooling
+        run: node --test tool/mcp-contracts/*.test.mjs
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'

@@ -401,7 +401,7 @@ void main() {
     expect(requests[8].url.queryParameters, <String, String>{"resume": "false"});
   });
 
-  test("reads and updates direct project responses", () async {
+  test("reads direct project responses", () async {
     const project = <String, dynamic>{
       "id": "project-fixture",
       "canonical": "/fixture/project",
@@ -410,28 +410,11 @@ void main() {
     };
     final api = makeApi(
       handler: (request) async {
-        if (request.method == "PATCH") {
-          expect(request.url.path, "/api/project/project-fixture");
-          expect(jsonDecode(request.body), <String, dynamic>{"name": "Fixture"});
-        } else {
-          expect(request.url.path, "/api/project");
-        }
-        return http.Response(jsonEncode(request.method == "PATCH" ? project : <Object>[project]), 200);
+        expect(request.url.path, "/api/project");
+        return http.Response(jsonEncode(<Object>[project]), 200);
       },
     );
     expect((await api.listProjects()).single.id, "project-fixture");
-    expect(
-      (await api.updateProject(
-        projectId: "project-fixture",
-        body: const V2UpdateProjectBody(
-          canonical: null,
-          name: "Fixture",
-          icon: null,
-          commands: null,
-        ),
-      )).id,
-      "project-fixture",
-    );
   });
 
   test("decodes prompt, synthetic and compaction inbox acknowledgements", () async {

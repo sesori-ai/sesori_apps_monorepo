@@ -19,7 +19,6 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../capabilities/voice/voice_api.dart";
 import "../cubits/bridge_kind/bridge_kind_cubit.dart";
-import "../cubits/session_launch/session_launch_cubit.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
@@ -126,19 +125,12 @@ MockSessionViewingService stubbedSessionViewingService() {
 }
 
 /// In-memory [SessionUnseenTracker] stand-in mirroring its lean contract:
-/// overwrite-only maps plus a tick guard. Tests drive it via [emitProjectUnseen]
-/// / [emitSessionUnseen] or the real seed/apply methods.
+/// overwrite-only maps plus a tick guard. Tests drive it via
+/// [emitSessionUnseen] or the real seed/apply methods.
 class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
-  final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, Map<String, SessionListItemState>>> _sessionUnseen = BehaviorSubject.seeded(
     const {},
   );
-
-  @override
-  ValueStream<Map<String, bool>> get projectUnseen => _projectUnseen.stream;
-
-  @override
-  Map<String, bool> get currentProjectUnseen => _projectUnseen.value;
 
   @override
   ValueStream<Map<String, Map<String, SessionListItemState>>> get sessionUnseen => _sessionUnseen.stream;
@@ -153,16 +145,6 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
   int get tick => _tick;
 
   final List<({String projectId, Map<String, SessionListItemState> stateBySessionId})> seededSessions = [];
-
-  @override
-  void seedProjects(Map<String, bool> unseenByProjectId, {required int sinceTick}) {
-    final projects = Map<String, bool>.from(_projectUnseen.value);
-    for (final entry in unseenByProjectId.entries) {
-      if ((_projectTick[entry.key] ?? 0) > sinceTick) continue;
-      projects[entry.key] = entry.value;
-    }
-    _projectUnseen.add(projects);
-  }
 
   @override
   void seedSessions({
@@ -223,8 +205,6 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
     _sessionUnseen.add(sessions);
   }
 
-  void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
-
   void emitSessionUnseen(Map<String, Map<String, SessionListItemState>> unseen) {
     for (final projectId in unseen.keys) {
       _projectTick[projectId] = ++_tick;
@@ -234,10 +214,7 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
 
   @override
   Future<void> onDispose() async {
-    await Future.wait([
-      if (!_projectUnseen.isClosed) _projectUnseen.close(),
-      if (!_sessionUnseen.isClosed) _sessionUnseen.close(),
-    ]);
+    if (!_sessionUnseen.isClosed) await _sessionUnseen.close();
   }
 }
 
@@ -304,9 +281,6 @@ SessionLaunchService inMemorySessionLaunchService({required SessionLaunchReposit
 /// with launching rows.
 SessionLaunchService idleSessionLaunchService() =>
     inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository());
-
-/// A launch cubit with no launches, for widget tests that render a session list.
-SessionLaunchCubit idleSessionLaunchCubit() => SessionLaunchCubit(launchService: idleSessionLaunchService());
 
 class MockBridgeRepository() extends Mock implements BridgeRepository;
 

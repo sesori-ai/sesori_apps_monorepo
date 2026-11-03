@@ -14,10 +14,9 @@ void main() {
     expect(storage.operationCount, 0);
   });
 
-  test("missing strings stay absent; defaults do not persist a value", () async {
+  test("missing strings stay absent", () async {
     final persister = repository();
     expect(await persister.readString(key: _StringKey.first), isNull);
-    expect(await persister.readStringOrDefault(key: _StringKey.first, defaultValue: "fallback"), "fallback");
     expect(storage.strings, isEmpty);
   });
 
@@ -29,7 +28,6 @@ void main() {
 
     expect(storage.strings, {"fixture.first": "updated", "fixture.second": "retained"});
     expect(await persister.readString(key: _StringKey.first), "updated");
-    expect(await persister.readStringOrDefault(key: _StringKey.first, defaultValue: "fallback"), "updated");
 
     await persister.deleteString(key: _StringKey.first);
     await persister.deleteString(key: _StringKey.first);
@@ -40,7 +38,7 @@ void main() {
   test("a stored empty string is data, not the missing-value sentinel", () async {
     final persister = repository();
     await persister.writeString(key: _StringKey.first, value: "");
-    expect(await persister.readStringOrDefault(key: _StringKey.first, defaultValue: "fallback"), "");
+    expect(await persister.readString(key: _StringKey.first), "");
   });
 
   test("missing bools stay absent and honor both caller defaults", () async {
@@ -127,10 +125,6 @@ void main() {
     storage.failure = error;
 
     await expectLater(persister.readString(key: _StringKey.first), throwsA(same(error)));
-    await expectLater(
-      persister.readStringOrDefault(key: _StringKey.first, defaultValue: "fallback"),
-      throwsA(same(error)),
-    );
     await expectLater(persister.writeString(key: _StringKey.first, value: "value"), throwsA(same(error)));
     await expectLater(persister.deleteString(key: _StringKey.first), throwsA(same(error)));
     await expectLater(persister.readBool(key: _BoolKey.first), throwsA(same(error)));

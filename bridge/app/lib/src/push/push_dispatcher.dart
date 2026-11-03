@@ -44,17 +44,19 @@ class PushDispatcher({
       return;
     }
 
-    final sessionId = _contentBuilder.extractSessionId(event);
-
     // The notification targets the display (root) session, but its project is
     // resolved from the display session first and then the owning session: a
     // child request surfaced on its root may arrive before the root's project is
     // known to the tracker, while the owner (which just triggered the event)
     // shares the same project and is reliably tracked.
-    final ownerSessionId = _contentBuilder.extractRequestSessionId(event);
-    final projectId =
-        (sessionId != null ? _tracker.getSessionProjectId(sessionId: sessionId) : null) ??
-        (ownerSessionId != null ? _tracker.getSessionProjectId(sessionId: ownerSessionId) : null);
+    final (String? sessionId, String? projectId) = switch (notificationData.session) {
+      (:final displaySessionId, :final ownerSessionId) => (
+        displaySessionId,
+        _tracker.getSessionProjectId(sessionId: displaySessionId) ??
+            _tracker.getSessionProjectId(sessionId: ownerSessionId),
+      ),
+      null => (null, null),
+    };
 
     _sendNotification(
       category: notificationData.category,
@@ -77,11 +79,7 @@ class PushDispatcher({
     // Completion cooldowns stay per category + session. Blocking questions and
     // permissions bypass cooldowns in the limiter.
     final rateLimitKey = "${category.id}-${sessionId ?? "global"}";
-    if (!_rateLimiter.shouldSend(
-      category: category,
-      rateLimitKey: rateLimitKey,
-      sessionId: sessionId,
-    )) {
+    if (!_rateLimiter.shouldSend(category: category, rateLimitKey: rateLimitKey)) {
       return;
     }
 
@@ -106,11 +104,11 @@ class PushDispatcher({
     );
 
     unawaited(
-      _client.sendNotification(payload).catchError((Object e) {
+      _client.sendNotification(payload).catchError((Object e, StackTrace stackTrace) {
         if (e is TokenRefreshException || (e is PushSendException && e.statusCode == 401)) {
-          Log.e("[push] auth failure, credentials may need re-authentication", e);
+          Log.e("[push] auth failure, credentials may need re-authentication", e, stackTrace);
         } else {
-          Log.w("[push] send error", e);
+          Log.w("[push] send error", e, stackTrace);
         }
       }),
     );

@@ -5,15 +5,15 @@ control-channel orchestration, tray/window state, and desktop cubits. Zero
 Flutter SDK dependency — testable with plain `dart test`. `client/desktop` is
 the only production consumer; `module_core` must NEVER depend on this package.
 
-## Target Package Structure (built out step by step — see `.plan/active/desktop-app/PLAN.md`)
+## Package Structure
 
 ```
 lib/src/
 ├── foundation/              # Layer 0
-│   ├── platform/            #   capability interfaces: SystemTray, WindowHost, LaunchAtLogin, AppUpdater
+│   ├── platform/            #   capability interfaces: SystemTray, WindowHost, LaunchAtLogin, SparkleUpdateEngine, ...
 │   └── control_channel_server.dart  # GUI-hosted loopback WS host + per-spawn secret
-├── api/                     # Layer 1 — bridge_process_api, desktop_instance_api, app_update_api, storages
-├── repositories/            # Layer 2 — bridge_process_repository, desktop_instance_repository, app_update_repository
+├── api/                     # Layer 1 — bridge_process_api, desktop_instance_api, desktop_update_feed_api, velopack_update_api, storages
+├── repositories/            # Layer 2 — bridge_process_repository, desktop_instance_repository, desktop_update_repository
 ├── trackers/                # Layer 2 — reactive state derived from events (status, prompts, helper logs)
 ├── services/                # Layer 3 — bridge_process_service, desktop_instance_service, desktop_update_service
 ├── control/                 # Layer 4 — control_message_dispatcher (writes DOWN into trackers/token seam)

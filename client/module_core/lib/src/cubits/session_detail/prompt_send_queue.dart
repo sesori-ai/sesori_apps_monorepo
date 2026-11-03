@@ -94,12 +94,6 @@ class PromptSendQueue() {
     return _active = _items.removeFirst();
   }
 
-  void completeSend() {
-    final active = _active;
-    if (active != null) _settledElsewhere.remove(active.promptId);
-    _active = null;
-  }
-
   /// Parks the accepted in-flight submission until [reconcileBridgeQueue]
   /// transfers it to the bridge-owned view, or [removeByPromptId] settles its
   /// delivered message or explicit terminal outcome. Rendering from here

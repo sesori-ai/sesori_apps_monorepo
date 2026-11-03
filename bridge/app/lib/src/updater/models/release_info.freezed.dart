@@ -12,42 +12,38 @@ part of 'release_info.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$ReleaseInfo {
 
 /// The version string of the release (e.g., "0.3.0").
  String get version;/// The download URL for the platform-specific asset.
  String get assetUrl;/// The URL to the checksums file for verification.
- String get checksumsUrl;/// When this release was published on GitHub.
- DateTime get publishedAt;
+ String get checksumsUrl;
 /// Create a copy of ReleaseInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $ReleaseInfoCopyWith<ReleaseInfo> get copyWith => _$ReleaseInfoCopyWithImpl<ReleaseInfo>(this as ReleaseInfo, _$identity);
 
-  /// Serializes this ReleaseInfo to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
   final _this = this as ReleaseInfo;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReleaseInfo&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.assetUrl, _this.assetUrl) || other.assetUrl == _this.assetUrl)&&(identical(other.checksumsUrl, _this.checksumsUrl) || other.checksumsUrl == _this.checksumsUrl)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReleaseInfo&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.assetUrl, _this.assetUrl) || other.assetUrl == _this.assetUrl)&&(identical(other.checksumsUrl, _this.checksumsUrl) || other.checksumsUrl == _this.checksumsUrl));
 }
 
-@JsonKey(includeFromJson: false, includeToJson: false)
+
 @override
 int get hashCode {
   final _this = this as ReleaseInfo;
-  return Object.hash(runtimeType,_this.version,_this.assetUrl,_this.checksumsUrl,_this.publishedAt);
+  return Object.hash(runtimeType,_this.version,_this.assetUrl,_this.checksumsUrl);
 }
 
 @override
 String toString() {
   final _this = this as ReleaseInfo;
-  return 'ReleaseInfo(version: ${_this.version}, assetUrl: ${_this.assetUrl}, checksumsUrl: ${_this.checksumsUrl}, publishedAt: ${_this.publishedAt})';
+  return 'ReleaseInfo(version: ${_this.version}, assetUrl: ${_this.assetUrl}, checksumsUrl: ${_this.checksumsUrl})';
 }
 
 
@@ -58,7 +54,7 @@ abstract mixin class $ReleaseInfoCopyWith<$Res>  {
   factory $ReleaseInfoCopyWith(ReleaseInfo value, $Res Function(ReleaseInfo) _then) = _$ReleaseInfoCopyWithImpl;
 @useResult
 $Res call({
- String version, String assetUrl, String checksumsUrl, DateTime publishedAt
+ String version, String assetUrl, String checksumsUrl
 });
 
 
@@ -75,13 +71,12 @@ class _$ReleaseInfoCopyWithImpl<$Res>
 
 /// Create a copy of ReleaseInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? assetUrl = null,Object? checksumsUrl = null,Object? publishedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? assetUrl = null,Object? checksumsUrl = null,}) {
   return _then(ReleaseInfo(
 version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,assetUrl: null == assetUrl ? _self.assetUrl : assetUrl // ignore: cast_nullable_to_non_nullable
 as String,checksumsUrl: null == checksumsUrl ? _self.checksumsUrl : checksumsUrl // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as String,
   ));
 }
 
@@ -90,11 +85,11 @@ as DateTime,
 
 
 /// @nodoc
-@JsonSerializable()
+
 
 class _ReleaseInfo implements ReleaseInfo {
-  const _ReleaseInfo({required this.version, required this.assetUrl, required this.checksumsUrl, required this.publishedAt});
-  factory _ReleaseInfo.fromJson(Map<String, dynamic> json) => _$ReleaseInfoFromJson(json);
+  const _ReleaseInfo({required this.version, required this.assetUrl, required this.checksumsUrl});
+  
 
 /// The version string of the release (e.g., "0.3.0").
 @override final  String version;
@@ -102,8 +97,6 @@ class _ReleaseInfo implements ReleaseInfo {
 @override final  String assetUrl;
 /// The URL to the checksums file for verification.
 @override final  String checksumsUrl;
-/// When this release was published on GitHub.
-@override final  DateTime publishedAt;
 
 /// Create a copy of ReleaseInfo
 /// with the given fields replaced by the non-null parameter values.
@@ -111,25 +104,22 @@ class _ReleaseInfo implements ReleaseInfo {
 @pragma('vm:prefer-inline')
 _$ReleaseInfoCopyWith<_ReleaseInfo> get copyWith => __$ReleaseInfoCopyWithImpl<_ReleaseInfo>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$ReleaseInfoToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReleaseInfo&&(identical(other.version, version) || other.version == version)&&(identical(other.assetUrl, assetUrl) || other.assetUrl == assetUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReleaseInfo&&(identical(other.version, version) || other.version == version)&&(identical(other.assetUrl, assetUrl) || other.assetUrl == assetUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl));
 }
 
-@JsonKey(includeFromJson: false, includeToJson: false)
+
 @override
 int get hashCode {
-    return Object.hash(runtimeType,version,assetUrl,checksumsUrl,publishedAt);
+    return Object.hash(runtimeType,version,assetUrl,checksumsUrl);
 }
 
 @override
 String toString() {
-    return 'ReleaseInfo(version: $version, assetUrl: $assetUrl, checksumsUrl: $checksumsUrl, publishedAt: $publishedAt)';
+    return 'ReleaseInfo(version: $version, assetUrl: $assetUrl, checksumsUrl: $checksumsUrl)';
 }
 
 
@@ -140,7 +130,7 @@ abstract mixin class _$ReleaseInfoCopyWith<$Res> implements $ReleaseInfoCopyWith
   factory _$ReleaseInfoCopyWith(_ReleaseInfo value, $Res Function(_ReleaseInfo) _then) = __$ReleaseInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String version, String assetUrl, String checksumsUrl, DateTime publishedAt
+ String version, String assetUrl, String checksumsUrl
 });
 
 
@@ -157,13 +147,12 @@ class __$ReleaseInfoCopyWithImpl<$Res>
 
 /// Create a copy of ReleaseInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? version = null,Object? assetUrl = null,Object? checksumsUrl = null,Object? publishedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? version = null,Object? assetUrl = null,Object? checksumsUrl = null,}) {
   return _then(_ReleaseInfo(
 version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,assetUrl: null == assetUrl ? _self.assetUrl : assetUrl // ignore: cast_nullable_to_non_nullable
 as String,checksumsUrl: null == checksumsUrl ? _self.checksumsUrl : checksumsUrl // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as String,
   ));
 }
 

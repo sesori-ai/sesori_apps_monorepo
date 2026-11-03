@@ -31,8 +31,6 @@ class PiCatalogService({
 
   final Map<String, Future<PiOptionsDiscoveryResult>> _inFlight = {};
 
-  Future<bool> healthCheck() => _repository.healthCheck();
-
   Future<List<PluginCommand>> getCommands({required String projectId}) async =>
       (await requireCatalog(projectId: projectId)).options.commands;
 

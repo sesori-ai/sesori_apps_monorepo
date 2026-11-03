@@ -5,7 +5,6 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/src/api/pi_rpc_startup_extension.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -280,13 +279,11 @@ void main() {
               required storageEnvironment,
               required processEnvironment,
               required processFactory,
-              required commandExecutor,
               required clock,
               required launchDirectory,
               required startupExitTimeout,
               required historyRpcTimeout,
               required catalogTimeout,
-              required healthTimeout,
               required resolveIdleTimeout,
               required idleTimeoutChanges,
               required editorTimeout,
@@ -300,13 +297,11 @@ void main() {
                 storageEnvironment: storageEnvironment,
                 processEnvironment: processEnvironment,
                 processFactory: processFactory,
-                commandExecutor: commandExecutor,
                 clock: clock,
                 launchDirectory: launchDirectory,
                 startupExitTimeout: startupExitTimeout,
                 historyRpcTimeout: historyRpcTimeout,
                 catalogTimeout: catalogTimeout,
-                healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
                 idleTimeoutChanges: idleTimeoutChanges,
                 editorTimeout: editorTimeout,
@@ -329,12 +324,11 @@ void main() {
 
       await plugin.shutdown(budget: null);
       expect(plugin.currentStatus, const PluginStopped());
-      expect(await plugin.api.healthCheck(), isFalse);
     });
 
     test("rolls back a plugin built while start becomes aborted", () async {
       final abort = StartAbortController();
-      PiPlugin? built;
+      final built = <PiPlugin>[];
       final descriptor = _descriptor(
         buildPlugin:
             ({
@@ -342,35 +336,32 @@ void main() {
               required storageEnvironment,
               required processEnvironment,
               required processFactory,
-              required commandExecutor,
               required clock,
               required launchDirectory,
               required startupExitTimeout,
               required historyRpcTimeout,
               required catalogTimeout,
-              required healthTimeout,
               required resolveIdleTimeout,
               required editorTimeout,
               required idleTimeoutChanges,
             }) {
-              built = _plugin(
+              final plugin = _plugin(
                 binaryPath: binaryPath,
                 storageEnvironment: storageEnvironment,
                 processEnvironment: processEnvironment,
                 processFactory: processFactory,
-                commandExecutor: commandExecutor,
                 clock: clock,
                 launchDirectory: launchDirectory,
                 startupExitTimeout: startupExitTimeout,
                 historyRpcTimeout: historyRpcTimeout,
                 catalogTimeout: catalogTimeout,
-                healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
                 idleTimeoutChanges: idleTimeoutChanges,
                 editorTimeout: editorTimeout,
               );
+              built.add(plugin);
               abort.abort();
-              return built!;
+              return plugin;
             },
       );
 
@@ -378,7 +369,7 @@ void main() {
         descriptor.start(_Host(processes: _Processes(), startAborted: abort.signal)),
         throwsA(isA<PluginStartAbortedException>()),
       );
-      expect(await built!.healthCheck(), isFalse);
+      await expectLater(built.single.events, emitsDone);
     });
 
     test("host process factory launches every session with approval and managed update suppression", () async {
@@ -515,13 +506,11 @@ PiPlugin _plugin({
   required Map<String, String> storageEnvironment,
   required Map<String, String> processEnvironment,
   required PiProcessFactory processFactory,
-  required CommandExecutor commandExecutor,
   required ServerClock clock,
   required String launchDirectory,
   required Duration startupExitTimeout,
   required Duration historyRpcTimeout,
   required Duration catalogTimeout,
-  required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
   required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
@@ -530,13 +519,11 @@ PiPlugin _plugin({
   storageEnvironment: storageEnvironment,
   processEnvironment: processEnvironment,
   processFactory: processFactory,
-  commandExecutor: commandExecutor,
   clock: clock,
   launchDirectory: launchDirectory,
   startupExitTimeout: startupExitTimeout,
   historyRpcTimeout: historyRpcTimeout,
   catalogTimeout: catalogTimeout,
-  healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
   idleTimeoutChanges: idleTimeoutChanges,
   editorTimeout: editorTimeout,

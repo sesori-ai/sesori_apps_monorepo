@@ -4,7 +4,7 @@ import "package:codex_plugin/src/api/models/codex_thread_dto.dart";
 import "package:test/test.dart";
 
 // Fixtures mirror codex-cli 0.148.0 captures recorded in
-// .plan/active/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
+// .plan/completed/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
 void main() {
   group("CodexThreadDto", () {
     test("decodes sub-agent parentage from thread/read of a live child", () {

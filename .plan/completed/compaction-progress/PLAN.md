@@ -26,7 +26,7 @@
   step-6a PR designed phase 2 and ran `architecture-plan-review` on it before
   any phase-2 code; see [Plan Review Record](#plan-review-record).
 - **Supersedes** the "Compaction running row" bullet under step-timers'
-  later phases (`.plan/active/step-timers/PLAN.md`). That plan's retirement
+  later phases (`.plan/completed/step-timers/PLAN.md`). That plan's retirement
   must not reopen it.
 
 ## Goal

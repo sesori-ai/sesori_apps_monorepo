@@ -32,17 +32,18 @@ See the [root README](../README.md) for the full monorepo overview.
 
 **Platform Interfaces**
 
-These abstract interfaces are defined here and implemented by Flutter adapters in `app/lib/core/platform/`:
+Representative abstract interfaces defined here and implemented by Flutter adapters in the product shells,
+mostly under `app/lib/core/platform/`:
 
 | Interface | Flutter Adapter |
 |-----------|----------------|
 | `UrlLauncher` | `FlutterUrlLauncher` |
-| `DeepLinkSource` | `DeepLinkSource` (app_links) |
+| `DeepLinkSource` | `AppLinksDeepLinkSource` (app_links) |
 | `LifecycleSource` | `AppLifecycleObserver` |
 
 **Routing**
 
-`AppRoute` — enum of all named routes with path builders. `AuthRedirectService` — checks token state on startup to decide whether to skip the login screen.
+`AppRoute` — sealed type-safe routes that build concrete paths from the `AppRouteDef` enum. `AnalyticsRouteListener`, `ComputerSwitchDispatcher` and `NotificationOpenDispatcher` report screen views, switch computers and open notification targets.
 
 **Logging**
 
