@@ -70,7 +70,12 @@ class SystemProcessApi({
       Log.w("Could not inspect Windows process $pid before signalling; attempting taskkill", error, stackTrace);
     }
     final arguments = <String>["/PID", "$pid", "/T", if (force) "/F"];
-    final result = await _processRunner.run(executable: "taskkill", arguments: arguments);
+    final result = await _processRunner.run(
+      executable: "taskkill",
+      arguments: arguments,
+      workingDirectory: null,
+      environment: null,
+    );
     if (result.exitCode != 0) {
       final stdout = result.stdout.toString().trim();
       final stderr = result.stderr.toString().trim();
@@ -129,6 +134,7 @@ class SystemProcessApi({
       executable: command,
       arguments: args,
       environment: {"LC_ALL": "C"},
+      workingDirectory: null,
     );
     if (result.exitCode != 0) {
       final stderr = result.stderr.toString().trim();
@@ -192,7 +198,12 @@ class SystemProcessApi({
       "tasklist",
       <String>["/V", "/FO", "CSV", "/NH", "/FI", "PID eq $pid"],
     );
-    final result = await _processRunner.run(executable: command, arguments: args);
+    final result = await _processRunner.run(
+      executable: command,
+      arguments: args,
+      workingDirectory: null,
+      environment: null,
+    );
     if (result.exitCode != 0) {
       throw ProcessException(
         command,

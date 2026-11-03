@@ -122,7 +122,7 @@ class ControlChannelTokenService({
         // reconnect can't re-authenticate the relay from a stale token. Apply
         // only if this is still the newest-issued write, so a stale null can't
         // clear a token from a later pull issued after the sign-out.
-        _applyWrite(seq, _invalidateCache);
+        _applyWrite(seq: seq, write: _invalidateCache);
         throw const ControlTokenUnavailableException(
           reason: "The desktop app could not supply an access token (signed out or mid-login).",
         );
@@ -131,7 +131,7 @@ class ControlChannelTokenService({
       // but only if this is still the newest-issued write: a later pull must not
       // be reverted by a slow older pull, even one that completes after it. The
       // caller still receives this pull's own token below regardless.
-      _applyWrite(seq, () => _cacheToken(accessToken));
+      _applyWrite(seq: seq, write: () => _cacheToken(accessToken));
       return accessToken;
     } on TimeoutException catch (error) {
       // An offline desktop refresh may outlast this local request deadline.
@@ -189,7 +189,7 @@ class ControlChannelTokenService({
   /// newest-issued pull win regardless of completion order, so an older pull
   /// resolving late can neither overwrite a newer token nor clear a newer
   /// sign-out.
-  void _applyWrite(int seq, void Function() write) {
+  void _applyWrite({required int seq, required void Function() write}) {
     if (seq <= _appliedSeq) return;
     _appliedSeq = seq;
     write();

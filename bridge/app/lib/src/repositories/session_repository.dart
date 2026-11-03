@@ -554,12 +554,10 @@ class SessionRepository({
         message.copyWith(
           parts: [
             for (final part in message.parts)
-              switch (part) {
-                MessagePartSubtask(childSessionID: final backendSessionId?) => part.copyWith(
-                  childSessionID: sessionIds[backendSessionId],
-                ),
-                _ => part,
-              },
+              if (part case MessagePartSubtask(childSessionID: final backendSessionId?))
+                part.copyWith(childSessionID: sessionIds[backendSessionId])
+              else
+                part,
           ],
         ),
     ];
@@ -1737,6 +1735,8 @@ class SessionRepository({
     createdAt: 0,
     updatedAt: 0,
     projectionUpdatedAt: 0,
+    baseBranch: null,
+    displayName: null,
   );
 
   Future<List<String>> _allocateSessionIds({required int count}) async {

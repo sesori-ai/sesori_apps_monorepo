@@ -20,11 +20,12 @@ class ExternalActionRepository({
           pluginId: binding.pluginId,
           operation: SessionOperation.getPendingExternalActions,
           body: (plugin, _) async {
-            final api = switch (plugin) {
-              final SessionExternalActionsPluginApi api => api,
-              _ => null,
-            };
-            if (api == null) return const <PendingExternalAction>[];
+            final SessionExternalActionsPluginApi api;
+            if (plugin case final SessionExternalActionsPluginApi supported) {
+              api = supported;
+            } else {
+              return const <PendingExternalAction>[];
+            }
             final tombstones = await _pendingSupport.readPendingTombstones(
               plugin: plugin,
               backendSessionId: binding.backendSessionId,
@@ -56,11 +57,12 @@ class ExternalActionRepository({
           pluginId: binding.pluginId,
           operation: SessionOperation.replyToExternalAction,
           body: (plugin, _) async {
-            final api = switch (plugin) {
-              final SessionExternalActionsPluginApi api => api,
-              _ => null,
-            };
-            if (api == null) return const ExternalActionUnsupportedChoice();
+            final SessionExternalActionsPluginApi api;
+            if (plugin case final SessionExternalActionsPluginApi supported) {
+              api = supported;
+            } else {
+              return const ExternalActionUnsupportedChoice();
+            }
             final actions = await api.getPendingExternalActions(sessionId: binding.backendSessionId);
             await _pendingSupport.throwIfMutationTargetTombstoned(
               interactionId: request.requestId,

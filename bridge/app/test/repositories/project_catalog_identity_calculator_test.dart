@@ -161,5 +161,7 @@ ProjectDto _project({required String id, required String path}) {
     createdAt: 1,
     updatedAt: 1,
     projectionUpdatedAt: 1,
+    baseBranch: null,
+    displayName: null,
   );
 }

@@ -48,5 +48,8 @@ class BridgePluginHostImpl({
   /// after the host is built and before `start()` runs; `null` when the plugin
   /// did no provisioning or it failed.
   @override
-  String? provisionedRuntimePath;
+  String? get provisionedRuntimePath => _provisionedRuntimePath;
+  String? _provisionedRuntimePath;
+
+  void recordProvisionedRuntimePath({required String path}) => _provisionedRuntimePath = path;
 }

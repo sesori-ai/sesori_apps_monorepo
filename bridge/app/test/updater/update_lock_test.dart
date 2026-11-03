@@ -104,6 +104,7 @@ void main() {
           return LockAcquireResult.acquired;
         },
         onLockRejected: (reason) async => reason,
+        staleLockMaxAge: null,
       );
 
       expect(acquired, isFalse);
@@ -127,6 +128,7 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => 7,
         onLockRejected: (_) async => -1,
+        staleLockMaxAge: null,
       );
 
       expect(result, equals(7));
@@ -148,6 +150,7 @@ void main() {
           return 42;
         },
         onLockRejected: (_) async => -1,
+        staleLockMaxAge: null,
       );
 
       expect(result, equals(42));
@@ -177,6 +180,7 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => LockAcquireResult.acquired,
         onLockRejected: (reason) async => reason,
+        staleLockMaxAge: null,
       );
 
       expect(result, equals(LockAcquireResult.permissionDenied));
@@ -202,6 +206,7 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => 1,
         onLockRejected: (_) async => -1,
+        staleLockMaxAge: null,
       );
 
       expect(result, equals(1));
@@ -233,6 +238,7 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => LockAcquireResult.acquired,
         onLockRejected: (reason) async => reason,
+        staleLockMaxAge: null,
       );
 
       expect(result, equals(LockAcquireResult.permissionDenied));
@@ -312,6 +318,7 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => LockAcquireResult.acquired,
         onLockRejected: (reason) async => reason,
+        staleLockMaxAge: null,
       );
 
       expect(result, equals(LockAcquireResult.alreadyLocked));
@@ -331,6 +338,7 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
+          staleLockMaxAge: null,
         ),
         throwsA(isA<FileSystemException>()),
       );
@@ -355,6 +363,7 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
+          staleLockMaxAge: null,
         ),
         throwsA(isA<FileSystemException>()),
       );
@@ -374,6 +383,7 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
+          staleLockMaxAge: null,
         ),
         throwsA(isA<FileSystemException>()),
       );
@@ -393,6 +403,7 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
+          staleLockMaxAge: null,
         ),
         throwsA(isA<FileSystemException>()),
       );

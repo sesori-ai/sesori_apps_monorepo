@@ -831,8 +831,8 @@ class PluginRuntime({
     late final StreamController<T> controller;
 
     Future<void> finish({
-      Object? error,
-      StackTrace? stackTrace,
+      required Object? error,
+      required StackTrace? stackTrace,
       required bool cancelSource,
       bool surfaceCancellationError = false,
     }) {
@@ -888,7 +888,7 @@ class PluginRuntime({
             releaseLease();
             return;
           }
-          Future<void> cancellation() => finish(cancelSource: true);
+          Future<void> cancellation() => finish(error: null, stackTrace: null, cancelSource: true);
           generationCancellation = cancellation;
           acquired.slot.operationStreamCancellations.add(cancellation);
           sourceSubscription = body(acquired.api, acquired.generation).listen(
@@ -906,13 +906,13 @@ class PluginRuntime({
             onDone: () {
               try {
                 _requireCurrentGeneration(lease: acquired, operation: operation);
-                unawaited(finish(cancelSource: false));
+                unawaited(finish(error: null, stackTrace: null, cancelSource: false));
               } on Object catch (error, stackTrace) {
                 unawaited(finish(error: error, stackTrace: stackTrace, cancelSource: false));
               }
             },
           );
-          if (cancelled) await finish(cancelSource: true);
+          if (cancelled) await finish(error: null, stackTrace: null, cancelSource: true);
         } on Object catch (error, stackTrace) {
           await finish(error: error, stackTrace: stackTrace, cancelSource: true);
         }
@@ -922,7 +922,7 @@ class PluginRuntime({
       onCancel: () async {
         cancelled = true;
         if (termination != null) return;
-        await finish(cancelSource: true, surfaceCancellationError: true);
+        await finish(error: null, stackTrace: null, cancelSource: true, surfaceCancellationError: true);
       },
     );
     return controller.stream;

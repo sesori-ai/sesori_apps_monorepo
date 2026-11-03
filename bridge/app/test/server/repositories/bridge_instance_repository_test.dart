@@ -140,8 +140,8 @@ class _LookupProcessRunner() implements ProcessRunner {
   Future<ProcessResult> run({
     required String executable,
     required List<String> arguments,
-    String? workingDirectory,
-    Map<String, String>? environment,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     if (executable != 'pgrep' || arguments.length != 2 || arguments.first != '-x') {

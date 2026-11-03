@@ -326,7 +326,7 @@ class _FakeCatalogImportRepository({
     );
     await releaseImport?.future;
     if (importError case final error?) throw error;
-    if (control.cancellationRequested) {
+    if (control.isCancelled) {
       yield const CatalogImportProgress.cancelled(pluginId: "selected");
       return;
     }

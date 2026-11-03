@@ -66,7 +66,12 @@ class GitCliApi({
 
   /// Initializes a new git repository at [path]. Returns `true` on success.
   Future<bool> initRepository({required String path}) async {
-    final result = await _processRunner.run(executable: "git", arguments: ["init", path]);
+    final result = await _processRunner.run(
+      executable: "git",
+      arguments: ["init", path],
+      workingDirectory: null,
+      environment: null,
+    );
     return result.exitCode == 0;
   }
 
@@ -409,6 +414,7 @@ class GitCliApi({
       executable: "git",
       arguments: ["status", "--porcelain"],
       workingDirectory: worktreePath,
+      environment: null,
     );
     final hasUnstagedChanges = statusResult.stdout.toString().trim().isNotEmpty;
 
@@ -431,6 +437,7 @@ class GitCliApi({
       executable: "git",
       arguments: noBranchArguments,
       workingDirectory: worktreePath,
+      environment: null,
     );
     if (noBranchResult.exitCode != 0) {
       throw ProcessException("git", noBranchArguments, noBranchResult.stderr.toString(), noBranchResult.exitCode);
@@ -524,7 +531,12 @@ class GitCliApi({
   }
 
   Future<ProcessResult> runGit({required String projectPath, required List<String> arguments}) {
-    return _processRunner.run(executable: "git", arguments: arguments, workingDirectory: projectPath);
+    return _processRunner.run(
+      executable: "git",
+      arguments: arguments,
+      workingDirectory: projectPath,
+      environment: null,
+    );
   }
 
   String? _extractBranchName({required Object? output, required String prefix}) {

@@ -63,14 +63,16 @@ Future<void> updatePackageJson({
   required String newVersion,
 }) async {
   final content = await readFile(path: path);
-  final json = jsonDecode(content) as Map<String, dynamic>;
+  final json = switch (jsonDecode(content)) {
+    final Map<String, dynamic> map => map,
+    _ => throw FormatException('$path does not hold a JSON object'),
+  };
 
   // Update main version field
   json['version'] = newVersion;
 
   // Update optionalDependencies if present
-  if (json.containsKey('optionalDependencies')) {
-    final optionalDeps = json['optionalDependencies'] as Map<String, dynamic>;
+  if (json case {'optionalDependencies': final Map<String, dynamic> optionalDeps}) {
     optionalDeps.updateAll((key, value) {
       if (value == oldVersion) {
         return newVersion;
@@ -79,8 +81,7 @@ Future<void> updatePackageJson({
     });
   }
 
-  if (json.containsKey('sesoriBridge')) {
-    final metadata = json['sesoriBridge'] as Map<String, dynamic>;
+  if (json case {'sesoriBridge': final Map<String, dynamic> metadata}) {
     if (metadata['releaseTag'] == 'v$oldVersion') {
       metadata['releaseTag'] = 'v$newVersion';
     }
@@ -114,13 +115,13 @@ Future<void> main(List<String> args) async {
   // Read current version from pubspec.yaml
   final pubspecPath = p.join(appDir, 'pubspec.yaml');
   final pubspecContent = await readFile(path: pubspecPath);
-  final versionMatch = RegExp('version: (.+)').firstMatch(pubspecContent);
-  if (versionMatch == null) {
+  final versionGroup = RegExp('version: (.+)').firstMatch(pubspecContent)?.group(1);
+  if (versionGroup == null) {
     stderr.writeln('Error: Could not find version in pubspec.yaml');
     exit(1);
   }
 
-  final oldVersion = versionMatch.group(1)!.trim();
+  final oldVersion = versionGroup.trim();
 
   if (oldVersion == newVersion) {
     stderr.writeln('Error: New version is the same as current version ($oldVersion)');

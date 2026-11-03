@@ -107,12 +107,14 @@ class McpRepository({
 
     Future<void> prepare() async {
       try {
-        final authentication = switch (plugin) {
-          final McpAuthenticationPluginApi supported => supported,
-          _ => throw const McpAuthenticationUnavailableException(
+        final McpAuthenticationPluginApi authentication;
+        if (plugin case final McpAuthenticationPluginApi supported) {
+          authentication = supported;
+        } else {
+          throw const McpAuthenticationUnavailableException(
             reason: McpAuthenticationUnavailableReason.unsupportedHarness,
-          ),
-        };
+          );
+        }
         final operation = await authentication.beginMcpAuthentication(target: target);
         final native = _PreparedMcpAuthentication(operation: operation);
         if (cancelled) {

@@ -299,7 +299,7 @@ class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration 
     try {
       final result = Process.runSync("git", arguments);
       if (result.exitCode != 0) return null;
-      return (result.stdout as String).trim();
+      return result.stdout.toString().trim();
     } on ProcessException {
       return null;
     }
@@ -308,7 +308,7 @@ class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration 
   String? _cpuModel() {
     if (Platform.isMacOS) {
       final result = Process.runSync("sysctl", const ["-n", "machdep.cpu.brand_string"]);
-      return result.exitCode == 0 ? (result.stdout as String).trim() : null;
+      return result.exitCode == 0 ? result.stdout.toString().trim() : null;
     }
     if (Platform.isWindows) return Platform.environment["PROCESSOR_IDENTIFIER"];
     return null;
@@ -396,5 +396,5 @@ class _BenchmarkPlugin({
   }) => throw UnimplementedError();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -90,7 +90,7 @@ as int,
 
 
 class _ProjectDto extends ProjectDto {
-  const _ProjectDto({required this.projectId, required this.path, this.hidden = false, this.baseBranch, this.displayName, required this.createdAt, required this.updatedAt, required this.projectionUpdatedAt}): super._();
+  const _ProjectDto({required this.projectId, required this.path, this.hidden = false, required this.baseBranch, required this.displayName, required this.createdAt, required this.updatedAt, required this.projectionUpdatedAt}): super._();
   
 
 @override final  String projectId;
