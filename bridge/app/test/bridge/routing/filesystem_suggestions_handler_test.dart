@@ -215,7 +215,7 @@ class _WindowsFilesystemApi({required final String home}) extends FilesystemApi 
   Map<String, String> get environment => {"HOME": home, "USERPROFILE": home};
 
   @override
-  Future<bool> directoryExistsAsync(String path) async => path == r"C:\" || path == r"D:\";
+  Future<bool> directoryExistsAsync({required String path}) async => path == r"C:\" || path == r"D:\";
 }
 
 /// Records each browser listing request and answers with [result].

@@ -16,13 +16,13 @@ class const OpenCodeMcpMapper() {
     required PluginMcpScope scope,
     required Map<String, OpenCodeMcpServerConfigurationDto> configuration,
   }) {
-    final names = servers.keys.toList()..sort();
+    final byName = servers.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
     return PluginMcpInventorySnapshot(
       servers: const PluginMcpCatalogAvailable(),
       connectors: const PluginMcpCatalogNotSupported(),
       entries: List.unmodifiable([
-        for (final name in names)
-          _server(name: name, status: servers[name]!, scope: scope, configuration: configuration[name]),
+        for (final MapEntry(key: name, value: status) in byName)
+          _server(name: name, status: status, scope: scope, configuration: configuration[name]),
       ]),
     );
   }

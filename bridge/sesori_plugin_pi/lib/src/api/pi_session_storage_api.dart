@@ -162,15 +162,6 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     }
   }
 
-  Future<String?> resolveEffectiveSessionDirectory({required String directory}) async {
-    final environment = _environment;
-    final result = await Isolate.run(
-      () => _resolveEffectiveSessionDirectory(environment: environment, directory: directory),
-    );
-    _logDiagnostics(result.diagnostics);
-    return result.path;
-  }
-
   Future<void> writePendingNewSession({
     required String sessionId,
     required String cwd,
@@ -229,7 +220,7 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     diagnostics.forEach(_logDiagnostics);
   }
 
-  Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {
+  Future<PiSessionEntriesDto> _readSessionHistory({required String path}) async {
     final result = await Isolate.run(() => _readPiSessionHistory(path: path));
     if (result.malformedLineCount > 0) {
       Log.w(
@@ -317,8 +308,7 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
 class PiSessionHistoryStorageApi({required final PiSessionStorageApi storageApi}) {
   static const int historyRecordByteLimit = 72 * 1024 * 1024;
 
-  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
-      storageApi._readSessionHistory(path: path);
+  Future<PiSessionEntriesDto> readSessionHistory({required String path}) => storageApi._readSessionHistory(path: path);
 }
 
 ({String path, _PiScanDiagnostics diagnostics}) _pendingMarkerPath({
@@ -428,10 +418,50 @@ List<_PiScanDiagnostics> _clearPendingMarkers({
   return (paths: paths, diagnostics: diagnostics);
 }
 
+/// How a session file identifies its entries, read from its header.
+enum _PiHistoryEntryIds() {
+  /// Version 1 files predate entry ids, so entries get ids chained in file order.
+  synthesized,
+  persisted;
+
+  /// Throws when the file's first record is not a session header with an id.
+  static _PiHistoryEntryIds fromHeader({required PiSessionMetadataDto header}) => switch (header) {
+    PiSessionHeaderDto(id: String(), :final int version) when version >= 2 => persisted,
+    PiSessionHeaderDto(id: String()) => synthesized,
+    _ => throw const FormatException("Expected session header"),
+  };
+}
+
+/// The role older session files use for what RPC history reports as `custom`.
+const String _hookMessageRole = "hookMessage";
+const String _customMessageRole = "custom";
+
+/// Decodes a session file entry into the same DTO that RPC `get_entries` returns,
+/// or null for an id-less entry in a file whose entries carry ids.
+PiSessionEntryDto? _decodeHistoryEntry({
+  required Map<String, dynamic> json,
+  required _PiHistoryEntryIds ids,
+  required PiSessionEntryDto? previous,
+  required int position,
+}) {
+  final withIds = switch (ids) {
+    _PiHistoryEntryIds.synthesized => {...json, "id": "sesori-v1-$position", "parentId": previous?.id},
+    _PiHistoryEntryIds.persisted => json,
+  };
+  if (withIds["id"] == null) return null;
+  return PiSessionEntryDto.fromJson(switch (withIds["message"]) {
+    final Map<String, dynamic> message when message["role"] == _hookMessageRole => {
+      ...withIds,
+      "message": {...message, "role": _customMessageRole},
+    },
+    _ => withIds,
+  });
+}
+
 _PiHistoryReadResult _readPiSessionHistory({required String path}) {
   var resolvedPath = _absolute(path);
-  final entries = <PiSessionFileEntryDto>[];
-  PiSessionFileHeaderDto? header;
+  final entries = <PiSessionEntryDto>[];
+  _PiHistoryEntryIds? ids;
   Object? firstFailure;
   StackTrace? firstFailureStack;
   Object? fatalFailure;
@@ -445,28 +475,34 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
     handle = file.openSync();
     final decoder = _PiHistoryByteSink(
       maxRecordBytes: PiSessionHistoryStorageApi.historyRecordByteLimit,
-        onLine: (line, {required isFinal}) {
-          if (line.trim().isEmpty) return;
-          try {
-            final json = jsonDecodeMap(line);
-            if (header == null) {
-              if (invalidFirstParsedRecord) return;
-              final type = json["type"];
-              final id = json["id"];
-              if (type != "session" || id is! String) {
-                invalidFirstParsedRecord = true;
-                throw const FormatException("Expected session header");
-              }
-              header = PiSessionFileHeaderDto.fromJson(json);
-              return;
+      onLine: (line, {required isFinal}) {
+        if (line.trim().isEmpty) return;
+        try {
+          final json = jsonDecodeMap(line);
+          final headerIds = ids;
+          if (headerIds == null) {
+            if (invalidFirstParsedRecord) return;
+            try {
+              ids = _PiHistoryEntryIds.fromHeader(header: PiSessionMetadataDto.fromJson(json));
+            } on Object {
+              invalidFirstParsedRecord = true;
+              rethrow;
             }
-            entries.add(PiSessionFileEntryDto.fromJson(json));
-          } on Object catch (error, stackTrace) {
-            firstFailure ??= error;
-            firstFailureStack ??= stackTrace;
-            if (!isFinal) malformedLineCount += 1;
+            return;
           }
-        },
+          final entry = _decodeHistoryEntry(
+            json: json,
+            ids: headerIds,
+            previous: entries.lastOrNull,
+            position: entries.length + 1,
+          );
+          if (entry != null) entries.add(entry);
+        } on Object catch (error, stackTrace) {
+          firstFailure ??= error;
+          firstFailureStack ??= stackTrace;
+          if (!isFinal) malformedLineCount += 1;
+        }
+      },
     );
     while (true) {
       final bytes = handle.readSync(8192);
@@ -481,8 +517,7 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
     handle?.closeSync();
   }
 
-  final parsedHeader = header;
-  if (parsedHeader == null || fatalFailure != null) {
+  if (ids == null || fatalFailure != null) {
     final cause = fatalFailure ?? firstFailure ?? const FormatException("Missing session header");
     return _PiHistoryReadFailure(
       path: resolvedPath,
@@ -498,10 +533,7 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
   }
   return _PiHistoryReadSuccess(
     path: resolvedPath,
-    history: PiSessionFileHistoryDto(
-      header: parsedHeader,
-      entries: List.unmodifiable(entries),
-    ),
+    history: PiSessionEntriesDto(entries: List.unmodifiable(entries), leafId: entries.lastOrNull?.id),
     malformedLineCount: malformedLineCount,
     firstMalformedRecordError: switch (firstFailure) {
       final failure? => _PiHistoryRecordParseException(cause: failure),
@@ -1129,7 +1161,7 @@ final class const _PiHistoryReadSuccess({
   required super.malformedLineCount,
   required super.firstMalformedRecordError,
   required super.firstMalformedRecordStack,
-  required final PiSessionFileHistoryDto history,
+  required final PiSessionEntriesDto history,
 }) extends _PiHistoryReadResult;
 
 final class const _PiHistoryReadFailure({
@@ -1302,7 +1334,7 @@ final class const _PiInvalidSessionHeaderException({required final String reason
 
 final class _PiMetadataLineScanner() {
   final List<int> _prefix = [];
-  List<int>? _metadataBytes;
+  final List<int> _metadataBytes = [];
   _PiLineClassification _classification = _PiLineClassification.pending;
   bool _oversized = false;
   bool _sawByte = false;
@@ -1319,31 +1351,30 @@ final class _PiMetadataLineScanner() {
       _prefix.add(byte);
       _classification = _classifyPrefix(_prefix);
       if (_classification == _PiLineClassification.metadata) {
-        _metadataBytes = List<int>.of(_prefix);
+        _metadataBytes.addAll(_prefix);
       }
       return;
     }
     if (_classification != _PiLineClassification.metadata || _oversized) return;
-    final metadataBytes = _metadataBytes!;
-    if (metadataBytes.length == PiSessionStorageApi.metadataRecordByteLimit) {
+    if (_metadataBytes.length == PiSessionStorageApi.metadataRecordByteLimit) {
       _oversized = true;
-      _metadataBytes = null;
+      _metadataBytes.clear();
       return;
     }
-    metadataBytes.add(byte);
+    _metadataBytes.add(byte);
   }
 
   _PiScannedLine finish() {
     final result = switch ((_classification, _oversized)) {
       (_, true) => const _PiScannedLineOversizedMetadata(),
       (_PiLineClassification.metadata, false) => _PiScannedLineMetadata(
-          bytes: List<int>.unmodifiable(_metadataBytes!),
+          bytes: List<int>.unmodifiable(_metadataBytes),
         ),
       (_PiLineClassification.nonMetadata, false) => const _PiScannedLineNonMetadata(),
       (_PiLineClassification.pending || _PiLineClassification.ignored, false) => const _PiScannedLineIgnored(),
     };
     _prefix.clear();
-    _metadataBytes = null;
+    _metadataBytes.clear();
     _classification = _PiLineClassification.pending;
     _oversized = false;
     _sawByte = false;

@@ -42,7 +42,7 @@ void main() {
         ),
       );
 
-      await api.openFile('/tmp/example.txt');
+      await api.openFile(filePath: '/tmp/example.txt');
 
       expect(calls, [testCase.command]);
     });
@@ -60,7 +60,7 @@ void main() {
       ),
     );
 
-    await api.openFile(r'C:\tmp\report & del *.txt');
+    await api.openFile(filePath: r'C:\tmp\report & del *.txt');
 
     expect(calls.single, ['rundll32', 'url.dll,FileProtocolHandler', r'C:\tmp\report & del *.txt']);
   });
@@ -73,6 +73,6 @@ void main() {
       ),
     );
 
-    await expectLater(api.openFile('/tmp/example.txt'), throwsA(isA<SocketException>()));
+    await expectLater(api.openFile(filePath: '/tmp/example.txt'), throwsA(isA<SocketException>()));
   });
 }

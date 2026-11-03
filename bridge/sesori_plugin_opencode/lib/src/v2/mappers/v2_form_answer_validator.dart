@@ -25,8 +25,10 @@ class const V2FormAnswerValidator() {
         ),
         _ => null,
       };
-      if (constraint == null || !answer.value.containsKey(constraint.key)) continue;
-      final value = answer.value[constraint.key]!.toJson();
+      if (constraint == null) continue;
+      final answered = answer.value[constraint.key];
+      if (answered == null) continue;
+      final value = answered.toJson();
       if (value is! num || !value.isFinite || (constraint.integer && value != value.truncateToDouble())) {
         _invalid(message: "Expected a finite ${constraint.integer ? 'integer' : 'number'} for ${constraint.key}.");
       }

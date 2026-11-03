@@ -171,11 +171,11 @@ class PluginGenerationFactory({
             );
           case BridgeInstanceResolutionStatus.declined:
             throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge is already running and replacement was declined.",
+              message: "Startup aborted because another Sesori bridge is already running and replacement was declined.",
             );
           case BridgeInstanceResolutionStatus.nonInteractive:
             throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge is already running and this session is non-interactive.",
+              message: "Startup aborted because another Sesori bridge is already running and this session is non-interactive.",
             );
         }
       },
@@ -184,7 +184,8 @@ class PluginGenerationFactory({
         final holderMatch = rejection.holderMatch;
         if (lock == null || holderMatch == null) {
           throw BridgeRuntimeServerException(
-            "Startup aborted because another Sesori bridge startup is already in progress. If this persists, delete ${rejection.lockFilePath} and retry.",
+            message:
+                "Startup aborted because another Sesori bridge startup is already in progress. If this persists, delete ${rejection.lockFilePath} and retry.",
           );
         }
         final status = await _bridgeInstanceService.resolveStartupLockContention(
@@ -196,15 +197,16 @@ class PluginGenerationFactory({
           case BridgeInstanceResolutionStatus.allowed:
             if (attempt < 2) return await _attemptBatch(attempt: attempt + 1, batch: batch);
             throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge startup is still in progress after attempting replacement.",
+              message: "Startup aborted because another Sesori bridge startup is still in progress after attempting replacement.",
             );
           case BridgeInstanceResolutionStatus.declined:
             throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge startup is already in progress and replacement was declined.",
+              message: "Startup aborted because another Sesori bridge startup is already in progress and replacement was declined.",
             );
           case BridgeInstanceResolutionStatus.nonInteractive:
             throw BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge startup is already in progress and this session is non-interactive. Bridge pid ${holderMatch.identity.pid} holds ${rejection.lockFilePath}; kill that process or delete the file to recover.",
+              message:
+                  "Startup aborted because another Sesori bridge startup is already in progress and this session is non-interactive. Bridge pid ${holderMatch.identity.pid} holds ${rejection.lockFilePath}; kill that process or delete the file to recover.",
             );
         }
       },

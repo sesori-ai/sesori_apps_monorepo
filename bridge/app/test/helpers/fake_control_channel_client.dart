@@ -33,7 +33,7 @@ class FakeControlChannelClient() implements ControlChannelClient {
   @override
   void send(String frame) {
     if (throwOnSend) {
-      throw const ControlChannelNotConnectedException("Control channel is not connected");
+      throw const ControlChannelNotConnectedException(message: "Control channel is not connected");
     }
     final error = sendError;
     if (error != null) throw error;

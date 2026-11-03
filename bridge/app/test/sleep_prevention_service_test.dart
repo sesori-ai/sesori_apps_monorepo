@@ -323,7 +323,7 @@ class _QueueBridgeSettingsApi({
   }
 
   @override
-  Future<void> writeConfig(String jsonContent) async {}
+  Future<void> writeConfig({required String jsonContent}) async {}
 }
 
 class _FakeWakeLockRepository({

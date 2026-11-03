@@ -3,7 +3,6 @@ import "dart:convert";
 import "dart:io";
 
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
@@ -19,6 +18,7 @@ import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_pi_process.dart";
 import "support/fake_pi_session_storage_api.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
@@ -411,7 +411,6 @@ void main() {
 
     await expectLater(connecting, throwsStateError);
     expect(process.killed, isTrue);
-    expect(repository.residentSessionIds, isEmpty);
   });
 
   test("forget removes per-session state without reusing a connection generation", () async {
@@ -2648,7 +2647,6 @@ void main() {
 
     expect(process.killed, isTrue);
     expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(2));
-    expect(fixture.repository.residentSessionIds, isEmpty);
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
@@ -2691,7 +2689,6 @@ void main() {
 
     expect(warnings, contains("abort acknowledgement timed out; forcing process replacement"));
     expect(process.killed, isTrue);
-    expect(fixture.repository.residentSessionIds, isEmpty);
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
   });
 
@@ -2724,7 +2721,6 @@ void main() {
 
     expect(warnings, isNot(contains("abort command failed")));
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
-    expect(fixture.repository.residentSessionIds, isEmpty);
   });
 
   test("extension-initiated idle turns remain visible and reset resident idleness", () async {
@@ -2856,7 +2852,6 @@ void main() {
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
     expect(service.currentWorkState, PluginWorkState.idle);
     expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
-    expect(fixture.repository.residentSessionIds, isEmpty);
   });
 
   test("idle reap and disposal terminate residents", () async {
@@ -2932,7 +2927,7 @@ void main() {
     await pump();
     clock.elapseAt(index: 0);
     await pump();
-    expect(fixture.repository.residentSessionIds, contains("session"));
+    expect(process.killed, isFalse);
 
     fixture.idleTimeout = const Duration(minutes: 1);
     fixture.idleTimeoutChanges.add(fixture.idleTimeout);
@@ -3365,7 +3360,7 @@ final class _Fixture({
       editorTimeout: const Duration(minutes: 1),
     );
     final service = PiSessionService(
-      quotaMapper: PiQuotaInterruptionMapper(historyMapper: historyMapper),
+      quotaMapper: const PiQuotaInterruptionMapper(),
       processRepository: repository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(
@@ -3423,7 +3418,7 @@ final class _Storage({
 
 final class _HistoryStorage({required super.storageApi}) extends PiSessionHistoryStorageApi {
   @override
-  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
+  Future<PiSessionEntriesDto> readSessionHistory({required String path}) =>
       Future.error(StateError("file fallback not expected"));
 }
 

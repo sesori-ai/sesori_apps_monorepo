@@ -3,7 +3,7 @@ import "dart:typed_data";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-class KeyExchangeManager(List<int> roomKey, {required RelayCryptoService cryptoService}) {
+class KeyExchangeManager({required List<int> roomKey, required RelayCryptoService cryptoService}) {
   final List<int> _roomKey = List<int>.from(roomKey);
   final RelayCryptoService _cryptoService = cryptoService;
 

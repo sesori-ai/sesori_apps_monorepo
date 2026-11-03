@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PiCatalogModelDto {
 
-@JsonKey(fromJson: _stringOrNull) String? get provider;@JsonKey(fromJson: _stringOrNull) String? get id;@JsonKey(fromJson: _stringOrNull) String? get name;@JsonKey(fromJson: _boolOrFalse) bool get reasoning;@JsonKey(fromJson: _stringList) List<String> get input;
+@JsonKey(fromJson: _stringOrNull) String? get provider;@JsonKey(fromJson: _stringOrNull) String? get id;@JsonKey(fromJson: _stringOrNull) String? get name;@JsonKey(fromJson: _boolOrFalse) bool get reasoning;
 /// Create a copy of PiCatalogModelDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,14 +28,14 @@ $PiCatalogModelDtoCopyWith<PiCatalogModelDto> get copyWith => _$PiCatalogModelDt
 @override
 bool operator ==(Object other) {
   final _this = this as PiCatalogModelDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogModelDto&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.reasoning, _this.reasoning) || other.reasoning == _this.reasoning)&&const DeepCollectionEquality().equals(other.input, _this.input));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogModelDto&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.reasoning, _this.reasoning) || other.reasoning == _this.reasoning));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PiCatalogModelDto;
-  return Object.hash(runtimeType,_this.provider,_this.id,_this.name,_this.reasoning,const DeepCollectionEquality().hash(_this.input));
+  return Object.hash(runtimeType,_this.provider,_this.id,_this.name,_this.reasoning);
 }
 
 
@@ -47,7 +47,7 @@ abstract mixin class $PiCatalogModelDtoCopyWith<$Res>  {
   factory $PiCatalogModelDtoCopyWith(PiCatalogModelDto value, $Res Function(PiCatalogModelDto) _then) = _$PiCatalogModelDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? provider,@JsonKey(fromJson: _stringOrNull) String? id,@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _boolOrFalse) bool reasoning,@JsonKey(fromJson: _stringList) List<String> input
+@JsonKey(fromJson: _stringOrNull) String? provider,@JsonKey(fromJson: _stringOrNull) String? id,@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _boolOrFalse) bool reasoning
 });
 
 
@@ -64,14 +64,13 @@ class _$PiCatalogModelDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiCatalogModelDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? provider = freezed,Object? id = freezed,Object? name = freezed,Object? reasoning = null,Object? input = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? provider = freezed,Object? id = freezed,Object? name = freezed,Object? reasoning = null,}) {
   return _then(PiCatalogModelDto(
 provider: freezed == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as String?,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,reasoning: null == reasoning ? _self.reasoning : reasoning // ignore: cast_nullable_to_non_nullable
-as bool,input: null == input ? _self.input : input // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as bool,
   ));
 }
 
@@ -83,20 +82,13 @@ as List<String>,
 @JsonSerializable(createToJson: false)
 
 class _PiCatalogModelDto implements PiCatalogModelDto {
-  const _PiCatalogModelDto({@JsonKey(fromJson: _stringOrNull) required this.provider, @JsonKey(fromJson: _stringOrNull) required this.id, @JsonKey(fromJson: _stringOrNull) required this.name, @JsonKey(fromJson: _boolOrFalse) required this.reasoning, @JsonKey(fromJson: _stringList) required  List<String> input}): _input = input;
+  const _PiCatalogModelDto({@JsonKey(fromJson: _stringOrNull) required this.provider, @JsonKey(fromJson: _stringOrNull) required this.id, @JsonKey(fromJson: _stringOrNull) required this.name, @JsonKey(fromJson: _boolOrFalse) required this.reasoning});
   factory _PiCatalogModelDto.fromJson(Map<String, dynamic> json) => _$PiCatalogModelDtoFromJson(json);
 
 @override@JsonKey(fromJson: _stringOrNull) final  String? provider;
 @override@JsonKey(fromJson: _stringOrNull) final  String? id;
 @override@JsonKey(fromJson: _stringOrNull) final  String? name;
 @override@JsonKey(fromJson: _boolOrFalse) final  bool reasoning;
- final  List<String> _input;
-@override@JsonKey(fromJson: _stringList) List<String> get input {
-  if (_input is EqualUnmodifiableListView) return _input;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_input);
-}
-
 
 /// Create a copy of PiCatalogModelDto
 /// with the given fields replaced by the non-null parameter values.
@@ -108,13 +100,13 @@ _$PiCatalogModelDtoCopyWith<_PiCatalogModelDto> get copyWith => __$PiCatalogMode
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogModelDto&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.reasoning, reasoning) || other.reasoning == reasoning)&&const DeepCollectionEquality().equals(other.input, _input));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogModelDto&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.reasoning, reasoning) || other.reasoning == reasoning));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,provider,id,name,reasoning,const DeepCollectionEquality().hash(_input));
+    return Object.hash(runtimeType,provider,id,name,reasoning);
 }
 
 
@@ -126,7 +118,7 @@ abstract mixin class _$PiCatalogModelDtoCopyWith<$Res> implements $PiCatalogMode
   factory _$PiCatalogModelDtoCopyWith(_PiCatalogModelDto value, $Res Function(_PiCatalogModelDto) _then) = __$PiCatalogModelDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? provider,@JsonKey(fromJson: _stringOrNull) String? id,@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _boolOrFalse) bool reasoning,@JsonKey(fromJson: _stringList) List<String> input
+@JsonKey(fromJson: _stringOrNull) String? provider,@JsonKey(fromJson: _stringOrNull) String? id,@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _boolOrFalse) bool reasoning
 });
 
 
@@ -143,14 +135,13 @@ class __$PiCatalogModelDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiCatalogModelDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? provider = freezed,Object? id = freezed,Object? name = freezed,Object? reasoning = null,Object? input = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? provider = freezed,Object? id = freezed,Object? name = freezed,Object? reasoning = null,}) {
   return _then(_PiCatalogModelDto(
 provider: freezed == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as String?,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,reasoning: null == reasoning ? _self.reasoning : reasoning // ignore: cast_nullable_to_non_nullable
-as bool,input: null == input ? _self._input : input // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as bool,
   ));
 }
 

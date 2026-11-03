@@ -143,16 +143,16 @@ void main() {
 
   group("BridgeRegistrationService.sanitizeBridgeName", () {
     test("passes a normal hostname through unchanged", () {
-      expect(BridgeRegistrationService.sanitizeBridgeName("Alexs-MacBook"), equals("Alexs-MacBook"));
+      expect(BridgeRegistrationService.sanitizeBridgeName(name: "Alexs-MacBook"), equals("Alexs-MacBook"));
     });
 
     test("truncates names longer than the server's 120-char limit", () {
       final long = "h" * 200;
-      expect(BridgeRegistrationService.sanitizeBridgeName(long).length, equals(120));
+      expect(BridgeRegistrationService.sanitizeBridgeName(name: long).length, equals(120));
     });
 
     test("falls back to a default for empty or whitespace-only names", () {
-      expect(BridgeRegistrationService.sanitizeBridgeName("   "), equals("sesori-bridge"));
+      expect(BridgeRegistrationService.sanitizeBridgeName(name: "   "), equals("sesori-bridge"));
     });
   });
 

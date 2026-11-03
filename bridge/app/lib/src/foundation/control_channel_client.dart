@@ -14,7 +14,7 @@ enum ControlChannelConnectionState() { connected, disconnected }
 /// connected (GUI outage or mid-reconnect). This is a transient runtime
 /// condition — not a programming error — so it is an [Exception], letting
 /// callers map it to their own typed failure rather than catching an [Error].
-class const ControlChannelNotConnectedException(final String message) implements Exception {
+class const ControlChannelNotConnectedException({required final String message}) implements Exception {
   @override
   String toString() => "ControlChannelNotConnectedException: $message";
 }
@@ -83,7 +83,7 @@ class ControlChannelClient({
   void send(String frame) {
     final channel = _channel;
     if (channel == null) {
-      throw const ControlChannelNotConnectedException("Control channel is not connected");
+      throw const ControlChannelNotConnectedException(message: "Control channel is not connected");
     }
     channel.sink.add(frame);
   }

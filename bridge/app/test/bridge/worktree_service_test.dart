@@ -922,7 +922,7 @@ class _OccupyingFilesystemApi({required final int _occupiedCount}) extends Files
   final List<String> checkedPaths = <String>[];
 
   @override
-  FileSystemEntityType entityType(String path) {
+  FileSystemEntityType entityType({required String path}) {
     checkedPaths.add(path);
     return checkedPaths.length <= _occupiedCount ? FileSystemEntityType.directory : FileSystemEntityType.notFound;
   }

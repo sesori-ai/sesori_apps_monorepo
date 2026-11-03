@@ -6,7 +6,7 @@ abstract interface class TokenRefresher() {
 /// access token and a relay reconnect must therefore be deferred. A null GUI
 /// response invalidates the cached token. The retryable subtype covers temporary
 /// control-channel or token-refresh failures without treating them as sign-out.
-class const ControlTokenUnavailableException(final String reason) implements Exception {
+class const ControlTokenUnavailableException({required final String reason}) implements Exception {
   @override
   String toString() => "ControlTokenUnavailableException: $reason";
 }
@@ -14,7 +14,7 @@ class const ControlTokenUnavailableException(final String reason) implements Exc
 /// The GUI retains its auth session but cannot currently refresh its token.
 class const ControlTokenRetryLaterException({required final Object? innerError})
     extends ControlTokenUnavailableException {
-  this : super("The desktop app cannot currently supply an access token; retry later.");
+  this : super(reason: "The desktop app cannot currently supply an access token; retry later.");
 
   @override
   String toString() => "ControlTokenRetryLaterException: $reason${innerError == null ? "" : " ($innerError)"}";

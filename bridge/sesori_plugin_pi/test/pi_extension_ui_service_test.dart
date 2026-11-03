@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:fake_async/fake_async.dart";
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/pi_session_process_repository.dart";
@@ -12,6 +11,7 @@ import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_pi_process.dart";
 import "support/fake_pi_session_storage_api.dart";
 
 void main() {
@@ -548,7 +548,7 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
 
 final class _FakeHistoryStorage({required super.storageApi}) extends PiSessionHistoryStorageApi {
   @override
-  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
+  Future<PiSessionEntriesDto> readSessionHistory({required String path}) =>
       Future.error(StateError("file fallback not expected"));
 }
 

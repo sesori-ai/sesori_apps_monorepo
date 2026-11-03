@@ -11,6 +11,7 @@ import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
 import "../models/pi_rpc_command.dart";
 import "../models/pi_thinking_level.dart";
+import "../pi_identity.dart";
 
 typedef PiCatalogProbeSnapshot = ({
   List<PluginAgent> agents,
@@ -19,6 +20,9 @@ typedef PiCatalogProbeSnapshot = ({
   Set<({String providerID, String modelID})> nonReasoningModels,
   bool complete,
 });
+
+/// A catalog model whose provider and id Pi reported as non-empty.
+typedef _PiModel = ({String provider, String id, String? name, bool reasoning});
 
 sealed class const PiCatalogProbeResult();
 
@@ -85,8 +89,6 @@ class PiBackendCatalogRepository({
           timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
         )).data,
       );
-      final initial = state.model;
-
       final available = PiAvailableModelsDto.fromJson(
         (await _send(
           client: client,
@@ -96,11 +98,11 @@ class PiBackendCatalogRepository({
         )).data,
       );
       if (available.models.isEmpty) return const PiCatalogProbeNoModels();
-      final deduped = _dedupeModels(available.models);
+      final deduped = _dedupeModels(models: available.models);
       if (deduped.isEmpty) throw StateError("Pi catalog probe returned no valid models");
-      if (!_validModel(initial)) throw StateError("Pi catalog probe has no selected model");
-      final initialModel = initial!;
-      final initialIndex = deduped.indexWhere((model) => _sameModel(model, initialModel));
+      final initialModel = _validModel(dto: state.model);
+      if (initialModel == null) throw StateError("Pi catalog probe has no selected model");
+      final initialIndex = deduped.indexWhere((model) => _modelKey(model: model) == _modelKey(model: initialModel));
       if (initialIndex < 0) throw StateError("Pi selected model is absent from the catalog");
       if (initialIndex > 0) deduped.insert(0, deduped.removeAt(initialIndex));
 
@@ -149,7 +151,7 @@ class PiBackendCatalogRepository({
               timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
             )).data,
           );
-          thinkingByModel[_modelKey(model)] = _thinkingLevels(thinking.levels);
+          thinkingByModel[_modelKey(model: model)] = _thinkingLevels(thinking.levels);
         } on PiRpcProcessExitException {
           rethrow;
         } on Object catch (error, stack) {
@@ -163,7 +165,7 @@ class PiBackendCatalogRepository({
         snapshot: (
           agents: [
             const PluginAgent(
-              name: "pi",
+              name: PiPluginIdentity.agentName,
               description: null,
               model: null,
               mode: PluginAgentMode.primary,
@@ -180,7 +182,7 @@ class PiBackendCatalogRepository({
           commands: commands,
           nonReasoningModels: Set.unmodifiable([
             for (final model in deduped)
-              if (!model.reasoning) (providerID: model.provider!, modelID: model.id!),
+              if (!model.reasoning) (providerID: model.provider, modelID: model.id),
           ]),
           complete: !partial,
         ),
@@ -224,11 +226,11 @@ class PiBackendCatalogRepository({
     return remaining;
   }
 
-  List<PiCatalogModelDto> _dedupeModels(List<PiCatalogModelDto> models) {
+  List<_PiModel> _dedupeModels({required List<PiCatalogModelDto> models}) {
     final seen = <String>{};
     return [
-      for (final model in models)
-        if (_validModel(model) && seen.add(_modelKey(model))) model,
+      for (final dto in models)
+        if (_validModel(dto: dto) case final model? when seen.add(_modelKey(model: model))) model,
     ];
   }
 
@@ -241,13 +243,13 @@ class PiBackendCatalogRepository({
   }
 
   List<PluginProvider> _providers({
-    required List<PiCatalogModelDto> models,
-    required PiCatalogModelDto initial,
+    required List<_PiModel> models,
+    required _PiModel initial,
     required Map<String, List<String>> thinkingByModel,
   }) {
-    final grouped = <String, List<PiCatalogModelDto>>{};
+    final grouped = <String, List<_PiModel>>{};
     for (final model in models) {
-      (grouped[model.provider!] ??= []).add(model);
+      (grouped[model.provider] ??= []).add(model);
     }
     final entries = grouped.entries.toList();
     final initialIndex = entries.indexWhere((entry) => entry.key == initial.provider);
@@ -261,11 +263,13 @@ class PiBackendCatalogRepository({
               for (final model in entry.value)
                 PluginModel(
                   fastMode: null,
-                  id: model.id!,
-                  name: _displayName(model),
+                  id: model.id,
+                  name: _displayName(model: model),
                   // Strongest first; Pi's first-listed level stays the default.
-                  variants: CatalogStrengthOrder.variants(thinkingByModel[_modelKey(model)] ?? const []),
-                  defaultVariant: CatalogStrengthOrder.backendDefault(thinkingByModel[_modelKey(model)] ?? const []),
+                  variants: CatalogStrengthOrder.variants(thinkingByModel[_modelKey(model: model)] ?? const []),
+                  defaultVariant: CatalogStrengthOrder.backendDefault(
+                    thinkingByModel[_modelKey(model: model)] ?? const [],
+                  ),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,
@@ -311,15 +315,17 @@ class PiBackendCatalogRepository({
     );
   }
 
-  bool _validModel(PiCatalogModelDto? model) =>
-      (model?.provider?.isNotEmpty ?? false) && (model?.id?.isNotEmpty ?? false);
+  _PiModel? _validModel({required PiCatalogModelDto? dto}) => switch (dto) {
+    PiCatalogModelDto(:final provider?, :final id?, :final name, :final reasoning)
+        when provider.isNotEmpty && id.isNotEmpty =>
+      (provider: provider, id: id, name: name, reasoning: reasoning),
+    _ => null,
+  };
 
-  bool _sameModel(PiCatalogModelDto left, PiCatalogModelDto right) => _modelKey(left) == _modelKey(right);
+  String _modelKey({required _PiModel model}) => "${model.provider}\u0000${model.id}";
 
-  String _modelKey(PiCatalogModelDto model) => "${model.provider}\u0000${model.id}";
-
-  String _displayName(PiCatalogModelDto model) {
+  String _displayName({required _PiModel model}) {
     final name = model.name?.trim();
-    return name == null || name.isEmpty ? model.id! : name;
+    return name == null || name.isEmpty ? model.id : name;
   }
 }

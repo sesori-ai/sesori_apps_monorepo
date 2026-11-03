@@ -9,7 +9,7 @@ import "package:test/test.dart";
 
 void main() {
   final history = PiHistoryMapper(pluginId: "pi");
-  final mapper = PiQuotaInterruptionMapper(historyMapper: history);
+  const mapper = PiQuotaInterruptionMapper();
   final observedAt = DateTime.utc(2026, 9, 16, 19, 34, 27);
 
   PluginQuotaInterruption? map({required String text, required Map<String, Object?> fields}) {

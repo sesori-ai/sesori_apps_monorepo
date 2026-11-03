@@ -1467,9 +1467,9 @@ class _RecordingFilesystemApi() extends FakeFilesystemApi {
   int directoryExistsCallCount = 0;
 
   @override
-  bool directoryExists(String path) {
+  bool directoryExists({required String path}) {
     directoryExistsCallCount++;
-    return super.directoryExists(path);
+    return super.directoryExists(path: path);
   }
 }
 

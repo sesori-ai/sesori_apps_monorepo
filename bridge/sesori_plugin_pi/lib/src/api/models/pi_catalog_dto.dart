@@ -18,7 +18,6 @@ sealed class PiCatalogModelDto with _$PiCatalogModelDto {
     @JsonKey(fromJson: _stringOrNull) required String? id,
     @JsonKey(fromJson: _stringOrNull) required String? name,
     @JsonKey(fromJson: _boolOrFalse) required bool reasoning,
-    @JsonKey(fromJson: _stringList) required List<String> input,
   }) = _PiCatalogModelDto;
 
   factory fromJson(Map<String, dynamic> json) => _$PiCatalogModelDtoFromJson(json);

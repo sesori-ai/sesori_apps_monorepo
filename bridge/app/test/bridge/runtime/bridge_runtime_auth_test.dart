@@ -310,7 +310,7 @@ class _FakeLoginOAuthService({
   final List<String> ackCalls = [];
 
   @override
-  Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
+  Future<({TokenData tokens, String sessionToken})> performOAuthLogin({required OAuthProvider provider}) async {
     final error = _error;
     if (error != null) {
       throw error;

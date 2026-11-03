@@ -68,9 +68,8 @@ class const OpenCodeCatalogSnapshotMapper({
         value: directory.directory,
         field: "project_directory.directory",
       );
-      if (directory.projectId != _globalProjectId) {
-        aliasesByProjectId[directory.projectId]!.add(canonicalDirectory);
-      }
+      // The global project has no alias set, so its directories are skipped.
+      aliasesByProjectId[directory.projectId]?.add(canonicalDirectory);
     }
 
     final sessionsById = <String, OpenCodeCatalogSessionRow>{};

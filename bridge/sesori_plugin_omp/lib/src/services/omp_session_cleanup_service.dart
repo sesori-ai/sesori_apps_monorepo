@@ -29,13 +29,13 @@ class OmpSessionCleanupService({
         );
         for (final session in result.sessions) {
           if (session.sessionId != backendSessionId) continue;
-          final cwd = session.cwd;
-          fallbackDirectory = cwd == null || cwd.trim().isEmpty ? await _repository.createScratchDirectory() : null;
-          await _deleteResident(
-            sessionId: backendSessionId,
-            cwd: fallbackDirectory ?? cwd!,
-            stopwatch: stopwatch,
-          );
+          final String cwd;
+          if (session.cwd case final sessionCwd? when sessionCwd.trim().isNotEmpty) {
+            cwd = sessionCwd;
+          } else {
+            cwd = fallbackDirectory = await _repository.createScratchDirectory();
+          }
+          await _deleteResident(sessionId: backendSessionId, cwd: cwd, stopwatch: stopwatch);
           return;
         }
         final next = result.nextCursor;

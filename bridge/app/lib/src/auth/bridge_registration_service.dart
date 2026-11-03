@@ -28,7 +28,7 @@ class BridgeRegistrationService({
 }) implements BridgeIdProvider {
   static const fallbackName = "sesori-bridge";
 
-  final String _hostName = sanitizeBridgeName(hostName);
+  final String _hostName = sanitizeBridgeName(name: hostName);
   bool _registered = false;
   String? _bridgeId;
   final StreamController<String> _registrations = StreamController<String>.broadcast();
@@ -43,7 +43,7 @@ class BridgeRegistrationService({
 
   /// Clamps a bridge name to the auth server's 1-120 character contract so an
   /// exotic hostname can never fail registration with a 400.
-  static String sanitizeBridgeName(String name) {
+  static String sanitizeBridgeName({required String name}) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return fallbackName;
     return trimmed.length <= 120 ? trimmed : trimmed.substring(0, 120);

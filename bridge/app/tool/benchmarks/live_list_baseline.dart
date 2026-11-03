@@ -769,10 +769,10 @@ class _ThrowingBenchmarkPlugin({@override required final String id})
 
 class _ExistingFilesystemApi() implements FilesystemApi {
   @override
-  bool directoryExists(String path) => true;
+  bool directoryExists({required String path}) => true;
 
   @override
-  Future<bool> directoryExistsAsync(String path) async => true;
+  Future<bool> directoryExistsAsync({required String path}) async => true;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

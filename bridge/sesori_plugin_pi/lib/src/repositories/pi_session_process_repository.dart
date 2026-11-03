@@ -153,7 +153,6 @@ final class PiSessionProcessRepository({
 
   Stream<PiSessionProcessFrame> get frames => _frames.stream;
   Stream<PiSessionProcessExit> get exits => _exits.stream;
-  Set<String> get residentSessionIds => Set.unmodifiable(_residents.keys);
 
   String generateSessionId() {
     final random = Random.secure();
@@ -250,13 +249,6 @@ final class PiSessionProcessRepository({
             knownDirectories: knownDirectories,
           )
         : null;
-    if (resolved == null && pending == null) {
-      throw PluginOperationException.notFound(
-        "connect Pi session",
-        message: "Pi session was not found.",
-        cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
-      );
-    }
     if (resolved != null) {
       try {
         await _storageApi.clearPendingNewSession(
@@ -267,12 +259,19 @@ final class PiSessionProcessRepository({
         Log.w("[pi] failed to clear stale pending marker for resolved session id=$sessionId; continuing", error, stack);
       }
     }
-    final launch = resolved == null
-        ? pending!.parentSessionPath == null
-              ? PiNewSession(sessionId: sessionId)
-              : PiForkedSession(sessionId: sessionId, parentSessionPath: pending.parentSessionPath!)
-        : PiResumedSession(sessionPath: resolved.path);
-    final cwd = resolved?.metadata.cwd ?? pending!.cwd;
+    final (PiSessionLaunch launch, String cwd) = switch ((resolved, pending)) {
+      (final resolved?, _) => (PiResumedSession(sessionPath: resolved.path), resolved.metadata.cwd),
+      (null, PiPendingNewSession(:final cwd, parentSessionPath: null)) => (PiNewSession(sessionId: sessionId), cwd),
+      (null, PiPendingNewSession(:final cwd, parentSessionPath: final parentSessionPath?)) => (
+        PiForkedSession(sessionId: sessionId, parentSessionPath: parentSessionPath),
+        cwd,
+      ),
+      (null, null) => throw PluginOperationException.notFound(
+        "connect Pi session",
+        message: "Pi session was not found.",
+        cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
+      ),
+    };
     final client = PiRpcClient(
       launchSpec: PiLaunchSpec(
         binaryPath: _binaryPath,
@@ -928,8 +927,7 @@ final class PiSessionProcessRepository({
         error.cause,
         stack,
       );
-      final fileHistory = await _historyStorageApi.readSessionHistory(path: resolved.path);
-      return _normalizeFileHistory(history: fileHistory);
+      return await _historyStorageApi.readSessionHistory(path: resolved.path);
     }
   }
 
@@ -974,149 +972,6 @@ final class PiSessionProcessRepository({
       await client.dispose();
     }
   }
-
-  PiSessionEntriesDto _normalizeFileHistory({required PiSessionFileHistoryDto history}) {
-    final isV1 = (history.header.version ?? 1) < 2;
-    final entries = <PiSessionEntryDto>[];
-    String? previousId;
-    for (var index = 0; index < history.entries.length; index++) {
-      final fileEntry = history.entries[index];
-      final id = isV1 ? "sesori-v1-${index + 1}" : fileEntry.id;
-      if (id == null) continue;
-      final parentId = isV1 ? previousId : fileEntry.parentId;
-      entries.add(_normalizeFileEntry(entry: fileEntry, id: id, parentId: parentId));
-      previousId = id;
-    }
-    return PiSessionEntriesDto(entries: List.unmodifiable(entries), leafId: entries.lastOrNull?.id);
-  }
-
-  PiSessionEntryDto _normalizeFileEntry({
-    required PiSessionFileEntryDto entry,
-    required String id,
-    required String? parentId,
-  }) => switch (entry) {
-    PiSessionFileMessageEntryDto(:final timestamp, :final message) => PiSessionEntryDto.message(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-      message: _normalizeFileMessage(message),
-    ),
-    PiSessionFileThinkingLevelChangeEntryDto(:final timestamp, :final thinkingLevel) =>
-      PiSessionEntryDto.thinkingLevelChange(
-        id: id,
-        parentId: parentId,
-        timestamp: timestamp,
-        thinkingLevel: thinkingLevel,
-      ),
-    PiSessionFileModelChangeEntryDto(:final timestamp) => PiSessionEntryDto.modelChange(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
-    PiSessionFileCompactionEntryDto(:final timestamp, :final summary) => PiSessionEntryDto.compaction(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-      summary: summary,
-    ),
-    PiSessionFileBranchSummaryEntryDto(:final timestamp) => PiSessionEntryDto.branchSummary(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
-    PiSessionFileCustomEntryDto(:final timestamp) => PiSessionEntryDto.custom(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
-    PiSessionFileCustomMessageEntryDto(:final timestamp, :final content, :final display) =>
-      PiSessionEntryDto.customMessage(
-        id: id,
-        parentId: parentId,
-        timestamp: timestamp,
-        content: content,
-        display: display,
-      ),
-    PiSessionFileLabelEntryDto(:final timestamp) => PiSessionEntryDto.label(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
-    PiSessionFileSessionInfoEntryDto(:final timestamp) => PiSessionEntryDto.sessionInfo(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
-    PiSessionFileUnknownEntryDto(:final timestamp) => PiSessionEntryDto.unknown(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
-  };
-
-  PiAgentMessageDto _normalizeFileMessage(PiSessionFileAgentMessageDto message) => switch (message) {
-    PiSessionFileUserMessageDto(:final content, :final timestamp) => PiAgentMessageDto.user(
-      content: content,
-      timestamp: timestamp,
-    ),
-    PiSessionFileAssistantMessageDto(
-      :final content,
-      :final provider,
-      :final model,
-      :final stopReason,
-      :final errorMessage,
-      :final timestamp,
-    ) =>
-      PiAgentMessageDto.assistant(
-        content: content,
-        provider: provider,
-        model: model,
-        stopReason: stopReason,
-        errorMessage: errorMessage,
-        timestamp: timestamp,
-      ),
-    PiSessionFileToolResultMessageDto(
-      :final toolCallId,
-      :final toolName,
-      :final content,
-      :final isError,
-      :final timestamp,
-    ) =>
-      PiAgentMessageDto.toolResult(
-        toolCallId: toolCallId,
-        toolName: toolName,
-        content: content,
-        isError: isError,
-        timestamp: timestamp,
-      ),
-    PiSessionFileBashExecutionMessageDto(
-      :final command,
-      :final output,
-      :final exitCode,
-      :final cancelled,
-      :final truncated,
-      :final timestamp,
-    ) =>
-      PiAgentMessageDto.bashExecution(
-        command: command,
-        output: output,
-        exitCode: exitCode,
-        cancelled: cancelled,
-        truncated: truncated,
-        timestamp: timestamp,
-      ),
-    PiSessionFileCustomMessageDto(:final content, :final display, :final timestamp) ||
-    PiSessionFileHookMessageDto(:final content, :final display, :final timestamp) => PiAgentMessageDto.custom(
-      content: content,
-      display: display,
-      timestamp: timestamp,
-    ),
-    PiSessionFileBranchSummaryMessageDto(:final timestamp) => PiAgentMessageDto.branchSummary(timestamp: timestamp),
-    PiSessionFileCompactionSummaryMessageDto(:final timestamp) => PiAgentMessageDto.compactionSummary(
-      timestamp: timestamp,
-    ),
-    PiSessionFileUnknownMessageDto(:final timestamp) => PiAgentMessageDto.unknown(timestamp: timestamp),
-  };
 
   bool _isNoModelStartupFailure(List<String> diagnostics) => diagnostics.any(
     (line) => line == PiRpcClient.noModelsDiagnosticPrefix,

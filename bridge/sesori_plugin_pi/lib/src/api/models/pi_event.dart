@@ -5,6 +5,7 @@ import "../../models/pi_summarization_source.dart";
 import "../../models/pi_thinking_level.dart";
 import "pi_assistant_delta.dart";
 import "pi_frame_fields.dart";
+import "pi_session_history_dto.dart";
 
 /// One agent event from Pi v0.84.4's stdout event stream.
 ///
@@ -12,8 +13,8 @@ import "pi_frame_fields.dart";
 /// becomes anonymous data; unknown types survive as [PiUnknownEvent] because Pi
 /// gains events between releases and a strict parser would drop a whole turn.
 ///
-/// Only Pi's own scalars are typed here. Message, entry, tool, and result
-/// payloads stay raw maps until the step that consumes them adds their DTOs.
+/// Messages and session entries decode into their history DTOs here, once.
+/// Tool arguments and results stay raw maps until their mappers read them.
 sealed class const PiEvent({required final Map<String, Object?> raw}) {
   /// Routes one event by its `type` discriminator.
   static PiEvent parse({required String type, required Map<String, Object?> json}) {
@@ -22,13 +23,19 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
       "agent_end" => PiAgentEndEvent(willRetry: boolOrFalse(json["willRetry"]), raw: json),
       "agent_settled" => PiAgentSettledEvent(raw: json),
       "turn_start" => PiTurnStartEvent(raw: json),
-      "turn_end" => PiTurnEndEvent(message: mapOrEmpty(json["message"]), raw: json),
-      "message_start" => PiMessageStartEvent(message: mapOrEmpty(json["message"]), raw: json),
+      "turn_end" => PiTurnEndEvent(raw: json),
+      "message_start" => PiMessageStartEvent(
+        message: _message(value: json["message"]),
+        raw: json,
+      ),
       "message_update" => PiMessageUpdateEvent(
         delta: PiAssistantDelta.parse(json: mapOrEmpty(json["assistantMessageEvent"])),
         raw: json,
       ),
-      "message_end" => PiMessageEndEvent(message: mapOrEmpty(json["message"]), raw: json),
+      "message_end" => PiMessageEndEvent(
+        message: _message(value: json["message"]),
+        raw: json,
+      ),
       "tool_execution_start" => PiToolExecutionStartEvent(
         toolCallId: stringOrNull(json["toolCallId"]),
         toolName: stringOrNull(json["toolName"]),
@@ -74,7 +81,10 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
         },
         raw: json,
       ),
-      "entry_appended" => PiEntryAppendedEvent(entry: mapOrEmpty(json["entry"]), raw: json),
+      "entry_appended" => PiEntryAppendedEvent(
+        entry: _entry(value: json["entry"]),
+        raw: json,
+      ),
       // An absent or cleared name is `undefined` upstream; both mean "no
       // explicit name", so null models it honestly.
       "session_info_changed" => PiSessionInfoChangedEvent(name: stringOrNull(json["name"]), raw: json),
@@ -112,6 +122,24 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
       ),
       _ => _unknownEvent(type: type, json: json),
     };
+  }
+}
+
+PiAgentMessageDto? _message({required Object? value}) {
+  try {
+    return PiAgentMessageDto.fromJson(mapOrEmpty(value));
+  } on Object catch (error, stack) {
+    Log.w("[pi] event message could not be decoded; omitting it", error, stack);
+    return null;
+  }
+}
+
+PiSessionEntryDto? _entry({required Object? value}) {
+  try {
+    return PiSessionEntryDto.fromJson(mapOrEmpty(value));
+  } on Object catch (error, stack) {
+    Log.w("[pi] appended entry could not be decoded; omitting it", error, stack);
+    return null;
   }
 }
 
@@ -155,17 +183,18 @@ final class const PiAgentSettledEvent({required super.raw}) extends PiEvent;
 
 final class const PiTurnStartEvent({required super.raw}) extends PiEvent;
 
-final class const PiTurnEndEvent({required final Map<String, Object?> message, required super.raw}) extends PiEvent;
+final class const PiTurnEndEvent({required super.raw}) extends PiEvent;
 
-final class const PiMessageStartEvent({required final Map<String, Object?> message, required super.raw})
-    extends PiEvent;
+/// [message] is null when Pi sent a message this build cannot decode.
+final class const PiMessageStartEvent({required final PiAgentMessageDto? message, required super.raw}) extends PiEvent;
 
 /// A streaming increment. Pi strips the cumulative snapshot from these frames,
 /// so [delta] is the only new information they carry.
 final class const PiMessageUpdateEvent({required final PiAssistantDelta delta, required super.raw}) extends PiEvent;
 
-/// The final authority for one message.
-final class const PiMessageEndEvent({required final Map<String, Object?> message, required super.raw}) extends PiEvent;
+/// The final authority for one message. [message] is null when Pi sent a
+/// message this build cannot decode.
+final class const PiMessageEndEvent({required final PiAgentMessageDto? message, required super.raw}) extends PiEvent;
 
 final class const PiToolExecutionStartEvent({
   required final String? toolCallId,
@@ -220,8 +249,9 @@ final class const PiCompactionEndEvent({
   required super.raw,
 }) extends PiEvent;
 
-/// A session entry was persisted. The entry stays raw until history mapping.
-final class const PiEntryAppendedEvent({required final Map<String, Object?> entry, required super.raw}) extends PiEvent;
+/// A session entry was persisted. [entry] is null when this build cannot
+/// decode it.
+final class const PiEntryAppendedEvent({required final PiSessionEntryDto? entry, required super.raw}) extends PiEvent;
 
 /// The explicit session name changed. Null means the name was cleared.
 final class const PiSessionInfoChangedEvent({required final String? name, required super.raw}) extends PiEvent;

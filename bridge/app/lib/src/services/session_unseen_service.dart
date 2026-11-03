@@ -134,7 +134,7 @@ class SessionUnseenService({
       // nothing observable — skip the redundant write + emit. (A later
       // mark-read stamps seen at `now`, which is always past the skipped,
       // older activity timestamp, so correctness is preserved.)
-      if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row)) {
+      if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row: row)) {
         return;
       }
       // A user message with a known creation time advances ONLY the
@@ -315,7 +315,7 @@ class SessionUnseenService({
   Future<void> _emit({required String sessionId, required String projectId}) async {
     try {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      final unseen = row != null && _unseenRepository.unseenForRow(row);
+      final unseen = row != null && _unseenRepository.unseenForRow(row: row);
       final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
       _add(
         projectId: projectId,

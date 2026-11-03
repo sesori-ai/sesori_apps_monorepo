@@ -118,7 +118,7 @@ class FilesystemRepository({
   };
 
   bool directoryExists({required String path}) {
-    return _guard(path: path, () => _filesystemApi.directoryExists(path));
+    return _guard(path: path, () => _filesystemApi.directoryExists(path: path));
   }
 
   /// The host directory shown when the client has not selected a prefix yet.
@@ -152,7 +152,7 @@ class FilesystemRepository({
 
   Future<bool> _probeDrive({required String root}) async {
     try {
-      return await _filesystemApi.directoryExistsAsync(root).timeout(_driveProbeTimeout, onTimeout: () => false);
+      return await _filesystemApi.directoryExistsAsync(path: root).timeout(_driveProbeTimeout, onTimeout: () => false);
     } on FileSystemException catch (error, stackTrace) {
       Log.w("FilesystemRepository: omitting drive $root after a failed probe", error, stackTrace);
       return false;
@@ -189,12 +189,12 @@ class FilesystemRepository({
   /// a missing file.
   FilePreviewResponse readPreviewFile({required String absolutePath}) {
     try {
-      var entityType = _filesystemApi.entityType(absolutePath);
+      var entityType = _filesystemApi.entityType(path: absolutePath);
       // Resolving follows a link to its target. A failed lookup also reports
       // notFound, so resolving surfaces its real cause, such as a denied
       // parent folder, as a FileSystemException. Neither opens the file.
       if (entityType == FileSystemEntityType.link || entityType == FileSystemEntityType.notFound) {
-        entityType = _filesystemApi.entityType(_filesystemApi.resolveFilePath(absolutePath));
+        entityType = _filesystemApi.entityType(path: _filesystemApi.resolveFilePath(path: absolutePath));
       }
       if (entityType == FileSystemEntityType.notFound) return const FilePreviewResponse.missing();
       // Only a regular file is opened: reading a pipe, socket or device could
@@ -245,7 +245,7 @@ class FilesystemRepository({
     }
 
     try {
-      final entityType = _filesystemApi.entityType(candidatePath);
+      final entityType = _filesystemApi.entityType(path: candidatePath);
       if (entityType == FileSystemEntityType.link) {
         return BoundedTextFileReadFailure();
       }
@@ -253,8 +253,8 @@ class FilesystemRepository({
         return BoundedTextFileMissing();
       }
 
-      final resolvedPath = p.normalize(_filesystemApi.resolveFilePath(candidatePath));
-      final resolvedRootPath = p.normalize(_filesystemApi.resolveDirectoryPath(rootDirectoryPath));
+      final resolvedPath = p.normalize(_filesystemApi.resolveFilePath(path: candidatePath));
+      final resolvedRootPath = p.normalize(_filesystemApi.resolveDirectoryPath(path: rootDirectoryPath));
       if (resolvedPath != resolvedRootPath && !p.isWithin(resolvedRootPath, resolvedPath)) {
         return BoundedTextFileReadFailure();
       }
@@ -286,7 +286,7 @@ class FilesystemRepository({
   /// [FilesystemDirectoryNotFoundException] when [prefix] does not exist.
   FilesystemSuggestions listSuggestions({required String prefix, required int maxResults}) {
     return _guard(path: prefix, () {
-      if (!_filesystemApi.directoryExists(prefix)) {
+      if (!_filesystemApi.directoryExists(path: prefix)) {
         throw FilesystemDirectoryNotFoundException(path: prefix);
       }
 
@@ -297,7 +297,7 @@ class FilesystemRepository({
       // listing.
       final selected =
           _filesystemApi
-              .listDirectories(prefix)
+              .listDirectories(path: prefix)
               .map((d) => (path: d.path, name: p.basename(d.path)))
               .where((e) => !e.name.startsWith("."))
               .toList()
@@ -306,8 +306,11 @@ class FilesystemRepository({
       final suggestions = selected
           .take(maxResults)
           .map(
-            (e) =>
-                FilesystemSuggestion(path: e.path, name: e.name, isGitRepo: _filesystemApi.gitDirectoryExists(e.path)),
+            (e) => FilesystemSuggestion(
+              path: e.path,
+              name: e.name,
+              isGitRepo: _filesystemApi.gitDirectoryExists(directoryPath: e.path),
+            ),
           )
           .toList();
 
@@ -325,7 +328,7 @@ class FilesystemRepository({
   /// upstream error.
   FilesystemEntityKind classifyPath({required String path}) {
     return _guard(path: path, () {
-      final type = _filesystemApi.entityType(path);
+      final type = _filesystemApi.entityType(path: path);
       if (type == FileSystemEntityType.notFound) {
         return FilesystemEntityKind.notFound;
       }
@@ -334,14 +337,14 @@ class FilesystemRepository({
       // as spelled, so a link there would open beside its target as a second
       // project; it stays refused.
       final isLinkedDirectory =
-          type == FileSystemEntityType.link && !Platform.isWindows && _filesystemApi.directoryExists(path);
+          type == FileSystemEntityType.link && !Platform.isWindows && _filesystemApi.directoryExists(path: path);
       if (type != FileSystemEntityType.directory && !isLinkedDirectory) {
         return FilesystemEntityKind.notDirectory;
       }
       // Probe readability: a stat-only success is not enough to open the
       // directory as a project. A permission denial here is translated to
       // FilesystemPermissionDeniedException by _guard.
-      _filesystemApi.listDirectories(path);
+      _filesystemApi.listDirectories(path: path);
       return FilesystemEntityKind.directory;
     });
   }
@@ -357,10 +360,10 @@ class FilesystemRepository({
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
   CreatableDirectoryStatus checkCreatableDirectory({required String path}) {
     return _guard(path: path, () {
-      if (!_filesystemApi.directoryExists(_filesystemApi.parentPath(path))) {
+      if (!_filesystemApi.directoryExists(path: _filesystemApi.parentPath(path: path))) {
         return CreatableDirectoryStatus.parentMissing;
       }
-      if (_filesystemApi.entityType(path) != FileSystemEntityType.notFound) {
+      if (_filesystemApi.entityType(path: path) != FileSystemEntityType.notFound) {
         return CreatableDirectoryStatus.alreadyExists;
       }
       return CreatableDirectoryStatus.creatable;
@@ -372,16 +375,16 @@ class FilesystemRepository({
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
   void createDirectory({required String path}) {
     _guard(path: path, () {
-      _filesystemApi.createDirectory(path);
+      _filesystemApi.createDirectory(path: path);
     });
   }
 
   Set<String> listDirectoryEntryNames({required String path}) {
-    return _guard(path: path, () => _filesystemApi.listEntryNames(path).toSet());
+    return _guard(path: path, () => _filesystemApi.listEntryNames(path: path).toSet());
   }
 
   void deleteDirectoryRecursively({required String path}) {
-    _guard(path: path, () => _filesystemApi.deleteDirectoryRecursively(path));
+    _guard(path: path, () => _filesystemApi.deleteDirectoryRecursively(path: path));
   }
 
   /// Runs [action], translating any [FileSystemException] permission denial

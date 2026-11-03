@@ -15,7 +15,7 @@ class FakeFilesystemApi({
   final Set<String> _throwingPaths = const {},
 }) implements FilesystemApi {
   @override
-  bool directoryExists(String path) {
+  bool directoryExists({required String path}) {
     if (_throwingPaths.contains(path)) {
       throw const FileSystemException("permission denied");
     }
@@ -23,11 +23,11 @@ class FakeFilesystemApi({
   }
 
   @override
-  Future<bool> directoryExistsAsync(String path) async => directoryExists(path);
+  Future<bool> directoryExistsAsync({required String path}) async => directoryExists(path: path);
 
   /// No path passes through a link here.
   @override
-  String resolveDirectoryPath(String path) => path;
+  String resolveDirectoryPath({required String path}) => path;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

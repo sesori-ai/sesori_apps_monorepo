@@ -170,12 +170,7 @@ final class const PiPluginDescriptor({
     required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = PiRuntimeManifest();
-    final commandExecutor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    );
+    final commandExecutor = _commandExecutor(processes: processes);
     final versionValidator = _versionValidator(processes: processes);
     final httpClient = http.Client();
     try {
@@ -222,50 +217,19 @@ final class const PiPluginDescriptor({
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
         );
-    if (selection case ManagedRuntimeSelected(:final binaryPath, :final version)) {
-      return await _inspectAuthentication(
+    return switch (selection) {
+      ManagedRuntimeSelected(:final binaryPath, :final version) => await _inspectAuthentication(
         binaryPath: binaryPath,
         processes: processes,
         environment: environment,
         runtimeVersion: version.raw,
-      );
-    }
-    final notSelected = selection as ManagedRuntimeNotSelected;
-    if (notSelected is ManagedRuntimePathNotSelected) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
-          actionHint: "Update the global Pi installation to ${manifest.minPathVersion.raw} or newer.",
-          runtimeVersion: version.raw,
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "The global Pi installation could not be verified. Check it locally and retry setup detection.",
-        ),
-      };
-    }
-    if (explicitBin != null) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
-          actionHint: "Fix the configured Pi CLI path, then restart the bridge.",
-        ),
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
-          actionHint: "Update the configured Pi CLI, then restart the bridge.",
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "Pi setup could not be determined. Verify the configured CLI and retry.",
-        ),
-      };
-    }
-    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
-      return const PluginSetupUnknown(
-        actionHint: "Pi setup could not be determined. Verify the local CLI and retry.",
-      );
-    }
-    return PluginSetupRuntimeMissing(
-      actionHint: _supportsManagedInstall(config: config)
-          ? "Install Pi from Sesori, or install it locally and retry setup detection."
-          : "Install Pi locally, then retry setup detection.",
-    );
+      ),
+      ManagedRuntimeNotSelected() => const ManagedRuntimeSetupStatusMapper().map(
+        manifest: manifest,
+        notSelected: selection,
+        supportsManagedInstall: _supportsManagedInstall(config: config),
+      ),
+    };
   }
 
   /// Asks Pi which models it can actually use.
@@ -288,11 +252,8 @@ final class const PiPluginDescriptor({
 
     final CommandResult result;
     try {
-      result = await HostProcessCommandExecutor(
-        includeParentEnvironment: true,
+      result = await _commandExecutor(
         processes: processes,
-        runInShell: io.Platform.isWindows,
-        maxCapturedOutputCharactersPerStream: 64 * 1024,
       ).run(binaryPath, const ["--list-models"], environment: environment, timeout: _versionProbeTimeout);
     } on Object catch (error, stackTrace) {
       Log.w("[${PiPluginIdentity.id}] model listing probe failed for '$binaryPath --list-models'", error, stackTrace);
@@ -317,20 +278,15 @@ final class const PiPluginDescriptor({
     return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
   }
 
-  bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
-    return switch (rejection) {
-      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
-      ManagedRuntimeProbeRejected() => true,
-    };
-  }
+  HostProcessCommandExecutor _commandExecutor({required HostProcessService processes}) => HostProcessCommandExecutor(
+    includeParentEnvironment: true,
+    processes: processes,
+    runInShell: io.Platform.isWindows,
+    maxCapturedOutputCharactersPerStream: 64 * 1024,
+  );
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
-    commandExecutor: HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    ),
+    commandExecutor: _commandExecutor(processes: processes),
     manifest: const PiRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
     executableLocator: const IoHostExecutableLocator(platformIsWindows: null),

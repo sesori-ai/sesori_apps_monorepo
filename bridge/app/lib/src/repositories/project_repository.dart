@@ -254,7 +254,7 @@ class ProjectRepository({
   Future<bool> _directoryMissing(String path) async {
     try {
       final exists = await _filesystemApi
-          .directoryExistsAsync(path)
+          .directoryExistsAsync(path: path)
           .timeout(
             _directoryProbeTimeout,
             onTimeout: () {
@@ -280,7 +280,7 @@ class ProjectRepository({
     final normalized = normalizeProjectDirectory(directory: path);
     if (Platform.isWindows) return normalized;
     try {
-      return normalizeProjectDirectory(directory: _filesystemApi.resolveDirectoryPath(normalized));
+      return normalizeProjectDirectory(directory: _filesystemApi.resolveDirectoryPath(path: normalized));
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ProjectRepository: could not resolve links in $normalized; storing it as given", error, stackTrace);
       return normalized;
