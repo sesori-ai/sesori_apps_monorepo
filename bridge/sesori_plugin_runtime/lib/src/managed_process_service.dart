@@ -342,10 +342,21 @@ class ManagedProcessService<R>({
     if (await _spawnedProcessExited(process: process)) {
       return;
     }
-    await _processes.signalGraceful(pid: process.pid);
+    await _requestGracefulStop(pid: process.pid);
     await _clock.delay(duration: _gracefulShutdownWait);
     if (!await _spawnedProcessExited(process: process)) {
       await _processes.signalForce(pid: process.pid);
+    }
+  }
+
+  /// Requests a graceful stop without letting its failure skip the force step
+  /// that follows. Windows refuses a non-forced `taskkill` for a windowless
+  /// console runtime, so the caller's own checks must still decide on force.
+  Future<void> _requestGracefulStop({required int pid}) async {
+    try {
+      await _processes.signalGraceful(pid: pid);
+    } on Object catch (error, stackTrace) {
+      Log.w("[$_runtimeId] Graceful stop of pid $pid failed; force stopping it if it survives", error, stackTrace);
     }
   }
 
@@ -466,7 +477,7 @@ class ManagedProcessService<R>({
       }
     }
 
-    await _processes.signalGraceful(pid: _runtimePidOf(record: record));
+    await _requestGracefulStop(pid: _runtimePidOf(record: record));
     await _clock.delay(duration: _gracefulShutdownWait);
 
     final currentOwnedStillRunningAfterGraceful =

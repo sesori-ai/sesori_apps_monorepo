@@ -349,6 +349,30 @@ void main() {
       expect(fakes.ownership.writeCallCount, equals(0));
       expect(fakes.ownership.records, isEmpty);
     });
+
+    test("force stops the orphaned child when its graceful signal fails", () async {
+      final spawned = _spawned(pid: 231, port: 50144, exitImmediately: false);
+      fakes.spawn.results.add(spawned);
+      // Windows refuses a non-forced taskkill for a windowless console process.
+      fakes.processes.gracefulHooks[231] = () =>
+          throw const ProcessException("taskkill", <String>["/PID", "231", "/T"]);
+      fakes.processes.forceHooks[231] = spawned.completeExit;
+
+      await expectLater(
+        fakes.service().start(
+          spec: fakes.spec(
+            portPolicy: const ExplicitPortPolicy(port: 50144),
+            buildRecord: (draft) => throw StateError("malformed record"),
+          ),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(fakes.processes.signalRequests, equals(<String>["graceful:231", "force:231"]));
+      expect(fakes.ownership.records, isEmpty);
+    });
   });
 
   group("ManagedProcessService.start (deadline health policy)", () {

@@ -206,6 +206,35 @@ void main() {
       expect(ownershipRepository.records, isEmpty);
     });
 
+    test("shutdown still force stops a surviving runtime when the graceful signal fails", () async {
+      final record = _record(
+        ownerSessionId: "current-owner",
+        openCodePid: 704,
+        openCodeStartMarker: "open-current",
+        bridgePid: 900,
+        bridgeStartMarker: "bridge-start",
+      );
+      ownershipRepository.records[record.ownerSessionId] = record;
+      processService.inspectResults[704] = <ProcessIdentity?>[
+        _opencodeIdentity(pid: 704, startMarker: "open-current"),
+        _opencodeIdentity(pid: 704, startMarker: "open-current"),
+        null,
+      ];
+      // Windows refuses a non-forced taskkill for a windowless console process.
+      processService.gracefulHooks[704] = () => throw const ProcessException("taskkill", <String>["/PID", "704", "/T"]);
+
+      await _service(
+        ownershipRepository: ownershipRepository,
+        processService: processService,
+        bridge: bridge,
+        clock: clock,
+      ).stopOwnedRuntime(record: record);
+
+      expect(processService.signalRequests, equals(<String>["graceful:704", "force:704"]));
+      expect(clock.delays, equals(<Duration>[_gracefulShutdownWait]));
+      expect(ownershipRepository.records, isEmpty);
+    });
+
     test("shutdown keeps ownership when current-owned missing-marker child survives force", () async {
       final spawnedProcess = _FakeSpawnedProcess(
         identity: _opencodeIdentity(pid: 702, startMarker: null, port: 50131),
