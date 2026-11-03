@@ -4,37 +4,45 @@ A custom Dart linter to prevent sloppy code patterns. Built with `analysis_serve
 
 ## Available Rules
 
-| Rule                        | Description                                                                               | Severity |
-| --------------------------- | ----------------------------------------------------------------------------------------- | -------- |
-| `avoid_bang_operator`       | Prevents usage of the null assertion operator (`!`)                                       | WARNING  |
-| `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions                                  | WARNING  |
-| `avoid_implicit_tostring`   | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) | WARNING  |
-| `avoid_flutter_spinners` | Prevents direct Flutter spinner widgets; use `PregoActivityIndicator` | WARNING |
-| `avoid_material_icons` | Prevents Material `Icons` glyphs; use `TablerRegular` or `TablerSolid` | WARNING |
-| `avoid_raw_modal_presenters` | Prevents `showDialog`, `showModalBottomSheet` and other SDK modal presenters; use `showPregoModal` | WARNING |
-| `avoid_legacy_flutter_design_imports` | Prevents SDK Material and Cupertino imports; use the standalone UI packages | WARNING |
+Every rule is registered as a warning rule, so it is enabled wherever the plugin is loaded. The analyzer reports the diagnostics at INFO severity, and `dart analyze --fatal-infos` fails on them.
 
-> **Note:** All rules use WARNING severity to allow incremental cleanup. CI is configured to fail if any changed files contain warnings, encouraging cleanup of files you touch.
+| Rule | Description |
+| ---- | ----------- |
+| `avoid_as_cast` | Prevents `as` casts; use `is` checks or patterns |
+| `avoid_bang_operator` | Prevents the null assertion operator (`!`) |
+| `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions |
+| `avoid_flutter_spinners` | Prevents direct Flutter spinner widgets; use `PregoActivityIndicator` |
+| `avoid_implicit_tostring` | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) |
+| `avoid_legacy_flutter_design_imports` | Prevents SDK Material and Cupertino imports; use the standalone UI packages |
+| `avoid_material_icons` | Prevents Material `Icons` glyphs; use `TablerRegular` or `TablerSolid` |
+| `avoid_mutable_class_fields` | Prevents non-final public instance fields |
+| `avoid_navigator_of` | Prevents direct `Navigator` usage; use GoRouter |
+| `avoid_raw_go_router` | Prevents raw GoRouter navigation and direct GoRouter access; use the typed route extensions |
+| `avoid_raw_modal_presenters` | Prevents `showDialog`, `showModalBottomSheet` and other SDK modal presenters; use `showPregoModal` |
+| `avoid_string_literals_in_widgets` | Prevents hardcoded strings in `Text` widgets; use localization |
+| `prefer_edge_insets_directional` | Enforces `EdgeInsetsDirectional` for RTL support |
+| `prefer_exhaustive_switch` | Prevents `default` cases in switches over enums and sealed classes |
+| `prefer_required_named_parameters` | Enforces required named parameters for multi-argument functions |
+| `prefer_specific_type` | Prevents `Object` and `dynamic` (except `fromJson`/`toJson` maps and error values) |
+| `prefer_text_align_directional` | Enforces `TextAlign.start`/`end` instead of `left`/`right` for RTL support |
+
+`avoid_legacy_flutter_design_imports` also checks test files. The other rules skip files under `test/` and files ending in `_test.dart`.
 
 ## Setup
 
 ### 1. Configure Analysis Options
 
-In your `analysis_options.yaml`:
+In the `analysis_options.yaml` at the root of the workspace or package:
 
 ```yaml
 plugins:
   no_slop_linter:
-    path: modules/no_slop_linter # adjust path as needed
+    path: ../shared/no_slop_linter # relative to this analysis_options.yaml
 ```
 
-### 2. Install Plugin Dependencies
+The analysis server resolves the plugin's dependencies itself, so packages do not need a `no_slop_linter` dependency.
 
-```bash
-cd modules/no_slop_linter && dart pub get
-```
-
-### 3. Restart IDE Analysis Server
+### 2. Restart IDE Analysis Server
 
 - **VS Code**: `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) → "Dart: Restart Analysis Server"
 - **Android Studio**: File → Invalidate Caches / Restart
@@ -48,51 +56,23 @@ After setup, lint errors appear as squiggles. Hover to see the message and sugge
 ### CLI
 
 ```bash
-flutter analyze
+dart analyze --fatal-infos
 ```
 
-Plugin diagnostics appear with the `no_slop_linter/` prefix in the output.
-
-## CI Integration
-
-### GitHub Actions
-
-```yaml
-name: Lint Check
-
-on:
-  pull_request:
-    branches: [main, develop]
-
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: .tool-versions
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run analysis
-        run: flutter analyze --fatal-infos
-```
+Use `dart analyze`: `flutter analyze` hides the plugin's INFO diagnostics. Plugin diagnostics appear with the rule name in the output.
 
 ## Configuration
 
 ### Disabling Rules
 
-Rules registered as warnings are enabled by default. Rules registered as lints must be enabled in `analysis_options.yaml`:
+Turn a rule off for every file under an `analysis_options.yaml` that loads the plugin:
 
 ```yaml
-analyzer:
-  plugins:
-    no_slop_linter:
-      rules:
-        avoid_hardcoded_colors: true
+plugins:
+  no_slop_linter:
+    path: ../shared/no_slop_linter
+    diagnostics:
+      avoid_string_literals_in_widgets: false
 ```
 
 ### Ignoring Specific Lines

@@ -46,8 +46,6 @@ dev_dependencies:
   get_it: ^9.3.0
   http: ^1.6.0
   mocktail: ^1.0.5
-  no_slop_linter:
-    path: "../../shared/no_slop_linter"
 
 flutter:
   generate: true

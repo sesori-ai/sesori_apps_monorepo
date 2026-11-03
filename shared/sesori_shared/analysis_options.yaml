@@ -9,7 +9,6 @@ analyzer:
       build/**,
       docs/**,
       scripts/**,
-      modules/no_slop_linter/test/**,
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",
