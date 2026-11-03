@@ -45,9 +45,11 @@ typedef SessionDetailHeaderBuilder = Widget Function({
 });
 
 /// The session's own actions for the glass bar's menu, built when it opens.
+/// [isBusy] is whether the session works right now.
 typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
   required BuildContext context,
   required Session session,
+  required bool isBusy,
 });
 
 /// A pointer surface's page frame: an opaque header above the transcript
@@ -790,14 +792,14 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final session = state.hydratedSession;
     final canConfigureContinuation =
         !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
+    final isBusy = switch (state) {
+      SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
+        sessionStatus: sessionStatus,
+        childStatuses: childStatuses,
+      ),
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
+    };
     if (pageChrome != null) {
-      final isBusy = switch (state) {
-        SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
-          sessionStatus: sessionStatus,
-          childStatuses: childStatuses,
-        ),
-        SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
-      };
       return _PageFocus(
         child: Scaffold(
           body: Column(
@@ -866,7 +868,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             : PregoAnchorMenu(
                 flat: true,
                 menuWidth: 240,
-                acquireOpenLease: null,
                 entriesBuilder: () => [
                   if (openDiffs != null)
                     PregoMenuItem(
@@ -882,7 +883,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                       onTap: openDiffs,
                     ),
                   if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
-                  if (menuEntriesBuilder != null) ...menuEntriesBuilder(context: context, session: session),
+                  if (menuEntriesBuilder != null)
+                    ...menuEntriesBuilder(context: context, session: session, isBusy: isBusy),
                 ],
                 triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
                   key: const Key("session-detail-more"),

@@ -45,11 +45,7 @@ final class const RelayConnected() extends RelayConnectionState;
 ///
 /// [closeCode] is the WebSocket close code of the dropped connection, or
 /// `null` when none is available (e.g. a failed connect attempt).
-/// [closeReason] is the paired close reason string, needed to detect a
-/// bridge-replaced close during the relay-deploy rollout window (the relay
-/// sends `1000 + "replaced"` until it emits the dedicated code); it is fragile
-/// and only consulted for that fallback — the close code is authoritative.
-final class const RelayDisconnected({required final int? closeCode, required final String? closeReason}) extends RelayConnectionState;
+final class const RelayDisconnected({required final int? closeCode}) extends RelayConnectionState;
 
 class RelayClient({
     required final String _relayURL,
@@ -67,10 +63,8 @@ class RelayClient({
   /// The WebSocket close code of [connection], available once it has closed.
   int? closeCode({required RelayConnection connection}) => connection._channel.closeCode;
 
-  /// The WebSocket close reason of [connection], paired with
-  /// [closeCode]. Only meaningful for the bridge-replaced rollout fallback
-  /// (`1000 + "replaced"`); close reason strings are fragile, so close-code
-  /// semantics are authoritative everywhere else.
+  /// The WebSocket close reason of [connection], for diagnostics only; close
+  /// codes carry the semantics.
   String? closeReason({required RelayConnection connection}) => connection._channel.closeReason;
 
   /// The access token sent in [connection]'s auth message, or `null` if that
@@ -118,7 +112,7 @@ class RelayClient({
       // still-owned failure reports disconnected and cleans up here.
       if (identical(_pendingConnection, attempt)) {
         _pendingConnection = null;
-        _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
+        _connectionState.add(const RelayDisconnected(closeCode: null));
         httpClient.close(force: true);
         await _closeChannel(
           channel: channel,
@@ -153,7 +147,7 @@ class RelayClient({
       }
     } on Object catch (error, stackTrace) {
       final closeFuture = closeIfCurrent(connection: connection);
-      _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
+      _connectionState.add(const RelayDisconnected(closeCode: null));
       await closeFuture;
       Error.throwWithStackTrace(error, stackTrace);
     }
@@ -181,12 +175,7 @@ class RelayClient({
   void _handleConnectionDone({required RelayConnection connection}) {
     if (!identical(_connection, connection)) return;
     _connection = null;
-    _connectionState.add(
-      RelayDisconnected(
-        closeCode: connection._channel.closeCode,
-        closeReason: connection._channel.closeReason,
-      ),
-    );
+    _connectionState.add(RelayDisconnected(closeCode: connection._channel.closeCode));
   }
 
   Stream<RelayClientMessage> read({required RelayConnection connection}) {

@@ -787,18 +787,6 @@ class PluginRuntime({
     _publishSnapshots();
   }
 
-  Stream<T> useStream<T>({
-    required String pluginId,
-    required Enum operation,
-    required Stream<T> Function(BridgePluginApi api, int generation) body,
-  }) => _useStream(
-    pluginId: pluginId,
-    operation: operation,
-    startIfNeeded: true,
-    acquisitionResidency: PluginGenerationResidency.normal,
-    body: body,
-  );
-
   /// Holds an existing generation for a stream without starting a plugin.
   /// An inactive plugin produces an empty stream.
   Stream<T> useStreamIfActive<T>({
@@ -970,7 +958,7 @@ class PluginRuntime({
 
   /// Runtime-authorized stop events stay valid while their generation exists.
   /// A successor generation fences any older event still queued for delivery.
-  bool isCurrentEventGeneration({required String pluginId, required int generation}) {
+  bool _isCurrentEventGeneration({required String pluginId, required int generation}) {
     final slot = _slots[pluginId];
     return slot != null && slot.generation == generation;
   }
@@ -981,7 +969,7 @@ class PluginRuntime({
     required bool allowDuringStop,
   }) {
     return isCurrentGeneration(pluginId: pluginId, generation: generation) ||
-        (allowDuringStop && isCurrentEventGeneration(pluginId: pluginId, generation: generation));
+        (allowDuringStop && _isCurrentEventGeneration(pluginId: pluginId, generation: generation));
   }
 
   void requireCurrentGeneration({

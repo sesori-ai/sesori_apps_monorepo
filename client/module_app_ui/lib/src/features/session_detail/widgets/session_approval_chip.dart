@@ -25,7 +25,6 @@ class const SessionApprovalChip({
     final yolo = control.effective == SessionApprovalMode.yolo;
     return PregoAnchorMenu(
       flat: true,
-      acquireOpenLease: null,
       menuMaxHeight: null,
       // Room for "Approve everything (YOLO) (default)" without truncation.
       menuWidth: 300,

@@ -5,7 +5,7 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/new_session/new_session_state.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
-import "../cubits/session_list/session_list_cubit.dart";
+import "../cubits/session_list/session_actions_cubit.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../repositories/composer_draft_repository.dart";
@@ -23,15 +23,14 @@ import "../services/new_session_selection_tracker.dart";
 import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/session_abort_service.dart";
+import "../services/session_action_service.dart";
 import "../services/session_approval_service.dart";
 import "../services/session_auto_continuation_service.dart";
-import "../services/session_cleanup_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_interaction_calculator.dart";
 import "../services/session_launch_service.dart";
-import "../services/session_list_service.dart";
-import "../services/session_unseen_tracker.dart";
 import "../services/session_viewing_service.dart";
+import "../services/session_window_service.dart";
 import "../services/sse_event_tracker.dart";
 
 /// Shared cubit composition for the phone and desktop shells.
@@ -43,6 +42,7 @@ import "../services/sse_event_tracker.dart";
 
 SessionDetailCubit createSessionDetailCubit({
   required GetIt locator,
+  required SessionWindowService window,
   required String sessionId,
   required String projectId,
 }) {
@@ -69,25 +69,14 @@ SessionDetailCubit createSessionDetailCubit({
     sseEventTracker: locator<SseEventTracker>(),
     sessionLaunchService: locator<SessionLaunchService>(),
     fileReferenceOpenService: locator<FileReferenceOpenService>(),
+    window: window,
   );
 }
 
-SessionListCubit createSessionListCubit({
-  required GetIt locator,
-  required String projectId,
-  required List<Session> sessions,
-}) {
-  return SessionListCubit(
-    sessions: sessions,
-    sessionRepository: locator<SessionRepository>(),
-    sessionCleanupService: locator<SessionCleanupService>(),
-    sessionListService: locator<SessionListService>(),
-    connectionService: locator<ConnectionService>(),
-    sseEventTracker: locator<SseEventTracker>(),
-    sessionUnseenTracker: locator<SessionUnseenTracker>(),
-    projectId: projectId,
-    failureReporter: locator<FailureReporter>(),
-  );
+/// The session actions over [window], the window of the scope they start
+/// from.
+SessionActionsCubit createSessionActionsCubit({required GetIt locator, required SessionWindowService window}) {
+  return SessionActionsCubit(window: window, actionService: locator<SessionActionService>());
 }
 
 NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessionProject project}) {

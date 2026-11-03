@@ -51,7 +51,6 @@ void main() {
       rootGate.complete();
       await Future.wait([root, child, other, pluginTwo]);
       expect(childStarted.isCompleted, isTrue);
-      expect(dispatcher.activeLaneCount, isZero);
     });
 
     test("releases a failed family lane while unrelated families run", () async {
@@ -99,7 +98,6 @@ void main() {
       await expectLater(first, throwsStateError);
       await Future.wait([same, otherFamily, otherPlugin]);
       expect(sameStarted.isCompleted, isTrue);
-      expect(dispatcher.activeLaneCount, isZero);
     });
 
     test("resolves tickets in order and closes acceptance on repeated drain", () async {
@@ -144,7 +142,6 @@ void main() {
       firstResolutionGate.complete();
       await Future.wait([first, second, drain]);
       expect(repository.resolutionOrder, ["first", "second"]);
-      expect(dispatcher.activeLaneCount, isZero);
     });
   });
 }

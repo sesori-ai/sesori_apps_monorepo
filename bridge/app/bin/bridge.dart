@@ -184,7 +184,7 @@ class RunCommand() extends cli.Command<void> {
       ),
       deviceTypeDetector: DeviceTypeDetector(
         processRunner: ProcessRunner(),
-        platformChecker: DefaultPlatformChecker(),
+        platform: PlatformTarget.current().os,
       ),
       warningLogger: Log.w,
     );

@@ -167,7 +167,7 @@ Root `AGENTS.md` has the full suffix vocabulary. Concrete client examples:
 - **Layer 1 APIs** use `Api`: `SessionApi`, `ProjectApi`, `VoiceApi`, `NotificationApi`
 - **Layer 2 Repositories** use `Repository`: `SessionRepository`, `ProjectRepository`, `NotificationPreferencesRepository`
 - **Layer 3 Services** use `Service`: `SessionLaunchService`, `SelectedComputerService`, `NotificationRegistrationService`
-- **Layer 4 State** uses `Cubit`: `SessionListCubit`, `ProjectListCubit`, `LoginCubit`
+- **Layer 4 State** uses `Cubit`: `AllSessionsCubit`, `ProjectListCubit`, `LoginCubit`
 - **Desktop Layer 0 capabilities** live in `module_desktop_core/lib/src/foundation/platform/`: `SystemTray`, `WindowHost`, `LaunchAtLogin`, `SparkleUpdateEngine`
 - **Desktop process supervision** lives in `module_desktop_core`: `BridgeProcessRepository`, `BridgeProcessService`, `BridgeStatusTracker`, `BridgeControlCubit`
 

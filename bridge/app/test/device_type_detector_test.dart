@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/foundation/device_type_detector.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
 import "package:test/test.dart";
 
 void main() {
@@ -16,7 +17,7 @@ void main() {
             ),
           },
         ),
-        platformChecker: _FakePlatformChecker(isMacOS: true),
+        platform: PlatformOs.macos,
       );
 
       final isLaptop = await detector.isLaptop();
@@ -33,7 +34,7 @@ void main() {
             ),
           },
         ),
-        platformChecker: _FakePlatformChecker(isMacOS: true),
+        platform: PlatformOs.macos,
       );
 
       final isLaptop = await detector.isLaptop();
@@ -50,7 +51,7 @@ void main() {
             ),
           },
         ),
-        platformChecker: _FakePlatformChecker(isWindows: true),
+        platform: PlatformOs.windows,
       );
 
       final isLaptop = await detector.isLaptop();
@@ -67,7 +68,7 @@ void main() {
             ),
           },
         ),
-        platformChecker: _FakePlatformChecker(isWindows: true),
+        platform: PlatformOs.windows,
       );
 
       final isLaptop = await detector.isLaptop();
@@ -85,7 +86,7 @@ void main() {
             ),
           },
         ),
-        platformChecker: _FakePlatformChecker(isMacOS: true),
+        platform: PlatformOs.macos,
       );
 
       final isLaptop = await detector.isLaptop();
@@ -103,7 +104,7 @@ void main() {
       );
       final detector = DeviceTypeDetector(
         processRunner: processRunner,
-        platformChecker: _FakePlatformChecker(isMacOS: true),
+        platform: PlatformOs.macos,
       );
 
       final first = await detector.isLaptop();
@@ -123,7 +124,7 @@ void main() {
 
       final detector = DeviceTypeDetector(
         processRunner: _FakeProcessRunner(results: const <String, _FakeResult>{}),
-        platformChecker: _FakePlatformChecker(isLinux: true),
+        platform: PlatformOs.linux,
         linuxPowerSupplyPath: tempDir.path,
       );
 
@@ -141,7 +142,7 @@ void main() {
 
       final detector = DeviceTypeDetector(
         processRunner: _FakeProcessRunner(results: const <String, _FakeResult>{}),
-        platformChecker: _FakePlatformChecker(isLinux: true),
+        platform: PlatformOs.linux,
         linuxPowerSupplyPath: tempDir.path,
       );
 
@@ -154,7 +155,7 @@ void main() {
     test("returns false for Linux when power supply dir does not exist", () async {
       final detector = DeviceTypeDetector(
         processRunner: _FakeProcessRunner(results: const <String, _FakeResult>{}),
-        platformChecker: _FakePlatformChecker(isLinux: true),
+        platform: PlatformOs.linux,
         linuxPowerSupplyPath: "/nonexistent/path/",
       );
 
@@ -204,19 +205,4 @@ class _FakeProcessRunner({required final Map<String, _FakeResult> results}) impl
   }
 
   int callCount(String executable) => _callCounts[executable] ?? 0;
-}
-
-class _FakePlatformChecker({
-  final bool _isMacOS = false,
-  final bool _isWindows = false,
-  final bool _isLinux = false,
-}) implements PlatformChecker {
-  @override
-  bool get isMacOS => _isMacOS;
-
-  @override
-  bool get isWindows => _isWindows;
-
-  @override
-  bool get isLinux => _isLinux;
 }

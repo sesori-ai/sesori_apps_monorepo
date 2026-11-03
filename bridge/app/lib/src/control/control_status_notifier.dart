@@ -174,11 +174,8 @@ class ControlStatusNotifier({
       RelayConnected() => ControlRelayConnectionState.connected,
       // A displaced-by-another-bridge drop surfaces as a distinct takenOver
       // status so the GUI can offer "take over" instead of a plain outage
-      // (ADR A22); the same shared predicate the reconnect loop uses keys it,
-      // so the two never disagree.
-      RelayDisconnected(:final closeCode, :final closeReason)
-          when RelayCloseCodes.isBridgeReplaced(closeCode: closeCode, closeReason: closeReason) =>
-        ControlRelayConnectionState.takenOver,
+      // (ADR A22); the reconnect loop keys its long backoff on the same code.
+      RelayDisconnected(closeCode: RelayCloseCodes.bridgeReplaced) => ControlRelayConnectionState.takenOver,
       RelayDisconnected() => ControlRelayConnectionState.disconnected,
     };
   }

@@ -598,7 +598,7 @@ void main() {
       throwsA(unavailableFor("capture")),
     );
     await expectLater(
-      runtime.useStream<int>(
+      runtime.useStreamIfActive<int>(
         pluginId: "removed-plugin",
         operation: _TestOperation.watch,
         body: (_, _) => const Stream<int>.empty(),
@@ -784,10 +784,11 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
     final source = StreamController<int>();
 
     final subscription = runtime
-        .useStream(
+        .useStreamIfActive(
           pluginId: "one",
           operation: _TestOperation.stream,
           body: (_, _) => source.stream,
@@ -804,13 +805,14 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
     final source = StreamController<int>();
     final cancelled = Completer<void>();
     source.onCancel = cancelled.complete;
 
     final error = StateError("source failed");
     final completion = expectLater(
-      runtime.useStream(
+      runtime.useStreamIfActive(
         pluginId: "one",
         operation: _TestOperation.stream,
         body: (_, _) => source.stream,
@@ -831,12 +833,13 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
     final cancellationError = StateError("cancel failed");
     final source = StreamController<int>(
       onCancel: () => Future<void>.error(cancellationError),
     );
     final subscription = runtime
-        .useStream(
+        .useStreamIfActive(
           pluginId: "one",
           operation: _TestOperation.stream,
           body: (_, _) => source.stream,
@@ -853,14 +856,20 @@ void main() {
   test("stream cancellation before acquisition releases the eventual lease", () async {
     final startGate = Completer<void>();
     final factory = _FakeGenerationFactory(startGate: startGate.future);
-    final runtime = _runtime(factory: factory);
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        catalogSnapshot: () async => const PluginCatalogSnapshotUnavailable(),
+      ),
+    );
     addTearDown(runtime.dispose);
     var bodyCalled = false;
     final subscription = runtime
-        .useStream(
+        .useCatalogImportStream<int>(
           pluginId: "one",
-          operation: _TestOperation.stream,
-          body: (_, _) {
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (_) {
             bodyCalled = true;
             return const Stream<int>.empty();
           },
@@ -886,7 +895,7 @@ void main() {
     final sourceCancelled = Completer<void>();
     source.onCancel = sourceCancelled.complete;
     final completion = expectLater(
-      runtime.useStream(
+      runtime.useStreamIfActive(
         pluginId: "one",
         operation: _TestOperation.stream,
         body: (_, _) => source.stream,
@@ -915,7 +924,7 @@ void main() {
     final sourceCancelled = Completer<void>();
     source.onCancel = sourceCancelled.complete;
     final subscription = runtime
-        .useStream(
+        .useStreamIfActive(
           pluginId: "one",
           operation: _TestOperation.stream,
           body: (_, _) => source.stream,
@@ -1110,7 +1119,6 @@ void main() {
     );
     expect(handoffEvents.whereType<BridgeSseProjectUpdated>(), hasLength(1));
     expect(runtime.isCurrentGeneration(pluginId: "one", generation: 1), isFalse);
-    expect(runtime.isCurrentEventGeneration(pluginId: "one", generation: 1), isTrue);
     expect(
       runtime.isCurrentEvent(
         pluginId: "one",
@@ -1129,7 +1137,14 @@ void main() {
     );
 
     await runtime.start(pluginId: "one");
-    expect(runtime.isCurrentEventGeneration(pluginId: "one", generation: 1), isFalse);
+    expect(
+      runtime.isCurrentEvent(
+        pluginId: "one",
+        generation: 1,
+        allowDuringStop: true,
+      ),
+      isFalse,
+    );
     await eventSubscription.cancel();
   });
 
@@ -1559,7 +1574,7 @@ void main() {
     failingSource.onCancel = failingSourceCancelled.complete;
     silentSource.onCancel = silentSourceCancelled.complete;
     runtime
-        .useStream(
+        .useStreamIfActive(
           pluginId: "one",
           operation: _TestOperation.stream,
           body: (_, _) => failingSource.stream,
@@ -1570,7 +1585,7 @@ void main() {
           onDone: failingDone.complete,
         );
     runtime
-        .useStream(
+        .useStreamIfActive(
           pluginId: "one",
           operation: _TestOperation.stream,
           body: (_, _) => silentSource.stream,

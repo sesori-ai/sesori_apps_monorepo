@@ -12,7 +12,6 @@ See the [root README](../README.md) for the full monorepo overview.
 |-------|---------|
 | `LoginCubit` | OAuth sign-in flow, session restore |
 | `ProjectListCubit` | Fetches and holds the project list |
-| `SessionListCubit` | Fetches sessions for a project |
 | `SessionDetailCubit` | Manages live session state, messages, and SSE updates |
 | `ConnectionOverlayCubit` | Tracks relay connection status for the overlay widget |
 

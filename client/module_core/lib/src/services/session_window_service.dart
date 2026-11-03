@@ -18,6 +18,7 @@ import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "catalog_rescan_service.dart";
 import "models/all_sessions_mode.dart";
+import "models/optimistic_rename_tracker.dart";
 import "models/project_list_state.dart";
 import "models/session_list_item_state.dart";
 import "models/session_list_quick_filter.dart";
@@ -90,6 +91,22 @@ class SessionWindowService({
   /// The generation [loadMore]'s page request was sent under, so a lost
   /// connection tells it from a load that replaces the rows.
   int? _pageGeneration;
+
+  /// The renames still waiting for the bridge, by listed session. Their
+  /// titles cover whatever loads and live events bring until they settle.
+  final Map<String, OptimisticRenameTracker> _renameBySessionId = {};
+  int _nextRenameToken = 0;
+  final StreamController<({String sessionId, String? title})> _renameTitles = StreamController.broadcast();
+
+  /// The title each rename leaves a listed session showing, as its row does:
+  /// the newest pending title until the bridge has answered every rename, then
+  /// the title it settles on, which is the previous one when refused.
+  Stream<({String sessionId, String? title})> get renameTitles => _renameTitles.stream;
+
+  /// The title [sessionId] shows while a rename of it waits for the bridge;
+  /// null when none does.
+  String? pendingTitle({required String sessionId}) => _renameBySessionId[sessionId]?.visibleValue;
+
   Timer? _queryTimer;
   Timer? _reloadTimer;
   Timer? _countsTimer;
@@ -311,12 +328,7 @@ class SessionWindowService({
   /// answer, that match it, newest first, at most [limit]. A blank query
   /// matches every row.
   List<Session> searchLoaded({required String query, required List<Session> earlier, required int limit}) {
-    final loaded =
-        _completeSessions ??
-        switch (_state.value) {
-          SessionWindowLoaded(:final sessions) => sessions,
-          SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
-        };
+    final loaded = _loadedSessions();
     // A loaded row is the fresher copy of a session both hold.
     final loadedIds = {for (final session in loaded) session.id};
     final candidates = [
@@ -328,6 +340,78 @@ class SessionWindowService({
         candidates.where((session) => _matchesQuery(session: session, query: query, projects: projects)).toList()
           ..sort((a, b) => _compare(a: a, b: b));
     return matches.take(limit).toList();
+  }
+
+  /// Renames [sessionId] to [title]. Its row shows [title] at once, through
+  /// any load or live update, until the bridge answers; a refused rename
+  /// brings the previous title back. Answers whether the bridge renamed it.
+  /// A session this window does not list is renamed all the same.
+  Future<bool> renameSession({required String sessionId, required String title}) async {
+    final token = ++_nextRenameToken;
+    final rename = _renameBySessionId[sessionId] ?? _trackRename(sessionId: sessionId);
+    if (rename != null) {
+      rename.begin(token: token, value: title);
+      _emitRows();
+      _renameTitles.add((sessionId: sessionId, title: rename.visibleValue));
+    }
+    final renamed = await _requestRename(sessionId: sessionId, title: title);
+    // A window closed meanwhile has no row or page left to show the title.
+    if (rename != null && !_state.isClosed) {
+      rename.complete(token: token, value: title, succeeded: renamed);
+      if (rename.isSettled) {
+        _renameBySessionId.remove(sessionId);
+        // The bridge's own update of the session can come after its answer,
+        // so the row keeps the confirmed title rather than the one it loaded.
+        _storeTitle(sessionId: sessionId, title: rename.confirmedValue);
+        _renameTitles.add((sessionId: sessionId, title: rename.confirmedValue));
+      } else {
+        _emitRows();
+        _renameTitles.add((sessionId: sessionId, title: rename.visibleValue));
+      }
+    }
+    return renamed;
+  }
+
+  /// Starts tracking renames of [sessionId] from its listed title; null when
+  /// the window does not list it, as no row then shows the title.
+  OptimisticRenameTracker? _trackRename({required String sessionId}) {
+    final listed = _loadedSessions().firstWhereOrNull((session) => session.id == sessionId);
+    if (listed == null) return null;
+    return _renameBySessionId[sessionId] = OptimisticRenameTracker(confirmedValue: listed.title);
+  }
+
+  Future<bool> _requestRename({required String sessionId, required String title}) async {
+    try {
+      switch (await _sessionRepository.renameSession(sessionId: sessionId, title: title)) {
+        case SuccessResponse():
+          return true;
+        case ErrorResponse(:final error):
+          loge("Failed to rename session $sessionId", error);
+          return false;
+      }
+    } on Object catch (error, stackTrace) {
+      loge("Failed to rename session $sessionId", error, stackTrace);
+      return false;
+    }
+  }
+
+  /// Writes [title] into [sessionId]'s stored row and emits the rows.
+  void _storeTitle({required String sessionId, required String? title}) {
+    Session retitled(Session session) => session.id == sessionId ? session.copyWith(title: title) : session;
+    if (_completeSessions case final sessions?) {
+      _setComplete(sessions: sessions.map(retitled).toList());
+    } else if (_state.value case final SessionWindowLoaded loaded) {
+      _emit(_withSessions(loaded: loaded, sessions: List.unmodifiable(loaded.sessions.map(retitled))));
+    }
+  }
+
+  /// Emits the rows again, for a pending title that changed.
+  void _emitRows() {
+    if (_completeSessions case final sessions?) {
+      _emitComplete(sessions: sessions);
+    } else if (_state.value case final SessionWindowLoaded loaded) {
+      _emit(loaded);
+    }
   }
 
   Future<bool> _loadPaged({required int limit}) async {
@@ -616,28 +700,14 @@ class SessionWindowService({
       inRange: loaded.nextCursor == null,
     );
     if (identical(sessions, loaded.sessions)) return;
-    _emit(
-      SessionWindowLoaded(
-        sessions: sessions,
-        counts: loaded.counts,
-        nextCursor: loaded.nextCursor,
-        loadMore: loaded.loadMore,
-        awaitingAnswer: loaded.awaitingAnswer,
-      ),
-    );
+    _emit(_withSessions(loaded: loaded, sessions: sessions));
   }
 
   /// A prompt the bridge reports only as user activity still makes its session
   /// the newest, as the bridge folds that activity into a session's update
   /// time. Only loaded rows move; a page brings the others already folded.
   void _applyUserActivity({required Map<String, Map<String, SessionListItemState>> unseen}) {
-    final loaded =
-        _completeSessions ??
-        switch (_state.value) {
-          SessionWindowLoaded(:final sessions) => sessions,
-          SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
-        };
-    for (final session in loaded) {
+    for (final session in _loadedSessions()) {
       final activityAt = unseen[session.projectID]?[session.id]?.lastUserActivityAt;
       final time = session.time;
       if (activityAt == null || time == null || activityAt <= time.updated) continue;
@@ -870,20 +940,52 @@ class SessionWindowService({
         awaitingAnswer: loaded.awaitingAnswer,
       );
 
+  SessionWindowLoaded _withSessions({required SessionWindowLoaded loaded, required List<Session> sessions}) =>
+      SessionWindowLoaded(
+        sessions: sessions,
+        counts: loaded.counts,
+        nextCursor: loaded.nextCursor,
+        loadMore: loaded.loadMore,
+        awaitingAnswer: loaded.awaitingAnswer,
+      );
+
+  /// The sessions the window holds, in either mode.
+  List<Session> _loadedSessions() =>
+      _completeSessions ??
+      switch (_state.value) {
+        SessionWindowLoaded(:final sessions) => sessions,
+        SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
+      };
+
   void _cancelTimers() {
     _queryTimer?.cancel();
     _reloadTimer?.cancel();
     _countsTimer?.cancel();
   }
 
+  /// Every row the window emits passes here, so a pending rename's title
+  /// covers whatever a load or live update brought.
   void _emit(SessionWindowState state) {
-    if (!_state.isClosed) _state.add(state);
+    if (_state.isClosed) return;
+    _state.add(switch (state) {
+      SessionWindowLoaded(:final sessions) when _renameBySessionId.isNotEmpty => _withSessions(
+        loaded: state,
+        sessions: List.unmodifiable(sessions.map(_withPendingTitle)),
+      ),
+      SessionWindowLoaded() || SessionWindowLoading() || SessionWindowFailed() => state,
+    });
   }
+
+  Session _withPendingTitle(Session session) => switch (_renameBySessionId[session.id]) {
+    final rename? => session.copyWith(title: rename.visibleValue),
+    null => session,
+  };
 
   Future<void> dispose() async {
     _cancelTimers();
     await _subscriptions.dispose();
     await _state.close();
+    await _renameTitles.close();
   }
 }
 

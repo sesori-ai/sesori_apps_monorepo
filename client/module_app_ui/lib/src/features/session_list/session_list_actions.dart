@@ -10,39 +10,36 @@ part of "session_list_action_dispatcher.dart";
 /// so this path must never destroy anything unconfirmed.
 void _showDeleteSheet({
   required BuildContext context,
-  required SessionListCubit cubit,
+  required SessionActionsCubit actions,
   required Session session,
   required bool deletesFolder,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
-  final release = cubit.retainActionScope();
-  final sheet = showPregoModal<void>(
-    context: context,
-    title: context.loc.sessionListDeleteConfirmTitle,
-    builder: (_) => _DeleteSessionSheet(
-      session: session,
-      deletesFolder: deletesFolder,
-      onConfirm: () {
-        final release = cubit.retainActionScope();
-        unawaited(
+  unawaited(
+    showPregoModal<void>(
+      context: context,
+      title: context.loc.sessionListDeleteConfirmTitle,
+      builder: (_) => _DeleteSessionSheet(
+        session: session,
+        deletesFolder: deletesFolder,
+        onConfirm: () => unawaited(
           _deleteSession(
             context: context,
-            cubit: cubit,
+            actions: actions,
             sessionId: session.id,
             deleteWorktree: session.hasWorktree,
             deleteSessionFolder: deletesFolder,
             onSessionDeleted: onSessionDeleted,
-          ).whenComplete(release),
-        );
-      },
+          ),
+        ),
+      ),
     ),
   );
-  unawaited(sheet.whenComplete(release));
 }
 
 Future<void> _deleteSession({
   required BuildContext context,
-  required SessionListCubit cubit,
+  required SessionActionsCubit actions,
   required String sessionId,
   required bool deleteWorktree,
 
@@ -52,7 +49,7 @@ Future<void> _deleteSession({
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) async {
   final loc = context.loc;
-  final outcome = await cubit.deleteSession(
+  final result = await actions.deleteSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
     deleteSessionFolder: deleteSessionFolder,
@@ -60,36 +57,32 @@ Future<void> _deleteSession({
   );
   if (!context.mounted) return;
 
-  if (outcome != null) {
-    PregoPopupAlertPresenter.of(context).show(
-      title: loc.sessionListDeleted,
-      variant: PregoPopupAlertsNotificationsVariant.success,
-      content: switch (outcome) {
-        SessionCleanupOutcome.completed => const PregoPopupAlertContent(),
-        SessionCleanupOutcome.sharedWorktreeKept => PregoPopupAlertContent(
-          message: loc.sessionListCleanupWorktreeKept,
-        ),
-      },
-    );
-    onSessionDeleted?.call(context: context, sessionId: sessionId);
-    return;
-  }
-
-  // Check for cleanup rejection (409).
-  final rejection = cubit.lastCleanupRejection;
-  if (rejection != null) {
-    await _showForceDialog(
-      context: context,
-      cubit: cubit,
-      sessionId: sessionId,
-      deleteSessionFolder: deleteSessionFolder,
-      rejection: rejection,
-      onSessionDeleted: onSessionDeleted,
-    );
-  } else {
-    PregoPopupAlertPresenter.of(context).show(
-      title: loc.sessionListDeleteFailed,
-      variant: PregoPopupAlertsNotificationsVariant.error,
-    );
+  switch (result) {
+    case SessionDeleted(:final outcome):
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.sessionListDeleted,
+        variant: PregoPopupAlertsNotificationsVariant.success,
+        content: switch (outcome) {
+          SessionCleanupOutcome.completed => const PregoPopupAlertContent(),
+          SessionCleanupOutcome.sharedWorktreeKept => PregoPopupAlertContent(
+            message: loc.sessionListCleanupWorktreeKept,
+          ),
+        },
+      );
+      onSessionDeleted?.call(context: context, sessionId: sessionId);
+    case SessionDeleteRejected(:final rejection):
+      await _showForceDialog(
+        context: context,
+        actions: actions,
+        sessionId: sessionId,
+        deleteSessionFolder: deleteSessionFolder,
+        rejection: rejection,
+        onSessionDeleted: onSessionDeleted,
+      );
+    case SessionDeleteFailed():
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.sessionListDeleteFailed,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
   }
 }

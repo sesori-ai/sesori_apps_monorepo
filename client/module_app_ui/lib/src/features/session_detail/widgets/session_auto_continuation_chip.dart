@@ -24,7 +24,6 @@ class const SessionAutoContinuationChip({
     final loc = context.loc;
     return PregoAnchorMenu(
       flat: true,
-      acquireOpenLease: null,
       menuMaxHeight: null,
       triggerBuilder: (context, toggle) => PregoComposerChip(
         key: const Key("session-auto-continuation-chip"),

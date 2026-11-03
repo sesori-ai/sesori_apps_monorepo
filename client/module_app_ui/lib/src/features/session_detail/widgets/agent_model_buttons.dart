@@ -278,7 +278,6 @@ class const _AgentMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 240,
-      acquireOpenLease: null,
       menuMaxHeight: PregoPickerPopover.maxHeight,
       triggerBuilder: (context, toggle) => _pickerButton(
         hugLabel: hugLabel,
@@ -350,7 +349,6 @@ class const _VariantMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 220,
-      acquireOpenLease: null,
       menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => _pickerButton(

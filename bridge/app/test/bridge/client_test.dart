@@ -153,7 +153,7 @@ void main() {
       expect(client.closeCode(connection: connection), equals(RelayCloseCodes.bridgeRevoked));
     });
 
-    test("exposes the server's close reason (bridge-replaced rollout fallback)", () async {
+    test("exposes the server's close reason for diagnostics", () async {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
 
@@ -168,11 +168,11 @@ void main() {
       final serverWs = await server.nextClient();
       final streamDone = Completer<void>();
       client.read(connection: connection).listen((_) {}, onDone: streamDone.complete);
-      await serverWs.close(1000, "replaced");
+      await serverWs.close(1000, "bye");
       await streamDone.future.timeout(const Duration(seconds: 5));
 
       expect(client.closeCode(connection: connection), equals(1000));
-      expect(client.closeReason(connection: connection), equals("replaced"));
+      expect(client.closeReason(connection: connection), equals("bye"));
     });
   });
 
@@ -254,30 +254,6 @@ void main() {
 
       final state = await disconnected.timeout(const Duration(seconds: 5)) as RelayDisconnected;
       expect(state.closeCode, equals(RelayCloseCodes.bridgeRevoked));
-    });
-
-    test("remote close carries the close reason on the disconnected state", () async {
-      final server = await TestRelayServer.start();
-      addTearDown(server.close);
-
-      final client = RelayClient(
-        relayURL: "ws://127.0.0.1:${server.port}",
-        accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
-      );
-      final states = <RelayConnectionState>[];
-      client.connectionState.listen(states.add);
-      final connection = await client.connect();
-      _closeAfterTest(client: client, connection: connection);
-
-      final serverWs = await server.nextClient();
-      client.read(connection: connection).listen((_) {});
-      final disconnected = client.connectionState.firstWhere((state) => state is RelayDisconnected);
-      await serverWs.close(1000, "replaced");
-
-      final state = await disconnected.timeout(const Duration(seconds: 5)) as RelayDisconnected;
-      expect(state.closeCode, equals(1000));
-      expect(state.closeReason, equals("replaced"));
     });
 
     test("deliberate close emits no disconnected state", () async {
