@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../extensions/remote_failure_x.dart";
 import "../../widgets/harness_blocked_notice.dart";
+import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
 import "../session_detail/composer_presentation_scope.dart";
 import "../session_detail/widgets/agent_model_buttons.dart";
@@ -162,6 +163,21 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     super.didChangeDependencies();
     _popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     _launchingInBackgroundMessage = context.loc.newSessionLaunchingInBackground;
+    _nameProject(projects: context.read<ProjectListCubit>().state);
+  }
+
+  /// Gives the composer its project's name from the list, for one opened
+  /// before the list named it.
+  void _nameProject({required ProjectListState projects}) {
+    if (projects is! ProjectListLoaded) return;
+    final cubit = context.read<NewSessionCubit>();
+    final projectId = cubit.state.project.id;
+    final listed = projects.projects.where((project) => project.id == projectId).firstOrNull;
+    if (listed == null) return;
+    cubit.nameProject(
+      projectId: projectId,
+      name: projectDisplayName(loc: context.loc, project: listed),
+    );
   }
 
   @override
@@ -743,7 +759,10 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           );
         }
       },
-      child: SentBubbleLanding(child: child),
+      child: BlocListener<ProjectListCubit, ProjectListState>(
+        listener: (context, projects) => _nameProject(projects: projects),
+        child: SentBubbleLanding(child: child),
+      ),
     );
     if (chromePage != null) return listening(child: chromePage);
 

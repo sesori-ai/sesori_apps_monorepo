@@ -171,6 +171,8 @@ Widget _buildApp({
   bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
   GoRouterWidgetBuilder? sessionDetailBuilder,
+  String? projectName = "Project One",
+  ({ProjectListState initial, Stream<ProjectListState> updates})? projectListStates,
 }) {
   final router = GoRouter(
     initialLocation: "/sessions/new?project=project-1",
@@ -183,7 +185,7 @@ Widget _buildApp({
             path: "sessions/new",
             builder: (context, state) => NewSessionScreen(
               projectId: state.uri.queryParameters["project"],
-              projectName: "Project One",
+              projectName: projectName,
               entry: const NewSessionEntry.platform(),
             ),
           ),
@@ -222,8 +224,10 @@ Widget _buildApp({
   ];
   whenListen(
     projectList,
-    const Stream<ProjectListState>.empty(),
-    initialState: ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null),
+    projectListStates?.updates ?? const Stream<ProjectListState>.empty(),
+    initialState:
+        projectListStates?.initial ??
+        ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null),
   );
   return MultiBlocProvider(
     providers: [
@@ -547,6 +551,26 @@ void main() {
     );
     expect(find.text("half-written idea"), findsOneWidget);
     verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
+  });
+
+  testWidgets("a project the list names only later gives the composer its name", (tester) async {
+    final listed = StreamController<ProjectListState>();
+    addTearDown(listed.close);
+    await tester.pumpWidget(
+      _buildApp(
+        projectName: null,
+        projectListStates: (initial: const ProjectListState.loading(), updates: listed.stream),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final cubit = tester.element(find.byType(NewSessionView)).read<NewSessionCubit>();
+    expect(cubit.state.project.name, isNull);
+
+    final projects = [testProjectSummary(id: "project-1", name: "Project One")];
+    listed.add(ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null));
+    await tester.pumpAndSettle();
+
+    expect(cubit.state.project.name, "Project One");
   });
 
   testWidgets("the header stays where it is while the composer holds the keyboard", (tester) async {

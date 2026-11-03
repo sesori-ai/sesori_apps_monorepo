@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/new_session_subm
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/dedicated_worktree_preference_store.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
@@ -2890,7 +2891,10 @@ void main() {
 
       void answerAgents({required String projectId, required Future<ApiResponse<Agents>> Function() answer}) {
         when(
-          () => mockSessionService.listAgents(projectId: projectId, pluginId: any(named: "pluginId")),
+          () => mockSessionService.listAgents(
+            projectId: projectId,
+            pluginId: any(named: "pluginId"),
+          ),
         ).thenAnswer((_) => answer());
       }
 
@@ -2979,7 +2983,9 @@ void main() {
         await waitForComposer(cubit);
         expect(cubit.state.agentModelData?.agent, "build");
 
-        cubit.selectProject(project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder));
+        cubit.selectProject(
+          project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+        );
         await waitForComposer(cubit);
         expect(cubit.state.agentModelData?.agent, "plan");
       });
@@ -3042,8 +3048,49 @@ void main() {
 
         expect(cubit.state.agentModelData?.plugin?.id, "plugin-1");
         verify(() => mockSessionService.listAgents(projectId: "project-2", pluginId: "plugin-1")).called(1);
-        verifyNever(() => mockSessionService.listAgents(projectId: "project-1", pluginId: any(named: "pluginId")));
+        verifyNever(
+          () => mockSessionService.listAgents(
+            projectId: "project-1",
+            pluginId: any(named: "pluginId"),
+          ),
+        );
         verify(mockPluginRepository.listPlugins).called(1);
+      });
+
+      test("a login recheck the switch overtakes is asked again of the new project", () async {
+        const loginRequired = SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally.");
+        void answerProjectOne({required Future<SessionOptionsRepositoryResult> Function() answer}) => when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) => answer());
+        answerProjectOne(answer: () async => loginRequired);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+
+        // The user signed in and pressed Recheck; the bridge has yet to answer.
+        final recheck = Completer<SessionOptionsRepositoryResult>();
+        answerProjectOne(answer: () => recheck.future);
+        unawaited(cubit.refreshOptions());
+        await Future<void>.delayed(Duration.zero);
+
+        cubit.selectProject(project: projectTwo);
+        recheck.complete(loginRequired);
+        await waitForComposer(cubit);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        verify(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-2",
+            pluginId: "plugin-1",
+            mode: SessionOptionsRequestMode.forceRefresh,
+          ),
+        ).called(1);
       });
 
       test("stays put for the project it is in", () async {
@@ -3052,7 +3099,9 @@ void main() {
         await waitForComposer(cubit);
         final before = cubit.state;
 
-        cubit.selectProject(project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder));
+        cubit.selectProject(
+          project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+        );
 
         expect(cubit.state, same(before));
         verify(() => mockProjectRepository.getProject(projectId: "project-1")).called(1);

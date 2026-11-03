@@ -93,6 +93,10 @@ class NewSessionCubit({
   int _projectLoadGeneration = 0;
   ({int generation, NewSessionOptionsData? startedFrom, Future<void> refresh})? _silentRefresh;
 
+  /// The options load the bridge is still answering, so a project switch that
+  /// drops its answer can ask the new project the same way.
+  ({int generation, NewSessionOptionsLoadMode mode})? _optionsLoad;
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
@@ -368,23 +372,26 @@ class NewSessionCubit({
     // Discovery still running loads the options of the harness it lands on,
     // for the project the composer holds by then: this one.
     if (data.isPluginDiscoveryInFlight) return;
+    final pending = _optionsLoad;
+    final superseded = pending != null && pending.generation == _loadGeneration ? pending : null;
     // Whatever is still on its way for the old project no longer applies.
     final generation = ++_loadGeneration;
     final plugin = data.plugin;
     final source = data.optionsState.source;
-    // A login card, a harness with no options to load, or one the user loads
-    // on demand stays as it is: none of them is the project's.
+    // A harness with no options to load, or one the user loads on demand,
+    // stays as it is: neither is the project's. So does a login card, unless
+    // its recheck was on its way: the new project answers it instead.
     final reloads = switch (data.optionsState) {
       NewSessionOptionsLoadingState() ||
       NewSessionOptionsRefreshingState() ||
       NewSessionOptionsAvailableState() ||
       NewSessionOptionsFailureRetainedState() ||
       NewSessionOptionsFailureState() => true,
+      NewSessionOptionsAuthenticationRequiredUnavailableState() ||
+      NewSessionOptionsAuthenticationRequiredRetainedState() => superseded != null,
       NewSessionOptionsUnsupportedState() ||
       NewSessionOptionsUnavailableState() ||
       NewSessionOptionsLoadFailureUnavailableState() ||
-      NewSessionOptionsAuthenticationRequiredUnavailableState() ||
-      NewSessionOptionsAuthenticationRequiredRetainedState() ||
       NewSessionOptionsRefreshFailureUnavailableState() => false,
     };
     if (plugin == null || !plugin.isRoutable || source == null || !data.backendScope.isVerified || !reloads) return;
@@ -400,7 +407,8 @@ class NewSessionCubit({
         generation: generation,
         // A bridge without a session-options catalog serves options only when
         // asked to load them, which the user already did for the last project.
-        mode: source == NewSessionOptionsSource.legacy
+        // A recheck or retry still on its way is asked again as it was.
+        mode: source == NewSessionOptionsSource.legacy || superseded?.mode == NewSessionOptionsLoadMode.forcedRefresh
             ? NewSessionOptionsLoadMode.forcedRefresh
             : NewSessionOptionsLoadMode.dynamicLoad,
         // Carries the staged command, which stays if the project has it.
@@ -408,6 +416,14 @@ class NewSessionCubit({
         source: source,
       ),
     );
+  }
+
+  /// Names [projectId] as the project list does, for a composer opened before
+  /// the list knew it: the failure alert and the session's title carry it.
+  void nameProject({required String projectId, required String name}) {
+    final current = state;
+    if (current is! NewSessionComposing || current.project.id != projectId || current.project.name == name) return;
+    emit(current.copyWith(project: current.project.copyWith(name: name)));
   }
 
   void selectPlugin({required String pluginId}) {
@@ -552,6 +568,8 @@ class NewSessionCubit({
     required NewSessionOptionsSource source,
   }) async {
     final NewSessionOptionsLoadResult result;
+    final load = (generation: generation, mode: mode);
+    _optionsLoad = load;
     try {
       result = await _newSessionOptionsService.load(
         projectId: state.project.id,
@@ -579,6 +597,8 @@ class NewSessionCubit({
         projectWorktreeCapability: null,
       );
       return;
+    } finally {
+      if (_optionsLoad == load) _optionsLoad = null;
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;

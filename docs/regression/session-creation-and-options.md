@@ -55,8 +55,10 @@ variant, and worktree mode, and creating the session with its first input.
   and fast-mode picks stay, and nothing on screen blanks, jumps or crossfades. Only the option pills refresh in
   place, keeping what they show until the new project answers. A pick the new project doesn't offer gives way
   to its default and comes back on switching to a project that offers it; a staged command it lacks is
-  dropped. Answers still on their way for the project left are dropped, and the session starts in the project
-  shown at Send. Choosing the current project only closes the picker. The new-session composer keeps one
+  dropped. Answers still on their way for the project left are dropped; a login card's Recheck or a Retry
+  still on its way is asked again of the new project, so it resolves without a second press. The session starts
+  in the project shown at Send, and a composer opened before the project list named its project takes that
+  name once the list does, for the failure alert and the session's title. Choosing the current project only closes the picker. The new-session composer keeps one
   draft whatever its project. The desktop home's composer uses the same picker and works the same way, and so
   does another filter on either home. On the phone the header sits above
   the options and stays in place while the keyboard is open, the composer's or the picker's.
