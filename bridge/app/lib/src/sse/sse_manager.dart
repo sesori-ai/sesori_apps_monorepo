@@ -77,6 +77,10 @@ class SSEManager({
         onError: _createErrorHandler(connID),
       );
       _subscribers[connID] = subscriber;
+      Log.i(
+        "[sse] connID=$connID subscribed adoptedOrphan=${orphan != null ? "yes" : "no"} "
+        "backlog=${subscriber.queue.length}",
+      );
     } on Object {
       if (identical(_subscriptionOwners[connID], subscriptionOwner)) {
         _subscriptionOwners.remove(connID);
@@ -111,6 +115,7 @@ class SSEManager({
   /// continue to buffer incoming events and will be replayed when phones
   /// reconnect within [replayWindow].
   void orphanAll() {
+    Log.i("[sse] orphaning ${_subscribers.length} subscriber queues (already orphaned=${_orphanQueues.length})");
     for (final entry in _subscribers.entries) {
       _subscriptions.remove(entry.key)?.cancel();
       _orphanQueues.addLast((

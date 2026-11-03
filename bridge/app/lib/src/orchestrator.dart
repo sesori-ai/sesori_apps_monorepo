@@ -2286,7 +2286,7 @@ class OrchestratorSession._({
             if (outcome == RelaySendOutcome.stale) {
               throw StateError("relay connection changed before key exchange completed");
             }
-            Log.d("ready sent to connID=$connID");
+            Log.i("phone connID=$connID activated (key exchange)");
           } catch (e) {
             if (_cancelled) {
               throw StateError("cancelled");
@@ -2388,6 +2388,7 @@ class OrchestratorSession._({
             throw Exception("send resume ack for connId $connID: $e");
           }
 
+          Log.i("phone connID=$connID activated (resume)");
           _markPhoneConnected(connID: connID, activePhoneIncarnations: activePhoneIncarnations);
         }
       }
@@ -2403,7 +2404,6 @@ class OrchestratorSession._({
     if (!_firstPhoneConnectedCompleter.isCompleted) {
       _firstPhoneConnectedCompleter.complete();
     }
-    Log.d("phone $connID is now active");
   }
 
   void _handleDecryptedMessage({

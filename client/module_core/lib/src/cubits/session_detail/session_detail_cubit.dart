@@ -1307,7 +1307,9 @@ class SessionDetailCubit(
       _SessionRefreshResult.staleConnection => "stale_connection",
       _SessionRefreshResult.closed => "closed",
     };
-    logd(
+    // Info, unlike the other refresh steps: release logs must show whether a
+    // reconnect or resume brought back what the drop lost.
+    logi(
       "[session-refresh] action=${_SessionRefreshAction.completed.name} "
       "trigger=${trigger.logValue} result=$resultValue durationMs=${stopwatch.elapsedMilliseconds}",
     );
