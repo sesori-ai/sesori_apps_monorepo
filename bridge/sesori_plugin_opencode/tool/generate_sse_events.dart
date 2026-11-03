@@ -62,12 +62,12 @@ void main(List<String> args) {
     exit(1);
   }
   final manifest = readObject(jsonDecode(manifestFile.readAsStringSync()));
-  final events = readList(manifest['events']).cast<Map<String, dynamic>>();
+  final events = readList(manifest['events']).map(readObject).toList();
   final dart = readObject(manifest['dart']);
   final baseClass = readString(dart['baseClass']);
   final sessionClass = readString(dart['sessionMarkerClass']);
   _classPrefix = readString(dart['classPrefix']);
-  final imports = readObject(dart['imports']).cast<String, String>();
+  final imports = readObject(dart['imports']).map((key, value) => MapEntry(key, readString(value)));
   final envelope = readObjectOrNull(dart['envelope']);
   final fieldOwners = [...events, ?envelope];
 
@@ -362,8 +362,7 @@ void _emitVariant({
   out.writeln('}');
 }
 
-List<Map<String, dynamic>> _fieldsOf(Map<String, dynamic> owner) =>
-    readList(owner['fields']).cast<Map<String, dynamic>>();
+List<Map<String, dynamic>> _fieldsOf(Map<String, dynamic> owner) => readList(owner['fields']).map(readObject).toList();
 
 String _dartType(Map<String, dynamic> f, {required bool required}) {
   final ref = readStringOrNull(f['ref']);

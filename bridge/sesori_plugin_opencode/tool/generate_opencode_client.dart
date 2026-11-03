@@ -714,23 +714,29 @@ class SurfaceSpec({
   factory fromJson(Map<String, dynamic> json) {
     return SurfaceSpec(
       specPath: readString(json['specPath']),
-      operations: readList(json['operations']).cast<String>(),
-      extraSchemas: (readListOrNull(json['extraSchemas']) ?? const []).cast<String>(),
+      operations: readList(json['operations']).map(readString).toList(),
+      extraSchemas: (readListOrNull(json['extraSchemas']) ?? const []).map(readString).toList(),
       eventManifest: readStringOrNull(json['eventManifest']),
-      inlineResponseModels: (readObjectOrNull(json['inlineResponseModels']) ?? const {}).cast<String, String>(),
-      hoistSchemas: (readObjectOrNull(json['hoistSchemas']) ?? const {}).cast<String, String>(),
-      optionalProperties: {
-        for (final MapEntry(:key, :value) in (readObjectOrNull(json['optionalProperties']) ?? const {}).entries)
-          key: readList(value).cast<String>(),
-      },
-      sealedUnions: (readListOrNull(json['sealedUnions']) ?? const []).cast<String>(),
+      inlineResponseModels: (readObjectOrNull(json['inlineResponseModels']) ?? const {}).map(
+        (key, value) => MapEntry(key, readString(value)),
+      ),
+      hoistSchemas: (readObjectOrNull(json['hoistSchemas']) ?? const {}).map(
+        (key, value) => MapEntry(key, readString(value)),
+      ),
+      optionalProperties: (readObjectOrNull(json['optionalProperties']) ?? const {}).map(
+        (key, value) => MapEntry(key, readList(value).map(readString).toList()),
+      ),
+      sealedUnions: (readListOrNull(json['sealedUnions']) ?? const []).map(readString).toList(),
     );
   }
 }
 
 class ResponseSpec({required final Map<String, dynamic>? schema, required final String dartType}) {
   factory fromOpenApi(Map<String, dynamic> r) {
-    if (r case {'content': {'application/json': {'schema': final Map<String, dynamic> schema}}}) {
+    final content = readObjectOrNull(r['content']);
+    final json = readObjectOrNull(content?['application/json']);
+    final schema = readObjectOrNull(json?['schema']);
+    if (schema != null) {
       return ResponseSpec(schema: schema, dartType: _dartTypeFromSchema(schema));
     }
     return ResponseSpec(schema: null, dartType: 'Object');
@@ -758,7 +764,7 @@ class ResponseSpec({required final Map<String, dynamic>? schema, required final 
     }
     final anyOf = sch['anyOf'];
     if (anyOf is List) {
-      final variants = anyOf.cast<Map<String, dynamic>>();
+      final variants = anyOf.map(readObject).toList();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
         return _dartTypeFromSchema(nonNull.first);
@@ -893,7 +899,7 @@ class ModelWriter({
     // import list must include them or the synthesized classes will
     // reference undefined identifiers.
     if (_isUnion(schema)) {
-      final variants = readList(schema['anyOf'] ?? schema['oneOf']).cast<Map<String, dynamic>>();
+      final variants = readList(schema['anyOf'] ?? schema['oneOf']).map(readObject).toList();
       for (final v in variants) {
         final inlineRefs = _computeUsedRefs(v);
         usedRefs.addAll(inlineRefs);
@@ -941,7 +947,7 @@ class ModelWriter({
       for (final key in ['anyOf', 'oneOf']) {
         final v = node[key];
         if (v is List) {
-          final nonNull = v.where((x) => x is Map && x['type'] != 'null').cast<Map<String, dynamic>>().toList();
+          final nonNull = v.where((x) => x is Map && x['type'] != 'null').map(readObject).toList();
           if (nonNull.length == 1) {
             visitField(nonNull.first);
             return;
@@ -995,7 +1001,7 @@ class ModelWriter({
     // type-guard dispatch in `fromJson` calls each one by name.
     final variants = sch['anyOf'] ?? sch['oneOf'];
     if (variants is List) {
-      final disc = _findDiscriminator(variants.cast<Map<String, dynamic>>());
+      final disc = _findDiscriminator(variants.map(readObject).toList());
       for (final variant in variants) {
         if (variant is! Map) continue;
         final r = variant[r'$ref'];
@@ -1127,7 +1133,7 @@ class ModelWriter({
 
   String _emitEnum() {
     _usesJsonValue = true;
-    return _emitEnumBody(enumName: name, values: readList(schema['enum']).cast<String>());
+    return _emitEnumBody(enumName: name, values: readList(schema['enum']).map(readString).toList());
   }
 
   // -------------------------------------------------------------------------
@@ -1137,7 +1143,7 @@ class ModelWriter({
   String _emitUnion() {
     final b = StringBuffer();
 
-    final variants = readList(schema['anyOf'] ?? schema['oneOf']).cast<Map<String, dynamic>>();
+    final variants = readList(schema['anyOf'] ?? schema['oneOf']).map(readObject).toList();
     final declaration = schema['x-sesori-sealed'] == true ? 'sealed class' : 'abstract interface class';
 
     final disc = _findDiscriminator(variants);
@@ -1347,7 +1353,7 @@ class ModelWriter({
     if (type == 'string') {
       // Inline string variant — render an enum if the schema has an
       // `enum` list, otherwise a simple String wrapper.
-      final enumVals = readListOrNull(schema['enum'])?.cast<String>();
+      final enumVals = readListOrNull(schema['enum'])?.map(readString).toList();
       if (enumVals != null && enumVals.isNotEmpty) {
         _usesJsonValue = true;
         b.write(_emitEnumBody(enumName: className, values: enumVals));
@@ -1490,7 +1496,7 @@ class ModelWriter({
   }) {
     final b = StringBuffer();
     final properties = readObjectOrNull(sch['properties']) ?? const {};
-    final required = (readListOrNull(sch['required']) ?? const []).cast<String>();
+    final required = (readListOrNull(sch['required']) ?? const []).map(readString).toList();
 
     // Discriminator / literal properties: a required single-value enum
     // property on a class that implements a union is a constant that
@@ -1895,7 +1901,7 @@ class ModelWriter({
         // Multi-value inline enum → a real Dart enum named after the
         // field context (e.g. `Command.source` -> `CommandSource`), so
         // consumers switch on enum members instead of magic strings.
-        _registerInlineEnum(className: context, values: enumVals.cast<String>());
+        _registerInlineEnum(className: context, values: enumVals.map(readString).toList());
         return context;
       }
       // Plain string, or a single-value enum (a constant/discriminator,
@@ -1931,7 +1937,7 @@ class ModelWriter({
     }
     final anyOf = sch['anyOf'];
     if (anyOf is List) {
-      final variants = anyOf.cast<Map<String, dynamic>>();
+      final variants = anyOf.map(readObject).toList();
       // null + T -> T?
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
@@ -1942,7 +1948,7 @@ class ModelWriter({
     final enumValues = sch['enum'];
     if (enumValues is List) {
       // Inline enum — register for emission.
-      final values = enumValues.cast<String>();
+      final values = enumValues.map(readString).toList();
       final key = values.join('|');
       if (!_emittedEnumKeys.contains(key)) {
         _emittedEnumKeys.add(key);
@@ -2044,7 +2050,7 @@ class ModelWriter({
     // anyOf [T, null] → T? (and T? in any case since one branch is null)
     final anyOf = sch['anyOf'];
     if (anyOf is List) {
-      final variants = anyOf.cast<Map<String, dynamic>>();
+      final variants = anyOf.map(readObject).toList();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
         return _decodeField(name: name, sch: nonNull.first, isNullable: isNullable, context: context);
@@ -2065,7 +2071,7 @@ class ModelWriter({
     }
     final enumValues = sch['enum'];
     if (type == 'string' && enumValues is List) {
-      final enumVals = enumValues.cast<String>();
+      final enumVals = enumValues.map(readString).toList();
       if (enumVals.length > 1) {
         // Multi-value inline enum → generated Dart enum named after the
         // field context (e.g. `CommandSource`). `fromJson` maps values
@@ -2225,7 +2231,7 @@ class ModelWriter({
     // anyOf [T, null] → T? — delegate to the non-null branch.
     final anyOf = sch['anyOf'];
     if (anyOf is List) {
-      final variants = anyOf.cast<Map<String, dynamic>>();
+      final variants = anyOf.map(readObject).toList();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
         return _encodeField(
@@ -2329,7 +2335,7 @@ class ModelWriter({
     for (final candidate in allProps) {
       var allRequired = true;
       for (final sch in resolved) {
-        final required = (readListOrNull(sch['required']) ?? const []).cast<String>();
+        final required = (readListOrNull(sch['required']) ?? const []).map(readString).toList();
         if (!required.contains(candidate)) {
           allRequired = false;
           break;
@@ -2360,7 +2366,7 @@ class ModelWriter({
     final variants = schema['anyOf'] ?? schema['oneOf'];
     if (variants is! List) return [schema];
     return [
-      for (final v in variants.cast<Map<String, dynamic>>())
+      for (final v in variants.map(readObject).toList())
         if (readStringOrNull(v[r'$ref']) case final ref?) ..._unionLeafSchemas(_schemaNameFromRef(ref)) else v,
     ];
   }
@@ -2383,10 +2389,10 @@ class ModelWriter({
   /// properties: an INLINE variant (one declared directly in the union's
   /// anyOf/oneOf, not via $ref), or a resolved $ref variant's schema.
   String? _inlineDiscriminatorValue({required Map<String, dynamic> variant, required String discName}) {
-    return switch (readObjectOrNull(variant['properties'])?[discName]) {
-      {'enum': [final String value, ...]} => value,
-      _ => null,
-    };
+    final property = readObjectOrNull(readObjectOrNull(variant['properties'])?[discName]);
+    final values = readListOrNull(property?['enum']);
+    if (values == null || values.isEmpty) return null;
+    return readString(values.first);
   }
 
   /// Build a runtime type guard for a union variant. Returns a string
@@ -2410,7 +2416,7 @@ class ModelWriter({
       // narrows `json` to `Map<String, dynamic>` for the decode call
       // below. Without the explicit `is Map<String, dynamic>`, the
       // analyzer can't promote from a plain `is Map`.
-      final required = (readListOrNull(variant['required']) ?? const []).cast<String>();
+      final required = (readListOrNull(variant['required']) ?? const []).map(readString).toList();
       final properties = readObjectOrNull(variant['properties']);
       for (final field in required) {
         if (readObjectOrNull(properties?[field]) case {'enum': [final value]}) {
