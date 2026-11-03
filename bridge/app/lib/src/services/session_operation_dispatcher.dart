@@ -1,7 +1,5 @@
 import "dart:async";
 
-import "package:meta/meta.dart";
-
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 
@@ -53,9 +51,6 @@ class SessionOperationDispatcher({required final SessionRepository _sessionRepos
     _disposed = true;
     return drain();
   }
-
-  @visibleForTesting
-  int get activeLaneCount => _familyLanes.length;
 
   Future<void> _drain() async {
     beginShutdown();

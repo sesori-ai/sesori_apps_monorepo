@@ -29,30 +29,28 @@ void main() {
     final pluginRuntime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode"]);
     final bridgeSettingsRepository = createTestBridgeSettingsRepository();
     final pluginLifecycleRepository = PluginLifecycleRepository(runtime: pluginRuntime);
-    final lifecycleService =
-        PluginLifecycleService(
-          lifecycleRepository: pluginLifecycleRepository,
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: bridgeSettingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: const [
-            (
-              id: "opencode",
-              displayName: "OpenCode",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {"opencode"},
-          setupById: const {
-            "opencode": PluginSetupNotInspected(),
-          },
-        );
+    final lifecycleService = PluginLifecycleService(
+      lifecycleRepository: pluginLifecycleRepository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: bridgeSettingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "opencode",
+          displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {"opencode"},
+      setupById: const {
+        "opencode": PluginSetupNotInspected(),
+      },
+    );
     final httpClient = http.Client();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",

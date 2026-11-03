@@ -31,30 +31,27 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   final runtime = createTestPluginRuntime(plugins: plugins);
   final lifecycleRepository = PluginLifecycleRepository(runtime: runtime);
   final settingsRepository = createTestBridgeSettingsRepository();
-  final service =
-      PluginLifecycleService(
-          lifecycleRepository: lifecycleRepository,
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: [
-            for (final plugin in plugins)
-              (
-                id: plugin.id,
-                displayName: plugin.id,
-                activationPolicy: PluginActivationPolicy.onDemand,
-                residencyPolicy: PluginResidencyPolicy.transient,
-                sessionOptionsScope: PluginSessionOptionsScope.project,
-                managementCapabilities: defaultManagementCapabilities,
-                supportsPromptAttachments: false,
-              ),
-          ],
-        )
-        ..initialize(
-          disabledPluginIds: const {},
-          setupById: {for (final plugin in plugins) plugin.id: const PluginSetupReady()},
-        );
+  final service = PluginLifecycleService(
+    lifecycleRepository: lifecycleRepository,
+    preferredDefaultPluginId: legacyMissingPluginId,
+    bridgeSettingsRepository: settingsRepository,
+    idleTimerScheduler: const PluginIdleTimerScheduler(),
+    bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+    plugins: [
+      for (final plugin in plugins)
+        (
+          id: plugin.id,
+          displayName: plugin.id,
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+    ],
+    disabledPluginIds: const {},
+    setupById: {for (final plugin in plugins) plugin.id: const PluginSetupReady()},
+  );
   _runtimes[service] = runtime;
   _lifecycleRepositories[service] = lifecycleRepository;
   _settingsRepositories[service] = settingsRepository;
@@ -95,7 +92,9 @@ PluginRuntime runtimeForLifecycleService({required PluginLifecycleService servic
   return runtime;
 }
 
-enum _TestPluginOperation() { activate }
+enum _TestPluginOperation() {
+  activate,
+}
 
 class _TestBridgeSettingsRepository({required var BridgeSettings settings}) implements BridgeSettingsRepository {
   @override
