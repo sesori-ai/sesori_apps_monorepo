@@ -443,11 +443,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   Future<List<PluginProject>> getProjects() async => [];
 
   @override
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async => [];
+  Future<List<PluginSession>> getSessions({required String projectId}) async => [];
 
   @override
   Future<PluginSession> createSession({
@@ -480,12 +476,6 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     title: null,
     time: null,
   );
-
-  @override
-  Future<PluginProject> renameProject({
-    required String projectId,
-    required String name,
-  }) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}
@@ -566,9 +556,6 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
-
-  @override
-  Future<bool> healthCheck() async => true;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {

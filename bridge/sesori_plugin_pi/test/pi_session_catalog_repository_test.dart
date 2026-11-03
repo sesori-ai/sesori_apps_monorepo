@@ -30,7 +30,7 @@ void main() {
       expect(sessions.first.time?.updated, 20);
     });
 
-    test("filters by normalized project before applying pagination", () async {
+    test("filters by normalized project", () async {
       final repository = PiSessionCatalogRepository(
         storageApi: FakePiCatalogSessionStorageApi(
           initialSessions: [
@@ -43,11 +43,9 @@ void main() {
       );
 
       expect(
-        (await repository.getSessions(projectId: "/repo/app/.", start: 1, limit: 2)).map((session) => session.id),
-        ["second", "first"],
+        (await repository.getSessions(projectId: "/repo/app/.")).map((session) => session.id),
+        ["third", "second", "first"],
       );
-      expect(await repository.getSessions(projectId: "/repo/app", start: 99, limit: 2), isEmpty);
-      expect(await repository.getSessions(projectId: "/repo/app", start: 0, limit: 0), isEmpty);
     });
 
     test("lists direct children using resolved parent ids", () async {

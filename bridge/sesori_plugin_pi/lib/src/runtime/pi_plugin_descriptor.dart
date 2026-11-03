@@ -18,13 +18,11 @@ typedef PiPluginFactory = PiPlugin Function({
   required Map<String, String> storageEnvironment,
   required Map<String, String> processEnvironment,
   required PiProcessFactory processFactory,
-  required CommandExecutor commandExecutor,
   required ServerClock clock,
   required String launchDirectory,
   required Duration startupExitTimeout,
   required Duration historyRpcTimeout,
   required Duration catalogTimeout,
-  required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
   required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
@@ -35,13 +33,11 @@ PiPlugin _buildPiPlugin({
   required Map<String, String> storageEnvironment,
   required Map<String, String> processEnvironment,
   required PiProcessFactory processFactory,
-  required CommandExecutor commandExecutor,
   required ServerClock clock,
   required String launchDirectory,
   required Duration startupExitTimeout,
   required Duration historyRpcTimeout,
   required Duration catalogTimeout,
-  required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
   required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
@@ -50,13 +46,11 @@ PiPlugin _buildPiPlugin({
   storageEnvironment: storageEnvironment,
   processEnvironment: processEnvironment,
   processFactory: processFactory,
-  commandExecutor: commandExecutor,
   clock: clock,
   launchDirectory: launchDirectory,
   startupExitTimeout: startupExitTimeout,
   historyRpcTimeout: historyRpcTimeout,
   catalogTimeout: catalogTimeout,
-  healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
   idleTimeoutChanges: idleTimeoutChanges,
   editorTimeout: editorTimeout,
@@ -359,12 +353,6 @@ final class const PiPluginDescriptor({
     const manifest = PiRuntimeManifest();
     final binaryPath = _explicitBin(host.config) ?? host.provisionedRuntimePath ?? manifest.pathExecutableName;
     final processFactory = HostPiProcessFactory(processes: host.processes);
-    final commandExecutor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: host.processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    );
     final PiPlugin plugin;
     try {
       plugin = _buildPlugin(
@@ -372,13 +360,11 @@ final class const PiPluginDescriptor({
         storageEnvironment: host.environment,
         processEnvironment: const {},
         processFactory: processFactory.spawn,
-        commandExecutor: commandExecutor,
         clock: host.clock,
         launchDirectory: io.Directory.current.path,
         startupExitTimeout: const Duration(seconds: 5),
         historyRpcTimeout: const Duration(minutes: 2),
         catalogTimeout: const Duration(seconds: 30),
-        healthTimeout: const Duration(seconds: 10),
         resolveIdleTimeout: () => host.pluginIdleTimeout,
         idleTimeoutChanges: host.pluginIdleTimeoutChanges,
         editorTimeout: const Duration(minutes: 30),

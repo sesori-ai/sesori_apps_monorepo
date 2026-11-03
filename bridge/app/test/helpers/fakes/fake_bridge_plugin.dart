@@ -33,7 +33,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
   PluginSession? renameSessionResult;
-  PluginProject? renameProjectResult;
   List<PluginSession> childSessionsResult = [];
   Map<String, PluginSessionStatus> sessionStatusesResult = {};
   List<PluginAgent> agentsResult = [];
@@ -43,8 +42,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   PluginProject? currentProjectResult;
 
   String? lastGetSessionsWorktree;
-  int? lastGetSessionsStart;
-  int? lastGetSessionsLimit;
   String? lastGetCommandsProjectId;
   String? lastGetMessagesSessionId;
   String? lastGetPendingQuestionsSessionId;
@@ -61,8 +58,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   ({String providerID, String modelID})? lastCreateSessionModel;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
-  String? lastRenameProjectId;
-  String? lastRenameProjectName;
   String? lastDeleteSessionId;
   String? lastArchiveSessionId;
   String? lastDeleteWorkspaceProjectId;
@@ -96,9 +91,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   String? lastReplyToPermissionSessionId;
   PluginPermissionReply? lastReplyToPermissionReply;
 
-  bool throwOnHealthCheck = false;
-  bool healthCheckResult = true;
-  int healthCheckCallCount = 0;
   bool throwOnGetProjects = false;
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
@@ -126,13 +118,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<void> closeEvents() => _controller.close();
 
   @override
-  Future<bool> healthCheck() async {
-    healthCheckCallCount++;
-    if (throwOnHealthCheck) throw Exception("healthCheck error");
-    return healthCheckResult;
-  }
-
-  @override
   Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
     required PluginCatalogCancellationSignal cancellation,
   }) async => const PluginCatalogSnapshotUnavailable();
@@ -146,15 +131,9 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
+  Future<List<PluginSession>> getSessions({required String projectId}) async {
     if (throwOnGetSessions) throw Exception("getSessions error");
     lastGetSessionsWorktree = projectId;
-    lastGetSessionsStart = start;
-    lastGetSessionsLimit = limit;
     return sessionsResult;
   }
 
@@ -214,13 +193,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
           title: null,
           time: null,
         );
-  }
-
-  @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) async {
-    lastRenameProjectId = projectId;
-    lastRenameProjectName = name;
-    return renameProjectResult ?? const PluginProject(id: "", directory: "");
   }
 
   @override

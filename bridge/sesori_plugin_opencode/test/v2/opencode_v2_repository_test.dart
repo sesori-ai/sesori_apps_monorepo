@@ -84,11 +84,6 @@ void main() {
     final project = await repository.getProject(directory: worktree);
     expect(project.id, directory);
     expect(project.directory, worktree);
-    final renamed = await repository.renameProject(directory: worktree, name: "Renamed");
-    expect(renamed.name, "Renamed");
-    expect(renamed.directory, worktree);
-    expect(api.updatedProjectId, "project-fixture");
-    expect(api.projectBody!.canonical, isNull);
   });
 
   test("reads project roots and direct children with native identity filters", () async {
@@ -414,9 +409,7 @@ class FakeV2Api({
     }),
   ];
   final rootQueries = <String?>[];
-  String? updatedProjectId;
   Object? historyFailure;
-  V2UpdateProjectBody? projectBody;
   V2CreateSessionBody? createBody;
   V2SwitchAgentBody? agentBody;
   V2SwitchModelBody? modelBody;
@@ -434,13 +427,6 @@ class FakeV2Api({
     directory: directory,
     project: LocationPublicInfoProject(id: project.id, directory: directory, canonical: project.canonical),
   );
-  @override
-  Future<Project> updateProject({required String projectId, required V2UpdateProjectBody body}) async {
-    updatedProjectId = projectId;
-    projectBody = body;
-    return project.copyWith(name: body.name);
-  }
-
   @override
   Future<List<SessionInfo>> listSessions({required String? directory, required String? parentId}) async {
     sessionQueries.add((directory: directory, parentId: parentId));

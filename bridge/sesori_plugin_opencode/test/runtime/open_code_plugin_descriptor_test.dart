@@ -955,7 +955,6 @@ void main() {
       addTearDown(() => plugin.shutdown(budget: null));
       expect(plugin.api, isA<OpenCodeV2Plugin>());
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(await plugin.api.healthCheck(), isTrue);
       expect(host.processes.spawnedProcesses, isEmpty);
       expect(host.processes.signals, isEmpty);
     });

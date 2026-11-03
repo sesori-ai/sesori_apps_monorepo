@@ -1000,8 +1000,5 @@ class _FakeBridgePluginApi() extends FakeBridgePlugin {
   Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
 
   @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) => throw UnimplementedError();
-
-  @override
   Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
 }

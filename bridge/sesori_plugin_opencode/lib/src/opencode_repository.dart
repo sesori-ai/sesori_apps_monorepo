@@ -59,7 +59,6 @@ import "models/openapi/user_message.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/update_project_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
@@ -270,30 +269,6 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       worktree: worktree,
       directory: directory,
       name: isGlobalProject ? null : project.name,
-      activity: null,
-    );
-  }
-
-  Future<PluginProject> renameProject({required String directory, required String name}) async {
-    final project = await _api.getProject(directory: directory);
-    if (project.id == _globalProjectId) {
-      return _pluginModelMapper.mapProject(
-        worktree: directory,
-        directory: directory,
-        name: name,
-        activity: null,
-      );
-    }
-
-    final updated = await _api.updateProject(
-      projectId: project.id,
-      directory: directory,
-      body: UpdateProjectBody(name: name),
-    );
-    return _pluginModelMapper.mapProject(
-      worktree: updated.worktree,
-      directory: directory,
-      name: updated.name,
       activity: null,
     );
   }

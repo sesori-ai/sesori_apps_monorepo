@@ -44,29 +44,6 @@ void main() {
     });
   });
 
-  group("OpenCodeRepository.renameProject", () {
-    test("renames a virtual folder without updating the shared global project", () async {
-      final api = FakeOpenCodeApi(
-        currentProject: openCodeProject(
-          id: "global",
-          worktree: "/",
-          name: "Global",
-        ),
-      );
-      final repository = OpenCodeRepository(api);
-
-      final project = await repository.renameProject(
-        directory: "/projects/plain-folder",
-        name: "Plain Project",
-      );
-
-      expect(api.updateProjectCalls, 0);
-      expect(project.id, "/projects/plain-folder");
-      expect(project.directory, "/projects/plain-folder");
-      expect(project.name, "Plain Project");
-    });
-  });
-
   group("OpenCodeRepository.getSessions", () {
     test("excludes child sessions (non-null parentID)", () async {
       final api = FakeOpenCodeApi(

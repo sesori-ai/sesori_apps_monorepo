@@ -120,15 +120,6 @@ void main() {
       });
     });
 
-    test('markFailed reports a terminal failure', () {
-      final plugin = _SteadyPlugin();
-      plugin.reportReady();
-
-      plugin.reportFailed('backend gone', cause: 'socket closed');
-
-      expect(plugin.currentStatus, const PluginFailed(reason: 'backend gone', cause: 'socket closed'));
-    });
-
     group('shutdown', () {
       test('emits Stopping then Stopped around onShutdown', () async {
         final plugin = _SteadyPlugin();
@@ -156,26 +147,6 @@ void main() {
         expect(plugin.currentStatus, const PluginStopped());
       });
 
-      test('works after a terminal failure', () async {
-        final plugin = _SteadyPlugin();
-        plugin.reportReady();
-        plugin.reportFailed('backend gone');
-
-        await plugin.shutdown(budget: null);
-
-        expect(plugin.currentStatus, const PluginStopped());
-      });
-
-      test('drops a markFailed arriving during shutdown', () async {
-        final plugin = _SteadyPlugin();
-        plugin.reportReady();
-
-        await plugin.shutdown(budget: null);
-        plugin.reportFailed('exit monitor fired late');
-
-        expect(plugin.currentStatus, const PluginStopped());
-      });
-
       test('drops a pending degradation that fires after shutdown', () async {
         final plugin = _SteadyPlugin();
         plugin.reportReady();
@@ -196,17 +167,6 @@ void main() {
 
         expect(plugin.clock.pendingDelayDurations, isEmpty);
         expect(plugin.currentStatus, const PluginStopped());
-      });
-
-      test('markDegraded after a terminal failure schedules no timer', () async {
-        final plugin = _SteadyPlugin();
-        plugin.reportReady();
-        plugin.reportFailed('backend gone');
-
-        plugin.reportDegraded();
-
-        expect(plugin.clock.pendingDelayDurations, isEmpty);
-        expect(plugin.currentStatus, const PluginFailed(reason: 'backend gone', cause: null));
       });
 
       test('reaches Stopped even when onShutdown throws', () async {
@@ -276,8 +236,6 @@ class _SteadyPlugin({final bool throwOnShutdown = false}) with SteadyPluginLifec
   void reportDegraded({bool recoverable = true, bool requiresUserAction = false, String? userActionHint}) {
     markDegraded(recoverable: recoverable, requiresUserAction: requiresUserAction, userActionHint: userActionHint);
   }
-
-  void reportFailed(String reason, {Object? cause}) => markFailed(reason, cause: cause);
 
   Future<void> runCleanups(List<Future<void> Function()> cleanups) => runShutdownCleanups(cleanups: cleanups);
 

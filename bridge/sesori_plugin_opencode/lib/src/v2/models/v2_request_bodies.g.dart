@@ -67,12 +67,3 @@ Map<String, dynamic> _$V2PermissionReplyBodyToJson(
   'decision': instance.decision.toJson(),
   'message': ?instance.message,
 };
-
-Map<String, dynamic> _$V2UpdateProjectBodyToJson(
-  _V2UpdateProjectBody instance,
-) => <String, dynamic>{
-  'canonical': ?instance.canonical,
-  'name': ?instance.name,
-  'icon': ?instance.icon?.toJson(),
-  'commands': ?instance.commands?.toJson(),
-};

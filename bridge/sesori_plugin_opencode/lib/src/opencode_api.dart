@@ -22,7 +22,6 @@ import "models/openapi/session_status.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/update_project_body.dart";
 import "open_code_raw_http_client.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
@@ -140,18 +139,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     );
   }
 
-  Future<bool> healthCheck() async {
-    try {
-      await _client.get(
-        path: "/global/health",
-        timeout: const Duration(seconds: 5),
-      );
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
   Future<List<Project>> listProjects() async {
     final response = await _client.get(path: "/project");
 
@@ -259,24 +246,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       body: jsonEncode(body),
     );
     return Session.fromJson(jsonDecodeMap(response.body));
-  }
-
-  /// Updates a project by its OpenCode-assigned ID (NOT the worktree path
-  /// that Sesori uses as the project identifier).
-  Future<Project> updateProject({
-    required String projectId,
-    required String directory,
-    required UpdateProjectBody body,
-  }) async {
-    final response = await _client.patch(
-      path: "/project/$projectId",
-      headers: {
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
-      },
-      body: jsonEncode(body.toJson()),
-    );
-    return Project.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<void> deleteSession({

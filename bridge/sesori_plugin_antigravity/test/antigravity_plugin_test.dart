@@ -408,11 +408,11 @@ void main() {
     final visible = await h.plugin.listAllSessions(knownDirectories: const {"/new-cwd"});
     expect(visible.map((entry) => entry.id), [session.id]);
     expect(
-      await h.plugin.getSessions(projectId: "${h.directory.path}/antigravity-acp/conversations", start: 0, limit: 20),
+      await h.plugin.getSessions(projectId: "${h.directory.path}/antigravity-acp/conversations"),
       isEmpty,
     );
     expect(
-      (await h.plugin.getSessions(projectId: "/new-cwd", start: 0, limit: 20)).map((entry) => entry.id),
+      (await h.plugin.getSessions(projectId: "/new-cwd")).map((entry) => entry.id),
       [session.id],
     );
     final beforeRefresh = process.stdin.frames.length;

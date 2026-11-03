@@ -53,16 +53,6 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     );
   }
 
-  Future<bool> healthCheck() async {
-    try {
-      await getServerInfo();
-      return true;
-    } on Object catch (error, stackTrace) {
-      Log.w("[opencode-v2] health probe failed", error, stackTrace);
-      return false;
-    }
-  }
-
   Future<LocationPublicInfo> getLocation({required String directory}) async {
     const path = "/api/location";
     return _object<LocationPublicInfo>(
@@ -221,17 +211,6 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       response: await _response(request: _client.get(path: path)),
       operation: path,
       decode: (body) => jsonDecodeListMap(body).map(Project.fromJson).toList(),
-    );
-  }
-
-  Future<Project> updateProject({required String projectId, required V2UpdateProjectBody body}) async {
-    final path = "/api/project/${Uri.encodeComponent(projectId)}";
-    return _object<Project>(
-      response: await _response(
-        request: _client.patch(path: path, headers: _jsonHeaders, body: jsonEncode(body.toJson())),
-      ),
-      operation: path,
-      fromJson: Project.fromJson,
     );
   }
 

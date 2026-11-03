@@ -22,8 +22,7 @@ abstract class BridgePlugin() {
   /// the current status, then live updates. Closes after `PluginStopped`.
   ///
   /// This is the *debounced* lifecycle signal used for orchestration
-  /// decisions — distinct from [BridgePluginApi.healthCheck], which is an
-  /// instantaneous plugin-scoped probe.
+  /// decisions.
   ///
   /// Transitions follow the state machine documented on [PluginStatus];
   /// in particular `Failed` can never follow `Stopping`.

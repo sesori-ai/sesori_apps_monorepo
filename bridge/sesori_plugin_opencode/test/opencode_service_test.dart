@@ -265,77 +265,13 @@ void main() {
       ),
     ];
 
-    test("returns all sessions when no start/limit", () async {
+    test("returns the worktree's sessions from the repository", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
       final result = await service.getSessions(worktree: "/repo");
 
       expect(repository.lastWorktree, equals("/repo"));
-      expect(
-        result.map((s) => s.id).toList(),
-        equals(["s1", "s2", "s3", "s4"]),
-      );
-    });
-
-    test("applies start correctly", () async {
-      final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getSessions(worktree: "/repo", start: 2);
-
-      expect(result.map((s) => s.id).toList(), equals(["s3", "s4"]));
-    });
-
-    test("applies limit correctly", () async {
-      final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getSessions(worktree: "/repo", limit: 2);
-
-      expect(result.map((s) => s.id).toList(), equals(["s1", "s2"]));
-    });
-
-    test("applies both start and limit", () async {
-      final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getSessions(
-        worktree: "/repo",
-        start: 1,
-        limit: 2,
-      );
-
-      expect(result.map((s) => s.id).toList(), equals(["s2", "s3"]));
-    });
-
-    test("start beyond list length returns empty", () async {
-      final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getSessions(worktree: "/repo", start: 10);
-
-      expect(result, isEmpty);
-    });
-
-    test("limit of 0 returns all", () async {
-      final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getSessions(worktree: "/repo", limit: 0);
-
-      expect(
-        result.map((s) => s.id).toList(),
-        equals(["s1", "s2", "s3", "s4"]),
-      );
-    });
-
-    test("start of 0 returns all", () async {
-      final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getSessions(worktree: "/repo", start: 0);
-
       expect(
         result.map((s) => s.id).toList(),
         equals(["s1", "s2", "s3", "s4"]),

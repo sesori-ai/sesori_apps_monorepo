@@ -37,8 +37,6 @@ class OpenCodeV2Repository({
   required final V2ModelMapper _modelMapper,
   required final V2MessageMapper _messageMapper,
 }) {
-  Future<bool> healthCheck() => _api.healthCheck();
-
   Future<PluginMcpInventorySnapshot> getMcpInventory({
     required String directory,
     required PluginMcpScope scope,
@@ -230,15 +228,6 @@ class OpenCodeV2Repository({
     final location = await _api.getLocation(directory: directory);
     final projects = await _api.listProjects();
     final project = projects.firstWhere((project) => project.id == location.project.id);
-    return _modelMapper.mapProject(project: project, activity: null).copyWith(directory: location.directory);
-  }
-
-  Future<PluginProject> renameProject({required String directory, required String name}) async {
-    final location = await _api.getLocation(directory: directory);
-    final project = await _api.updateProject(
-      projectId: location.project.id,
-      body: V2UpdateProjectBody(canonical: null, name: name, icon: null, commands: null),
-    );
     return _modelMapper.mapProject(project: project, activity: null).copyWith(directory: location.directory);
   }
 
