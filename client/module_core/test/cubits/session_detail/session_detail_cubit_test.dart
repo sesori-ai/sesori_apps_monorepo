@@ -66,6 +66,7 @@ void main() {
 
   group("SessionDetailCubit", () {
     late MockSessionRepository mockSessionService;
+    late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockConnectionService mockConnectionService;
@@ -82,6 +83,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionRepository();
+      mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockConnectionService = MockConnectionService();
@@ -125,13 +127,18 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
+      delegateSessionRepository(
+        repository: mockSessionRepository,
+        source: mockSessionService,
+        optionsSource: mockSessionApi,
+      );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
       _stubAllDefaults(
         mockSessionService,
         mockSessionService,
         mockConnectionService,
+        optionsApi: mockSessionApi,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         sessionEvents: sessionEvents,
@@ -648,7 +655,7 @@ void main() {
 
       setUp(() {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -712,7 +719,7 @@ void main() {
 
       test("sends fast mode off once the selected model's fast mode is unavailable", () async {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1584,18 +1591,18 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: "plugin-1",
           ),
         ).called(1);
         verify(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: "plugin-1",
           ),
         ).called(1);
-        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+        verify(() => mockSessionApi.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
@@ -1659,18 +1666,18 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: "plugin-1",
           ),
         ).called(2);
         verify(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: "plugin-1",
           ),
         ).called(2);
-        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(2);
+        verify(() => mockSessionApi.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
         verify(mockPluginRepository.listPlugins).called(2);
       },
@@ -2004,7 +2011,7 @@ void main() {
       "selectAgent applies an agent's declared model when the catalog offers it",
       build: () {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2058,7 +2065,7 @@ void main() {
       "selectAgent keeps the current model when the agent declares one the catalog omits",
       build: () {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2118,7 +2125,7 @@ void main() {
       "selectVariant updates selectedAgentModel variant",
       build: () {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -3510,7 +3517,7 @@ void main() {
       final allowFirstSendToComplete = Completer<void>();
 
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -4024,6 +4031,7 @@ void _stubAllDefaults(
   MockSessionRepository service,
   MockSessionRepository sessionService,
   MockConnectionService connectionService, {
+  required MockSessionApi optionsApi,
   required String sessionId,
   required MockNotificationCanceller notificationCanceller,
   required BehaviorSubject<SesoriSessionEvent> sessionEvents,
@@ -4079,7 +4087,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listAgents(
+    () => optionsApi.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -4089,7 +4097,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listProviders(
+    () => optionsApi.listProviders(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -4099,7 +4107,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => sessionService.listCommands(
+    () => optionsApi.listCommands(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),

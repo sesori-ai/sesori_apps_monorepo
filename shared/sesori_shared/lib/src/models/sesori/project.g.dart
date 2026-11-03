@@ -55,7 +55,7 @@ const _$ProjectKindEnumMap = {
 _Project _$ProjectFromJson(Map json) => _Project(
   id: json['id'] as String,
   name: json['name'] as String?,
-  path: json['path'] as String? ?? "",
+  path: json['path'] as String,
   time: json['time'] == null
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),

@@ -270,6 +270,7 @@ Future<void> enterTextAndSend({required WidgetTester tester, required String tex
 
 void main() {
   late MockSessionRepository sessionService;
+  late MockSessionApi sessionApi;
   late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
   late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -291,6 +292,7 @@ void main() {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
     sessionService = MockSessionRepository();
+    sessionApi = MockSessionApi();
     sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
@@ -332,7 +334,7 @@ void main() {
     );
 
     when(
-      () => sessionService.listAgents(
+      () => sessionApi.listAgents(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),
@@ -347,7 +349,7 @@ void main() {
       ),
     );
     when(
-      () => sessionService.listProviders(
+      () => sessionApi.listProviders(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),
@@ -355,7 +357,7 @@ void main() {
       (_) async => ApiResponse.success(testProviderListResponse()),
     );
     when(
-      () => sessionService.listCommands(
+      () => sessionApi.listCommands(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),
@@ -372,9 +374,9 @@ void main() {
       final projectId = invocation.namedArguments[#projectId]! as String;
       final pluginId = invocation.namedArguments[#pluginId]! as String;
       final (agents, providers, commands) = await (
-        sessionService.listAgents(projectId: projectId, pluginId: pluginId),
-        sessionService.listProviders(projectId: projectId, pluginId: pluginId),
-        sessionService.listCommands(projectId: projectId, pluginId: pluginId),
+        sessionApi.listAgents(projectId: projectId, pluginId: pluginId),
+        sessionApi.listProviders(projectId: projectId, pluginId: pluginId),
+        sessionApi.listCommands(projectId: projectId, pluginId: pluginId),
       ).wait;
       return switch ((agents, providers, commands)) {
         (
@@ -406,9 +408,9 @@ void main() {
       final projectId = invocation.namedArguments[#projectId]! as String;
       final pluginId = invocation.namedArguments[#pluginId]! as String;
       final (agents, providers, commands) = await (
-        sessionService.listAgents(projectId: projectId, pluginId: pluginId),
-        sessionService.listProviders(projectId: projectId, pluginId: pluginId),
-        sessionService.listCommands(projectId: projectId, pluginId: pluginId),
+        sessionApi.listAgents(projectId: projectId, pluginId: pluginId),
+        sessionApi.listProviders(projectId: projectId, pluginId: pluginId),
+        sessionApi.listCommands(projectId: projectId, pluginId: pluginId),
       ).wait;
       return switch ((agents, providers, commands)) {
         (
@@ -726,9 +728,9 @@ void main() {
     await tester.tap(find.byKey(const Key("new_session_options_load")));
     await tester.pumpAndSettle();
 
-    verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
-    verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
-    verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => sessionApi.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
   });
 
@@ -1143,7 +1145,7 @@ void main() {
 
   testWidgets("keeps model and variant controls available when no agents load", (tester) async {
     when(
-      () => sessionService.listAgents(
+      () => sessionApi.listAgents(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),
@@ -1275,7 +1277,7 @@ void main() {
     );
     final toolBAgents = Completer<ApiResponse<Agents>>();
     when(
-      () => sessionService.listAgents(
+      () => sessionApi.listAgents(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),
@@ -1394,7 +1396,7 @@ void main() {
       find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
-    verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
+    verifyNever(() => sessionApi.listAgents(projectId: "project-1", pluginId: "tool-b"));
     await closeHarnessMenu(tester);
 
     reconnectDiscovery.complete(
@@ -1419,7 +1421,7 @@ void main() {
       find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
-    verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
+    verify(() => sessionApi.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
   });
 
   testWidgets("refresh discovery failure keeps prior context but disables backend actions", (tester) async {
@@ -2465,7 +2467,7 @@ void main() {
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
     when(
-      () => sessionService.listProviders(
+      () => sessionApi.listProviders(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),
@@ -2517,7 +2519,7 @@ void main() {
 
   testWidgets("selecting another variant updates the displayed variant", (tester) async {
     when(
-      () => sessionService.listProviders(
+      () => sessionApi.listProviders(
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
       ),

@@ -82,6 +82,7 @@ final class _AggregateTestOptionsService({required MockSessionRepository session
 void main() {
   group("NewSessionCubit plugin selection", () {
     late MockSessionRepository sessionService;
+    late MockSessionApi sessionApi;
     late MockSessionRepository sessionRepository;
     late MockPluginRepository pluginRepository;
     late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -94,6 +95,7 @@ void main() {
 
     setUp(() {
       sessionService = MockSessionRepository();
+      sessionApi = MockSessionApi();
       sessionRepository = MockSessionRepository();
       pluginRepository = MockPluginRepository();
       pluginPreferenceRepository = MockPluginPreferenceRepository();
@@ -126,10 +128,10 @@ void main() {
           ),
         ),
       );
-      _stubEmptyResources(sessionService);
+      _stubEmptyResources(sessionApi: sessionApi);
       delegateSessionOptionsRepository(
         repository: sessionRepository,
-        source: sessionService,
+        source: sessionApi,
       );
     });
 
@@ -203,13 +205,13 @@ void main() {
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
       when(
-        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
 
       final cubit = buildCubit();
@@ -414,7 +416,7 @@ void main() {
 
       expect(cubit.state.agentModelData?.plugin, pluginA);
       expect(cubit.state.agentModelData?.isPluginDiscoveryInFlight, isFalse);
-      verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b"));
+      verifyNever(() => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"));
     });
 
     test("reconnect preserves and refreshes a staged command for the same plugin", () async {
@@ -441,7 +443,7 @@ void main() {
         );
       });
       when(
-        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) {
         commandCalls++;
         if (commandCalls == 1) {
@@ -485,7 +487,7 @@ void main() {
         ),
       );
       when(
-        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) {
         commandCalls++;
         if (commandCalls == 1) {
@@ -1251,10 +1253,10 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
       );
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-b"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-b"),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       final cubit = buildCubit();
@@ -1277,7 +1279,7 @@ void main() {
         pluginRepository.listPlugins,
       ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
         providerCalls++;
         return ApiResponse.success(
@@ -1325,10 +1327,10 @@ void main() {
             : ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, unavailableB]));
       });
       when(
-        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-b"),
+        () => sessionApi.listCommands(projectId: "project-1", pluginId: "plugin-b"),
       ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) => fallbackAgents.future);
 
       final cubit = buildCubit();
@@ -1410,7 +1412,7 @@ void main() {
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);
-      _verifyNoComposerCalls(sessionService);
+      _verifyNoComposerCalls(sessionApi: sessionApi);
     });
 
     test("closed cubit ignores a late discovery completion", () async {
@@ -1424,7 +1426,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(cubit.state.agentModelData?.plugins, isNull);
-      _verifyNoComposerCalls(sessionService);
+      _verifyNoComposerCalls(sessionApi: sessionApi);
     });
 
     test("preserves bridge order and selects a non-first server default", () async {
@@ -1453,9 +1455,9 @@ void main() {
       final state = cubit.state as NewSessionComposing;
       expect(state.config.availablePlugins?.map((plugin) => plugin.id), ["blocked", "selected"]);
       expect(state.config.selectedPlugin, second);
-      verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "selected")).called(1);
-      verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "selected")).called(1);
-      verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "selected")).called(1);
+      verify(() => sessionApi.listAgents(projectId: "project-1", pluginId: "selected")).called(1);
+      verify(() => sessionApi.listProviders(projectId: "project-1", pluginId: "selected")).called(1);
+      verify(() => sessionApi.listCommands(projectId: "project-1", pluginId: "selected")).called(1);
     });
 
     test("degraded default is routable and all create resources use its explicit id", () async {
@@ -1494,9 +1496,9 @@ void main() {
         command: null,
       );
 
-      verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "degraded")).called(1);
-      verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "degraded")).called(1);
-      verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "degraded")).called(1);
+      verify(() => sessionApi.listAgents(projectId: "project-1", pluginId: "degraded")).called(1);
+      verify(() => sessionApi.listProviders(projectId: "project-1", pluginId: "degraded")).called(1);
+      verify(() => sessionApi.listCommands(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(
         () => sessionService.createSessionWithMessage(
           attachments: const [],
@@ -1549,7 +1551,7 @@ void main() {
       );
 
       expect((cubit.state as NewSessionComposing).config.selectedPlugin, unavailable);
-      _verifyNoComposerCalls(sessionService);
+      _verifyNoComposerCalls(sessionApi: sessionApi);
       verifyNever(
         () => sessionService.createSessionWithMessage(
           attachments: const [],
@@ -1581,11 +1583,11 @@ void main() {
         dedicatedWorktree: true,
         command: null,
       );
-      _verifyNoComposerCalls(sessionService);
+      _verifyNoComposerCalls(sessionApi: sessionApi);
 
       cubit.selectPlugin(pluginId: "plugin-b");
       await _waitForComposer(cubit);
-      verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b")).called(1);
+      verify(() => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b")).called(1);
     });
 
     test("plugin switch clears backend-local composer state synchronously", () async {
@@ -1594,13 +1596,13 @@ void main() {
       );
       final bAgents = Completer<ApiResponse<Agents>>();
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
       ).thenAnswer((_) => bAgents.future);
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
 
       final cubit = buildCubit();
@@ -1632,10 +1634,10 @@ void main() {
       final a = Completer<ApiResponse<Agents>>();
       final b = Completer<ApiResponse<Agents>>();
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) => a.future);
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
       ).thenAnswer((_) => b.future);
 
       final cubit = buildCubit();
@@ -1661,10 +1663,10 @@ void main() {
       final b = Completer<ApiResponse<Agents>>();
       var aCalls = 0;
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) => aCalls++ == 0 ? firstA.future : secondA.future);
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
       ).thenAnswer((_) => b.future);
 
       final cubit = buildCubit();
@@ -1692,10 +1694,10 @@ void main() {
         ..recordAgent(pluginId: "plugin-a", agentName: "agent-a")
         ..recordAgent(pluginId: "plugin-b", agentName: "agent-b");
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
       when(
-        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-b")])));
 
       final cubit = buildCubit();
@@ -1822,12 +1824,12 @@ void main() {
             : ApiResponse.success(_pluginSnapshot(bridgeId: "br_b", plugins: [pluginA]));
       });
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
         return discoveryCalls < 2 ? ApiResponse.success(_providerResponse()) : ApiResponse.error(ApiError.generic());
       });
       when(
-        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
         return discoveryCalls < 2
             ? ApiResponse.success(CommandListResponse(items: [command]))
@@ -1863,7 +1865,7 @@ void main() {
         );
       });
       when(
-        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+        () => sessionApi.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
 
       final cubit = buildCubit();
@@ -2043,15 +2045,15 @@ void main() {
   });
 }
 
-void _stubEmptyResources(MockSessionRepository sessionService) {
+void _stubEmptyResources({required MockSessionApi sessionApi}) {
   when(
-    () => sessionService.listAgents(
+    () => sessionApi.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: [])));
   when(
-    () => sessionService.listProviders(
+    () => sessionApi.listProviders(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -2059,28 +2061,28 @@ void _stubEmptyResources(MockSessionRepository sessionService) {
     (_) async => ApiResponse.success(const ProviderListResponse(items: [], connectedOnly: false)),
   );
   when(
-    () => sessionService.listCommands(
+    () => sessionApi.listCommands(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: [])));
 }
 
-void _verifyNoComposerCalls(MockSessionRepository sessionService) {
+void _verifyNoComposerCalls({required MockSessionApi sessionApi}) {
   verifyNever(
-    () => sessionService.listAgents(
+    () => sessionApi.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
   );
   verifyNever(
-    () => sessionService.listProviders(
+    () => sessionApi.listProviders(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
   );
   verifyNever(
-    () => sessionService.listCommands(
+    () => sessionApi.listCommands(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),

@@ -43,6 +43,7 @@ void main() {
 
   group("SessionDetailCubit stale reconnect", () {
     late MockSessionRepository mockSessionService;
+    late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -55,6 +56,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionRepository();
+      mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -73,7 +75,11 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
+      delegateSessionRepository(
+        repository: mockSessionRepository,
+        source: mockSessionService,
+        optionsSource: mockSessionApi,
+      );
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -87,7 +93,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -96,7 +102,7 @@ void main() {
       );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
     });
 
     /// Builds the cubit under test with the collaborators every case shares.
@@ -147,6 +153,7 @@ void main() {
 
         await _awaitLoaded(cubit);
         clearInteractions(mockSessionService);
+        clearInteractions(mockSessionApi);
 
         connectionStatus.add(connectionLostStatus);
         await pumpEventQueue();
@@ -189,13 +196,13 @@ void main() {
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
         verifyNever(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: "plugin-1",
           ),
         );
         verifyNever(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: "plugin-1",
           ),
@@ -221,6 +228,7 @@ void main() {
 
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
+      clearInteractions(mockSessionApi);
 
       when(
         () => mockSessionService.getMessages(
@@ -260,13 +268,13 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
       ).called(1);
       verify(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
@@ -353,7 +361,7 @@ void main() {
       cubit.selectVariant(const SessionVariant(id: "xhigh"));
 
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -367,7 +375,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -537,6 +545,7 @@ void main() {
 
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
+      clearInteractions(mockSessionApi);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
@@ -559,13 +568,13 @@ void main() {
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -676,7 +685,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -720,13 +729,13 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
       ).called(1);
       verify(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
@@ -841,9 +850,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -898,7 +908,7 @@ void main() {
         final before = cubit.state as SessionDetailLoaded;
         var providerLoads = 0;
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -938,9 +948,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1003,6 +1014,7 @@ void main() {
 
       await _awaitLoaded(cubit);
       reset(mockSessionService);
+      reset(mockSessionApi);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
@@ -1028,19 +1040,19 @@ void main() {
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(_providers()));
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1078,13 +1090,13 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
       ).called(1);
       verify(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
@@ -1097,9 +1109,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1155,9 +1168,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1245,9 +1259,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1332,9 +1347,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1401,9 +1417,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1462,9 +1479,10 @@ void main() {
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
-        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        reset(mockSessionApi);
+        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1548,7 +1566,11 @@ void main() {
   });
 }
 
-void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
+void _stubLoadApis(
+  MockSessionRepository service, {
+  required MockSessionApi optionsApi,
+  required String sessionId,
+}) {
   when(
     () => service.getMessages(
       sessionId: any(named: "sessionId"),
@@ -1598,7 +1620,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
     ),
   );
   when(
-    () => service.listAgents(
+    () => optionsApi.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -1606,7 +1628,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
   when(
-    () => service.listProviders(
+    () => optionsApi.listProviders(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),

@@ -32,9 +32,7 @@ class ProjectRepository({
         project: ProjectSummary(
           id: data.id,
           name: data.name,
-          // COMPATIBILITY 2026-09-24 (v1.9.0): Bridges older than v1.4.1 omit path and use the directory as id. Use
-          // data.path directly once public bridges older than v1.4.1 are unsupported.
-          path: data.path.isEmpty ? data.id : data.path,
+          path: data.path,
           time: data.time,
           hasUnseenChanges: data.hasUnseenChanges,
           directoryMissing: data.directoryMissing,

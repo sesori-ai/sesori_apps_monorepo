@@ -82,19 +82,7 @@ void main() {
         ),
       ).called(1);
       verifyNever(
-        () => repository.listAgents(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      );
-      verifyNever(
-        () => repository.listProviders(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      );
-      verifyNever(
-        () => repository.listCommands(
+        () => repository.loadLegacySessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),

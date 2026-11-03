@@ -52,11 +52,8 @@ sealed class Project with _$Project {
     // Live directory of the project on disk — the directory backend operations
     // run in. Distinct from [id]: the id is a stable identifier that survives
     // folder moves (for git-backed backends it is the original worktree path,
-    // pinned at first open). Defaults to "" so payloads from older bridges
-    // (which don't send a path) still decode; clients fall back to [id] when
-    // empty.
-    // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once public bridges older than v1.4.1 are unsupported.
-    @Default("") String path,
+    // pinned at first open).
+    required String path,
     // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks once
     // public bridges older than v1.5.1 are unsupported.
     required ProjectTime? time,
@@ -82,12 +79,15 @@ sealed class Project with _$Project {
     @ProjectGlossaryKeyJsonConverter() required ProjectGlossaryKey? voiceGlossaryKey,
   }) = _Project;
 
-  // Invalid optional glossary context must not make the project or voice input unavailable.
   factory fromJson(Map<String, dynamic> json) {
+    // Invalid optional glossary context must not make the project or voice input unavailable.
     final rawGlossaryKey = json["voiceGlossaryKey"];
     final glossaryKey = rawGlossaryKey is String ? ProjectGlossaryKey.tryParse(value: rawGlossaryKey) : null;
     return _$ProjectFromJson({
       ...json,
+      // COMPATIBILITY 2026-11-03 (v1.12.0): Bridges older than v1.4.1 omit path and use the directory as id. Pass
+      // the payload's path directly once public bridges older than v1.4.1 are unsupported.
+      "path": json["path"] ?? json["id"],
       "voiceGlossaryKey": glossaryKey?.value,
     });
   }
