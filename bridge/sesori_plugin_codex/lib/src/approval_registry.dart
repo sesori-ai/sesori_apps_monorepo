@@ -132,8 +132,8 @@ typedef PendingInputScopeResolver = ({String displaySessionId, List<String> sour
 });
 
 void _resolveCodexPermission({required _PendingCodexInput payload, required PluginPermissionReply reply}) {
-  final approval = payload as _PendingApproval;
-  approval.respond(approval.codexId, ApprovalRegistry._permissionResponse(approval, reply));
+  if (payload is! _PendingApproval) throw StateError("Only an approval payload takes a permission reply");
+  payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(entry: payload, reply: reply));
 }
 
 FutureOr<PendingQuestionReplyOutcome> _resolveCodexQuestion({
@@ -180,29 +180,27 @@ FutureOr<void> _rejectCodexQuestion({
 }
 
 void _cancelCodexPending({required _PendingCodexInput payload, required PendingCancellationReason reason}) {
-  // Async questions have no suspended server request. Teardown only retires
-  // their local card; it must not start a new turn to send a cancellation.
-  if (payload is _PendingAsyncQuestion) return;
-  if (payload is _PendingMcpRequest) {
-    payload.respond(payload.codexId, const {"action": "cancel"});
-    return;
-  }
-  if (payload is _PendingUserInput) {
-    payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
-    return;
-  }
-  payload as _PendingApproval;
-  if (_permissionMethods.contains(payload.method) ||
-      payload.method == _elicitationMethod && ApprovalRegistry._isMcpToolApproval(payload.params)) {
-    payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(payload, PluginPermissionReply.reject));
-  } else if (payload.method == _elicitationMethod) {
-    payload.respond(payload.codexId, const {"action": "cancel"});
-  } else {
-    payload.respondError(
-      payload.codexId,
-      -32000,
-      _cancellationMessage(reason: reason),
-    );
+  switch (payload) {
+    case _PendingAsyncQuestion():
+      // Async questions have no suspended server request. Teardown only retires
+      // their local card; it must not start a new turn to send a cancellation.
+      return;
+    case _PendingMcpRequest():
+      payload.respond(payload.codexId, const {"action": "cancel"});
+    case _PendingUserInput():
+      payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
+    case _PendingApproval():
+      if (_permissionMethods.contains(payload.method) ||
+          payload.method == _elicitationMethod && ApprovalRegistry._isMcpToolApproval(params: payload.params)) {
+        payload.respond(
+          payload.codexId,
+          ApprovalRegistry._permissionResponse(entry: payload, reply: PluginPermissionReply.reject),
+        );
+      } else if (payload.method == _elicitationMethod) {
+        payload.respond(payload.codexId, const {"action": "cancel"});
+      } else {
+        payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
+      }
   }
 }
 
@@ -248,7 +246,7 @@ class ApprovalRegistry({
 
   void _handleServerRequest({required CodexServerRequest request}) {
     final method = request.method;
-    final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(request.params);
+    final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(params: request.params);
     if (method == _elicitationMethod && !isMcpToolApproval) {
       _handleMcpRequest(request: request);
       return;
@@ -261,7 +259,13 @@ class ApprovalRegistry({
       return;
     }
 
-    final sessionId = _extractSessionId(request.params);
+    final sessionId = _extractSessionId(params: request.params);
+    if (sessionId == null) {
+      // Every v2 approval and input request names its thread; one without a
+      // thread has no session to surface in.
+      _respondError(request.id, -32602, "$method carries no threadId");
+      return;
+    }
     final entry = _PendingApproval(
       codexId: request.id,
       method: method,
@@ -269,19 +273,18 @@ class ApprovalRegistry({
       respond: _respond,
       respondError: _respondError,
     );
-    final resolvedSessionId = sessionId ?? "";
-    final displaySessionId = _resolvePendingInputScope(sessionId: resolvedSessionId).displaySessionId;
+    final displaySessionId = _resolvePendingInputScope(sessionId: sessionId).displaySessionId;
 
-    final nativeTurnId = _extractNativeTurnId(request.params);
+    final nativeTurnId = _extractNativeTurnId(params: request.params);
     final String pendingId;
     if (isPermission) {
-      final allowAlways = _allowsAlways(entry);
+      final allowAlways = _allowsAlways(entry: entry);
       pendingId = registerPendingPermission(
         payload: entry,
-        sessionId: resolvedSessionId,
+        sessionId: sessionId,
         displaySessionId: displaySessionId,
-        tool: _toolHintFor(method),
-        description: _permissionDescriptionFor(entry),
+        tool: _toolHintFor(method: method),
+        description: _permissionDescriptionFor(entry: entry),
         allowAlways: allowAlways,
       );
     } else if (method == _userInputMethod) {
@@ -293,7 +296,7 @@ class ApprovalRegistry({
       pendingId = registerPendingQuestion(
         interactionKind: PluginQuestionInteractionKind.question,
         payload: _PendingUserInput(codexId: request.id, input: input, respond: _respond, respondError: _respondError),
-        sessionId: resolvedSessionId,
+        sessionId: sessionId,
         displaySessionId: displaySessionId,
         questions: _questionMapper.mapUserInput(request: input),
       );
@@ -308,7 +311,8 @@ class ApprovalRegistry({
   void _handleMcpRequest({required CodexServerRequest request}) {
     try {
       final input = _questionParser.parseMcpElicitation(params: request.params);
-      if (input.threadId.isEmpty || input.serverName.isEmpty || input.message == null) {
+      final message = input.message;
+      if (input.threadId.isEmpty || input.serverName.isEmpty || message == null) {
         throw const FormatException("Missing MCP request identity or message");
       }
       final _PendingMcpRequest payload;
@@ -321,22 +325,24 @@ class ApprovalRegistry({
             codexId: request.id,
             sessionId: input.threadId,
             title: input.serverName,
-            message: input.message!,
+            message: message,
             respond: _respond,
             schema: schema,
           );
           kind = PluginQuestionInteractionKind.form;
         case CodexMcpElicitationMode.url:
-          if (input.url == null || input.url!.isEmpty || input.elicitationId == null || input.elicitationId!.isEmpty) {
+          final url = input.url;
+          final elicitationId = input.elicitationId;
+          if (url == null || url.isEmpty || elicitationId == null || elicitationId.isEmpty) {
             throw const FormatException("Missing MCP external action");
           }
           payload = _PendingMcpExternalAction(
             codexId: request.id,
             sessionId: input.threadId,
             title: input.serverName,
-            message: input.message!,
+            message: message,
             respond: _respond,
-            authorizationUrl: input.url!,
+            authorizationUrl: url,
           );
           kind = PluginQuestionInteractionKind.externalAction;
         case CodexMcpElicitationMode.unknown:
@@ -349,12 +355,12 @@ class ApprovalRegistry({
         displaySessionId: _resolvePendingInputScope(sessionId: input.threadId).displaySessionId,
         questions: const [_mcpNotice],
       );
-      final turnId = _extractNativeTurnId(request.params);
+      final turnId = _extractNativeTurnId(params: request.params);
       if (turnId != null) _nativeTurnIdByPendingId[id] = turnId;
     } on Object catch (error, stackTrace) {
       Log.w("[codex] unsupported MCP request ${request.id}", error, stackTrace);
       _respond(request.id, const {"action": "decline"});
-      final sessionId = _extractSessionId(request.params);
+      final sessionId = _extractSessionId(params: request.params);
       emitEvent(
         event: BridgeSseTuiToastShow(
           sessionID: sessionId == null ? null : _resolvePendingInputScope(sessionId: sessionId).displaySessionId,
@@ -544,27 +550,27 @@ class ApprovalRegistry({
     ];
   }
 
-  bool _allowsAlways(_PendingApproval entry) {
+  bool _allowsAlways({required _PendingApproval entry}) {
     if (entry.method != _elicitationMethod) return true;
-    final persist = _asMap(entry.params["_meta"])?["persist"];
+    final persist = _asMap(value: entry.params["_meta"])?["persist"];
     return persist is List && persist.contains("always");
   }
 
   /// Human-readable description for a permission ask, shared by the
   /// `PermissionAsked` event and the pending-permission snapshot so the two
   /// never drift.
-  String _permissionDescriptionFor(_PendingApproval entry) =>
-      (entry.params["reason"] as String?) ?? _descriptionFallback(entry.method, entry.params);
+  String _permissionDescriptionFor({required _PendingApproval entry}) =>
+      (entry.params["reason"] as String?) ?? _descriptionFallback(method: entry.method, params: entry.params);
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
   /// request's wire method:
   ///   - command/file change   → `{decision: accept|acceptForSession|decline}`
   ///   - permissions request    → `{permissions: GrantedPermissionProfile, scope}`
   ///   - MCP tool approval      → `{action, content, _meta}`
-  static Map<String, dynamic> _permissionResponse(
-    _PendingApproval entry,
-    PluginPermissionReply reply,
-  ) {
+  static Map<String, dynamic> _permissionResponse({
+    required _PendingApproval entry,
+    required PluginPermissionReply reply,
+  }) {
     if (entry.method == _elicitationMethod) {
       return switch (reply) {
         PluginPermissionReply.once => const {
@@ -620,7 +626,7 @@ class ApprovalRegistry({
     return {"decision": decision};
   }
 
-  String _toolHintFor(String method) {
+  String _toolHintFor({required String method}) {
     return switch (method) {
       "item/fileChange/requestApproval" => "patch",
       "item/commandExecution/requestApproval" => "exec",
@@ -629,7 +635,7 @@ class ApprovalRegistry({
     };
   }
 
-  String _descriptionFallback(String method, Map<String, dynamic> params) {
+  String _descriptionFallback({required String method, required Map<String, dynamic> params}) {
     // A command/exec approval carries the command to run as a single string;
     // file-change and permission approvals carry only an explanatory `reason`
     // (the touched files / diff arrive on the correlated `item/*`
@@ -643,11 +649,11 @@ class ApprovalRegistry({
     return method;
   }
 
-  static bool _isMcpToolApproval(Map<String, dynamic> params) {
+  static bool _isMcpToolApproval({required Map<String, dynamic> params}) {
     if (params["mode"] != "form") return false;
-    final meta = _asMap(params["_meta"]);
+    final meta = _asMap(value: params["_meta"]);
     if (_parseElicitationApprovalKind(
-          meta?[_elicitationApprovalKindKey],
+          raw: meta?[_elicitationApprovalKindKey],
         ) !=
         _ElicitationApprovalKind.mcpToolCall) {
       return false;
@@ -655,13 +661,13 @@ class ApprovalRegistry({
     if (!params.containsKey("requestedSchema")) return false;
     final rawSchema = params["requestedSchema"];
     if (rawSchema == null) return true;
-    final schema = _asMap(rawSchema);
+    final schema = _asMap(value: rawSchema);
     if (schema?["type"] != "object") return false;
-    final properties = _asMap(schema?["properties"]);
+    final properties = _asMap(value: schema?["properties"]);
     return properties != null && properties.isEmpty;
   }
 
-  static _ElicitationApprovalKind? _parseElicitationApprovalKind(Object? raw) {
+  static _ElicitationApprovalKind? _parseElicitationApprovalKind({required Object? raw}) {
     return switch (raw) {
       "mcp_tool_call" => _ElicitationApprovalKind.mcpToolCall,
       "tool_suggestion" => _ElicitationApprovalKind.toolSuggestion,
@@ -669,21 +675,21 @@ class ApprovalRegistry({
     };
   }
 
-  String? _extractSessionId(Map<String, dynamic> params) {
+  String? _extractSessionId({required Map<String, dynamic> params}) {
     // v2 approvals carry the owning thread as `threadId`.
     final thread = params["threadId"];
     if (thread is String && thread.isNotEmpty) return thread;
     return null;
   }
 
-  String? _extractNativeTurnId(Map<String, dynamic> params) {
+  String? _extractNativeTurnId({required Map<String, dynamic> params}) {
     final turnId = params["turnId"];
     if (turnId is! String) return null;
     final trimmed = turnId.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  static Map<String, dynamic>? _asMap(Object? value) {
+  static Map<String, dynamic>? _asMap({required Object? value}) {
     if (value is Map) return value.cast<String, dynamic>();
     return null;
   }

@@ -26,7 +26,7 @@ class CodexToolLifecycleTracker({
     required CodexRolloutLineDto line,
   }) {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
-    final time = _rolloutTime(line.timestamp);
+    final time = _rolloutTime(raw: line.timestamp);
     return switch (line) {
       CodexRolloutResponseItemLineDto(:final payload) => _observeRolloutPayload(
         thread: thread,
@@ -129,10 +129,10 @@ class CodexToolLifecycleTracker({
     bool useAggregatedOutput = false,
   }) {
     if (event case CodexCommandExecutionEventDto(:final command, :final aggregatedOutput)) {
-      tool.shellCommand = _rolloutToolMapper.logicalCommandTitle(command) ?? tool.shellCommand;
+      tool.shellCommand = _rolloutToolMapper.logicalCommandTitle(command: command) ?? tool.shellCommand;
       tool.title ??= tool.shellCommand;
       if (aggregatedOutput != null) {
-        final clippedOutput = _rolloutToolMapper.clipOutput(aggregatedOutput);
+        final clippedOutput = _rolloutToolMapper.clipOutput(output: aggregatedOutput);
         tool.appServerOutput = clippedOutput;
         if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
           tool.rolloutOutput = clippedOutput;
@@ -371,7 +371,7 @@ class CodexToolLifecycleTracker({
       return const [];
     }
 
-    final call = _rolloutToolMapper.mapCall(payload);
+    final call = _rolloutToolMapper.mapCall(payload: payload);
     if (call != null) {
       final effectiveTurnId = call.turnId ?? thread.activeTurnId;
       final fileChangePatch = _rolloutToolMapper.codeModeFileChangePatch(
@@ -393,7 +393,7 @@ class CodexToolLifecycleTracker({
       tool.title ??= call.title;
       tool.shellCommand = call.shellCommand ?? tool.shellCommand;
       if (fileChangePatch != null) {
-        tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(fileChangePatch);
+        tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(output: fileChangePatch);
         thread.codeModeFileCallIds.add(call.id);
       }
       Map<String, List<String>>? pendingByTurn;
@@ -415,7 +415,7 @@ class CodexToolLifecycleTracker({
       return [tool.snapshot()];
     }
 
-    final result = _rolloutToolMapper.mapResult(payload);
+    final result = _rolloutToolMapper.mapResult(payload: payload);
     if (result == null) return const [];
     final waitTarget = thread.waitTargetByCall[result.callId];
     if (thread.internalCalls.contains(result.callId) && waitTarget == null) {
@@ -659,7 +659,7 @@ class CodexToolLifecycleTracker({
     required String? current,
   }) {
     if (previous == null || previous.isEmpty) {
-      return _rolloutToolMapper.clipOutput(current);
+      return _rolloutToolMapper.clipOutput(output: current);
     }
     if (current == null || current.isEmpty) return previous;
     final currentRunes = current.runes.toList(growable: false);
@@ -704,17 +704,17 @@ class CodexToolLifecycleTracker({
     required CodexServerNotification notification,
   }) {
     final previous = tool.time;
-    final created = _milliseconds(notification.params["startedAtMs"]) ?? previous?.created;
+    final created = _milliseconds(value: notification.params["startedAtMs"]) ?? previous?.created;
     if (created == null) return;
     tool.time = PluginMessageTime(
       created: created,
       completed: notification.method == "item/completed"
-          ? _milliseconds(notification.params["completedAtMs"]) ?? previous?.completed
+          ? _milliseconds(value: notification.params["completedAtMs"]) ?? previous?.completed
           : previous?.completed,
     );
   }
 
-  PluginMessageTime? _rolloutTime(String? raw) {
+  PluginMessageTime? _rolloutTime({required String? raw}) {
     if (raw == null || raw.isEmpty) return null;
     final parsed = DateTime.tryParse(raw);
     return parsed == null
@@ -725,7 +725,7 @@ class CodexToolLifecycleTracker({
           );
   }
 
-  int? _milliseconds(Object? value) => value is num ? value.round() : null;
+  int? _milliseconds({required Object? value}) => value is num ? value.round() : null;
 }
 
 class _ThreadToolLifecycle() {

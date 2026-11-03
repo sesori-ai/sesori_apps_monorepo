@@ -48,7 +48,7 @@ class CodexEventMapper({
   /// `item`/`turn` notifications do not carry the model, so streaming
   /// assistant messages are stamped with this until the session is re-fetched
   /// from its rollout (the authoritative per-session source).
-  final CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  required final CodexConfigDefaults config,
 }) {
   /// Per-thread provider captured from `thread/started.modelProvider`, used to
   /// stamp streaming assistant messages.
@@ -77,7 +77,7 @@ class CodexEventMapper({
   /// live-streamed assistant messages are stamped with the model actually in
   /// use. Passing a null/empty [model] clears the override (falls back to the
   /// global config default).
-  void setThreadModel(String threadId, String? model) {
+  void setThreadModel({required String threadId, required String? model}) {
     if (model == null || model.isEmpty) {
       _threadModel.remove(threadId);
     } else {
@@ -90,7 +90,7 @@ class CodexEventMapper({
   /// run never re-emits that notification, so the plugin feeds the provider
   /// from the `thread/resume` response here. Passing a null/empty [provider]
   /// clears the override (falls back to the global config provider).
-  void setThreadProvider(String threadId, String? provider) {
+  void setThreadProvider({required String threadId, required String? provider}) {
     if (provider == null || provider.isEmpty) {
       _threadProvider.remove(threadId);
     } else {
@@ -121,7 +121,7 @@ class CodexEventMapper({
   /// Records the normalized project [directory] the plugin resolved for
   /// [threadId]. Passing a null/empty [directory] clears the override (falls
   /// back to [projectCwd]).
-  void setThreadDirectory(String threadId, String? directory) {
+  void setThreadDirectory({required String threadId, required String? directory}) {
     if (directory == null || directory.isEmpty) {
       _threadDirectory.remove(threadId);
     } else {
@@ -130,7 +130,7 @@ class CodexEventMapper({
   }
 
   /// Retains the earliest creation and latest update time seen for [record].
-  void setThreadTime(CodexThreadRecord record) {
+  void setThreadTime({required CodexThreadRecord record}) {
     final createdAt = record.createdAt;
     final previousCreatedAt = _threadCreatedAt[record.id];
     if (createdAt != null && (previousCreatedAt == null || createdAt < previousCreatedAt)) {
@@ -143,14 +143,14 @@ class CodexEventMapper({
     }
   }
 
-  void forgetThread(String threadId) {
+  void forgetThread({required String threadId}) {
     _threadCreatedAt.remove(threadId);
     _threadUpdatedAt.remove(threadId);
     _threadModel.remove(threadId);
     _threadProvider.remove(threadId);
     _threadDirectory.remove(threadId);
     _threadParent.remove(threadId);
-    _forgetItemTimes(threadId);
+    _forgetItemTimes(threadId: threadId);
   }
 
   void resetLiveItemTimes() => _itemTimes.clear();
@@ -158,17 +158,17 @@ class CodexEventMapper({
   /// The project id a live session event should carry for [threadId]: the
   /// plugin-fed directory, else the notification's own [cwd], else the launch
   /// cwd — always normalized to match the bridge's derived project id.
-  String _projectIdForThread(String threadId, {String? cwd}) =>
+  String _projectIdForThread({required String threadId, required String? cwd}) =>
       normalizeProjectDirectory(directory: _threadDirectory[threadId] ?? cwd ?? projectCwd);
 
   /// Maps a repository-normalized `thread/started` record.
-  List<BridgeSseEvent> mapThreadStarted(CodexThreadRecord record) {
-    setThreadTime(record);
-    setThreadProvider(record.id, record.modelProvider);
-    setThreadDirectory(record.id, record.directory);
+  List<BridgeSseEvent> mapThreadStarted({required CodexThreadRecord record}) {
+    setThreadTime(record: record);
+    setThreadProvider(threadId: record.id, provider: record.modelProvider);
+    setThreadDirectory(threadId: record.id, directory: record.directory);
     setThreadParent(threadId: record.id, parentId: record.parentId);
     return [
-      BridgeSseSessionCreated(info: _threadToSession(record).toJson()),
+      BridgeSseSessionCreated(info: _threadToSession(thread: record).toJson()),
     ];
   }
 
@@ -204,7 +204,7 @@ class CodexEventMapper({
         return [
           BridgeSseSessionStatus(
             sessionID: threadId,
-            status: _codexStatusToSessionStatus(params["status"]),
+            status: _codexStatusToSessionStatus(raw: params["status"]),
           ),
         ];
 
@@ -214,7 +214,7 @@ class CodexEventMapper({
         return [
           _sessionActivityUpdated(
             threadId: threadId,
-            timestampSeconds: _asMap(params["turn"])?["startedAt"],
+            timestampSeconds: _asMap(value: params["turn"])?["startedAt"],
           ),
           BridgeSseSessionStatus(
             sessionID: threadId,
@@ -225,7 +225,7 @@ class CodexEventMapper({
       case "turn/completed":
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
-        final turn = _asMap(params["turn"]);
+        final turn = _asMap(value: params["turn"]);
         return [
           _sessionActivityUpdated(
             threadId: threadId,
@@ -238,7 +238,7 @@ class CodexEventMapper({
 
       case "item/started":
       case "item/completed":
-        final item = _asMap(params["item"]);
+        final item = _asMap(value: params["item"]);
         final threadId = params["threadId"] as String?;
         if (item == null || threadId == null) return const [];
         final itemId = item["id"] as String?;
@@ -274,7 +274,7 @@ class CodexEventMapper({
 
       case "thread/closed":
         final threadId = params["threadId"] as String?;
-        if (threadId != null) _forgetItemTimes(threadId);
+        if (threadId != null) _forgetItemTimes(threadId: threadId);
         return const [];
 
       case "turn/diff/updated":
@@ -307,7 +307,7 @@ class CodexEventMapper({
     required Map<String, dynamic>? turn,
   }) {
     final turnId = turn?["id"] as String?;
-    final error = _asMap(turn?["error"]);
+    final error = _asMap(value: turn?["error"]);
     final message = error?["message"] as String?;
     if (turnId == null || turnId.trim().isEmpty || message == null || message.trim().isEmpty) {
       return null;
@@ -317,11 +317,11 @@ class CodexEventMapper({
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: null,
       errorName: "CodexError",
       errorMessage: message,
-      time: _turnMessageTime(turn),
+      time: _turnMessageTime(turn: turn),
     );
   }
 
@@ -336,11 +336,11 @@ class CodexEventMapper({
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: null,
       errorName: "CodexError",
       errorMessage: message,
-      time: _rolloutMessageTime(timestamp),
+      time: _rolloutMessageTime(raw: timestamp),
     ),
   );
 
@@ -393,7 +393,7 @@ class CodexEventMapper({
 
     switch (correlatableItem) {
       case CodexCommandExecutionEventDto(:final command, :final aggregatedOutput):
-        final commandTitle = _rolloutToolMapper.logicalCommandTitle(command);
+        final commandTitle = _rolloutToolMapper.logicalCommandTitle(command: command);
         return _toolItemEvents(
           threadId: threadId,
           itemId: itemId,
@@ -402,7 +402,7 @@ class CodexEventMapper({
           title: commandTitle,
           status: _rolloutToolMapper.appServerItemStatus(event: correlatableItem),
           time: time,
-          output: _rolloutToolMapper.clipOutput(aggregatedOutput),
+          output: _rolloutToolMapper.clipOutput(output: aggregatedOutput),
           attachments: const [],
         );
       case CodexFileChangeEventDto(:final changes):
@@ -491,14 +491,14 @@ class CodexEventMapper({
           itemId: itemId,
           tool: tool,
           shellCommand: null,
-          title: _dynamicToolTitle(arguments),
+          title: _dynamicToolTitle(arguments: arguments),
           status: _parsedToolStatus(
             status: status,
             completed: completed,
           ),
           time: time,
           output: _rolloutToolMapper.clipOutput(
-            _imageBearingToolOutput(content: content),
+            output: _imageBearingToolOutput(content: content),
           ),
           attachments: _imageAttachmentMapper.map(
             candidates: [
@@ -530,9 +530,9 @@ class CodexEventMapper({
             promptId: item["clientId"] as String?,
           ),
           text: _userContentMapper.mapSubmittedText(
-            text: _extractContentText(item["content"]),
+            text: _extractContentText(content: item["content"]),
           ),
-          attachments: _extractUserContentAttachments(item["content"]),
+          attachments: _extractUserContentAttachments(content: item["content"]),
         );
       case "agentMessage":
         return _messageEvents(
@@ -541,7 +541,7 @@ class CodexEventMapper({
           message: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           partType: PluginMessagePartType.text,
           partSuffix: "text",
-          text: item["text"] as String? ?? _extractContentText(item["content"]),
+          text: item["text"] as String? ?? _extractContentText(content: item["content"]),
         );
       case "reasoning":
         return _messageEvents(
@@ -550,7 +550,7 @@ class CodexEventMapper({
           message: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           partType: PluginMessagePartType.reasoning,
           partSuffix: "reasoning",
-          text: _extractReasoningText(item),
+          text: _extractReasoningText(item: item),
         );
       case "webSearch":
         return _toolItemEvents(
@@ -691,7 +691,7 @@ class CodexEventMapper({
   /// A concise rendering of the JSON-compatible arguments attached to a
   /// `dynamicToolCall` item. Codex already decoded the app-server payload, so
   /// maps and lists use their readable Dart representation here.
-  String? _dynamicToolTitle(Object? arguments) {
+  String? _dynamicToolTitle({required Object? arguments}) {
     if (arguments == null) return null;
     final rendered = arguments is String ? arguments : "$arguments";
     if (rendered.isEmpty) return null;
@@ -727,7 +727,7 @@ class CodexEventMapper({
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: null,
       sender: PluginMessageSender.agent,
       time: time,
@@ -744,9 +744,9 @@ class CodexEventMapper({
     if (itemId == null || itemId.isEmpty) return null;
     final key = (threadId: threadId, itemId: itemId);
     final previous = _itemTimes[key];
-    final completedAt = completed ? _milliseconds(params["completedAtMs"]) : null;
+    final completedAt = completed ? _milliseconds(value: params["completedAtMs"]) : null;
     final created =
-        _milliseconds(params["startedAtMs"]) ??
+        _milliseconds(value: params["startedAtMs"]) ??
         previous?.created ??
         (stampMissingStart ? completedAt ?? _clock.now().millisecondsSinceEpoch : null);
     if (created == null) return previous;
@@ -755,9 +755,9 @@ class CodexEventMapper({
     return time;
   }
 
-  PluginMessageTime? _turnMessageTime(Map<String, dynamic>? turn) {
-    final completed = _secondsToMilliseconds(turn?["completedAt"]);
-    final created = completed ?? _secondsToMilliseconds(turn?["startedAt"]);
+  PluginMessageTime? _turnMessageTime({required Map<String, dynamic>? turn}) {
+    final completed = _secondsToMilliseconds(value: turn?["completedAt"]);
+    final created = completed ?? _secondsToMilliseconds(value: turn?["startedAt"]);
     if (created == null) return null;
     return PluginMessageTime(
       created: created,
@@ -765,7 +765,7 @@ class CodexEventMapper({
     );
   }
 
-  PluginMessageTime? _rolloutMessageTime(String? raw) {
+  PluginMessageTime? _rolloutMessageTime({required String? raw}) {
     if (raw == null || raw.isEmpty) return null;
     final parsed = DateTime.tryParse(raw);
     return parsed == null
@@ -776,11 +776,12 @@ class CodexEventMapper({
           );
   }
 
-  int? _milliseconds(Object? value) => value is num ? value.round() : null;
+  int? _milliseconds({required Object? value}) => value is num ? value.round() : null;
 
-  int? _secondsToMilliseconds(Object? value) => value is num ? (value * Duration.millisecondsPerSecond).round() : null;
+  int? _secondsToMilliseconds({required Object? value}) =>
+      value is num ? (value * Duration.millisecondsPerSecond).round() : null;
 
-  void _forgetItemTimes(String threadId) => _itemTimes.removeWhere((key, _) => key.threadId == threadId);
+  void _forgetItemTimes({required String threadId}) => _itemTimes.removeWhere((key, _) => key.threadId == threadId);
 
   /// Emits the message envelope and its (single) content part. The part id
   /// matches the `$itemId-$partSuffix` convention used by [_deltaEvent] so
@@ -793,15 +794,28 @@ class CodexEventMapper({
     required String partSuffix,
     required String? text,
   }) {
+    final partId = "$itemId-$partSuffix";
+    // The part exists from the item's start so streamed deltas land on it;
+    // until text arrives its content is genuinely empty.
+    final content = text ?? "";
     return [
       BridgeSseMessageUpdated(info: message),
-      _messagePartEvent(
-        threadId: threadId,
-        itemId: itemId,
-        partId: "$itemId-$partSuffix",
-        partType: partType,
-        text: text ?? "",
-        attachment: null,
+      BridgeSseMessagePartUpdated(
+        part: switch (partType) {
+          PluginMessagePartType.text => PluginMessagePart.text(
+            id: partId,
+            sessionID: threadId,
+            messageID: itemId,
+            text: content,
+          ),
+          PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+            id: partId,
+            sessionID: threadId,
+            messageID: itemId,
+            text: content,
+          ),
+          _ => throw StateError("Codex message part cannot use $partType"),
+        },
       ),
     ];
   }
@@ -816,63 +830,30 @@ class CodexEventMapper({
     return [
       BridgeSseMessageUpdated(info: message),
       if (text != null)
-        _messagePartEvent(
-          threadId: threadId,
-          itemId: itemId,
-          partId: "$itemId-text",
-          partType: PluginMessagePartType.text,
-          text: text,
-          attachment: null,
+        BridgeSseMessagePartUpdated(
+          part: PluginMessagePart.text(
+            id: "$itemId-text",
+            sessionID: threadId,
+            messageID: itemId,
+            text: text,
+          ),
         ),
       for (var index = 0; index < attachments.length; index++)
-        _messagePartEvent(
-          threadId: threadId,
-          itemId: itemId,
-          partId: "$itemId-file-${index + 1}",
-          partType: PluginMessagePartType.file,
-          text: null,
-          attachment: attachments[index],
+        BridgeSseMessagePartUpdated(
+          part: PluginMessagePart.file(
+            id: "$itemId-file-${index + 1}",
+            sessionID: threadId,
+            messageID: itemId,
+            attachment: attachments[index],
+          ),
         ),
     ];
   }
 
-  BridgeSseMessagePartUpdated _messagePartEvent({
-    required String threadId,
-    required String itemId,
-    required String partId,
-    required PluginMessagePartType partType,
-    required String? text,
-    required PluginMessageAttachment? attachment,
-  }) {
-    return BridgeSseMessagePartUpdated(
-      part: switch (partType) {
-        PluginMessagePartType.text => PluginMessagePart.text(
-          id: partId,
-          sessionID: threadId,
-          messageID: itemId,
-          text: text!,
-        ),
-        PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
-          id: partId,
-          sessionID: threadId,
-          messageID: itemId,
-          text: text!,
-        ),
-        PluginMessagePartType.file => PluginMessagePart.file(
-          id: partId,
-          sessionID: threadId,
-          messageID: itemId,
-          attachment: attachment!,
-        ),
-        _ => throw StateError("Codex message part cannot use $partType"),
-      },
-    );
-  }
-
   /// Builds a full [shared.Session] from a normalized Codex thread record.
-  shared.Session _threadToSession(CodexThreadRecord thread) {
+  shared.Session _threadToSession({required CodexThreadRecord thread}) {
     final projectId = _projectIdForThread(
-      thread.id,
+      threadId: thread.id,
       cwd: thread.directory,
     );
     return shared.Session(
@@ -885,7 +866,7 @@ class CodexEventMapper({
       directory: projectId,
       parentID: thread.parentId,
       title: thread.name,
-      time: _threadTime(thread),
+      time: _threadTime(thread: thread),
       promptDefaults: null,
       lastUserActivityAt: null,
     );
@@ -924,7 +905,7 @@ class CodexEventMapper({
     required String? title,
     required shared.SessionTime? time,
   }) {
-    final projectId = _projectIdForThread(id);
+    final projectId = _projectIdForThread(threadId: id, cwd: null);
     return shared.Session(
       approvalOverride: null,
       autoContinuation: null,
@@ -941,7 +922,7 @@ class CodexEventMapper({
     );
   }
 
-  shared.SessionTime? _threadTime(CodexThreadRecord thread) {
+  shared.SessionTime? _threadTime({required CodexThreadRecord thread}) {
     final created = thread.createdAt;
     final updated = thread.updatedAt;
     if (created == null || updated == null) return null;
@@ -954,24 +935,24 @@ class CodexEventMapper({
 
   /// Maps a codex thread status object onto the [PluginSessionStatus] union.
   /// Idle and unloaded threads have no running work; other statuses stay busy.
-  PluginSessionStatus _codexStatusToSessionStatus(Object? raw) {
-    return isIdleThreadStatus(raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
+  PluginSessionStatus _codexStatusToSessionStatus({required Object? raw}) {
+    return isIdleThreadStatus(raw: raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
   }
 
   /// Parses the direct and nested status shapes emitted by codex.
-  bool isIdleThreadStatus(Object? raw) {
-    final map = _asMap(raw);
-    final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
+  bool isIdleThreadStatus({required Object? raw}) {
+    final map = _asMap(value: raw);
+    final type = (map?["type"] ?? _asMap(value: map?["status"])?["type"]) as String?;
     return type == "idle" || type == "notLoaded";
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`
   /// list (`text` / `input_text` / `output_text`).
-  String? _extractContentText(Object? content) {
+  String? _extractContentText({required Object? content}) {
     if (content is! List) return null;
     final buffer = StringBuffer();
     for (final entry in content) {
-      final map = _asMap(entry);
+      final map = _asMap(value: entry);
       if (map == null) continue;
       final type = map["type"] as String?;
       if (type == "text" || type == "input_text" || type == "output_text") {
@@ -983,7 +964,7 @@ class CodexEventMapper({
     return result.isEmpty ? null : result;
   }
 
-  List<PluginMessageAttachment> _extractUserContentAttachments(Object? content) {
+  List<PluginMessageAttachment> _extractUserContentAttachments({required Object? content}) {
     if (content is! List) return const [];
     final entries = content.cast<Object?>();
     return _imageAttachmentMapper.map(
@@ -997,7 +978,7 @@ class CodexEventMapper({
 
   /// Pulls reasoning text out of a codex `reasoning` item's `content` and
   /// `summary` lists. Entries may be plain strings or `{text: …}` maps.
-  String? _extractReasoningText(Map<String, dynamic> item) {
+  String? _extractReasoningText({required Map<String, dynamic> item}) {
     final buffer = StringBuffer();
     for (final key in const ["content", "summary"]) {
       final list = item[key];
@@ -1006,7 +987,7 @@ class CodexEventMapper({
         if (entry is String) {
           buffer.write(entry);
         } else {
-          final text = _asMap(entry)?["text"];
+          final text = _asMap(value: entry)?["text"];
           if (text is String) buffer.write(text);
         }
       }
@@ -1015,7 +996,7 @@ class CodexEventMapper({
     return result.isEmpty ? null : result;
   }
 
-  Map<String, dynamic>? _asMap(Object? value) {
+  Map<String, dynamic>? _asMap({required Object? value}) {
     if (value is Map) return value.cast<String, dynamic>();
     return null;
   }

@@ -35,8 +35,9 @@ void main() {
           serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
-          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
@@ -58,8 +59,9 @@ void main() {
           serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
-          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
         );
         expect(await plugin.getSessions(projectId: "/repo/example"), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
@@ -138,8 +140,9 @@ void main() {
           serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
-          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
         );
 
         final agents = await plugin.getAgents(projectId: "/repo/example");
@@ -183,8 +186,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       // Auto-respond to the first request with a valid initialize response.
@@ -222,8 +227,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       fake.outgoing.first.then((Object? frame) {
@@ -266,6 +273,7 @@ void main() {
         projectCwd: "/repo/example",
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(plugin.dispose);
       final firstSummary = Completer<void>();
@@ -476,6 +484,7 @@ void main() {
         projectCwd: "/repo/example",
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(plugin.dispose);
       final idleSessionIds = <String>{};
@@ -520,8 +529,11 @@ void main() {
         projectCwd: Directory.current.path,
         clientFactory: () => CodexAppServerClient(
           serverUrl: "ws://127.0.0.1:0",
+          channelFactory: null,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       await expectLater(plugin.dispose(), completes);
     });
@@ -533,6 +545,7 @@ void main() {
       final client = CodexAppServerClient(
         serverUrl: "ws://127.0.0.1:0",
         channelFactory: (_) => fake.channel,
+        onDisconnected: null,
       );
 
       // Echo every request back with a result derived from method name. The
@@ -562,8 +575,8 @@ void main() {
       await client.connect();
 
       final results = await Future.wait([
-        client.request(method: "thread/list"),
-        client.request(method: "skills/list"),
+        client.request(method: "thread/list", params: null, timeout: codexRequestTimeout),
+        client.request(method: "skills/list", params: null, timeout: codexRequestTimeout),
       ]);
       expect(results[0], equals({"echo": "thread/list"}));
       expect(results[1], equals({"echo": "skills/list"}));
@@ -575,6 +588,7 @@ void main() {
       final client = CodexAppServerClient(
         serverUrl: "ws://127.0.0.1:0",
         channelFactory: (_) => fake.channel,
+        onDisconnected: null,
       );
 
       fake.outgoing.first.then((Object? frame) {

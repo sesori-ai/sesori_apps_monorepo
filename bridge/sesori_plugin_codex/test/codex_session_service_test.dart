@@ -554,7 +554,7 @@ class _RecordingMessageRepository() extends CodexMessageRepository {
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     required Map<String, CodexSubAgentReplayData> childReplayDataById,
-    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+    required CodexConfigDefaults config,
   }) {
     statuses = structuredToolStatusByCallId;
     this.replayToolDisposition = replayToolDisposition;
@@ -594,7 +594,7 @@ class _StubModelRepository({
   this
     : super(
         appServerApi: CodexAppServerApi(
-          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
       );
 
@@ -614,7 +614,7 @@ class _StubSkillRepository({var List<PluginCommand> commands = const [], final O
   this
     : super(
         appServerApi: CodexAppServerApi(
-          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
       );
 
@@ -630,7 +630,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   this
     : super(
         appServerApi: CodexAppServerApi(
-          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
       );
 

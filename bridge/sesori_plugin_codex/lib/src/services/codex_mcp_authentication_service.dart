@@ -140,13 +140,21 @@ final class _CodexMcpLogin({
           );
         },
         onDone: () => _complete(
-          event: _failure(error: StateError("Codex MCP completion stream closed"), stackTrace: StackTrace.current),
+          event: _failure(
+            error: StateError("Codex MCP completion stream closed"),
+            stackTrace: StackTrace.current,
+            reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+          ),
         ),
       );
       unawaited(_start(events: events));
     } on Object catch (error, stackTrace) {
       _complete(
-        event: _failure(error: error, stackTrace: stackTrace),
+        event: _failure(
+          error: error,
+          stackTrace: stackTrace,
+          reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+        ),
       );
     }
     final outcome = await _settlement.future;
@@ -183,7 +191,11 @@ final class _CodexMcpLogin({
       );
     } on CodexMcpLoginRejectedException catch (error, stackTrace) {
       _complete(
-        event: _failure(error: error, stackTrace: stackTrace),
+        event: _failure(
+          error: error,
+          stackTrace: stackTrace,
+          reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+        ),
       );
     } on Object catch (error, stackTrace) {
       if (_settlement.isCompleted) return;
@@ -212,7 +224,11 @@ final class _CodexMcpLogin({
 
   Future<void> retire() {
     _complete(
-      event: _failure(error: StateError("Codex runtime disconnected during MCP login"), stackTrace: StackTrace.current),
+      event: _failure(
+        error: StateError("Codex runtime disconnected during MCP login"),
+        stackTrace: StackTrace.current,
+        reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+      ),
     );
     return _done.future;
   }
@@ -221,7 +237,7 @@ final class _CodexMcpLogin({
 PluginMcpAuthenticationFailed _failure({
   required Object error,
   required StackTrace stackTrace,
-  PluginMcpAuthenticationFailureReason reason = PluginMcpAuthenticationFailureReason.nativeFailure,
+  required PluginMcpAuthenticationFailureReason reason,
 }) => PluginMcpAuthenticationFailed(
   reason: reason,
   cause: CodexMcpAuthenticationException(innerError: error),

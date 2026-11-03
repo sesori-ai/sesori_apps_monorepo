@@ -5,7 +5,7 @@ import "../../api/models/codex_apps_dto.dart";
 import "../../api/models/codex_mcp_status_dto.dart";
 
 /// Native presentation metadata only; configuration and execution stay native.
-class CodexMcpMapper({required String userAgent}) {
+class CodexMcpMapper({required String? userAgent}) {
   final bool _supportsThreadAuthentication = _hasThreadAuthentication(userAgent: userAgent);
 
   List<PluginMcpConnectorOfferSnapshot> mapConnectorOffers({
@@ -127,7 +127,8 @@ class CodexMcpMapper({required String userAgent}) {
   }
 }
 
-bool _hasThreadAuthentication({required String userAgent}) {
+bool _hasThreadAuthentication({required String? userAgent}) {
+  if (userAgent == null) return false;
   final value = RegExp(r"^[^/]+/([^\s]+)").firstMatch(userAgent)?.group(1);
   final version = value == null ? null : SemanticVersion.tryParse(value: value);
   // The minimum ignores login.threadId and can select a same-name harness

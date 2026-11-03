@@ -38,6 +38,7 @@ void main() {
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
       clock: const ServerClock(),
+      config: const CodexConfigDefaults.empty(),
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -46,7 +47,7 @@ void main() {
       ),
     );
     final appServerApi = CodexAppServerApi(
-      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
     );
     final threadRepository = CodexThreadRepository(
       appServerApi: appServerApi,
@@ -58,7 +59,7 @@ void main() {
     ) {
       final dto = appServerApi.decodeThreadStartedParams(params: notification.params);
       final record = dto == null ? null : threadRepository.mapStartedNotification(dto: dto);
-      return record == null ? const [] : target.mapThreadStarted(record);
+      return record == null ? const [] : target.mapThreadStarted(record: record);
     }
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
@@ -198,7 +199,7 @@ void main() {
         (nameEvents.single as BridgeSseSessionUpdated).info,
       );
       expect(renamed.parentID, "root-parent-retained");
-      mapper.forgetThread("child-parent-retained");
+      mapper.forgetThread(threadId: "child-parent-retained");
     });
 
     test("thread/started for a non-launch cwd emits that cwd's derived project id", () {
@@ -232,7 +233,8 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
-      )..setThreadDirectory("t-9", "/repo/app/packages/ui");
+        config: const CodexConfigDefaults.empty(),
+      )..setThreadDirectory(threadId: "t-9", directory: "/repo/app/packages/ui");
 
       final events = scopedMapper.mapParsed(
         notification: const CodexServerNotification(
@@ -254,6 +256,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       );
       mapThreadStarted(
         activityMapper,
@@ -303,6 +306,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       );
       mapThreadStarted(
         activityMapper,
@@ -729,7 +733,7 @@ void main() {
       );
       // The plugin records the model codex actually resolved for the thread
       // (e.g. the user picked gpt-5.4-mini over the gpt-5.5 config default).
-      richMapper.setThreadModel("t-9", "gpt-5.4-mini");
+      richMapper.setThreadModel(threadId: "t-9", model: "gpt-5.4-mini");
 
       final events = richMapper.mapParsed(
         notification: const CodexServerNotification(
@@ -745,7 +749,7 @@ void main() {
       expect(assistant.providerID, equals("openai"));
 
       // Clearing the override falls back to the config default again.
-      richMapper.setThreadModel("t-9", null);
+      richMapper.setThreadModel(threadId: "t-9", model: null);
       final events2 = richMapper.mapParsed(
         notification: const CodexServerNotification(
           method: "item/completed",

@@ -95,6 +95,7 @@ void main() {
       final request = appServerClient.request(
         method: "account/login/start",
         params: const {"type": "chatgptDeviceCode"},
+        timeout: codexRequestTimeout,
       );
       await process.waitForFrames(3);
       final requestId = process.frames.last["id"];
@@ -138,6 +139,8 @@ void main() {
 
       final request = appServerClient.request(
         method: "account/login/start",
+        params: null,
+        timeout: codexRequestTimeout,
       );
       await process.waitForFrames(3);
       process.send({
@@ -168,19 +171,19 @@ void main() {
       await connect;
       await process.waitForFrames(2);
 
-      final malformedRequest = appServerClient.request(method: "first");
+      final malformedRequest = appServerClient.request(method: "first", params: null, timeout: codexRequestTimeout);
       await process.waitForFrames(3);
       process.stdoutController.add(
         utf8.encode("not-json-CODE-PRIVATE\n"),
       );
       await expectLater(malformedRequest, throwsA(isA<StateError>()));
 
-      final exitedRequest = appServerClient.request(method: "second");
+      final exitedRequest = appServerClient.request(method: "second", params: null, timeout: codexRequestTimeout);
       await process.waitForFrames(4);
       process.completeExit(7);
       await expectLater(exitedRequest, throwsA(isA<StateError>()));
       await expectLater(
-        appServerClient.request(method: "after-exit"),
+        appServerClient.request(method: "after-exit", params: null, timeout: codexRequestTimeout),
         throwsA(isA<StateError>()),
       );
       await appServerClient.dispose();
@@ -222,7 +225,11 @@ void main() {
 
       staleProcess.completeExit(9);
       await _eventLoop();
-      final request = appServerClient.request(method: "account/login/start");
+      final request = appServerClient.request(
+        method: "account/login/start",
+        params: null,
+        timeout: codexRequestTimeout,
+      );
       await currentProcess
           .waitForFrames(3)
           .timeout(
