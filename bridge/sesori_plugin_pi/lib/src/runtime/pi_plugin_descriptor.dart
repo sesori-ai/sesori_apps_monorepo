@@ -118,18 +118,7 @@ final class const PiPluginDescriptor({
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
     ...super.managementCapabilities(config: config),
     if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
-    if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
   };
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: "pi",
-      arguments: ["update", "--self", "--no-approve"],
-      timeout: Duration(minutes: 10),
-    );
-  }
 
   bool _supportsManagedInstall({required PluginConfig config}) {
     if (_explicitBin(config) != null) return false;

@@ -22,21 +22,9 @@ void main() {
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
       expect(ClaudePluginDescriptor.targetVersion, "2.1.310");
-      expect(
-        descriptor.managementCapabilities(config: config),
-        containsAll([PluginControlCapability.runtimeUpdate, PluginControlCapability.authentication]),
-      );
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "claude");
-      expect(update?.arguments, const ["update"]);
-      expect(update?.timeout, const Duration(minutes: 10));
+      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.authentication));
       const explicit = PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"});
-      expect(
-        descriptor.managementCapabilities(config: explicit),
-        isNot(contains(PluginControlCapability.runtimeUpdate)),
-      );
       expect(descriptor.managementCapabilities(config: explicit), contains(PluginControlCapability.authentication));
-      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("reports ready after ordered version and typed auth probes", () async {

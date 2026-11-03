@@ -221,7 +221,7 @@ class ApprovalRegistry({
   required final AsyncQuestionResponder _sendAsyncAnswer,
   required final CodexQuestionParser _questionParser,
   required final CodexQuestionMapper _questionMapper,
-  super.idGenerator,
+  required super.idGenerator,
 }) extends PendingPermissionRegistry<CodexPendingInput, _PendingCodexInput> {
   final Map<String, String> _nativeTurnIdByPendingId = {};
 

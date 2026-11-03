@@ -161,6 +161,7 @@ class CursorPlugin._({
       client: client,
       emit: emitActivityEvent,
       onFireAndForgetNotification: handleAgentNotification,
+      idGenerator: null,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }
