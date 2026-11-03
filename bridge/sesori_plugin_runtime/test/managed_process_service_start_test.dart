@@ -666,12 +666,16 @@ ProcessIdentity _runtimeIdentity({required int pid, required int port, String? s
 }
 
 _TestRecord _buildRecord(RuntimeRecordDraft draft) {
+  final executablePath = draft.runtimeIdentity.executablePath;
+  if (executablePath == null) {
+    throw StateError("The spawned test runtime has no executable path");
+  }
   return _TestRecord(
     ownerSessionId: draft.ownerSessionId,
     openCodePid: draft.runtimeIdentity.pid,
     openCodeStartMarker: draft.runtimeIdentity.startMarker,
-    openCodeExecutablePath: draft.runtimeIdentity.executablePath ?? "",
-    openCodeCommand: draft.runtimeIdentity.executablePath ?? "opencode",
+    openCodeExecutablePath: executablePath,
+    openCodeCommand: executablePath,
     openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", "127.0.0.1"],
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,

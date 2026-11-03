@@ -1,4 +1,4 @@
-// GENERATED-FILE HEADER — DO NOT EDIT BY HAND
+// Hand-written generator for the sealed OpenCode SSE event hierarchy.
 //
 // `tool/generate_sse_events.dart` reads a hand-curated manifest of OpenCode
 // SSE event shapes (default `tool/opencode_events_v1.json`) and emits a
