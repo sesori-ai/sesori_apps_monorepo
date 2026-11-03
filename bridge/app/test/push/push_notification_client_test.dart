@@ -53,7 +53,7 @@ void main() {
       );
 
       await client.sendNotification(
-        const SendNotificationPayload(
+        payload: const SendNotificationPayload(
           category: NotificationCategory.aiInteraction,
           title: "Action required",
           body: "Approve this command",
@@ -95,7 +95,7 @@ void main() {
 
       await expectLater(
         client.sendNotification(
-          const SendNotificationPayload(
+          payload: const SendNotificationPayload(
             category: NotificationCategory.aiInteraction,
             title: "Action required",
             body: "Approve this command",
@@ -135,7 +135,7 @@ void main() {
       );
 
       await client.sendNotification(
-        const SendNotificationPayload(
+        payload: const SendNotificationPayload(
           category: NotificationCategory.aiInteraction,
           title: "Test",
           body: "Body",
@@ -184,7 +184,7 @@ void main() {
       );
 
       await client.sendNotification(
-        const SendNotificationPayload(
+        payload: const SendNotificationPayload(
           category: NotificationCategory.aiInteraction,
           title: "Test",
           body: "Body",
@@ -231,7 +231,7 @@ void main() {
 
       await expectLater(
         client.sendNotification(
-          const SendNotificationPayload(
+          payload: const SendNotificationPayload(
             category: NotificationCategory.aiInteraction,
             title: "Test",
             body: "Body",
@@ -273,7 +273,7 @@ void main() {
 
       await expectLater(
         client.sendNotification(
-          const SendNotificationPayload(
+          payload: const SendNotificationPayload(
             category: NotificationCategory.aiInteraction,
             title: "Test",
             body: "Body",
@@ -316,7 +316,7 @@ void main() {
 
       await expectLater(
         client.sendNotification(
-          const SendNotificationPayload(
+          payload: const SendNotificationPayload(
             category: NotificationCategory.aiInteraction,
             title: "Test",
             body: "Body",

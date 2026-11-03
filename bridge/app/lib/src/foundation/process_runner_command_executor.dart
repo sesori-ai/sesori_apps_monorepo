@@ -20,14 +20,14 @@ class ProcessRunnerCommandExecutor({required final ProcessRunner _processRunner}
     // caller asked for a specific one rather than duplicating that default here.
     final ProcessResult result = timeout == null
         ? await _processRunner.run(
-            executable,
-            arguments,
+            executable: executable,
+            arguments: arguments,
             workingDirectory: workingDirectory,
             environment: environment,
           )
         : await _processRunner.run(
-            executable,
-            arguments,
+            executable: executable,
+            arguments: arguments,
             workingDirectory: workingDirectory,
             environment: environment,
             timeout: timeout,

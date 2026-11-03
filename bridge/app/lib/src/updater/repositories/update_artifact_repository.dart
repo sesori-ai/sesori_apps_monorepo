@@ -71,7 +71,7 @@ class UpdateArtifactRepository({
         expectedHash: expectedChecksum,
       );
     } on Object catch (error, stackTrace) {
-      if (isTransientNetworkError(error)) {
+      if (isTransientNetworkError(error: error)) {
         rethrow;
       }
       Log.w('verifyDownloadedArchive: unexpected error, failing checksum verification', error, stackTrace);

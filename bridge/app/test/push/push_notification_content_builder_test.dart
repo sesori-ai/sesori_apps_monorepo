@@ -21,18 +21,24 @@ void main() {
         description: "Run command",
       );
 
-      expect(contentBuilder.extractNotificationData(questionEvent)?.category, NotificationCategory.aiInteraction);
-      expect(contentBuilder.extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
+      expect(
+        contentBuilder.extractNotificationData(event: questionEvent)?.category,
+        NotificationCategory.aiInteraction,
+      );
+      expect(
+        contentBuilder.extractNotificationData(event: permissionEvent)?.category,
+        NotificationCategory.aiInteraction,
+      );
     });
 
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
-      expect(contentBuilder.extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
+      expect(contentBuilder.extractNotificationData(event: event)?.category, NotificationCategory.systemUpdate);
     });
 
     test("returns null for unsupported events", () {
-      expect(contentBuilder.extractNotificationData(const SesoriSseEvent.serverHeartbeat()), isNull);
+      expect(contentBuilder.extractNotificationData(event: const SesoriSseEvent.serverHeartbeat()), isNull);
     });
   });
 
@@ -45,7 +51,7 @@ void main() {
         questions: [QuestionInfo(question: "Ship it?", header: "Prompt")],
       );
 
-      final data = contentBuilder.extractNotificationData(event)!;
+      final data = contentBuilder.extractNotificationData(event: event)!;
       final sessionId = data.session?.displaySessionId;
       final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
@@ -70,7 +76,7 @@ void main() {
     test("omits session data for non-session events", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "2.0.0");
 
-      final data = contentBuilder.extractNotificationData(event)!;
+      final data = contentBuilder.extractNotificationData(event: event)!;
       final sessionId = data.session?.displaySessionId;
       final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
@@ -104,7 +110,7 @@ void main() {
       );
 
       expect(
-        contentBuilder.extractNotificationData(event)?.session,
+        contentBuilder.extractNotificationData(event: event)?.session,
         equals((displaySessionId: "root", ownerSessionId: "child")),
       );
     });
@@ -119,7 +125,7 @@ void main() {
       );
 
       expect(
-        contentBuilder.extractNotificationData(event)?.session,
+        contentBuilder.extractNotificationData(event: event)?.session,
         equals((displaySessionId: "child", ownerSessionId: "child")),
       );
     });

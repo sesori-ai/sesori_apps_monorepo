@@ -27,8 +27,8 @@ final class _PosixProcessIdLookupApi({required final ProcessRunner _processRunne
     const command = "pgrep";
     final arguments = <String>["-x", executableName];
     final result = await _processRunner.run(
-      command,
-      arguments,
+      executable: command,
+      arguments: arguments,
       environment: const <String, String>{"LC_ALL": "C"},
     );
     if (result.exitCode == 1) {
@@ -67,7 +67,7 @@ final class _WindowsProcessIdLookupApi({required final ProcessRunner _processRun
       "/FI",
       "IMAGENAME eq $executableName.exe",
     ];
-    final result = await _processRunner.run(command, arguments);
+    final result = await _processRunner.run(executable: command, arguments: arguments);
     if (result.exitCode != 0) {
       throw ProcessException(command, arguments, result.stderr.toString(), result.exitCode);
     }

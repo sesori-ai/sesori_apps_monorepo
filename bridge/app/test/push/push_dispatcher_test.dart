@@ -22,7 +22,7 @@ void main() {
       final harness = _newHarness();
 
       harness.completionListener.handleSseEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "msg-1",
             sessionID: "session-a",
@@ -41,7 +41,7 @@ void main() {
       final harness = _newHarness();
 
       harness.dispatcher.dispatchImmediateIfApplicable(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
           displaySessionId: null,
@@ -98,7 +98,9 @@ void main() {
         ),
       ];
 
-      events.forEach(harness.completionListener.handleSseEvent);
+      for (final event in events) {
+        harness.completionListener.handleSseEvent(event: event);
+      }
 
       expect(
         harness.client.sentPayloads.map((payload) => payload.data?.eventType),
@@ -125,13 +127,13 @@ void main() {
       // Only the child's creation is seen (so its project is tracked); the root
       // session is not yet known to the push tracker.
       harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", projectID: "project-a", parentID: "root"),
         ),
       );
 
       harness.dispatcher.dispatchImmediateIfApplicable(
-        const SesoriSseEvent.permissionAsked(
+        event: const SesoriSseEvent.permissionAsked(
           requestID: "perm-1",
           sessionID: "child",
           displaySessionId: "root",
@@ -152,7 +154,7 @@ void main() {
       final harness = _newHarness();
 
       harness.dispatcher.dispatchImmediateIfApplicable(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
           displaySessionId: null,
@@ -179,7 +181,7 @@ void main() {
       final harness = _newHarness();
 
       harness.dispatcher.dispatchImmediateIfApplicable(
-        const SesoriSseEvent.installationUpdateAvailable(version: "1.2.3"),
+        event: const SesoriSseEvent.installationUpdateAvailable(version: "1.2.3"),
       );
 
       expect(harness.client.sentPayloads, hasLength(1));
@@ -215,17 +217,17 @@ void main() {
         harness.completionListener.start();
 
         harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "root", title: "Root task title"),
           ),
         );
         harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "root"),
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.messageUpdated(
+          event: const SesoriSseEvent.messageUpdated(
             info: Message.assistant(
               id: "msg-1",
               sessionID: "child",
@@ -237,7 +239,7 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.messagePartUpdated(
+          event: const SesoriSseEvent.messagePartUpdated(
             part: MessagePart.text(
               id: "part-1",
               sessionID: "child",
@@ -247,16 +249,16 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -277,27 +279,27 @@ void main() {
         harness.completionListener.start();
 
         harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+          event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
         );
         harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "root"),
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
 
-        harness.completionListener.markSessionAborted("child");
+        harness.completionListener.markSessionAborted(sessionId: "child");
 
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -313,7 +315,7 @@ void main() {
         harness.completionListener.start();
 
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.projectsSummary(
+          event: const SesoriSseEvent.projectsSummary(
             projects: [
               ProjectActivitySummary(
                 id: "project-from-summary",
@@ -331,12 +333,12 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionUpdated(
+          event: SesoriSseEvent.sessionUpdated(
             info: _session(id: "root", projectID: "project-from-summary", title: "Seeded root"),
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.messageUpdated(
+          event: const SesoriSseEvent.messageUpdated(
             info: Message.assistant(
               id: "msg-1",
               sessionID: "child",
@@ -348,7 +350,7 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.messagePartUpdated(
+          event: const SesoriSseEvent.messagePartUpdated(
             part: MessagePart.text(
               id: "part-1",
               sessionID: "child",
@@ -358,16 +360,16 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 200));
@@ -393,28 +395,30 @@ void main() {
         );
         harness.completionListener.start();
 
-        harness.completionListener.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
         harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+        );
+        harness.completionListener.handleSseEvent(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "root"),
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
-        harness.completionListener.markSessionAborted("child");
+        harness.completionListener.markSessionAborted(sessionId: "child");
 
         expect(harness.client.sentPayloads, hasLength(1));
         expect(harness.rateLimiter.retainedKeyCount, equals(1));
@@ -531,7 +535,7 @@ class FakePushNotificationClient() extends PushNotificationClient {
       );
 
   @override
-  Future<void> sendNotification(SendNotificationPayload payload) async {
+  Future<void> sendNotification({required SendNotificationPayload payload}) async {
     sentPayloads.add(payload);
   }
 }

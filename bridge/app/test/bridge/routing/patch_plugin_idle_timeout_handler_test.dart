@@ -39,7 +39,7 @@ void main() {
 
   test("PatchPluginIdleTimeoutHandler returns unsupported updates as a typed 409 conflict", () async {
     final service = _FakePluginLifecycleService()
-      ..error = const PluginManagementConflictException(_unsupportedConflict);
+      ..error = const PluginManagementConflictException(conflict: _unsupportedConflict);
 
     final response = await buildHandler(service: service).routeForTest(
       makeRequest(
@@ -70,7 +70,7 @@ void main() {
         body: jsonEncode(const {"type": "setOverride", "pluginId": "one", "idleTimeoutMins": 1.5}),
       ),
     );
-    service.error = const PluginManagementPluginNotFoundException("missing");
+    service.error = const PluginManagementPluginNotFoundException(pluginId: "missing");
     final unknown = await handler.routeForTest(
       makeRequest(
         "PATCH",

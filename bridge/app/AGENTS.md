@@ -101,7 +101,7 @@ bridge/ workspace modules (siblings of app/):
       jsonDecodeMap(request.body),
     );
   } catch (error) {
-    Log.d("Rejecting request with an invalid JSON body: $error");
+    Log.d("Rejecting request with an invalid JSON body (${error.runtimeType})");
     return buildErrorResponse(request: request, status: 400, message: "invalid JSON body");
   }
   ```

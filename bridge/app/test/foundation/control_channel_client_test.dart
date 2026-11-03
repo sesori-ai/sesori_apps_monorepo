@@ -53,7 +53,7 @@ void main() {
 
       final connection = await server.nextConnection();
       final serverReceived = connection.socket.cast<String>().first;
-      client.send("ping");
+      client.send(frame: "ping");
 
       expect(await serverReceived.timeout(const Duration(seconds: 5)), equals("ping"));
     });

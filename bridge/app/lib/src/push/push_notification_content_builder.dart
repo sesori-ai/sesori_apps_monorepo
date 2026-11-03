@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 class const PushNotificationContentBuilder() {
-  String truncateTitle(String title, {int maxChars = 50}) {
+  String truncateTitle({required String title, int maxChars = 50}) {
     final normalized = title.trim();
     if (normalized.length <= maxChars) {
       return normalized;
@@ -12,7 +12,7 @@ class const PushNotificationContentBuilder() {
     return "${normalized.substring(0, safeCutoff).trimRight()}...";
   }
 
-  String truncateToWords(String text, {int maxWords = 10}) {
+  String truncateToWords({required String text, int maxWords = 10}) {
     final words = text.trim().split(RegExp(r"\s+")).where((word) => word.isNotEmpty).toList();
     if (words.length <= maxWords) {
       return words.join(" ");
@@ -34,7 +34,7 @@ class const PushNotificationContentBuilder() {
     String body,
     ({String displaySessionId, String ownerSessionId})? session,
   })?
-  extractNotificationData(SesoriSseEvent event) {
+  extractNotificationData({required SesoriSseEvent event}) {
     return switch (event) {
       SesoriQuestionAsked(:final questions, :final sessionID, :final displaySessionId) => (
         category: NotificationCategory.aiInteraction,

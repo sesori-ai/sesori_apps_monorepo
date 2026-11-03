@@ -32,12 +32,12 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
     final Directory backupLibDir = Directory(p.join(installRoot, _libBackupName));
 
     if (!newBinary.existsSync() || !newLibDir.existsSync()) {
-      throw const UpdateApplyException('Staged payload is missing the binary or lib directory.');
+      throw const UpdateApplyException(message: 'Staged payload is missing the binary or lib directory.');
     }
 
-    final ProcessResult chmodResult = await _processRunner.run('chmod', ['+x', newBinary.path]);
+    final ProcessResult chmodResult = await _processRunner.run(executable: 'chmod', arguments: ['+x', newBinary.path]);
     if (chmodResult.exitCode != 0) {
-      throw UpdateApplyException('Failed to mark the staged binary executable: ${chmodResult.stderr}');
+      throw UpdateApplyException(message: 'Failed to mark the staged binary executable: ${chmodResult.stderr}');
     }
 
     targetBinary.parent.createSync(recursive: true);
@@ -100,7 +100,7 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
     const List<String> attrs = ['com.apple.quarantine', 'com.apple.provenance'];
     for (final String attr in attrs) {
       try {
-        await _processRunner.run('xattr', ['-dr', attr, path]);
+        await _processRunner.run(executable: 'xattr', arguments: ['-dr', attr, path]);
       } on Object catch (error, stackTrace) {
         Log.w('Failed to strip $attr from $path', error, stackTrace);
       }

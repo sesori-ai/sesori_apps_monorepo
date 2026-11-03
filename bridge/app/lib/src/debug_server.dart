@@ -222,14 +222,16 @@ class DebugServer({
       );
 
       await disconnected.future;
-    } catch (error, stackTrace) {
-      Log.w("SSE handler: error during client lifecycle (ignored)", error, stackTrace);
+    } catch (error) {
+      // Only a client whose connection is already unusable fails here; the
+      // finally block drops it.
+      Log.d("debug SSE client connection failed (${error.runtimeType}); dropping the client");
     } finally {
       _removeSseClient(response);
       try {
         await response.close();
-      } catch (error, stackTrace) {
-        Log.w("SSE cleanup: response close failed (ignored)", error, stackTrace);
+      } catch (error) {
+        Log.d("debug SSE client close failed (${error.runtimeType}); the client is already dropped");
       }
     }
   }
@@ -240,13 +242,15 @@ class DebugServer({
       try {
         client.add(utf8.encode("data: $eventData\n\n"));
         await client.flush();
-      } catch (error, stackTrace) {
-        Log.w("fan-out: client write/flush failed, removing", error, stackTrace);
+      } catch (error) {
+        // A failed write means this client's connection is unusable, usually
+        // because it disconnected. Drop it; the other clients keep receiving.
+        Log.d("debug SSE event write failed (${error.runtimeType}); dropping the client");
         _removeSseClient(client);
         try {
           await client.close();
-        } catch (error, stackTrace) {
-          Log.w("fan-out cleanup: client close failed (ignored)", error, stackTrace);
+        } catch (error) {
+          Log.d("debug SSE client close failed (${error.runtimeType}); the client is already dropped");
         }
       }
     }

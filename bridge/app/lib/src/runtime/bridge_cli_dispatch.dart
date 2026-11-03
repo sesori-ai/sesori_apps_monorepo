@@ -1,6 +1,6 @@
 /// Maps the raw process arguments onto CommandRunner arguments, inserting the
 /// implicit default `run` command when the bridge is invoked with bare flags.
-List<String> effectiveCliArgs(List<String> args) {
+List<String> effectiveCliArgs({required List<String> args}) {
   if (args.isEmpty) {
     return ['run'];
   }

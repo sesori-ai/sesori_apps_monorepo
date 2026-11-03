@@ -75,7 +75,7 @@ class UpdateInstallService({
       }
       return const UpdateInstallStageFailed(result: UpdateResult.downloadFailed);
     } on Object catch (error) {
-      if (isTransientNetworkError(error)) {
+      if (isTransientNetworkError(error: error)) {
         return const UpdateInstallStageFailed(result: UpdateResult.networkError);
       }
       rethrow;

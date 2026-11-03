@@ -20,7 +20,7 @@ enum ReleaseTrack() {
   /// is visible without polluting the machine-readable stdout that
   /// `--version`/`--help` rely on — track parsing runs during plugin selection
   /// for every command.
-  static ReleaseTrack fromWire(String? value) {
+  static ReleaseTrack fromWire({required String? value}) {
     switch (value) {
       case null:
       case 'stable':

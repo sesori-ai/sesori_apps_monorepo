@@ -27,8 +27,8 @@ class DeviceTypeDetector({
   Future<bool> _isMacOSLaptop() async {
     try {
       final result = await _processRunner.run(
-        "sysctl",
-        <String>["-n", "hw.model"],
+        executable: "sysctl",
+        arguments: <String>["-n", "hw.model"],
       );
       if (result.exitCode != 0) {
         Log.w(
@@ -48,8 +48,8 @@ class DeviceTypeDetector({
   Future<bool> _isWindowsLaptop() async {
     try {
       final result = await _processRunner.run(
-        "powershell.exe",
-        <String>[
+        executable: "powershell.exe",
+        arguments: <String>[
           "-Command",
           "Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count",
         ],

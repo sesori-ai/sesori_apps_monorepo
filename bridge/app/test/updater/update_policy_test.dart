@@ -7,13 +7,13 @@ import 'package:test/test.dart';
 
 void main() {
   test('classifies transient network errors only', () {
-    expect(isTransientNetworkError(const SocketException('offline')), isTrue);
-    expect(isTransientNetworkError(TimeoutException('slow')), isTrue);
-    expect(isTransientNetworkError(const HttpException('bad response')), isTrue);
-    expect(isTransientNetworkError(ClientException('closed')), isTrue);
-    expect(isTransientNetworkError(const HandshakeException('TLS interrupted')), isTrue);
-    expect(isTransientNetworkError(const FileSystemException('disk')), isFalse);
-    expect(isTransientNetworkError(StateError('bad state')), isFalse);
+    expect(isTransientNetworkError(error: const SocketException('offline')), isTrue);
+    expect(isTransientNetworkError(error: TimeoutException('slow')), isTrue);
+    expect(isTransientNetworkError(error: const HttpException('bad response')), isTrue);
+    expect(isTransientNetworkError(error: ClientException('closed')), isTrue);
+    expect(isTransientNetworkError(error: const HandshakeException('TLS interrupted')), isTrue);
+    expect(isTransientNetworkError(error: const FileSystemException('disk')), isFalse);
+    expect(isTransientNetworkError(error: StateError('bad state')), isFalse);
   });
 
   group('unsupportedPackageRuntimeMessage', () {

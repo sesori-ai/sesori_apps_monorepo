@@ -425,7 +425,7 @@ Future<ProcessResult> _runGit({
   required String cwd,
   required List<String> args,
 }) async {
-  final result = await runner.run("git", args, workingDirectory: cwd);
+  final result = await runner.run(executable: "git", arguments: args, workingDirectory: cwd);
   if (result.exitCode != 0) {
     fail("git ${args.join(" ")} failed: ${result.stderr}");
   }

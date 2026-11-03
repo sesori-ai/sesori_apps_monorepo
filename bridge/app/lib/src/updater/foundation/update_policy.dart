@@ -86,7 +86,9 @@ bool isUpdatePermissionDenied({required FileSystemException error}) =>
 @visibleForTesting
 bool isUpdatePermissionDeniedOn({required FileSystemException error, required bool isWindows}) {
   final code = error.osError?.errorCode;
-  return const FilesystemPermissionValidator().isPermissionDenied(error) || code == 5 || code == (isWindows ? 19 : 30);
+  return const FilesystemPermissionValidator().isPermissionDenied(error: error) ||
+      code == 5 ||
+      code == (isWindows ? 19 : 30);
 }
 
 /// Whether an HTTP status from a release check or artifact download is a
@@ -94,11 +96,11 @@ bool isUpdatePermissionDeniedOn({required FileSystemException error, required bo
 /// throttling) rather than a genuine failure. The best-effort updater stays
 /// quiet on these and retries on the next cycle; other non-2xx statuses (404,
 /// auth rejections, etc.) are genuine and surfaced with reinstall guidance.
-bool isRetryableHttpStatus(int statusCode) {
+bool isRetryableHttpStatus({required int statusCode}) {
   return statusCode >= 500 || statusCode == 429 || statusCode == 408;
 }
 
-bool isTransientNetworkError(Object error) {
+bool isTransientNetworkError({required Object error}) {
   return error is SocketException ||
       error is HandshakeException ||
       error is TimeoutException ||

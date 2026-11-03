@@ -26,7 +26,7 @@ class GitHubReleasesApi({required final http.Client _httpClient, required final 
     if (response.statusCode == 404) {
       throw StateError('GitHub releases endpoint not found');
     }
-    if (isRetryableHttpStatus(response.statusCode)) {
+    if (isRetryableHttpStatus(statusCode: response.statusCode)) {
       // A transient server-side/throttling outage is retryable, not a genuine
       // update failure. Surface it as an HttpException so the caller treats it
       // like the other quiet network errors and retries on the next cycle,

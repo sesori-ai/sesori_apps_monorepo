@@ -44,7 +44,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       return await file.readAsString();
     } on FileSystemException catch (error) {
-      if (const FilesystemPermissionValidator().isFileMissing(error) || !file.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error: error) || !file.existsSync()) {
         return null;
       }
       rethrow;
@@ -77,7 +77,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       await file.delete();
     } on FileSystemException catch (error) {
-      if (const FilesystemPermissionValidator().isFileMissing(error) || !file.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error: error) || !file.existsSync()) {
         return;
       }
       rethrow;
@@ -170,7 +170,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       await lockFile.delete();
     } on FileSystemException catch (error) {
-      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error: error) || !lockFile.existsSync()) {
         return;
       }
       rethrow;
@@ -186,7 +186,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       return await lockFile.readAsString();
     } on FileSystemException catch (error) {
-      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error: error) || !lockFile.existsSync()) {
         return null;
       }
       rethrow;

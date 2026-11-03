@@ -53,7 +53,7 @@ class BridgeHostProcessService({
 
     return _HostSpawnedProcess(
       process: process,
-      identity: await _resolveSpawnedIdentity(spawnIdentity: spawnIdentity),
+      identity: await _resolveSpawnedIdentity(spawnIdentity: spawnIdentity, spawnedExecutable: executable),
     );
   }
 
@@ -72,7 +72,10 @@ class BridgeHostProcessService({
     return _processRepository.sendForceSignal(pid: pid);
   }
 
-  Future<ProcessIdentity> _resolveSpawnedIdentity({required ProcessIdentity spawnIdentity}) async {
+  Future<ProcessIdentity> _resolveSpawnedIdentity({
+    required ProcessIdentity spawnIdentity,
+    required String spawnedExecutable,
+  }) async {
     final ProcessIdentity? inspectedIdentity;
     try {
       inspectedIdentity = await _processRepository.inspectProcess(pid: spawnIdentity.pid);
@@ -86,7 +89,11 @@ class BridgeHostProcessService({
     }
 
     if (inspectedIdentity != null &&
-        _matchesSpawnedIdentity(spawnIdentity: spawnIdentity, inspectedIdentity: inspectedIdentity)) {
+        _matchesSpawnedIdentity(
+          spawnIdentity: spawnIdentity,
+          spawnedExecutable: spawnedExecutable,
+          inspectedIdentity: inspectedIdentity,
+        )) {
       return inspectedIdentity;
     }
     return spawnIdentity;
@@ -94,6 +101,7 @@ class BridgeHostProcessService({
 
   bool _matchesSpawnedIdentity({
     required ProcessIdentity spawnIdentity,
+    required String spawnedExecutable,
     required ProcessIdentity inspectedIdentity,
   }) {
     if (inspectedIdentity.pid != spawnIdentity.pid) {
@@ -101,7 +109,7 @@ class BridgeHostProcessService({
     }
 
     if (_isWindows && _isWindowsImageNameOnlyCommandLine(inspectedIdentity.commandLine)) {
-      return _samePath(inspectedIdentity.executablePath, spawnIdentity.executablePath ?? "");
+      return _samePath(actual: inspectedIdentity.executablePath, expected: spawnedExecutable);
     }
 
     final inspectedCommandLine = inspectedIdentity.commandLine;
@@ -120,7 +128,7 @@ class BridgeHostProcessService({
     return spawnCommandLine.isNotEmpty && inspectedCommandLine.endsWith(" $spawnCommandLine");
   }
 
-  bool _samePath(String? actual, String expected) {
+  bool _samePath({required String? actual, required String expected}) {
     if (actual == null) {
       return false;
     }
