@@ -17,6 +17,7 @@ import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart
 import "package:sesori_mobile/core/platform/firebase/no_op_founder_call_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_voice_mode_config_source.dart";
+import "package:sesori_mobile/core/platform/mobile_photo_image_saver.dart";
 import "package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
 import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dart";
@@ -130,6 +131,7 @@ void main() {
     expect(getIt<RouteDispatcher>(), isA<GoRouterRouteDispatcher>());
     expect(getIt<ImageClipboard>(), isA<ImageClipboard>());
     expect(getIt<ImageSharer>(), isA<ImageSharer>());
+    expect(getIt<ImageSaver>(), isA<MobilePhotoImageSaver>());
     expect(getIt<AttachmentThumbnailStorage>(), isA<FileAttachmentThumbnailStorage>());
     expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isTrue);
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);

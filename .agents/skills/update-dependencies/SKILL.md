@@ -68,12 +68,10 @@ Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaP
 </android_files>
 
 <swiftpm_files>
-iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. **Every discovered tracked copy matters** — the project copy and the workspace copy, per platform:
+iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. **Every discovered tracked copy matters** — the project copy and the workspace copy, per platform (the phone app is iOS-only on Apple platforms; macOS is the desktop shell):
 
 - `client/app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
-- `client/app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`
-- `client/app/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/desktop/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved` (desktop pins Sparkle)
 
@@ -108,7 +106,7 @@ sed -n '/^workspace:/,$p' client/pubspec.yaml
 ```
 </step>
 
-<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (currently six tracked copies — a project copy and a workspace copy for app iOS, app macOS, and desktop macOS; these are native deps and are in scope). Reconcile this list with actual source Xcode projects: configure and resolve every discovered SwiftPM graph. A local-only graph may legitimately produce no `Package.resolved`; report that rather than adding an artificial lockfile.
+<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (currently four tracked copies — a project copy and a workspace copy for app iOS and desktop macOS; these are native deps and are in scope). Reconcile this list with actual source Xcode projects: configure and resolve every discovered SwiftPM graph. A local-only graph may legitimately produce no `Package.resolved`; report that rather than adding an artificial lockfile.
 
 ```bash
 git ls-files | grep 'Package.resolved'
@@ -408,7 +406,6 @@ These lockfiles pin the native Firebase / Google / gRPC / leveldb versions pulle
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
   (cd client/app && flutter build ios --config-only --release --no-codesign)
-  (cd client/app && flutter build macos --config-only --release)
   (cd client/desktop && flutter build macos --config-only --release)
 else
   echo "xcodebuild unavailable (non-macOS host) — record SwiftPM resolution as deferred in the conflict list"
@@ -417,7 +414,7 @@ fi
 
 This updates the two `Runner.xcodeproj/project.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Notes:
 
-- Run `flutter build` from the owning shell (`client/app` for iOS/macOS; `client/desktop` for its macOS graph), not the `client` workspace root. Apply the workspace resolve and project fallback below to each discovered shell/platform pair. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
+- Run `flutter build` from the owning shell (`client/app` for iOS; `client/desktop` for its macOS graph), not the `client` workspace root. Apply the workspace resolve and project fallback below to each discovered shell/platform pair. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
 - These commands are macOS + Xcode only, and under `set -e` they would abort the whole run on a non-macOS host; the `command -v xcodebuild` guard lets the workflow continue and record SwiftPM as deferred instead of silently skipping.
 
 Then refresh the **workspace** copies, which `flutter build` does not maintain but the release lanes build against. `xcodebuild -resolvePackageDependencies` honors whatever pins already exist, so the file must be DELETED first to force a fresh resolve. Point `-clonedSourcePackagesDirPath` at a scratch dir: the shared SwiftPM clone cache can hold stale tag data and silently re-resolve the OLD versions even on a deleted lockfile.
@@ -425,7 +422,7 @@ Then refresh the **workspace** copies, which `flutter build` does not maintain b
 ```bash
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
-  for native_dir in client/app/ios client/app/macos client/desktop/macos; do
+  for native_dir in client/app/ios client/desktop/macos; do
     lockfile="$native_dir/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved"
     backup="$(mktemp)"
     if [ -f "$lockfile" ]; then cp "$lockfile" "$backup"; fi
@@ -453,7 +450,7 @@ the project again:
 ```bash
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
-  for native_dir in client/app/ios client/app/macos client/desktop/macos; do
+  for native_dir in client/app/ios client/desktop/macos; do
     project_lockfile="$native_dir/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
     backup="$(mktemp)"
     cp "$project_lockfile" "$backup"
@@ -487,7 +484,7 @@ If there are NO changes, confirm that's genuine (the native graph really was cur
 Then assert the project and workspace copies agree per native directory. They describe the same package graph, so any difference means one of them is stale and a workspace build would link different native SDKs than a project build:
 
 ```bash
-for native_dir in client/app/ios client/app/macos client/desktop/macos; do
+for native_dir in client/app/ios client/desktop/macos; do
   diff <(jq -S '.pins' "$native_dir/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
        <(jq -S '.pins' "$native_dir/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
     && echo "$native_dir: pins identical" || echo "$native_dir: MISMATCH — re-run 5.1"
@@ -586,7 +583,7 @@ Report this list at the end of the update process for visibility.
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched
-- Every discovered SwiftPM graph configured and re-resolved — currently app iOS/macOS and desktop macOS (6 tracked project/workspace lockfiles, with pins verified identical) — or recorded as deferred if no Xcode toolchain
+- Every discovered SwiftPM graph configured and re-resolved — currently app iOS and desktop macOS (4 tracked project/workspace lockfiles, with pins verified identical) — or recorded as deferred if no Xcode toolchain
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass
 - `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd client && make codegen)` all complete cleanly

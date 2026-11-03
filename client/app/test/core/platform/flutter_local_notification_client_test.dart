@@ -16,7 +16,6 @@ void main() {
       const InitializationSettings(
         android: AndroidInitializationSettings("@drawable/ic_notification"),
         iOS: DarwinInitializationSettings(),
-        macOS: DarwinInitializationSettings(),
       ),
     );
   });
@@ -117,7 +116,7 @@ void main() {
 
       await client.cancelForSession(sessionId: sessionId);
 
-      // On a non-Android host the integer id covers foreground + iOS/macOS
+      // On a non-Android host the integer id covers foreground + iOS
       // delivered notifications; the Android (tag, 0) sweep is a no-op here.
       verify(() => mockPlugin.cancel(id: expectedId, tag: null)).called(1);
     });

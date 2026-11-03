@@ -82,10 +82,7 @@ class _CircularRevealRoute({required super.settings, @override required final Du
     if (SessionSidebarShell.layoutOf(context) == SessionShellLayout.pane || context.isReducedMotion) {
       return _page.fallbackTransitionsBuilder(context, animation, secondaryAnimation, child);
     }
-    final swipesBack = switch (Theme.of(context).platform) {
-      TargetPlatform.iOS || TargetPlatform.macOS => true,
-      TargetPlatform.android || TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-    };
+    final swipesBack = Theme.of(context).platform == TargetPlatform.iOS;
     return _BackSwipeDetector(
       enabled: () => swipesBack && popGestureEnabled,
       onStart: _startBackSwipe,

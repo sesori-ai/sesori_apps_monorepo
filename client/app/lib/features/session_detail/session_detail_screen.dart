@@ -1,4 +1,3 @@
-import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -117,7 +116,7 @@ class const _MobileSessionDetailBody({
         repository: getIt<FilePreviewRepository>(),
         reference: reference,
       ),
-      canShareImages: kIsWeb || defaultTargetPlatform != TargetPlatform.linux,
+      canShareImages: true,
       openExternalLink: openExternalLink,
       openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),
       openHarnessSettings: () => context.pushRoute(

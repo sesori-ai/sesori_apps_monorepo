@@ -4,8 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../di/firebase_register_module.dart";
 
-/// The [PushMessagingSource] for builds with no Firebase SDK (web, Linux,
-/// Windows, Android profile).
+/// The [PushMessagingSource] for builds with no Firebase SDK (Android profile).
 ///
 /// This is registered rather than omitted because `NotificationRegistrationService`
 /// is resolved from the settings and profile screens on every platform, not only
