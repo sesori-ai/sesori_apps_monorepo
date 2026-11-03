@@ -466,6 +466,7 @@ final class _ProcessService(final List<Object> _outcomes) implements HostProcess
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     executables.add(executable);
     this.arguments.add(List.unmodifiable(arguments));

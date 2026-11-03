@@ -66,6 +66,7 @@ class _CaptureProcesses() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     if (runInShell || includeParentEnvironment) throw StateError("Browser preflight must not inherit or use a shell");
     invocation = (executable: executable, arguments: arguments, environment: environment);

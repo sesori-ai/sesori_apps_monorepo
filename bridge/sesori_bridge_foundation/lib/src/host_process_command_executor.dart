@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show HostProcessService, Log, PluginStartAbortedException, SpawnedProcess, StartAbortSignal;
+    show HostProcessService, Log, PluginStartAbortedException, ProcessLifetime, SpawnedProcess, StartAbortSignal;
 
 import "command_executor.dart";
 
@@ -83,6 +83,10 @@ class HostProcessCommandExecutor({
       environment: environment,
       workingDirectory: workingDirectory,
       runInShell: _runInShell,
+      // `opencode service start` detaches a shared service that must outlive
+      // this command and the bridge; binding would hand it the bridge's
+      // lifetime. Every command here also ends by itself or by its timeout.
+      lifetime: ProcessLifetime.mayOutliveBridge,
     );
     final SpawnedProcess process;
     try {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:antigravity_plugin/antigravity_plugin.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
+import 'package:sesori_bridge/src/server/api/windows_job_object_api.dart';
 import 'package:sesori_bridge/src/server/host/bridge_host_process_service.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
@@ -50,6 +51,7 @@ void main() {
               ),
               currentUser: null,
             ),
+            windowsJobObjectApi: WindowsJobObjectApi(),
             clock: clock,
             currentUser: null,
             isWindows: Platform.isWindows,

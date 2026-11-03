@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
+import 'package:sesori_bridge/src/server/api/windows_job_object_api.dart';
 import 'package:sesori_bridge/src/server/host/bridge_host_process_service.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show HostProcessCommandExecutor;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
@@ -15,23 +17,30 @@ void main() {
   group('BridgeHostProcessService', () {
     late _RecordingStarter starter;
     late _FakeProcessRepository processRepository;
+    late _RecordingWindowsJobObjectApi windowsJobObjectApi;
 
     setUp(() {
       starter = _RecordingStarter();
       processRepository = _FakeProcessRepository();
+      windowsJobObjectApi = _RecordingWindowsJobObjectApi();
     });
 
     BridgeHostProcessService service({bool isWindows = false}) {
       return BridgeHostProcessService(
         processStarter: starter.call,
         processRepository: processRepository,
+        windowsJobObjectApi: windowsJobObjectApi,
         clock: _FakeServerClock(),
         currentUser: ProcessUser.fromRawUser('alex'),
         isWindows: isWindows,
       );
     }
 
-    Future<SpawnedProcess> spawnAgent({bool isWindows = false, String executable = '/usr/local/bin/agent'}) {
+    Future<SpawnedProcess> spawnAgent({
+      bool isWindows = false,
+      String executable = '/usr/local/bin/agent',
+      ProcessLifetime lifetime = ProcessLifetime.endsWithBridge,
+    }) {
       return service(isWindows: isWindows).spawn(
         includeParentEnvironment: true,
         executable: executable,
@@ -39,6 +48,7 @@ void main() {
         environment: const {'AGENT_MODE': 'acp'},
         workingDirectory: '/tmp/workdir',
         runInShell: false,
+        lifetime: lifetime,
       );
     }
 
@@ -64,9 +74,61 @@ void main() {
         workingDirectory: null,
         runInShell: false,
         includeParentEnvironment: false,
+        lifetime: ProcessLifetime.endsWithBridge,
       );
       expect(starter.includeParentEnvironment, isFalse);
       expect(starter.environment, {'PATH': '/runtime'});
+    });
+
+    test('spawn binds a Windows runtime that ends with the bridge to the job object', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+
+      await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
+
+      expect(windowsJobObjectApi.boundPids, [7001]);
+    });
+
+    test('spawn leaves a Windows process that may outlive the bridge out of the job object', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+
+      await spawnAgent(isWindows: true, lifetime: ProcessLifetime.mayOutliveBridge);
+
+      expect(windowsJobObjectApi.boundPids, isEmpty);
+    });
+
+    test('spawn binds nothing on POSIX, where ownership records stop runtimes', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+
+      await spawnAgent(lifetime: ProcessLifetime.endsWithBridge);
+
+      expect(windowsJobObjectApi.boundPids, isEmpty);
+    });
+
+    test('command executor spawns stay out of the Windows job object', () async {
+      // `opencode service start` runs through the command executor and
+      // detaches a shared service that must outlive the bridge.
+      final process = _FakeProcess(pidValue: 7002);
+      starter.process = process;
+      unawaited(process.stdoutController.close());
+      unawaited(process.stderrController.close());
+      process.exitCodeCompleter.complete(0);
+      final executor = HostProcessCommandExecutor(
+        processes: service(isWindows: true),
+        runInShell: true,
+        includeParentEnvironment: true,
+        maxCapturedOutputCharactersPerStream: null,
+      );
+
+      await executor.run(
+        executable: 'opencode',
+        arguments: const ['service', 'start'],
+        workingDirectory: null,
+        environment: null,
+        timeout: null,
+      );
+
+      expect(starter.executable, 'opencode');
+      expect(windowsJobObjectApi.boundPids, isEmpty);
     });
 
     test('spawn upgrades the identity from post-spawn inspection when the command line matches', () async {
@@ -298,6 +360,7 @@ void main() {
             ),
             currentUser: null,
           ),
+          windowsJobObjectApi: WindowsJobObjectApi(),
           clock: const ServerClock(),
           currentUser: null,
           isWindows: Platform.isWindows,
@@ -310,6 +373,7 @@ void main() {
           environment: null,
           workingDirectory: null,
           runInShell: false,
+          lifetime: ProcessLifetime.endsWithBridge,
         );
 
         final stdoutFuture = spawned.stdout.transform(utf8.decoder).join();
@@ -412,6 +476,13 @@ class _FakeProcess({required final int _pidValue}) implements Process {
   }
 }
 
+class _RecordingWindowsJobObjectApi() implements WindowsJobObjectApi {
+  final List<int> boundPids = <int>[];
+
+  @override
+  void bindToBridgeLifetime({required int pid}) => boundPids.add(pid);
+}
+
 class _FakeServerClock() implements ServerClock {
   @override
   DateTime now() {
@@ -445,12 +516,12 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   @override
   Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add('graceful:$pid');
-    return gracefulResult!;
+    return gracefulResult ?? (throw StateError('No graceful result configured'));
   }
 
   @override
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add('force:$pid');
-    return forceResult!;
+    return forceResult ?? (throw StateError('No force result configured'));
   }
 }

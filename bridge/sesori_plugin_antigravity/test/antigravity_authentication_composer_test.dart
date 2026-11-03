@@ -95,6 +95,7 @@ class _Processes({required final Map<String, dynamic> initialize}) implements Ho
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     expect(includeParentEnvironment, isFalse);
     expect(environment, isNotNull);

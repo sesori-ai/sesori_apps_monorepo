@@ -119,6 +119,7 @@ class _Processes({
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     launches.add(
       _Launch(
@@ -185,6 +186,7 @@ class _ZipProcesses({required final Future<SpawnedProcess> Function() preflight}
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) {
     calls++;
     expect(executable, "unzip");

@@ -70,6 +70,7 @@ import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
 import "../server/api/terminal_prompt_api.dart";
+import "../server/api/windows_job_object_api.dart";
 import "../server/foundation/bridge_replace_prompt.dart";
 import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_process_service.dart";
@@ -572,6 +573,7 @@ class const BridgeRuntimeRunner._() {
       final hostProcessService = BridgeHostProcessService(
         processStarter: io.Process.start,
         processRepository: processRepository,
+        windowsJobObjectApi: WindowsJobObjectApi(),
         clock: serverClock,
         currentUser: currentUser,
         isWindows: io.Platform.isWindows,
@@ -607,7 +609,7 @@ class const BridgeRuntimeRunner._() {
         processRepository: processRepository,
         clock: serverClock,
         environment: environment,
-        currentUser: currentUser,
+        processes: hostProcessService,
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
         settingsChanges: bridgeSettingsRepository.settingsChanges,

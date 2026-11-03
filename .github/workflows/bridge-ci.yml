@@ -128,6 +128,25 @@ jobs:
             echo "::endgroup::"
           done
 
+  # Kill-on-close of the backend runtime job object exists only on Windows.
+  windows-job-object:
+    needs: toolchain
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ needs.toolchain.outputs.dart-version }}
+
+      - name: Get dependencies (workspace)
+        run: dart pub get
+        working-directory: bridge
+
+      - name: Test that bound runtimes end with the bridge
+        run: dart test test/server/api/windows_job_object_api_test.dart
+        working-directory: bridge/app
+
   codegen-freshness:
     needs: toolchain
     runs-on: ubuntu-latest
