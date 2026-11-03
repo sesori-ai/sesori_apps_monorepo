@@ -346,7 +346,7 @@ Estimated total removable: roughly 800-1,100 production lines plus about 350 tes
 - Category: leftover
 - Evidence:
   - `lints:` appears in 16 bridge `pubspec.yaml` files.
-  - No `analysis_options.yaml` includes `package:lints/...`. They chain to `app/analysis_options.yaml`, which includes the local `all_lint_rules.yaml`.
+  - No `analysis_options.yaml` includes `package:lints/...`. Since #2373, every bridge package includes `bridge/analysis_options.yaml`, which declares the `no_slop_linter` plugin and includes `bridge/all_lint_rules.yaml`.
 - Proposal: remove the dev dependency and regenerate the lockfiles.
 - Size: 16 lines plus lockfile churn.
 - Risk: low.

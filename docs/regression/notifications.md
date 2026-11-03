@@ -54,7 +54,9 @@ external.
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
 - A notification opened while unauthenticated defers until authentication, then routes to its session; viewing a
-  session cancels its notifications. Desktop retains an initial open only when `AuthSession` confirms that a locally
+  session cancels its notifications. Both apps open the session on top of the home through one shared routing
+  function. An open for the editable session already on top leaves that screen in place instead of reloading it,
+  except right after a computer switch. Desktop retains an initial open only when `AuthSession` confirms that a locally
   valid session can be restored, and routes it only when its account binding matches the restored account. Missing or
   mismatched bindings and every open after an account-ending transition are discarded rather than inherited by a later
   login.
@@ -138,7 +140,8 @@ provider because current payload content leaves the encrypted channel.
   Codex `keep` suppresses retained-child completion, a full scoped stop emits
   completion for cancelled work, or a Codex root completes while a tracked
   child still runs or completes twice when its deferred idle is released.
-- Notifications for one session do not collapse, or a tap opens the wrong session or a child instead of its root.
+- Notifications for one session do not collapse, a tap opens the wrong session or a child instead of its root, or a
+  tap for the session already on screen reloads it.
 - A tap on another computer's push opens the session on the current computer, fails to load it because the session
   screen started before the switch, or a push without a computer id switches computers.
 - A question or permission is suppressed by an earlier interaction or completion cooldown.

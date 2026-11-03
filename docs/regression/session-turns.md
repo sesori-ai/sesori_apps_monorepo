@@ -795,7 +795,8 @@ defaults and queued client sends coherent.
   keyboards never reveal a black route or platform background around their edges.
 - Transcript rows render in a plain reversed list with newest content at the
   bottom. Following stays pinned through appends and streaming growth; scrolling
-  away freezes live row content until reattachment. Sending, queued, retry,
+  away freezes live row content until reattachment, though a live row's time
+  keeps counting from its fixed start. Sending, queued, retry,
   streaming, working, and settled rows keep stable identities and transitions.
 - A leftward touch, stylus, or trackpad drag across the transcript reveals all
   message timestamps together without changing vertical scroll or follow state,

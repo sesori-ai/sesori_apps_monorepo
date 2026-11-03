@@ -95,8 +95,9 @@ checks, the user directed **“retire this gate and continue”**. Accept those 
 do not recreate the gate, ask for blanket repeated tests or claim a full fresh-build
 L3 sweep. Keep the configured macOS 12 minimum without claiming it was executed.
 
-Enable the existing `DESKTOP_MACOS_PUBLICATION_ENABLED` admission and continue
-macOS public distribution. Existing `store-production`, native signing/notarization,
+macOS was admitted through the `DESKTOP_MACOS_PUBLICATION_ENABLED` repository
+variable; #2314 later removed that fully rolled-out gate, so macOS publication is
+unconditional. Continue macOS public distribution. Existing `store-production`, native signing/notarization,
 immutable asset/public-hash verification and private-evidence exclusion remain intact.
 Windows publication remains unadmitted. D11 admits Linux internal previews with the
 listed desktop QA gaps. D13 authorizes repository hosting and completion through stable
@@ -334,11 +335,10 @@ no extra environment or approval prompt. Beta and explicit `bridge-only` submiss
 retain their existing scope. The signing environment remains main-only `macos-signing`,
 with no reviewer/wait gate or changes to mobile/signing credentials.
 
-`DESKTOP_MACOS_PUBLICATION_ENABLED` is absent/false until the owner accepts the macOS
-ship gates. While disabled, internal desktop builds remain Actions artifacts, not
-public prerelease assets. Enabling this repository variable is a separate explicit
-platform-admission action, not a side effect of merging implementation. Windows/Linux
-have no publication legs yet. The existing bridge/mobile finalizer stays unchanged;
+macOS publication was gated by the `DESKTOP_MACOS_PUBLICATION_ENABLED` repository
+variable until the owner accepted the macOS ship gates; #2314 removed the gate after
+that admission, so macOS packages now always attach. Windows has no publication leg
+yet. The existing bridge/mobile finalizer stays unchanged;
 desktop attaches assets only after it and both native desktop jobs succeed.
 
 Private `macos-packaging` accepts an exact main-ancestor source/build override so the

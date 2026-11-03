@@ -68,8 +68,6 @@ participates.
   through normal logged-out startup, with cleanup errors logged. Persistent storage
   denial can still reject login writes. Development leaves that source untouched. See
   [client persistence](client-persistence.md) for the complete upgrade/restore matrix.
-  Desktop is unpublished: sign out in the old per-value build before replacing it,
-  then sign in once; new-store logout does not revoke the old build's session.
 - Log out asks first on both apps; only its confirmation starts logout, and
   Cancel or dismissal leaves the session untouched.
 - Mobile Settings runs Account, Bridge, Preferences, Appearance, Support,
