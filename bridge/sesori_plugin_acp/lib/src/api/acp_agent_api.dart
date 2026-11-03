@@ -133,7 +133,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     }
   }
 
-  /// `session/new` in [cwd]. Throws [StateError] when the agent answers
+  /// `session/new` in [cwd]. Throws [FormatException] when the agent answers
   /// without a session id, since nothing can be done with such a session.
   Future<AcpNewSessionResult> newSession({
     required String cwd,
@@ -144,11 +144,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       params: _sessionActivationParams(cwd: cwd),
       timeout: timeout,
     );
-    final session = AcpNewSessionResult.fromJson(_asJson(raw));
-    if (session.sessionId.isEmpty) {
-      throw StateError("session/new response missing sessionId");
-    }
-    return session;
+    return AcpNewSessionResult.fromJson(_asJson(raw));
   }
 
   /// `session/load` — re-activates [sessionId] with history replay. Throws
@@ -196,7 +192,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       params: {"sessionId": sessionId, "configId": configId, "value": value},
       timeout: timeout,
     );
-    return raw is Map ? AcpNewSessionResult.fromJson(raw.cast<String, dynamic>()) : null;
+    return raw is Map ? AcpNewSessionResult.forSession(sessionId: sessionId, json: raw.cast<String, dynamic>()) : null;
   }
 
   Future<void> setMode({
@@ -233,7 +229,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       timeout: timeout,
     );
     if (raw is! Map) throw StateError("$method returned no session for $sessionId");
-    return AcpNewSessionResult.fromJson(raw.cast<String, dynamic>());
+    return AcpNewSessionResult.forSession(sessionId: sessionId, json: raw.cast<String, dynamic>());
   }
 
   /// The bridge never injects MCP servers, but the field is required by the

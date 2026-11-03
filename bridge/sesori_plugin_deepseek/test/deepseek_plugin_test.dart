@@ -200,7 +200,6 @@ void main() {
     }
 
     try {
-      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       final connecting = plugin.ensureConnected();
       final initialize = await waitForFrame(method: AcpMethods.initialize);
       fake.emit({

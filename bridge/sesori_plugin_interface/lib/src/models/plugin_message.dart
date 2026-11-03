@@ -65,7 +65,7 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required String text,
+    required String text,
   }) = PluginMessagePartText;
 
   @FreezedUnionValue("reasoning")
@@ -73,7 +73,7 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required String text,
+    required String text,
   }) = PluginMessagePartReasoning;
 
   @FreezedUnionValue("tool")
@@ -81,8 +81,8 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required String? tool,
-    @JsonKey(includeToJson: true) required PluginToolState state,
+    required String? tool,
+    required PluginToolState state,
   }) = PluginMessagePartTool;
 
   @FreezedUnionValue("subtask")
@@ -94,14 +94,12 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String description,
     required String agent,
 
-    /// The subtask's own lifecycle, when the backend reports one. Named apart
-    /// from the tool-only [state] convenience accessor, which a subtask has no
-    /// business answering.
-    @JsonKey(includeToJson: true) required PluginToolState? taskState,
+    /// The subtask's own lifecycle, when the backend reports one.
+    required PluginToolState? taskState,
 
     /// The backend session hosting this subtask's work, when the backend
     /// exposes one. The bridge translates it to a bridge session id.
-    @JsonKey(includeToJson: true) required String? childSessionID,
+    required String? childSessionID,
   }) = PluginMessagePartSubtask;
 
   @FreezedUnionValue("step-start")
@@ -117,7 +115,7 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required PluginMessageAttachment attachment,
+    required PluginMessageAttachment attachment,
   }) = PluginMessagePartFile;
 
   @FreezedUnionValue("snapshot")
@@ -133,7 +131,7 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required String agentName,
+    required String agentName,
   }) = PluginMessagePartAgent;
 
   @FreezedUnionValue("retry")
@@ -141,8 +139,8 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required int attempt,
-    @JsonKey(includeToJson: true) required String retryError,
+    required int attempt,
+    required String retryError,
   }) = PluginMessagePartRetry;
 
   /// The harness compacts its context here: running, completed or failed.
@@ -152,74 +150,13 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String sessionID,
     required String messageID,
 
-    /// How far the compaction got. Named apart from the tool-only [state]
-    /// convenience accessor, as [PluginMessagePartSubtask.taskState] is.
-    @JsonKey(includeToJson: true) required PluginCompactionState compactionState,
+    /// How far the compaction got.
+    required PluginCompactionState compactionState,
   }) = PluginMessagePartCompaction;
 
   @FreezedUnionValue("unknown")
   const factory unknown({required String id, required String sessionID, required String messageID}) =
       PluginMessagePartUnknown;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  String get text {
-    if (this case PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text)) return text;
-    throw StateError("Expected textual message part, got ${type.name}");
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  String? get tool => asTool.tool;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginToolState get state => asTool.state;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessageAttachment get attachment => asFile.attachment;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  String get agentName => asAgent.agentName;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  int get attempt => asRetry.attempt;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  String get retryError => asRetry.retryError;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessagePartText get asText {
-    if (this case final PluginMessagePartText part) return part;
-    throw StateError("Expected text message part, got ${type.name}");
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessagePartReasoning get asReasoning {
-    if (this case final PluginMessagePartReasoning part) return part;
-    throw StateError("Expected reasoning message part, got ${type.name}");
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessagePartTool get asTool {
-    if (this case final PluginMessagePartTool part) return part;
-    throw StateError("Expected tool message part, got ${type.name}");
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessagePartFile get asFile {
-    if (this case final PluginMessagePartFile part) return part;
-    throw StateError("Expected file message part, got ${type.name}");
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessagePartAgent get asAgent {
-    if (this case final PluginMessagePartAgent part) return part;
-    throw StateError("Expected agent message part, got ${type.name}");
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PluginMessagePartRetry get asRetry {
-    if (this case final PluginMessagePartRetry part) return part;
-    throw StateError("Expected retry message part, got ${type.name}");
-  }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   PluginMessagePartType get type => switch (this) {
@@ -242,14 +179,14 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required String text,
+    required String text,
   }) => .text(id: id, sessionID: sessionID, messageID: messageID, text: text);
 
   static PluginMessagePart fromThinking({
     required String id,
     required String sessionID,
     required String messageID,
-    @JsonKey(includeToJson: true) required String text,
+    required String text,
   }) => .reasoning(id: id, sessionID: sessionID, messageID: messageID, text: text);
 
   static PluginMessagePart fromTool({

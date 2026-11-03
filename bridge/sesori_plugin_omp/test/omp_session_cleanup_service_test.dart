@@ -104,6 +104,33 @@ void main() {
     );
   });
 
+  for (final (name, answer) in [
+    // OMP 18.15.0 answers session/resume with only configOptions and modes.
+    ("no echoed id", const {"configOptions": <Object?>[], "modes": <String, dynamic>{}}),
+    ("an echoed matching id", const {"sessionId": "target"}),
+  ]) {
+    test("cleanup repository: $name proceeds to /session delete for the requested id", () async {
+      final api = _ResumeAnswerAcpApi(answer: answer);
+      final repository = OmpSessionCleanupRepository(api: api);
+
+      await repository.resume(sessionId: "target", cwd: "/project", timeout: const Duration(seconds: 1));
+      await repository.delete(sessionId: "target", timeout: const Duration(seconds: 1));
+
+      expect(api.operations, ["resume:target", "prompt:target:/session delete"]);
+    });
+  }
+
+  test("cleanup repository: an echoed different id stops cleanup", () async {
+    final repository = OmpSessionCleanupRepository(
+      api: _ResumeAnswerAcpApi(answer: const {"sessionId": "other"}),
+    );
+
+    await expectLater(
+      repository.resume(sessionId: "target", cwd: "/project", timeout: const Duration(seconds: 1)),
+      throwsStateError,
+    );
+  });
+
   test("cleanup repository rejects a cancelled delete command", () async {
     final repository = OmpSessionCleanupRepository(
       api: _CancelledDeleteAcpApi(),
@@ -187,6 +214,33 @@ class _FakeCleanupRepository({required final List<OmpCleanupPage> pages}) implem
 
   @override
   Future<void> dispose() async {}
+}
+
+class _ResumeAnswerAcpApi({required final Map<String, dynamic> answer}) implements OmpAcpApi {
+  final List<String> operations = [];
+
+  @override
+  Future<AcpNewSessionResult> resumeSession({
+    required String sessionId,
+    required String cwd,
+    required Duration timeout,
+  }) async {
+    operations.add("resume:$sessionId");
+    return AcpNewSessionResult.forSession(sessionId: sessionId, json: answer);
+  }
+
+  @override
+  Future<AcpPromptResult> prompt({
+    required String sessionId,
+    required String text,
+    required Duration timeout,
+  }) async {
+    operations.add("prompt:$sessionId:$text");
+    return const AcpPromptResult(stopReason: AcpStopReason.endTurn);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _CancelledDeleteAcpApi() implements OmpAcpApi {

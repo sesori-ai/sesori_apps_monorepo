@@ -23,8 +23,8 @@ import "trackers/cursor_catalog_tracker.dart";
 ///
 /// Cursor uses standard ACP cancellation to stop an active turn before a
 /// same-session follow-up dispatches. Its selection writes are best-effort
-/// (`_setConfig` never throws), so `failsTurnOnSelectionError` is moot and left
-/// at the base default.
+/// (`_setConfig` never throws), so the base fail-closed selection policy never
+/// drops a Cursor turn.
 class CursorPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -37,7 +37,6 @@ class CursorPlugin._({
   required final AcpSessionConfigurationTracker _configurationTracker,
   required final CursorTaskMapper _taskMapper,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required final CursorSessionCleanupService _sessionCleanupService,
   required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
@@ -74,12 +73,6 @@ class CursorPlugin._({
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
     const taskMapper = CursorTaskMapper();
-    final acpSessionOptionsService = AcpSessionOptionsService(
-      configurationTracker: configurationTracker,
-      commandTracker: commandTracker,
-      pluginId: pluginId,
-      agentDisplayName: "Cursor",
-    );
     final catalogCommandListener = AcpCommandListener(
       notifications: catalogApi.notifications,
       tracker: stagedCommandTracker,
@@ -124,7 +117,6 @@ class CursorPlugin._({
       configurationTracker: configurationTracker,
       taskMapper: taskMapper,
       commandTracker: commandTracker,
-      sessionOptionsService: acpSessionOptionsService,
       sessionCleanupService: sessionCleanupService,
     );
   }
@@ -263,10 +255,10 @@ class CursorPlugin._({
     }
 
     final thoughtLevelModelId =
-        _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId ?? "";
-    final thoughtLevel = _catalogTracker.thoughtLevelForModel(
-      modelId: thoughtLevelModelId,
-    );
+        _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId;
+    final thoughtLevel = thoughtLevelModelId == null
+        ? null
+        : _catalogTracker.thoughtLevelForModel(modelId: thoughtLevelModelId);
     final requestedThoughtLevel = variant != null && variant.id.isNotEmpty ? variant.id : thoughtLevel?.defaultValue;
     if (requestedThoughtLevel != null &&
         thoughtLevel != null &&
