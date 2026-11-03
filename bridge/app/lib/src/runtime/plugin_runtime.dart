@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -20,15 +21,73 @@ class const PluginRuntimeAccess({
   required final bool startAllowed,
 });
 
-enum PluginRuntimeState() {
-  disabled,
-  blocked,
-  dormant,
-  starting,
-  active,
-  degraded,
-  stopping,
-  failed,
+/// Runtime state of one plugin. Only [PluginRuntimeDegraded] carries data.
+@immutable
+sealed class const PluginRuntimeState() {
+  /// Short state name for logs.
+  String get name;
+
+  @override
+  bool operator ==(Object other) => other is PluginRuntimeState && other.runtimeType == runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  String toString() => name;
+}
+
+final class const PluginRuntimeDisabled() extends PluginRuntimeState {
+  @override
+  String get name => "disabled";
+}
+
+final class const PluginRuntimeBlocked() extends PluginRuntimeState {
+  @override
+  String get name => "blocked";
+}
+
+final class const PluginRuntimeDormant() extends PluginRuntimeState {
+  @override
+  String get name => "dormant";
+}
+
+final class const PluginRuntimeStarting() extends PluginRuntimeState {
+  @override
+  String get name => "starting";
+}
+
+final class const PluginRuntimeActive() extends PluginRuntimeState {
+  @override
+  String get name => "active";
+}
+
+/// The plugin runs but reported an impairment, or is restarting.
+final class const PluginRuntimeDegraded({
+  /// What the plugin asked the user to do, when it said.
+  required final String? actionHint,
+}) extends PluginRuntimeState {
+  @override
+  String get name => "degraded";
+
+  @override
+  bool operator ==(Object other) => other is PluginRuntimeDegraded && other.actionHint == actionHint;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, actionHint);
+
+  @override
+  String toString() => "degraded(actionHint: $actionHint)";
+}
+
+final class const PluginRuntimeStopping() extends PluginRuntimeState {
+  @override
+  String get name => "stopping";
+}
+
+final class const PluginRuntimeFailed() extends PluginRuntimeState {
+  @override
+  String get name => "failed";
 }
 
 enum PluginRuntimeTransition() {
@@ -59,10 +118,6 @@ class const PluginRuntimeSnapshot({
   required final bool startAllowed,
   required final int? generation,
   required final PluginRuntimeState state,
-
-  /// What the plugin asked the user to do while it is degraded, when it said;
-  /// null in every other state.
-  required final String? degradedActionHint,
   required final PluginWorkState workState,
   required final int leaseCount,
   required final PluginRuntimeTransition transition,
@@ -1002,7 +1057,7 @@ class PluginRuntime({
           reasons: const [PluginRuntimeConflictReason.transitioning],
         );
       }
-      slot.state = PluginRuntimeState.dormant;
+      slot.state = const PluginRuntimeDormant();
     } on Object catch (error) {
       if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
         return PluginRuntimeCommandConflict(
@@ -1010,7 +1065,7 @@ class PluginRuntime({
           reasons: const [PluginRuntimeConflictReason.transitioning],
         );
       }
-      slot.state = PluginRuntimeState.failed;
+      slot.state = const PluginRuntimeFailed();
       failureMessage = "$error";
     } finally {
       _settleCommandTransition(slot: slot, commandTransition: commandTransition);
@@ -1046,13 +1101,13 @@ class PluginRuntime({
       if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
         throw StateError('Plugin "$pluginId" disable preparation lost transition ownership.');
       }
-      slot.state = PluginRuntimeState.dormant;
+      slot.state = const PluginRuntimeDormant();
       _publishSnapshots();
       return PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot));
     } on Object catch (error) {
       if (_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
         slot
-          ..state = PluginRuntimeState.failed
+          ..state = const PluginRuntimeFailed()
           ..accessGate = PluginRuntimeAccessGate.enabled;
         _settleCommandTransition(slot: slot, commandTransition: commandTransition);
       }
@@ -1066,7 +1121,7 @@ class PluginRuntime({
     slot
       ..accessGate = PluginRuntimeAccessGate.disabled
       ..startAllowed = false
-      ..state = PluginRuntimeState.dormant;
+      ..state = const PluginRuntimeDormant();
     _settlePreparedDisable(slot);
     if (!wasPrepared) {
       throw StateError('Plugin "$pluginId" did not have a valid prepared disable; settled disabled.');
@@ -1078,7 +1133,7 @@ class PluginRuntime({
     final wasPrepared = _isPreparedDisableSlot(slot);
     slot
       ..accessGate = PluginRuntimeAccessGate.enabled
-      ..state = PluginRuntimeState.dormant;
+      ..state = const PluginRuntimeDormant();
     _settlePreparedDisable(slot);
     if (!wasPrepared) {
       throw StateError('Plugin "$pluginId" did not have a valid prepared disable; settled enabled.');
@@ -1111,7 +1166,7 @@ class PluginRuntime({
           reasons: const [PluginRuntimeConflictReason.transitioning],
         );
       }
-      slot.state = PluginRuntimeState.dormant;
+      slot.state = const PluginRuntimeDormant();
       if (_shuttingDown) {
         failureMessage = "bridge is shutting down";
       } else {
@@ -1136,7 +1191,7 @@ class PluginRuntime({
           reasons: const [PluginRuntimeConflictReason.transitioning],
         );
       }
-      slot.state = PluginRuntimeState.failed;
+      slot.state = const PluginRuntimeFailed();
       failureMessage = "$error";
     } finally {
       _settleCommandTransition(slot: slot, commandTransition: commandTransition);
@@ -1448,7 +1503,7 @@ class PluginRuntime({
     }
     slot
       ..plugin = null
-      ..state = PluginRuntimeState.stopping
+      ..state = const PluginRuntimeStopping()
       ..workState = PluginWorkState.unknown;
     _publishSnapshots();
     Object? cleanupError;
@@ -1716,7 +1771,7 @@ class PluginRuntime({
       ..generation = generation
       ..residencyController = residencyController
       ..transition = transition
-      ..state = PluginRuntimeState.starting
+      ..state = const PluginRuntimeStarting()
       ..workState = PluginWorkState.unknown
       ..startAbortController = abortController;
     _publishSnapshots();
@@ -1869,18 +1924,18 @@ class PluginRuntime({
       _runStartWarmUp(pluginId: pluginId, plugin: started);
       return started;
     } on PluginStartAbortedException {
-      slot.state = PluginRuntimeState.failed;
+      slot.state = const PluginRuntimeFailed();
       if (started != null && !identical(slot.plugin, started)) {
         await _shutdownFailedStart(pluginId: pluginId, plugin: started);
       }
       rethrow;
     } on PluginGenerationStartFailedException catch (error, stackTrace) {
       Log.w('Plugin "$pluginId" failed to start', error, stackTrace);
-      slot.state = PluginRuntimeState.failed;
+      slot.state = const PluginRuntimeFailed();
       if (started != null) await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
       return null;
     } on Object catch (error, stackTrace) {
-      slot.state = PluginRuntimeState.failed;
+      slot.state = const PluginRuntimeFailed();
       if (started == null) rethrow;
       if (_shuttingDown || abortController.isAborted) {
         await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
@@ -1961,7 +2016,7 @@ class PluginRuntime({
       return;
     }
     if (status is PluginStopping) {
-      slot.state = PluginRuntimeState.stopping;
+      slot.state = const PluginRuntimeStopping();
       if (slot.commandTransition == null) {
         slot.transition = PluginRuntimeTransition.stopping;
       }
@@ -1969,17 +2024,19 @@ class PluginRuntime({
       return;
     }
     final previousState = slot.state;
-    slot.degradedActionHint = status is PluginDegraded && status.requiresUserAction ? status.userActionHint : null;
     slot.state = switch (status) {
-      PluginStarting() || PluginReady() => PluginRuntimeState.active,
-      PluginDegraded() || PluginRestarting() => PluginRuntimeState.degraded,
+      PluginStarting() || PluginReady() => const PluginRuntimeActive(),
+      PluginDegraded(:final requiresUserAction, :final userActionHint) => PluginRuntimeDegraded(
+        actionHint: requiresUserAction ? userActionHint : null,
+      ),
+      PluginRestarting() => const PluginRuntimeDegraded(actionHint: null),
       PluginStopping() => throw StateError("handled above"),
       PluginFailed() || PluginStopped() => throw StateError("handled above"),
     };
     final pluginId = slot.registration.descriptor.id;
-    if (slot.state == PluginRuntimeState.degraded && previousState != PluginRuntimeState.degraded) {
+    if (slot.state is PluginRuntimeDegraded && previousState is! PluginRuntimeDegraded) {
       Log.w('Plugin "$pluginId" degraded: $status');
-    } else if (slot.state == PluginRuntimeState.active && previousState == PluginRuntimeState.degraded) {
+    } else if (slot.state is PluginRuntimeActive && previousState is PluginRuntimeDegraded) {
       Log.i('Plugin "$pluginId" recovered: $status');
     }
     _publishSnapshots();
@@ -1995,7 +2052,7 @@ class PluginRuntime({
     final plugin = slot.plugin;
     if (plugin == null || slot.cleanupFuture != null) return;
     slot
-      ..state = PluginRuntimeState.stopping
+      ..state = const PluginRuntimeStopping()
       ..workState = PluginWorkState.unknown;
     if (slot.commandTransition == null) {
       slot.transition = PluginRuntimeTransition.stopping;
@@ -2012,16 +2069,16 @@ class PluginRuntime({
         // read it as unavailable; the next request starts a fresh generation.
         slot
           ..plugin = null
-          ..state = stoppedCleanly ? PluginRuntimeState.stopping : PluginRuntimeState.failed
+          ..state = stoppedCleanly ? const PluginRuntimeStopping() : const PluginRuntimeFailed()
           ..workState = PluginWorkState.unknown;
         _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
-        if (stoppedCleanly && slot.generation == generation && slot.state == PluginRuntimeState.stopping) {
-          slot.state = PluginRuntimeState.dormant;
+        if (stoppedCleanly && slot.generation == generation && slot.state is PluginRuntimeStopping) {
+          slot.state = const PluginRuntimeDormant();
         }
       } on Object catch (error, stackTrace) {
-        if (stoppedCleanly && slot.generation == generation && slot.state == PluginRuntimeState.stopping) {
-          slot.state = PluginRuntimeState.failed;
+        if (stoppedCleanly && slot.generation == generation && slot.state is PluginRuntimeStopping) {
+          slot.state = const PluginRuntimeFailed();
         }
         Log.w(
           'Plugin "${slot.registration.descriptor.id}" cleanup after $reason failed',
@@ -2081,7 +2138,7 @@ class PluginRuntime({
       return;
     }
     slot
-      ..state = PluginRuntimeState.stopping
+      ..state = const PluginRuntimeStopping()
       ..transition = PluginRuntimeTransition.stopping;
     _publishSnapshots();
 
@@ -2103,7 +2160,7 @@ class PluginRuntime({
         if (identical(slot.cleanupFuture, cleanup)) slot.cleanupFuture = null;
         if (slot.generation == generation) {
           slot
-            ..state = PluginRuntimeState.blocked
+            ..state = const PluginRuntimeBlocked()
             ..workState = PluginWorkState.unknown;
           if (slot.commandTransition == null) {
             slot.transition = PluginRuntimeTransition.none;
@@ -2172,8 +2229,7 @@ class PluginRuntime({
   }
 
   bool _hasOperationalGeneration(_PluginRuntimeSlot slot) {
-    return slot.plugin != null &&
-        (slot.state == PluginRuntimeState.active || slot.state == PluginRuntimeState.degraded);
+    return slot.plugin != null && (slot.state is PluginRuntimeActive || slot.state is PluginRuntimeDegraded);
   }
 
   bool _blocksAcquisition(_PluginRuntimeSlot slot) {
@@ -2207,13 +2263,13 @@ class PluginRuntime({
   ]);
 
   PluginRuntimeSnapshot _snapshotFor(_PluginRuntimeSlot slot) {
-    final state = switch (slot.accessGate) {
-      PluginRuntimeAccessGate.disabled => PluginRuntimeState.disabled,
-      PluginRuntimeAccessGate.draining => PluginRuntimeState.stopping,
-      PluginRuntimeAccessGate.enabled when !slot.startAllowed => PluginRuntimeState.blocked,
+    final PluginRuntimeState state = switch (slot.accessGate) {
+      PluginRuntimeAccessGate.disabled => const PluginRuntimeDisabled(),
+      PluginRuntimeAccessGate.draining => const PluginRuntimeStopping(),
+      PluginRuntimeAccessGate.enabled when !slot.startAllowed => const PluginRuntimeBlocked(),
       PluginRuntimeAccessGate.enabled
-          when slot.plugin == null && slot.startFuture == null && slot.state != PluginRuntimeState.failed =>
-        PluginRuntimeState.dormant,
+          when slot.plugin == null && slot.startFuture == null && slot.state is! PluginRuntimeFailed =>
+        const PluginRuntimeDormant(),
       PluginRuntimeAccessGate.enabled => slot.state,
     };
     return PluginRuntimeSnapshot(
@@ -2224,7 +2280,6 @@ class PluginRuntime({
       startAllowed: slot.startAllowed,
       generation: slot.generation,
       state: state,
-      degradedActionHint: state == PluginRuntimeState.degraded ? slot.degradedActionHint : null,
       workState: slot.workState,
       leaseCount: slot.leaseCount,
       transition: slot.transition,
@@ -2250,8 +2305,7 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
   bool startAllowed = false;
   int setupInspectionRevision = 0;
   int? generation;
-  PluginRuntimeState state = PluginRuntimeState.disabled;
-  String? degradedActionHint;
+  PluginRuntimeState state = const PluginRuntimeDisabled();
   PluginWorkState workState = PluginWorkState.unknown;
   PluginRuntimeTransition transition = PluginRuntimeTransition.none;
   _CommandTransition? commandTransition;

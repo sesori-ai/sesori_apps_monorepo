@@ -1152,7 +1152,7 @@ class PluginLifecycleService({
       );
       _metadataById[snapshot.pluginId] = current.copyWith(
         state: state,
-        actionHint: snapshot.degradedActionHint ?? _actionHint(state),
+        actionHint: _metadataActionHint(runtimeState: snapshot.state, state: state),
       );
     }
     final subject = _metadataSubject;
@@ -1182,7 +1182,7 @@ class PluginLifecycleService({
               displayName: plugin.displayName,
               isDefault: false,
               state: state,
-              actionHint: snapshot?.degradedActionHint ?? _actionHint(state),
+              actionHint: _metadataActionHint(runtimeState: runtimeState, state: state),
               supportsPromptAttachments: plugin.supportsPromptAttachments,
             );
           }(),
@@ -1221,26 +1221,20 @@ class PluginLifecycleService({
   }) => switch (runtimeState) {
     // A stopping runtime (idle suspension, restart, disable drain) is a
     // deliberate transition like starting, not an impairment.
-    PluginRuntimeState.dormant ||
-    PluginRuntimeState.active ||
-    PluginRuntimeState.starting ||
-    PluginRuntimeState.stopping => PluginLifecycleState.ready,
-    PluginRuntimeState.degraded => PluginLifecycleState.degraded,
-    PluginRuntimeState.failed => PluginLifecycleState.failed,
-    PluginRuntimeState.disabled || PluginRuntimeState.blocked || null => unavailableState,
+    PluginRuntimeDormant() ||
+    PluginRuntimeActive() ||
+    PluginRuntimeStarting() ||
+    PluginRuntimeStopping() => PluginLifecycleState.ready,
+    PluginRuntimeDegraded() => PluginLifecycleState.degraded,
+    PluginRuntimeFailed() => PluginLifecycleState.failed,
+    PluginRuntimeDisabled() || PluginRuntimeBlocked() || null => unavailableState,
   };
 
   bool _isSelectable(PluginRuntimeSnapshot snapshot) {
     if (snapshot.accessGate != PluginRuntimeAccessGate.enabled) return false;
     return switch (snapshot.state) {
-      PluginRuntimeState.dormant ||
-      PluginRuntimeState.starting ||
-      PluginRuntimeState.active ||
-      PluginRuntimeState.degraded => true,
-      PluginRuntimeState.disabled ||
-      PluginRuntimeState.blocked ||
-      PluginRuntimeState.stopping ||
-      PluginRuntimeState.failed => false,
+      PluginRuntimeDormant() || PluginRuntimeStarting() || PluginRuntimeActive() || PluginRuntimeDegraded() => true,
+      PluginRuntimeDisabled() || PluginRuntimeBlocked() || PluginRuntimeStopping() || PluginRuntimeFailed() => false,
     };
   }
 
@@ -1297,7 +1291,7 @@ class PluginLifecycleService({
           if (_isManagementCapabilityAvailable(pluginId: plugin.id, capability: capability))
             ?_mapManagementCapability(capability: capability),
       },
-      actionHint: setup.actionHint ?? snapshot.degradedActionHint ?? _managementActionHint(snapshot.state),
+      actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
   }
 
@@ -1407,14 +1401,14 @@ class PluginLifecycleService({
   }
 
   shared.PluginRuntimeState _mapRuntimeState(PluginRuntimeState state) => switch (state) {
-    PluginRuntimeState.disabled => shared.PluginRuntimeState.disabled,
-    PluginRuntimeState.blocked => shared.PluginRuntimeState.blocked,
-    PluginRuntimeState.dormant => shared.PluginRuntimeState.dormant,
-    PluginRuntimeState.starting => shared.PluginRuntimeState.starting,
-    PluginRuntimeState.active => shared.PluginRuntimeState.active,
-    PluginRuntimeState.degraded => shared.PluginRuntimeState.degraded,
-    PluginRuntimeState.stopping => shared.PluginRuntimeState.stopping,
-    PluginRuntimeState.failed => shared.PluginRuntimeState.failed,
+    PluginRuntimeDisabled() => shared.PluginRuntimeState.disabled,
+    PluginRuntimeBlocked() => shared.PluginRuntimeState.blocked,
+    PluginRuntimeDormant() => shared.PluginRuntimeState.dormant,
+    PluginRuntimeStarting() => shared.PluginRuntimeState.starting,
+    PluginRuntimeActive() => shared.PluginRuntimeState.active,
+    PluginRuntimeDegraded() => shared.PluginRuntimeState.degraded,
+    PluginRuntimeStopping() => shared.PluginRuntimeState.stopping,
+    PluginRuntimeFailed() => shared.PluginRuntimeState.failed,
   };
 
   PluginManagementWorkState _mapWorkState(PluginWorkState state) => switch (state) {
@@ -1424,14 +1418,15 @@ class PluginLifecycleService({
   };
 
   String? _managementActionHint(PluginRuntimeState state) => switch (state) {
-    PluginRuntimeState.failed => "Check the bridge console and restart the bridge to retry this plugin.",
-    PluginRuntimeState.degraded => "Check the bridge console if this plugin needs attention.",
-    PluginRuntimeState.blocked => "Check the bridge console to make this plugin available.",
-    PluginRuntimeState.disabled ||
-    PluginRuntimeState.dormant ||
-    PluginRuntimeState.starting ||
-    PluginRuntimeState.active ||
-    PluginRuntimeState.stopping => null,
+    PluginRuntimeFailed() => "Check the bridge console and restart the bridge to retry this plugin.",
+    PluginRuntimeDegraded(:final actionHint) =>
+      actionHint ?? "Check the bridge console if this plugin needs attention.",
+    PluginRuntimeBlocked() => "Check the bridge console to make this plugin available.",
+    PluginRuntimeDisabled() ||
+    PluginRuntimeDormant() ||
+    PluginRuntimeStarting() ||
+    PluginRuntimeActive() ||
+    PluginRuntimeStopping() => null,
   };
 
   Future<void> dispose() => _disposeFuture ??= _dispose();
@@ -1567,7 +1562,7 @@ class PluginLifecycleService({
         snapshot.workState == PluginWorkState.idle &&
         snapshot.leaseCount == 0 &&
         snapshot.transition == PluginRuntimeTransition.none &&
-        (snapshot.state == PluginRuntimeState.active || snapshot.state == PluginRuntimeState.degraded);
+        (snapshot.state is PluginRuntimeActive || snapshot.state is PluginRuntimeDegraded);
   }
 
   /// The user-facing configured idle timeout, as shown and edited by clients.
@@ -1627,6 +1622,16 @@ class PluginLifecycleService({
     }
     _syncIdleTimers(_lifecycleRepository.snapshot);
   }
+
+  /// The plugin's own hint while it is degraded, otherwise the generic hint
+  /// for [state].
+  static String? _metadataActionHint({
+    required PluginRuntimeState? runtimeState,
+    required PluginLifecycleState state,
+  }) => switch (runtimeState) {
+    PluginRuntimeDegraded(:final actionHint?) => actionHint,
+    _ => _actionHint(state),
+  };
 
   static String? _actionHint(PluginLifecycleState state) => switch (state) {
     PluginLifecycleState.unavailable => "Check the bridge console to make this plugin available.",
