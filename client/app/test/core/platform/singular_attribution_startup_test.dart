@@ -22,14 +22,13 @@ void main() {
 
   void prepareEligibleStartup() {
     startup.prepare(
-      isSupportedPlatform: true,
       ineligibilityReason: null,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
   }
 
-  test("starts an eligible supported build after the crawl gate allows it", () {
+  test("starts an eligible build after the crawl gate allows it", () {
     prepareEligibleStartup();
 
     expect(startedConfigs, isEmpty);
@@ -51,16 +50,8 @@ void main() {
     expect(startedConfigs.single.toMap, isNot(contains("customUserId")));
   });
 
-  test("does not start on unsupported platforms or ineligible builds", () {
+  test("does not start ineligible builds", () {
     startup.prepare(
-      isSupportedPlatform: false,
-      ineligibilityReason: null,
-      sdkKey: "test-sdk-key",
-      sdkSecret: "test-sdk-secret",
-    );
-    startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
-    startup.prepare(
-      isSupportedPlatform: true,
       ineligibilityReason: AnalyticsRuntimeDisabledReason.debugOrProfile,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",

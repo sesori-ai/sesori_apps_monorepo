@@ -1234,21 +1234,18 @@ class PluginLifecycleService({
       managementCapabilities: {
         for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
           if (_isManagementCapabilityAvailable(pluginId: plugin.id, capability: capability))
-            ?_mapManagementCapability(capability: capability),
+            _mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
   }
 
-  PluginManagementCapability? _mapManagementCapability({required PluginControlCapability capability}) =>
+  PluginManagementCapability _mapManagementCapability({required PluginControlCapability capability}) =>
       switch (capability) {
         PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
         PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
         PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
         PluginControlCapability.install => PluginManagementCapability.install,
-        // Descriptor-owned updater metadata stays internal until command
-        // transport and execution support are available.
-        PluginControlCapability.runtimeUpdate => null,
         PluginControlCapability.authentication => PluginManagementCapability.authentication,
       };
 

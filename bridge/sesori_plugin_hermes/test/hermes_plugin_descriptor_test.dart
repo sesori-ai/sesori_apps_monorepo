@@ -38,12 +38,6 @@ void main() {
       );
       expect(HermesPluginDescriptor.minVersion, "0.20.0");
       expect(HermesPluginDescriptor.targetVersion, "0.22.5");
-      const descriptor = HermesPluginDescriptor();
-      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "hermes");
-      expect(update?.arguments, const ["update", "--yes"]);
-      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("declares only the binary option and no install capability", () {
@@ -55,12 +49,6 @@ void main() {
         isNot(contains(PluginControlCapability.install)),
         reason: "Hermes installs itself; the bridge never manages its runtime",
       );
-      const explicit = PluginConfig(values: {HermesPluginDescriptor.binOption: "/custom/hermes"});
-      expect(
-        descriptor.managementCapabilities(config: explicit),
-        isNot(contains(PluginControlCapability.runtimeUpdate)),
-      );
-      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("ensureRuntime resolves a supported PATH adapter", () async {

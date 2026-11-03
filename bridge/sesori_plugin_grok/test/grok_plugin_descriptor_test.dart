@@ -29,17 +29,6 @@ void main() {
         isNot(contains(PluginControlCapability.install)),
         reason: "Grok owns its installer and update lifecycle",
       );
-      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "grok");
-      expect(update?.arguments, const ["update"]);
-      expect(update?.timeout, const Duration(minutes: 10));
-      const explicit = PluginConfig(values: {GrokPluginDescriptor.binOption: "/custom/grok"});
-      expect(
-        descriptor.managementCapabilities(config: explicit),
-        isNot(contains(PluginControlCapability.runtimeUpdate)),
-      );
-      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("accepts the supported PATH floor and reports its sanitized version", () async {

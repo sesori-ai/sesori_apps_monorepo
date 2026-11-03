@@ -8,7 +8,6 @@ import "package:singular_flutter_sdk/events.dart";
 SingularAttributionStartup _eligibleStartup({required SingularStaticAdapter singular}) =>
     SingularAttributionStartup(singular: singular)
       ..prepare(
-        isSupportedPlatform: true,
         ineligibilityReason: null,
         sdkKey: "sdk-key",
         sdkSecret: "sdk-secret",
@@ -49,7 +48,6 @@ void main() {
     final client = SingularAttributionClient(
       startup: SingularAttributionStartup(singular: singular)
         ..prepare(
-          isSupportedPlatform: true,
           ineligibilityReason: null,
           sdkKey: "sdk-key",
           sdkSecret: "sdk-secret",
@@ -73,7 +71,6 @@ void main() {
     );
     final startup = SingularAttributionStartup(singular: singular)
       ..prepare(
-        isSupportedPlatform: true,
         ineligibilityReason: null,
         sdkKey: "sdk-key",
         sdkSecret: "sdk-secret",

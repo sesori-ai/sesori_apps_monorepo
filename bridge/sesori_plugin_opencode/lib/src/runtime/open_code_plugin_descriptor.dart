@@ -318,18 +318,7 @@ class const OpenCodePluginDescriptor({
     return {
       ...super.managementCapabilities(config: config),
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
-      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
-  }
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (config.flag(_OpenCodeConfigKey.noAutoStart) || _explicitBin(config) != null) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: "opencode",
-      arguments: ["upgrade"],
-      timeout: Duration(minutes: 10),
-    );
   }
 
   /// Whether a managed start first looks for OpenCode 2's shared background

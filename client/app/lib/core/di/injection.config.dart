@@ -37,7 +37,6 @@ import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
 import 'package:sesori_mobile/core/platform/file_attribution_claim_storage.dart'
     as _i968;
-import 'package:sesori_mobile/core/platform/file_save_client.dart' as _i223;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
 import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart'
@@ -89,6 +88,8 @@ import 'package:sesori_mobile/core/platform/mobile_active_bridge_locality.dart'
     as _i877;
 import 'package:sesori_mobile/core/platform/mobile_go_router_route_source.dart'
     as _i177;
+import 'package:sesori_mobile/core/platform/mobile_photo_image_saver.dart'
+    as _i481;
 import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
 import 'package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart'
     as _i186;
@@ -141,7 +142,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i441.ApplicationSupportDirectoryClient>(
       () => _i441.ApplicationSupportDirectoryClient(),
     );
-    gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i489.FlutterWebAuthClient>(
       () => _i489.FlutterWebAuthClient(),
     );
@@ -164,6 +164,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i177.MobileGoRouterRouteSource());
+    gh.lazySingleton<_i948.ImageSaver>(
+      () => _i481.MobilePhotoImageSaver(galClient: gh<_i227.GalClient>()),
+    );
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i877.MobileActiveBridgeLocality(),
     );
@@ -283,12 +286,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.FounderCallConfigSource>(
       () => _i367.NoOpFounderCallConfigSource(),
       registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i948.ImageSaver>(
-      () => registerModule.imageSaver(
-        galClient: gh<_i227.GalClient>(),
-        fileSaveClient: gh<_i223.FileSaveClient>(),
-      ),
     );
     gh.lazySingleton<_i948.PluginAuthenticationBrowser>(
       () => _i987.FlutterPluginAuthenticationBrowser(

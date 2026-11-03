@@ -97,11 +97,6 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
-      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "omp");
-      expect(update?.arguments, const ["update"]);
-      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
@@ -243,8 +238,6 @@ void main() {
       final descriptor = OmpPluginDescriptor.production();
       final capabilities = descriptor.managementCapabilities(config: explicit);
       expect(capabilities, isNot(contains(PluginControlCapability.install)));
-      expect(capabilities, isNot(contains(PluginControlCapability.runtimeUpdate)));
-      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
       final result = await descriptor.inspectSetup(
         config: explicit,
         processes: _Processes(spawnError: const ProcessException("/custom/omp", ["--version"], "missing", 2)),
