@@ -15,8 +15,6 @@ resolution: workspace
 # In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-# In Windows, build-name is used as the major, minor, and patch parts
-# of the product and file versions while build-number is used as the build suffix.
 version: 1.12.0+1
 environment:
   sdk: ^3.13.7
@@ -56,10 +54,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   url_launcher: ^6.3.3
   share_plus: ^13.3.1
-  file_selector: ^1.1.0
   gal: ^2.3.3
-  pasteboard: ^0.6.0
-  universal_platform: ^1.1.0
   device_info_plus: ^13.3.0
   package_info_plus: ^10.2.2
   path: any
@@ -214,10 +209,8 @@ flutter_native_splash:
     # image_dark: assets/images/logo/logo-splash2.png
 
   #======================================================================
-  # Web
-  background_image_web: "assets/images/bkg_png/light_mode_portrait_splash.png"
-  background_image_dark_web: "assets/images/bkg_png/dark_mode_portrait_splash.png"
-  web_image_mode: cover # center, contain, stretch, cover
+  # Web: the phone app has no web target.
+  web: false
 
 
   # general image for all platform (except android 12+):
@@ -230,8 +223,6 @@ flutter_native_splash:
   #image_dark_android:  assets/splash-invert-android.png
   #image_ios:           assets/splash-ios.png
   #image_dark_ios:      assets/splash-invert-ios.png
-  #image_web:           assets/splash-web.gif
-  #image_dark_web:      assets/splash-invert-web.gif
 
   #========================================================================
 

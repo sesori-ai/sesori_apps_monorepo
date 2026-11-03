@@ -152,13 +152,6 @@ void main() {
       expect(commands.single.name, "create_plan");
       expect(commands.single.description, "Plan before coding");
       expect(commands.single.hints, ["what to plan"]);
-      final discovery = await plugin.getSessionOptions(
-        projectId: cwd,
-        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
-      );
-      final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
-      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-      expect(options.commands.single.name, "create_plan");
       expect(emitted.whereType<BridgeSseCommandCatalogUpdated>(), isEmpty);
       expect(
         emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,

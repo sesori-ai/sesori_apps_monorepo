@@ -16,7 +16,6 @@ CodexImageGenerationItemDto _$CodexImageGenerationItemDtoFromJson(Map json) =>
             unknownValue: CodexImageGenerationStatus.unknown,
           ) ??
           CodexImageGenerationStatus.unknown,
-      revisedPrompt: json['revisedPrompt'] as String?,
       result: json['result'] as String,
       savedPath: json['savedPath'] as String?,
       $type: json['type'] as String?,
@@ -98,12 +97,6 @@ CodexDynamicTextContentDto _$CodexDynamicTextContentDtoFromJson(Map json) =>
 CodexDynamicImageContentDto _$CodexDynamicImageContentDtoFromJson(Map json) =>
     CodexDynamicImageContentDto(
       imageUrl: json['imageUrl'] as String,
-      $type: json['type'] as String?,
-    );
-
-CodexDynamicAudioContentDto _$CodexDynamicAudioContentDtoFromJson(Map json) =>
-    CodexDynamicAudioContentDto(
-      audioUrl: json['audioUrl'] as String,
       $type: json['type'] as String?,
     );
 

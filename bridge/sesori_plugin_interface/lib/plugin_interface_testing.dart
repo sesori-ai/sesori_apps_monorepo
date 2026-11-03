@@ -5,3 +5,4 @@
 library;
 
 export "src/testing/fake_stdout.dart";
+export "src/testing/plugin_message_part_test_accessors.dart";

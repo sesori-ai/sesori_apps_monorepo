@@ -62,7 +62,7 @@ RuntimeRestartPolicy buildCodexRestartPolicy() => const RuntimeRestartPolicy.dis
 
 /// The dynamic port candidates the supervisor probes when no explicit port is
 /// requested.
-Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}) {
+Iterable<int> codexDynamicCandidates({required Iterable<int>? candidates, required Random? random}) {
   return dynamicPortCandidates(
     minPort: dynamicCodexPortMin,
     maxPort: dynamicCodexPortMax,

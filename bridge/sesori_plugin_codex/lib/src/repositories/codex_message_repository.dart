@@ -159,11 +159,11 @@ class CodexMessageRepository({
   static List<CodexRolloutLineDto> trimForkedParentHistory({
     required List<CodexRolloutLineDto> lines,
   }) {
-    if (lines.isEmpty ||
-        lines.first is! CodexRolloutSessionMetadataLineDto ||
-        (lines.first as CodexRolloutSessionMetadataLineDto).payload.threadSource != CodexRolloutThreadSource.subagent) {
-      return lines;
-    }
+    final startsAsSubAgent = switch (lines.firstOrNull) {
+      CodexRolloutSessionMetadataLineDto(:final payload) => payload.threadSource == CodexRolloutThreadSource.subagent,
+      _ => false,
+    };
+    if (!startsAsSubAgent) return lines;
     var copyStart = -1;
     for (var index = 1; index < lines.length; index++) {
       if (lines[index] is CodexRolloutSessionMetadataLineDto) {
@@ -284,7 +284,7 @@ class CodexMessageRepository({
     if (previousLine case CodexRolloutInterAgentCommunicationMetadataLineDto(
       payload: CodexRolloutInterAgentCommunicationMetadataDto(triggerTurn: true),
     )) {
-      final turnId = _exactNonBlank(message.metadata?.turnId);
+      final turnId = _exactNonBlank(value: message.metadata?.turnId);
       if (turnId == null) return null;
       if (message.content.any((content) => content is CodexRolloutAgentMessageEncryptedContentDto)) {
         return CodexSubAgentInitialInputFact(
@@ -320,10 +320,10 @@ class CodexMessageRepository({
       r"^Message Type: NEW_TASK\nTask name: ([^\n]+)\nSender: ([^\n]+)\nPayload:\n([\s\S]*)$",
     ).firstMatch(text);
     if (match == null || match.group(1) != recipient || match.group(2) != author) return null;
-    return _exactNonBlank(match.group(3));
+    return _exactNonBlank(value: match.group(3));
   }
 
-  String? _exactNonBlank(String? value) => value == null || value.trim().isEmpty ? null : value;
+  String? _exactNonBlank({required String? value}) => value == null || value.trim().isEmpty ? null : value;
 
   List<PluginMessageWithParts> projectMessages({
     required CodexPreparedMessageRead read,
@@ -332,7 +332,7 @@ class CodexMessageRepository({
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     required Map<String, CodexSubAgentReplayData> childReplayDataById,
-    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+    required CodexConfigDefaults config,
   }) {
     final lines = read._lines;
 
@@ -369,7 +369,7 @@ class CodexMessageRepository({
       sessionID: sessionId,
       agent: "codex",
       modelID: currentModel ?? config.model,
-      providerID: sessionProvider ?? config.modelProvider ?? "openai",
+      providerID: sessionProvider ?? config.effectiveModelProvider,
       variant: currentVariant,
       sender: PluginMessageSender.agent,
       time: time,
@@ -397,12 +397,13 @@ class CodexMessageRepository({
     }) {
       if (subAgentTracker.hasRenderedTile(parentId: sessionId, callId: tool.canonicalId)) return;
       final existingIndex = toolMessageIndexById[tool.canonicalId];
-      final info = existingIndex == null
-          ? assistantInfo(
-              id: tool.canonicalId,
-              time: _messageTimeFrom(timestamp),
-            )
-          : messages[existingIndex]!.info;
+      final existing = existingIndex == null ? null : messages[existingIndex];
+      final info =
+          existing?.info ??
+          assistantInfo(
+            id: tool.canonicalId,
+            time: _messageTimeFrom(raw: timestamp),
+          );
       final message = PluginMessageWithParts(
         info: info,
         parts: [
@@ -435,9 +436,13 @@ class CodexMessageRepository({
       required String? timestamp,
     }) {
       final existingIndex = toolMessageIndexById[task.callId];
-      final info = existingIndex == null
-          ? assistantInfo(id: task.callId, time: _messageTimeFrom(timestamp))
-          : messages[existingIndex]!.info;
+      final existing = existingIndex == null ? null : messages[existingIndex];
+      final info =
+          existing?.info ??
+          assistantInfo(
+            id: task.callId,
+            time: _messageTimeFrom(raw: timestamp),
+          );
       final message = PluginMessageWithParts(
         info: info,
         parts: [const CodexSessionMapper().mapSubAgentTile(task: task).part],
@@ -452,7 +457,7 @@ class CodexMessageRepository({
 
     for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       final line = lines[lineIndex];
-      final lineTimestamp = _lineTimestamp(line);
+      final lineTimestamp = _lineTimestamp(line: line);
       final subAgentFact = subAgentRolloutFact(
         line: line,
         previousLine: lineIndex == 0 ? null : lines[lineIndex - 1],
@@ -520,7 +525,7 @@ class CodexMessageRepository({
                 id: messageId,
                 sessionID: sessionId,
                 agent: null,
-                time: _messageTimeFrom(lineTimestamp),
+                time: _messageTimeFrom(raw: lineTimestamp),
                 promptId: null,
               ),
               messageId: messageId,
@@ -567,11 +572,11 @@ class CodexMessageRepository({
               sessionID: sessionId,
               agent: "codex",
               modelID: currentModel ?? config.model,
-              providerID: sessionProvider ?? config.modelProvider ?? "openai",
+              providerID: sessionProvider ?? config.effectiveModelProvider,
               variant: currentVariant,
               errorName: "CodexError",
               errorMessage: error.message,
-              time: _messageTimeFrom(lineTimestamp),
+              time: _messageTimeFrom(raw: lineTimestamp),
             ),
             parts: const [],
           ),
@@ -593,7 +598,7 @@ class CodexMessageRepository({
           continue;
         case CodexRolloutCompactedLineDto(:final timestamp, :final summary):
           messageCounter += 1;
-          final time = _messageTimeFrom(timestamp);
+          final time = _messageTimeFrom(raw: timestamp);
           unkeyedCompaction = (slot: messages.length, summary: summary, time: time);
           messages.add(compactionMessage(id: "codex-compaction-$messageCounter", time: time, summary: summary));
           continue;
@@ -641,7 +646,7 @@ class CodexMessageRepository({
         case CodexRolloutUnknownLineDto():
           continue;
       }
-      final messageTime = _messageTimeFrom(lineTimestamp);
+      final messageTime = _messageTimeFrom(raw: lineTimestamp);
 
       switch (payload) {
         case CodexRolloutFunctionCallDto() || CodexRolloutCustomToolCallDto():
@@ -817,7 +822,7 @@ class CodexMessageRepository({
     return [for (final message in messages) ?message];
   }
 
-  String? _lineTimestamp(CodexRolloutLineDto line) {
+  String? _lineTimestamp({required CodexRolloutLineDto line}) {
     return switch (line) {
       CodexRolloutSessionMetadataLineDto(:final timestamp) ||
       CodexRolloutTurnContextLineDto(:final timestamp) ||
@@ -912,7 +917,7 @@ class CodexMessageRepository({
     return "m-$legacyCounter";
   }
 
-  PluginMessageTime? _messageTimeFrom(String? raw) {
+  PluginMessageTime? _messageTimeFrom({required String? raw}) {
     if (raw == null || raw.isEmpty) return null;
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return null;

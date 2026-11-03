@@ -79,14 +79,10 @@ void main() {
     expect(state.currentModelId, isNull);
   });
 
-  test("an omitted scratch session ID is not sent to the delete command", () async {
+  test("a failed scratch session/new sends no delete command", () async {
     final api = _FakeHermesAcpApi(
-      result: const AcpNewSessionResult(
-        sessionId: "",
-        modes: [],
-        configOptions: [],
-        raw: {},
-      ),
+      result: _modelResult(),
+      newError: const FormatException("session/new result has no sessionId"),
     );
     final repository = HermesCatalogRepository(api: api);
 
@@ -95,7 +91,7 @@ void main() {
         cwd: "/repo",
         timeout: const Duration(seconds: 2),
       ),
-      throwsA(isA<StateError>()),
+      throwsA(isA<FormatException>()),
     );
     expect(api.operations, ["open", "new", "settle"]);
   });
@@ -127,6 +123,7 @@ AcpNewSessionResult _modelResult() => const AcpNewSessionResult(
 
 class _FakeHermesAcpApi({
   required final AcpNewSessionResult result,
+  final Object? newError,
   final Object? deleteError,
   final Object? settleError,
 }) implements HermesAcpApi {
@@ -144,6 +141,8 @@ class _FakeHermesAcpApi({
     required Duration timeout,
   }) async {
     operations.add("new");
+    final error = newError;
+    if (error != null) throw error;
     return result;
   }
 

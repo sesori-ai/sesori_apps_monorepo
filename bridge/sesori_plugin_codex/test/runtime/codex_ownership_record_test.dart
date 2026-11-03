@@ -74,8 +74,10 @@ void main() {
     });
 
     test("mark* flips only the status field", () {
-      expect(mapper.markReady(record: record.copyWith(status: CodexOwnershipStatus.starting)).status,
-          equals(CodexOwnershipStatus.ready));
+      expect(
+        mapper.markReady(record: record.copyWith(status: CodexOwnershipStatus.starting)).status,
+        equals(CodexOwnershipStatus.ready),
+      );
       expect(mapper.markStopping(record: record).status, equals(CodexOwnershipStatus.stopping));
     });
 

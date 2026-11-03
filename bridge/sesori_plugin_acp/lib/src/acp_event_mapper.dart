@@ -191,6 +191,7 @@ class AcpEventMapper({
   /// session is deleted so live-render state (model, project, turn counters,
   /// started parts, live tools) doesn't accumulate across a long-lived process.
   void forgetSession(String sessionId) {
+    _configurationTracker.forgetSession(sessionId: sessionId);
     _sessionProject.remove(sessionId);
     _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);

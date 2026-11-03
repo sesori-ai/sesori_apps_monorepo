@@ -110,7 +110,6 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
     @JsonKey(name: "call_id") required String callId,
     @JsonKey(unknownEnumValue: CodexRolloutImageGenerationStatus.unknown)
     required CodexRolloutImageGenerationStatus status,
-    @JsonKey(name: "revised_prompt") required String? revisedPrompt,
     required String result,
     @JsonKey(name: "saved_path") required String? savedPath,
   }) = CodexRolloutImageGenerationEndEventDto;
@@ -206,7 +205,6 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
     required String? cwd,
     required String? timestamp,
     @JsonKey(name: "model_provider") required String? modelProvider,
-    @JsonKey(name: "cli_version") required String? cliVersion,
     @JsonKey(name: "parent_thread_id") required String? parentThreadId,
     @JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown)
     required CodexRolloutThreadSource? threadSource,
@@ -332,9 +330,7 @@ sealed class CodexRolloutAgentMessageContentDto with _$CodexRolloutAgentMessageC
   }) = CodexRolloutAgentMessageInputTextDto;
 
   @FreezedUnionValue("encrypted_content")
-  const factory encrypted({
-    @JsonKey(name: "encrypted_content") required String encryptedContent,
-  }) = CodexRolloutAgentMessageEncryptedContentDto;
+  const factory encrypted() = CodexRolloutAgentMessageEncryptedContentDto;
 
   const factory unknown() = CodexRolloutUnknownAgentMessageContentDto;
 
@@ -352,10 +348,14 @@ class const CodexRolloutAgentMessageContentListConverter()
     }
     final content = <CodexRolloutAgentMessageContentDto>[];
     for (final item in json) {
-      try {
-        content.add(CodexRolloutAgentMessageContentDto.fromJson((item as Map).cast<String, dynamic>()));
-      } on Object {
+      if (item is! Map) {
         Log.w("[codex] skipping malformed agent-message content item");
+        continue;
+      }
+      try {
+        content.add(CodexRolloutAgentMessageContentDto.fromJson(item.cast<String, dynamic>()));
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] skipping malformed agent-message content item", error, stackTrace);
       }
     }
     return content;
@@ -409,14 +409,14 @@ class const CodexRolloutContentListConverter() implements JsonConverter<List<Cod
     }
     final content = <CodexRolloutContentDto>[];
     for (final item in json) {
-      try {
-        content.add(
-          CodexRolloutContentDto.fromJson(
-            (item as Map).cast<String, dynamic>(),
-          ),
-        );
-      } on Object {
+      if (item is! Map) {
         Log.w("[codex] skipping malformed rollout content item");
+        continue;
+      }
+      try {
+        content.add(CodexRolloutContentDto.fromJson(item.cast<String, dynamic>()));
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] skipping malformed rollout content item", error, stackTrace);
       }
     }
     return content;
@@ -465,7 +465,6 @@ sealed class CodexToolArgumentsDto with _$CodexToolArgumentsDto {
     @JsonKey(name: "file_path") required Object? filePath,
     required Object? query,
     @JsonKey(name: "cell_id") required Object? cellId,
-    @JsonKey(name: "task_name", fromJson: _stringOrNull) required String? taskName,
     @JsonKey(fromJson: _stringOrNull) required String? message,
     @JsonKey(name: "agent_type", fromJson: _stringOrNull) required String? agentType,
   }) = _CodexToolArgumentsDto;

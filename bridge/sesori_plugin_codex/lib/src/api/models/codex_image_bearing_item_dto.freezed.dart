@@ -72,12 +72,11 @@ $CodexImageBearingItemDtoCopyWith(CodexImageBearingItemDto _, $Res Function(Code
 @JsonSerializable(createToJson: false)
 
 class CodexImageGenerationItemDto implements CodexImageBearingItemDto {
-  const CodexImageGenerationItemDto({required this.id, @JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) required this.status, required this.revisedPrompt, required this.result, required this.savedPath,  String? $type}): $type = $type ?? 'imageGeneration';
+  const CodexImageGenerationItemDto({required this.id, @JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) required this.status, required this.result, required this.savedPath,  String? $type}): $type = $type ?? 'imageGeneration';
   factory CodexImageGenerationItemDto.fromJson(Map<String, dynamic> json) => _$CodexImageGenerationItemDtoFromJson(json);
 
  final  String id;
 @JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) final  CodexImageGenerationStatus status;
- final  String? revisedPrompt;
  final  String result;
  final  String? savedPath;
 
@@ -95,18 +94,18 @@ $CodexImageGenerationItemDtoCopyWith<CodexImageGenerationItemDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageGenerationItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageGenerationItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,status,revisedPrompt,result,savedPath);
+    return Object.hash(runtimeType,id,status,result,savedPath);
 }
 
 @override
 String toString() {
-    return 'CodexImageBearingItemDto.imageGeneration(id: $id, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
+    return 'CodexImageBearingItemDto.imageGeneration(id: $id, status: $status, result: $result, savedPath: $savedPath)';
 }
 
 
@@ -117,7 +116,7 @@ abstract mixin class $CodexImageGenerationItemDtoCopyWith<$Res> implements $Code
   factory $CodexImageGenerationItemDtoCopyWith(CodexImageGenerationItemDto value, $Res Function(CodexImageGenerationItemDto) _then) = _$CodexImageGenerationItemDtoCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) CodexImageGenerationStatus status, String? revisedPrompt, String result, String? savedPath
+ String id,@JsonKey(unknownEnumValue: CodexImageGenerationStatus.unknown, defaultValue: CodexImageGenerationStatus.unknown) CodexImageGenerationStatus status, String result, String? savedPath
 });
 
 
@@ -134,12 +133,11 @@ class _$CodexImageGenerationItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexImageBearingItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? status = null,Object? revisedPrompt = freezed,Object? result = null,Object? savedPath = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? status = null,Object? result = null,Object? savedPath = freezed,}) {
   return _then(CodexImageGenerationItemDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as CodexImageGenerationStatus,revisedPrompt: freezed == revisedPrompt ? _self.revisedPrompt : revisedPrompt // ignore: cast_nullable_to_non_nullable
-as String?,result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as CodexImageGenerationStatus,result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
 as String,savedPath: freezed == savedPath ? _self.savedPath : savedPath // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -375,10 +373,6 @@ CodexImageBearingContentDto _$CodexImageBearingContentDtoFromJson(
           );
                 case 'inputImage':
           return CodexDynamicImageContentDto.fromJson(
-            json
-          );
-                case 'inputAudio':
-          return CodexDynamicAudioContentDto.fromJson(
             json
           );
         
@@ -704,78 +698,6 @@ class _$CodexDynamicImageContentDtoCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? imageUrl = null,}) {
   return _then(CodexDynamicImageContentDto(
 imageUrl: null == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
-}
-
-/// @nodoc
-@JsonSerializable(createToJson: false)
-
-class CodexDynamicAudioContentDto implements CodexImageBearingContentDto {
-  const CodexDynamicAudioContentDto({required this.audioUrl,  String? $type}): $type = $type ?? 'inputAudio';
-  factory CodexDynamicAudioContentDto.fromJson(Map<String, dynamic> json) => _$CodexDynamicAudioContentDtoFromJson(json);
-
- final  String audioUrl;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of CodexImageBearingContentDto
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$CodexDynamicAudioContentDtoCopyWith<CodexDynamicAudioContentDto> get copyWith => _$CodexDynamicAudioContentDtoCopyWithImpl<CodexDynamicAudioContentDto>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicAudioContentDto&&(identical(other.audioUrl, audioUrl) || other.audioUrl == audioUrl));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode {
-    return Object.hash(runtimeType,audioUrl);
-}
-
-@override
-String toString() {
-    return 'CodexImageBearingContentDto.dynamicAudio(audioUrl: $audioUrl)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $CodexDynamicAudioContentDtoCopyWith<$Res> implements $CodexImageBearingContentDtoCopyWith<$Res> {
-  factory $CodexDynamicAudioContentDtoCopyWith(CodexDynamicAudioContentDto value, $Res Function(CodexDynamicAudioContentDto) _then) = _$CodexDynamicAudioContentDtoCopyWithImpl;
-@useResult
-$Res call({
- String audioUrl
-});
-
-
-
-
-}
-/// @nodoc
-class _$CodexDynamicAudioContentDtoCopyWithImpl<$Res>
-    implements $CodexDynamicAudioContentDtoCopyWith<$Res> {
-  _$CodexDynamicAudioContentDtoCopyWithImpl(this._self, this._then);
-
-  final CodexDynamicAudioContentDto _self;
-  final $Res Function(CodexDynamicAudioContentDto) _then;
-
-/// Create a copy of CodexImageBearingContentDto
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? audioUrl = null,}) {
-  return _then(CodexDynamicAudioContentDto(
-audioUrl: null == audioUrl ? _self.audioUrl : audioUrl // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

@@ -10,6 +10,7 @@ import "package:opencode_plugin/src/models/openapi/file_source.g.dart";
 import "package:opencode_plugin/src/models/openapi/text_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/tool_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/tool_state_completed.g.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";

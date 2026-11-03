@@ -15,14 +15,6 @@ _CodexFileChangeParamsDto _$CodexFileChangeParamsDtoFromJson(Map json) =>
       ),
     );
 
-Map<String, dynamic> _$CodexFileChangeParamsDtoToJson(
-  _CodexFileChangeParamsDto instance,
-) => <String, dynamic>{
-  'threadId': ?instance.threadId,
-  'turnId': ?instance.turnId,
-  'item': instance.item.toJson(),
-};
-
 _CodexFileChangeItemDto _$CodexFileChangeItemDtoFromJson(Map json) =>
     _CodexFileChangeItemDto(
       type:
@@ -34,25 +26,16 @@ _CodexFileChangeItemDto _$CodexFileChangeItemDtoFromJson(Map json) =>
           CodexFileChangeItemType.unknown,
       id: json['id'] as String?,
       status: _fileChangeStatusFromJson(json['status']),
+      changes: _fileChangeEntriesFromJson(json['changes']),
     );
-
-Map<String, dynamic> _$CodexFileChangeItemDtoToJson(
-  _CodexFileChangeItemDto instance,
-) => <String, dynamic>{
-  'type': _$CodexFileChangeItemTypeEnumMap[instance.type]!,
-  'id': ?instance.id,
-  'status': _$CodexFileChangeStatusEnumMap[instance.status]!,
-};
 
 const _$CodexFileChangeItemTypeEnumMap = {
   CodexFileChangeItemType.fileChange: 'fileChange',
   CodexFileChangeItemType.unknown: 'unknown',
 };
 
-const _$CodexFileChangeStatusEnumMap = {
-  CodexFileChangeStatus.inProgress: 'inProgress',
-  CodexFileChangeStatus.completed: 'completed',
-  CodexFileChangeStatus.failed: 'failed',
-  CodexFileChangeStatus.declined: 'declined',
-  CodexFileChangeStatus.unknown: 'unknown',
-};
+_CodexFileChangeEntryDto _$CodexFileChangeEntryDtoFromJson(Map json) =>
+    _CodexFileChangeEntryDto(
+      path: _stringOrNull(json['path']),
+      diff: _stringOrNull(json['diff']),
+    );

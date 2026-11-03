@@ -1,7 +1,7 @@
-// Phase 4 write-path integration tests: createSession, sendPrompt,
+// Write-path integration tests: createSession, sendPrompt,
 // abortSession round-trip against an in-memory fake WS, plus the
 // notification → BridgeSseEvent pipeline.
-// ignore_for_file: cast_nullable_to_non_nullable, prefer_foreach, avoid_dynamic_calls
+// ignore_for_file: cast_nullable_to_non_nullable, avoid_dynamic_calls
 
 import "dart:async";
 import "dart:convert";
@@ -12,12 +12,14 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/stub_web_socket_channel.dart";
 
 void main() {
   group("CodexPlugin write path", () {
@@ -38,6 +40,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: toolOutcomeRepository,
@@ -1072,8 +1075,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => resolvedFake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(resolvedPlugin.dispose);
       resolvedFake.respondInOrder([
@@ -3063,8 +3068,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => kaFake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(milliseconds: 20),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       kaFake.respondInOrder([
         const _Response(result: _initOk),
@@ -3244,8 +3251,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => scopedFake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(scopedPlugin.dispose);
       scopedFake.respondInOrder([
@@ -4284,9 +4293,9 @@ class _FakeAppServer() {
   this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
-    channel = _StubChannel(
+    channel = StubWebSocketChannel(
       stream: _serverToClient.stream,
-      sink: _SinkAdapter(_clientToServer),
+      sink: ControllerWebSocketSink(controller: _clientToServer),
     );
     _clientToServer.stream.listen(_onClientFrame);
   }
@@ -4403,41 +4412,3 @@ class _FakeAppServer() {
 }
 
 class _SentFrame({required final String method, required final Map<String, dynamic>? params});
-
-class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
-    implements WebSocketChannel {
-  @override
-  int? get closeCode => null;
-  @override
-  String? get closeReason => null;
-  @override
-  String? get protocol => null;
-  @override
-  Future<void> get ready => Future.value();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
-  @override
-  void add(Object? data) => _controller.add(data);
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
-
-  @override
-  Future<void> addStream(Stream<Object?> stream) async {
-    await for (final item in stream) {
-      _controller.add(item);
-    }
-  }
-
-  @override
-  Future<void> close([int? closeCode, String? closeReason]) async {
-    if (!_controller.isClosed) await _controller.close();
-  }
-
-  @override
-  Future<void> get done => _controller.done;
-}

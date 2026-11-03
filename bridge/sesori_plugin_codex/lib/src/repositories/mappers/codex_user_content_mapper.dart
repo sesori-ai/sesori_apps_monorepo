@@ -8,7 +8,7 @@ final class const CodexUserContentMapper() {
 
   bool _isGeneratedCodexContext({required String text}) {
     final normalized = text.trim();
-    return _GeneratedContextTag.values.any((tag) => tag.wraps(normalized)) ||
+    return _GeneratedContextTag.values.any((tag) => tag.wraps(text: normalized)) ||
         _generatedRepositoryInstructions.hasMatch(normalized);
   }
 }
@@ -18,7 +18,7 @@ enum _GeneratedContextTag(final String wireName) {
   environmentContext("environment_context"),
   turnAborted("turn_aborted");
 
-  bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
+  bool wraps({required String text}) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }
 
 final _generatedRepositoryInstructions = RegExp(

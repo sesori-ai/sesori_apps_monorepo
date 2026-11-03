@@ -2,7 +2,6 @@ import "../acp_command_tracker.dart";
 import "../acp_event_mapper.dart";
 import "../acp_process_factory.dart";
 import "../acp_session_configuration_tracker.dart";
-import "../acp_session_options_service.dart";
 import "../repositories/trackers/acp_child_session_tracker.dart";
 import "test_acp_plugin.dart";
 
@@ -29,12 +28,6 @@ TestAcpPlugin composeTestAcpPlugin({
       childSessions: childSessionTracker,
     ),
     commandTracker: commandTracker,
-    sessionOptionsService: AcpSessionOptionsService(
-      configurationTracker: configurationTracker,
-      commandTracker: commandTracker,
-      pluginId: id,
-      agentDisplayName: agentDisplayName,
-    ),
     processFactory: processFactory,
   );
 }

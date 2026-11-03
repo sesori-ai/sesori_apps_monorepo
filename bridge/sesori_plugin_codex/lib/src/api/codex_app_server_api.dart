@@ -37,6 +37,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
         "threadId": ?threadId,
         "timeoutSecs": timeoutSecs,
       },
+      timeout: codexRequestTimeout,
     );
     if (result is! Map) throw StateError("expected a Codex MCP login response, got ${result.runtimeType}");
     return CodexMcpOAuthLoginDto.fromJson(result.cast<String, dynamic>());
@@ -51,6 +52,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
         "limit": 100,
         "forceRefetch": cursor == null,
       },
+      timeout: codexRequestTimeout,
     );
     if (result is! Map) throw StateError("expected a Codex app catalog page, got ${result.runtimeType}");
     return CodexAppsPageDto.fromJson(result.cast<String, dynamic>());
@@ -66,6 +68,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
             "limit": 100,
             "detail": "toolsAndAuthOnly",
           },
+          timeout: codexRequestTimeout,
         )
         .onError<CodexRpcException>((error, stackTrace) {
           if (threadId != null && error.code == -32600 && error.message == "thread not found: $threadId") {
@@ -88,7 +91,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
       );
 
   Future<CodexDeviceLoginStartResponseDto> startDeviceLogin({
-    Duration timeout = const Duration(seconds: 30),
+    required Duration timeout,
   }) async {
     const params = CodexDeviceLoginStartParamsDto(
       type: CodexAccountLoginType.chatgptDeviceCode,
@@ -107,7 +110,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
 
   Future<CodexAccountLoginCancelResponseDto> cancelLogin({
     required String loginId,
-    Duration timeout = const Duration(seconds: 30),
+    required Duration timeout,
   }) async {
     final result = await _client.request(
       method: "account/login/cancel",
@@ -137,7 +140,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     // The first turn/start (below) always carries an explicit tier, so this
     // only matters for a thread created without an immediate turn.
     if (fastMode) params["serviceTier"] = CodexServiceTier.fast;
-    final result = await _client.request(method: "thread/start", params: params);
+    final result = await _client.request(method: "thread/start", params: params, timeout: codexRequestTimeout);
     return _decodeResponse(result: result, operation: "thread/start");
   }
 
@@ -147,6 +150,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     final result = await _client.request(
       method: "thread/resume",
       params: {"threadId": threadId},
+      timeout: codexRequestTimeout,
     );
     return _decodeResponse(result: result, operation: "thread/resume");
   }
@@ -157,6 +161,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     final result = await _client.request(
       method: "thread/read",
       params: {"threadId": threadId, "includeTurns": false},
+      timeout: codexRequestTimeout,
     );
     return _decodeResponse(result: result, operation: "thread/read");
   }
@@ -167,6 +172,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
       params: {
         "cwds": [cwd],
       },
+      timeout: codexRequestTimeout,
     );
     if (result is! Map) {
       throw StateError(
@@ -182,6 +188,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     final result = await _client.request(
       method: "model/list",
       params: const <String, dynamic>{},
+      timeout: codexRequestTimeout,
     );
     if (result is! Map) {
       throw StateError(
@@ -240,7 +247,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
         ),
       ).toJson();
     }
-    final result = await _client.request(method: "turn/start", params: params);
+    final result = await _client.request(method: "turn/start", params: params, timeout: codexRequestTimeout);
     if (result is! Map) {
       throw StateError(
         "expected a Codex turn response object from turn/start, got "
@@ -254,6 +261,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     await _client.request(
       method: "thread/compact/start",
       params: {"threadId": threadId},
+      timeout: codexRequestTimeout,
     );
   }
 

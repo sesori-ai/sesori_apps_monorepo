@@ -37,7 +37,6 @@ import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
 import 'package:sesori_mobile/core/platform/file_attribution_claim_storage.dart'
     as _i968;
-import 'package:sesori_mobile/core/platform/file_save_client.dart' as _i223;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
 import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart'
@@ -46,8 +45,6 @@ import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cut
     as _i1005;
 import 'package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart'
     as _i52;
-import 'package:sesori_mobile/core/platform/firebase/no_op_feedback_prompt_config_source.dart'
-    as _i595;
 import 'package:sesori_mobile/core/platform/firebase/no_op_founder_call_config_source.dart'
     as _i367;
 import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
@@ -67,16 +64,13 @@ import 'package:sesori_mobile/core/platform/firebase_founder_call_config_source.
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/firebase_remote_config_client.dart'
-    as _i618;
+    as _i617;
 import 'package:sesori_mobile/core/platform/firebase_voice_mode_config_source.dart'
     as _i880;
 import 'package:sesori_mobile/core/platform/flutter_app_review_client.dart'
     as _i291;
 import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
     as _i111;
-import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
-    as _i274;
-import 'package:sesori_mobile/core/platform/flutter_image_sharer.dart' as _i617;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
     as _i636;
 import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_provider.dart'
@@ -89,20 +83,16 @@ import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
 import 'package:sesori_mobile/core/platform/flutter_web_auth_client.dart'
     as _i489;
 import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
-import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
-    as _i610;
-import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
-    as _i597;
 import 'package:sesori_mobile/core/platform/io_app_log_sink.dart' as _i130;
 import 'package:sesori_mobile/core/platform/mobile_active_bridge_locality.dart'
     as _i877;
+import 'package:sesori_mobile/core/platform/mobile_go_router_route_source.dart'
+    as _i177;
+import 'package:sesori_mobile/core/platform/mobile_photo_image_saver.dart'
+    as _i481;
 import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
 import 'package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart'
     as _i186;
-import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
-import 'package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart'
-    as _i437;
-import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/platform/singular/singular_attribution_client.dart'
     as _i681;
 import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dart'
@@ -138,13 +128,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i833.DeviceInfoPlugin>(
       () => registerModule.deviceInfoPlugin,
     );
+    gh.lazySingleton<_i948.RouteDispatcher>(
+      () => registerModule.routeDispatcher,
+    );
+    gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
+      () => registerModule.temporaryDirectoryProvider,
+    );
+    gh.lazySingleton<_i948.ImageClipboard>(() => registerModule.imageClipboard);
+    gh.lazySingleton<_i948.ImageSharer>(() => registerModule.imageSharer);
     gh.lazySingleton<_i948.LegacyNativeStorage>(
       () => registerModule.legacyNativeStorage(),
     );
     gh.lazySingleton<_i441.ApplicationSupportDirectoryClient>(
       () => _i441.ApplicationSupportDirectoryClient(),
     );
-    gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i489.FlutterWebAuthClient>(
       () => _i489.FlutterWebAuthClient(),
     );
@@ -152,8 +149,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1024.PackageInfoClient>(
       () => _i1024.PackageInfoClient(),
     );
-    gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
-    gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
     gh.lazySingleton<_i776.SingularStaticAdapter>(
       () => _i776.SingularStaticAdapter(),
     );
@@ -167,14 +162,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i833.DeviceInfoPlugin>(),
       ),
     );
-    gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
-      () => _i437.PathProviderTemporaryDirectoryProvider(),
-    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
+    gh.singleton<_i948.RouteSource>(() => _i177.MobileGoRouterRouteSource());
+    gh.lazySingleton<_i948.ImageSaver>(
+      () => _i481.MobilePhotoImageSaver(galClient: gh<_i227.GalClient>()),
+    );
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i877.MobileActiveBridgeLocality(),
     );
-    gh.singleton<_i948.RouteSource>(() => _i597.MobileGoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
@@ -190,9 +185,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.notificationCanceller(
         gh<_i948.LocalNotificationClient>(),
       ),
-    );
-    gh.lazySingleton<_i948.RouteDispatcher>(
-      () => _i610.GoRouterRouteDispatcher(),
     );
     gh.lazySingleton<_i903.MasterKeyStore>(
       () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
@@ -252,6 +244,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseDisabled},
     );
+    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
+      () => registerModule.disabledFeedbackPromptConfigSource,
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i853.SingularAttributionStartup>(
       () => _i853.SingularAttributionStartup(
         singular: gh<_i776.SingularStaticAdapter>(),
@@ -291,12 +287,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i367.NoOpFounderCallConfigSource(),
       registerFor: {_firebaseDisabled},
     );
-    gh.lazySingleton<_i948.ImageSaver>(
-      () => registerModule.imageSaver(
-        galClient: gh<_i227.GalClient>(),
-        fileSaveClient: gh<_i223.FileSaveClient>(),
-      ),
-    );
     gh.lazySingleton<_i948.PluginAuthenticationBrowser>(
       () => _i987.FlutterPluginAuthenticationBrowser(
         client: gh<_i489.FlutterWebAuthClient>(),
@@ -308,20 +298,6 @@ extension GetItInjectableX on _i174.GetIt {
         staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
       ),
       registerFor: {_firebaseEnabled},
-    );
-    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
-      () => _i595.NoOpFeedbackPromptConfigSource(),
-      registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i948.ImageClipboard>(
-      () => _i274.FlutterImageClipboard(
-        pasteboardClient: gh<_i748.PasteboardClient>(),
-      ),
-    );
-    gh.lazySingleton<_i948.ImageSharer>(
-      () => _i617.FlutterImageSharer(
-        sharePlusClient: gh<_i1019.SharePlusClient>(),
-      ),
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i52.NoOpFailureReporter(),
@@ -336,15 +312,15 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
-    gh.lazySingleton<_i618.FirebaseRemoteConfigClient>(
-      () => _i618.FirebaseRemoteConfigClient(
+    gh.lazySingleton<_i617.FirebaseRemoteConfigClient>(
+      () => _i617.FirebaseRemoteConfigClient(
         remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
       ),
       registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.FounderCallConfigSource>(
       () => _i680.FirebaseFounderCallConfigSource(
-        remoteConfigClient: gh<_i618.FirebaseRemoteConfigClient>(),
+        remoteConfigClient: gh<_i617.FirebaseRemoteConfigClient>(),
       ),
       registerFor: {_firebaseEnabled},
     );
@@ -356,13 +332,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.VoiceModeConfigSource>(
       () => _i880.FirebaseVoiceModeConfigSource(
-        remoteConfigClient: gh<_i618.FirebaseRemoteConfigClient>(),
+        remoteConfigClient: gh<_i617.FirebaseRemoteConfigClient>(),
       ),
       registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
       () => _i260.FirebaseFeedbackPromptConfigSource(
-        remoteConfigClient: gh<_i618.FirebaseRemoteConfigClient>(),
+        remoteConfigClient: gh<_i617.FirebaseRemoteConfigClient>(),
       ),
       registerFor: {_firebaseEnabled},
     );

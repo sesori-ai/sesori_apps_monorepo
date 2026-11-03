@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -48,7 +49,7 @@ void main() {
       expect(child.cwd, "/workspace");
       expect(child.title, "Say hi");
       expect(child.updatedAt, isNotNull);
-      expect((await catalog.findSessionById(sessionId: _child))?.parentId, _root);
+      expect((await catalog.findSessionById(sessionId: _child))?.parentID, _root);
       expect(
         await catalog.findSessionById(sessionId: "agent-orphan"),
         isNull,

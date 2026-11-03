@@ -17,6 +17,7 @@ import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
 import "package:opencode_plugin/src/v2/services/opencode_v2_service.dart";
 import "package:opencode_plugin/src/v2/services/v2_mcp_authentication_service.dart";
 import "package:opencode_plugin/src/v2/sse/v2_event_mapper.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";

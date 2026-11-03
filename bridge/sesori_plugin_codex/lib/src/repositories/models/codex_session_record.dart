@@ -5,7 +5,6 @@ class const CodexSessionRecord({
   required final String? threadName,
   required final DateTime? createdAt,
   required final DateTime? updatedAt,
-  required final String? cliVersion,
   required final String? modelProvider,
   required final String? model,
   required final String? agentNickname,

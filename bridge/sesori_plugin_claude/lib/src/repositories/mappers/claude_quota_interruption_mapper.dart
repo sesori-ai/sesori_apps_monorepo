@@ -39,13 +39,15 @@ final class ClaudeQuotaInterruptionMapper({required final ClaudeContentMapper co
 
   PluginQuotaReset _parseReset({required String text, required DateTime observedAt}) {
     final match = _reset.firstMatch(text);
-    if (match == null) return const PluginQuotaResetUnknown();
-    final hour = int.parse(match[1]!);
+    final hourText = match?[1];
+    final zoneName = match?[4];
+    if (match == null || hourText == null || zoneName == null) return const PluginQuotaResetUnknown();
+    final hour = int.parse(hourText);
     final minute = int.parse(match[2] ?? "0");
     if (hour < 1 || hour > 12 || minute > 59) return const PluginQuotaResetUnknown();
     final tz.Location location;
     try {
-      location = tz.getLocation(match[4]!);
+      location = tz.getLocation(zoneName);
     } on tz.LocationNotFoundException {
       return const PluginQuotaResetUnknown();
     }

@@ -5,11 +5,11 @@ import "../models/codex_correlatable_item_event_dto.dart";
 import "../models/codex_sub_agent_item_dto.dart";
 import "../models/codex_sub_agent_item_event_dto.dart";
 
-/// Parses `item/started` and `item/completed` notifications carrying
-/// multi-agent items into [CodexSubAgentItemEventDto]. Returns `null` for
+/// Parses `item/started` and `item/completed` notifications carrying a
+/// `subAgentActivity` item into [CodexSubAgentActivity]. Returns `null` for
 /// every other notification, item type, or an item missing its identity.
 class const CodexSubAgentItemParser() {
-  CodexSubAgentItemEventDto? parse({
+  CodexSubAgentActivity? parse({
     required CodexServerNotification notification,
   }) {
     final lifecycle = switch (notification.method) {
@@ -21,40 +21,21 @@ class const CodexSubAgentItemParser() {
 
     try {
       final params = CodexSubAgentItemParamsDto.fromJson(notification.params);
-      final item = params.item;
       final threadId = _usefulText(value: params.threadId);
       if (threadId == null) return null;
-      final turnId = _usefulText(value: params.turnId);
-      switch (item) {
-        case CodexCollabAgentToolCallItemDto():
-          final itemId = _usefulText(value: item.id);
-          if (itemId == null) return null;
-          return CodexCollabItem(
-            lifecycle: lifecycle,
-            threadId: threadId,
-            turnId: turnId,
-            itemId: itemId,
-            tool: item.tool,
-            status: item.status,
-            senderThreadId: _usefulText(value: item.senderThreadId),
-            receiverThreadIds: _receiverThreadIds(values: item.receiverThreadIds),
-            prompt: item.prompt,
-            agentsStates: {
-              for (final MapEntry(:key, :value) in item.agentsStates.entries) key: value.status,
-            },
-          );
-        case CodexSubAgentActivityItemDto():
-          final itemId = _usefulText(value: item.id);
-          final agentThreadId = _usefulText(value: item.agentThreadId);
-          if (itemId == null || agentThreadId == null) return null;
+      switch (params.item) {
+        case CodexSubAgentActivityItemDto(:final id, :final kind, :final agentThreadId, :final agentPath):
+          final itemId = _usefulText(value: id);
+          final childId = _usefulText(value: agentThreadId);
+          if (itemId == null || childId == null) return null;
           return CodexSubAgentActivity(
             lifecycle: lifecycle,
             threadId: threadId,
-            turnId: turnId,
+            turnId: _usefulText(value: params.turnId),
             itemId: itemId,
-            kind: item.kind,
-            agentThreadId: agentThreadId,
-            agentPath: _usefulText(value: item.agentPath),
+            kind: kind,
+            agentThreadId: childId,
+            agentPath: _usefulText(value: agentPath),
           );
         case CodexUnknownSubAgentItemDto():
           return null;
@@ -67,15 +48,6 @@ class const CodexSubAgentItemParser() {
       );
       return null;
     }
-  }
-
-  List<String> _receiverThreadIds({required List<String> values}) {
-    final ids = <String>{};
-    for (final candidate in values) {
-      final id = _usefulText(value: candidate);
-      if (id != null) ids.add(id);
-    }
-    return List.unmodifiable(ids);
   }
 
   String? _usefulText({required String? value}) {

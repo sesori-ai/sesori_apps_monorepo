@@ -38,6 +38,7 @@ void main() {
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
       clock: const ServerClock(),
+      config: const CodexConfigDefaults.empty(),
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -46,7 +47,7 @@ void main() {
       ),
     );
     final appServerApi = CodexAppServerApi(
-      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
     );
     final threadRepository = CodexThreadRepository(
       appServerApi: appServerApi,
@@ -58,7 +59,7 @@ void main() {
     ) {
       final dto = appServerApi.decodeThreadStartedParams(params: notification.params);
       final record = dto == null ? null : threadRepository.mapStartedNotification(dto: dto);
-      return record == null ? const [] : target.mapThreadStarted(record);
+      return record == null ? const [] : target.mapThreadStarted(record: record);
     }
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
@@ -147,8 +148,8 @@ void main() {
     });
 
     test("thread/name/updated → SessionUpdated parseable as Session", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "thread/name/updated",
           params: {"threadId": "t-1", "threadName": "Welcome session"},
         ),
@@ -171,8 +172,8 @@ void main() {
         parentId: "root-parent-retained",
       );
 
-      final turnEvents = mapper.map(
-        const CodexServerNotification(
+      final turnEvents = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "turn/started",
           params: {
             "threadId": "child-parent-retained",
@@ -185,8 +186,8 @@ void main() {
       );
       expect(activity.parentID, "root-parent-retained");
 
-      final nameEvents = mapper.map(
-        const CodexServerNotification(
+      final nameEvents = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "thread/name/updated",
           params: {
             "threadId": "child-parent-retained",
@@ -198,7 +199,7 @@ void main() {
         (nameEvents.single as BridgeSseSessionUpdated).info,
       );
       expect(renamed.parentID, "root-parent-retained");
-      mapper.forgetThread("child-parent-retained");
+      mapper.forgetThread(threadId: "child-parent-retained");
     });
 
     test("thread/started for a non-launch cwd emits that cwd's derived project id", () {
@@ -232,10 +233,11 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
-      )..setThreadDirectory("t-9", "/repo/app/packages/ui");
+        config: const CodexConfigDefaults.empty(),
+      )..setThreadDirectory(threadId: "t-9", directory: "/repo/app/packages/ui");
 
-      final events = scopedMapper.map(
-        const CodexServerNotification(
+      final events = scopedMapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "thread/name/updated",
           params: {"threadId": "t-9", "threadName": "Renamed"},
         ),
@@ -254,6 +256,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       );
       mapThreadStarted(
         activityMapper,
@@ -270,8 +273,8 @@ void main() {
         ),
       );
 
-      final events = activityMapper.map(
-        const CodexServerNotification(
+      final events = activityMapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "turn/started",
           params: {
             "threadId": "t-activity",
@@ -303,6 +306,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       );
       mapThreadStarted(
         activityMapper,
@@ -319,8 +323,8 @@ void main() {
         ),
       );
 
-      final events = activityMapper.map(
-        const CodexServerNotification(
+      final events = activityMapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "turn/completed",
           params: {
             "threadId": "t-activity",
@@ -338,8 +342,8 @@ void main() {
     });
 
     test("thread/status/changed maps direct active and nested idle statuses", () {
-      final active = mapper.map(
-        const CodexServerNotification(
+      final active = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "thread/status/changed",
           params: {
             "threadId": "t-1",
@@ -347,8 +351,8 @@ void main() {
           },
         ),
       );
-      final idle = mapper.map(
-        const CodexServerNotification(
+      final idle = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "thread/status/changed",
           params: {
             "threadId": "t-1",
@@ -376,8 +380,8 @@ void main() {
       },
     ]) {
       test("thread/status/changed maps unloaded status $status to idle", () {
-        final events = mapper.map(
-          CodexServerNotification(
+        final events = mapper.mapParsed(
+          notification: CodexServerNotification(
             method: "thread/status/changed",
             params: {"threadId": "t-1", "status": status},
           ),
@@ -388,8 +392,8 @@ void main() {
     }
 
     test("item userMessage → MessageUpdated + MessagePartUpdated", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -421,8 +425,8 @@ void main() {
     });
 
     test("item userMessage carries the prompt id codex echoes as clientId", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -444,8 +448,8 @@ void main() {
     });
 
     test("item userMessage typed in the codex CLI stays unattributed", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -467,8 +471,8 @@ void main() {
 
     test("item lifecycle timestamps survive live message updates", () {
       const threadId = "t-timestamps";
-      final userStarted = mapper.map(
-        const CodexServerNotification(
+      final userStarted = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/started",
           params: {
             "threadId": threadId,
@@ -477,8 +481,8 @@ void main() {
           },
         ),
       );
-      final userCompleted = mapper.map(
-        const CodexServerNotification(
+      final userCompleted = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": threadId,
@@ -487,8 +491,8 @@ void main() {
           },
         ),
       );
-      final assistantStarted = mapper.map(
-        const CodexServerNotification(
+      final assistantStarted = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/started",
           params: {
             "threadId": threadId,
@@ -497,8 +501,8 @@ void main() {
           },
         ),
       );
-      final assistantCompleted = mapper.map(
-        const CodexServerNotification(
+      final assistantCompleted = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": threadId,
@@ -523,8 +527,8 @@ void main() {
 
     test("late native tool completion keeps its start time after turn completion", () {
       const threadId = "t-late-tool-time";
-      mapper.map(
-        const CodexServerNotification(
+      mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/started",
           params: {
             "threadId": threadId,
@@ -538,8 +542,8 @@ void main() {
           },
         ),
       );
-      mapper.map(
-        const CodexServerNotification(
+      mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "turn/completed",
           params: {
             "threadId": threadId,
@@ -548,8 +552,8 @@ void main() {
         ),
       );
 
-      final completed = mapper.map(
-        const CodexServerNotification(
+      final completed = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": threadId,
@@ -570,17 +574,18 @@ void main() {
       );
     });
 
-    List<BridgeSseEvent> compactionItem({required String method, required Map<String, Object?> times}) => mapper.map(
-      CodexServerNotification(
-        method: method,
-        params: {
-          "threadId": "t-1",
-          "turnId": "u-compact",
-          "item": {"type": "contextCompaction", "id": "cmp-1"},
-          ...times,
-        },
-      ),
-    );
+    List<BridgeSseEvent> compactionItem({required String method, required Map<String, Object?> times}) =>
+        mapper.mapParsed(
+          notification: CodexServerNotification(
+            method: method,
+            params: {
+              "threadId": "t-1",
+              "turnId": "u-compact",
+              "item": {"type": "contextCompaction", "id": "cmp-1"},
+              ...times,
+            },
+          ),
+        );
 
     Matcher compactionPart(PluginCompactionState state) => isA<BridgeSseMessagePartUpdated>().having(
       (event) => event.part,
@@ -643,8 +648,8 @@ void main() {
     });
 
     test("item agentMessage → assistant message + text part", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -688,8 +693,8 @@ void main() {
         ),
       );
 
-      final events = richMapper.map(
-        const CodexServerNotification(
+      final events = richMapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-9",
@@ -728,10 +733,10 @@ void main() {
       );
       // The plugin records the model codex actually resolved for the thread
       // (e.g. the user picked gpt-5.4-mini over the gpt-5.5 config default).
-      richMapper.setThreadModel("t-9", "gpt-5.4-mini");
+      richMapper.setThreadModel(threadId: "t-9", model: "gpt-5.4-mini");
 
-      final events = richMapper.map(
-        const CodexServerNotification(
+      final events = richMapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-9",
@@ -744,9 +749,9 @@ void main() {
       expect(assistant.providerID, equals("openai"));
 
       // Clearing the override falls back to the config default again.
-      richMapper.setThreadModel("t-9", null);
-      final events2 = richMapper.map(
-        const CodexServerNotification(
+      richMapper.setThreadModel(threadId: "t-9", model: null);
+      final events2 = richMapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-9",
@@ -759,8 +764,8 @@ void main() {
     });
 
     test("item reasoning → assistant message + reasoning part", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -783,8 +788,8 @@ void main() {
     });
 
     test("commandExecution (completed) → assistant message + tool part", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -816,8 +821,8 @@ void main() {
     });
 
     test("commandExecution treats a non-zero exit code as an error", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -1253,7 +1258,13 @@ void main() {
         threadId: "t-image",
         line: line,
       );
-      final appServer = mapper.map(
+      // A separate tracker, so the app-server half projects on its own
+      // instead of merging into the rollout half's part.
+      final appServerLifecycle = _ToolLifecycleHarness(
+        eventMapper: mapper,
+        toolTracker: CodexToolLifecycleTracker(rolloutToolMapper: rolloutToolMapper),
+      );
+      final appServer = appServerLifecycle.map(
         const CodexServerNotification(
           method: "item/completed",
           params: {
@@ -1405,8 +1416,8 @@ void main() {
     });
 
     test("commandExecution (started/inProgress) → running tool part", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/started",
           params: {
             "threadId": "t-1",
@@ -1426,8 +1437,8 @@ void main() {
     });
 
     test("fileChange → edit tool part titled with the touched paths", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -1454,12 +1465,22 @@ void main() {
     });
 
     test("imageGeneration upserts one stable tool part across its lifecycle", () {
+      _ToolLifecycleHarness freshLifecycle() => _ToolLifecycleHarness(
+        eventMapper: mapper,
+        toolTracker: CodexToolLifecycleTracker(rolloutToolMapper: rolloutToolMapper),
+      );
+      final lifecycle = freshLifecycle();
+      // A failure is a separate item's lifecycle, not a later update of a
+      // completed one, which keeps its terminal state.
+      final failingLifecycle = freshLifecycle();
+
       List<BridgeSseEvent> mapImage({
+        required _ToolLifecycleHarness harness,
         required String method,
         required String status,
         required String result,
       }) {
-        return mapper.map(
+        return harness.map(
           CodexServerNotification(
             method: method,
             params: {
@@ -1477,9 +1498,9 @@ void main() {
         );
       }
 
-      final started = mapImage(method: "item/started", status: "in_progress", result: "");
-      final completed = mapImage(method: "item/completed", status: "completed", result: "AA==");
-      final failed = mapImage(method: "item/completed", status: "failed", result: "AA==");
+      final started = mapImage(harness: lifecycle, method: "item/started", status: "in_progress", result: "");
+      final completed = mapImage(harness: lifecycle, method: "item/completed", status: "completed", result: "AA==");
+      final failed = mapImage(harness: failingLifecycle, method: "item/completed", status: "failed", result: "AA==");
 
       final runningPart = (started[1] as BridgeSseMessagePartUpdated).part;
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
@@ -1505,8 +1526,8 @@ void main() {
     });
 
     test("mcpToolCall (failed) → error tool part", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -1544,8 +1565,8 @@ void main() {
     });
 
     test("dynamicToolCall streams a running tool and its completed output", () {
-      final started = mapper.map(
-        const CodexServerNotification(
+      final started = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/started",
           params: {
             "threadId": "t-1",
@@ -1578,8 +1599,8 @@ void main() {
       expect(runningPart.state.title, contains("yield_time_ms: 10000"));
       expect(runningPart.state.output, isNull);
 
-      final completed = mapper.map(
-        const CodexServerNotification(
+      final completed = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -1620,8 +1641,8 @@ void main() {
     });
 
     test("imageView local paths remain unsupported", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
@@ -1642,8 +1663,8 @@ void main() {
         (42, "item/started", "future_status", PluginToolStatus.running),
         ("", "item/completed", null, PluginToolStatus.completed),
       ]) {
-        final events = mapper.map(
-          CodexServerNotification(
+        final events = mapper.mapParsed(
+          notification: CodexServerNotification(
             method: method,
             params: {
               "threadId": "t-1",
@@ -1665,8 +1686,8 @@ void main() {
     });
 
     test("genuinely unrenderable item kinds (todoList) are still dropped", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/started",
           params: {
             "threadId": "t-1",
@@ -1678,8 +1699,8 @@ void main() {
     });
 
     test("item/agentMessage/delta → MessagePartDelta on the text part", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/agentMessage/delta",
           params: {"threadId": "t-1", "itemId": "i-1", "delta": "hello "},
         ),
@@ -1692,8 +1713,8 @@ void main() {
     });
 
     test("error → SessionError", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "error",
           params: {
             "threadId": "t-1",
@@ -1706,8 +1727,8 @@ void main() {
     });
 
     test("failed turn/completed emits a visible error message", () {
-      final events = mapper.map(
-        const CodexServerNotification(
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "turn/completed",
           params: {
             "threadId": "t-quota",
@@ -1744,7 +1765,9 @@ void main() {
         "item/commandExecution/outputDelta",
       ]) {
         expect(
-          mapper.map(CodexServerNotification(method: method, params: const {})),
+          mapper.mapParsed(
+            notification: CodexServerNotification(method: method, params: const {}),
+          ),
           isEmpty,
           reason: "$method should be dropped",
         );
@@ -1752,16 +1775,16 @@ void main() {
     });
 
     test("skills/changed invalidates the command catalog", () {
-      final events = mapper.map(
-        const CodexServerNotification(method: "skills/changed", params: {}),
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(method: "skills/changed", params: {}),
       );
 
       expect(events, const [BridgeSseCommandCatalogUpdated()]);
     });
 
     test("MCP startup changes are not forwarded", () {
-      final events = mapper.map(
-        const CodexServerNotification(method: "mcpServer/startupStatus/updated", params: {}),
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(method: "mcpServer/startupStatus/updated", params: {}),
       );
 
       expect(events, isEmpty);
@@ -1799,8 +1822,8 @@ void main() {
       expect(() => parseAsSesori(created.single), returnsNormally);
 
       // The exact agentMessage item payload from the bug report.
-      final agent = mapper.map(
-        const CodexServerNotification(
+      final agent = mapper.mapParsed(
+        notification: const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "019e4621-e3d6-7213-acde-f23b8d02fb7e",
@@ -1818,6 +1841,16 @@ void main() {
       expect(() => parseAsSesori(agent[0]), returnsNormally);
     });
   });
+}
+
+extension on CodexEventMapper {
+  /// Parses the correlatable item once, as the plugin does, then maps.
+  List<BridgeSseEvent> mapParsed({required CodexServerNotification notification}) => map(
+    notification: notification,
+    correlatableItem:
+        const CodexCommandExecutionParser().parse(notification: notification) ??
+        const CodexFileChangeParser().parse(notification: notification),
+  );
 }
 
 class _ToolLifecycleHarness({
@@ -1860,7 +1893,7 @@ class _ToolLifecycleHarness({
           );
     final threadId = correlatableItem?.threadId ?? notification.params["threadId"];
     if (tool == null || threadId is! String) {
-      return _eventMapper.map(notification);
+      return _eventMapper.map(notification: notification, correlatableItem: correlatableItem);
     }
     return _eventMapper.mapProjectedTool(threadId: threadId, tool: tool);
   }

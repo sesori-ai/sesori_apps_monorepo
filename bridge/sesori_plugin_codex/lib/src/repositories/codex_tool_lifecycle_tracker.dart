@@ -1,8 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../api/models/codex_command_execution_dto.dart";
 import "../api/models/codex_correlatable_item_event_dto.dart";
-import "../api/models/codex_file_change_dto.dart";
 import "../api/models/codex_image_bearing_item_dto.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_app_server_client.dart";
@@ -28,7 +26,7 @@ class CodexToolLifecycleTracker({
     required CodexRolloutLineDto line,
   }) {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
-    final time = _rolloutTime(line.timestamp);
+    final time = _rolloutTime(raw: line.timestamp);
     return switch (line) {
       CodexRolloutResponseItemLineDto(:final payload) => _observeRolloutPayload(
         thread: thread,
@@ -58,18 +56,18 @@ class CodexToolLifecycleTracker({
     required CodexServerNotification notification,
   }) {
     if (event.lifecycle == CodexCorrelatableItemLifecycle.completed) {
-      final retainedCommands = _retainedCommandsByThread[event.threadId];
-      final retainedTool = retainedCommands?.remove(event.itemId);
-      if (retainedTool != null) {
-        if (retainedCommands!.isEmpty) {
-          _retainedCommandsByThread.remove(event.threadId);
+      if (_retainedCommandsByThread[event.threadId] case final retainedCommands?) {
+        if (retainedCommands.remove(event.itemId) case final retainedTool?) {
+          if (retainedCommands.isEmpty) {
+            _retainedCommandsByThread.remove(event.threadId);
+          }
+          _recordAppServerTime(tool: retainedTool, notification: notification);
+          return _applyCorrelatableAppServerItem(
+            tool: retainedTool,
+            event: event,
+            useAggregatedOutput: true,
+          );
         }
-        _recordAppServerTime(tool: retainedTool, notification: notification);
-        return _applyCorrelatableAppServerItem(
-          tool: retainedTool,
-          event: event,
-          useAggregatedOutput: true,
-        );
       }
     }
 
@@ -131,26 +129,25 @@ class CodexToolLifecycleTracker({
     bool useAggregatedOutput = false,
   }) {
     if (event case CodexCommandExecutionEventDto(:final command, :final aggregatedOutput)) {
-      tool.shellCommand = _rolloutToolMapper.logicalCommandTitle(command) ?? tool.shellCommand;
+      tool.shellCommand = _rolloutToolMapper.logicalCommandTitle(command: command) ?? tool.shellCommand;
       tool.title ??= tool.shellCommand;
       if (aggregatedOutput != null) {
-        final clippedOutput = _rolloutToolMapper.clipOutput(aggregatedOutput);
+        final clippedOutput = _rolloutToolMapper.clipOutput(output: aggregatedOutput);
         tool.appServerOutput = clippedOutput;
         if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
           tool.rolloutOutput = clippedOutput;
         }
       }
     }
-    final status = switch (event) {
-      CodexCommandExecutionEventDto() => _commandExecutionStatus(event: event),
-      CodexFileChangeEventDto() => _fileChangeStatus(event: event),
-    };
-    tool.status = _mergeStatus(previous: tool.status, current: status);
+    tool.status = _mergeStatus(
+      previous: tool.status,
+      current: _rolloutToolMapper.appServerItemStatus(event: event),
+    );
     return tool.snapshot();
   }
 
-  /// Applies image and dynamic-tool app-server evidence that does not use the
-  /// typed command/file correlation path.
+  /// Applies image and dynamic-tool app-server evidence. Command and
+  /// file-change items take the typed [observeCorrelatableAppServerItem] path.
   CodexProjectedTool? observeUncorrelatedAppServerItem({
     required CodexServerNotification notification,
     required CodexImageGenerationItemDto? imageGeneration,
@@ -201,27 +198,6 @@ class CodexToolLifecycleTracker({
         );
       }
       return tool.snapshot();
-    }
-
-    final itemType = item["type"];
-    final isCommandExecution = itemType == "commandExecution";
-    final isCorrelatedTool = isCommandExecution || itemType == "fileChange";
-    if (isCorrelatedTool && notification.method == "item/completed") {
-      final retainedCommands = _retainedCommandsByThread[threadId];
-      final retainedTool = retainedCommands?.remove(itemId);
-      if (retainedTool != null) {
-        if (retainedCommands!.isEmpty) {
-          _retainedCommandsByThread.remove(threadId);
-        }
-        _recordAppServerTime(tool: retainedTool, notification: notification);
-        return _applyAppServerTool(
-          tool: retainedTool,
-          item: item,
-          isCommandExecution: isCommandExecution,
-          completed: true,
-          useAggregatedOutput: isCommandExecution,
-        );
-      }
     }
 
     final thread = _threads[threadId];
@@ -395,7 +371,7 @@ class CodexToolLifecycleTracker({
       return const [];
     }
 
-    final call = _rolloutToolMapper.mapCall(payload);
+    final call = _rolloutToolMapper.mapCall(payload: payload);
     if (call != null) {
       final effectiveTurnId = call.turnId ?? thread.activeTurnId;
       final fileChangePatch = _rolloutToolMapper.codeModeFileChangePatch(
@@ -417,7 +393,7 @@ class CodexToolLifecycleTracker({
       tool.title ??= call.title;
       tool.shellCommand = call.shellCommand ?? tool.shellCommand;
       if (fileChangePatch != null) {
-        tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(fileChangePatch);
+        tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(output: fileChangePatch);
         thread.codeModeFileCallIds.add(call.id);
       }
       Map<String, List<String>>? pendingByTurn;
@@ -439,7 +415,7 @@ class CodexToolLifecycleTracker({
       return [tool.snapshot()];
     }
 
-    final result = _rolloutToolMapper.mapResult(payload);
+    final result = _rolloutToolMapper.mapResult(payload: payload);
     if (result == null) return const [];
     final waitTarget = thread.waitTargetByCall[result.callId];
     if (thread.internalCalls.contains(result.callId) && waitTarget == null) {
@@ -642,37 +618,6 @@ class CodexToolLifecycleTracker({
     }
   }
 
-  PluginToolStatus _commandExecutionStatus({
-    required CodexCommandExecutionEventDto event,
-  }) {
-    if (event.exitCode case final exitCode? when exitCode != 0) {
-      return PluginToolStatus.error;
-    }
-    return switch (event.status) {
-      CodexCommandExecutionStatus.failed || CodexCommandExecutionStatus.declined => PluginToolStatus.error,
-      CodexCommandExecutionStatus.completed => PluginToolStatus.completed,
-      CodexCommandExecutionStatus.inProgress => PluginToolStatus.running,
-      CodexCommandExecutionStatus.unknown =>
-        event.lifecycle == CodexCorrelatableItemLifecycle.completed
-            ? PluginToolStatus.completed
-            : PluginToolStatus.running,
-    };
-  }
-
-  PluginToolStatus _fileChangeStatus({
-    required CodexFileChangeEventDto event,
-  }) {
-    return switch (event.status) {
-      CodexFileChangeStatus.failed || CodexFileChangeStatus.declined => PluginToolStatus.error,
-      CodexFileChangeStatus.completed => PluginToolStatus.completed,
-      CodexFileChangeStatus.inProgress => PluginToolStatus.running,
-      CodexFileChangeStatus.unknown =>
-        event.lifecycle == CodexCorrelatableItemLifecycle.completed
-            ? PluginToolStatus.completed
-            : PluginToolStatus.running,
-    };
-  }
-
   PluginToolStatus _appServerStatus({
     required Object? raw,
     required bool completed,
@@ -696,40 +641,6 @@ class CodexToolLifecycleTracker({
     };
   }
 
-  CodexProjectedTool _applyAppServerTool({
-    required _TrackedTool tool,
-    required Map<Object?, Object?> item,
-    required bool isCommandExecution,
-    required bool completed,
-    required bool useAggregatedOutput,
-  }) {
-    if (isCommandExecution) {
-      final command = item["command"];
-      tool.shellCommand =
-          _rolloutToolMapper.logicalCommandTitle(
-            command is String ? command : null,
-          ) ??
-          tool.shellCommand;
-      tool.title ??= tool.shellCommand;
-      if (item["aggregatedOutput"] case final String output) {
-        final clippedOutput = _rolloutToolMapper.clipOutput(output);
-        tool.appServerOutput = clippedOutput;
-        if (useAggregatedOutput && clippedOutput != null && clippedOutput.isNotEmpty) {
-          tool.rolloutOutput = clippedOutput;
-        }
-      }
-    }
-    final exitCode = isCommandExecution ? item["exitCode"] : null;
-    final status = isCommandExecution && exitCode is num && exitCode.toInt() != 0
-        ? PluginToolStatus.error
-        : _appServerStatus(
-            raw: item["status"],
-            completed: completed,
-          );
-    tool.status = _mergeStatus(previous: tool.status, current: status);
-    return tool.snapshot();
-  }
-
   PluginToolStatus _mergeStatus({
     required PluginToolStatus previous,
     required PluginToolStatus current,
@@ -748,7 +659,7 @@ class CodexToolLifecycleTracker({
     required String? current,
   }) {
     if (previous == null || previous.isEmpty) {
-      return _rolloutToolMapper.clipOutput(current);
+      return _rolloutToolMapper.clipOutput(output: current);
     }
     if (current == null || current.isEmpty) return previous;
     final currentRunes = current.runes.toList(growable: false);
@@ -793,17 +704,17 @@ class CodexToolLifecycleTracker({
     required CodexServerNotification notification,
   }) {
     final previous = tool.time;
-    final created = _milliseconds(notification.params["startedAtMs"]) ?? previous?.created;
+    final created = _milliseconds(value: notification.params["startedAtMs"]) ?? previous?.created;
     if (created == null) return;
     tool.time = PluginMessageTime(
       created: created,
       completed: notification.method == "item/completed"
-          ? _milliseconds(notification.params["completedAtMs"]) ?? previous?.completed
+          ? _milliseconds(value: notification.params["completedAtMs"]) ?? previous?.completed
           : previous?.completed,
     );
   }
 
-  PluginMessageTime? _rolloutTime(String? raw) {
+  PluginMessageTime? _rolloutTime({required String? raw}) {
     if (raw == null || raw.isEmpty) return null;
     final parsed = DateTime.tryParse(raw);
     return parsed == null
@@ -814,7 +725,7 @@ class CodexToolLifecycleTracker({
           );
   }
 
-  int? _milliseconds(Object? value) => value is num ? value.round() : null;
+  int? _milliseconds({required Object? value}) => value is num ? value.round() : null;
 }
 
 class _ThreadToolLifecycle() {

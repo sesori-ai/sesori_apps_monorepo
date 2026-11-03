@@ -67,10 +67,10 @@ void main() {
     const descriptor = CodexPluginDescriptor(desktopAppCliCandidates: []);
 
     test("declares project-scoped session options", () {
-      expect(const CodexPluginDescriptor().sessionOptionsScope, PluginSessionOptionsScope.project);
-      expect(const CodexPluginDescriptor().supportsPromptAttachments, isTrue);
+      expect(CodexPluginDescriptor.production().sessionOptionsScope, PluginSessionOptionsScope.project);
+      expect(CodexPluginDescriptor.production().supportsPromptAttachments, isTrue);
       expect(
-        const CodexPluginDescriptor(),
+        CodexPluginDescriptor.production(),
         isA<InteractivePluginAuthenticationDescriptor>(),
       );
     });

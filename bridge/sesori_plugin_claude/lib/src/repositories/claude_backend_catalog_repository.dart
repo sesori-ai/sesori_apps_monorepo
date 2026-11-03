@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/models/claude_backend_catalog_dto.dart";
+import "../foundation/trimmed_or_null.dart";
 import "../models/claude_agent_selection.dart";
 import "../models/claude_effort_level.dart";
 
@@ -204,8 +205,6 @@ final class const ClaudeBackendCatalogRepository() {
   PluginModel? _model(ClaudeModelDto dto, {required PluginFastModeSupport? fastMode}) {
     final id = dto.value?.trim();
     if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
-    final displayName = dto.displayName?.trim();
-    final resolvedModel = dto.resolvedModel?.trim();
     final variants = dto.supportsEffort ?? false
         ? CatalogStrengthOrder.variants({
             for (final raw in dto.supportedEffortLevels) ?ClaudeEffortLevel.tryParse(raw)?.wireValue,
@@ -214,11 +213,7 @@ final class const ClaudeBackendCatalogRepository() {
     return PluginModel(
       fastMode: dto.supportsFastMode ?? false ? fastMode : null,
       id: id,
-      name: displayName?.isNotEmpty ?? false
-          ? displayName!
-          : resolvedModel?.isNotEmpty ?? false
-          ? resolvedModel!
-          : id,
+      name: trimmedOrNull(value: dto.displayName) ?? trimmedOrNull(value: dto.resolvedModel) ?? id,
       variants: variants,
       defaultVariant: variants.contains(_defaultEffort.wireValue) ? _defaultEffort.wireValue : null,
       family: null,
@@ -230,12 +225,10 @@ final class const ClaudeBackendCatalogRepository() {
   PluginCommand? _command(ClaudeCommandDto dto) {
     final name = dto.name?.trim();
     if (name == null || name.isEmpty || name == fastModeCommand) return null;
-    final description = dto.description?.trim();
-    final hint = dto.argumentHint?.trim();
     return PluginCommand(
       name: name,
-      description: description?.isNotEmpty ?? false ? description : null,
-      hints: [if (hint?.isNotEmpty ?? false) hint!],
+      description: trimmedOrNull(value: dto.description),
+      hints: [?trimmedOrNull(value: dto.argumentHint)],
       provider: null,
       source: PluginCommandSource.command,
     );

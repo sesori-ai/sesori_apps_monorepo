@@ -400,12 +400,6 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       );
     final commandTracker = AcpCommandTracker();
     final childSessionTracker = AcpChildSessionTracker();
-    final acpSessionOptionsService = AcpSessionOptionsService(
-      configurationTracker: configurationTracker,
-      commandTracker: commandTracker,
-      pluginId: HermesPluginIdentity.id,
-      agentDisplayName: HermesPluginIdentity.displayName,
-    );
     final eventMapper = AcpEventMapper(
       launchDirectory: cwd,
       pluginId: HermesPluginIdentity.id,
@@ -443,7 +437,6 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       childSessionTracker: childSessionTracker,
       eventMapper: eventMapper,
       commandTracker: commandTracker,
-      sessionOptionsService: acpSessionOptionsService,
       processFactory: processFactory,
       hermesSessionOptionsService: sessionOptionsService,
     );

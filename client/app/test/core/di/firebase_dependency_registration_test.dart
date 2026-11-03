@@ -4,6 +4,8 @@ import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart"
+    show GoRouterRouteDispatcher, NoOpFeedbackPromptConfigSource, PathProviderTemporaryDirectoryProvider;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
 import "package:sesori_mobile/core/di/injection.dart";
@@ -12,12 +14,11 @@ import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_a
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
-import "package:sesori_mobile/core/platform/firebase/no_op_feedback_prompt_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_founder_call_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_voice_mode_config_source.dart";
+import "package:sesori_mobile/core/platform/mobile_photo_image_saver.dart";
 import "package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart";
-import "package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
 import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
@@ -127,6 +128,10 @@ void main() {
     // is why PushMessagingSource needs a disabled-environment binding at all.
     expect(getIt<NotificationRegistrationService>(), isA<NotificationRegistrationService>());
     expect(getIt<TemporaryDirectoryProvider>(), isA<PathProviderTemporaryDirectoryProvider>());
+    expect(getIt<RouteDispatcher>(), isA<GoRouterRouteDispatcher>());
+    expect(getIt<ImageClipboard>(), isA<ImageClipboard>());
+    expect(getIt<ImageSharer>(), isA<ImageSharer>());
+    expect(getIt<ImageSaver>(), isA<MobilePhotoImageSaver>());
     expect(getIt<AttachmentThumbnailStorage>(), isA<FileAttachmentThumbnailStorage>());
     expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isTrue);
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);

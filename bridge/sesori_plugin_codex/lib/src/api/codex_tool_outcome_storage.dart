@@ -13,6 +13,12 @@ final class const CodexToolOutcomeDecodeException({
   String toString() => "CodexToolOutcomeDecodeException: $cause";
 }
 
+sealed class const _ParsedOutcomes();
+
+final class const _ReadableOutcomes({required final List<CodexStoredToolErrorDto> errors}) extends _ParsedOutcomes;
+
+final class const _UnreadableOutcomes({required final CodexToolOutcomeDecodeException error}) extends _ParsedOutcomes;
+
 /// Layer-1 persistence for structured tool outcomes omitted by Codex rollout.
 class CodexToolOutcomeStorage({
   required final HostJsonStore _store,
@@ -23,10 +29,13 @@ class CodexToolOutcomeStorage({
 
   Future<List<CodexStoredToolErrorDto>> readErrors() async {
     final contents = await _store.read(name: fileName);
-    final parsed = _parse(contents: contents);
-    if (parsed.error == null) return parsed.errors;
-    await _quarantineIfStillInvalid(error: parsed.error!);
-    return const [];
+    switch (_parse(contents: contents)) {
+      case _ReadableOutcomes(:final errors):
+        return errors;
+      case _UnreadableOutcomes(:final error):
+        await _quarantineIfStillInvalid(error: error);
+        return const [];
+    }
   }
 
   Future<void> updateErrors({
@@ -38,16 +47,16 @@ class CodexToolOutcomeStorage({
     await _store.update(
       name: fileName,
       transform: (contents) async {
-        final parsed = _parse(contents: contents);
-        if (parsed.error != null) {
-          Log.w(
-            "[codex] replacing an unreadable tool-outcome file",
-            parsed.error,
-            parsed.error!.stackTrace,
-          );
-          await _quarantineCurrent();
+        final List<CodexStoredToolErrorDto> current;
+        switch (_parse(contents: contents)) {
+          case _ReadableOutcomes(:final errors):
+            current = errors;
+          case _UnreadableOutcomes(:final error):
+            Log.w("[codex] replacing an unreadable tool-outcome file", error, error.stackTrace);
+            await _quarantineCurrent();
+            current = const [];
         }
-        final errors = transform(parsed.errors).toList(growable: false);
+        final errors = transform(current).toList(growable: false);
         if (errors.isEmpty) return null;
         return jsonEncode(
           CodexToolOutcomeFileDto(
@@ -59,12 +68,8 @@ class CodexToolOutcomeStorage({
     );
   }
 
-  ({List<CodexStoredToolErrorDto> errors, CodexToolOutcomeDecodeException? error}) _parse({
-    required String? contents,
-  }) {
-    if (contents == null) {
-      return (errors: const [], error: null);
-    }
+  _ParsedOutcomes _parse({required String? contents}) {
+    if (contents == null) return const _ReadableOutcomes(errors: []);
     try {
       final file = CodexToolOutcomeFileDto.fromJson(jsonDecodeMap(contents));
       if (file.schemaVersion != _schemaVersion) {
@@ -72,17 +77,10 @@ class CodexToolOutcomeStorage({
           "unsupported Codex tool-outcome schema ${file.schemaVersion}",
         );
       }
-      return (
-        errors: List<CodexStoredToolErrorDto>.unmodifiable(file.errors),
-        error: null,
-      );
+      return _ReadableOutcomes(errors: List<CodexStoredToolErrorDto>.unmodifiable(file.errors));
     } on Object catch (error, stackTrace) {
-      return (
-        errors: const [],
-        error: CodexToolOutcomeDecodeException(
-          cause: error,
-          stackTrace: stackTrace,
-        ),
+      return _UnreadableOutcomes(
+        error: CodexToolOutcomeDecodeException(cause: error, stackTrace: stackTrace),
       );
     }
   }
@@ -92,15 +90,14 @@ class CodexToolOutcomeStorage({
       await _store.update(
         name: fileName,
         transform: (contents) async {
-          final recheck = _parse(contents: contents);
-          if (recheck.error == null) return contents;
-          Log.w(
-            "[codex] quarantining an unreadable tool-outcome file",
-            recheck.error,
-            recheck.error!.stackTrace,
-          );
-          await _quarantineCurrent();
-          return null;
+          switch (_parse(contents: contents)) {
+            case _ReadableOutcomes():
+              return contents;
+            case _UnreadableOutcomes(:final error):
+              Log.w("[codex] quarantining an unreadable tool-outcome file", error, error.stackTrace);
+              await _quarantineCurrent();
+              return null;
+          }
         },
       );
     } on Object catch (quarantineError, stackTrace) {

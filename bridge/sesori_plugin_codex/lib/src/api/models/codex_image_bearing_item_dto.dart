@@ -35,7 +35,6 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
       defaultValue: CodexImageGenerationStatus.unknown,
     )
     required CodexImageGenerationStatus status,
-    required String? revisedPrompt,
     required String result,
     required String? savedPath,
   }) = CodexImageGenerationItemDto;
@@ -102,18 +101,13 @@ sealed class CodexImageBearingContentDto with _$CodexImageBearingContentDto {
     required String imageUrl,
   }) = CodexDynamicImageContentDto;
 
-  @FreezedUnionValue("inputAudio")
-  const factory dynamicAudio({
-    required String audioUrl,
-  }) = CodexDynamicAudioContentDto;
-
   const factory unknown() = CodexUnknownImageBearingContentDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexImageBearingContentDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexImageBearingContentDtoFromJson(json);
 }
 
-class const CodexImageBearingContentListConverter() implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
+class const CodexImageBearingContentListConverter()
+    implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
   @override
   List<CodexImageBearingContentDto> fromJson(Object? json) {
     if (json == null) return const [];
@@ -123,14 +117,14 @@ class const CodexImageBearingContentListConverter() implements JsonConverter<Lis
     }
     final content = <CodexImageBearingContentDto>[];
     for (final item in json) {
-      try {
-        content.add(
-          CodexImageBearingContentDto.fromJson(
-            (item as Map).cast<String, dynamic>(),
-          ),
-        );
-      } on Object {
+      if (item is! Map) {
         Log.w("[codex] skipping malformed image-bearing tool content item");
+        continue;
+      }
+      try {
+        content.add(CodexImageBearingContentDto.fromJson(item.cast<String, dynamic>()));
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] skipping malformed image-bearing tool content item", error, stackTrace);
       }
     }
     return content;
@@ -156,9 +150,7 @@ class const CodexToolErrorConverter() implements JsonConverter<String?, Object?>
   @override
   String? fromJson(Object? json) {
     if (json == null) return null;
-    if (json is Map && json["message"] is String) {
-      return json["message"] as String;
-    }
+    if (json case {"message": final String message}) return message;
     Log.w("[codex] skipping malformed image-bearing tool error");
     return null;
   }

@@ -65,7 +65,6 @@ class OmpCatalogService({
         timeout: _remaining(stopwatch),
       );
       sessionId = created.sessionId;
-      if (sessionId.isEmpty) throw StateError("OMP catalog session/new omitted sessionId");
       final initial = created.snapshot;
       if (initial.models.isEmpty || initial.modelConfigId == null) {
         return const OmpCatalogNoModels();
