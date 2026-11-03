@@ -51,6 +51,14 @@ const Duration openCodeHealthPollInterval = Duration(milliseconds: 500);
 /// endpoint instead serves a large web page or another service's stream.
 const int openCodeProbeMaxBodyBytes = 64 * 1024;
 
+/// Per-request bound for the health, protocol and shared-service info probes,
+/// covering the send and the body read together.
+const Duration openCodeProbeTimeout = Duration(seconds: 5);
+
+/// How long a lost connection must last before the plugin applies its
+/// disconnect outcome, so a brief reconnect leaves the status unchanged.
+const Duration openCodeDegradedDebounce = Duration(seconds: 5);
+
 /// Budget for the awaited cold-start in `descriptor.start()`: a service that
 /// passed the health probe but stalls a REST call must surface as degraded,
 /// not hang `start()` under the bridge's cross-instance startup mutex. The
@@ -164,7 +172,7 @@ const int openCodePasswordLength = 32;
 /// Generates a server password: [openCodePasswordLength] random bytes,
 /// lowercase hex-encoded. Set as the `OPENCODE_SERVER_PASSWORD` environment
 /// variable (never a CLI flag) and used as the Basic-auth secret.
-String generateOpenCodePassword({Random? random}) {
+String generateOpenCodePassword({required Random? random}) {
   final rng = random ?? Random.secure();
   final bytes = List<int>.generate(openCodePasswordLength, (_) => rng.nextInt(256));
   return bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
@@ -172,7 +180,7 @@ String generateOpenCodePassword({Random? random}) {
 
 /// The dynamic port candidates the supervisor probes when no explicit port is
 /// requested.
-Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? random}) {
+Iterable<int> openCodeDynamicCandidates({required Iterable<int>? candidates, required Random? random}) {
   return dynamicPortCandidates(
     minPort: dynamicOpenCodePortMin,
     maxPort: dynamicOpenCodePortMax,
@@ -232,7 +240,7 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
   required String? password,
   required http.Client Function() clientFactory,
   required String host,
-  Duration timeout = const Duration(seconds: 5),
+  required Duration timeout,
 }) async {
   final client = clientFactory();
   try {
@@ -280,7 +288,7 @@ Future<OpenCodeProtocol> probeOpenCodeProtocol({
   required String? password,
   required http.Client Function() clientFactory,
   required String host,
-  Duration timeout = const Duration(seconds: 5),
+  required Duration timeout,
 }) async {
   final client = clientFactory();
   try {
@@ -314,7 +322,7 @@ Future<({int statusCode, OpenCodeProbeResponse? body})> probeOpenCodeInfo({
   required int port,
   required String? password,
   required http.Client Function() clientFactory,
-  Duration timeout = const Duration(seconds: 5),
+  required Duration timeout,
 }) async {
   final client = clientFactory();
   try {
@@ -419,8 +427,13 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
       ),
       null => throw StateError("OpenCode has no executable to spawn in this mode"),
     },
-    probeHealth: ({required int port}) =>
-        probeOpenCodeHealth(port: port, password: password, clientFactory: probeClientFactory, host: connectHost),
+    probeHealth: ({required int port}) => probeOpenCodeHealth(
+      port: port,
+      password: password,
+      clientFactory: probeClientFactory,
+      host: connectHost,
+      timeout: openCodeProbeTimeout,
+    ),
     probePortBindable: ({required int port}) =>
         probeOpenCodePortBindable(ports: host.ports, port: port, bindHost: bindHost, connectHost: connectHost),
     buildRecord: (draft) => buildOpenCodeOwnershipRecord(draft: draft, bindHost: bindHost),

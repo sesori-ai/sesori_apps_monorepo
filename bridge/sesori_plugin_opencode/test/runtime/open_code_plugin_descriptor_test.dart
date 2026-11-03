@@ -10,6 +10,7 @@ import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
 import "package:opencode_plugin/src/runtime/open_code_protocol.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
+import "package:opencode_plugin/src/runtime/open_code_runtime_policy.dart";
 import "package:opencode_plugin/src/v2/opencode_v2_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -467,6 +468,7 @@ void main() {
         probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
         candidatePorts: const <int>[51000],
         random: Random(1),
+        coldStartBudget: openCodeColdStartBudget,
       );
     }
 
@@ -786,6 +788,7 @@ void main() {
         probeClientFactory: () => _v2ServerClient(version: "2.0.10"),
         candidatePorts: const <int>[51000],
         random: Random(1),
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       await expectLater(
@@ -809,6 +812,7 @@ void main() {
           probeClientFactory: () => _v2ServerClient(version: version),
           candidatePorts: const [51000],
           random: Random(1),
+          coldStartBudget: openCodeColdStartBudget,
         );
         final plugin = await descriptor.start(host);
         expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
@@ -832,6 +836,7 @@ void main() {
         }),
         candidatePorts: const <int>[51000],
         random: Random(1),
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       await expectLater(descriptor.start(host), throwsA(isA<PluginStartAbortedException>()));
@@ -865,6 +870,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       final plugin = await descriptor.start(host);
@@ -884,6 +892,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => _v2ServerClient(version: "2.0.10"),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       await expectLater(descriptor.start(host), throwsA(isA<PluginStartException>()));
@@ -961,6 +972,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       final plugin = await descriptor.start(remoteHost);
@@ -988,6 +1002,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       final plugin = await descriptor.start(host);
@@ -1005,6 +1022,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       final plugin = await descriptor.start(host);
@@ -1021,6 +1041,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       final trimmedHost = _FakeHost(
@@ -1066,6 +1089,8 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
+        candidatePorts: null,
+        random: null,
         coldStartBudget: const Duration(milliseconds: 200),
       );
 
@@ -1087,6 +1112,9 @@ void main() {
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
+        candidatePorts: null,
+        random: null,
+        coldStartBudget: openCodeColdStartBudget,
       );
 
       final plugin = await descriptor.start(host).timeout(const Duration(seconds: 5));
@@ -1153,6 +1181,7 @@ void main() {
         }),
         candidatePorts: const <int>[51000],
         random: Random(1),
+        coldStartBudget: openCodeColdStartBudget,
       );
     }
 
