@@ -638,10 +638,10 @@ ShellRoute buildArchivedSessionsRoute() {
             onSessionDeleted: closeDeletedArchivedSessionRoute,
             onSessionMarkedUnread: null,
           ),
-          createActionCubit: ({required projectId, required session}) => createSessionListCubit(
+          createActions: ({required projectId, required window}) => createSessionActionService(
             locator: getIt,
             projectId: projectId,
-            sessions: [session],
+            window: window,
           ),
         ),
         routes: [

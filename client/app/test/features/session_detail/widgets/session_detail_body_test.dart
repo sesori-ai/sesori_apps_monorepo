@@ -34,7 +34,7 @@ import "../../../helpers/test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockSessionActionService() extends Mock implements SessionActionService;
 
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
@@ -419,12 +419,9 @@ void main() {
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     // Locally still unseen: a toggle would offer "Mark as read" here.
     final unseen = testConstSession.copyWith(unseen: true);
-    final sessions = MockSessionListCubit();
-    when(() => sessions.state).thenReturn(
-      SessionListState(sessions: [unseen], activeSessionIds: const {}, unseenBySessionId: const {}),
-    );
+    final actions = _MockSessionActionService();
     when(
-      () => sessions.markSessionSeen(
+      () => actions.markSessionSeen(
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -440,11 +437,12 @@ void main() {
     await tester.pumpWidget(
       _buildApp(
         cubit: cubit,
-        menuEntriesBuilder: ({required context, required session}) => dispatcher.sessionMenuEntries(
+        menuEntriesBuilder: ({required context, required session, required isBusy}) => dispatcher.sessionMenuEntries(
           context: context,
-          cubit: sessions,
+          actions: actions,
           session: unseen,
-          readEntry: SessionReadMenuEntry.markUnread,
+          isRunning: isBusy,
+          readEntry: const SessionReadMenuMarkUnread(),
         ),
       ),
     );
@@ -459,7 +457,7 @@ void main() {
     await tester.tap(find.text("Mark as unread"));
     await tester.pumpAndSettle();
 
-    verify(() => sessions.markSessionSeen(sessionId: unseen.id, read: false)).called(1);
+    verify(() => actions.markSessionSeen(sessionId: unseen.id, read: false)).called(1);
     expect(left, [unseen.id]);
   });
 
@@ -474,7 +472,7 @@ void main() {
       _buildApp(
         cubit: cubit,
         readOnly: true,
-        menuEntriesBuilder: ({required context, required session}) => [
+        menuEntriesBuilder: ({required context, required session, required isBusy}) => [
           PregoMenuItem(
             leadingIcon: TablerRegular.plug,
             title: "MCP",

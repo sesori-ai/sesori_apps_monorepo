@@ -1,4 +1,3 @@
-import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -16,25 +15,21 @@ import "../../helpers/test_helpers.dart";
 /// beside the menu — the same treatment project rows get. The entries come
 /// from the real [SessionListActionDispatcher], so this covers the wiring from
 /// the row all the way to the actions it dispatches.
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockSessionActionService() extends Mock implements SessionActionService;
 
 void main() {
-  late _MockSessionListCubit cubit;
+  late _MockSessionActionService actions;
 
   setUp(() {
-    cubit = _MockSessionListCubit();
-    when(() => cubit.projectId).thenReturn("project-1");
-    when(() => cubit.retainActionScope()).thenReturn(() {});
+    actions = _MockSessionActionService();
+    when(() => actions.projectId).thenReturn("project-1");
   });
 
   /// Renders the real list with the real action dispatcher behind the row.
   Future<void> pumpRow(WidgetTester tester, {required Session session}) async {
-    when(() => cubit.state).thenReturn(
-      SessionListState(sessions: [session], activeSessionIds: const {}, unseenBySessionId: const {}),
-    );
     await tester.pumpWidget(
       sessionRowApp(
-        actions: cubit,
+        actions: actions,
         dispatcher: const SessionListActionDispatcher(
           deleteConfirmation: SessionDeleteConfirmation.sheet,
           onSessionArchived: null,
@@ -103,7 +98,7 @@ void main() {
   testWidgets("Mark as unread dismisses the menu and marks the session", (tester) async {
     final session = testSession(title: "My Session");
     when(
-      () => cubit.markSessionSeen(
+      () => actions.markSessionSeen(
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -117,7 +112,7 @@ void main() {
     await tester.tap(find.widgetWithText(InkWell, "Mark as unread"));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.markSessionSeen(sessionId: session.id, read: false)).called(1);
+    verify(() => actions.markSessionSeen(sessionId: session.id, read: false)).called(1);
     // The menu is gone; the row's off-row swipe pill is the only remaining
     // "Mark as unread", and it is not reachable.
     expect(find.text("Mark as unread").hitTestable(), findsNothing);
@@ -166,7 +161,7 @@ void main() {
 
     expect(find.text("Delete").hitTestable(), findsNothing);
     verifyNever(
-      () => cubit.markSessionSeen(
+      () => actions.markSessionSeen(
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),

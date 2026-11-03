@@ -30,11 +30,14 @@ class MockPermissionRepository() extends Mock implements PermissionRepository;
 
 class MockMcpService() extends Mock implements McpService;
 
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
+
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      RepositoryProvider<SessionWindowService>.value(value: _MockSessionWindowService()),
     ],
     child: MaterialApp(
       navigatorKey: navigatorKey,
@@ -183,12 +186,9 @@ void _registerDependencies({
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
-  // The page's own action cubit runs its menu actions.
+  // The page's own action service runs its menu actions.
   final projectRepository = MockProjectRepository();
   getIt.registerSingleton<ProjectRepository>(projectRepository);
-  getIt.registerSingleton<SessionListService>(
-    SessionListService(),
-  );
   getIt.registerSingleton<SessionCleanupService>(SessionCleanupService(repository: promptDispatcher));
   getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
 }

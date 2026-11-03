@@ -109,10 +109,10 @@ class const DesktopSidebar({
                             session: row.session,
                           ),
                           actionDispatcher: sessionActions,
-                          createActionCubit: ({required projectId, required session}) => createSessionListCubit(
+                          createActions: ({required projectId, required window}) => createSessionActionService(
                             locator: getIt,
                             projectId: projectId,
-                            sessions: [session],
+                            window: window,
                           ),
                           selectedSessionId: selectedSessionId,
                           // The footer's recovery card says so, unless this
@@ -387,7 +387,6 @@ class const _SidebarComputerRow({
     };
     return PregoAnchorMenu(
       flat: true,
-      acquireOpenLease: null,
       menuWidth: 300,
       triggerBuilder: (context, toggle) => _SidebarButton(
         key: const Key("desktop-sidebar-computer"),

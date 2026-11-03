@@ -38,26 +38,18 @@ enum SessionDeleteConfirmation() {
 }
 
 /// Which read action a session menu offers.
-enum SessionReadMenuEntry() {
-  /// A list row: flips the row's read state.
-  toggle,
+sealed class const SessionReadMenuEntry();
 
-  /// An open session page: always Mark as unread. The page is marked seen
-  /// asynchronously, so a toggle could read "unseen" and mark it read instead.
-  markUnread,
+/// A list row: flips the row's read state, [unseen].
+final class const SessionReadMenuToggle({required final bool unseen}) extends SessionReadMenuEntry;
 
-  /// The surface offers Mark unread on its own, as the desktop session page
-  /// does with its shortcut.
-  none,
-}
+/// An open session page: always Mark as unread. The page is marked seen
+/// asynchronously, so a toggle could read "unseen" and mark it read instead.
+final class const SessionReadMenuMarkUnread() extends SessionReadMenuEntry;
 
-void _showRetainedActionDialog({
-  required SessionListCubit cubit,
-  required Future<void> Function() show,
-}) {
-  final release = cubit.retainActionScope();
-  unawaited(show().whenComplete(release));
-}
+/// The surface offers Mark unread on its own, as the desktop session page
+/// does with its shortcut.
+final class const SessionReadMenuNone() extends SessionReadMenuEntry;
 
 class const SessionListActionDispatcher({
   required final SessionDeleteConfirmation deleteConfirmation,
@@ -74,17 +66,17 @@ class const SessionListActionDispatcher({
   ///
   /// [context] must belong to the stable list/sidebar owner rather than the
   /// row: archive/delete can remove that row before their follow-up UI runs.
-  /// [cubit] may be scoped more narrowly and is retained while confirmation
-  /// UI is open and while the resulting operation settles.
+  /// [isRunning] is whether the session works right now, so archive asks first.
   List<PregoMenuEntry> sessionMenuEntries({
     required BuildContext context,
-    required SessionListCubit cubit,
+    required SessionActionService actions,
     required Session session,
+    required bool isRunning,
     required SessionReadMenuEntry readEntry,
   }) {
     final loc = context.loc;
     final isArchived = session.time?.archived != null;
-    final markRead = readEntry == SessionReadMenuEntry.toggle && _isUnseen(cubit: cubit, session: session);
+    final markRead = readEntry is SessionReadMenuToggle && readEntry.unseen;
 
     return [
       if (!isArchived)
@@ -94,19 +86,16 @@ class const SessionListActionDispatcher({
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,
-          onTap: () => _showRetainedActionDialog(
-            cubit: cubit,
-            show: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
-          ),
+          onTap: () => unawaited(showRenameSessionDialog(context: context, session: session, actions: actions)),
         ),
-      if (readEntry != SessionReadMenuEntry.none)
+      if (readEntry is! SessionReadMenuNone)
         PregoMenuItem(
           leadingIcon: markRead ? TablerRegular.mail_opened : TablerRegular.mail,
           title: markRead ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,
-          onTap: () => _setRead(context: context, cubit: cubit, session: session, read: markRead),
+          onTap: () => _setRead(context: context, actions: actions, session: session, read: markRead),
         ),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
@@ -117,7 +106,7 @@ class const SessionListActionDispatcher({
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,
-          onTap: () => _archive(context: context, cubit: cubit, session: session),
+          onTap: () => _archive(context: context, session: session, isRunning: isRunning),
         ),
       // Delete is the only entry here that also destroys the work itself —
       // archiving is permanent but keeps the session readable — so it is set
@@ -130,32 +119,31 @@ class const SessionListActionDispatcher({
         isSelected: false,
         shortcutLabel: null,
         isDestructive: true,
-        onTap: () => _delete(context: context, cubit: cubit, session: session),
+        onTap: () => _delete(context: context, actions: actions, session: session),
       ),
     ];
   }
 
   /// Archives [session], from the row's trailing swipe pill or its full-swipe
-  /// commit. [context] and [cubit] are as for [sessionMenuEntries].
+  /// commit. [context] and [isRunning] are as for [sessionMenuEntries].
   void handleSessionArchive({
     required BuildContext context,
-    required SessionListCubit cubit,
     required Session session,
-  }) => _archive(context: context, cubit: cubit, session: session);
+    required bool isRunning,
+  }) => _archive(context: context, session: session, isRunning: isRunning);
 
   /// Deletes [session] behind the same confirmation flow as the menu entry,
   /// from the row's trailing swipe pill.
   void handleSessionDelete({
     required BuildContext context,
-    required SessionListCubit cubit,
+    required SessionActionService actions,
     required Session session,
-  }) => _delete(context: context, cubit: cubit, session: session);
+  }) => _delete(context: context, actions: actions, session: session);
 
   /// Archiving always asks the bridge to remove a dedicated worktree. The user
   /// never chooses otherwise: the bridge's cleanup refusal is what protects
   /// unfinished work.
-  void _archive({required BuildContext context, required SessionListCubit cubit, required Session session}) {
-    final isRunning = cubit.state.isSessionRunning(session: session);
+  void _archive({required BuildContext context, required Session session, required bool isRunning}) {
     unawaited(() async {
       if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
       if (!context.mounted) return;
@@ -164,78 +152,64 @@ class const SessionListActionDispatcher({
     }());
   }
 
-  void _delete({required BuildContext context, required SessionListCubit cubit, required Session session}) {
-    final deletesFolder = _isNoProject(context: context, cubit: cubit);
+  void _delete({required BuildContext context, required SessionActionService actions, required Session session}) {
+    final deletesFolder = _isNoProject(context: context, actions: actions);
     switch (deleteConfirmation) {
       case SessionDeleteConfirmation.sheet:
         _showDeleteSheet(
           context: context,
-          cubit: cubit,
+          actions: actions,
           session: session,
           deletesFolder: deletesFolder,
           onSessionDeleted: onSessionDeleted,
         );
       case SessionDeleteConfirmation.alert:
-        _showRetainedActionDialog(
-          cubit: cubit,
-          show: () async {
-            if (!await _confirmDelete(context: context, session: session, deletesFolder: deletesFolder) ||
-                !context.mounted) {
-              return;
-            }
-            await _deleteSession(
-              context: context,
-              cubit: cubit,
-              sessionId: session.id,
-              deleteWorktree: session.hasWorktree,
-              deleteSessionFolder: deletesFolder,
-              onSessionDeleted: onSessionDeleted,
-            );
-          },
-        );
+        unawaited(() async {
+          if (!await _confirmDelete(context: context, session: session, deletesFolder: deletesFolder) ||
+              !context.mounted) {
+            return;
+          }
+          await _deleteSession(
+            context: context,
+            actions: actions,
+            sessionId: session.id,
+            deleteWorktree: session.hasWorktree,
+            deleteSessionFolder: deletesFolder,
+            onSessionDeleted: onSessionDeleted,
+          );
+        }());
     }
   }
 
-  /// Whether [cubit]'s sessions are "No project" ones, each in its own folder
+  /// Whether [actions]' sessions are "No project" ones, each in its own folder
   /// that deleting the session removes with its files.
-  bool _isNoProject({required BuildContext context, required SessionListCubit cubit}) =>
-      context.read<ProjectListCubit>().state.kindOf(projectId: cubit.projectId) == ProjectKind.scratch;
+  bool _isNoProject({required BuildContext context, required SessionActionService actions}) =>
+      context.read<ProjectListCubit>().state.kindOf(projectId: actions.projectId) == ProjectKind.scratch;
 
-  /// Flips [session]'s read state, from the row's leading swipe.
+  /// Flips [session]'s read state, [unseen], from the row's leading swipe.
   void handleSessionToggleUnread({
     required BuildContext context,
-    required SessionListCubit cubit,
+    required SessionActionService actions,
     required Session session,
-  }) {
-    _setRead(
-      context: context,
-      cubit: cubit,
-      session: session,
-      read: _isUnseen(cubit: cubit, session: session),
-    );
-  }
+    required bool unseen,
+  }) => _setRead(context: context, actions: actions, session: session, read: unseen);
 
   /// Marks [session] unread whatever the local state says. An open session is
   /// marked seen asynchronously, so local state can still read "unseen" and a
   /// toggle would mark it read instead.
   void handleSessionMarkUnread({
     required BuildContext context,
-    required SessionListCubit cubit,
+    required SessionActionService actions,
     required Session session,
-  }) => _setRead(context: context, cubit: cubit, session: session, read: false);
+  }) => _setRead(context: context, actions: actions, session: session, read: false);
 
   void _setRead({
     required BuildContext context,
-    required SessionListCubit cubit,
+    required SessionActionService actions,
     required Session session,
     required bool read,
   }) {
-    unawaited(cubit.markSessionSeen(sessionId: session.id, read: read));
+    unawaited(actions.markSessionSeen(sessionId: session.id, read: read));
     if (!read) onSessionMarkedUnread?.call(context: context, session: session);
   }
-
-  /// The row's effective unseen state: the cubit's live tracking, else what
-  /// the session payload said.
-  bool _isUnseen({required SessionListCubit cubit, required Session session}) =>
-      cubit.state.isSessionUnseen(session: session);
 }

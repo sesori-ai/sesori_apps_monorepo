@@ -138,7 +138,7 @@ void main() {
                               onSessionDeleted: null,
                               onSessionMarkedUnread: null,
                             ),
-                            createActionCubit: ({required projectId, required session}) =>
+                            createActions: ({required projectId, required window}) =>
                                 throw StateError("no row to act on"),
                             selectedSessionId: null,
                             disconnectedBuilder: ({required context, required state}) =>

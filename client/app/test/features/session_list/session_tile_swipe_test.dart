@@ -1,4 +1,3 @@
-import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -21,29 +20,25 @@ import "../../helpers/test_helpers.dart";
 /// settles open comfortably past ~200px of drag, the leading one past ~150px,
 /// and the full-swipe commit threshold is 480px. ~20px of every drag is spent
 /// on touch slop.
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockSessionActionService() extends Mock implements SessionActionService;
 
 void main() {
-  late _MockSessionListCubit cubit;
+  late _MockSessionActionService actions;
   final markedUnread = <String>[];
 
   setUp(() {
     markedUnread.clear();
-    cubit = _MockSessionListCubit();
-    when(() => cubit.retainActionScope()).thenReturn(() {});
-    when(() => cubit.projectId).thenReturn("project-1");
+    actions = _MockSessionActionService();
+    when(() => actions.projectId).thenReturn("project-1");
   });
 
   /// Renders the real list. [AllSessionsList] wires the swipe actions to the
   /// real [SessionListActionDispatcher] itself, using its own context above
   /// the rows, so they keep working after an action unmounts its row.
   Future<void> pumpRow(WidgetTester tester, {required Session session}) async {
-    when(() => cubit.state).thenReturn(
-      SessionListState(sessions: [session], activeSessionIds: const {}, unseenBySessionId: const {}),
-    );
     await tester.pumpWidget(
       sessionRowApp(
-        actions: cubit,
+        actions: actions,
         dispatcher: SessionListActionDispatcher(
           deleteConfirmation: SessionDeleteConfirmation.sheet,
           onSessionArchived: null,
@@ -89,7 +84,7 @@ void main() {
       isEmpty,
     );
     verifyNever(
-      () => cubit.deleteSession(
+      () => actions.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
         deleteSessionFolder: any(named: "deleteSessionFolder"),
@@ -153,7 +148,7 @@ void main() {
 
     expect(find.text("Delete session?"), findsOneWidget);
     verifyNever(
-      () => cubit.deleteSession(
+      () => actions.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
         deleteSessionFolder: any(named: "deleteSessionFolder"),
@@ -175,7 +170,7 @@ void main() {
     // is deleted until the sheet says so.
     expect(find.text("Delete session?"), findsOneWidget);
     verifyNever(
-      () => cubit.deleteSession(
+      () => actions.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
         deleteSessionFolder: any(named: "deleteSessionFolder"),
@@ -187,7 +182,7 @@ void main() {
   testWidgets("the leading swipe reveals the read toggle, which marks a read row unread", (tester) async {
     final session = testSession(title: "My Session");
     when(
-      () => cubit.markSessionSeen(
+      () => actions.markSessionSeen(
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -204,14 +199,14 @@ void main() {
     await tester.tap(find.text("Mark as unread"));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.markSessionSeen(sessionId: session.id, read: false)).called(1);
+    verify(() => actions.markSessionSeen(sessionId: session.id, read: false)).called(1);
     expect(markedUnread, [session.id]);
   });
 
   testWidgets("a full leading swipe marks an unseen row read", (tester) async {
     final session = testSession(title: "My Session").copyWith(unseen: true);
     when(
-      () => cubit.markSessionSeen(
+      () => actions.markSessionSeen(
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -223,7 +218,7 @@ void main() {
     await tester.drag(tile("My Session"), const Offset(520, 0));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.markSessionSeen(sessionId: session.id, read: true)).called(1);
+    verify(() => actions.markSessionSeen(sessionId: session.id, read: true)).called(1);
     expect(markedUnread, isEmpty);
   });
 

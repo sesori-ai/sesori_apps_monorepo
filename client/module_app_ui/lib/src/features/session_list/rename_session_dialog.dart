@@ -9,7 +9,7 @@ import "../../widgets/rename_sheet.dart";
 Future<void> showRenameSessionDialog({
   required BuildContext context,
   required Session session,
-  required SessionListCubit cubit,
+  required SessionActionService actions,
 }) {
   return showPregoModal<void>(
     context: context,
@@ -22,7 +22,7 @@ Future<void> showRenameSessionDialog({
         saveLabel: loc.renameSave,
         failureMessage: loc.renameSessionFailed,
         submitOnEnter: true,
-        onRename: (title) => cubit.renameSession(sessionId: session.id, title: title),
+        onRename: (title) => actions.renameSession(sessionId: session.id, title: title),
       );
     },
   );

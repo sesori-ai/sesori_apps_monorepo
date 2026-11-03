@@ -124,9 +124,6 @@ class const PregoMenuCustom({
 /// path, toggles) the popup — wire it to the trigger's tap handler.
 typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCallback toggle);
 
-/// Acquires ownership needed for one open menu and returns its release callback.
-typedef PregoMenuOpenLease = VoidCallback Function();
-
 /// Blurs and dims the page behind an open [PregoAnchorMenu], cutting a sharp
 /// hole around the trigger so it stays legible and reads as lifted out of the
 /// blur — the iOS context-menu treatment for a long-pressed list row.
@@ -244,10 +241,6 @@ class const PregoAnchorMenu({
   /// a menu hung off a button, where the page behind it is not the subject.
   /// Requires [flat]; see [PregoMenuSpotlight].
   final PregoMenuSpotlight? spotlight,
-
-  /// Retains caller-owned state from immediately before a flat menu opens until
-  /// its modal route completes after selection or dismissal.
-  required final PregoMenuOpenLease? acquireOpenLease,
 }) extends StatefulWidget {
   this
     : assert(
@@ -259,8 +252,7 @@ class const PregoAnchorMenu({
       assert(
         placement == PregoMenuPlacement.besideTrigger || flat,
         "Only the flat menu path (flat: true) takes a placement; the glass menu places itself.",
-      ),
-      assert(acquireOpenLease == null || flat, "An open-menu lease requires the flat menu path.");
+      );
 
   @override
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
@@ -405,13 +397,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
         triggerBuilder: (context, showModal) {
           final trigger = widget.triggerBuilder(context, () {
-            final release = widget.acquireOpenLease?.call();
-            unawaited(
-              showModal().whenComplete(() {
-                _secondaryPress = null;
-                release?.call();
-              }),
-            );
+            unawaited(showModal().whenComplete(() => _secondaryPress = null));
           });
           if (!pointer) return trigger;
           return Listener(

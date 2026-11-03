@@ -5,7 +5,6 @@ import "package:flutter/foundation.dart" show setEquals;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -22,11 +21,11 @@ import "session_tile.dart";
 
 typedef AllSessionsRowOpenedCallback = void Function({required AllSessionsRow row});
 
-/// Builds the action-mode [SessionListCubit] a row's swipe and menu actions
-/// run on.
-typedef ActionSessionListCubitFactory = SessionListCubit Function({
+/// Builds the [SessionActionService] a row's swipe and menu actions run on,
+/// over [window], the list's own.
+typedef SessionActionServiceFactory = SessionActionService Function({
   required String projectId,
-  required Session session,
+  required SessionWindowService window,
 });
 
 /// The page, as a sliver, for a computer that is not connected, or null while
@@ -52,13 +51,13 @@ typedef AllSessionsDisconnectedBuilder = Widget? Function({
 /// While older sessions follow, a loader row ends the list, and rows built
 /// within reach of the end ask for the next page, which lands above it.
 ///
-/// A row's actions run on its own action-mode [SessionListCubit], built only
-/// once a swipe or menu needs it.
+/// A row's actions run on a [SessionActionService] over the list's window,
+/// built only once a swipe or menu needs it.
 class const AllSessionsList({
   super.key,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
-  required final ActionSessionListCubitFactory createActionCubit,
+  required final SessionActionServiceFactory createActions,
 
   /// The session a content pane beside the list shows, highlighted.
   required final String? selectedSessionId,
@@ -875,40 +874,38 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   }) {
     final list = widget.list;
     final dispatcher = list.actionDispatcher;
+    // Actions run against the list's context, not the row's: a delete
+    // unmounts the row before its follow-ups run.
+    SessionActionService actions() =>
+        list.createActions(projectId: row.project.id, window: context.read<SessionWindowService>());
     final tile = Padding(
       padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
-      child: BlocProvider(
-        create: (_) => list.createActionCubit(projectId: row.project.id, session: row.session),
-        child: Builder(
-          builder: (rowContext) {
-            SessionListCubit actions() =>
-                rowContext.read<SessionListCubit>()..updateActionSession(session: row.session);
-            // Actions run against the list's context, not the row's: a delete
-            // unmounts the row before its follow-ups run.
-            return SessionTile(
-              session: row.session,
-              projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
-              isArchived: row.session.time?.archived != null,
-              isRunning: row.isRunning,
-              unseen: row.isUnseen,
-              selected: list.selectedSessionId == row.session.id,
-              awaitingInput: row.isAwaitingInput,
-              isRetrying: row.isRetrying,
-              backgroundTaskCount: row.backgroundTaskCount,
-              onTap: () => list.onSessionTap(row: row),
-              menuEntries: () => dispatcher.sessionMenuEntries(
-                context: context,
-                cubit: actions(),
-                session: row.session,
-                readEntry: SessionReadMenuEntry.toggle,
-              ),
-              onArchive: () =>
-                  dispatcher.handleSessionArchive(context: context, cubit: actions(), session: row.session),
-              onDelete: () => dispatcher.handleSessionDelete(context: context, cubit: actions(), session: row.session),
-              onToggleUnread: () =>
-                  dispatcher.handleSessionToggleUnread(context: context, cubit: actions(), session: row.session),
-            );
-          },
+      child: SessionTile(
+        session: row.session,
+        projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
+        isArchived: row.session.time?.archived != null,
+        isRunning: row.isRunning,
+        unseen: row.isUnseen,
+        selected: list.selectedSessionId == row.session.id,
+        awaitingInput: row.isAwaitingInput,
+        isRetrying: row.isRetrying,
+        backgroundTaskCount: row.backgroundTaskCount,
+        onTap: () => list.onSessionTap(row: row),
+        menuEntries: () => dispatcher.sessionMenuEntries(
+          context: context,
+          actions: actions(),
+          session: row.session,
+          isRunning: row.isRunning,
+          readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
+        ),
+        onArchive: () =>
+            dispatcher.handleSessionArchive(context: context, session: row.session, isRunning: row.isRunning),
+        onDelete: () => dispatcher.handleSessionDelete(context: context, actions: actions(), session: row.session),
+        onToggleUnread: () => dispatcher.handleSessionToggleUnread(
+          context: context,
+          actions: actions(),
+          session: row.session,
+          unseen: row.isUnseen,
         ),
       ),
     );

@@ -36,7 +36,6 @@ class const ComputerMenu({
       // Flat whatever the trigger, so the menu looks the same from a text row
       // and from the phone home's glass button.
       flat: true,
-      acquireOpenLease: null,
       menuWidth: 280,
       triggerBuilder: triggerBuilder,
       entriesBuilder: () => entries(

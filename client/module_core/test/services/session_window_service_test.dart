@@ -775,6 +775,135 @@ void main() {
     });
   });
 
+  group("rename", () {
+    String? title(SessionWindowService window, String id) =>
+        loaded(window).sessions.firstWhere((session) => session.id == id).title;
+
+    /// Answers the renames of s0000 to each title in turn from its own reply.
+    Map<String, Completer<ApiResponse<Session>>> replies(List<String> titles) => {
+      for (final title in titles)
+        title: () {
+          final reply = Completer<ApiResponse<Session>>();
+          when(
+            () => sessionRepository.renameSession(sessionId: "s0000", title: title),
+          ).thenAnswer((_) => reply.future);
+          return reply;
+        }(),
+    };
+
+    test("shows the title at once, over a load read before it, and keeps it once the bridge accepts", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 2);
+        final window = create();
+        async.flushMicrotasks();
+        final reply = replies(["New"])["New"];
+        bool? renamed;
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "New").then((value) => renamed = value));
+        expect(title(window, "s0000"), "New");
+
+        // A reload and an update, both read before the rename, bring the old title.
+        unawaited(window.reload());
+        async.flushMicrotasks();
+        emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions.first));
+        expect(title(window, "s0000"), "New");
+
+        reply?.complete(ApiResponse.success(bridge.sessions.first.copyWith(title: "New")));
+        async.flushMicrotasks();
+        expect(renamed, isTrue);
+        expect(title(window, "s0000"), "New");
+        expect(ids(window), ["s0000", "s0001"]);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("brings the previous title back when the bridge refuses or the request throws", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 1);
+        final window = create();
+        async.flushMicrotasks();
+        when(
+          () => sessionRepository.renameSession(sessionId: "s0000", title: "Refused"),
+        ).thenAnswer((_) async => ApiResponse<Session>.error(ApiError.generic()));
+        when(
+          () => sessionRepository.renameSession(sessionId: "s0000", title: "Thrown"),
+        ).thenThrow(StateError("transport"));
+        final results = <bool>[];
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "Refused").then(results.add));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "Session s0000");
+        unawaited(window.renameSession(sessionId: "s0000", title: "Thrown").then(results.add));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "Session s0000");
+        expect(results, [false, false]);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("overlapping renames settle on the newest one the bridge accepted", () {
+      inFakeTime((async) {
+        bridge.sessions = [_session(id: "s0000", updatedAt: 1).copyWith(title: null)];
+        final window = create();
+        async.flushMicrotasks();
+        final reply = replies(["First", "Second", "Third"]);
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "First"));
+        unawaited(window.renameSession(sessionId: "s0000", title: "Second"));
+        expect(title(window, "s0000"), "Second");
+        reply["Second"]?.complete(ApiResponse<Session>.error(ApiError.generic()));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "First");
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "Third"));
+        reply["First"]?.complete(ApiResponse.success(bridge.sessions.first.copyWith(title: "First")));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "Third");
+        reply["Third"]?.complete(ApiResponse<Session>.error(ApiError.generic()));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "First");
+        unawaited(window.dispose());
+      });
+    });
+
+    test("two refused renames of an untitled session leave it untitled", () {
+      inFakeTime((async) {
+        bridge.sessions = [_session(id: "s0000", updatedAt: 1).copyWith(title: null)];
+        final window = create();
+        async.flushMicrotasks();
+        final reply = replies(["First", "Second"]);
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "First"));
+        unawaited(window.renameSession(sessionId: "s0000", title: "Second"));
+        reply["First"]?.complete(ApiResponse<Session>.error(ApiError.generic()));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "Second");
+        reply["Second"]?.complete(ApiResponse<Session>.error(ApiError.generic()));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), isNull);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("renames a session the window does not list without adding it", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 1);
+        final window = create();
+        async.flushMicrotasks();
+        when(
+          () => sessionRepository.renameSession(sessionId: "elsewhere", title: "New"),
+        ).thenAnswer((_) async => ApiResponse.success(_session(id: "elsewhere", updatedAt: 1, title: "New")));
+        bool? renamed;
+
+        unawaited(window.renameSession(sessionId: "elsewhere", title: "New").then((value) => renamed = value));
+        async.flushMicrotasks();
+        expect(renamed, isTrue);
+        expect(ids(window), ["s0000"]);
+        unawaited(window.dispose());
+      });
+    });
+  });
+
   group("older bridges", () {
     void stubCompleteBridge({required Map<String, List<Session>> sessionsByProject}) {
       bridge.answer = (_) async => const SessionPageUnsupported();
@@ -836,6 +965,36 @@ void main() {
         );
         async.flushMicrotasks();
         expect(bridge.requests, isEmpty);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a rename shows at once over every project's rows, and a refusal brings the title back", () {
+      inFakeTime((async) {
+        stubCompleteBridge(
+          sessionsByProject: {
+            "alpha": [_session(id: "a1", updatedAt: 3, title: "Old")],
+            "beta": [_session(id: "b1", updatedAt: 4, projectId: "beta")],
+          },
+        );
+        final window = create();
+        async.flushMicrotasks();
+        final reply = Completer<ApiResponse<Session>>();
+        when(() => sessionRepository.renameSession(sessionId: "a1", title: "New")).thenAnswer((_) => reply.future);
+        String? title() => loaded(window).sessions.firstWhere((session) => session.id == "a1").title;
+
+        unawaited(window.renameSession(sessionId: "a1", title: "New"));
+        expect(title(), "New");
+        emit(
+          SesoriSseEvent.sessionUpdated(
+            info: _session(id: "a1", updatedAt: 3, title: "Old"),
+          ),
+        );
+        expect(title(), "New");
+
+        reply.complete(ApiResponse<Session>.error(ApiError.generic()));
+        async.flushMicrotasks();
+        expect(title(), "Old");
         unawaited(window.dispose());
       });
     });

@@ -105,9 +105,6 @@ void _registerListServices({
   if (getIt.isRegistered<ProjectListService>()) {
     getIt.unregister<ProjectListService>();
   }
-  if (getIt.isRegistered<SessionListService>()) {
-    getIt.unregister<SessionListService>();
-  }
   if (getIt.isRegistered<ProductAnalyticsService>()) {
     getIt.unregister<ProductAnalyticsService>();
   }
@@ -117,9 +114,6 @@ void _registerListServices({
     ProjectListService(
       repository: projectRepository,
     ),
-  );
-  getIt.registerSingleton<SessionListService>(
-    SessionListService(),
   );
   getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
   if (getIt.isRegistered<SessionCleanupService>()) {
@@ -254,7 +248,7 @@ class _MockProjectListCubit() extends MockCubit<ProjectListState> implements Pro
 /// Under a router, not a plain MaterialApp: action sheets close through
 /// GoRouter, which the lint requires over direct Navigator.
 Widget sessionRowApp({
-  required SessionListCubit actions,
+  required SessionActionService actions,
   required SessionListActionDispatcher dispatcher,
   required Session session,
 }) {
@@ -308,7 +302,7 @@ Widget sessionRowApp({
               AllSessionsList(
                 onSessionTap: ({required row}) {},
                 actionDispatcher: dispatcher,
-                createActionCubit: ({required projectId, required session}) => actions,
+                createActions: ({required projectId, required window}) => actions,
                 selectedSessionId: null,
                 disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
                 emptyState: const SizedBox.shrink(),
