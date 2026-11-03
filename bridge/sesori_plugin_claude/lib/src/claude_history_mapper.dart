@@ -4,6 +4,7 @@ import "models/claude_agent_selection.dart";
 import "models/claude_compact_metadata.dart";
 import "models/claude_message_origin_kind.dart";
 import "models/claude_tool_use_result.dart";
+import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/models/claude_transcript_record.dart";
@@ -268,7 +269,7 @@ final class const ClaudeHistoryMapper({
         sessionID: sessionId,
         agent: ClaudeAgentSelection.messageAgent,
         modelID: modelId(entry.model),
-        providerID: "anthropic",
+        providerID: ClaudeBackendCatalogRepository.providerId,
         variant: null,
         errorName: error.name,
         errorMessage: error.message,
@@ -322,7 +323,7 @@ final class const ClaudeHistoryMapper({
         sessionID: sessionId,
         agent: ClaudeAgentSelection.messageAgent,
         modelID: modelId(entry.model),
-        providerID: "anthropic",
+        providerID: ClaudeBackendCatalogRepository.providerId,
         variant: entry.variant,
         sender: PluginMessageSender.agent,
         time: _messageTime(entry.timestamp),

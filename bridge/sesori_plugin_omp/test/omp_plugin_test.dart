@@ -115,10 +115,7 @@ void main() {
       expect(await connecting, isTrue);
     });
 
-    test("uses OMP's per-session and fail-closed policies", () {
-      expect(plugin.serializesPromptsProcessWide, isFalse);
-      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
-      expect(plugin.failsTurnOnSelectionError, isTrue);
+    test("advertises form elicitation", () {
       expect(plugin.supportsFormElicitation, isTrue);
     });
 

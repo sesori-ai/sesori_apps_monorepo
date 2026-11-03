@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -15,7 +16,6 @@ class _PromptHookPlugin({
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
 }) extends TestAcpPlugin {
   @override
@@ -37,7 +37,6 @@ class _GatedSelectionPlugin({
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
 }) extends TestAcpPlugin {
   Completer<void>? selectionGate;
@@ -207,12 +206,6 @@ void main() {
           childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async => fake,
       );
       await plugin.dispose();
@@ -417,12 +410,6 @@ void main() {
         childSessionTracker: childSessionTracker,
         eventMapper: mapper,
         commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async => fake,
       );
       await plugin.dispose();
@@ -1068,12 +1055,6 @@ void main() {
           childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async => fake,
       );
       addTearDown(gated.dispose);

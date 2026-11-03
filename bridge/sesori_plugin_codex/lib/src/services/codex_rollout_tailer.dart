@@ -152,7 +152,7 @@ class CodexRolloutTailer({
     drain(sessionId: sessionId);
     var cursor = _cursors[sessionId];
     if (cursor == null) return;
-    if (_isTerminallyDrained(cursor)) {
+    if (_isTerminallyDrained(cursor: cursor)) {
       stop(sessionId: sessionId);
       return;
     }
@@ -161,7 +161,7 @@ class CodexRolloutTailer({
       drain(sessionId: sessionId);
       cursor = _cursors[sessionId];
       if (cursor == null) return;
-      if (_isTerminallyDrained(cursor)) {
+      if (_isTerminallyDrained(cursor: cursor)) {
         stop(sessionId: sessionId);
         return;
       }
@@ -173,7 +173,7 @@ class CodexRolloutTailer({
     stop(sessionId: sessionId);
   }
 
-  bool _isTerminallyDrained(_CodexRolloutCursor cursor) =>
+  bool _isTerminallyDrained({required _CodexRolloutCursor cursor}) =>
       cursor.path != null && cursor.hasObservedAppend && cursor.trailingBytes.isEmpty;
 
   void stop({required String sessionId}) {

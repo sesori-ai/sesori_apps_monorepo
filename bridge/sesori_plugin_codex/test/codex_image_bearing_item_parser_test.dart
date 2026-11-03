@@ -30,7 +30,6 @@ void main() {
       expect(completed, isA<CodexImageGenerationItemDto>());
       final image = completed! as CodexImageGenerationItemDto;
       expect(image.status, CodexImageGenerationStatus.completed);
-      expect(image.revisedPrompt, "draw a landscape");
       expect(image.result, "encoded-image");
       expect(image.savedPath, "/private/output.png");
       expect((unknown! as CodexImageGenerationItemDto).status, CodexImageGenerationStatus.unknown);
@@ -69,7 +68,7 @@ void main() {
       expect(mcp.error, "tool failed");
     });
 
-    test("decodes dynamic text, image, and audio with tolerant tool status", () {
+    test("decodes dynamic text and image, keeps audio unknown, with tolerant tool status", () {
       final item = parser.parse(
         item: {
           "type": "dynamicToolCall",
@@ -90,7 +89,7 @@ void main() {
       expect(dynamic.tool, "tool");
       expect(dynamic.status, CodexToolCallStatus.unknown);
       expect(dynamic.content[1], isA<CodexDynamicImageContentDto>());
-      expect(dynamic.content[2], isA<CodexDynamicAudioContentDto>());
+      expect(dynamic.content[2], isA<CodexUnknownImageBearingContentDto>());
       expect((dynamic.content.first as CodexDynamicTextContentDto).text, "first");
       expect((dynamic.content.last as CodexDynamicTextContentDto).text, "second");
     });

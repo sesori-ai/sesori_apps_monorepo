@@ -177,7 +177,7 @@ class CodexSessionService({
     // The observed 0.148.0 sequence reports a pre-start idle status before
     // this authoritative activity fact, then active afterwards. Treat the
     // child as pending now so a root completion cannot slip through that gap.
-    final startedStatus = _isActiveStatus(status) ? status : const PluginSessionStatus.busy();
+    final startedStatus = _isActiveStatus(status: status) ? status : const PluginSessionStatus.busy();
     _subAgentTracker.setChildActive(childId: childThreadId, active: true);
     CodexThreadRecord? read;
     try {
@@ -212,6 +212,7 @@ class CodexSessionService({
     final tile = _subAgentTracker.observeStarted(
       child: child,
       callId: callId,
+      status: PluginToolStatus.running,
     );
     return CodexSubAgentThreadAnnouncement(
       child: child,
@@ -255,7 +256,7 @@ class CodexSessionService({
     return task == null ? const [] : [_sessionMapper.mapSubAgentTile(task: task)];
   }
 
-  List<BridgeSseEvent> cancelOpenSubAgents({Set<String>? sessionIds}) => [
+  List<BridgeSseEvent> cancelOpenSubAgents({required Set<String>? sessionIds}) => [
     for (final task in _subAgentTracker.cancelOpen(sessionIds: sessionIds)) _sessionMapper.mapSubAgentTile(task: task),
   ];
 
@@ -300,7 +301,10 @@ class CodexSessionService({
       return;
     }
     _subAgentTracker.record(child: thread);
-    _subAgentTracker.setChildActive(childId: thread.id, active: _isActiveStatus(status));
+    _subAgentTracker.setChildActive(
+      childId: thread.id,
+      active: _isActiveStatus(status: status),
+    );
   }
 
   void observeTurnStarted({
@@ -314,7 +318,10 @@ class CodexSessionService({
   }
 
   void observeSessionStatus({required String sessionId, required PluginSessionStatus status}) =>
-      _subAgentTracker.setChildActive(childId: sessionId, active: _isActiveStatus(status));
+      _subAgentTracker.setChildActive(
+        childId: sessionId,
+        active: _isActiveStatus(status: status),
+      );
 
   /// Applies root/child busy policy to already-mapped notification events and
   /// returns the complete ordered sequence the plugin should buffer.
@@ -357,7 +364,7 @@ class CodexSessionService({
   }) {
     final effective = Map<String, PluginSessionStatus>.of(ownStatuses);
     for (final rootId in _subAgentTracker.activeRootIds) {
-      if (!_isActiveStatus(effective[rootId])) {
+      if (!_isActiveStatus(status: effective[rootId])) {
         effective[rootId] = const PluginSessionStatus.busy();
       }
     }
@@ -377,7 +384,7 @@ class CodexSessionService({
     };
     final byProject = <String, List<PluginActiveSession>>{};
     for (final sessionId in rootSessionIds) {
-      final running = _isActiveStatus(ownStatuses[sessionId]);
+      final running = _isActiveStatus(status: ownStatuses[sessionId]);
       final descendants = _subAgentTracker.descendantsOf(parentId: sessionId);
       final awaitingInput =
           pendingInputSessionIds.contains(sessionId) ||
@@ -474,7 +481,7 @@ class CodexSessionService({
     BridgeSseSessionIdle(sessionID: rootId),
   ];
 
-  bool _isActiveStatus(PluginSessionStatus? status) =>
+  bool _isActiveStatus({required PluginSessionStatus? status}) =>
       status is PluginSessionStatusBusy || status is PluginSessionStatusRetry;
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
@@ -878,13 +885,13 @@ class CodexSessionService({
       if (directory == target || p.isWithin(target, directory)) {
         return (
           modelID: record.model ?? config.model,
-          providerID: record.modelProvider ?? config.modelProvider ?? "openai",
+          providerID: record.modelProvider ?? config.effectiveModelProvider,
         );
       }
     }
     return (
       modelID: config.model,
-      providerID: config.modelProvider ?? "openai",
+      providerID: config.effectiveModelProvider,
     );
   }
 

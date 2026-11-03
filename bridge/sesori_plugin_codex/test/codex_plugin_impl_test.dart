@@ -1,8 +1,8 @@
-// Tests for the Phase 1/2 codex plugin. Each helper that fires-and-forgets a
+// Tests for the codex plugin. Each helper that fires-and-forgets a
 // response to the client's first request is intentionally not awaited — the
 // pattern of "subscribe to the next outgoing frame, then push a reply" is
 // what gives the test its determinism, and awaiting it would deadlock.
-// ignore_for_file: unawaited_futures, cast_nullable_to_non_nullable, prefer_foreach
+// ignore_for_file: unawaited_futures, cast_nullable_to_non_nullable
 
 import "dart:async";
 import "dart:convert";
@@ -15,6 +15,7 @@ import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/stub_web_socket_channel.dart";
 
 void main() {
   group("CodexPlugin", () {
@@ -34,8 +35,9 @@ void main() {
           serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
-          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
@@ -57,8 +59,9 @@ void main() {
           serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
-          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
         );
         expect(await plugin.getSessions(projectId: "/repo/example"), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
@@ -137,8 +140,9 @@ void main() {
           serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
-          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
+          toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
         );
 
         final agents = await plugin.getAgents(projectId: "/repo/example");
@@ -182,8 +186,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       // Auto-respond to the first request with a valid initialize response.
@@ -221,8 +227,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       fake.outgoing.first.then((Object? frame) {
@@ -265,6 +273,7 @@ void main() {
         projectCwd: "/repo/example",
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(plugin.dispose);
       final firstSummary = Completer<void>();
@@ -475,6 +484,7 @@ void main() {
         projectCwd: "/repo/example",
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(plugin.dispose);
       final idleSessionIds = <String>{};
@@ -519,8 +529,11 @@ void main() {
         projectCwd: Directory.current.path,
         clientFactory: () => CodexAppServerClient(
           serverUrl: "ws://127.0.0.1:0",
+          channelFactory: null,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       await expectLater(plugin.dispose(), completes);
     });
@@ -532,6 +545,7 @@ void main() {
       final client = CodexAppServerClient(
         serverUrl: "ws://127.0.0.1:0",
         channelFactory: (_) => fake.channel,
+        onDisconnected: null,
       );
 
       // Echo every request back with a result derived from method name. The
@@ -561,8 +575,8 @@ void main() {
       await client.connect();
 
       final results = await Future.wait([
-        client.request(method: "thread/list"),
-        client.request(method: "skills/list"),
+        client.request(method: "thread/list", params: null, timeout: codexRequestTimeout),
+        client.request(method: "skills/list", params: null, timeout: codexRequestTimeout),
       ]);
       expect(results[0], equals({"echo": "thread/list"}));
       expect(results[1], equals({"echo": "skills/list"}));
@@ -574,6 +588,7 @@ void main() {
       final client = CodexAppServerClient(
         serverUrl: "ws://127.0.0.1:0",
         channelFactory: (_) => fake.channel,
+        onDisconnected: null,
       );
 
       fake.outgoing.first.then((Object? frame) {
@@ -623,9 +638,9 @@ class _FakeWebSocket() {
   this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
-    channel = _StubChannel(
+    channel = StubWebSocketChannel(
       stream: _serverToClient.stream,
-      sink: _SinkAdapter(_clientToServer),
+      sink: ControllerWebSocketSink(controller: _clientToServer),
     );
   }
 
@@ -634,49 +649,5 @@ class _FakeWebSocket() {
   late final WebSocketChannel channel;
 
   Stream<Object?> get outgoing => _clientToServer.stream;
-  Sink<Object?> get serverSink => _SinkAdapter(_serverToClient);
-}
-
-class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
-    implements WebSocketChannel {
-  @override
-  int? get closeCode => null;
-
-  @override
-  String? get closeReason => null;
-
-  @override
-  String? get protocol => null;
-
-  @override
-  Future<void> get ready => Future.value();
-
-  // The class implements WebSocketChannel which mixes in StreamChannelMixin;
-  // none of those helper methods are exercised by our tests so we satisfy
-  // the analyzer by routing them through noSuchMethod.
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
-  @override
-  void add(Object? data) => _controller.add(data);
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
-
-  @override
-  Future<void> addStream(Stream<Object?> stream) async {
-    await for (final item in stream) {
-      _controller.add(item);
-    }
-  }
-
-  @override
-  Future<void> close([int? closeCode, String? closeReason]) async {
-    if (!_controller.isClosed) await _controller.close();
-  }
-
-  @override
-  Future<void> get done => _controller.done;
+  Sink<Object?> get serverSink => ControllerWebSocketSink(controller: _serverToClient);
 }

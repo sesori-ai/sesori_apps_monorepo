@@ -40,7 +40,6 @@ void main() {
         threadName: threadName,
         createdAt: null,
         updatedAt: null,
-        cliVersion: null,
         modelProvider: null,
         model: null,
         agentNickname: agentNickname,
@@ -119,7 +118,9 @@ void main() {
   });
 
   test("CodexThreadRepository keeps ordinary live forks as roots", () {
-    final api = CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"));
+    final api = CodexAppServerApi(
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+    );
     final repository = CodexThreadRepository(appServerApi: api);
 
     final fork = repository.decodeStartedNotificationParams(
@@ -154,7 +155,6 @@ void main() {
             cwd: "/repo/app",
             timestamp: null,
             modelProvider: null,
-            cliVersion: null,
             parentThreadId: null,
             threadSource: source,
             agentNickname: null,
@@ -741,7 +741,6 @@ CodexSessionRecord _record({required String id, required String? cwd, required S
   threadName: null,
   createdAt: DateTime.utc(2026, 9, 2),
   updatedAt: DateTime.utc(2026, 9, 2),
-  cliVersion: "0.148.0",
   modelProvider: "openai",
   model: null,
   agentNickname: null,
@@ -768,7 +767,9 @@ CodexSessionService _newService({
     sessionMapper: const CodexSessionMapper(),
     launchDirectory: "/repo/launch",
   );
-  final api = CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"));
+  final api = CodexAppServerApi(
+    client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+  );
   service.attachAppServerRepositories(
     threadRepository: threadRepository,
     modelRepository: CodexModelRepository(appServerApi: api),
@@ -781,7 +782,9 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
     extends CodexThreadRepository {
   this
     : super(
-        appServerApi: CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0")),
+        appServerApi: CodexAppServerApi(
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+        ),
       );
 
   final List<String> readThreadIds = [];
@@ -800,7 +803,9 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
 class _GatedThreadRepository() extends CodexThreadRepository {
   this
     : super(
-        appServerApi: CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0")),
+        appServerApi: CodexAppServerApi(
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+        ),
       );
 
   final Completer<void> readStarted = Completer<void>();
@@ -853,7 +858,6 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         cwd: "/repo/app",
         timestamp: "2026-09-02T16:40:23Z",
         modelProvider: "openai",
-        cliVersion: "0.148.0",
         parentThreadId: null,
         threadSource: null,
         agentNickname: null,
@@ -864,7 +868,6 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         cwd: "/repo/app",
         timestamp: "2026-09-02T16:40:28Z",
         modelProvider: "openai",
-        cliVersion: "0.148.0",
         parentThreadId: "01a06259-6e4f-77f2-8bc7-000000000001",
         threadSource: CodexRolloutThreadSource.subagent,
         agentNickname: "Raman",
@@ -875,7 +878,6 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         cwd: "/repo/app",
         timestamp: "2026-09-02T16:41:00Z",
         modelProvider: "openai",
-        cliVersion: "0.148.0",
         parentThreadId: "01a06259-6e4f-77f2-8bc7-000000000001",
         threadSource: null,
         agentNickname: null,
@@ -895,7 +897,6 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
               cwd: "/repo/app",
               timestamp: "2026-09-02T16:40:23Z",
               modelProvider: "openai",
-              cliVersion: "0.148.0",
               parentThreadId: null,
               threadSource: null,
               agentNickname: null,

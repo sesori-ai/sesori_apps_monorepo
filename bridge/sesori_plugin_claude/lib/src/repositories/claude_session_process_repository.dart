@@ -612,12 +612,11 @@ final class ClaudeSessionProcessRepository({
         // echoes can omit it. Only the bridge writes image turns to stdin, so
         // an unmarked image echo still identifies them; unmarked text stays
         // uncorrelated.
-        final isReplay = message.raw["isReplay"] == true;
         for (final pending in process.pendingTurns) {
           final replayContent = pending.replayContent;
           if (pending.replayObserved ||
               replayContent == null ||
-              (!isReplay && !_containsImageContent(replayContent)) ||
+              (!message.isReplay && !_containsImageContent(replayContent)) ||
               !_samePromptContent(replayContent, message.message["content"])) {
             continue;
           }

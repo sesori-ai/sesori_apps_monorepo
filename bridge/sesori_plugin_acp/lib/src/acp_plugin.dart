@@ -14,7 +14,6 @@ import "acp_process_factory.dart";
 import "acp_protocol.dart";
 import "acp_session_directory_batch.dart";
 import "acp_session_loader.dart";
-import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 import "api/acp_agent_api.dart";
 import "models/acp_scoped_stop.dart";
@@ -50,14 +49,13 @@ enum AcpScopedStopCapability() {
 /// project/session persistence itself; the plugin stores nothing on disk.
 ///
 /// Every policy and behavior hook has a bridge-safe default, so a compliant agent
-/// needs only identity, launch spec, and trackers. A harness overrides what
-/// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeClientIdentity], [initializeCapabilityMeta],
-/// [supportsFormElicitation], [serializesPromptsProcessWide],
-/// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
-/// [sessionCloseSettlementTimeout], [rootSessionCancelSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
-/// [onConnectionReset], [commandForDispatch]), plus the option/catalog surface
-/// ([getSessionOptions], [getAgents], [getProviders], [getCommands]) when the
-/// agent exposes a richer model catalog than the neutral process default.
+/// needs only identity, launch spec, trackers, and its option catalog. A harness
+/// overrides what differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeClientIdentity],
+/// [initializeCapabilityMeta], [supportsFormElicitation], [sessionCloseSettlementTimeout],
+/// [rootSessionCancelSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
+/// [onConnectionReset], [commandForDispatch]). Every harness implements the
+/// option/catalog surface ([getSessionOptions], [getAgents], [getProviders]) from its
+/// own catalog, and may override [getCommands].
 ///
 /// Unlike the codex plugin (which connects to a process listening on a ws
 /// port), this owns the agent subprocess: it spawns lazily on first use and
@@ -65,7 +63,7 @@ enum AcpScopedStopCapability() {
 abstract class AcpPlugin({
   @override required final String id,
 
-  /// Human-facing agent name used for synthesized agents/providers.
+  /// Human-facing agent name reported in the plugin diagnostics.
   required final String agentDisplayName,
   required final AcpLaunchSpec launchSpec,
   required String launchDirectory,
@@ -81,12 +79,6 @@ abstract class AcpPlugin({
   /// Snapshot of the agent's advertised slash commands, fed by the
   /// notification listener and served by [getCommands].
   required final AcpCommandTracker _commandTracker,
-
-  /// Neutral process-scoped options (one agent, the process-default model),
-  /// served unless a harness overrides the option getters with its catalog;
-  /// also forgets a deleted session's model override. Built by the composer
-  /// over the same configuration/command trackers as [eventMapper].
-  required final AcpSessionOptionsService _sessionOptionsService,
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
   @override
@@ -166,10 +158,6 @@ abstract class AcpPlugin({
   final Map<String, List<AcpServerRequest>> _promptWriteServerRequests = {};
   final Set<String> _cancelledPromptWriteSessions = {};
 
-  /// Shared tail used only by agents that cannot correlate sessionless server
-  /// requests while multiple prompts are in flight.
-  Future<void> _processTurnTail = Future<void>.value();
-
   /// Exact selection retained when an already-created empty session cannot be
   /// configured yet. Its first prompt retries before dispatch.
   final Map<String, _TurnSelection> _pendingSelections = {};
@@ -246,26 +234,6 @@ abstract class AcpPlugin({
   /// Whether this agent should be told the client supports standard ACP forms
   /// (`elicitation/create`).
   bool get supportsFormElicitation => false;
-
-  /// Whether prompts across all sessions share one dispatch lane. Stock ACP
-  /// serializes per session only.
-  bool get serializesPromptsProcessWide => false;
-
-  /// Whether accepting another input should cancel this session's active turn.
-  ///
-  /// Every production harness must deliver busy-session follow-ups immediately,
-  /// either through native steering or this stop-and-send fallback. ACP v1 has
-  /// no standard steering method, so the shared default queues the new input,
-  /// sends the standard ACP cancel, and dispatches only after cancellation
-  /// settles. Override with `false` only when the concrete plugin supplies a
-  /// different immediate active-turn delivery path; inheriting the turn queue
-  /// while returning `false` is not valid production behavior.
-  bool get cancelsActiveTurnForQueuedInput => true;
-
-  /// Whether a turn must stop when its requested selection cannot be applied.
-  /// Fail closed by default: a prompt should not silently run on a model/mode
-  /// the user did not pick. Only matters when [applyTurnSelection] can throw.
-  bool get failsTurnOnSelectionError => true;
 
   /// Maximum time deletion waits for a cancelled target turn before close.
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
@@ -995,14 +963,6 @@ abstract class AcpPlugin({
       _commandTracker.commands;
 
   @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) async => PluginSessionOptionsDiscoveryResult.observed(
-    options: _sessionOptionsService.getSessionOptions(),
-  );
-
-  @override
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,
@@ -1067,19 +1027,16 @@ abstract class AcpPlugin({
       // No first turn to carry the selection: apply it now so the session's
       // model/mode are in place for whichever turn comes first later.
       try {
-        await _runOnProcessLane(
-          () async => await applyTurnSelection(
-            configRepository: AcpSessionConfigRepository(
-              api: AcpAgentApi(client: await _connectedClient()),
-            ),
-            sessionId: session.sessionId,
-            model: model,
-            variant: variant,
-            agent: agent,
+        await applyTurnSelection(
+          configRepository: AcpSessionConfigRepository(
+            api: AcpAgentApi(client: await _connectedClient()),
           ),
+          sessionId: session.sessionId,
+          model: model,
+          variant: variant,
+          agent: agent,
         );
       } on Object catch (error, stack) {
-        if (!failsTurnOnSelectionError) rethrow;
         _pendingSelections[session.sessionId] = _TurnSelection(
           model: model,
           variant: variant,
@@ -1117,16 +1074,6 @@ abstract class AcpPlugin({
       }
     }
     return created;
-  }
-
-  Future<T> _runOnProcessLane<T>(Future<T> Function() operation) {
-    if (!serializesPromptsProcessWide) return operation();
-    final result = _processTurnTail.then((_) => operation());
-    _processTurnTail = result.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace _) {},
-    );
-    return result;
   }
 
   @override
@@ -1244,10 +1191,13 @@ abstract class AcpPlugin({
     return true;
   }
 
+  /// Busy-session follow-ups must reach the agent immediately. ACP v1 has no
+  /// standard steering method, so the new input stays queued, the active turn
+  /// gets the standard ACP cancel, and the queue dispatches once it settles.
   void _cancelActiveTurnForQueuedInput({required String sessionId}) {
     final hasPromptTurn = _inFlightTurnSessions.contains(sessionId);
     final hasAutonomousTurn = childSessionTracker.hasRootHold(sessionId: sessionId);
-    if (!cancelsActiveTurnForQueuedInput || (!hasPromptTurn && !hasAutonomousTurn)) return;
+    if (!hasPromptTurn && !hasAutonomousTurn) return;
     if (hasPromptTurn && _isPromptFrameWriting(sessionId: sessionId)) {
       _cancelledPromptWriteSessions.add(sessionId);
     }
@@ -1424,13 +1374,14 @@ abstract class AcpPlugin({
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one
     // failed turn cannot poison the chain for the turns queued behind it.
-    Future<void> operation() => _runTurn(
-      sessionId: sessionId,
-      state: state,
-      expectedGeneration: expectedGeneration,
-      turn: turn,
+    state.tail = state.tail.then(
+      (_) => _runTurn(
+        sessionId: sessionId,
+        state: state,
+        expectedGeneration: expectedGeneration,
+        turn: turn,
+      ),
     );
-    state.tail = serializesPromptsProcessWide ? _runOnProcessLane(operation) : state.tail.then((_) => operation());
   }
 
   Future<bool> _waitForAutonomousTurn({
@@ -1535,16 +1486,11 @@ abstract class AcpPlugin({
       );
       _pendingSelections.remove(sessionId);
     } on Object catch (error, stack) {
-      if (failsTurnOnSelectionError) {
-        Log.w("[$id] applyTurnSelection for $sessionId failed; dropping turn", error, stack);
-        _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
-        return;
-      }
-      Log.w(
-        "[$id] applyTurnSelection for $sessionId failed; prompting with current settings",
-        error,
-        stack,
-      );
+      // Fail closed: a prompt must not silently run on a model or mode the
+      // user did not pick.
+      Log.w("[$id] applyTurnSelection for $sessionId failed; dropping turn", error, stack);
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
+      return;
     }
     if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
@@ -2173,17 +2119,14 @@ abstract class AcpPlugin({
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
     _recoveredSessionDirectories.remove(sessionId);
-    _sessionOptionsService.forgetSession(sessionId: sessionId);
-    // Drops the session's project attribution plus all other per-session mapper
-    // caches (turn counters, started parts, live tools) so nothing accumulates
-    // for a deleted session. Provider/model state is cleared from its tracker
-    // independently above.
+    // Drops the session's project attribution, its model/provider override and
+    // all other per-session mapper caches (turn counters, started parts, live
+    // tools) so nothing accumulates for a deleted session.
     eventMapper.forgetSession(sessionId);
     // Descendants own their pending input and caches under their own ids;
     // retire both before dropping their tracker records.
     for (final childId in childSessionTracker.childSessionIds(sessionId: sessionId)) {
       _approvalRegistry?.cancelForSession(sessionId: childId);
-      _sessionOptionsService.forgetSession(sessionId: childId);
       eventMapper.forgetSession(childId);
     }
     childSessionTracker.forgetSession(sessionId: sessionId);
@@ -2408,16 +2351,6 @@ abstract class AcpPlugin({
       await Future<void>.delayed(quiet);
       elapsed += quiet;
     }
-  }
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    return _sessionOptionsService.getSessionOptions().agents;
-  }
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    return _sessionOptionsService.getSessionOptions().providers;
   }
 
   @override

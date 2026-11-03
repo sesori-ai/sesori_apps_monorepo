@@ -12,14 +12,14 @@ void main() {
 
   group("CodexRuntimeManifest", () {
     test("descriptor preserves the legacy shared runtime directory", () {
-      expect(const CodexPluginDescriptor().stateStorage, PluginStateStorage.legacySharedRuntime);
+      expect(CodexPluginDescriptor.production().stateStorage, PluginStateStorage.legacySharedRuntime);
     });
 
     test("pinned versions", () {
       expect(CodexRuntimeManifest.targetVersion, "0.164.0");
       expect(manifest.bundledVersion.toString(), CodexRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "0.139.0");
-      expect(manifest.runtimeId, const CodexPluginDescriptor().id);
+      expect(manifest.runtimeId, CodexPluginDescriptor.production().id);
       expect(manifest.pathExecutableName, "codex");
       expect(manifest.binaryFileName, Platform.isWindows ? r"bin\codex.exe" : "bin/codex");
     });

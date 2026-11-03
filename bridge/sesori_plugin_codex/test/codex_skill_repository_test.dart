@@ -86,7 +86,7 @@ void main() {
 class _StubAppServerApi({required final CodexSkillsListResponseDto response}) extends CodexAppServerApi {
   this
     : super(
-        client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+        client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
       );
 
   @override

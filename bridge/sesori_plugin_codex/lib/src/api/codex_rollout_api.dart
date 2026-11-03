@@ -36,17 +36,19 @@ class const CodexDesktopStateReadException({required final Object cause}) implem
   String toString() => "Codex Desktop state read failed (${cause.runtimeType})";
 }
 
-/// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
-class CodexRolloutApi({Map<String, String>? environment}) {
-  final Map<String, String> _environment = environment ?? Platform.environment;
+/// Codex's state directory, resolved as codex itself does: `$CODEX_HOME` when
+/// set, otherwise `.codex` under the user home.
+String? resolveCodexHome({required Map<String, String> environment}) {
+  final explicit = environment["CODEX_HOME"];
+  if (explicit != null && explicit.isNotEmpty) return explicit;
+  final home = resolveUserHomeDirectory(environment: environment);
+  if (home == null) return null;
+  return p.join(home, ".codex");
+}
 
-  String? get codexHome {
-    final explicit = _environment["CODEX_HOME"];
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = resolveUserHomeDirectory(environment: _environment);
-    if (home == null) return null;
-    return p.join(home, ".codex");
-  }
+/// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
+class CodexRolloutApi({required final Map<String, String> _environment}) {
+  String? get codexHome => resolveCodexHome(environment: _environment);
 
   String? get indexPath {
     final home = codexHome;
@@ -102,7 +104,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
         if (lines[i].trim().isNotEmpty)
           (
             entry: _decodeIndexEntry(
-              lines[i],
+              line: lines[i],
               warnOnMalformed: i < lines.length - 1,
             ),
             raw: lines[i],
@@ -156,7 +158,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     final (:lines, :isComplete) = _readPrefixLines(file: file, maxLines: 32);
     return CodexRolloutHeader(
       lines: _decodeRolloutLines(
-        lines,
+        lines: lines,
         malformedWarning: "[codex] skipping malformed rollout header record",
       ),
       reachedLineLimit: isComplete,
@@ -186,7 +188,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
     return _decodeRolloutLines(
-      file.readAsLinesSync(),
+      lines: file.readAsLinesSync(),
       malformedWarning: "[codex] skipping malformed rollout transcript record",
       ignoreMalformedLastLine: true,
     );
@@ -287,7 +289,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
       }
       return CodexRolloutTailChunk(
         lines: _decodeRolloutLines(
-          rawLines,
+          lines: rawLines,
           malformedWarning: "[codex] skipping malformed live rollout transcript record",
         ),
         nextOffset: length,
@@ -315,10 +317,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     file.writeAsStringSync(lines.isEmpty ? "" : "${lines.join("\n")}\n");
   }
 
-  CodexSessionIndexEntryDto? _decodeIndexEntry(
-    String line, {
-    required bool warnOnMalformed,
-  }) {
+  CodexSessionIndexEntryDto? _decodeIndexEntry({required String line, required bool warnOnMalformed}) {
     try {
       return CodexSessionIndexEntryDto.fromJson(jsonDecodeMap(line));
     } on Object {
@@ -329,8 +328,8 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     }
   }
 
-  List<CodexRolloutLineDto> _decodeRolloutLines(
-    Iterable<String> lines, {
+  List<CodexRolloutLineDto> _decodeRolloutLines({
+    required Iterable<String> lines,
     String? malformedWarning,
     bool ignoreMalformedLastLine = false,
   }) {
@@ -350,7 +349,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
           Log.w(
             "$malformedWarning "
             "(recordIndex=${i + 1}, schema=$schema, "
-            "error=${_decodeErrorForLog(error)})",
+            "error=${_decodeErrorForLog(error: error)})",
           );
         }
       }
@@ -519,7 +518,7 @@ final RegExp _schemaKeyPattern = RegExp(
 );
 
 /// Keeps decoder diagnostics useful without letting an exception echo raw JSON.
-String _decodeErrorForLog(Object error) {
+String _decodeErrorForLog({required Object error}) {
   if (error is FormatException) {
     return "FormatException(offset=${error.offset ?? "unknown"})";
   }

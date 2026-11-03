@@ -254,13 +254,13 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartText extends PluginMessagePart {
-  const PluginMessagePartText({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.text,  String? $type}): $type = $type ?? 'text',super._();
+  const PluginMessagePartText({required this.id, required this.sessionID, required this.messageID, required this.text,  String? $type}): $type = $type ?? 'text',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@JsonKey(includeToJson: true) final  String text;
+ final  String text;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -301,7 +301,7 @@ abstract mixin class $PluginMessagePartTextCopyWith<$Res> implements $PluginMess
   factory $PluginMessagePartTextCopyWith(PluginMessagePartText value, $Res Function(PluginMessagePartText) _then) = _$PluginMessagePartTextCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String text
+ String id, String sessionID, String messageID, String text
 });
 
 
@@ -335,13 +335,13 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartReasoning extends PluginMessagePart {
-  const PluginMessagePartReasoning({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.text,  String? $type}): $type = $type ?? 'reasoning',super._();
+  const PluginMessagePartReasoning({required this.id, required this.sessionID, required this.messageID, required this.text,  String? $type}): $type = $type ?? 'reasoning',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@JsonKey(includeToJson: true) final  String text;
+ final  String text;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -382,7 +382,7 @@ abstract mixin class $PluginMessagePartReasoningCopyWith<$Res> implements $Plugi
   factory $PluginMessagePartReasoningCopyWith(PluginMessagePartReasoning value, $Res Function(PluginMessagePartReasoning) _then) = _$PluginMessagePartReasoningCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String text
+ String id, String sessionID, String messageID, String text
 });
 
 
@@ -416,14 +416,14 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartTool extends PluginMessagePart {
-  const PluginMessagePartTool({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.tool, @JsonKey(includeToJson: true) required this.state,  String? $type}): $type = $type ?? 'tool',super._();
+  const PluginMessagePartTool({required this.id, required this.sessionID, required this.messageID, required this.tool, required this.state,  String? $type}): $type = $type ?? 'tool',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@JsonKey(includeToJson: true) final  String? tool;
-@JsonKey(includeToJson: true) final  PluginToolState state;
+ final  String? tool;
+ final  PluginToolState state;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -464,7 +464,7 @@ abstract mixin class $PluginMessagePartToolCopyWith<$Res> implements $PluginMess
   factory $PluginMessagePartToolCopyWith(PluginMessagePartTool value, $Res Function(PluginMessagePartTool) _then) = _$PluginMessagePartToolCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String? tool,@JsonKey(includeToJson: true) PluginToolState state
+ String id, String sessionID, String messageID, String? tool, PluginToolState state
 });
 
 
@@ -508,7 +508,7 @@ $PluginToolStateCopyWith<$Res> get state {
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartSubtask extends PluginMessagePart {
-  const PluginMessagePartSubtask({required this.id, required this.sessionID, required this.messageID, required this.prompt, required this.description, required this.agent, @JsonKey(includeToJson: true) required this.taskState, @JsonKey(includeToJson: true) required this.childSessionID,  String? $type}): $type = $type ?? 'subtask',super._();
+  const PluginMessagePartSubtask({required this.id, required this.sessionID, required this.messageID, required this.prompt, required this.description, required this.agent, required this.taskState, required this.childSessionID,  String? $type}): $type = $type ?? 'subtask',super._();
   
 
 @override final  String id;
@@ -517,13 +517,11 @@ class PluginMessagePartSubtask extends PluginMessagePart {
  final  String prompt;
  final  String description;
  final  String agent;
-/// The subtask's own lifecycle, when the backend reports one. Named apart
-/// from the tool-only [state] convenience accessor, which a subtask has no
-/// business answering.
-@JsonKey(includeToJson: true) final  PluginToolState? taskState;
+/// The subtask's own lifecycle, when the backend reports one.
+ final  PluginToolState? taskState;
 /// The backend session hosting this subtask's work, when the backend
 /// exposes one. The bridge translates it to a bridge session id.
-@JsonKey(includeToJson: true) final  String? childSessionID;
+ final  String? childSessionID;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -564,7 +562,7 @@ abstract mixin class $PluginMessagePartSubtaskCopyWith<$Res> implements $PluginM
   factory $PluginMessagePartSubtaskCopyWith(PluginMessagePartSubtask value, $Res Function(PluginMessagePartSubtask) _then) = _$PluginMessagePartSubtaskCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String prompt, String description, String agent,@JsonKey(includeToJson: true) PluginToolState? taskState,@JsonKey(includeToJson: true) String? childSessionID
+ String id, String sessionID, String messageID, String prompt, String description, String agent, PluginToolState? taskState, String? childSessionID
 });
 
 
@@ -772,13 +770,13 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartFile extends PluginMessagePart {
-  const PluginMessagePartFile({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.attachment,  String? $type}): $type = $type ?? 'file',super._();
+  const PluginMessagePartFile({required this.id, required this.sessionID, required this.messageID, required this.attachment,  String? $type}): $type = $type ?? 'file',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@JsonKey(includeToJson: true) final  PluginMessageAttachment attachment;
+ final  PluginMessageAttachment attachment;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -819,7 +817,7 @@ abstract mixin class $PluginMessagePartFileCopyWith<$Res> implements $PluginMess
   factory $PluginMessagePartFileCopyWith(PluginMessagePartFile value, $Res Function(PluginMessagePartFile) _then) = _$PluginMessagePartFileCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) PluginMessageAttachment attachment
+ String id, String sessionID, String messageID, PluginMessageAttachment attachment
 });
 
 
@@ -1020,13 +1018,13 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartAgent extends PluginMessagePart {
-  const PluginMessagePartAgent({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.agentName,  String? $type}): $type = $type ?? 'agent',super._();
+  const PluginMessagePartAgent({required this.id, required this.sessionID, required this.messageID, required this.agentName,  String? $type}): $type = $type ?? 'agent',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@JsonKey(includeToJson: true) final  String agentName;
+ final  String agentName;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1067,7 +1065,7 @@ abstract mixin class $PluginMessagePartAgentCopyWith<$Res> implements $PluginMes
   factory $PluginMessagePartAgentCopyWith(PluginMessagePartAgent value, $Res Function(PluginMessagePartAgent) _then) = _$PluginMessagePartAgentCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String agentName
+ String id, String sessionID, String messageID, String agentName
 });
 
 
@@ -1101,14 +1099,14 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartRetry extends PluginMessagePart {
-  const PluginMessagePartRetry({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.attempt, @JsonKey(includeToJson: true) required this.retryError,  String? $type}): $type = $type ?? 'retry',super._();
+  const PluginMessagePartRetry({required this.id, required this.sessionID, required this.messageID, required this.attempt, required this.retryError,  String? $type}): $type = $type ?? 'retry',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@JsonKey(includeToJson: true) final  int attempt;
-@JsonKey(includeToJson: true) final  String retryError;
+ final  int attempt;
+ final  String retryError;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1149,7 +1147,7 @@ abstract mixin class $PluginMessagePartRetryCopyWith<$Res> implements $PluginMes
   factory $PluginMessagePartRetryCopyWith(PluginMessagePartRetry value, $Res Function(PluginMessagePartRetry) _then) = _$PluginMessagePartRetryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) int attempt,@JsonKey(includeToJson: true) String retryError
+ String id, String sessionID, String messageID, int attempt, String retryError
 });
 
 
@@ -1184,15 +1182,14 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartCompaction extends PluginMessagePart {
-  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.compactionState,  String? $type}): $type = $type ?? 'compaction',super._();
+  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID, required this.compactionState,  String? $type}): $type = $type ?? 'compaction',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-/// How far the compaction got. Named apart from the tool-only [state]
-/// convenience accessor, as [PluginMessagePartSubtask.taskState] is.
-@JsonKey(includeToJson: true) final  PluginCompactionState compactionState;
+/// How far the compaction got.
+ final  PluginCompactionState compactionState;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1233,7 +1230,7 @@ abstract mixin class $PluginMessagePartCompactionCopyWith<$Res> implements $Plug
   factory $PluginMessagePartCompactionCopyWith(PluginMessagePartCompaction value, $Res Function(PluginMessagePartCompaction) _then) = _$PluginMessagePartCompactionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) PluginCompactionState compactionState
+ String id, String sessionID, String messageID, PluginCompactionState compactionState
 });
 
 

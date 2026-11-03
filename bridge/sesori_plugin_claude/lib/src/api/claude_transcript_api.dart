@@ -28,12 +28,12 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
 
   /// How many leading lines [readHeader] decodes.
   ///
-  /// Everything the catalog needs — working directory, session id, git branch,
-  /// CLI version, creation time, and the `ai-title` record — sits in the first
-  /// few lines. Measured across 60 real transcripts the title record's line
-  /// number was at most 50 (median 13), so 64 clears the observed range with
-  /// margin. A title written past the bound is still found by
-  /// [readTailTitleRecords] once the CLI re-appends it.
+  /// Everything the catalog needs — working directory, session id, creation
+  /// time, and the `ai-title` record — sits in the first few lines. Measured
+  /// across 60 real transcripts the title record's line number was at most 50
+  /// (median 13), so 64 clears the observed range with margin. A title written
+  /// past the bound is still found by [readTailTitleRecords] once the CLI
+  /// re-appends it.
   ///
   /// The bound is what makes enumeration affordable: reading these transcripts
   /// in full meant 1,060 MiB across 1,888 files on the machine this was
@@ -82,7 +82,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   }
 
   /// Decodes at most [headerLineBudget] leading records.
-  List<ClaudeTranscriptLineDto> readHeader({required String transcriptPath}) {
+  List<ClaudeTranscriptRecordDto> readHeader({required String transcriptPath}) {
     final file = File(transcriptPath);
     final lines = _readPrefixLines(file: file, maxLines: headerLineBudget);
     // The budget can cut the last line mid-record, exactly like a transcript
@@ -96,7 +96,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// The tail is mostly tool output, so other lines are dropped before they
   /// are decoded. The CLI writes compact JSON, which makes the type a plain
   /// substring; the same text inside a prompt is escaped and never matches.
-  List<ClaudeTranscriptLineDto> readTailTitleRecords({required String transcriptPath}) {
+  List<ClaudeTranscriptRecordDto> readTailTitleRecords({required String transcriptPath}) {
     final handle = File(transcriptPath).openSync();
     final int start;
     final List<int> bytes;
@@ -122,7 +122,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   static const List<String> _titleTypes = ['"type":"custom-title"', '"type":"ai-title"'];
 
   /// Decodes every record in a transcript.
-  List<ClaudeTranscriptLineDto> readTranscript({required String transcriptPath}) {
+  List<ClaudeTranscriptRecordDto> readTranscript({required String transcriptPath}) {
     final file = File(transcriptPath);
     final decoded = const Utf8Decoder(allowMalformed: true).convert(file.readAsBytesSync());
     return _decodeRecords(const LineSplitter().convert(decoded), ignoreMalformedLastLine: true);
@@ -188,18 +188,18 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     return const LineSplitter().convert(const Utf8Decoder(allowMalformed: true).convert(bytes));
   }
 
-  List<ClaudeTranscriptLineDto> _decodeRecords(
+  List<ClaudeTranscriptRecordDto> _decodeRecords(
     List<String> lines, {
     required bool ignoreMalformedLastLine,
   }) {
-    final records = <ClaudeTranscriptLineDto>[];
+    final records = <ClaudeTranscriptRecordDto>[];
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
       if (line.trim().isEmpty) continue;
       Map<String, dynamic>? json;
       try {
         json = jsonDecodeMap(line);
-        records.add((record: ClaudeTranscriptRecordDto.fromJson(json), raw: Map.unmodifiable(json)));
+        records.add(ClaudeTranscriptRecordDto.fromJson(json));
       } on Object catch (error) {
         // The CLI appends to a live transcript, so a half-written final line is
         // expected rather than a fault, and is not warned about.

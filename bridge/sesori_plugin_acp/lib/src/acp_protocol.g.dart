@@ -13,7 +13,7 @@ Map<String, dynamic> _$AcpSetModeParamsToJson(_AcpSetModeParams instance) =>
     };
 
 _AcpSessionInfo _$AcpSessionInfoFromJson(Map json) => _AcpSessionInfo(
-  sessionId: json['sessionId'] as String? ?? "",
+  sessionId: json['sessionId'] as String,
   cwd: json['cwd'] as String?,
   title: json['title'] as String?,
   metadata:

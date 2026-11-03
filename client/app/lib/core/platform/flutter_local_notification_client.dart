@@ -78,7 +78,6 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
       settings: const InitializationSettings(
         android: AndroidInitializationSettings("@drawable/ic_notification"),
         iOS: DarwinInitializationSettings(),
-        macOS: DarwinInitializationSettings(),
       ),
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
@@ -156,7 +155,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     // A new notification for a session replaces any older one. On Android a
     // background notification rendered by the OS from an FCM message is posted
     // as (tag, 0); drop it before showing the foreground notification so only
-    // the latest remains. iOS/macOS replace automatically because the local
+    // the latest remains. iOS replaces automatically because the local
     // notification reuses the same identifier as the FCM apns-collapse-id.
     if (sessionId != null) {
       await _cancelAndroidBackgroundNotification(id);
@@ -183,7 +182,6 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
           largeIcon: const DrawableResourceAndroidBitmap("@mipmap/ic_launcher"),
         ),
         iOS: const DarwinNotificationDetails(),
-        macOS: const DarwinNotificationDetails(),
       ),
       payload: payload,
     );
@@ -202,7 +200,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
 
   /// Dismisses every notification for a session, across the surfaces that may
   /// have rendered it:
-  ///  - the local plugin (foreground) plus iOS/macOS delivered notifications,
+  ///  - the local plugin (foreground) plus iOS delivered notifications,
   ///    keyed by the integer id: `cancel(id)`.
   ///  - the Android OS notification rendered from an FCM background message,
   ///    posted as `(tag, 0)`: `cancel(0, tag: id)`.
@@ -220,7 +218,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
 
   /// Android renders background FCM notifications via `notify(tag, 0)`, where the
   /// tag is the session-scoped id string the auth server sets. Removing
-  /// `(tag, 0)` clears that notification. No-op elsewhere: on iOS/macOS the
+  /// `(tag, 0)` clears that notification. No-op elsewhere: on iOS the
   /// shared integer identifier already covers both foreground and background.
   ///
   /// Best-effort: failures are logged, never thrown, so the pre-show cleanup in

@@ -25,8 +25,8 @@ class _Transport({required List<Object?> responses}) implements CodexAppServerTr
   @override
   Future<Object?> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     calls.add((method: method, params: params));
     final response = _responses.removeAt(0);

@@ -2,6 +2,8 @@
 
 Thin UI shell for the Sesori mobile client. All business logic, state management, and services live in `sesori_dart_core` — this package provides screens, widgets, routing, and platform-specific implementations.
 
+The app targets iOS and Android only. `client/desktop` is the desktop product, so this package has no macOS, Linux, Windows, or web runner.
+
 See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering, DI, testing, error handling).
 
 ## Error Handling
@@ -100,7 +102,11 @@ The only exception is reading `Theme.of(context).brightness` for light/dark chec
 
 ## Platform Adapters
 
-This package provides concrete implementations of `sesori_dart_core` platform interfaces:
+This package provides concrete implementations of `sesori_dart_core` platform interfaces.
+Adapters desktop uses unchanged (route source and dispatcher, voice capture, image clipboard
+and sharer, temporary directory, no-op feedback-prompt config source) live in
+`module_app_ui/lib/src/platform/`; the app only registers them, the route source through its
+`MobileGoRouterRouteSource` dispose wrapper.
 
 Third-party static plugin APIs are hidden dependencies. Always wrap them in an
 injectable client or service and inject that wrapper into the platform adapter,

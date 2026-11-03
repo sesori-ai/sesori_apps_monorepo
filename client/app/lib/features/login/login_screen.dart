@@ -211,7 +211,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
                                 LoginProviderButtons(
                                   isLoading: isLoading,
                                   loadingOption: _pendingOption,
-                                  showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
+                                  showApple: defaultTargetPlatform == TargetPlatform.iOS,
                                   onGithubSelected: () => _loginWithProvider(
                                     option: LoginOption.github,
                                     provider: AuthProvider.github,

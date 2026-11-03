@@ -17,12 +17,11 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
   /// Prepares SDK configuration without starting Singular. The asynchronous
   /// crawl-gate decision can then complete after the first frame.
   void prepare({
-    required bool isSupportedPlatform,
     required AnalyticsRuntimeDisabledReason? ineligibilityReason,
     required String sdkKey,
     required String sdkSecret,
   }) {
-    if (!isSupportedPlatform || ineligibilityReason != null) return;
+    if (ineligibilityReason != null) return;
 
     _pendingCrawlGateConfig = SingularConfig(sdkKey, sdkSecret)
       // Preserve Sesori's existing no-advertising-identifier boundary. Singular

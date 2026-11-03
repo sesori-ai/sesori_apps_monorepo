@@ -185,10 +185,9 @@ void main() {
     });
 
     test("ask_question with no resolvable session is rejected, not registered", () async {
-      // No sessionId in params and no active turn → resolves to "". A question
-      // stamped with "" is dropped by the mobile client, so it must be rejected
-      // here rather than left as an invisible pending question that blocks the
-      // turn forever.
+      // No sessionId in params and no active turn, so no session resolves. The
+      // question must be rejected here rather than left as an invisible pending
+      // question that blocks the turn forever.
       activeSession = null;
       fake.emit({
         "jsonrpc": "2.0",
@@ -212,6 +211,49 @@ void main() {
       expect(registry.pendingForSession(sessionId: ""), isEmpty);
       final reply = fake.written.last;
       expect(reply["id"], 8);
+      expect(reply.containsKey("error"), isTrue);
+    });
+
+    test("an empty active session is rejected like a missing one", () async {
+      activeSession = "";
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "cursor/create_plan",
+        "params": {"name": "Plan", "overview": "Do the thing"},
+      });
+      await pump();
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession(sessionId: ""), isEmpty);
+      final reply = fake.written.last;
+      expect(reply["id"], 11);
+      expect(reply.containsKey("error"), isTrue);
+    });
+
+    test("a question whose options have no usable id is rejected, not registered", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 12,
+        "method": "cursor/ask_question",
+        "params": {
+          "sessionId": "s1",
+          "questions": [
+            {
+              "id": "q1",
+              "prompt": "Pick one",
+              "options": [
+                {"label": "No id"},
+                {"id": "", "label": "Empty id"},
+              ],
+            },
+          ],
+        },
+      });
+      await pump();
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession(sessionId: "s1"), isEmpty);
+      final reply = fake.written.last;
+      expect(reply["id"], 12);
       expect(reply.containsKey("error"), isTrue);
     });
 

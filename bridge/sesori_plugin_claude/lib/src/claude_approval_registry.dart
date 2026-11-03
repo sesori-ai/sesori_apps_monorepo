@@ -134,42 +134,46 @@ final class ClaudeApprovalRegistry({
   final Map<String, Set<String>> _allowedTools = {};
   int _sequence = 0;
 
-  bool handle({required String sessionId, required ClaudeControlRequestMessage message}) {
+  void handle({required String sessionId, required ClaudeControlRequestMessage message}) {
     final attributedSessionId = _nonEmptyString(sessionId);
     final requestId = _nonEmptyString(message.requestId);
-    if (attributedSessionId == null || requestId == null) return false;
-    if (message.subtype == "elicitation") {
-      return _handleElicitation(sessionId: attributedSessionId, requestId: requestId, request: message.request);
+    if (attributedSessionId == null || requestId == null) return;
+    switch (message.subtype) {
+      case ClaudeControlRequestSubtype.elicitation:
+        _handleElicitation(sessionId: attributedSessionId, requestId: requestId, request: message.request);
+        return;
+      case ClaudeControlRequestSubtype.unknown:
+        return;
+      case ClaudeControlRequestSubtype.canUseTool:
+        break;
     }
-    if (message.subtype != "can_use_tool") return false;
 
     final request = message.request;
     final tool = _nonEmptyString(request["tool_name"]) ?? "tool";
     final input = _map(request["input"]);
     final id = "br-${++_sequence}";
     if (request["requires_user_interaction"] == true) {
-      final questions = _questions(tool: tool, input: input, request: request);
       final pending = switch (tool) {
         "AskUserQuestion" => _AskUserQuestion(
           id: id,
           requestId: requestId,
           sessionId: attributedSessionId,
           input: input,
-          questions: questions,
+          questions: _askUserQuestions(input: input),
         ),
         "ExitPlanMode" => _ExitPlanMode(
           id: id,
           requestId: requestId,
           sessionId: attributedSessionId,
           input: input,
-          questions: questions,
+          questions: _planApprovalQuestions(input: input),
         ),
         _ => _UnknownInteraction(
           id: id,
           requestId: requestId,
           sessionId: attributedSessionId,
           input: input,
-          questions: questions,
+          questions: _interactionQuestions(tool: tool, request: request),
         ),
       };
       _pending[id] = pending;
@@ -179,10 +183,10 @@ final class ClaudeApprovalRegistry({
           id: id,
           sessionID: attributedSessionId,
           displaySessionId: attributedSessionId,
-          questions: questions,
+          questions: pending.questions,
         ),
       );
-      return true;
+      return;
     }
 
     final pending = _PendingPermission(
@@ -206,10 +210,9 @@ final class ClaudeApprovalRegistry({
         allowAlways: pending.allowAlways,
       ),
     );
-    return true;
   }
 
-  bool _handleElicitation({
+  void _handleElicitation({
     required String sessionId,
     required String requestId,
     required Map<String, Object?> request,
@@ -235,7 +238,7 @@ final class ClaudeApprovalRegistry({
             questions: const [_formNotice],
           ),
         );
-        return true;
+        return;
       }
     }
     final url = _nonEmptyString(request["url"]);
@@ -250,7 +253,7 @@ final class ClaudeApprovalRegistry({
         ),
       );
       if (!responded) Log.w("[claude] could not decline unsupported elicitation $requestId in $sessionId");
-      return responded;
+      return;
     }
     final id = "br-${++_sequence}";
     _pending[id] = _PendingExternalAction(
@@ -270,7 +273,6 @@ final class ClaudeApprovalRegistry({
         questions: const [_externalActionNotice],
       ),
     );
-    return true;
   }
 
   List<PluginPendingExternalAction> pendingExternalActionsForSession({required String sessionId}) => [
@@ -597,52 +599,44 @@ Iterable<String> _allowedToolRules(Map<String, Object?> suggestion) sync* {
   }
 }
 
-List<PluginQuestionInfo> _questions({
-  required String tool,
-  required Map<String, Object?> input,
-  required Map<String, Object?> request,
-}) {
-  if (tool == "AskUserQuestion") {
-    return [
-      for (final question in _maps(input["questions"]))
-        if (_nonEmptyString(question["question"]) case final text?)
-          PluginQuestionInfo(
-            question: text,
-            header: _nonEmptyString(question["header"]) ?? "Question",
-            options: [
-              for (final option in _maps(question["options"]))
-                if (_nonEmptyString(option["label"]) case final label?)
-                  PluginQuestionOption(
-                    label: label,
-                    description: _nonEmptyString(option["description"]) ?? "",
-                  ),
-            ],
-            multiple: question["multiSelect"] == true,
-            custom: true,
-          ),
-    ];
-  }
-  if (tool == "ExitPlanMode") {
-    return [
+List<PluginQuestionInfo> _askUserQuestions({required Map<String, Object?> input}) => [
+  for (final question in _maps(input["questions"]))
+    if (_nonEmptyString(question["question"]) case final text?)
       PluginQuestionInfo(
-        question: _nonEmptyString(input["plan"]) ?? "Claude Code is ready to implement the plan.",
-        header: "Plan approval",
-        options: const [PluginQuestionOption(label: "Approve", description: "Start implementing this plan.")],
-        multiple: false,
-        custom: false,
+        question: text,
+        header: _nonEmptyString(question["header"]) ?? "Question",
+        options: [
+          for (final option in _maps(question["options"]))
+            if (_nonEmptyString(option["label"]) case final label?)
+              PluginQuestionOption(
+                label: label,
+                description: _nonEmptyString(option["description"]) ?? "",
+              ),
+        ],
+        multiple: question["multiSelect"] == true,
+        custom: true,
       ),
-    ];
-  }
-  return [
-    PluginQuestionInfo(
-      question: _description(request),
-      header: _nonEmptyString(request["display_name"]) ?? tool,
-      options: const [],
-      multiple: false,
-      custom: true,
-    ),
-  ];
-}
+];
+
+List<PluginQuestionInfo> _planApprovalQuestions({required Map<String, Object?> input}) => [
+  PluginQuestionInfo(
+    question: _nonEmptyString(input["plan"]) ?? "Claude Code is ready to implement the plan.",
+    header: "Plan approval",
+    options: const [PluginQuestionOption(label: "Approve", description: "Start implementing this plan.")],
+    multiple: false,
+    custom: false,
+  ),
+];
+
+List<PluginQuestionInfo> _interactionQuestions({required String tool, required Map<String, Object?> request}) => [
+  PluginQuestionInfo(
+    question: _description(request),
+    header: _nonEmptyString(request["display_name"]) ?? tool,
+    options: const [],
+    multiple: false,
+    custom: true,
+  ),
+];
 
 String _description(Map<String, Object?> request) {
   final values = [request["title"], request["description"], request["decision_reason"]];

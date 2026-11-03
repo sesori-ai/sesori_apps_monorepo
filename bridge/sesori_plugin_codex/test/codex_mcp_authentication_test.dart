@@ -37,8 +37,8 @@ class _Transport() implements CodexAppServerTransport {
   @override
   Future<Object?> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     calls.add((method: method, params: params));
     if (method == "mcpServerStatus/list") {

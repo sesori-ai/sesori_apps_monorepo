@@ -4,7 +4,13 @@ import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart" show createFlutterVoiceCapture;
+import "package:sesori_app_ui/sesori_app_ui.dart"
+    show
+        NoOpFeedbackPromptConfigSource,
+        PathProviderTemporaryDirectoryProvider,
+        createFlutterImageClipboard,
+        createFlutterImageSharer,
+        createFlutterVoiceCapture;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
@@ -38,6 +44,20 @@ abstract class RegisterModule() {
 
   @lazySingleton
   RelayCryptoService get relayCryptoService => RelayCryptoService();
+
+  @lazySingleton
+  TemporaryDirectoryProvider get temporaryDirectoryProvider => PathProviderTemporaryDirectoryProvider();
+
+  @lazySingleton
+  ImageClipboard get imageClipboard => createFlutterImageClipboard();
+
+  @lazySingleton
+  ImageSharer get imageSharer => createFlutterImageSharer();
+
+  // Desktop never shows the automatic rating sheet; the shared session cubits
+  // only need the dependency to resolve.
+  @lazySingleton
+  FeedbackPromptConfigSource get feedbackPromptConfigSource => NoOpFeedbackPromptConfigSource();
 
   @lazySingleton
   MasterKeyStore masterKeyStore({required PersistenceScope scope}) => DesktopMasterKeyStore(

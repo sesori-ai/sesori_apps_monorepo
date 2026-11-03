@@ -105,7 +105,6 @@ _$CodexRolloutImageGenerationEndEventDtoFromJson(Map json) =>
         json['status'],
         unknownValue: CodexRolloutImageGenerationStatus.unknown,
       ),
-      revisedPrompt: json['revised_prompt'] as String?,
       result: json['result'] as String,
       savedPath: json['saved_path'] as String?,
       $type: json['type'] as String?,
@@ -210,7 +209,6 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
       cwd: json['cwd'] as String?,
       timestamp: json['timestamp'] as String?,
       modelProvider: json['model_provider'] as String?,
-      cliVersion: json['cli_version'] as String?,
       parentThreadId: json['parent_thread_id'] as String?,
       threadSource: $enumDecodeNullable(
         _$CodexRolloutThreadSourceEnumMap,
@@ -369,10 +367,7 @@ _$CodexRolloutAgentMessageInputTextDtoFromJson(Map json) =>
 
 CodexRolloutAgentMessageEncryptedContentDto
 _$CodexRolloutAgentMessageEncryptedContentDtoFromJson(Map json) =>
-    CodexRolloutAgentMessageEncryptedContentDto(
-      encryptedContent: json['encrypted_content'] as String,
-      $type: json['type'] as String?,
-    );
+    CodexRolloutAgentMessageEncryptedContentDto($type: json['type'] as String?);
 
 CodexRolloutUnknownAgentMessageContentDto
 _$CodexRolloutUnknownAgentMessageContentDtoFromJson(Map json) =>
@@ -437,7 +432,6 @@ _CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
       filePath: json['file_path'],
       query: json['query'],
       cellId: json['cell_id'],
-      taskName: _stringOrNull(json['task_name']),
       message: _stringOrNull(json['message']),
       agentType: _stringOrNull(json['agent_type']),
     );

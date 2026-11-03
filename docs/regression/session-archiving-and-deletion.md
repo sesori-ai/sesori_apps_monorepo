@@ -78,6 +78,8 @@ entirely along with its transcript and its dedicated worktree.
   timeout or close failure remains observable and leaves local state retryable.
 - OMP tombstone reconciliation pages its ACP catalog to exhaustion, resumes the
   matching session without replay, invokes `/session delete`, then closes it.
+  OMP's resume answer carries no session id (18.15.0), so cleanup proceeds for
+  the requested id and stops only when an answer echoes a different one.
   A bounded but truncated scan uses OMP's global-ID resume fallback; only an
   exhausted scan is treated as idempotent not-found.
 - Antigravity does not advertise standard session close in the pinned runtime. Sesori deletion removes its own row,

@@ -199,6 +199,21 @@ void main() {
       );
     });
 
+    test("an approval request without a threadId is refused instead of surfaced", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 99,
+          method: "item/commandExecution/requestApproval",
+          params: {"turnId": "turn-1", "itemId": "i-1", "command": "ls"},
+        ),
+      );
+      await pump();
+
+      expect(emitted, isEmpty);
+      expect(errorCalls.single.id, equals(99));
+      expect(errorCalls.single.code, equals(-32602));
+    });
+
     test("replyPermission(once) sends the v2 'accept' decision", () async {
       requests.add(
         const CodexServerRequest(

@@ -7,6 +7,7 @@ import "models/codex_thread_record.dart";
 /// `spawn_agent` call id and the live `subAgentActivity` item id.
 final class const CodexTrackedSubAgent({
   required final String callId,
+  required final String parentId,
   required final CodexThreadRecord child,
   required final String prompt,
   required final String agent,
@@ -88,7 +89,7 @@ class CodexSubAgentTracker() {
   CodexTrackedSubAgent? observeStarted({
     required CodexThreadRecord child,
     required String callId,
-    PluginToolStatus status = PluginToolStatus.running,
+    required PluginToolStatus status,
   }) {
     final parentId = child.parentId;
     if (parentId == null || _tasksByChild.containsKey(child.id)) return null;
@@ -144,7 +145,7 @@ class CodexSubAgentTracker() {
   }
 
   /// Cancels every still-open tile, optionally limited to a deleted subtree.
-  List<CodexTrackedSubAgent> cancelOpen({Set<String>? sessionIds}) {
+  List<CodexTrackedSubAgent> cancelOpen({required Set<String>? sessionIds}) {
     final cancelled = <CodexTrackedSubAgent>[];
     for (final task in _tasksByChild.values) {
       if (task.status != PluginToolStatus.running ||
@@ -272,6 +273,7 @@ final class _CodexTrackedSubAgentState({
     rendered = true;
     return CodexTrackedSubAgent(
       callId: callId,
+      parentId: parentId,
       child: child,
       prompt: value,
       agent: agent,

@@ -87,7 +87,7 @@ void main() {
         project: "-work-alpha",
         name: "$_sessionA.jsonl",
         records: [
-          _userRecord(_sessionA, cwd: "/work/alpha", gitBranch: "main", version: "2.1.221"),
+          _userRecord(_sessionA, cwd: "/work/alpha"),
           {"type": "ai-title", "aiTitle": "Refactor the parser", "sessionId": _sessionA},
           {"type": "pr-link", "sessionId": _sessionA, "prNumber": 12},
         ],
@@ -96,15 +96,13 @@ void main() {
       final records = api.readTranscript(transcriptPath: path);
 
       expect(records, hasLength(3));
-      final content = records[0].record;
+      final content = records[0];
       expect(content.type, "user");
       expect(content.cwd, "/work/alpha");
-      expect(content.gitBranch, "main");
-      expect(content.version, "2.1.221");
       expect(content.isSidechain, isFalse);
       expect(content.timestamp, DateTime.utc(2026, 8, 4, 10));
-      expect(records[1].record.aiTitle, "Refactor the parser");
-      expect(records[2].record.type, "pr-link");
+      expect(records[1].aiTitle, "Refactor the parser");
+      expect(records[2].type, "pr-link");
     });
 
     test("absorbs a record type this build does not model", () {
@@ -121,8 +119,8 @@ void main() {
       final records = api.readTranscript(transcriptPath: path);
 
       expect(records, hasLength(2));
-      expect(records[0].record.type, "some-future-record");
-      expect(records[1].record.type, isNull);
+      expect(records[0].type, "some-future-record");
+      expect(records[1].type, isNull);
     });
 
     test("tolerates wrong-typed catalog fields without dropping the record", () {
@@ -137,20 +135,16 @@ void main() {
             "cwd": false,
             "isSidechain": "false",
             "timestamp": 2,
-            "gitBranch": <Object?>[],
-            "version": true,
           },
         ],
       );
 
-      final record = api.readTranscript(transcriptPath: path).single.record;
+      final record = api.readTranscript(transcriptPath: path).single;
 
       expect(record.sessionId, isNull);
       expect(record.cwd, isNull);
       expect(record.isSidechain, isNull);
       expect(record.timestamp, isNull);
-      expect(record.gitBranch, isNull);
-      expect(record.version, isNull);
     });
 
     test("keeps a blank title for repository validation", () {
@@ -163,7 +157,7 @@ void main() {
         ],
       );
 
-      expect(api.readTranscript(transcriptPath: path).single.record.aiTitle, "   ");
+      expect(api.readTranscript(transcriptPath: path).single.aiTitle, "   ");
     });
 
     test("stops the header read at the line budget", () {
@@ -190,13 +184,13 @@ void main() {
         ],
       );
 
-      late List<ClaudeTranscriptLineDto> titles;
+      late List<ClaudeTranscriptRecordDto> titles;
       final warnings = _captureWarnings(() => titles = api.readTailTitleRecords(transcriptPath: path));
 
       expect(warnings, isEmpty);
-      expect(titles.map((line) => line.record.type).toSet(), {"ai-title", "custom-title"});
-      expect(titles.map((line) => line.record.aiTitle), isNot(contains("Too old")));
-      expect(titles.last.record.customTitle, "Renamed");
+      expect(titles.map((record) => record.type).toSet(), {"ai-title", "custom-title"});
+      expect(titles.map((record) => record.aiTitle), isNot(contains("Too old")));
+      expect(titles.last.customTitle, "Renamed");
     });
 
     test("keeps a title record that starts exactly at the tail window's edge", () {
@@ -213,7 +207,7 @@ void main() {
       File(path).writeAsStringSync("$title$padding", mode: FileMode.append);
       expect(title.length + padding.length, ClaudeTranscriptApi.tailByteBudget);
 
-      expect(api.readTailTitleRecords(transcriptPath: path).single.record.aiTitle, "At the edge");
+      expect(api.readTailTitleRecords(transcriptPath: path).single.aiTitle, "At the edge");
     });
 
     test("keeps the first record of a transcript smaller than the tail budget", () {
@@ -227,7 +221,7 @@ void main() {
         ],
       );
 
-      expect(api.readTailTitleRecords(transcriptPath: path).single.record.aiTitle, "Only title");
+      expect(api.readTailTitleRecords(transcriptPath: path).single.aiTitle, "Only title");
     });
 
     test("keeps every complete record when the file ends mid-write", () {
@@ -315,8 +309,6 @@ const String _sessionB = "66666666-7777-4888-8999-aaaaaaaaaaaa";
 Map<String, Object?> _userRecord(
   String sessionId, {
   String cwd = "/work/alpha",
-  String? gitBranch,
-  String? version,
   bool isSidechain = false,
   String timestamp = "2026-08-04T10:00:00.000Z",
 }) => {
@@ -325,8 +317,6 @@ Map<String, Object?> _userRecord(
   "cwd": cwd,
   "isSidechain": isSidechain,
   "timestamp": timestamp,
-  "gitBranch": ?gitBranch,
-  "version": ?version,
 };
 
 String _writeTranscript(

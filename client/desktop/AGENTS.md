@@ -40,7 +40,10 @@ depend on registrations from an earlier one at resolution time.
   `sesori_dart_core` interfaces.
 - Platform adapters implement interfaces from `sesori_dart_core` /
   `sesori_desktop_core` / `sesori_persistence` and live in `lib/core/platform/`. Adapters stay dumb —
-  no process lifecycle or status state.
+  no process lifecycle or status state. Adapters the phone uses unchanged (route source and
+  dispatcher, voice capture, image clipboard and sharer, temporary directory, no-op feedback-prompt
+  config source) live in `module_app_ui/lib/src/platform/`; desktop only registers them, the route
+  source through its `DesktopRouteSource` dispose wrapper.
 - May import `theme_prego` directly for shell-owned presentation and
   `module_app_ui` for shared localization, route presentation, settings/harness
   management, and adaptive UI. Desktop keeps DI, route callbacks, package/link

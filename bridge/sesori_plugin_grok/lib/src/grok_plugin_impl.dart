@@ -24,7 +24,6 @@ class GrokPlugin._({
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
   required GrokSessionOptionsService grokSessionOptionsService,
   required final GrokSessionService _sessionService,
@@ -74,12 +73,6 @@ class GrokPlugin._({
         childSessions: childSessionTracker,
       ),
       commandTracker: commandTracker,
-      sessionOptionsService: AcpSessionOptionsService(
-        configurationTracker: configurationTracker,
-        commandTracker: commandTracker,
-        pluginId: GrokPluginIdentity.id,
-        agentDisplayName: GrokPluginIdentity.displayName,
-      ),
       processFactory: processFactory,
       grokSessionOptionsService: grokSessionOptionsService,
       sessionService: GrokSessionService(

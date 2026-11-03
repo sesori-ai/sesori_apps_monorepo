@@ -21,7 +21,7 @@ void main() {
 
       final response = await CodexAppServerApi(
         client: transport,
-      ).startDeviceLogin();
+      ).startDeviceLogin(timeout: codexRequestTimeout);
 
       expect(response.type, CodexAccountLoginType.chatgptDeviceCode);
       expect(response.loginId, "login-private");
@@ -48,7 +48,7 @@ void main() {
         ),
       );
 
-      await expectLater(api.startDeviceLogin(), throwsA(isA<ArgumentError>()));
+      await expectLater(api.startDeviceLogin(timeout: codexRequestTimeout), throwsA(isA<ArgumentError>()));
     });
 
     test("cancels by private login id and preserves unknown statuses", () async {
@@ -60,8 +60,8 @@ void main() {
       );
       final api = CodexAppServerApi(client: transport);
 
-      final missing = await api.cancelLogin(loginId: "login-private");
-      final future = await api.cancelLogin(loginId: "login-private");
+      final missing = await api.cancelLogin(loginId: "login-private", timeout: codexRequestTimeout);
+      final future = await api.cancelLogin(loginId: "login-private", timeout: codexRequestTimeout);
 
       expect(missing.status, CodexAccountLoginCancelStatus.notFound);
       expect(future.status, CodexAccountLoginCancelStatus.unknown);
@@ -132,8 +132,8 @@ class _FakeTransport({required List<Object?> responses}) implements CodexAppServ
   @override
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     calls.add((method: method, params: params));
     return _responses.removeAt(0);

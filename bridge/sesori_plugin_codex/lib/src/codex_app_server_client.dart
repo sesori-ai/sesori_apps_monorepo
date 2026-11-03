@@ -8,19 +8,10 @@ import "package:web_socket_channel/web_socket_channel.dart";
 ///
 /// Fields mirror codex's `InitializeResponse` shape (see codex's
 /// `app-server generate-json-schema` output for the source of truth).
-class const CodexInitializeResult({
-  required final String userAgent,
-  required final String codexHome,
-  required final String platformOs,
-  required final String platformFamily,
-}) {
+class const CodexInitializeResult({required final String? userAgent}) {
   factory fromJson(Map<String, dynamic> json) {
-    return CodexInitializeResult(
-      userAgent: (json["userAgent"] ?? "") as String,
-      codexHome: (json["codexHome"] ?? "") as String,
-      platformOs: (json["platformOs"] ?? "") as String,
-      platformFamily: (json["platformFamily"] ?? "") as String,
-    );
+    final userAgent = json["userAgent"];
+    return CodexInitializeResult(userAgent: userAgent is String ? userAgent : null);
   }
 }
 
@@ -46,9 +37,8 @@ class const CodexServerNotification({required final String method, required fina
 }
 
 /// A server-originated request that expects a response (approval prompts,
-/// elicitations, user-input requests). Phase 2 records and logs these but
-/// does not yet route them; later phases will turn them into
-/// [PluginPendingQuestion]s on the bridge stream.
+/// elicitations, user-input requests). The plugin routes them through its
+/// approval registry.
 class const CodexServerRequest({
   /// JSON-RPC `id` — caller must use this when sending a response.
   required final Object id,
@@ -56,14 +46,17 @@ class const CodexServerRequest({
   required final Map<String, dynamic> params,
 });
 
+/// Deadline for one app-server request when the caller needs no other.
+const codexRequestTimeout = Duration(seconds: 30);
+
 /// Request and notification surface shared by Codex App Server transports.
 abstract interface class CodexAppServerTransport() {
   Stream<CodexServerNotification> get notifications;
 
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   });
 }
 
@@ -87,17 +80,13 @@ WebSocketChannel _defaultConnect(Uri uri) => WebSocketChannel.connect(uri);
 ///   5. Call [dispose] to close the socket and fail any in-flight requests.
 class CodexAppServerClient({
   required final String _serverUrl,
-  // Currently unused — codex's `--ws-auth` is documented as required only
-  // for non-loopback listeners. Kept for non-loopback support.
-  // ignore: unused_field_from_primary_constructor
-  final String? _capabilityToken,
-  CodexWebSocketChannelFactory? channelFactory,
+  required CodexWebSocketChannelFactory? channelFactory,
 
   /// Fired at most once when the socket drops unexpectedly (error or close)
   /// while the client is still live — never during a deliberate [dispose].
   /// The runtime descriptor wires this to its status reporter so a transport
   /// drop surfaces as a debounced degraded status.
-  final void Function()? _onDisconnected,
+  required final void Function()? _onDisconnected,
 }) implements CodexAppServerTransport {
   final CodexWebSocketChannelFactory _channelFactory = channelFactory ?? _defaultConnect;
 
@@ -124,11 +113,7 @@ class CodexAppServerClient({
   /// Idempotent only in the failure path — once `connect` succeeds, calling
   /// it again throws [StateError]. Re-connecting after a drop is a job for
   /// the caller (mirrors how the opencode SSE client externalises retry).
-  Future<CodexInitializeResult> connect({
-    String clientName = "sesori-bridge",
-    String clientVersion = "0.0.0",
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
+  Future<CodexInitializeResult> connect() async {
     if (_channel != null) {
       throw StateError("CodexAppServerClient already connected");
     }
@@ -156,9 +141,9 @@ class CodexAppServerClient({
         method: "initialize",
         params: {
           "clientInfo": {
-            "name": clientName,
+            "name": "sesori-bridge",
             "title": null,
-            "version": clientVersion,
+            "version": "0.0.0",
           },
           "capabilities": {
             // Codex gates turn/start.collaborationMode behind this capability.
@@ -171,7 +156,7 @@ class CodexAppServerClient({
             "optOutNotificationMethods": null,
           },
         },
-        timeout: timeout,
+        timeout: codexRequestTimeout,
       );
 
       if (raw is! Map) {
@@ -222,8 +207,8 @@ class CodexAppServerClient({
   @override
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     final channel = _channel;
     if (channel == null) {
@@ -282,7 +267,7 @@ class CodexAppServerClient({
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return;
       final map = decoded.cast<String, dynamic>();
-      final id = map["id"];
+      final Object? id = map["id"];
       final method = map["method"] as String?;
 
       if (id != null && method == null) {
@@ -293,12 +278,14 @@ class CodexAppServerClient({
           return;
         }
         if (map.containsKey("error")) {
-          final err = (map["error"] as Map).cast<String, dynamic>();
+          final error = map["error"];
+          final code = error is Map ? error["code"] : null;
+          final message = error is Map ? error["message"] : null;
           completer.completeError(
             CodexRpcException(
               method: "<response>",
-              code: (err["code"] ?? -32603) as int,
-              message: (err["message"] ?? "unknown error") as String,
+              code: code is int ? code : -32603,
+              message: message is String ? message : "unknown error",
             ),
           );
         } else {
@@ -312,7 +299,7 @@ class CodexAppServerClient({
         // Server-originated request.
         final params = (map["params"] as Map?)?.cast<String, dynamic>() ?? {};
         _serverRequests.add(
-          CodexServerRequest(id: id as Object, method: method, params: params),
+          CodexServerRequest(id: id, method: method, params: params),
         );
         return;
       }
@@ -326,11 +313,11 @@ class CodexAppServerClient({
         return;
       }
 
-      Log.d("[codex][ws] unrecognised frame: ${_redactForLog(raw)}");
+      Log.d("[codex][ws] unrecognised frame: ${_redactForLog(frame: raw)}");
     } catch (error, stack) {
       // The error (e.g. a FormatException from jsonDecode) can embed a snippet
       // of the offending frame, so redact it too.
-      Log.w("[codex][ws] failed to parse frame: ${_redactForLog("$error")}", null, stack);
+      Log.w("[codex][ws] failed to parse frame: ${_redactForLog(frame: "$error")}", null, stack);
     }
   }
 
@@ -344,11 +331,11 @@ class CodexAppServerClient({
     caseSensitive: false,
   );
 
-  String _redactForLog(String frame) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
+  String _redactForLog({required String frame}) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
 
   void _handleSocketError(Object error, StackTrace stack) {
-    Log.w("[codex][ws] socket error: ${_redactForLog("$error")}");
-    _failPending(error, stack);
+    Log.w("[codex][ws] socket error: ${_redactForLog(frame: "$error")}");
+    _failPending(error: error, stack: stack);
     _tearDownDeadTransport();
     _notifyDisconnected();
   }
@@ -356,8 +343,8 @@ class CodexAppServerClient({
   void _handleSocketDone() {
     Log.d("[codex][ws] socket closed");
     _failPending(
-      StateError("codex app-server WebSocket closed before reply"),
-      StackTrace.current,
+      error: StateError("codex app-server WebSocket closed before reply"),
+      stack: StackTrace.current,
     );
     _tearDownDeadTransport();
     _notifyDisconnected();
@@ -382,7 +369,7 @@ class CodexAppServerClient({
     _onDisconnected?.call();
   }
 
-  void _failPending(Object error, StackTrace stack) {
+  void _failPending({required Object error, required StackTrace stack}) {
     final inflight = List<Completer<dynamic>>.from(_pending.values);
     _pending.clear();
     for (final completer in inflight) {
@@ -407,8 +394,8 @@ class CodexAppServerClient({
 
     try {
       _failPending(
-        StateError("CodexAppServerClient disposed"),
-        StackTrace.current,
+        error: StateError("CodexAppServerClient disposed"),
+        stack: StackTrace.current,
       );
     } catch (error, stack) {
       Log.w("[codex][ws] dispose: failing pending requests threw: $error", error, stack);

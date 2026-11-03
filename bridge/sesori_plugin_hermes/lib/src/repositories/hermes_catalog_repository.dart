@@ -17,10 +17,7 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
   }) async {
     final stopwatch = Stopwatch()..start();
     String? sessionId;
-    HermesModelCatalog? catalog;
-    Object? discoveryError;
-    StackTrace? discoveryStack;
-
+    final HermesModelCatalog catalog;
     try {
       await _api.openScratch(
         cwd: cwd,
@@ -31,18 +28,30 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
         timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
       );
       sessionId = result.sessionId;
-      if (sessionId.isEmpty) throw StateError("Hermes catalog session/new omitted sessionId");
-      catalog = mapSessionResult(result: result);
-      if (catalog == null || catalog.models.isEmpty) {
+      final discovered = mapSessionResult(result: result);
+      if (discovered == null || discovered.models.isEmpty) {
         throw StateError("Hermes catalog session/new omitted model state");
       }
+      catalog = discovered;
     } on Object catch (error, stackTrace) {
-      discoveryError = error;
-      discoveryStack = stackTrace;
+      try {
+        await _cleanUpScratch(sessionId: sessionId, timeout: timeout, stopwatch: stopwatch);
+      } on Object catch (cleanupError, cleanupStack) {
+        Log.w("[hermes] cleanup also failed after model discovery failed", cleanupError, cleanupStack);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     }
+    await _cleanUpScratch(sessionId: sessionId, timeout: timeout, stopwatch: stopwatch);
+    return catalog;
+  }
 
-    Object? cleanupError;
-    StackTrace? cleanupStack;
+  /// Settles the scratch process, then deletes the discovery session when one
+  /// was created.
+  Future<void> _cleanUpScratch({
+    required String? sessionId,
+    required Duration timeout,
+    required Stopwatch stopwatch,
+  }) async {
     var processExited = false;
     try {
       await _api.settleScratch(
@@ -56,26 +65,17 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
         );
       }
     } on Object catch (error, stackTrace) {
-      cleanupError = PluginOperationException(
-        "hermes catalog cleanup",
-        message: processExited
-            ? "Could not delete Hermes discovery session $sessionId"
-            : "Hermes discovery process did not exit; session $sessionId was not deleted",
-        cause: error,
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "hermes catalog cleanup",
+          message: processExited
+              ? "Could not delete Hermes discovery session $sessionId"
+              : "Hermes discovery process did not exit; session $sessionId was not deleted",
+          cause: error,
+        ),
+        stackTrace,
       );
-      cleanupStack = stackTrace;
     }
-
-    if (discoveryError != null) {
-      if (cleanupError != null) {
-        Log.w("[hermes] cleanup also failed after model discovery failed", cleanupError, cleanupStack);
-      }
-      Error.throwWithStackTrace(discoveryError, discoveryStack!);
-    }
-    if (cleanupError != null) {
-      Error.throwWithStackTrace(cleanupError, cleanupStack!);
-    }
-    return catalog!;
   }
 
   Future<void> setModel({

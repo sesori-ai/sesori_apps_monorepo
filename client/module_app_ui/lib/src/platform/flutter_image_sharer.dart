@@ -1,0 +1,30 @@
+import "dart:typed_data";
+
+import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:share_plus/share_plus.dart";
+
+import "share_plus_client.dart";
+
+/// Builds the shared SharePlus-backed [ImageSharer] for a product shell's DI.
+ImageSharer createFlutterImageSharer() => FlutterImageSharer(sharePlusClient: SharePlusClient());
+
+class FlutterImageSharer({required final SharePlusClient _sharePlusClient}) implements ImageSharer {
+  @override
+  Future<void> shareImage({
+    required Uint8List bytes,
+    required String mime,
+    required String filename,
+    required ImageShareOrigin? origin,
+  }) async {
+    await _sharePlusClient.share(
+      params: ShareParams(
+        files: [XFile.fromData(bytes, mimeType: mime, name: filename)],
+        fileNameOverrides: [filename],
+        sharePositionOrigin: origin == null
+            ? null
+            : Rect.fromLTWH(origin.left, origin.top, origin.width, origin.height),
+      ),
+    );
+  }
+}

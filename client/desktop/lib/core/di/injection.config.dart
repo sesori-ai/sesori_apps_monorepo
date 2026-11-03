@@ -34,26 +34,18 @@ import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
     as _i524;
 import 'package:sesori_desktop/core/platform/desktop_file_save_client.dart'
     as _i880;
-import 'package:sesori_desktop/core/platform/desktop_image_clipboard.dart'
-    as _i87;
-import 'package:sesori_desktop/core/platform/desktop_image_sharer.dart'
-    as _i501;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
 import 'package:sesori_desktop/core/platform/desktop_local_notification_client.dart'
     as _i500;
 import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart'
     as _i20;
-import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
-    as _i210;
 import 'package:sesori_desktop/core/platform/desktop_persistence_directory.dart'
     as _i824;
 import 'package:sesori_desktop/core/platform/desktop_plugin_authentication_browser.dart'
     as _i916;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
     as _i911;
-import 'package:sesori_desktop/core/platform/desktop_share_client.dart'
-    as _i692;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
@@ -75,12 +67,8 @@ import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dar
     as _i804;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
-import 'package:sesori_desktop/core/platform/no_op_feedback_prompt_config_source.dart'
-    as _i191;
 import 'package:sesori_desktop/core/platform/no_op_founder_call_config_source.dart'
     as _i1005;
-import 'package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart'
-    as _i393;
 import 'package:sesori_desktop/core/platform/unsupported_on_device_speech_source.dart'
     as _i567;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
@@ -105,18 +93,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
     );
+    gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
+      () => registerModule.temporaryDirectoryProvider,
+    );
+    gh.lazySingleton<_i948.ImageClipboard>(() => registerModule.imageClipboard);
+    gh.lazySingleton<_i948.ImageSharer>(() => registerModule.imageSharer);
+    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
+      () => registerModule.feedbackPromptConfigSource,
+    );
     gh.lazySingleton<_i221.DesktopAnalyticsClient>(
       () => _i221.DesktopAnalyticsClient(),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i880.DesktopFileSaveClient>(
       () => _i880.DesktopFileSaveClient(),
-    );
-    gh.lazySingleton<_i210.DesktopPasteboardClient>(
-      () => _i210.DesktopPasteboardClient(),
-    );
-    gh.lazySingleton<_i692.DesktopShareClient>(
-      () => _i692.DesktopShareClient(),
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i925.DesktopComposerImagePicker(),
@@ -133,9 +123,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
-    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
-      () => _i191.NoOpFeedbackPromptConfigSource(),
-    );
     gh.lazySingleton<_i316.LaunchAtLogin>(() => _i122.IoLaunchAtLogin());
     gh.lazySingleton<_i948.AnalyticsClient>(
       () => registerModule.analyticsClient(
@@ -146,9 +133,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.desktopProductEventSource(
         client: gh<_i221.DesktopAnalyticsClient>(),
       ),
-    );
-    gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
-      () => _i393.PathProviderTemporaryDirectoryProvider(),
     );
     gh.lazySingleton<_i316.SystemTray>(
       () => _i81.FlutterSystemTray(),
@@ -184,11 +168,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i948.ImageClipboard>(
-      () => _i87.DesktopImageClipboard(
-        pasteboardClient: gh<_i210.DesktopPasteboardClient>(),
-      ),
-    );
     gh.lazySingleton<_i316.BridgeProcessEnvironment>(
       () => _i906.IoBridgeProcessEnvironment(),
     );
@@ -220,10 +199,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.voiceCapture(
         temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
       ),
-    );
-    gh.lazySingleton<_i948.ImageSharer>(
-      () =>
-          _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
     );
     gh.lazySingleton<_i948.VoiceModeConfigSource>(
       () => _i456.ChannelVoiceModeConfigSource(

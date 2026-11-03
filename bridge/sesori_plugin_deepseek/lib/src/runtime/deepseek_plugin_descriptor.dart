@@ -319,12 +319,6 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       ),
       deepSeekSessionOptionsService: deepSeekOptions,
       commandTracker: commandTracker,
-      sessionOptionsService: AcpSessionOptionsService(
-        configurationTracker: configurationTracker,
-        commandTracker: commandTracker,
-        pluginId: DeepSeekIdentity.id,
-        agentDisplayName: DeepSeekIdentity.displayName,
-      ),
       processFactory: processFactory,
     );
     return await AcpBridgePlugin.start(plugin: plugin, host: host, connectBudget: _connectBudget);

@@ -7,9 +7,6 @@ import "../../models/claude_tool_use_result.dart";
 part "claude_transcript_record_dto.freezed.dart";
 part "claude_transcript_record_dto.g.dart";
 
-/// One generated record DTO paired with its complete decoded wire map.
-typedef ClaudeTranscriptLineDto = ({ClaudeTranscriptRecordDto record, Map<String, Object?> raw});
-
 /// Tolerant wire shape shared by the transcript record variants.
 ///
 /// Claude adds record types independently of the bridge. A flat boundary DTO
@@ -27,8 +24,6 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
 
     /// The sub-agent that wrote the record; null on a root session's records.
     @JsonKey(fromJson: _stringOrNull) required String? agentId,
-    @JsonKey(fromJson: _stringOrNull) required String? gitBranch,
-    @JsonKey(fromJson: _stringOrNull) required String? version,
     @JsonKey(fromJson: _stringOrNull) required String? aiTitle,
 
     /// The name a user gave the session with `/rename`.

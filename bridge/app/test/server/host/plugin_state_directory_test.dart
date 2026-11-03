@@ -25,7 +25,7 @@ void main() {
     });
 
     test('OpenCode and Codex keep the frozen <installRoot>/runtime directory', () {
-      final descriptors = [OpenCodePluginDescriptor.production(), const CodexPluginDescriptor()];
+      final descriptors = [OpenCodePluginDescriptor.production(), CodexPluginDescriptor.production()];
 
       for (final descriptor in descriptors) {
         expect(
@@ -46,7 +46,7 @@ void main() {
       expect(OpenCodePluginDescriptor.ownershipFileName, isNot(CodexPluginDescriptor.ownershipFileName));
       expect(
         p.join(sharedDirectory, OpenCodePluginDescriptor.production().id),
-        isNot(p.join(sharedDirectory, const CodexPluginDescriptor().id)),
+        isNot(p.join(sharedDirectory, CodexPluginDescriptor.production().id)),
       );
     });
 

@@ -1,9 +1,11 @@
 import "dart:typed_data";
 
+import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "gal_client.dart";
 
+@LazySingleton(as: ImageSaver)
 class MobilePhotoImageSaver({required final GalClient _galClient}) implements ImageSaver {
   @override
   Future<ImageSaveResult> saveImage({

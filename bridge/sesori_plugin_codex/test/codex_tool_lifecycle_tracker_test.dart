@@ -691,7 +691,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-1",
         status: CodexImageGenerationStatus.completed,
-        revisedPrompt: null,
         result: "AA==",
         savedPath: null,
       ),
@@ -736,7 +735,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-running",
         status: CodexImageGenerationStatus.inProgress,
-        revisedPrompt: null,
         result: "",
         savedPath: null,
       ),
@@ -773,7 +771,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-old",
         status: CodexImageGenerationStatus.inProgress,
-        revisedPrompt: null,
         result: "",
         savedPath: null,
       ),
@@ -793,7 +790,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-new",
         status: CodexImageGenerationStatus.inProgress,
-        revisedPrompt: null,
         result: "",
         savedPath: null,
       ),
@@ -1127,15 +1123,13 @@ void main() {
 
   test("successful first child followed by a failed child is an error", () {
     final result = mapper.mapResult(
-      (_toolContentOutput(
-                callId: "call-exec",
-                outputs: const [
-                  "Script completed with exit code 0\nFinal output:\nfirst\n",
-                  "Process exited with code 1\nFinal output:\nfailed\n",
-                ],
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+      payload: (_toolContentOutput(
+        callId: "call-exec",
+        outputs: const [
+          "Script completed with exit code 0\nFinal output:\nfirst\n",
+          "Process exited with code 1\nFinal output:\nfailed\n",
+        ],
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolErrorResult>());
@@ -1143,15 +1137,10 @@ void main() {
 
   test("successful first child followed by a leading abort is an error", () {
     final result = mapper.mapResult(
-      (_toolContentOutput(
-                callId: "call-exec",
-                outputs: const [
-                  "Script completed with exit code 0\nFinal output:\nfirst\n",
-                  "aborted by user after 1.0s",
-                ],
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+      payload: (_toolContentOutput(
+        callId: "call-exec",
+        outputs: const ["Script completed with exit code 0\nFinal output:\nfirst\n", "aborted by user after 1.0s"],
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolErrorResult>());
@@ -1159,17 +1148,15 @@ void main() {
 
   test("executor marker text later in ordinary stdout does not fail", () {
     final result = mapper.mapResult(
-      (_toolOutput(
-                callId: "call-exec",
-                output:
-                    "Script completed with exit code 0\n"
-                    "Final output:\n"
-                    "ordinary stdout\n"
-                    "Process exited with code 1\n"
-                    "aborted by user after 1.0s\n",
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+      payload: (_toolOutput(
+        callId: "call-exec",
+        output:
+            "Script completed with exit code 0\n"
+            "Final output:\n"
+            "ordinary stdout\n"
+            "Process exited with code 1\n"
+            "aborted by user after 1.0s\n",
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolCompletedResult>());
@@ -1177,15 +1164,13 @@ void main() {
 
   test("truncated executor metadata still preserves a non-zero exit", () {
     final result = mapper.mapResult(
-      (_toolOutput(
-                callId: "call-exec",
-                output:
-                    "Chunk ID: failed\n"
-                    "Wall time: 0.01 seconds\n"
-                    "Process exited with code 7\n",
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+      payload: (_toolOutput(
+        callId: "call-exec",
+        output:
+            "Chunk ID: failed\n"
+            "Wall time: 0.01 seconds\n"
+            "Process exited with code 7\n",
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolErrorResult>());

@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/codex_config_reader.dart";
 import "package:codex_plugin/src/models/codex_replay_tool_disposition.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/codex_sub_agent_tracker.dart";
@@ -38,7 +39,7 @@ void main() {
       ),
     );
 
-    final fallback = tracker.observeStarted(child: child, callId: "call-spawn");
+    final fallback = tracker.observeStarted(child: child, callId: "call-spawn", status: PluginToolStatus.running);
     expect(fallback?.prompt, "  Exact delegated task.  ");
     expect(fallback?.agent, "worker");
     tracker.observeTurnStarted(childId: child.id, turnId: "initial-turn");
@@ -113,6 +114,7 @@ void main() {
           terminalStatus: PluginToolStatus.error,
         ),
       },
+      config: const CodexConfigDefaults.empty(),
     );
 
     final tasks = messages.expand((message) => message.parts).whereType<PluginMessagePartSubtask>().toList();
@@ -221,6 +223,7 @@ void main() {
       replayToolDisposition: CodexReplayToolDisposition.terminalize,
       structuredToolStatusByCallId: const {},
       childReplayDataById: const {},
+      config: const CodexConfigDefaults.empty(),
     );
 
     expect(messages.single.parts.single, isA<PluginMessagePartTool>());
@@ -263,6 +266,7 @@ void main() {
       projectCwd: "/repo",
       clientFactory: null,
       keepaliveInterval: const Duration(seconds: 30),
+      toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
     );
     addTearDown(plugin.dispose);
 

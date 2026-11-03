@@ -28,55 +28,27 @@ class FlutterOAuthDeviceDescriptorProvider(final DeviceInfoPlugin _deviceInfo)
     return OAuthDeviceDescriptor(clientType: clientType, device: device);
   }
 
-  AuthClientType _clientType() => switch (defaultTargetPlatform) {
-    TargetPlatform.iOS => AuthClientType.appIos,
-    TargetPlatform.android => AuthClientType.appAndroid,
-    TargetPlatform.macOS ||
-    TargetPlatform.windows ||
-    TargetPlatform.linux ||
-    TargetPlatform.fuchsia => AuthClientType.app,
-  };
+  AuthClientType _clientType() =>
+      defaultTargetPlatform == TargetPlatform.iOS ? AuthClientType.appIos : AuthClientType.appAndroid;
 
   Future<DeviceInfo> _device({required AuthClientType clientType, required String? appVersion}) async {
-    // Web has no native device-info channel and the mobile getters throw an
-    // UnsupportedError there; skip them to avoid noisy stack traces.
-    if (kIsWeb) {
+    try {
+      if (clientType == AuthClientType.appIos) {
+        final info = await _deviceInfo.iosInfo;
+        return _deviceInfoBuilder.build(
+          clientType: clientType,
+          detectedName: info.name,
+          osVersion: "iOS ${info.systemVersion}",
+          appVersion: appVersion,
+        );
+      }
+      final info = await _deviceInfo.androidInfo;
       return _deviceInfoBuilder.build(
         clientType: clientType,
-        detectedName: null,
-        osVersion: null,
+        detectedName: "${info.manufacturer} ${info.model}",
+        osVersion: "Android ${info.version.release}",
         appVersion: appVersion,
       );
-    }
-    try {
-      switch (defaultTargetPlatform) {
-        case TargetPlatform.iOS:
-          final info = await _deviceInfo.iosInfo;
-          return _deviceInfoBuilder.build(
-            clientType: clientType,
-            detectedName: info.name,
-            osVersion: "iOS ${info.systemVersion}",
-            appVersion: appVersion,
-          );
-        case TargetPlatform.android:
-          final info = await _deviceInfo.androidInfo;
-          return _deviceInfoBuilder.build(
-            clientType: clientType,
-            detectedName: "${info.manufacturer} ${info.model}",
-            osVersion: "Android ${info.version.release}",
-            appVersion: appVersion,
-          );
-        case TargetPlatform.macOS:
-        case TargetPlatform.windows:
-        case TargetPlatform.linux:
-        case TargetPlatform.fuchsia:
-          return _deviceInfoBuilder.build(
-            clientType: clientType,
-            detectedName: null,
-            osVersion: null,
-            appVersion: appVersion,
-          );
-      }
     } catch (error, stackTrace) {
       logw("Failed to read device info for the OAuth device descriptor", error, stackTrace);
       return _deviceInfoBuilder.build(

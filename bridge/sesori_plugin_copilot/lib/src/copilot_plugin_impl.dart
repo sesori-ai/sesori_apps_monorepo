@@ -17,7 +17,6 @@ class CopilotPlugin._({
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required CopilotSessionOptionsService copilotSessionOptionsService,
   required super.processFactory,
 }) extends AcpPlugin {
@@ -61,12 +60,6 @@ class CopilotPlugin._({
         childSessions: childSessionTracker,
       ),
       commandTracker: commandTracker,
-      sessionOptionsService: AcpSessionOptionsService(
-        configurationTracker: configurationTracker,
-        commandTracker: commandTracker,
-        pluginId: CopilotPluginIdentity.id,
-        agentDisplayName: CopilotPluginIdentity.displayName,
-      ),
       copilotSessionOptionsService: copilotSessionOptionsService,
       processFactory: processFactory,
     );

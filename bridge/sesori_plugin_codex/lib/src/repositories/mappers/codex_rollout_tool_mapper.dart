@@ -3,6 +3,9 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../../api/models/codex_command_execution_dto.dart";
+import "../../api/models/codex_correlatable_item_event_dto.dart";
+import "../../api/models/codex_file_change_dto.dart";
 import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
 import "../models/codex_projected_tool.dart";
@@ -105,7 +108,7 @@ class const CodexRolloutToolMapper({
           :final input,
         )
         when name.toLowerCase() == "exec") {
-      return _hasSingleCodeModeCommandInvocation(input);
+      return _hasSingleCodeModeCommandInvocation(source: input);
     }
     return false;
   }
@@ -136,7 +139,7 @@ class const CodexRolloutToolMapper({
       CodexRolloutImageGenerationStatus.unknown => PluginToolStatus.completed,
     };
     return CodexRolloutImageGeneration(
-      id: _usefulText(item.id),
+      id: _usefulText(value: item.id),
       status: status,
       attachments: status == PluginToolStatus.completed
           ? _imageAttachmentMapper.map(
@@ -162,7 +165,7 @@ class const CodexRolloutToolMapper({
       CodexRolloutImageGenerationStatus.unknown => PluginToolStatus.completed,
     };
     return CodexRolloutImageGeneration(
-      id: _usefulText(event.callId),
+      id: _usefulText(value: event.callId),
       status: status,
       attachments: status == PluginToolStatus.completed
           ? _imageAttachmentMapper.map(
@@ -189,7 +192,7 @@ class const CodexRolloutToolMapper({
       CodexImageGenerationStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
     };
     return CodexRolloutImageGeneration(
-      id: _usefulText(item.id),
+      id: _usefulText(value: item.id),
       status: status,
       attachments: status == PluginToolStatus.completed
           ? _imageAttachmentMapper.map(
@@ -203,6 +206,30 @@ class const CodexRolloutToolMapper({
             )
           : const [],
     );
+  }
+
+  /// Maps a typed app-server command or file-change item onto the tool status
+  /// vocabulary. A non-zero exit code is authoritative over a reported
+  /// `completed`; an item without a known status follows its lifecycle.
+  PluginToolStatus appServerItemStatus({
+    required CodexCorrelatableItemEventDto event,
+  }) {
+    final completed = event.lifecycle == CodexCorrelatableItemLifecycle.completed;
+    return switch (event) {
+      CodexCommandExecutionEventDto(exitCode: final exitCode?) when exitCode != 0 => PluginToolStatus.error,
+      CodexCommandExecutionEventDto(:final status) => switch (status) {
+        CodexCommandExecutionStatus.failed || CodexCommandExecutionStatus.declined => PluginToolStatus.error,
+        CodexCommandExecutionStatus.completed => PluginToolStatus.completed,
+        CodexCommandExecutionStatus.inProgress => PluginToolStatus.running,
+        CodexCommandExecutionStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+      },
+      CodexFileChangeEventDto(:final status) => switch (status) {
+        CodexFileChangeStatus.failed || CodexFileChangeStatus.declined => PluginToolStatus.error,
+        CodexFileChangeStatus.completed => PluginToolStatus.completed,
+        CodexFileChangeStatus.inProgress => PluginToolStatus.running,
+        CodexFileChangeStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+      },
+    };
   }
 
   List<PluginMessageAttachment> boundAttachments({
@@ -223,7 +250,7 @@ class const CodexRolloutToolMapper({
     );
   }
 
-  CodexRolloutToolCall? mapCall(CodexRolloutResponseItemDto payload) {
+  CodexRolloutToolCall? mapCall({required CodexRolloutResponseItemDto payload}) {
     if (isInternalToolCall(payload: payload)) return null;
     return switch (payload) {
       CodexRolloutFunctionCallDto(
@@ -276,7 +303,7 @@ class const CodexRolloutToolMapper({
         _ => false,
       },
       CodexRolloutCustomToolCallDto(:final name, :final input) =>
-        name.toLowerCase() == "exec" && _isGeneratedImageInvocation(input),
+        name.toLowerCase() == "exec" && _isGeneratedImageInvocation(input: input),
       CodexRolloutMessageDto() ||
       CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
@@ -294,12 +321,12 @@ class const CodexRolloutToolMapper({
     if (payload case CodexRolloutFunctionCallDto(:final callId, :final name, :final arguments)
         when name == "spawn_agent") {
       final decoded = _tryDecodeToolArguments(raw: arguments);
-      final usefulCallId = _usefulText(callId);
-      final exactMessage = _exactNonBlank(decoded?.message);
+      final usefulCallId = _usefulText(value: callId);
+      final exactMessage = _exactNonBlank(value: decoded?.message);
       if (usefulCallId != null && exactMessage != null) {
         return CodexSubAgentSpawnFact(
           callId: usefulCallId,
-          agent: _usefulText(decoded?.agentType) ?? "codex",
+          agent: _usefulText(value: decoded?.agentType) ?? "codex",
           message: exactMessage,
         );
       }
@@ -319,12 +346,12 @@ class const CodexRolloutToolMapper({
         )
         when name.toLowerCase() == "wait") {
       final cellId = _tryDecodeToolArguments(raw: arguments)?.cellId;
-      final usefulCallId = _usefulText(callId);
-      final usefulCellId = _usefulText(cellId?.toString());
+      final usefulCallId = _usefulText(value: callId);
+      final usefulCellId = _usefulText(value: cellId?.toString());
       if (usefulCallId != null && usefulCellId != null) {
         return CodexRolloutWaitCall(
           callId: usefulCallId,
-          turnId: _usefulText(metadata?.turnId),
+          turnId: _usefulText(value: metadata?.turnId),
           cellId: usefulCellId,
         );
       }
@@ -337,7 +364,8 @@ class const CodexRolloutToolMapper({
   }) {
     if (!isInternalToolCall(payload: payload)) return null;
     return switch (payload) {
-      CodexRolloutFunctionCallDto(:final callId) || CodexRolloutCustomToolCallDto(:final callId) => _usefulText(callId),
+      CodexRolloutFunctionCallDto(:final callId) ||
+      CodexRolloutCustomToolCallDto(:final callId) => _usefulText(value: callId),
       CodexRolloutMessageDto() ||
       CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
@@ -356,15 +384,15 @@ class const CodexRolloutToolMapper({
     required String name,
     required String input,
   }) {
-    final usefulId = _usefulText(callId) ?? _usefulText(id);
+    final usefulId = _usefulText(value: callId) ?? _usefulText(value: id);
     if (usefulId == null) return null;
-    final usefulName = _usefulText(name) ?? "tool";
+    final usefulName = _usefulText(value: name) ?? "tool";
     final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
-      turnId: _usefulText(turnId),
-      tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
-      title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
+      turnId: _usefulText(value: turnId),
+      tool: fileChangePatch == null ? normalizeToolName(name: usefulName) : "edit",
+      title: fileChangePatch == null ? toolCallTitle(argumentsJson: input) : _fileChangeTitle(patch: fileChangePatch),
       shellCommand: switch (usefulName.toLowerCase()) {
         "exec_command" => _commandArgument(input: input),
         "exec" => _embeddedExecCommand(source: input),
@@ -376,11 +404,12 @@ class const CodexRolloutToolMapper({
 
   String? _codeModeFileChangePatch({required String input}) {
     final invocation = _codeModeFileChangeInvocationPattern.firstMatch(input);
-    if (invocation == null || invocation.group(1) != invocation.group(3)) {
+    final patchLiteral = invocation?.group(2);
+    if (invocation == null || patchLiteral == null || invocation.group(1) != invocation.group(3)) {
       return null;
     }
     try {
-      final decoded = jsonDecode(invocation.group(2)!);
+      final decoded = jsonDecode(patchLiteral);
       if (decoded is! String ||
           !_patchEnvelopePattern.hasMatch(decoded) ||
           !_patchFileHeaderPattern.hasMatch(decoded)) {
@@ -403,7 +432,7 @@ class const CodexRolloutToolMapper({
     return paths.length > 3 ? "$shown +${paths.length - 3} more" : shown;
   }
 
-  CodexRolloutToolResult? mapResult(CodexRolloutResponseItemDto payload) {
+  CodexRolloutToolResult? mapResult({required CodexRolloutResponseItemDto payload}) {
     final ({String callId, List<CodexRolloutContentDto> content})? output = switch (payload) {
       CodexRolloutFunctionCallOutputDto(:final callId, :final output) ||
       CodexRolloutCustomToolCallOutputDto(:final callId, :final output) => (callId: callId, content: output),
@@ -417,9 +446,9 @@ class const CodexRolloutToolMapper({
       CodexRolloutUnknownResponseItemDto() => null,
     };
     if (output == null) return null;
-    final callId = _usefulText(output.callId);
+    final callId = _usefulText(value: output.callId);
     if (callId == null) return null;
-    final rawOutput = toolOutputText(output.content);
+    final rawOutput = toolOutputText(output: output.content);
     final attachments = mapContentAttachments(
       content: output.content,
     );
@@ -453,7 +482,7 @@ class const CodexRolloutToolMapper({
           );
   }
 
-  String normalizeToolName(String name) {
+  String normalizeToolName({required String name}) {
     final normalized = name.toLowerCase();
     if (normalized.contains("stdin")) return "shell";
     if (normalized.contains("patch") || normalized.contains("edit") || normalized.contains("write")) {
@@ -468,7 +497,7 @@ class const CodexRolloutToolMapper({
     return name;
   }
 
-  String? toolCallTitle(String? argumentsJson) {
+  String? toolCallTitle({required String? argumentsJson}) {
     if (argumentsJson == null || argumentsJson.isEmpty) return null;
     final arguments = _tryDecodeToolArguments(raw: argumentsJson);
     if (arguments != null) {
@@ -497,8 +526,8 @@ class const CodexRolloutToolMapper({
   /// wraps commands as `<shell> -lc <command>`, while response-item arguments
   /// retain the original command. Remove this normalization when app-server's
   /// stable item title carries the original command itself.
-  String? logicalCommandTitle(String? command) {
-    final value = _usefulText(command);
+  String? logicalCommandTitle({required String? command}) {
+    final value = _usefulText(value: command);
     if (value == null) return null;
     final match = RegExp(
       r"^(?:\S*/)?(?:zsh|bash|sh)\s+-lc\s+(.+)$",
@@ -525,7 +554,7 @@ class const CodexRolloutToolMapper({
     return payload;
   }
 
-  String? toolOutputText(List<CodexRolloutContentDto>? output) {
+  String? toolOutputText({required List<CodexRolloutContentDto>? output}) {
     final texts = [
       for (final item in output ?? const <CodexRolloutContentDto>[]) ?_toolContentText(content: item),
     ];
@@ -586,8 +615,8 @@ class const CodexRolloutToolMapper({
           )
         : lines.take(outputBoundary);
     for (final line in envelope) {
-      final match = exitPattern.firstMatch(line);
-      final exitCode = match == null ? null : int.tryParse(match.group(1)!);
+      final exitDigits = exitPattern.firstMatch(line)?.group(1);
+      final exitCode = exitDigits == null ? null : int.tryParse(exitDigits);
       if (exitCode != null && exitCode != 0) return true;
     }
     return false;
@@ -599,7 +628,7 @@ class const CodexRolloutToolMapper({
       r"^Script running with cell ID[ \t]+(\S+)[ \t]*(?:\r?\n|$)",
       caseSensitive: false,
     ).firstMatch(output);
-    return _usefulText(match?.group(1));
+    return _usefulText(value: match?.group(1));
   }
 
   List<String> _runningCellIds({
@@ -615,7 +644,7 @@ class const CodexRolloutToolMapper({
     return cellIds;
   }
 
-  String? clipOutput(String? output) {
+  String? clipOutput({required String? output}) {
     if (output == null || output.runes.length <= maxToolOutputLength) {
       return output;
     }
@@ -633,13 +662,13 @@ class const CodexRolloutToolMapper({
   String? _commandArgument({required String input}) {
     final arguments = _tryDecodeToolArguments(raw: input);
     final command = arguments?.cmd ?? arguments?.command;
-    return command is String ? _usefulText(command) : null;
+    return command is String ? _usefulText(value: command) : null;
   }
 
   String? _embeddedExecCommand({required String source}) {
     // Reuse the correlation scanner: never extract an invocation from a string
     // or comment, or guess which command a multi-command script represents.
-    if (!_hasSingleCodeModeCommandInvocation(source)) return null;
+    if (!_hasSingleCodeModeCommandInvocation(source: source)) return null;
     final lexical = _JsLexicalState();
     for (var index = 0; index < source.length; index++) {
       final skipped = lexical.skipNonCode(
@@ -680,7 +709,8 @@ class const CodexRolloutToolMapper({
             literal = '"$body"';
           }
           try {
-            return _usefulText(jsonDecode(literal) as String);
+            final decoded = jsonDecode(literal);
+            return decoded is String ? _usefulText(value: decoded) : null;
           } on FormatException {
             return null;
           }
@@ -691,12 +721,12 @@ class const CodexRolloutToolMapper({
     return null;
   }
 
-  String? _usefulText(String? value) {
+  String? _usefulText({required String? value}) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
-  String? _exactNonBlank(String? value) => value == null || value.trim().isEmpty ? null : value;
+  String? _exactNonBlank({required String? value}) => value == null || value.trim().isEmpty ? null : value;
 }
 
 final RegExp _generatedImageInvocationPrefixPattern = RegExp(
@@ -751,7 +781,7 @@ final RegExp _codeModeCommandInvocationPrefixPattern = RegExp(
   r"\btools\.exec_command\s*\(",
 );
 
-bool _hasSingleCodeModeCommandInvocation(String source) {
+bool _hasSingleCodeModeCommandInvocation({required String source}) {
   var invocationCount = 0;
   final lexical = _JsLexicalState();
   for (var index = 0; index < source.length; index++) {
@@ -779,7 +809,7 @@ bool _hasSingleCodeModeCommandInvocation(String source) {
   return invocationCount == 1;
 }
 
-bool _isGeneratedImageInvocation(String input) {
+bool _isGeneratedImageInvocation({required String input}) {
   final directive = _generatedExecDirectivePattern.firstMatch(input);
   if (directive != null && !_isValidGeneratedExecDirective(directive: directive)) {
     return false;
