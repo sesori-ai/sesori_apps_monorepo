@@ -218,14 +218,6 @@ abstract class const RequestHandlerBase(
 
   // ── Shared helpers ──────────────────────────────────────────────────────────
 
-  /// Case-insensitive header lookup.
-  String? findHeader(Map<String, String> headers, String key) {
-    for (final entry in headers.entries) {
-      if (entry.key.toLowerCase() == key.toLowerCase()) return entry.value;
-    }
-    return null;
-  }
-
   /// Builds a 200 JSON response.
   RelayResponse buildOkJsonResponse({required RelayRequest request, required Object body}) => RelayResponse(
     id: request.id,
