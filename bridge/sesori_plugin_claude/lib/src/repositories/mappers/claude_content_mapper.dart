@@ -358,31 +358,17 @@ final class const ClaudeContentMapper() {
       return;
     }
 
-    final ClaudeContentBlockDto dto;
-    try {
-      dto = ClaudeContentBlockDto.fromJson(content.cast<String, dynamic>());
-    } on Object catch (error, stackTrace) {
-      Log.w(
-        "[claude] content block decode failed "
-        "(fields: ${content.length}, discriminator type: ${content["type"].runtimeType})",
-        error.runtimeType,
-        stackTrace,
-      );
-      yield const ClaudeMappedUnknownContentBlock();
-      return;
-    }
-
-    switch (dto) {
+    switch (_decode(block: content)) {
+      case null:
+        yield const ClaudeMappedUnknownContentBlock();
       case ClaudeTextContentBlockDto(:final text):
         yield text == null ? const ClaudeMappedUnknownContentBlock() : _textBlock(text);
       case ClaudeThinkingContentBlockDto(:final thinking):
         yield thinking == null
             ? const ClaudeMappedUnknownContentBlock()
             : ClaudeMappedThinkingContentBlock(thinking: thinking);
-      case ClaudeToolUseContentBlockDto(:final id, :final name, :final input):
-        yield id == null || id.isEmpty || name == null || name.isEmpty
-            ? const ClaudeMappedUnknownContentBlock()
-            : ClaudeMappedToolUseContentBlock(id: id, name: name, input: input);
+      case final ClaudeToolUseContentBlockDto dto:
+        yield _toolUse(dto: dto) ?? const ClaudeMappedUnknownContentBlock();
       case ClaudeToolResultContentBlockDto(:final toolUseId, :final content, :final isError):
         if (toolUseId == null || toolUseId.isEmpty) {
           yield const ClaudeMappedUnknownContentBlock();
@@ -399,6 +385,36 @@ final class const ClaudeContentMapper() {
         yield const ClaudeMappedUnsupportedContentBlock();
       case ClaudeUnknownContentBlockDto():
         yield const ClaudeMappedUnknownContentBlock();
+    }
+  }
+
+  /// The well-formed tool calls among [content]'s blocks, without the text,
+  /// image and tool-result mapping [map] does for rendering.
+  List<ClaudeMappedToolUseContentBlock> toolUses({required Object? content}) {
+    if (content is! List) return const [];
+    return [
+      for (final block in content)
+        if (block is Map) ?_toolUse(dto: _decode(block: block)),
+    ];
+  }
+
+  ClaudeMappedToolUseContentBlock? _toolUse({required ClaudeContentBlockDto? dto}) => switch (dto) {
+    ClaudeToolUseContentBlockDto(:final id?, :final name?, :final input) when id.isNotEmpty && name.isNotEmpty =>
+      ClaudeMappedToolUseContentBlock(id: id, name: name, input: input),
+    _ => null,
+  };
+
+  ClaudeContentBlockDto? _decode({required Map<Object?, Object?> block}) {
+    try {
+      return ClaudeContentBlockDto.fromJson(block.cast<String, dynamic>());
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[claude] content block decode failed "
+        "(fields: ${block.length}, discriminator type: ${block["type"].runtimeType})",
+        error.runtimeType,
+        stackTrace,
+      );
+      return null;
     }
   }
 

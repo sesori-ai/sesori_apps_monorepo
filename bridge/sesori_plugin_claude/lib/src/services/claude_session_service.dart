@@ -820,8 +820,8 @@ final class ClaudeSessionService({
     if (message is! ClaudeAssistantMessage) return;
     final state = _turns[sessionId];
     if (state == null) return;
-    for (final block in const ClaudeContentMapper().map(content: message.message["content"])) {
-      if (block case ClaudeMappedToolUseContentBlock(name: "ScheduleWakeup", :final Map<Object?, Object?> input)) {
+    for (final toolUse in const ClaudeContentMapper().toolUses(content: message.message["content"])) {
+      if (toolUse case ClaudeMappedToolUseContentBlock(name: "ScheduleWakeup", :final Map<Object?, Object?> input)) {
         if (input["stop"] == true) {
           state.wakeupAt = null;
         } else if (input["delaySeconds"] case final num delaySeconds) {

@@ -29,10 +29,11 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// How many leading lines [readHeader] decodes.
   ///
   /// Everything the catalog needs — working directory, session id, creation
-  /// time, and the `ai-title` record — sits in the first few lines. Measured across 60 real transcripts the title record's line
-  /// number was at most 50 (median 13), so 64 clears the observed range with
-  /// margin. A title written past the bound is still found by
-  /// [readTailTitleRecords] once the CLI re-appends it.
+  /// time, and the `ai-title` record — sits in the first few lines. Measured
+  /// across 60 real transcripts the title record's line number was at most 50
+  /// (median 13), so 64 clears the observed range with margin. A title written
+  /// past the bound is still found by [readTailTitleRecords] once the CLI
+  /// re-appends it.
   ///
   /// The bound is what makes enumeration affordable: reading these transcripts
   /// in full meant 1,060 MiB across 1,888 files on the machine this was

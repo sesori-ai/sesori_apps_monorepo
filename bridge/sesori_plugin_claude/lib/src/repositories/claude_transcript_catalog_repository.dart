@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show unwrapDictatedText;
 
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_transcript_record_dto.dart";
+import "../foundation/trimmed_or_null.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
@@ -327,7 +328,7 @@ ClaudeSessionRecord? _readRootRecord({
         // cross-check and records for another session cannot supply metadata.
         if (record.sessionId != null && record.sessionId != id) continue;
         sawContent = true;
-        cwd ??= _nonEmpty(record.cwd);
+        cwd ??= trimmedOrNull(value: record.cwd);
         createdAt ??= record.timestamp;
         if (record is ClaudeTranscriptUserRecord) prompts.add(record);
       case ClaudeTranscriptTitleRecord():
@@ -440,11 +441,6 @@ final RegExp _uuidPattern = RegExp(
   r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
 );
 
-String? _nonEmpty(String? value) {
-  final trimmed = value?.trim();
-  return trimmed == null || trimmed.isEmpty ? null : trimmed;
-}
-
 /// How much of a first prompt can title a session nobody named.
 const int _promptTitleLength = 100;
 
@@ -485,7 +481,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
   }
 
   if (type == ClaudeTranscriptUserRecord.wireType) {
-    final id = _nonEmpty(dto.uuid);
+    final id = trimmedOrNull(value: dto.uuid);
     if (id != null) {
       return ClaudeTranscriptUserRecord(
         id: id,
@@ -506,7 +502,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
   }
 
   if (type == ClaudeTranscriptAssistantRecord.wireType) {
-    final id = _nonEmpty(dto.message?.id);
+    final id = trimmedOrNull(value: dto.message?.id);
     if (id != null) {
       if (dto.isApiErrorMessage ?? false) {
         return ClaudeTranscriptApiErrorRecord(
@@ -522,7 +518,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
       }
       return ClaudeTranscriptAssistantRecord(
         id: id,
-        model: _nonEmpty(dto.message?.model),
+        model: trimmedOrNull(value: dto.message?.model),
         effort: ClaudeEffortLevel.tryParse(dto.effort),
         content: dto.message?.content,
         cwd: dto.cwd,
@@ -539,7 +535,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
   if (type == ClaudeTranscriptContextKind.attachment.wireType &&
       attachment != null &&
       attachment.type == ClaudeTranscriptQueuedCommandRecord.attachmentType) {
-    final id = _nonEmpty(attachment.sourceUuid) ?? _nonEmpty(dto.uuid);
+    final id = trimmedOrNull(value: attachment.sourceUuid) ?? trimmedOrNull(value: dto.uuid);
     if (id != null) {
       return ClaudeTranscriptQueuedCommandRecord(
         id: id,
@@ -584,10 +580,12 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
 
   final titleKind = ClaudeTranscriptTitleKind.tryParse(type);
   if (titleKind != null) {
-    final title = _nonEmpty(switch (titleKind) {
-      ClaudeTranscriptTitleKind.custom => dto.customTitle,
-      ClaudeTranscriptTitleKind.generated => dto.aiTitle,
-    });
+    final title = trimmedOrNull(
+      value: switch (titleKind) {
+        ClaudeTranscriptTitleKind.custom => dto.customTitle,
+        ClaudeTranscriptTitleKind.generated => dto.aiTitle,
+      },
+    );
     if (title != null) {
       return ClaudeTranscriptTitleRecord(kind: titleKind, title: title, sessionId: dto.sessionId);
     }

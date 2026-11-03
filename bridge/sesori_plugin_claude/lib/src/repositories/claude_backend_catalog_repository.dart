@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/models/claude_backend_catalog_dto.dart";
+import "../foundation/trimmed_or_null.dart";
 import "../models/claude_agent_selection.dart";
 import "../models/claude_effort_level.dart";
 
@@ -212,7 +213,7 @@ final class const ClaudeBackendCatalogRepository() {
     return PluginModel(
       fastMode: dto.supportsFastMode ?? false ? fastMode : null,
       id: id,
-      name: _trimmedOrNull(dto.displayName) ?? _trimmedOrNull(dto.resolvedModel) ?? id,
+      name: trimmedOrNull(value: dto.displayName) ?? trimmedOrNull(value: dto.resolvedModel) ?? id,
       variants: variants,
       defaultVariant: variants.contains(_defaultEffort.wireValue) ? _defaultEffort.wireValue : null,
       family: null,
@@ -226,17 +227,12 @@ final class const ClaudeBackendCatalogRepository() {
     if (name == null || name.isEmpty || name == fastModeCommand) return null;
     return PluginCommand(
       name: name,
-      description: _trimmedOrNull(dto.description),
-      hints: [?_trimmedOrNull(dto.argumentHint)],
+      description: trimmedOrNull(value: dto.description),
+      hints: [?trimmedOrNull(value: dto.argumentHint)],
       provider: null,
       source: PluginCommandSource.command,
     );
   }
-}
-
-String? _trimmedOrNull(String? value) {
-  final trimmed = value?.trim();
-  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }
 
 typedef _CatalogEntry = ({ClaudeModelDto dto, PluginModel model});
