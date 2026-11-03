@@ -41,9 +41,13 @@ class OmpSessionCleanupRepository({required final OmpAcpApi _api}) {
     required Duration timeout,
   }) async {
     final result = await _api.resumeSession(sessionId: sessionId, cwd: cwd, timeout: timeout);
-    // `/session delete` removes whichever session is current, so cleanup goes
-    // on only when the answer echoes the requested id.
-    if (result.raw["sessionId"] != sessionId) {
+    // OMP 18.15.0 answers `session/resume` with only `configOptions` and
+    // `modes`, fails with "ACP session not found" for an unknown id, and runs
+    // the following `/session delete` on the session registered under the
+    // requested id. A missing echo therefore means the requested session; only
+    // an echoed different id stops cleanup.
+    final echoedSessionId = result.raw["sessionId"];
+    if (echoedSessionId != null && echoedSessionId != sessionId) {
       throw StateError("OMP resumed a different session");
     }
   }
