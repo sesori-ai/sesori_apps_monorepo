@@ -70,8 +70,9 @@ The main pane hosts one full-width routed page.
   still lets the sessions reload; either failing produces failure feedback. Useful rows stay visible. A refresh
   while one runs joins it, busy controls cannot dispatch duplicate intent, and busy/idle refresh plus Settings expose
   accessible names and keyboard actions.
-  When the project list itself fails to load, only the home pane shows the failure page (neutral icon, secondary
-  Retry); the sidebar list stays blank rather than repeating it, and its Refresh retries the project load.
+  When the project list itself fails to load, the sidebar list stays blank rather than repeating the main pane's
+  failure page (home or Archived: neutral icon, secondary Retry), and its Refresh retries the project load. A computer
+  switch returns to home, so a switch that fails shows the page there.
   A superseded caller follows the current owning read after every completion, including an already-completed successor
   followed by a newer owner. Completed failures stay observable despite retained rows.
 - Each signed-in cockpit owns one project-list cubit, including the home pane;
