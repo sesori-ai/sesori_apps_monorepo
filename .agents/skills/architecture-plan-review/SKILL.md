@@ -739,16 +739,15 @@ Target architecture: a single dispatcher owns the push pipeline, with one listen
 │  └─ Subscribes to CompletionNotifier stream, owns completion-state bookkeeping/abort suppression, delegates outbound sends to PushDispatcher
 │
 ├─ MaintenancePushListener — scheduled trigger
-│  └─ Runs periodic sweep via Timer.periodic, owns maintenance-step sequencing and telemetry/logging
-│  └─ Uses: PushSessionStateTracker, CompletionNotifier, PushRateLimiter, PushMaintenanceTelemetryBuilder
+│  └─ Runs periodic sweep via Timer.periodic, owns maintenance-step sequencing and the one-line summary log
+│  └─ Uses: PushSessionStateTracker, CompletionNotifier, PushRateLimiter
 │
 └─ Support classes (injected, not constructed by the listeners):
    ├─ PushNotificationClient — HTTP transport
    ├─ PushRateLimiter — per-session rate limiting
    ├─ PushNotificationContentBuilder — payload construction
    ├─ PushSessionStateTracker — tracks session state from SSE events
-   ├─ CompletionNotifier — detects session completion
-   └─ PushMaintenanceTelemetryBuilder — builds telemetry for maintenance sweeps
+   └─ CompletionNotifier — detects session completion
 └─ Composition: the push subsystem entrypoint constructs all classes and calls start() on listeners
 └─ NO dependencies on core layers (api, repositories, services, routing, sse)
 └─ Location: app/lib/src/push/

@@ -9,10 +9,7 @@ void main() {
   test("a failed immediate tick rearms the regular interval", () {
     fakeAsync((time) {
       final service = _Service()..failNext = true;
-      final listener = SessionContinuationTimerListener(
-        service: service,
-        timerFactory: ({required delay, required callback}) => Timer(delay, callback),
-      );
+      final listener = SessionContinuationTimerListener(service: service);
       listener.start();
       time.flushMicrotasks();
       expect(service.calls, 1);
@@ -31,10 +28,7 @@ void main() {
     fakeAsync((time) {
       final pending = Completer<void>();
       final service = _Service()..pending = pending.future;
-      final listener = SessionContinuationTimerListener(
-        service: service,
-        timerFactory: ({required delay, required callback}) => Timer(delay, callback),
-      );
+      final listener = SessionContinuationTimerListener(service: service);
       listener.start();
       time.flushMicrotasks();
       time.elapse(const Duration(minutes: 3));

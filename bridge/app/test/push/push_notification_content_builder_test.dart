@@ -46,7 +46,7 @@ void main() {
       );
 
       final data = contentBuilder.extractNotificationData(event)!;
-      final sessionId = contentBuilder.extractSessionId(event);
+      final sessionId = data.session?.displaySessionId;
       final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
         eventType: data.eventType,
@@ -71,7 +71,7 @@ void main() {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "2.0.0");
 
       final data = contentBuilder.extractNotificationData(event)!;
-      final sessionId = contentBuilder.extractSessionId(event);
+      final sessionId = data.session?.displaySessionId;
       final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
         eventType: data.eventType,
@@ -93,7 +93,7 @@ void main() {
     });
   });
 
-  group("extractSessionId", () {
+  group("session attribution", () {
     test("attributes a child session's permission to its display (root) session", () {
       const event = SesoriSseEvent.permissionAsked(
         requestID: "r-1",
@@ -103,7 +103,10 @@ void main() {
         description: "Run command",
       );
 
-      expect(contentBuilder.extractSessionId(event), equals("root"));
+      expect(
+        contentBuilder.extractNotificationData(event)?.session,
+        equals((displaySessionId: "root", ownerSessionId: "child")),
+      );
     });
 
     test("falls back to sessionID when displaySessionId is null", () {
@@ -115,7 +118,10 @@ void main() {
         description: "Run command",
       );
 
-      expect(contentBuilder.extractSessionId(event), equals("child"));
+      expect(
+        contentBuilder.extractNotificationData(event)?.session,
+        equals((displaySessionId: "child", ownerSessionId: "child")),
+      );
     });
   });
 }

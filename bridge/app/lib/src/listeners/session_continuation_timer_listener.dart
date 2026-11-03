@@ -4,12 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../services/session_continuation_service.dart";
 
-typedef ContinuationTimerFactory = Timer Function({required Duration delay, required void Function() callback});
-
-class SessionContinuationTimerListener({
-  required final SessionContinuationService _service,
-  required final ContinuationTimerFactory _timerFactory,
-}) {
+class SessionContinuationTimerListener({required final SessionContinuationService _service}) {
   Timer? _timer;
   Future<void>? _tick;
   bool _disposed = false;
@@ -25,12 +20,9 @@ class SessionContinuationTimerListener({
       Log.w("Quota continuation timer failed", error, stackTrace);
     } finally {
       if (!_disposed) {
-        _timer = _timerFactory(
-          delay: const Duration(seconds: 30),
-          callback: () {
-            _tick = _run();
-          },
-        );
+        _timer = Timer(const Duration(seconds: 30), () {
+          _tick = _run();
+        });
       }
     }
   }
