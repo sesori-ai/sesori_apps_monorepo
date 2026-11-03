@@ -51,10 +51,16 @@ Two rules carry the weight: **no `Failed` after `Stopping`** (a clean shutdown m
 
 ### Steady plugins in a few lines
 
-Direct-CLI and remote-server plugins have no managed runtime; mix in `SteadyPluginLifecycle` and supply only `api`, `describe()`, and (optionally) `onShutdown`:
+Direct-CLI and remote-server plugins have no managed runtime; mix in `SteadyPluginLifecycle` and supply only `api`, `describe()`, `interruptActiveWork()`, and (optionally) `onShutdown`:
 
 ```dart
 class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
+  RemotePlugin({required RemoteApi api, required String url}) : _api = api, _url = url;
+
+  /// The plugin's own `BridgePluginApi`, which owns its HTTP client.
+  final RemoteApi _api;
+  final String _url;
+
   @override
   BridgePluginApi get api => _api;
 
@@ -63,7 +69,10 @@ class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
       PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 
   @override
-  Future<void> onShutdown({required Duration? budget}) => _api.dispose();
+  Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
+
+  @override
+  Future<void> onShutdown({required Duration? budget}) => _api.close();
 }
 ```
 

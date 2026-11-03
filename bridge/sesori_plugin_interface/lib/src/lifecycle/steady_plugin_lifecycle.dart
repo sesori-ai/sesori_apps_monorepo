@@ -18,6 +18,12 @@ import "plugin_work_state.dart";
 ///
 /// ```dart
 /// class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
+///   RemotePlugin({required RemoteApi api, required String url}) : _api = api, _url = url;
+///
+///   /// The plugin's own `BridgePluginApi`, which owns its HTTP client.
+///   final RemoteApi _api;
+///   final String _url;
+///
 ///   @override
 ///   BridgePluginApi get api => _api;
 ///
@@ -29,7 +35,7 @@ import "plugin_work_state.dart";
 ///   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
 ///
 ///   @override
-///   Future<void> onShutdown({required Duration? budget}) => _api.dispose();
+///   Future<void> onShutdown({required Duration? budget}) => _api.close();
 /// }
 /// ```
 ///
