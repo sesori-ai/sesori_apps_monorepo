@@ -267,7 +267,6 @@ Future<AnalyticsStoreCrawlGate> _resolveAndApplyAnalyticsCrawlGate({
 
 void _prepareSingularAttribution() {
   getIt<SingularAttributionStartup>().prepare(
-    isSupportedPlatform: _supportsSingular,
     ineligibilityReason: _measurementIneligibilityReason(),
     sdkKey: _singularSdkKeyDefine,
     sdkSecret: _singularSdkSecretDefine,
@@ -306,26 +305,8 @@ Future<void> _runNotificationStartupStep(Future<void> Function() step) async {
   }
 }
 
-bool get _supportsFirebase {
-  if (kIsWeb) {
-    return false;
-  }
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android => !kProfileMode,
-    TargetPlatform.iOS || TargetPlatform.macOS => true,
-    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-  };
-}
-
-bool get _supportsSingular {
-  if (kIsWeb) return false;
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android || TargetPlatform.iOS => true,
-    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.macOS || TargetPlatform.windows => false,
-  };
-}
+/// Android profile builds run without the Firebase SDK.
+bool get _supportsFirebase => !(kProfileMode && defaultTargetPlatform == TargetPlatform.android);
 
 class const SesoriApp({
   /// The persisted appearance, read before the first frame.

@@ -62,7 +62,7 @@ flutter run
 ## Singular mobile attribution
 
 The Android/iOS app includes Singular's basic install/session attribution integration. It starts in eligible release
-builds using the required compile-time credentials. Debug/profile builds and unsupported platforms remain disabled.
+builds using the required compile-time credentials. Debug/profile builds remain disabled.
 An unauthenticated Android build newer than the latest production submission in Firebase Remote Config defers startup;
 successful interactive authentication starts Singular before reporting its conversion events, while crawlers that never
 authenticate stay off. The Remote Config decision is resolved asynchronously and never delays the first product frame.
