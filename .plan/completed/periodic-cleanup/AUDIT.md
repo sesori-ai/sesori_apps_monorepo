@@ -1,9 +1,9 @@
 # Periodic cleanup investigation — 2026-09-04
 
 Baseline: `480d82f090`. Investigation and proposed series:
-[PLAN.md](../.plan/completed/periodic-cleanup/PLAN.md),
-[tracker](../.plan/completed/periodic-cleanup/TRACKER.md),
-[reproducible evidence](../.plan/completed/periodic-cleanup/evidence/README.md).
+[PLAN.md](PLAN.md),
+[tracker](TRACKER.md),
+[reproducible evidence](evidence/README.md).
 
 Every file reference below is as of that baseline. Some no longer resolve,
 because the series has since executed the findings that named them — read this
@@ -55,9 +55,9 @@ No live backend, full UI, performance benchmark, or full suite was run.
 
 ## A. Refresh ownership has two concrete failures
 
-Sources: [SessionDetailCubit](../client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart),
-[StreamingTextBuffer](../client/module_core/lib/src/cubits/session_detail/streaming_text_buffer.dart),
-[event-buffer tests](../client/module_core/test/cubits/session_detail/session_detail_event_buffer_test.dart).
+Sources: [SessionDetailCubit](../../../client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart),
+[StreamingTextBuffer](../../../client/module_core/lib/src/cubits/session_detail/streaming_text_buffer.dart),
+[event-buffer tests](../../../client/module_core/test/cubits/session_detail/session_detail_event_buffer_test.dart).
 
 **A1 — accumulator reset.** `_doSilentRefresh` snapshots `_streamingBuffer`,
 clears it, and emits the saved text into state. The screen can therefore look
@@ -87,7 +87,7 @@ or modal side effects. Whole-list preservation was rejected because it would
 also discard useful fetched changes; the diagnostic explicitly expects both.
 See the plan for pagination ownership and the limits of unversioned snapshots.
 
-The existing [session-refresh-reconnects plan](../.plan/active/session-refresh-reconnects/PLAN.md)
+The existing [session-refresh-reconnects plan](../../active/session-refresh-reconnects/PLAN.md)
 already identified both risks but left behavioral changes pending diagnostics.
 The new tests provide the intended-refresh evidence it requested. Some older
 trigger descriptions are stale: current code ignores `sessions.updated` for
@@ -95,7 +95,7 @@ full-detail reload. Do not reimplement its earlier proposed trigger changes.
 
 ## B. Tests are preserving obsolete production machinery
 
-**B1 — insertion path.** [SessionRepository.insertStoredSession](../bridge/app/lib/src/repositories/session_repository.dart)
+**B1 — insertion path.** [SessionRepository.insertStoredSession](../../../bridge/app/lib/src/repositories/session_repository.dart)
 has no production caller; references are test setups, direct tests, and fake
 overrides. Its transaction includes a placeholder-project reattribution repair,
 extra ownership/state checks, and orphan deletion. Actual `createSession` uses
@@ -108,10 +108,10 @@ prompt-default, transaction, and binding-notification assertions. Remove tests
 whose sole contract is the obsolete helper's repair behavior. Do not preserve a
 test-only public production API or move its orphan cleanup into the live path.
 
-**B2 — maintained but unread index.** [SessionEventTracker](../bridge/app/lib/src/repositories/trackers/session_event_tracker.dart)
+**B2 — maintained but unread index.** [SessionEventTracker](../../../bridge/app/lib/src/repositories/trackers/session_event_tracker.dart)
 maintains `_children`, but the only reader is `takeChildren`, itself called only
 by tests. `takeTranslations` and `takeReady` also have no production callers.
-[SessionEventService](../bridge/app/lib/src/services/session_event_service.dart)
+[SessionEventService](../../../bridge/app/lib/src/services/session_event_service.dart)
 actually drains with `takeRoot`/`takeNextReady`; the latter uses the insertion
 order and each session's parent directly.
 
@@ -122,10 +122,10 @@ otherwise a green suite continues proving behavior the application never uses.
 
 ## C. A cache field with no reader creates a recovery failure
 
-Sources: [service](../bridge/app/lib/src/services/session_options_service.dart),
-[repository](../bridge/app/lib/src/repositories/session_options_repository.dart),
-[table](../bridge/app/lib/src/api/database/tables/session_options_cache_table.dart),
-[DAO](../bridge/app/lib/src/api/database/daos/session_options_cache_dao.dart).
+Sources: [service](../../../bridge/app/lib/src/services/session_options_service.dart),
+[repository](../../../bridge/app/lib/src/repositories/session_options_repository.dart),
+[table](../../../bridge/app/lib/src/api/database/tables/session_options_cache_table.dart),
+[DAO](../../../bridge/app/lib/src/api/database/daos/session_options_cache_dao.dart).
 
 `SessionOptionsCacheEntry.completeness` is written and read back, but no policy
 consumes the cached value. `_canReplace` depends on the **fresh observation's**
@@ -157,19 +157,19 @@ checks: cache-only reads and stale-send invalidation are additional writers.
 
 ## D. Internal boundaries add conversions and work with no consumer
 
-**D1 — typed values become JSON too early.** [BridgeSseEvent](../bridge/sesori_plugin_interface/lib/src/bridge_sse_event.dart)
+**D1 — typed values become JSON too early.** [BridgeSseEvent](../../../bridge/sesori_plugin_interface/lib/src/bridge_sse_event.dart)
 uses `Map<String, dynamic>` for message/status payloads even though
 `PluginMessage` and `PluginSessionStatus` already model them. Producers serialize;
-[SessionEventMapper](../bridge/app/lib/src/repositories/mappers/session_event_mapper.dart)
+[SessionEventMapper](../../../bridge/app/lib/src/repositories/mappers/session_event_mapper.dart)
 parses to identify/remap a message, then serializes again;
-[ChatHistoryListener](../bridge/app/lib/src/listeners/chat_history_listener.dart)
+[ChatHistoryListener](../../../bridge/app/lib/src/listeners/chat_history_listener.dart)
 parses again and can drop an undecodable internal message;
-[BridgeEventMapper](../bridge/app/lib/src/sse/bridge_event_mapper.dart)
+[BridgeEventMapper](../../../bridge/app/lib/src/sse/bridge_event_mapper.dart)
 builds another JSON event and parses it to construct the public model.
 
 Use typed plugin payloads across the internal boundary and existing
-[message](../bridge/app/lib/src/repositories/mappers/plugin_message_mapper.dart)/
-[status](../bridge/app/lib/src/repositories/mappers/plugin_session_status_mapper.dart)
+[message](../../../bridge/app/lib/src/repositories/mappers/plugin_message_mapper.dart)/
+[status](../../../bridge/app/lib/src/repositories/mappers/plugin_session_status_mapper.dart)
 core conversion functions at repository normalization, producing shared typed
 values for history and the independent SSE subgroup. Do not add SSE imports of
 repository mappers. All plugin
@@ -200,9 +200,9 @@ are null-routing or ignored-case lists. Public v1.8.2 has the same no-op uses.
 Keep toast, VCS, file-edited, command/options, and lifecycle signals with real
 consumers. Codex also emits `BridgeSseMcpToolsChanged` for
 `mcpServer/startupStatus/updated` in its
-[event mapper](../bridge/sesori_plugin_codex/lib/src/codex_event_mapper.dart),
+[event mapper](../../../bridge/sesori_plugin_codex/lib/src/codex_event_mapper.dart),
 with an assertion in its
-[mapper tests](../bridge/sesori_plugin_codex/test/codex_event_mapper_test.dart).
+[mapper tests](../../../bridge/sesori_plugin_codex/test/codex_event_mapper_test.dart).
 Include that producer/test in the same suppression step, keeping Codex's
 `skills/changed` command-catalog invalidation. No traffic volume or latency
 reduction has been measured.
@@ -221,9 +221,9 @@ stored-session objects. Replace this bulk helper with a DAO/repository
 backend-ID-to-stable-ID projection, retaining plugin scoping and optional-ID
 semantics. Full-session methods with real consumers remain.
 
-[ProjectRepository.getActivities](../bridge/app/lib/src/repositories/project_repository.dart)
+[ProjectRepository.getActivities](../../../bridge/app/lib/src/repositories/project_repository.dart)
 reads all projects then filters the requested set for
-[ProjectActivityService](../bridge/app/lib/src/services/project_activity_service.dart).
+[ProjectActivityService](../../../bridge/app/lib/src/services/project_activity_service.dart).
 Push scope and required timestamp columns into the DAO query. The singular
 `getActivity` has no callers and can be removed. These simplify work by
 construction; neither warrants a new cache or an unmeasured speed claim.
@@ -233,10 +233,10 @@ construction; neither warrants a new cache or an unmeasured speed claim.
 ### E1. One thumbnail storage implementation
 
 Sources:
-[mobile storage](../client/app/lib/core/platform/flutter_attachment_thumbnail_storage.dart),
-[desktop storage](../client/desktop/lib/core/platform/desktop_attachment_thumbnail_storage.dart),
-[mobile temporary-directory client](../client/app/lib/core/platform/temporary_directory_client.dart),
-[desktop temporary-directory client](../client/desktop/lib/core/platform/desktop_temporary_directory_client.dart).
+[mobile storage](../../../client/app/lib/core/platform/flutter_attachment_thumbnail_storage.dart),
+[desktop storage](../../../client/desktop/lib/core/platform/desktop_attachment_thumbnail_storage.dart),
+[mobile temporary-directory client](../../../client/app/lib/core/platform/temporary_directory_client.dart),
+[desktop temporary-directory client](../../../client/desktop/lib/core/platform/desktop_temporary_directory_client.dart).
 
 After normalizing platform class/import names and excluding comments and blank
 lines, the storage implementations share 115 lines out of 118 mobile and 116
@@ -246,9 +246,9 @@ same cached-future lookup and retry-after-failure logic; mobile additionally
 exposes voice warm-up.
 
 The test copies have already drifted:
-[mobile](../client/app/test/core/platform/flutter_attachment_thumbnail_storage_test.dart)
+[mobile](../../../client/app/test/core/platform/flutter_attachment_thumbnail_storage_test.dart)
 tests active-write/listing overlap and failed replacement cleanup, while
-[desktop](../client/desktop/test/core/platform/desktop_attachment_thumbnail_storage_test.dart)
+[desktop](../../../client/desktop/test/core/platform/desktop_attachment_thumbnail_storage_test.dart)
 does not include those cases. This is a maintenance gap, not evidence that the
 desktop implementation currently fails them.
 
@@ -272,7 +272,7 @@ filesystem operations, and account retirement. Keep mobile voice warm-up and
 failed-directory-lookup retry behavior. Validate one shared storage suite and
 both shell compositions; run the existing image repository and voice tests
 affected by directory-client wiring. Move and run the
-[temporary-directory suite](../client/app/test/core/platform/temporary_directory_client_test.dart)
+[temporary-directory suite](../../../client/app/test/core/platform/temporary_directory_client_test.dart)
 in core, preserving shared-future identity, direct asynchronous failure,
 synchronous/asynchronous warm-up failure containment and retry. The shell binds
 its platform provider; core DI registers the shared client/storage once.
@@ -280,9 +280,9 @@ its platform provider; core DI registers the shared client/storage once.
 ### E2. Measure whole-cache pruning on thumbnail downloads
 
 Sources:
-[`MessageImageRepository._loadStoredData` and `_writeAndPruneThumbnail`](../client/module_core/lib/src/repositories/message_image_repository.dart),
+[`MessageImageRepository._loadStoredData` and `_writeAndPruneThumbnail`](../../../client/module_core/lib/src/repositories/message_image_repository.dart),
 the storage implementations above, and
-[image repository tests](../client/module_core/test/repositories/message_image_repository_test.dart).
+[image repository tests](../../../client/module_core/test/repositories/message_image_repository_test.dart).
 
 A successful uncached thumbnail load awaits `_writeAndPruneThumbnail` before
 returning its result. After each write, that method lists the entire account
@@ -311,9 +311,9 @@ Account isolation is not an acceptable tradeoff for faster pruning.
 ### E3. One optimistic rename state machine
 
 Sources:
-[`_ProjectRenameState`](../client/module_core/lib/src/cubits/project_list/project_list_cubit.dart),
-[`_SessionRenameState`](../client/module_core/lib/src/cubits/session_list/session_list_cubit.dart),
-and [`RenameSheet._save`](../client/module_app_ui/lib/src/widgets/rename_sheet.dart).
+[`_ProjectRenameState`](../../../client/module_core/lib/src/cubits/project_list/project_list_cubit.dart),
+[`_SessionRenameState`](../../../client/module_core/lib/src/cubits/session_list/session_list_cubit.dart),
+and [`RenameSheet._save`](../../../client/module_app_ui/lib/src/widgets/rename_sheet.dart).
 
 The two private classes implement the same pending-token map, latest visible
 intent, confirmed value, and failure selection algorithm, with `name` versus
@@ -329,17 +329,17 @@ Extract only the common rename bookkeeping into a narrowly scoped client-core
 owner. Keep project/session repository calls, list projection, refresh policy,
 and UI decisions in their existing owners. Do not introduce a generic optimistic
 mutation framework or merge the two cubits. Existing
-[project tests](../client/module_core/test/cubits/project_list/project_list_cubit_test.dart)
-and [session tests](../client/module_core/test/cubits/session_list/session_list_cubit_test.dart)
+[project tests](../../../client/module_core/test/cubits/project_list/project_list_cubit_test.dart)
+and [session tests](../../../client/module_core/test/cubits/session_list/session_list_cubit_test.dart)
 provide the relevant behavior checks.
 
 ### E4. Compose existing locks for session-operation ordering
 
 Sources:
-[`SessionOperationDispatcher`](../bridge/app/lib/src/services/session_operation_dispatcher.dart),
-[`ParallelLock` / `KeyedParallelLock`](../bridge/sesori_bridge_foundation/lib/src/parallel_lock.dart),
-[`PendingOperations`](../bridge/sesori_bridge_foundation/lib/src/pending_operations.dart),
-and [dispatcher tests](../bridge/app/test/bridge/services/session_operation_dispatcher_test.dart).
+[`SessionOperationDispatcher`](../../../bridge/app/lib/src/services/session_operation_dispatcher.dart),
+[`ParallelLock` / `KeyedParallelLock`](../../../bridge/sesori_bridge_foundation/lib/src/parallel_lock.dart),
+[`PendingOperations`](../../../bridge/sesori_bridge_foundation/lib/src/pending_operations.dart),
+and [dispatcher tests](../../../bridge/app/test/bridge/services/session_operation_dispatcher_test.dart).
 
 The dispatcher hand-rolls a resolution tail, family-lane tokens, in-flight
 settlements, removal callbacks, and drain handling. Foundation already owns
@@ -362,15 +362,15 @@ cleanup with changing family resolution or archive/delete semantics.
 ### E5. Share managed-install construction, not whole descriptors
 
 Sources: `installRuntime` in the
-[Codex](../bridge/sesori_plugin_codex/lib/src/runtime/codex_plugin_descriptor.dart),
-[OpenCode](../bridge/sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart),
-[Copilot](../bridge/sesori_plugin_copilot/lib/src/runtime/copilot_plugin_descriptor.dart),
-[Cursor](../bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart),
-[Pi](../bridge/sesori_plugin_pi/lib/src/runtime/pi_plugin_descriptor.dart),
-[OMP](../bridge/sesori_plugin_omp/lib/src/runtime/omp_plugin_descriptor.dart),
-and [DeepSeek](../bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_plugin_descriptor.dart)
+[Codex](../../../bridge/sesori_plugin_codex/lib/src/runtime/codex_plugin_descriptor.dart),
+[OpenCode](../../../bridge/sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart),
+[Copilot](../../../bridge/sesori_plugin_copilot/lib/src/runtime/copilot_plugin_descriptor.dart),
+[Cursor](../../../bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart),
+[Pi](../../../bridge/sesori_plugin_pi/lib/src/runtime/pi_plugin_descriptor.dart),
+[OMP](../../../bridge/sesori_plugin_omp/lib/src/runtime/omp_plugin_descriptor.dart),
+and [DeepSeek](../../../bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_plugin_descriptor.dart)
 descriptors, plus
-[`ManagedRuntimeInstallService`](../bridge/sesori_plugin_runtime/lib/src/provisioning/managed_runtime_install_service.dart).
+[`ManagedRuntimeInstallService`](../../../bridge/sesori_plugin_runtime/lib/src/provisioning/managed_runtime_install_service.dart).
 
 Descriptors repeatedly construct the same HTTP client, downloader, checksum
 validator, extractor, installer, and cleaner graph and close the HTTP client in
@@ -394,7 +394,7 @@ externally installed harnesses alone.
 
 ## Disposition and deliberately retained complexity
 
-The [plan](../.plan/completed/periodic-cleanup/PLAN.md) prioritizes A, B, C and D1/D3/D4,
+The [plan](PLAN.md) prioritizes A, B, C and D1/D3/D4,
 then E1/E3/E5. E2 remains a measurable cost hypothesis; E4 is valid duplication
 but a correct ordering boundary is not worth churn solely to save a few queue
 fields. D2 needs separate architecture scope. These are explicit deferrals,
@@ -412,8 +412,8 @@ not justify splitting the orchestrator, session cubit, or ACP implementation.
 
 At the user's request, useful findings from
 [PR #1296](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1296) are now
-included in the [single cleanup plan](../.plan/completed/periodic-cleanup/PLAN.md).
-The [source-step ledger](../.plan/completed/periodic-cleanup/CONSOLIDATION.md) retains
+included in the [single cleanup plan](PLAN.md).
+The [source-step ledger](CONSOLIDATION.md) retains
 every disposition, including deferred architecture/compatibility decisions.
 
 Added executable work covers provisioning composition, bounded cold-start

@@ -8,7 +8,7 @@ Baseline: `480d82f090`. Date: 2026-09-04. Slug: `periodic-cleanup`.
 
 Remove code that exists because ownership is unclear or obsolete consumers are
 still modeled. Prioritize demonstrated reliability failures and needless
-production work over cosmetic extraction. The [audit](../../../docs/cleanup-audit-2026-09-04.md)
+production work over cosmetic extraction. The [audit](AUDIT.md)
 contains caller traces, source links, evidence limits, and deferred candidates;
 [evidence](evidence/README.md) contains three executed diagnostic reproductions.
 This plan consolidates [#1296](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1296)
