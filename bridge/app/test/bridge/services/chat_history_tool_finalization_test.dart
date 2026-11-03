@@ -34,11 +34,13 @@ void main() {
 
       expect(finalized, hasLength(2));
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect(_stateOf(stored["t1"]!).status, ToolStatus.error);
-      expect(_stateOf(stored["t1"]!).error, "The turn ended before this tool reported a result.");
-      expect(_stateOf(stored["t2"]!).status, ToolStatus.error);
-      expect(_stateOf(stored["t3"]!).status, ToolStatus.completed);
-      expect(_stateOf(stored["t3"]!).output, "done", reason: "terminal parts stay untouched");
+      final t1 = _stateOf(stored["t1"] ?? fail("missing part t1"));
+      expect(t1.status, ToolStatus.error);
+      expect(t1.error, "The turn ended before this tool reported a result.");
+      expect(_stateOf(stored["t2"] ?? fail("missing part t2")).status, ToolStatus.error);
+      final t3 = _stateOf(stored["t3"] ?? fail("missing part t3"));
+      expect(t3.status, ToolStatus.completed);
+      expect(t3.output, "done", reason: "terminal parts stay untouched");
     });
 
     test("finalizes an open subtask part to cancelled without error text", () async {
@@ -64,12 +66,20 @@ void main() {
 
       expect(finalized.map((shapes) => shapes.inlinePart.id), ["s1"]);
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      final swept = stored["s1"]! as MessagePartSubtask;
+      final swept = stored["s1"];
+      if (swept is! MessagePartSubtask) fail("expected subtask part s1, got $swept");
       expect(swept.taskState?.status, ToolStatus.cancelled);
-      expect((swept.taskState! as ToolStateFull).error, isNull);
+      expect(swept.taskState, isA<ToolStateFull>().having((state) => state.error, "error", isNull));
       expect(swept.childSessionID, "child-1");
-      expect((stored["s2"]! as MessagePartSubtask).taskState?.status, ToolStatus.completed);
-      expect((stored["s3"]! as MessagePartSubtask).taskState, isNull, reason: "OpenCode shape is untouched");
+      expect(
+        stored["s2"],
+        isA<MessagePartSubtask>().having((part) => part.taskState?.status, "taskState.status", ToolStatus.completed),
+      );
+      expect(
+        stored["s3"],
+        isA<MessagePartSubtask>().having((part) => part.taskState, "taskState", isNull),
+        reason: "OpenCode shape is untouched",
+      );
     });
 
     test("finalizes a running compaction to failed and leaves settled ones alone", () async {
@@ -102,11 +112,15 @@ void main() {
       expect(finalized.map((shapes) => shapes.inlinePart.id), ["c1"]);
       final stored = await _storedParts(history: history, sessionId: "ses_a");
       expect(
-        (stored["c1"]! as MessagePartCompaction).state,
-        const CompactionState.failed(reason: CompactionFailureReason.turnEnded),
+        stored["c1"],
+        isA<MessagePartCompaction>().having(
+          (part) => part.state,
+          "state",
+          const CompactionState.failed(reason: CompactionFailureReason.turnEnded),
+        ),
       );
-      expect((stored["c2"]! as MessagePartCompaction).state, completed);
-      expect((stored["c3"]! as MessagePartCompaction).state, failed);
+      expect(stored["c2"], isA<MessagePartCompaction>().having((part) => part.state, "state", completed));
+      expect(stored["c3"], isA<MessagePartCompaction>().having((part) => part.state, "state", failed));
     });
 
     test("keeps shell command and output of a finalized part", () async {
@@ -129,8 +143,9 @@ void main() {
       await history.service.finalizeOpenToolParts(sessionId: "ses_a");
 
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect(_stateOf(stored["t1"]!).shellCommand, "git status");
-      expect(_stateOf(stored["t1"]!).output, "partial");
+      final t1 = _stateOf(stored["t1"] ?? fail("missing part t1"));
+      expect(t1.shellCommand, "git status");
+      expect(t1.output, "partial");
     });
 
     test("keeps the stored attachments of a finalized part", () async {
@@ -207,7 +222,7 @@ void main() {
 
       expect(await history.service.finalizeOpenToolParts(sessionId: "ses_a"), isEmpty);
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect((stored["p1"]! as MessagePartText).text, "running");
+      expect(stored["p1"], isA<MessagePartText>().having((part) => part.text, "text", "running"));
     });
 
     test("does not advance the session's freshness marks", () async {
@@ -220,12 +235,12 @@ void main() {
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
       );
-      final before = await history.repository.getSyncState(sessionId: "ses_a");
+      final before = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
 
       await history.service.finalizeOpenToolParts(sessionId: "ses_a");
 
-      final after = await history.repository.getSyncState(sessionId: "ses_a");
-      expect(after!.watermark, before!.watermark);
+      final after = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
+      expect(after.watermark, before.watermark);
       expect(after.backendActivityAt, before.backendActivityAt);
       expect(after.syncedAt, before.syncedAt);
     });

@@ -29,8 +29,8 @@ void main() {
       expect(call.executable, equals("tasklist"));
       expect(call.arguments, containsAllInOrder(<String>["/FI", "PID eq 321"]));
 
-      expect(identity, isNotNull);
-      expect(identity!.pid, equals(321));
+      if (identity == null) fail("expected a process identity");
+      expect(identity.pid, equals(321));
       expect(identity.executablePath, equals("sesori-bridge.exe"));
       expect(identity.ownerUser, equals(ProcessUser.fromRawUser(r"HOST\alex")));
     });
@@ -225,8 +225,8 @@ void main() {
       expect(call.arguments, isNot(contains("-axwwo")));
       expect(call.environment, equals(<String, String>{"LC_ALL": "C"}));
 
-      expect(identity, isNotNull);
-      expect(identity!.pid, equals(321));
+      if (identity == null) fail("expected a process identity");
+      expect(identity.pid, equals(321));
       expect(identity.startMarker, equals("Mon Jun 22 09:15:01 2026"));
       expect(identity.executablePath, equals("/usr/local/bin/sesori-bridge"));
       expect(identity.commandLine, equals("/usr/local/bin/sesori-bridge --relay wss://relay"));

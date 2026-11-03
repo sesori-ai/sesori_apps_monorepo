@@ -802,6 +802,8 @@ void main() {
           .drain<void>();
 
       final bindings = await database.sessionDao.getSessionsForPlugin(pluginId: plugin.id);
+      final rootA = bindings["root-a"] ?? fail("missing root-a binding");
+      final rootB = bindings["root-b"] ?? fail("missing root-b binding");
       expect(
         published.map((activity) => activity.activityAt).toList()..sort(),
         const [4242, 5353],
@@ -809,7 +811,7 @@ void main() {
       );
       expect(
         published.map((activity) => activity.sessionId).toSet(),
-        {bindings["root-a"]!.sessionId, bindings["root-b"]!.sessionId},
+        {rootA.sessionId, rootB.sessionId},
       );
     });
 

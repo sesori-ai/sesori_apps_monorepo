@@ -122,7 +122,7 @@ void main() {
         ),
         notification: CodexServerNotification(method: completed ? "item/completed" : "item/started", params: const {}),
       );
-      final state = _project(tool: tool!);
+      final state = _project(tool: tool ?? fail("the command item was not observed"));
       expect(state.shellCommand, completed ? "echo updated" : "pwd");
       if (completed) {
         expect(state.output, "result");

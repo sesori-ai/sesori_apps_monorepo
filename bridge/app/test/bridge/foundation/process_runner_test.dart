@@ -127,8 +127,8 @@ Future<void> main(List<String> arguments) async {
 
     expect(stopwatch.elapsed, lessThan(const Duration(seconds: 4)));
     expect(childPid, greaterThan(0));
-    final connectedChildSocket = childSocket!;
-    final connectedChildMessages = childMessages!;
+    final connectedChildSocket = childSocket ?? fail("child control socket never connected");
+    final connectedChildMessages = childMessages ?? fail("child control messages never connected");
     connectedChildSocket.write("terminate");
     await connectedChildSocket.flush();
     expect(

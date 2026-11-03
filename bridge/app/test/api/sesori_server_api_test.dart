@@ -528,7 +528,7 @@ class _AbortAwareClient() extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final abortable = request as http.Abortable;
     sendStarted.complete();
-    await abortable.abortTrigger!;
+    await (abortable.abortTrigger ?? fail("request has no abort trigger"));
     abortObserved = true;
     throw http.RequestAbortedException(request.url);
   }

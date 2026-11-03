@@ -36,7 +36,7 @@ void main() {
 
     expect(started.status, 200);
     expect(
-      PluginAuthenticationChallengeResponse.fromJson(jsonDecodeMap(started.body!)).toJson(),
+      PluginAuthenticationChallengeResponse.fromJson(jsonDecodeMap(started.body ?? fail("missing body"))).toJson(),
       const PluginAuthenticationChallengeResponse.deviceCode(
         verificationUrl: "https://auth.example/device",
         userCode: "ABCD-EFGH",
@@ -61,7 +61,7 @@ void main() {
 
     expect(missing.status, 404);
     expect(conflict.status, 409);
-    expect(PluginAuthenticationConflict.fromJson(jsonDecodeMap(conflict.body!)), _conflict);
+    expect(PluginAuthenticationConflict.fromJson(jsonDecodeMap(conflict.body ?? fail("missing body"))), _conflict);
   });
 
   test("redirect POST parses bounded URIs and maps typed failures", () async {
@@ -84,7 +84,10 @@ void main() {
     );
     final conflict = await send();
     expect(conflict.status, 409);
-    expect(PluginAuthenticationConflict.fromJson(jsonDecodeMap(conflict.body!)), _continuationConflict);
+    expect(
+      PluginAuthenticationConflict.fromJson(jsonDecodeMap(conflict.body ?? fail("missing body"))),
+      _continuationConflict,
+    );
     final oversizedUrl = List.filled(PluginAuthenticationRedirectRequest.maxRedirectUrlLength + 1, "x").join();
     expect(
       (await handler.routeForTest(
@@ -142,7 +145,7 @@ void main() {
     );
 
     expect(response.status, 409);
-    expect(PluginAuthenticationConflict.fromJson(jsonDecodeMap(response.body!)), _conflict);
+    expect(PluginAuthenticationConflict.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))), _conflict);
   });
 }
 

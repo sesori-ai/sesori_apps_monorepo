@@ -308,7 +308,8 @@ class _FakeCatalogImportRepository({
   @override
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async {
     hydrationReads++;
-    return await (hydrationGate == null ? completion : hydrationGate!.future);
+    if (hydrationGate case final gate?) return await gate.future;
+    return completion;
   }
 
   @override

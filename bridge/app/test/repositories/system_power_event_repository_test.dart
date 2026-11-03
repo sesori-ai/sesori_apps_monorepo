@@ -26,8 +26,9 @@ void main() {
     final events = <SystemPowerEvent>[];
     final subscription = source.events.listen(events.add);
     source.start();
-    api.callback!(event: 1, errorCode: 0);
-    api.callback!(event: 2, errorCode: 0);
+    final callback = api.callback ?? fail("observer was not started");
+    callback(event: 1, errorCode: 0);
+    callback(event: 2, errorCode: 0);
     await Future<void>.delayed(Duration.zero);
     expect(events, [SystemPowerEvent.willSleep, SystemPowerEvent.fullWake]);
     await source.dispose();

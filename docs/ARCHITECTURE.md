@@ -39,7 +39,7 @@ sesori_apps_monorepo/
 └── docs/                       # Deep-dive guides
 ```
 
-`bridge/` and `client/` are independent Dart pub workspaces with separate dependency resolution. `sesori_shared` is referenced via path by both and carries the crypto and protocol types. `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency by client packages.
+`bridge/` and `client/` are independent Dart pub workspaces with separate dependency resolution. `sesori_shared` is referenced via path by both and carries the crypto and protocol types. `no_slop_linter` is a custom analyzer plugin that the `analysis_options.yaml` files load by path; no package depends on it.
 
 ## Dependency graph
 
@@ -137,7 +137,7 @@ graph TD
   design_catalog[client/design_catalog] --> module_prego
 ```
 
-`shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency. It is a dev dependency of the client packages, and `shared/sesori_shared` enables it as an analyzer plugin by path.
+`shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency. `client/`, `bridge/` and `shared/sesori_shared` enable it as an analyzer plugin by path in their `analysis_options.yaml`.
 
 ## Runtime data flow
 

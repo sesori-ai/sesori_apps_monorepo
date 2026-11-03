@@ -46,7 +46,7 @@ void main() {
       final getResponse = await GetCatalogImportStatusesHandler(service: service).routeForTest(
         makeRequest("GET", "/plugin/import"),
       );
-      final decoded = CatalogImportStatusesResponse.fromJson(jsonDecodeMap(getResponse.body!));
+      final decoded = CatalogImportStatusesResponse.fromJson(jsonDecodeMap(getResponse.body ?? fail("missing body")));
       expect(decoded.statuses.single, isA<CatalogImportCompleted>());
       expect(repository.importCalls, 1);
       expect(repository.control?.rescanRequested, isTrue);
