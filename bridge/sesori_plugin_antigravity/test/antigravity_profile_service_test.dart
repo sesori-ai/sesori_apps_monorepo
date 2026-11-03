@@ -88,6 +88,7 @@ class _ProfileProcesses() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     calls.add((inherits: includeParentEnvironment, environment: environment));
     return _ProfileProcess();

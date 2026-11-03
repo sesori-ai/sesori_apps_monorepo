@@ -80,7 +80,7 @@ void main() {
         processRepository: _FakeProcessRepository(),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
-        currentUser: ProcessUser.fromRawUser("alex"),
+        processes: const _UnusedHostProcessService(),
         resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
         settingsChanges: settingsChanges.stream,
       );
@@ -125,7 +125,7 @@ void main() {
         processRepository: _FakeProcessRepository(),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
-        currentUser: ProcessUser.fromRawUser("alex"),
+        processes: const _UnusedHostProcessService(),
         resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
         settingsChanges: settingsChanges.stream,
       );
@@ -411,7 +411,7 @@ void main() {
         processRepository: _FakeProcessRepository(),
         clock: const ServerClock(),
         environment: const <String, String>{},
-        currentUser: null,
+        processes: const _UnusedHostProcessService(),
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
         settingsChanges: settingsChanges.stream,
       );
@@ -911,4 +911,10 @@ class _FakeBridgeInstanceService() implements BridgeInstanceService {
     startupLockContentionCalls.add((lock: lock, holder: holder, currentPid: currentPid));
     return startupLockStatus;
   }
+}
+
+class const _UnusedHostProcessService() implements HostProcessService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnsupportedError("the factory only hands the service to plugins");
 }

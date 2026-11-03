@@ -1,7 +1,15 @@
 import "dart:io" as io;
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show HostProcessService, Log, ProcessIdentity, ProcessUser, ServerClock, SignalResult, SpawnedProcess;
+    show
+        HostProcessService,
+        Log,
+        ProcessIdentity,
+        ProcessLifetime,
+        ProcessUser,
+        ServerClock,
+        SignalResult,
+        SpawnedProcess;
 
 import "../repositories/process_repository.dart";
 
@@ -32,6 +40,7 @@ class BridgeHostProcessService({
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     final process = await _processStarter(
       executable,
@@ -41,6 +50,13 @@ class BridgeHostProcessService({
       runInShell: runInShell,
       includeParentEnvironment: includeParentEnvironment,
     );
+    if (_isWindows && lifetime == ProcessLifetime.endsWithBridge) {
+      // ponytail: the child already runs when it is bound, so with runInShell
+      // cmd.exe can start the real runtime before the bind lands and that
+      // runtime escapes the job, which is today's behaviour. If that is ever
+      // seen, launch suspended through CreateProcess over FFI, bind, resume.
+      _processRepository.bindToBridgeLifetime(pid: process.pid);
+    }
 
     final spawnIdentity = ProcessIdentity(
       pid: process.pid,

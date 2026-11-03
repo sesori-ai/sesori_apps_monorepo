@@ -8,7 +8,7 @@ import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJson
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show SemanticVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show HostPortService, Log, PluginHost, SpawnedProcess;
+    show HostPortService, Log, PluginHost, ProcessLifetime, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
@@ -224,6 +224,7 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
     environment: environment,
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
+    lifetime: ProcessLifetime.endsWithBridge,
   );
   return DrainingSpawnedProcess(inner: process);
 }

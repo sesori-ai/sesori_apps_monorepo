@@ -134,6 +134,7 @@ class _ScriptedCli() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     final command = arguments.join(" ");
     commands.add(command);

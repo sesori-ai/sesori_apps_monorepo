@@ -103,7 +103,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     processRepository: _FakeProcessRepository(),
     clock: const ServerClock(),
     environment: const <String, String>{},
-    currentUser: null,
+    processes: const _UnusedHostProcessService(),
     resolveIdleTimeoutMins: ({required pluginId}) => 10,
     settingsChanges: const Stream<Object?>.empty(),
   );

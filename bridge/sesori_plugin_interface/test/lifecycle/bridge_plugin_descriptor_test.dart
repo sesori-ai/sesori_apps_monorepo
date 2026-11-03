@@ -265,6 +265,7 @@ class const _UnusedProcessService() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) => throw UnimplementedError();
 
   @override

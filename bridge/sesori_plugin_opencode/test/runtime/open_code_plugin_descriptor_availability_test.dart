@@ -305,6 +305,7 @@ class _ProbeProcessService({final Object? spawnError, final _ProbeProcess? proce
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List<String>.from(arguments));
