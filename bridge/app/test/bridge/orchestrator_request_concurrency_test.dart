@@ -11,7 +11,6 @@ import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
-import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -87,127 +86,58 @@ void main() {
       }
     });
 
-    test("phone disconnect and rekey fence a reused connId without suppressing restart", () async {
+    test("phone disconnect and rekey fence a stale response from a reused connId", () async {
       final harness = await _ConcurrencyHarness.start();
       addTearDown(harness.close);
+      await harness.insertSession(sessionId: "rekey-session");
       final originalPhone = await harness.activatePhone(connId: 31);
-      final preflightStarted = Completer<void>();
-      final preflightGate = Completer<void>();
-      harness.restartService
-        ..restartable = true
-        ..canRestartStarted = preflightStarted
-        ..canRestartDelay = preflightGate.future;
-
-      await harness.sendEncrypted(
+      final routeGate = await harness.stallMessagesRequest(
         connId: 31,
         encryptor: originalPhone,
-        message: const RelayMessage.request(
-          id: "stale-restart",
-          method: "POST",
-          path: "/global/restart",
-          headers: {},
-          body: null,
-        ),
+        sessionId: "rekey-session",
       );
-      await preflightStarted.future.timeout(const Duration(seconds: 2));
 
       try {
         harness.disconnectPhone(connId: 31);
-        await harness.activatePhone(connId: 31);
-        final sendsBeforeCompletion = harness.relayClient.sendCount;
+        final currentPhone = await harness.activatePhone(connId: 31);
         final attemptsBeforeCompletion = harness.relayClient.sendAttempts.length;
 
-        preflightGate.complete();
-        await harness.restartService.handoffPerformed.future.timeout(const Duration(seconds: 2));
-
-        expect(harness.restartService.handoffCalls, 1);
-        expect(harness.restartService.sendCountAtHandoff, sendsBeforeCompletion);
-        expect(harness.restartService.sendAttemptCountAtHandoff, attemptsBeforeCompletion);
-        await harness.runFuture.timeout(const Duration(seconds: 5));
+        routeGate.complete();
+        await harness.expectOnlyFreshHealthResponse(
+          connId: 31,
+          encryptor: currentPhone,
+          attemptsBefore: attemptsBeforeCompletion,
+        );
       } finally {
-        if (!preflightGate.isCompleted) preflightGate.complete();
+        if (!routeGate.isCompleted) routeGate.complete();
       }
     });
 
     test("relay reconnect fences an old response from a successor reusing the connId", () async {
       final harness = await _ConcurrencyHarness.start();
       addTearDown(harness.close);
+      await harness.insertSession(sessionId: "reconnect-session");
       final originalPhone = await harness.activatePhone(connId: 41);
-      final preflightStarted = Completer<void>();
-      final preflightGate = Completer<void>();
-      harness.restartService
-        ..restartable = true
-        ..canRestartStarted = preflightStarted
-        ..canRestartDelay = preflightGate.future;
-
-      await harness.sendEncrypted(
+      final routeGate = await harness.stallMessagesRequest(
         connId: 41,
         encryptor: originalPhone,
-        message: const RelayMessage.request(
-          id: "old-epoch-restart",
-          method: "POST",
-          path: "/global/restart",
-          headers: {},
-          body: null,
-        ),
+        sessionId: "reconnect-session",
       );
-      await preflightStarted.future.timeout(const Duration(seconds: 2));
 
       try {
         await harness.reconnectRelay();
-        await harness.activatePhone(connId: 41);
-        final sendsBeforeCompletion = harness.relayClient.sendCount;
+        final currentPhone = await harness.activatePhone(connId: 41);
         final attemptsBeforeCompletion = harness.relayClient.sendAttempts.length;
 
-        preflightGate.complete();
-        await harness.restartService.handoffPerformed.future.timeout(const Duration(seconds: 2));
-
-        expect(harness.restartService.handoffCalls, 1);
-        expect(harness.restartService.sendCountAtHandoff, sendsBeforeCompletion);
-        expect(harness.restartService.sendAttemptCountAtHandoff, attemptsBeforeCompletion);
-        await harness.runFuture.timeout(const Duration(seconds: 5));
+        routeGate.complete();
+        await harness.expectOnlyFreshHealthResponse(
+          connId: 41,
+          encryptor: currentPhone,
+          attemptsBefore: attemptsBeforeCompletion,
+        );
       } finally {
-        if (!preflightGate.isCompleted) preflightGate.complete();
+        if (!routeGate.isCompleted) routeGate.complete();
       }
-    });
-
-    test("restart dispatch follows a synchronously claimed current send failure", () async {
-      final harness = await _ConcurrencyHarness.start();
-      addTearDown(harness.close);
-      final phone = await harness.activatePhone(connId: 51);
-      final closeGate = Completer<void>();
-      harness.restartService.restartable = true;
-      harness.relayClient
-        ..closeDelay = closeGate.future
-        ..failNextSend = true;
-      final sendsBeforeRestart = harness.relayClient.sendCount;
-      final attemptsBeforeRestart = harness.relayClient.sendAttempts.length;
-
-      await harness.sendEncrypted(
-        connId: 51,
-        encryptor: phone,
-        message: const RelayMessage.request(
-          id: "send-failure-restart",
-          method: "POST",
-          path: "/global/restart",
-          headers: {},
-          body: null,
-        ),
-      );
-
-      try {
-        await harness.restartService.handoffPerformed.future.timeout(const Duration(seconds: 2));
-
-        expect(harness.restartService.handoffCalls, 1);
-        expect(harness.restartService.sendCountAtHandoff, sendsBeforeRestart);
-        expect(harness.restartService.sendAttemptCountAtHandoff, attemptsBeforeRestart + 1);
-        expect(harness.restartService.closeAttemptCountAtHandoff, 1);
-        expect(harness.relayClient.closeStarted.isCompleted, isTrue);
-        expect(closeGate.isCompleted, isFalse, reason: "restart must not await the close handshake");
-      } finally {
-        if (!closeGate.isCompleted) closeGate.complete();
-      }
-      await harness.runFuture.timeout(const Duration(seconds: 5));
     });
 
     test("shutdown drains accepted work and prevents its late response send", () async {
@@ -294,7 +224,6 @@ class _ConcurrencyHarness._({
   required final http.Client httpClient,
   required final BridgeRuntime runtime,
   required final _RecordingRelayClient relayClient,
-  required final _RecordingRestartService restartService,
   required var WebSocket _socket,
   required var StreamIterator<dynamic> _messages,
 }) {
@@ -310,7 +239,6 @@ class _ConcurrencyHarness._({
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: registrationService,
     );
-    final restartService = _RecordingRestartService(relayClient: relayClient);
     final failureReporter = FakeFailureReporter();
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
@@ -337,7 +265,6 @@ class _ConcurrencyHarness._({
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
       failureReporter: failureReporter,
-      restartService: restartService,
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
@@ -366,7 +293,6 @@ class _ConcurrencyHarness._({
       httpClient: httpClient,
       runtime: runtime,
       relayClient: relayClient,
-      restartService: restartService,
       socket: socket,
       messages: messages,
     );
@@ -387,6 +313,55 @@ class _ConcurrencyHarness._({
       agent: null,
       agentModel: null,
     );
+  }
+
+  /// Sends a messages request whose plugin read blocks until the returned gate completes.
+  Future<Completer<void>> stallMessagesRequest({
+    required int connId,
+    required SessionEncryptor encryptor,
+    required String sessionId,
+  }) async {
+    final routeStarted = Completer<void>();
+    final routeGate = Completer<void>();
+    plugin
+      ..messagesStarted = routeStarted
+      ..messagesDelay = routeGate.future;
+    await sendEncrypted(
+      connId: connId,
+      encryptor: encryptor,
+      message: RelayMessage.request(
+        id: "stale-request",
+        method: "POST",
+        path: "/session/messages",
+        headers: const {},
+        body: jsonEncode(SessionIdRequest(sessionId: sessionId).toJson()),
+      ),
+    );
+    await routeStarted.future.timeout(const Duration(seconds: 2));
+    return routeGate;
+  }
+
+  /// Round-trips a health request and proves it was the only send since [attemptsBefore].
+  Future<void> expectOnlyFreshHealthResponse({
+    required int connId,
+    required SessionEncryptor encryptor,
+    required int attemptsBefore,
+  }) async {
+    await sendEncrypted(
+      connId: connId,
+      encryptor: encryptor,
+      message: const RelayMessage.request(
+        id: "fresh-health",
+        method: "GET",
+        path: "/global/health",
+        headers: {},
+        body: null,
+      ),
+    );
+    final health = await nextResponse(connId: connId, encryptor: encryptor, requestId: "fresh-health");
+
+    expect(health.status, 200);
+    expect(relayClient.sendAttempts.length, attemptsBefore + 1, reason: "the stale route response must not be sent");
   }
 
   Future<SessionEncryptor> activatePhone({required int connId}) async {
@@ -518,11 +493,7 @@ class _RecordingRelayClient({
   required super.bridgeIdProvider,
 }) extends RelayClient {
   final List<({RelayConnection connection, int connId})> sendAttempts = [];
-  final List<RelayConnection> closeAttempts = [];
-  final Completer<void> closeStarted = Completer<void>();
   int sendCount = 0;
-  bool failNextSend = false;
-  Future<void>? closeDelay;
 
   @override
   RelaySendOutcome sendIfCurrent({
@@ -531,10 +502,6 @@ class _RecordingRelayClient({
     required Uint8List payload,
   }) {
     sendAttempts.add((connection: connection, connId: connID));
-    if (failNextSend) {
-      failNextSend = false;
-      throw StateError("send failed intentionally");
-    }
     final outcome = super.sendIfCurrent(
       connection: connection,
       connID: connID,
@@ -543,50 +510,4 @@ class _RecordingRelayClient({
     if (outcome == RelaySendOutcome.sent) sendCount++;
     return outcome;
   }
-
-  @override
-  Future<RelayCloseOutcome> closeIfCurrent({required RelayConnection connection}) async {
-    closeAttempts.add(connection);
-    final closeFuture = super.closeIfCurrent(connection: connection);
-    if (!closeStarted.isCompleted) closeStarted.complete();
-    final delay = closeDelay;
-    if (delay != null) await delay;
-    return await closeFuture;
-  }
-}
-
-class _RecordingRestartService({required final _RecordingRelayClient relayClient}) implements BridgeRestartService {
-  final Completer<void> handoffPerformed = Completer<void>();
-  bool restartable = false;
-  Completer<void>? canRestartStarted;
-  Future<void>? canRestartDelay;
-  int handoffCalls = 0;
-  int? sendCountAtHandoff;
-  int? sendAttemptCountAtHandoff;
-  int? closeAttemptCountAtHandoff;
-
-  @override
-  Future<bool> canRestart() async {
-    final started = canRestartStarted;
-    if (started != null && !started.isCompleted) started.complete();
-    final delay = canRestartDelay;
-    if (delay != null) await delay;
-    return restartable;
-  }
-
-  @override
-  Future<bool> canSpawnSuccessor() async => restartable;
-
-  @override
-  Future<bool> performRestartHandoff() async {
-    handoffCalls++;
-    sendCountAtHandoff = relayClient.sendCount;
-    sendAttemptCountAtHandoff = relayClient.sendAttempts.length;
-    closeAttemptCountAtHandoff = relayClient.closeAttempts.length;
-    if (!handoffPerformed.isCompleted) handoffPerformed.complete();
-    return true;
-  }
-
-  @override
-  Future<bool> spawnSuccessor() async => true;
 }

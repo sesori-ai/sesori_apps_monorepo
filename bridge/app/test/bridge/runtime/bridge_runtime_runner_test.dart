@@ -39,7 +39,6 @@ void main() {
       for (final BridgeSupervisedExitCode requestedExit in <BridgeSupervisedExitCode>[
         BridgeSupervisedExitCode.cleanStop,
         BridgeSupervisedExitCode.controlChannelLost,
-        BridgeSupervisedExitCode.restart,
       ]) {
         expect(
           BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: requestedExit),

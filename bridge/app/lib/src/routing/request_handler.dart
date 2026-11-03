@@ -7,7 +7,6 @@ import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/models/project_not_found_exception.dart";
 import "../services/stale_session_prompt_options_exception.dart";
 import "http_method.dart";
-import "routed_request.dart";
 
 export "http_method.dart";
 
@@ -169,50 +168,30 @@ abstract class const RequestHandlerBase(
     required RequestTargetParams targetParams,
   });
 
-  Future<RoutedRequestOutcome> routeInternal({
+  /// Runs [handleInternal] and maps the shared handler failures to responses.
+  Future<RelayResponse> routeInternal({
     required RelayRequest request,
     required RequestTargetParams targetParams,
-  }) => _guard(
-    request: request,
-    operation: () => handleRouteInternal(request: request, targetParams: targetParams),
-  );
-
-  Future<RoutedRequestOutcome> handleRouteInternal({
-    required RelayRequest request,
-    required RequestTargetParams targetParams,
-  }) async => ResponseOnly(
-    response: await handleInternal(request, targetParams: targetParams),
-  );
-
-  Future<RoutedRequestOutcome> _guard({
-    required RelayRequest request,
-    required Future<RoutedRequestOutcome> Function() operation,
   }) async {
     try {
-      return await operation();
+      return await handleInternal(request, targetParams: targetParams);
     } on ProjectNotFoundException {
-      return ResponseOnly(response: buildErrorResponse(request, 404, "project not found"));
+      return buildErrorResponse(request, 404, "project not found");
     } on SessionArchivedReadOnlyException catch (error) {
-      return ResponseOnly(
-        response: buildArchivedRejectionResponse(request: request, rejection: error.rejection),
-      );
+      return buildArchivedRejectionResponse(request: request, rejection: error.rejection);
     } on StaleSessionPromptOptionsException catch (error) {
       Log.w("${request.method} ${request.path}: stale session options", error.cause, error.causeStackTrace);
-      return ResponseOnly(
-        response: buildStaleOptionsRejectionResponse(request: request, message: error.message),
-      );
+      return buildStaleOptionsRejectionResponse(request: request, message: error.message);
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: upstream failure", error, stackTrace);
-      return ResponseOnly(response: buildErrorResponse(request, error.statusCode ?? 502, error.toString()));
+      return buildErrorResponse(request, error.statusCode ?? 502, error.toString());
     } on RelayResponse catch (error, stackTrace) {
-      if (error.status < 200 || error.status >= 300) return ResponseOnly(response: error);
+      if (error.status < 200 || error.status >= 300) return error;
       Log.w("${request.method} ${request.path}: handler threw success response", error, stackTrace);
-      return ResponseOnly(
-        response: buildErrorResponse(request, 500, "Internal Server Error: threw success response"),
-      );
+      return buildErrorResponse(request, 500, "Internal Server Error: threw success response");
     } on Object catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: handler failed", error, stackTrace);
-      return ResponseOnly(response: buildErrorResponse(request, 500, "Internal Server Error: $error"));
+      return buildErrorResponse(request, 500, "Internal Server Error: $error");
     }
   }
 

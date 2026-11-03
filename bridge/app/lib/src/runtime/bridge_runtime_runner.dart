@@ -71,8 +71,6 @@ import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
 import "../server/api/terminal_prompt_api.dart";
 import "../server/foundation/bridge_replace_prompt.dart";
-import "../server/foundation/bridge_restart_command_builder.dart";
-import "../server/foundation/bridge_restart_env.dart";
 import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_process_service.dart";
 import "../server/host/plugin_state_directory.dart";
@@ -81,7 +79,6 @@ import "../server/repositories/process_repository.dart";
 import "../server/repositories/startup_mutex_repository.dart";
 import "../server/repositories/terminal_prompt_repository.dart";
 import "../server/services/bridge_instance_service.dart";
-import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
 import "../services/bridge_startup_retry_service.dart";
 import "../services/connection_notification_policy_service.dart";
@@ -130,8 +127,8 @@ class const BridgeRuntimeRunner._() {
     BridgeRuntime? runtime;
     CatalogImportConsoleListener? catalogImportConsoleListener;
     Future<void>? sessionRun;
-    // The single typed slot for a deliberate supervised exit (restart /
-    // auth-required / contention / clean stop / control-channel loss). Set at the
+    // The single typed slot for a deliberate supervised exit (auth-required /
+    // contention / clean stop / control-channel loss). Set at the
     // moment an outcome is decided — BEFORE any shutdown runs — so both the
     // explicit return and the coordinator backstop report the same code even
     // when the stop hangs or throws (the backstop's timing varies with how
@@ -237,8 +234,6 @@ class const BridgeRuntimeRunner._() {
     final processRunner = ProcessRunner();
     const serverClock = ServerClock();
     final environment = io.Platform.environment;
-    final restartPredecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
-    final restartPredecessorPid = restartPredecessorPidRaw == null ? null : int.tryParse(restartPredecessorPidRaw);
     final currentUser = _resolveCurrentUser(environment: environment);
     if (currentUser == null) {
       Log.w("Failed to determine current user from environment");
@@ -258,7 +253,6 @@ class const BridgeRuntimeRunner._() {
       processRunner: processRunner,
       clock: serverClock,
       isWindows: io.Platform.isWindows,
-      inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: io.Platform.isWindows,
@@ -346,7 +340,7 @@ class const BridgeRuntimeRunner._() {
           controlUrl: controlUrl,
           shutdownCoordinator: shutdownCoordinator,
           // `??=`: a loss must never demote an already decided intentional
-          // exit (restart/auth/logout/contention) to the abnormal code.
+          // exit (auth/logout/contention) to the abnormal code.
           requestAbnormalExit: () => requestedSupervisedExit ??= BridgeSupervisedExitCode.controlChannelLost,
         );
         controlStatusNotifier = ControlStatusNotifier(
@@ -672,27 +666,6 @@ class const BridgeRuntimeRunner._() {
       );
       pluginLifecycleService = activePluginLifecycleService;
       final startupPolicy = activePluginLifecycleService.startupPolicy;
-      // If this bridge was spawned by a restart, wait for the predecessor to
-      // exit before single-live-bridge enforcement so the handoff is clean.
-      if (restartPredecessorPid != null) {
-        await bridgeInstanceService.awaitPredecessorBridgeExit(
-          predecessorPid: restartPredecessorPid,
-          timeout: const Duration(seconds: 30),
-        );
-
-        // The reconcile() above may have skipped because the restart predecessor
-        // still held the update lock mid-apply. Now that it has exited and
-        // released the lock, reconcile again so a pending activation (or failure)
-        // from the predecessor's in-flight apply is confirmed/surfaced this
-        // launch instead of lingering until a future restart.
-        if (updatesEnabledForThisInstall) {
-          try {
-            await updateLifecycle.reconcile();
-          } on Object catch (error, stackTrace) {
-            Log.w("Update reconciliation after predecessor exit failed (non-fatal)", error, stackTrace);
-          }
-        }
-      }
 
       final provisionFormatters = <String, RuntimeProvisionFormatter>{};
       activePluginRuntime.provisionProgress
@@ -757,25 +730,6 @@ class const BridgeRuntimeRunner._() {
         registrations: bridgeRegistrationService.registrations,
       );
 
-      final restartService = BridgeRestartService(
-        processRepository: processRepository,
-        commandBuilder: const BridgeRestartCommandBuilder(),
-        binaryPath: managedRuntimePaths.binaryPath,
-        cliArgs: options.cliArgs,
-        currentPid: io.pid,
-        // Supervised: the GUI owns the lifecycle and respawns us, so a restart
-        // exits with the sentinel code instead of spawning a successor (which
-        // would replay --control-url with no off-argv secret and fail closed).
-        isSupervised: options.isSupervised,
-        isWindows: io.Platform.isWindows,
-        // Record the GUI-respawn sentinel the moment the handoff is decided —
-        // before the shutdown it triggers — so the normal return, the error
-        // paths, and a hung-teardown backstop all report the same code.
-        onSupervisedRestartRequested: () {
-          requestedSupervisedExit = BridgeSupervisedExitCode.restart;
-        },
-      );
-
       // Run startup diagnostics before composing the runtime so the
       // filesystem-access result can be carried into the health snapshot the
       // phone reads (to proactively warn about missing macOS Full Disk Access).
@@ -831,7 +785,6 @@ class const BridgeRuntimeRunner._() {
         tokenRefresher: tokenRefresher,
         bridgeRegistrationService: bridgeRegistrationService,
         failureReporter: failureReporter,
-        restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
         bridgeKind: options.bridgeKind,
         statusNotifier: controlStatusNotifier,
@@ -882,7 +835,7 @@ class const BridgeRuntimeRunner._() {
         shutdownCoordinator: shutdownCoordinator,
       );
       // Background: check + download + stage + apply-in-place on a 4h cadence.
-      // The swap takes effect on the next launch (or a phone-triggered restart).
+      // The swap takes effect on the next launch.
       shutdownCoordinator.add(disposable: updateLifecycle.dispose);
       updateLifecycle.start();
 
@@ -956,13 +909,6 @@ class const BridgeRuntimeRunner._() {
       }
       return 1;
     } catch (error, stackTrace) {
-      // Honor an already-completed supervised restart handoff: a teardown error
-      // after the handoff is still an intentional restart, so return the sentinel
-      // (GUI respawns) rather than the crash code.
-      if (requestedSupervisedExit == BridgeSupervisedExitCode.restart) {
-        Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
-        return BridgeSupervisedExitCode.restart.code;
-      }
       Log.e("Bridge startup or session failed", error, stackTrace);
       return 1;
     } finally {
@@ -972,14 +918,13 @@ class const BridgeRuntimeRunner._() {
         // `shutdownCoordinator.shutdown()` rethrows a failed ordered/parallel
         // step (by design — a failed plugin stop must surface as a non-zero
         // exit). Thrown from this `finally`, that would override the return
-        // value. For a supervised restart, auth-required, or contention exit
-        // that must NOT happen: the exit must stay the sentinel so the GUI
-        // respawns (86), prompts for login (87), or offers a take-over (88)
-        // rather than treating it as a crash. For every other exit — including
-        // clean stop and control-channel loss, whose graceful path exits the
-        // process itself — preserve the loud-failure behaviour by rethrowing.
+        // value. For a supervised auth-required or contention exit that must
+        // NOT happen: the exit must stay the sentinel so the GUI prompts for
+        // login (87) or offers a take-over (88) rather than treating it as a
+        // crash. For every other exit — including clean stop and
+        // control-channel loss, whose graceful path exits the process itself —
+        // preserve the loud-failure behaviour by rethrowing.
         switch (requestedSupervisedExit) {
-          case BridgeSupervisedExitCode.restart:
           case BridgeSupervisedExitCode.authRequired:
           case BridgeSupervisedExitCode.bridgeContention:
             Log.w(

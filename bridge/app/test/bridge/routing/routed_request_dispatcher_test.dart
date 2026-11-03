@@ -62,11 +62,11 @@ void main() {
       await firstDrain;
       expect(drained, isTrue);
       expect(
-        (await (first as RoutedRequestAccepted).pendingRequest.completion).response.status,
+        (await (first as RoutedRequestAccepted).pendingRequest.completion).status,
         200,
       );
       expect(
-        (await (second as RoutedRequestAccepted).pendingRequest.completion).response.status,
+        (await (second as RoutedRequestAccepted).pendingRequest.completion).status,
         200,
       );
     });
@@ -86,7 +86,7 @@ void main() {
       expect(dispatch, isA<RoutedRequestAccepted>());
 
       final drain = dispatcher.drain();
-      final response = (await (dispatch as RoutedRequestAccepted).pendingRequest.completion).response;
+      final response = await (dispatch as RoutedRequestAccepted).pendingRequest.completion;
 
       expect(response.status, 500);
       expect(response.body, contains("route failed"));

@@ -19,7 +19,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       final identity = await api.inspectProcess(pid: 321);
@@ -44,7 +43,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       final identity = await api.inspectProcess(pid: 999999);
@@ -59,7 +57,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       await expectLater(
@@ -74,7 +71,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       expect(await api.inspectProcess(pid: 0), isNull);
@@ -88,7 +84,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       final result = await api.sendGracefulSignal(pid: 321);
@@ -108,7 +103,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       final result = await api.sendForceSignal(pid: 321);
@@ -134,7 +128,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       await expectLater(
@@ -168,7 +161,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       await expectLater(
@@ -190,7 +182,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       expect((await api.sendGracefulSignal(pid: 321)).wasRequested, isFalse);
@@ -203,7 +194,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       expect((await api.sendGracefulSignal(pid: 0)).wasRequested, isFalse);
@@ -221,7 +211,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       final identity = await api.inspectProcess(pid: 321);
@@ -252,7 +241,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       final identity = await api.inspectProcess(pid: 999999);
@@ -271,7 +259,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       await expectLater(
@@ -286,7 +273,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       expect(await api.inspectProcess(pid: 321), isNull);
@@ -298,7 +284,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
       expect(await api.inspectProcess(pid: 0), isNull);

@@ -11,7 +11,6 @@ class _RecordingProcessRunner({required final int exitCode, final String stdout 
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) async {
     throw UnimplementedError();
   }

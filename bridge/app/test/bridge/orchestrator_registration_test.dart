@@ -12,8 +12,6 @@ import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
-import "package:sesori_bridge/src/routing/bridge_restart_dispatcher.dart";
-import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -241,40 +239,6 @@ void main() {
   });
 
   group("OrchestratorSession routed request boundaries", () {
-    test("enqueues the correlated restart response before handoff and graceful close", () async {
-      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_restart001";
-      final harness = await _RegistrationHarness.start(repository: repository);
-      addTearDown(harness.close);
-      harness.restartService.restartable = true;
-      final phone = await _activatePhone(harness: harness, connId: 7);
-      final sendsBeforeRestart = harness.relayClient.sendCount;
-
-      await _sendEncrypted(
-        socket: phone.socket,
-        connId: 7,
-        encryptor: phone.encryptor,
-        message: const RelayMessage.request(
-          id: "restart-request",
-          method: "POST",
-          path: "/global/restart",
-          headers: {},
-          body: null,
-        ),
-      );
-
-      final response = await _nextResponse(
-        messages: phone.messages,
-        encryptor: phone.encryptor,
-        requestId: "restart-request",
-      );
-      expect(response.status, 200);
-      expect(jsonDecodeMap(response.body!)["restarting"], isTrue);
-      expect(harness.restartService.handoffCalls, 1);
-      expect(harness.restartService.sendCountAtHandoff, sendsBeforeRestart + 1);
-      expect(harness.restartService.connIdAtHandoff, 7);
-      await harness.runFuture.timeout(const Duration(seconds: 5));
-    });
-
     test("a current response send failure closes that handle and reconnects", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_sendfail01";
       final harness = await _RegistrationHarness.start(repository: repository);
@@ -544,8 +508,6 @@ class _RegistrationHarness._({
   required final PluginLifecycleService lifecycleService,
   required final http.Client httpClient,
   required final _RecordingRelayClient relayClient,
-  required final _RecordingRestartService restartService,
-  required final BridgeRestartDispatcher restartDispatcher,
 }) {
   static Future<_RegistrationHarness> start({
     required FakeBridgeRegistrationRepository repository,
@@ -572,8 +534,6 @@ class _RegistrationHarness._({
       bridgeIdProvider: registrationService,
       connectReturnDelay: connectReturnDelay,
     );
-    final restartService = _RecordingRestartService(relayClient: relayClient);
-
     final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
       connectionNotificationPolicies: const Stream.empty(),
@@ -599,7 +559,6 @@ class _RegistrationHarness._({
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
-      restartService: restartService,
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
@@ -625,8 +584,6 @@ class _RegistrationHarness._({
       lifecycleService: lifecycleService,
       httpClient: httpClient,
       relayClient: relayClient,
-      restartService: restartService,
-      restartDispatcher: composition.restartDispatcher,
     );
   }
 
@@ -643,7 +600,6 @@ class _RegistrationHarness._({
       // The lifecycle may have already completed with the error under test.
     }
     await lifecycleService.dispose();
-    await restartDispatcher.dispose();
     httpClient.close();
     await database.close();
     await relayServer.close();
@@ -656,8 +612,6 @@ class _RecordingRelayClient({
   required super.bridgeIdProvider,
   required final Future<void>? connectReturnDelay,
 }) extends RelayClient {
-  int sendCount = 0;
-  int? lastConnId;
   bool failNextSend = false;
   bool staleNextSend = false;
   final Completer<void> connectPromoted = Completer<void>();
@@ -700,40 +654,12 @@ class _RecordingRelayClient({
       staleNextSend = false;
       return RelaySendOutcome.stale;
     }
-    final outcome = super.sendIfCurrent(
+    return super.sendIfCurrent(
       connection: connection,
       connID: connID,
       payload: payload,
     );
-    if (outcome == RelaySendOutcome.stale) return outcome;
-    sendCount++;
-    lastConnId = connID;
-    return outcome;
   }
-}
-
-class _RecordingRestartService({required final _RecordingRelayClient relayClient}) implements BridgeRestartService {
-  bool restartable = false;
-  int handoffCalls = 0;
-  int? sendCountAtHandoff;
-  int? connIdAtHandoff;
-
-  @override
-  Future<bool> canRestart() async => restartable;
-
-  @override
-  Future<bool> canSpawnSuccessor() async => restartable;
-
-  @override
-  Future<bool> performRestartHandoff() async {
-    handoffCalls++;
-    sendCountAtHandoff = relayClient.sendCount;
-    connIdAtHandoff = relayClient.lastConnId;
-    return true;
-  }
-
-  @override
-  Future<bool> spawnSuccessor() async => true;
 }
 
 Future<({WebSocket socket, StreamIterator<dynamic> messages, SessionEncryptor encryptor})> _activatePhone({

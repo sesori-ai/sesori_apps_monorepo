@@ -47,7 +47,6 @@ void main() {
                 processRunner: ProcessRunner(),
                 clock: clock,
                 isWindows: Platform.isWindows,
-                inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
               ),
               currentUser: null,
             ),

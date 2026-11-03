@@ -18,7 +18,6 @@ import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
-import "../helpers/restart_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -345,7 +344,6 @@ class _ReauthHarness._({
       tokenRefresher: authority,
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
-      restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,

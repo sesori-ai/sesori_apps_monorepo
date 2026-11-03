@@ -127,14 +127,23 @@ Future<RuntimeHealthProbe> probeCodexHealth({
 /// Builds the "starting" ownership record from the post-spawn facts. The args
 /// mirror [codexAppServerArgs] so the persisted command line matches the live
 /// process for supervisor identity matching.
+///
+/// Throws a [StateError] when the spawned identity has no executable path.
+/// The host always records the path it spawned, and a record without one
+/// could never match the child again, so the bridge could not stop it. The
+/// supervisor stops the untracked child when this throws.
 CodexOwnershipRecord buildCodexOwnershipRecord({required RuntimeRecordDraft draft}) {
+  final executablePath = draft.runtimeIdentity.executablePath;
+  if (executablePath == null) {
+    throw StateError("The spawned Codex process ${draft.runtimeIdentity.pid} has no executable path");
+  }
   final args = codexAppServerArgs(port: draft.port);
   return CodexOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     codexPid: draft.runtimeIdentity.pid,
     codexStartMarker: draft.runtimeIdentity.startMarker,
-    codexExecutablePath: draft.runtimeIdentity.executablePath ?? "",
-    codexCommand: draft.runtimeCommandFor(args: args) ?? draft.runtimeIdentity.executablePath ?? "codex",
+    codexExecutablePath: executablePath,
+    codexCommand: draft.runtimeCommandFor(args: args) ?? executablePath,
     codexArgs: args,
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,

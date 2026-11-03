@@ -46,10 +46,8 @@ void main() {
             .having((identity) => identity.pathTemplate, "pathTemplate", "/session/:id"),
       );
       expect(pending.routeIdentity.diagnosticLabel, "GET /session/:id");
-      final outcome = await pending.completion;
-      final response = outcome.response;
+      final response = await pending.completion;
 
-      expect(outcome, isA<ResponseOnly>());
       expect(response.status, 201);
       expect(response.body, "first");
       expect(calls, ["first"]);
@@ -88,7 +86,7 @@ void main() {
       final pending = router.route(
         request: _request(method: "GET", path: "/unknown?secret=value"),
       );
-      final response = (await pending.completion).response;
+      final response = await pending.completion;
 
       expect(pending.routeIdentity, isA<UnmatchedRoute>());
       expect(pending.routeIdentity.diagnosticLabel, "GET unmatched route");
@@ -105,14 +103,14 @@ void main() {
       );
       expect(invalidMethod.routeIdentity, isA<InvalidMethodRoute>());
       expect(invalidMethod.routeIdentity.diagnosticLabel, "invalid method");
-      expect((await invalidMethod.completion).response.status, 404);
+      expect((await invalidMethod.completion).status, 404);
 
       final invalidTarget = router.route(
         request: _request(method: "GET", path: "http://[target-secret"),
       );
       expect(invalidTarget.routeIdentity, isA<InvalidTargetRoute>());
       expect(invalidTarget.routeIdentity.diagnosticLabel, "GET invalid target");
-      expect((await invalidTarget.completion).response.status, 500);
+      expect((await invalidTarget.completion).status, 500);
     });
 
     test("returns route identity before asynchronous completion", () async {
@@ -141,7 +139,7 @@ void main() {
           body: "ok",
         ),
       );
-      expect((await pending.completion).response.body, "ok");
+      expect((await pending.completion).body, "ok");
     });
 
     test("maps plugin operation failures to their status", () async {
@@ -224,5 +222,5 @@ RelayResponse _response({required RelayRequest request, required int status, req
 }
 
 Future<RelayResponse> _route(RequestRouter router, RelayRequest request) async {
-  return (await router.route(request: request).completion).response;
+  return await router.route(request: request).completion;
 }

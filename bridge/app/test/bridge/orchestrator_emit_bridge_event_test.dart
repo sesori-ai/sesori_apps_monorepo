@@ -23,9 +23,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_process_runner.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
-import "../helpers/restart_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -1112,7 +1112,7 @@ Future<RelayResponse> _dispatch({
 }) async {
   final result = dispatcher.dispatch(request: request);
   if (result case final RoutedRequestAccepted accepted) {
-    return (await accepted.pendingRequest.completion).response;
+    return await accepted.pendingRequest.completion;
   }
   throw StateError("route was rejected during test setup");
 }
@@ -1402,7 +1402,6 @@ class const _OrchestratorHarness({
     final lifecycleService = await createPluginLifecycleService(plugins: plugins);
     final httpClient = http.Client();
     final failureReporter = FakeFailureReporter();
-    final restartService = buildTestRestartService();
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       connectionNotificationPolicies: const Stream.empty(),
@@ -1432,7 +1431,6 @@ class const _OrchestratorHarness({
       tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
-      restartService: restartService,
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,

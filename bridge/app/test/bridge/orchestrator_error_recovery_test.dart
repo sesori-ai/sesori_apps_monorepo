@@ -17,7 +17,6 @@ import "package:test/test.dart";
 import "../helpers/fakes/fake_bridge_plugin.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
-import "../helpers/restart_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -83,7 +82,6 @@ void main() {
       tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
-      restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
@@ -165,7 +163,6 @@ void main() {
       tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
-      restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
@@ -226,7 +223,6 @@ void main() {
         tokenRefresher: FakeTokenRefresher(token: "token"),
         bridgeRegistrationService: createFakeBridgeRegistrationService(),
         failureReporter: FakeFailureReporter(),
-        restartService: buildTestRestartService(),
         filesystemAccessOk: true,
         bridgeKind: BridgeKind.cli,
         statusNotifier: null,
@@ -352,7 +348,6 @@ class _TestHarness._({
       tokenRefresher: tokenRefresher,
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
-      restartService: buildTestRestartService(),
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,

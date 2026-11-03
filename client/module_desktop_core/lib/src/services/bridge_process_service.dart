@@ -547,12 +547,6 @@ class BridgeProcessService.forTesting({
         _crashCount = 0;
         _publish(const BridgeProcessStopped());
         return;
-      case BridgeSupervisedExitCode.restart:
-        _restartAutomaticallyAfterCurrentStart(
-          generation: generation,
-          context: "Bridge restart after supervised restart exit",
-        );
-        return;
       case BridgeSupervisedExitCode.authRequired:
         _crashCount = 0;
         _publish(const BridgeProcessLoginRequired());

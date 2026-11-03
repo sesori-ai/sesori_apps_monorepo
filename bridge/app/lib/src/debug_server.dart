@@ -7,8 +7,6 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "routing/bridge_restart_dispatcher.dart";
-import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 
 class DebugServer({
@@ -16,7 +14,6 @@ class DebugServer({
   required final RoutedRequestDispatcher _routedRequestDispatcher,
   required final int port,
   required final FailureReporter _failureReporter,
-  required final BridgeRestartDispatcher _restartDispatcher,
 }) {
   final List<HttpResponse> _sseClients = [];
   // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
@@ -28,7 +25,7 @@ class DebugServer({
   final PendingOperations _inFlightRequests = PendingOperations();
   // One waiter per accepted request, removed when its route settles. A single
   // long-lived shutdown future would retain every response until shutdown.
-  final Set<Completer<RoutedRequestOutcome?>> _shutdownWaiters = {};
+  final Set<Completer<RelayResponse?>> _shutdownWaiters = {};
   Future<void>? _serverClose;
   Future<void>? _drainFuture;
 
@@ -115,9 +112,7 @@ class DebugServer({
   }
 
   Future<void> _handleHTTP(HttpRequest request) async {
-    RoutedRequestOutcome? completedOutcome;
-    RelayResponse? rejectedResponse;
-    Future<RoutedRequestOutcome>? routeToDrain;
+    Future<RelayResponse>? routeToDrain;
     try {
       final rawBody = await utf8.decoder.bind(request).join();
       final body = rawBody.isEmpty ? null : rawBody;
@@ -135,28 +130,23 @@ class DebugServer({
         body: body,
       ) as RelayRequest;
 
+      final RelayResponse? message;
       final dispatch = _routedRequestDispatcher.dispatch(request: relayRequest);
       switch (dispatch) {
         case final RoutedRequestShutdownRejected rejected:
-          rejectedResponse = rejected.response;
+          message = rejected.response;
         case final RoutedRequestAccepted accepted:
           final route = accepted.pendingRequest.completion;
           // Accepted implies shutdown has not begun: both run synchronously.
-          final shutdown = Completer<RoutedRequestOutcome?>();
+          final shutdown = Completer<RelayResponse?>();
           _shutdownWaiters.add(shutdown);
-          final RoutedRequestOutcome? outcome;
           try {
-            outcome = await Future.any<RoutedRequestOutcome?>([route, shutdown.future]);
+            message = await Future.any<RelayResponse?>([route, shutdown.future]);
           } finally {
             _shutdownWaiters.remove(shutdown);
           }
-          if (outcome == null) {
-            routeToDrain = route;
-          } else {
-            completedOutcome = outcome;
-          }
+          if (message == null) routeToDrain = route;
       }
-      final message = completedOutcome?.response ?? rejectedResponse;
       if (message != null) {
         request.response.statusCode = message.status;
         // Skip hop-by-hop and length headers — dart:io sets them
@@ -173,13 +163,9 @@ class DebugServer({
           request.response.add(utf8.encode(body));
         }
       }
-    } on Object catch (error, stackTrace) {
-      if (completedOutcome is RestartAccepted) {
-        Log.w("debug restart response write failed", error, stackTrace);
-      } else {
-        request.response.statusCode = HttpStatus.badGateway;
-        request.response.add(utf8.encode("Debug server proxy error: $error"));
-      }
+    } on Object catch (error) {
+      request.response.statusCode = HttpStatus.badGateway;
+      request.response.add(utf8.encode("Debug server proxy error: $error"));
     } finally {
       try {
         await request.response.close();
@@ -190,18 +176,6 @@ class DebugServer({
 
     if (routeToDrain != null) {
       await routeToDrain;
-      return;
-    }
-
-    switch (completedOutcome) {
-      case null || ResponseOnly():
-        break;
-      case final RestartAccepted accepted:
-        try {
-          await _restartDispatcher.dispatch(restart: accepted);
-        } on Object catch (error, stackTrace) {
-          Log.w("debug server restart handoff failed", error, stackTrace);
-        }
     }
   }
 

@@ -4,24 +4,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class StrictFakeProcessRepository() implements ProcessRepository {
   @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> runInheritingStdio({
-    required String executable,
-    required List<String> arguments,
-    required Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) {
     throw UnimplementedError();
   }

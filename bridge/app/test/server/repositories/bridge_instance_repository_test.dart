@@ -160,7 +160,6 @@ class _LookupProcessRunner() implements ProcessRunner {
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) {
     throw UnimplementedError();
   }
@@ -174,24 +173,6 @@ class _FakeSystemProcessApi() implements SystemProcessApi {
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     inspectedPids.add(pid);
     return inspectionFacts[pid];
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> runInheritingStdio({
-    required String executable,
-    required List<String> arguments,
-    required Map<String, String>? environment,
-  }) {
-    throw UnimplementedError();
   }
 
   @override

@@ -279,7 +279,7 @@ void main() {
       await service.start();
       executablePathResolver.refusal = const _BundleRefusal();
 
-      repository.emitExit(exitCode: 86, expected: false);
+      repository.emitExit(exitCode: 0, expected: true);
       await pumpEventQueue();
 
       expect(repository.spawnCalls, 1);
@@ -334,7 +334,7 @@ void main() {
         (state) => state is BridgeProcessCrashRetryScheduled,
       );
 
-      repository.emitExit(exitCode: 86, expected: false);
+      repository.emitExit(exitCode: 0, expected: true);
       final BridgeProcessState retryState = await retryScheduled;
 
       expect(repository.spawnCalls, 2);
@@ -406,41 +406,6 @@ void main() {
       );
     });
 
-    test("exit 86 immediately respawns exactly once", () async {
-      authSession.state = _authenticatedState;
-      await service.start();
-
-      repository.emitExit(exitCode: 86, expected: false);
-      await pumpEventQueue();
-
-      expect(repository.spawnCalls, 2);
-      expect(controlServer.startCalls, 2);
-      expect(service.state, isA<BridgeProcessRunning>());
-      await pumpEventQueue();
-      expect(repository.spawnCalls, 2);
-    });
-
-    test("exit 86 during startup queues its respawn after the start slot clears", () async {
-      authSession.state = _authenticatedState;
-      logTracker.onAttach = () {
-        logTracker.onAttach = null;
-        repository.emitExit(exitCode: 86, expected: false);
-      };
-      final Future<BridgeProcessState> restarted = service.states.firstWhere(
-        (state) => state is BridgeProcessRunning,
-      );
-
-      await expectLater(
-        service.start(),
-        throwsA(isA<BridgeProcessExitedDuringStartException>()),
-      );
-      await restarted;
-
-      expect(repository.spawnCalls, 2);
-      expect(controlServer.startCalls, 2);
-      expect(service.state, isA<BridgeProcessRunning>());
-    });
-
     test("a claimed exit followed by broken-pipe startup failure consumes one crash entry", () async {
       authSession.state = _authenticatedState;
       await service.start();
@@ -452,7 +417,7 @@ void main() {
         (state) => state is BridgeProcessCrashRetryScheduled,
       );
 
-      repository.emitExit(exitCode: 86, expected: false);
+      repository.emitExit(exitCode: 0, expected: true);
       final BridgeProcessState retryState = await retryScheduled;
 
       expect(repository.spawnCalls, 2);
@@ -478,7 +443,7 @@ void main() {
         (state) => state is BridgeProcessCrashRetryScheduled,
       );
 
-      repository.emitExit(exitCode: 86, expected: false);
+      repository.emitExit(exitCode: 0, expected: true);
       final BridgeProcessState retryState = await retryScheduled;
 
       expect(repository.spawnCalls, 2);
