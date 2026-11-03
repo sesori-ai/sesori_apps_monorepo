@@ -122,6 +122,8 @@ class const DesktopSidebar({
                               )
                               ? null
                               : const SliverToBoxAdapter(),
+                          // The home pane says so, and Refresh retries it.
+                          showsLoadFailure: false,
                           emptyState: SessionEmptyState(projectName: filterName),
                           // The filter heads the list already, beside Refresh.
                           header: null,
@@ -261,12 +263,18 @@ class const _SidebarRefreshButton({
           ProjectListLoaded(:final isRefreshing) => isRefreshing,
           ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
         };
-    final canRefresh = projectState is ProjectListLoaded && !refreshing;
+    // The list leaves a failed load to the home pane, so Refresh retries it
+    // from here too.
+    final VoidCallback? onPressed = switch (projectState) {
+      ProjectListLoaded() when !refreshing => () => unawaited(context.read<SessionListRefreshCubit>().refresh()),
+      ProjectListFailed() => () => unawaited(context.read<ProjectListCubit>().retryLoadProjects()),
+      ProjectListLoaded() || ProjectListLoading() || ProjectListBridgeDisconnected() => null,
+    };
     return IconButton(
       key: const Key("desktop-sidebar-refresh"),
       tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
       padding: EdgeInsets.zero,
-      onPressed: canRefresh ? () => unawaited(context.read<SessionListRefreshCubit>().refresh()) : null,
+      onPressed: onPressed,
       // The tooltip names it for screen readers too.
       icon: refreshing
           ? ExcludeSemantics(

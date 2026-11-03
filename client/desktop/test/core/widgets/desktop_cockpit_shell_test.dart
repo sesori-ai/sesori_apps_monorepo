@@ -781,7 +781,7 @@ void main() {
     },
   );
 
-  testWidgets("retry uses the failure-aware reconnect path", (tester) async {
+  testWidgets("a failed project load leaves the list blank and Refresh retries it", (tester) async {
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
@@ -789,9 +789,9 @@ void main() {
     );
     when(projects.retryLoadProjects).thenAnswer((_) async {});
     await tester.pumpWidget(app(state: running));
-    // Refresh stays beside the filter, idle until projects load.
-    expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-refresh"))).onPressed, isNull);
-    await tester.tap(find.text("Retry"));
+    // The home pane reports the failure; the sidebar does not repeat it.
+    expect(find.descendant(of: list, matching: find.text("Failed to load projects")), findsNothing);
+    await tester.tap(find.byKey(const Key("desktop-sidebar-refresh")));
     verify(projects.retryLoadProjects).called(1);
   });
 
