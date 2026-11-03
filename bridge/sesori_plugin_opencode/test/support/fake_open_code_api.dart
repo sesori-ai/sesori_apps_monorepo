@@ -58,7 +58,7 @@ class FakeOpenCodeApi({
   Future<List<Session>> listSessions({required String? directory, required bool roots}) async =>
       roots && filterRootSessions ? sessions.where((session) => session.parentID == null).toList() : sessions;
   Future<List<Command>> listCommands({required String? directory}) async => commands;
-  Future<Session> createSession({required String directory, String? parentSessionId}) async {
+  Future<Session> createSession({required String directory, required String? parentSessionId}) async {
     lastCreateDirectory = directory;
     lastCreateParentSessionId = parentSessionId;
     return createdSession ?? _defaultCreatedSession;

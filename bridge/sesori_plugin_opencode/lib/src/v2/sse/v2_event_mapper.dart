@@ -34,7 +34,42 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           V2ExecutionInterruptReason.superseded ||
           V2ExecutionInterruptReason.inactivity,
     ) => (sessionId: sessionID, status: const PluginSessionStatus.idle()),
-    _ => null,
+    V2ServerConnected() ||
+    V2SessionCreated() ||
+    V2SessionRenamed() ||
+    V2SessionDeleted() ||
+    V2SessionExecutionInterrupted() ||
+    V2SessionInboxEnqueued() ||
+    V2SessionInboxDelivered() ||
+    V2SessionInboxCancelled() ||
+    V2SessionInboxDeliveryChanged() ||
+    V2SessionAgentSelected() ||
+    V2SessionSynthetic() ||
+    V2SessionStepEnded() ||
+    V2SessionStepFailed() ||
+    V2SessionTextStarted() ||
+    V2SessionTextDelta() ||
+    V2SessionTextEnded() ||
+    V2SessionReasoningStarted() ||
+    V2SessionReasoningDelta() ||
+    V2SessionReasoningEnded() ||
+    V2SessionToolInputStarted() ||
+    V2SessionToolInputDelta() ||
+    V2SessionToolInputEnded() ||
+    V2SessionToolCalled() ||
+    V2SessionToolProgress() ||
+    V2SessionToolSuccess() ||
+    V2SessionToolFailed() ||
+    V2SessionCompactionStarted() ||
+    V2SessionCompactionDelta() ||
+    V2SessionCompactionEnded() ||
+    V2SessionCompactionFailed() ||
+    V2PermissionAsked() ||
+    V2PermissionReplied() ||
+    V2FormCreated() ||
+    V2FormReplied() ||
+    V2FormCancelled() ||
+    V2ProjectUpdated() => null,
   };
 
   List<BridgeSseEvent> map({required V2EventEnvelope envelope}) {
@@ -137,7 +172,36 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
         ],
         // Enqueue is not delivery. Partial tool input is not valid JSON, and
         // snapshot-dependent events are handled by the enriched methods below.
-        _ => const <BridgeSseEvent>[],
+        V2SessionCreated() ||
+        V2SessionRenamed() ||
+        V2SessionDeleted() ||
+        V2SessionExecutionStarted() ||
+        V2SessionExecutionSucceeded() ||
+        V2SessionExecutionInterrupted() ||
+        V2SessionInboxEnqueued() ||
+        V2SessionInboxDelivered() ||
+        V2SessionInboxCancelled() ||
+        V2SessionInboxDeliveryChanged() ||
+        V2SessionAgentSelected() ||
+        V2SessionSynthetic() ||
+        V2SessionStepStarted() ||
+        V2SessionStepEnded() ||
+        V2SessionStepFailed() ||
+        V2SessionToolInputDelta() ||
+        V2SessionToolInputEnded() ||
+        V2SessionToolCalled() ||
+        V2SessionToolProgress() ||
+        V2SessionToolSuccess() ||
+        V2SessionToolFailed() ||
+        V2SessionCompactionStarted() ||
+        V2SessionCompactionDelta() ||
+        V2SessionCompactionEnded() ||
+        V2SessionCompactionFailed() ||
+        V2PermissionAsked() ||
+        V2PermissionReplied() ||
+        V2FormCreated() ||
+        V2FormReplied() ||
+        V2FormCancelled() => const <BridgeSseEvent>[],
       },
     ];
   }
@@ -146,7 +210,44 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2SessionCreated() => BridgeSseSessionCreated(info: session.toJson()),
     V2SessionRenamed() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
     V2SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
-    _ => null,
+    V2ServerConnected() ||
+    V2SessionExecutionStarted() ||
+    V2SessionExecutionSucceeded() ||
+    V2SessionExecutionFailed() ||
+    V2SessionExecutionInterrupted() ||
+    V2SessionInboxEnqueued() ||
+    V2SessionInboxDelivered() ||
+    V2SessionInboxCancelled() ||
+    V2SessionInboxDeliveryChanged() ||
+    V2SessionAgentSelected() ||
+    V2SessionSynthetic() ||
+    V2SessionStepStarted() ||
+    V2SessionStepEnded() ||
+    V2SessionStepFailed() ||
+    V2SessionTextStarted() ||
+    V2SessionTextDelta() ||
+    V2SessionTextEnded() ||
+    V2SessionReasoningStarted() ||
+    V2SessionReasoningDelta() ||
+    V2SessionReasoningEnded() ||
+    V2SessionToolInputStarted() ||
+    V2SessionToolInputDelta() ||
+    V2SessionToolInputEnded() ||
+    V2SessionToolCalled() ||
+    V2SessionToolProgress() ||
+    V2SessionToolSuccess() ||
+    V2SessionToolFailed() ||
+    V2SessionRetryScheduled() ||
+    V2SessionCompactionStarted() ||
+    V2SessionCompactionDelta() ||
+    V2SessionCompactionEnded() ||
+    V2SessionCompactionFailed() ||
+    V2PermissionAsked() ||
+    V2PermissionReplied() ||
+    V2FormCreated() ||
+    V2FormReplied() ||
+    V2FormCancelled() ||
+    V2ProjectUpdated() => null,
   };
 
   List<BridgeSseEvent> mapAssistantStarted({required V2SessionStepStarted event, required V2AgentNames agentNames}) => [
@@ -238,7 +339,45 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           time: SessionMessageSyntheticTime(created: created),
         ),
       ),
-      _ => null,
+      V2ServerConnected() ||
+      V2SessionCreated() ||
+      V2SessionRenamed() ||
+      V2SessionDeleted() ||
+      V2SessionExecutionStarted() ||
+      V2SessionExecutionSucceeded() ||
+      V2SessionExecutionFailed() ||
+      V2SessionExecutionInterrupted() ||
+      V2SessionInboxEnqueued() ||
+      V2SessionInboxDelivered() ||
+      V2SessionInboxCancelled() ||
+      V2SessionInboxDeliveryChanged() ||
+      V2SessionStepStarted() ||
+      V2SessionStepEnded() ||
+      V2SessionStepFailed() ||
+      V2SessionTextStarted() ||
+      V2SessionTextDelta() ||
+      V2SessionTextEnded() ||
+      V2SessionReasoningStarted() ||
+      V2SessionReasoningDelta() ||
+      V2SessionReasoningEnded() ||
+      V2SessionToolInputStarted() ||
+      V2SessionToolInputDelta() ||
+      V2SessionToolInputEnded() ||
+      V2SessionToolCalled() ||
+      V2SessionToolProgress() ||
+      V2SessionToolSuccess() ||
+      V2SessionToolFailed() ||
+      V2SessionRetryScheduled() ||
+      V2SessionCompactionStarted() ||
+      V2SessionCompactionDelta() ||
+      V2SessionCompactionEnded() ||
+      V2SessionCompactionFailed() ||
+      V2PermissionAsked() ||
+      V2PermissionReplied() ||
+      V2FormCreated() ||
+      V2FormReplied() ||
+      V2FormCancelled() ||
+      V2ProjectUpdated() => null,
     };
     if (notice == null) return const [];
     final message = _messageMapper.mapMessage(
@@ -308,7 +447,42 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
             displaySessionId: displaySessionId,
           ),
         ];
-      default:
+      case V2ServerConnected() ||
+          V2SessionCreated() ||
+          V2SessionRenamed() ||
+          V2SessionDeleted() ||
+          V2SessionExecutionStarted() ||
+          V2SessionExecutionSucceeded() ||
+          V2SessionExecutionFailed() ||
+          V2SessionExecutionInterrupted() ||
+          V2SessionInboxEnqueued() ||
+          V2SessionInboxDelivered() ||
+          V2SessionInboxCancelled() ||
+          V2SessionInboxDeliveryChanged() ||
+          V2SessionAgentSelected() ||
+          V2SessionSynthetic() ||
+          V2SessionStepStarted() ||
+          V2SessionStepEnded() ||
+          V2SessionStepFailed() ||
+          V2SessionTextStarted() ||
+          V2SessionTextDelta() ||
+          V2SessionTextEnded() ||
+          V2SessionReasoningStarted() ||
+          V2SessionReasoningDelta() ||
+          V2SessionReasoningEnded() ||
+          V2SessionToolInputStarted() ||
+          V2SessionToolInputDelta() ||
+          V2SessionToolInputEnded() ||
+          V2SessionToolCalled() ||
+          V2SessionToolProgress() ||
+          V2SessionToolSuccess() ||
+          V2SessionToolFailed() ||
+          V2SessionRetryScheduled() ||
+          V2SessionCompactionStarted() ||
+          V2SessionCompactionDelta() ||
+          V2SessionCompactionEnded() ||
+          V2SessionCompactionFailed() ||
+          V2ProjectUpdated():
         return const [];
     }
   }

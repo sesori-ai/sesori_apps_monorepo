@@ -90,6 +90,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<void> connectMcpServer({required String directory, required String name}) async {
     await _client.post(
       path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/connect",
+      body: null,
       queryParameters: _location(directory: directory),
     );
   }
@@ -97,6 +98,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<void> disconnectMcpServer({required String directory, required String name}) async {
     await _client.post(
       path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/disconnect",
+      body: null,
       queryParameters: _location(directory: directory),
     );
   }
@@ -178,6 +180,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   }) async {
     await _client.delete(
       path: _mcpAttemptPath(integrationId: integrationId, attemptId: attemptId),
+      body: null,
       queryParameters: _location(directory: directory),
     );
   }
@@ -185,6 +188,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<void> removeMcpCredential({required String directory, required String credentialId}) async {
     await _client.delete(
       path: "/api/credential/${Uri.encodeComponent(credentialId)}",
+      body: null,
       queryParameters: _location(directory: directory),
     );
   }
@@ -341,7 +345,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
 
   Future<void> deleteSession({required String sessionId}) async {
     await _response(
-      request: _client.delete(path: _sessionPath(sessionId: sessionId)),
+      request: _client.delete(path: _sessionPath(sessionId: sessionId), body: null),
     );
   }
 
@@ -397,7 +401,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     final path = "${_sessionPath(sessionId: sessionId)}/interrupt";
     return _object<SessionInterruptResponse>(
       response: await _response(
-        request: _client.post(path: path, queryParameters: {"resume": "$resume"}),
+        request: _client.post(path: path, body: null, queryParameters: {"resume": "$resume"}),
       ),
       operation: path,
       fromJson: SessionInterruptResponse.fromJson,
@@ -454,7 +458,10 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
 
   Future<void> cancelForm({required String sessionId, required String formId}) async {
     await _response(
-      request: _client.delete(path: "${_sessionPath(sessionId: sessionId)}/form/${Uri.encodeComponent(formId)}"),
+      request: _client.delete(
+        path: "${_sessionPath(sessionId: sessionId)}/form/${Uri.encodeComponent(formId)}",
+        body: null,
+      ),
     );
   }
 
@@ -536,7 +543,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       _decode(
         response: response,
         operation: operation,
-        decode: (body) => V2DataResponse<T>.fromJson(jsonDecodeMap(body), fromJson).data,
+        decode: (body) => V2DataResponse<T>.fromJson(jsonDecodeMap(body), fromJsonT: fromJson).data,
       );
 
   T _decode<T>({required http.Response response, required String operation, required T Function(String) decode}) {

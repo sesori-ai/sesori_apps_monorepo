@@ -25,14 +25,14 @@ void main() {
         tracker.registerSession(sessionId: "root", directory: "/repo", parentId: null);
         tracker.registerSession(sessionId: "child", directory: "/repo", parentId: "root");
 
-        tracker.handleEvent(_sessionBusy("child"), null);
+        tracker.handleEvent(_sessionBusy("child"), directory: null);
         expect(tracker.activeChildSessionIds(rootId: "root"), equals({"child"}));
         expect(tracker.isTurnRunning(sessionId: "root"), isFalse);
 
-        tracker.handleEvent(_sessionBusy("root"), null);
+        tracker.handleEvent(_sessionBusy("root"), directory: null);
         expect(tracker.isTurnRunning(sessionId: "root"), isTrue);
 
-        tracker.handleEvent(_sessionIdle("child"), null);
+        tracker.handleEvent(_sessionIdle("child"), directory: null);
         expect(tracker.activeChildSessionIds(rootId: "root"), isEmpty);
       });
     });
@@ -76,7 +76,7 @@ void main() {
 
         tracker.handleEvent(
           _sessionCreated("s1", "/projects/foo/packages/bar"),
-          null,
+          directory: null,
         );
 
         expect(
@@ -94,11 +94,11 @@ void main() {
 
         tracker.handleEvent(
           _sessionCreated("s1", "/projects/foo/packages/bar"),
-          null,
+          directory: null,
         );
         tracker.handleEvent(
           _sessionUpdated("s1", "/projects/foo/packages/bar"),
-          null,
+          directory: null,
         );
 
         expect(
@@ -114,10 +114,10 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), directory: null);
         expect(tracker.getSessionDirectory(sessionId: "s1"), equals("/projects/foo"));
 
-        tracker.handleEvent(_sessionDeleted("s1"), null);
+        tracker.handleEvent(_sessionDeleted("s1"), directory: null);
 
         expect(tracker.getSessionDirectory(sessionId: "s1"), isNull);
       });
@@ -197,8 +197,8 @@ void main() {
 
         // A session running at the moved project's live location: no known
         // worktree contains it, so the summary can't group it yet.
-        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
         expect(tracker.buildSummary(), isEmpty);
 
         final changed = tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
@@ -216,8 +216,8 @@ void main() {
         tracker.updateProjectWorktrees(worktrees: {"/repo"});
         tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
 
-        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
         expect(pairs, equals({("/repo", 1)}));
@@ -316,8 +316,8 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         final active = tracker.getActiveStatuses();
 
@@ -335,7 +335,7 @@ void main() {
         );
         expect(tracker.getActiveStatuses(), hasLength(1));
 
-        tracker.handleEvent(_sessionIdle("s1"), null);
+        tracker.handleEvent(_sessionIdle("s1"), directory: null);
 
         expect(tracker.getActiveStatuses(), isEmpty);
       });
@@ -392,7 +392,7 @@ void main() {
 
         expect(tracker.workState, PluginWorkState.busy);
 
-        tracker.handleEvent(_questionReplied("question", "session"), null);
+        tracker.handleEvent(_questionReplied("question", "session"), directory: null);
 
         expect(tracker.workState, PluginWorkState.unknown);
       });
@@ -408,13 +408,13 @@ void main() {
 
       test("busy takes precedence while unknown session status remains conservative", () async {
         final tracker = await _coldStartedTracker(projects: const []);
-        tracker.handleEvent(_sessionUnknown("unknown"), null);
+        tracker.handleEvent(_sessionUnknown("unknown"), directory: null);
         expect(tracker.workState, PluginWorkState.unknown);
 
-        tracker.handleEvent(_sessionBusy("busy"), null);
+        tracker.handleEvent(_sessionBusy("busy"), directory: null);
         expect(tracker.workState, PluginWorkState.busy);
 
-        tracker.handleEvent(_sessionIdle("busy"), null);
+        tracker.handleEvent(_sessionIdle("busy"), directory: null);
         expect(tracker.workState, PluginWorkState.unknown);
       });
 
@@ -422,10 +422,10 @@ void main() {
         final tracker = await _coldStartedTracker(projects: const []);
         expect(tracker.workState, PluginWorkState.idle);
 
-        tracker.handleEvent(_sessionUnknown("session"), null);
+        tracker.handleEvent(_sessionUnknown("session"), directory: null);
         expect(tracker.workState, PluginWorkState.unknown);
 
-        tracker.handleEvent(_sessionIdle("session"), null);
+        tracker.handleEvent(_sessionIdle("session"), directory: null);
         expect(tracker.workState, PluginWorkState.idle);
 
         tracker.reset();
@@ -435,11 +435,11 @@ void main() {
       test("pending user input remains busy even after the session reports idle", () async {
         final tracker = await _coldStartedTracker(projects: const []);
 
-        tracker.handleEvent(_questionAsked("question", "session"), null);
-        tracker.handleEvent(_sessionIdle("session"), null);
+        tracker.handleEvent(_questionAsked("question", "session"), directory: null);
+        tracker.handleEvent(_sessionIdle("session"), directory: null);
         expect(tracker.workState, PluginWorkState.busy);
 
-        tracker.handleEvent(_questionReplied("question", "session"), null);
+        tracker.handleEvent(_questionReplied("question", "session"), directory: null);
         expect(tracker.workState, PluginWorkState.idle);
       });
 
@@ -449,10 +449,10 @@ void main() {
         tracker.markTurnAccepted(sessionId: "session");
         expect(tracker.workState, PluginWorkState.busy);
 
-        tracker.handleEvent(_sessionBusy("session"), null);
+        tracker.handleEvent(_sessionBusy("session"), directory: null);
         expect(tracker.workState, PluginWorkState.busy);
 
-        tracker.handleEvent(_sessionIdle("session"), null);
+        tracker.handleEvent(_sessionIdle("session"), directory: null);
         expect(tracker.workState, PluginWorkState.idle);
       });
 
@@ -462,7 +462,7 @@ void main() {
 
         tracker.handleEvent(
           const SseEventData.sessionError(sessionID: "session"),
-          null,
+          directory: null,
         );
 
         expect(tracker.workState, PluginWorkState.idle);
@@ -500,8 +500,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
-      final changed = tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), directory: null);
+      final changed = tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
       expect(changed, isTrue);
       expect(tracker.activeSessions, equals({"/projects/foo": 1}));
@@ -514,8 +514,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/projects/foo/lib/src"), null);
-      final changed = tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo/lib/src"), directory: null);
+      final changed = tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
       expect(changed, isTrue);
       expect(tracker.activeSessions, equals({"/projects/foo": 1}));
@@ -528,8 +528,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/tmp/other"), null);
-      final changed = tracker.handleEvent(_sessionBusy("s1"), "/tmp/other");
+      tracker.handleEvent(_sessionCreated("s1", "/tmp/other"), directory: null);
+      final changed = tracker.handleEvent(_sessionBusy("s1"), directory: "/tmp/other");
 
       expect(changed, isFalse);
       expect(tracker.activeSessions, isEmpty);
@@ -542,8 +542,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", ""), null);
-      final changed = tracker.handleEvent(_sessionBusy("s1"), "");
+      tracker.handleEvent(_sessionCreated("s1", ""), directory: null);
+      final changed = tracker.handleEvent(_sessionBusy("s1"), directory: "");
 
       expect(changed, isFalse);
       expect(tracker.activeSessions, isEmpty);
@@ -559,12 +559,12 @@ void main() {
 
       tracker.handleEvent(
         _sessionCreated("s1", "/projects/foo/packages/bar/src"),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
-      tracker.handleEvent(_sessionCreated("s2", "/projects/foo/lib"), null);
-      tracker.handleEvent(_sessionBusy("s2"), null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/foo/lib"), directory: null);
+      tracker.handleEvent(_sessionBusy("s2"), directory: null);
 
       expect(
         tracker.activeSessions,
@@ -579,8 +579,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", r"C:\repo\foo\subdir"), null);
-      final changed = tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", r"C:\repo\foo\subdir"), directory: null);
+      final changed = tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
       expect(changed, isTrue);
       expect(tracker.activeSessions, equals({r"C:\repo\foo": 1}));
@@ -593,13 +593,13 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
 
-      final busyChanged = tracker.handleEvent(_sessionBusy("s1"), null);
+      final busyChanged = tracker.handleEvent(_sessionBusy("s1"), directory: null);
       expect(busyChanged, isTrue);
       expect(tracker.activeSessions, equals({"/repo": 1}));
 
-      final idleChanged = tracker.handleEvent(_sessionIdle("s1"), null);
+      final idleChanged = tracker.handleEvent(_sessionIdle("s1"), directory: null);
       expect(idleChanged, isTrue);
       expect(tracker.activeSessions, isEmpty);
     });
@@ -611,7 +611,7 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
       final changed = tracker.handleEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
@@ -622,7 +622,7 @@ void main() {
             next: 123,
           ),
         ),
-        null,
+        directory: null,
       );
 
       expect(changed, isTrue);
@@ -636,11 +636,11 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-      tracker.handleEvent(_sessionCreated("s2", "/repo/lib"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+      tracker.handleEvent(_sessionCreated("s2", "/repo/lib"), directory: null);
 
-      tracker.handleEvent(_sessionBusy("s1"), null);
-      tracker.handleEvent(_sessionBusy("s2"), null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
+      tracker.handleEvent(_sessionBusy("s2"), directory: null);
 
       expect(tracker.activeSessions, equals({"/repo": 2}));
     });
@@ -654,18 +654,18 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
         expect(tracker.activeSessions, equals({"/repo": 1}));
 
         final changed = tracker.handleEvent(
           _sessionDeleted("s1", "/repo"),
-          null,
+          directory: null,
         );
         expect(changed, isTrue);
         expect(tracker.activeSessions, isEmpty);
 
-        final afterDeleteStatus = tracker.handleEvent(_sessionBusy("s1"), null);
+        final afterDeleteStatus = tracker.handleEvent(_sessionBusy("s1"), directory: null);
         expect(afterDeleteStatus, isFalse);
         expect(tracker.activeSessions, isEmpty);
       },
@@ -680,7 +680,7 @@ void main() {
           ],
         );
 
-        final changed = tracker.handleEvent(_sessionBusy("s1"), "/tmp/unknown");
+        final changed = tracker.handleEvent(_sessionBusy("s1"), directory: "/tmp/unknown");
 
         expect(changed, isFalse);
         expect(tracker.activeSessions, isEmpty);
@@ -694,8 +694,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
       expect(tracker.activeSessions, equals({"/repo": 1}));
 
       tracker.reset();
@@ -712,8 +712,8 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo-a"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo-a"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
       final summary = tracker.buildSummary();
       final pairs = summary.map((item) => (item.id, item.activeSessions.length)).toSet();
@@ -728,20 +728,20 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
 
-      final changedOnBusy = tracker.handleEvent(_sessionBusy("s1"), null);
+      final changedOnBusy = tracker.handleEvent(_sessionBusy("s1"), directory: null);
       expect(changedOnBusy, isTrue);
 
       final unchangedOnNonSession = tracker.handleEvent(
         const SseEventData.serverHeartbeat(),
-        null,
+        directory: null,
       );
       expect(unchangedOnNonSession, isFalse);
 
       final unchangedOnDuplicate = tracker.handleEvent(
         _sessionBusy("s1"),
-        null,
+        directory: null,
       );
       expect(unchangedOnDuplicate, isFalse);
     });
@@ -808,10 +808,10 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
-      tracker.handleEvent(_sessionCreated("s2", "/projects/foo"), null);
-      tracker.handleEvent(_sessionBusy("s2"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/foo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s2"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -827,11 +827,11 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
-      tracker.handleEvent(_sessionCreated("s2", "/projects/foo"), null);
-      tracker.handleEvent(_sessionBusy("s2"), null);
-      tracker.handleEvent(_sessionIdle("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/foo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s2"), directory: null);
+      tracker.handleEvent(_sessionIdle("s1"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -847,10 +847,10 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
-      tracker.handleEvent(_sessionCreated("s2", "/projects/bar"), null);
-      tracker.handleEvent(_sessionBusy("s2"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/bar"), directory: null);
+      tracker.handleEvent(_sessionBusy("s2"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -870,15 +870,15 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
       tracker.handleEvent(
         SseEventData.sessionCreated(
           info: openCodeSession(id: "c1", directory: "/repo", projectID: "project", parentID: "s1"),
         ),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(_sessionBusy("c1"), null);
+      tracker.handleEvent(_sessionBusy("c1"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -896,14 +896,14 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
       tracker.handleEvent(
         SseEventData.sessionCreated(
           info: openCodeSession(id: "c1", directory: "/repo", projectID: "project", parentID: "s1"),
         ),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(_sessionBusy("c1"), null);
+      tracker.handleEvent(_sessionBusy("c1"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -930,9 +930,9 @@ void main() {
         SseEventData.sessionCreated(
           info: openCodeSession(id: "c1", directory: "/repo", projectID: "project", parentID: "root"),
         ),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(_sessionBusy("c1"), null);
+      tracker.handleEvent(_sessionBusy("c1"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -978,22 +978,22 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+      tracker.handleEvent(_sessionBusy("s1"), directory: null);
       tracker.handleEvent(
         SseEventData.sessionCreated(
           info: openCodeSession(id: "c1", directory: "/repo", projectID: "project", parentID: "s1"),
         ),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(_sessionBusy("c1"), null);
+      tracker.handleEvent(_sessionBusy("c1"), directory: null);
       tracker.handleEvent(
         SseEventData.sessionCreated(
           info: openCodeSession(id: "g1", directory: "/repo", projectID: "project", parentID: "c1"),
         ),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(_sessionBusy("g1"), null);
+      tracker.handleEvent(_sessionBusy("g1"), directory: null);
 
       final summary = tracker.buildSummary();
 
@@ -1016,7 +1016,7 @@ void main() {
 
         // Busy status arrives for a child with no preceding session.created, so
         // its parent ID is unknown — it transiently surfaces as its own root.
-        final changedOnBusy = tracker.handleEvent(_sessionBusy("c1"), "/repo");
+        final changedOnBusy = tracker.handleEvent(_sessionBusy("c1"), directory: "/repo");
         expect(changedOnBusy, isTrue);
 
         final phantom = tracker.buildSummary();
@@ -1056,7 +1056,7 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionBusy("c1"), null);
+        tracker.handleEvent(_sessionBusy("c1"), directory: null);
         expect(tracker.buildSummary(), isEmpty);
 
         // Resolution supplies the directory; registerSession must resolve it
@@ -1085,7 +1085,7 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
         expect(tracker.buildSummary(), isEmpty);
 
         final changed = tracker.registerSession(
@@ -1111,7 +1111,7 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionBusy("s1"), "/repo");
+        tracker.handleEvent(_sessionBusy("s1"), directory: "/repo");
 
         final changed = tracker.registerSession(
           sessionId: "s1",
@@ -1145,7 +1145,7 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionBusy("c1"), "/repo");
+        tracker.handleEvent(_sessionBusy("c1"), directory: "/repo");
         expect(
           tracker.registerSession(sessionId: "c1", directory: "/repo", parentId: "root"),
           isTrue,
@@ -1167,15 +1167,15 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
 
         final summary = tracker.buildSummary();
         expect(summary.first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_questionReplied("q1", "s1"), null);
+        tracker.handleEvent(_questionReplied("q1", "s1"), directory: null);
 
         final afterReply = tracker.buildSummary();
         expect(afterReply.first.activeSessions.first.awaitingInput, isFalse);
@@ -1188,13 +1188,13 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_questionRejected("q1", "s1"), null);
+        tracker.handleEvent(_questionRejected("q1", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
@@ -1206,14 +1206,14 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
-        tracker.handleEvent(_permissionAsked("p1", "s1"), null);
+        tracker.handleEvent(_permissionAsked("p1", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_permissionReplied(requestId: "p1", sessionId: "s1"), null);
+        tracker.handleEvent(_permissionReplied(requestId: "p1", sessionId: "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
@@ -1225,20 +1225,20 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
-        tracker.handleEvent(_questionAsked("q2", "s1"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q2", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_questionReplied("q1", "s1"), null);
+        tracker.handleEvent(_questionReplied("q1", "s1"), directory: null);
 
         // One question still pending.
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_questionReplied("q2", "s1"), null);
+        tracker.handleEvent(_questionReplied("q2", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
@@ -1250,13 +1250,13 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_sessionDeleted("s1", "/repo"), null);
+        tracker.handleEvent(_sessionDeleted("s1", "/repo"), directory: null);
 
         // Session gone — no summary entries at all.
         expect(tracker.buildSummary(), isEmpty);
@@ -1269,19 +1269,19 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        tracker.handleEvent(_sessionIdle("s1"), null);
+        tracker.handleEvent(_sessionIdle("s1"), directory: null);
 
         // Session no longer active, but its unanswered input remains work.
         expect(tracker.buildSummary(), isEmpty);
         expect(tracker.workState, PluginWorkState.busy);
 
-        tracker.handleEvent(_questionReplied("q1", "s1"), null);
+        tracker.handleEvent(_questionReplied("q1", "s1"), directory: null);
         expect(tracker.workState, PluginWorkState.idle);
       });
 
@@ -1292,11 +1292,11 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         // Active session count unchanged, but pending input state changed.
-        final changed = tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        final changed = tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
 
         expect(changed, isTrue);
       });
@@ -1328,11 +1328,11 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         // Reply to a permission that was never asked — should not crash.
-        final changed = tracker.handleEvent(_permissionReplied(requestId: "unknown", sessionId: "s1"), null);
+        final changed = tracker.handleEvent(_permissionReplied(requestId: "unknown", sessionId: "s1"), directory: null);
 
         expect(changed, isFalse);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
@@ -1345,9 +1345,9 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
         final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
@@ -1365,12 +1365,12 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        final result = tracker.clearPendingQuestion(questionId: "q1");
+        final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: null);
 
         expect(result.found, isTrue);
         expect(result.resolvedSessionId, equals("s1"));
@@ -1385,10 +1385,10 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
-        tracker.handleEvent(_questionAsked("q2", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q2", "s1"), directory: null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
         final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
@@ -1406,8 +1406,8 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
 
         expect(tracker.getSessionIdForQuestion(questionId: "q1"), equals("s1"));
         expect(tracker.getSessionIdForQuestion(questionId: "missing"), isNull);
@@ -1420,9 +1420,9 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_permissionAsked("p1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_permissionAsked("p1", "s1"), directory: null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
         final result = tracker.clearPendingPermission(sessionId: "s1", requestId: "p1");
@@ -1439,10 +1439,10 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
-        tracker.handleEvent(_permissionAsked("p1", "s1"), null);
-        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+        tracker.handleEvent(_permissionAsked("p1", "s1"), directory: null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), directory: null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
         final result = tracker.clearPendingPermission(sessionId: "s1", requestId: "p1");
@@ -1459,15 +1459,15 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("root", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("root"), null);
+        tracker.handleEvent(_sessionCreated("root", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("root"), directory: null);
 
         // Register child session under root, mark it busy.
-        tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("child"), null);
+        tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("child"), directory: null);
 
         // Question asked on child — root should show awaitingInput.
-        final changed = tracker.handleEvent(_questionAsked("q1", "child"), null);
+        final changed = tracker.handleEvent(_questionAsked("q1", "child"), directory: null);
 
         expect(changed, isTrue, reason: "bubble-up must trigger re-emit");
         final summary = tracker.buildSummary();
@@ -1482,19 +1482,19 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("root", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("root"), null);
-        tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), null);
-        tracker.handleEvent(_sessionBusy("child"), null);
+        tracker.handleEvent(_sessionCreated("root", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("root"), directory: null);
+        tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("child"), directory: null);
 
-        tracker.handleEvent(_permissionAsked("p1", "child"), null);
+        tracker.handleEvent(_permissionAsked("p1", "child"), directory: null);
 
         final summary = tracker.buildSummary();
         final rootSession = summary.first.activeSessions.firstWhere((s) => s.id == "root");
         expect(rootSession.awaitingInput, isTrue);
 
         // Resolving the child permission should clear the root's awaitingInput.
-        tracker.handleEvent(_permissionReplied(requestId: "p1", sessionId: "child"), null);
+        tracker.handleEvent(_permissionReplied(requestId: "p1", sessionId: "child"), directory: null);
         final afterSummary = tracker.buildSummary();
         final afterRoot = afterSummary.first.activeSessions.firstWhere((s) => s.id == "root");
         expect(afterRoot.awaitingInput, isFalse);
@@ -1590,8 +1590,8 @@ void main() {
       test("resolves pending sessions", () async {
         final tracker = await _coldStartedTracker(projects: []);
 
-        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         expect(tracker.buildSummary(), isEmpty);
 
@@ -1609,8 +1609,8 @@ void main() {
           ],
         );
 
-        tracker.handleEvent(_sessionCreated("s1", "/old-repo/sub"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/old-repo/sub"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
         expect(tracker.buildSummary(), hasLength(1));
         expect(tracker.buildSummary().first.id, equals("/old-repo"));
 
@@ -1627,10 +1627,10 @@ void main() {
     group("registerProjectWorktree", () {
       test("a later status resolves a directory learned before the project", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
-        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), directory: null);
 
         tracker.registerProjectWorktree(worktree: "/repo");
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         final summary = tracker.buildSummary();
         expect(summary, hasLength(1));
@@ -1642,8 +1642,8 @@ void main() {
         tracker.registerProjectWorktree(worktree: "/plain-folder");
 
         tracker.updateProjectWorktrees(worktrees: {"/real-repo"});
-        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         expect(tracker.buildSummary().single.id, "/plain-folder");
       });
@@ -1654,8 +1654,8 @@ void main() {
 
         tracker.reset();
         await tracker.coldStart();
-        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), null);
-        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
 
         expect(tracker.buildSummary().single.id, "/plain-folder");
       });
@@ -1665,16 +1665,16 @@ void main() {
   group("resolveDisplaySessionId", () {
     test("returns the session itself when it is a root", () {
       final tracker = ActiveSessionTracker(_fakeRepository());
-      tracker.handleEvent(_sessionCreated("root", "/repo"), null);
+      tracker.handleEvent(_sessionCreated("root", "/repo"), directory: null);
 
       expect(tracker.resolveDisplaySessionId("root"), equals("root"));
     });
 
     test("walks the parent chain to the top-most root", () {
       final tracker = ActiveSessionTracker(_fakeRepository());
-      tracker.handleEvent(_sessionCreated("root", "/repo"), null);
-      tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), null);
-      tracker.handleEvent(_childSessionCreated("grand", "child", "/repo"), null);
+      tracker.handleEvent(_sessionCreated("root", "/repo"), directory: null);
+      tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), directory: null);
+      tracker.handleEvent(_childSessionCreated("grand", "child", "/repo"), directory: null);
 
       expect(tracker.resolveDisplaySessionId("grand"), equals("root"));
       expect(tracker.resolveDisplaySessionId("child"), equals("root"));
@@ -1688,8 +1688,8 @@ void main() {
 
     test("terminates and returns a cycle node when parents form a loop", () {
       final tracker = ActiveSessionTracker(_fakeRepository());
-      tracker.handleEvent(_childSessionCreated("a", "b", "/repo"), null);
-      tracker.handleEvent(_childSessionCreated("b", "a", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("a", "b", "/repo"), directory: null);
+      tracker.handleEvent(_childSessionCreated("b", "a", "/repo"), directory: null);
 
       expect(["a", "b"], contains(tracker.resolveDisplaySessionId("a")));
     });

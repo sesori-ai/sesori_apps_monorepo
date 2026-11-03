@@ -270,10 +270,7 @@ void main() {
       final result = await service.getMcpInventory(scope: scope) as PluginMcpInventoryReadFailed;
       if (status == 200) {
         expect(result.cause, isA<OpenCodeMcpDecodeException>());
-        expect(
-          (result.cause as OpenCodeMcpDecodeException).innerError,
-          body == '{"fixture":null}' ? isA<TypeError>() : isA<FormatException>(),
-        );
+        expect((result.cause as OpenCodeMcpDecodeException).innerError, isA<FormatException>());
       } else {
         expect((result.cause as OpenCodeApiException).responseBody, body);
       }
@@ -317,7 +314,7 @@ void main() {
       }
       await request.response.close();
     });
-    final plugin = OpenCodePlugin(serverUrl: "http://127.0.0.1:${server.port}");
+    final plugin = OpenCodePlugin(serverUrl: "http://127.0.0.1:${server.port}", password: null);
     addTearDown(() async {
       await plugin.dispose();
       await subscription.cancel();

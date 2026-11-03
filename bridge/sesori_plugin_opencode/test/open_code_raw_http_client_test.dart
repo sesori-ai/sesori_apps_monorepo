@@ -182,11 +182,7 @@ void main() {
         client: mockClient,
       );
 
-      final response = await client.post(
-        path: "/session/s1/command",
-        body: "x",
-        timeout: null,
-      );
+      final response = await client.get(path: "/session", timeout: null);
 
       expect(response.body, equals("done"));
     });

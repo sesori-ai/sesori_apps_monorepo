@@ -114,7 +114,40 @@ class OpenCodeV2ActivityTracker() {
         return previous != event.form;
       case V2FormReplied(:final id) || V2FormCancelled(:final id):
         return _forms.remove(id) != null;
-      default:
+      case V2ServerConnected() ||
+          V2SessionCreated() ||
+          V2SessionExecutionStarted() ||
+          V2SessionExecutionSucceeded() ||
+          V2SessionExecutionFailed() ||
+          V2SessionExecutionInterrupted() ||
+          V2SessionInboxEnqueued() ||
+          V2SessionInboxDelivered() ||
+          V2SessionInboxCancelled() ||
+          V2SessionInboxDeliveryChanged() ||
+          V2SessionAgentSelected() ||
+          V2SessionSynthetic() ||
+          V2SessionStepStarted() ||
+          V2SessionStepEnded() ||
+          V2SessionStepFailed() ||
+          V2SessionTextStarted() ||
+          V2SessionTextDelta() ||
+          V2SessionTextEnded() ||
+          V2SessionReasoningStarted() ||
+          V2SessionReasoningDelta() ||
+          V2SessionReasoningEnded() ||
+          V2SessionToolInputStarted() ||
+          V2SessionToolInputDelta() ||
+          V2SessionToolInputEnded() ||
+          V2SessionToolCalled() ||
+          V2SessionToolProgress() ||
+          V2SessionToolSuccess() ||
+          V2SessionToolFailed() ||
+          V2SessionRetryScheduled() ||
+          V2SessionCompactionStarted() ||
+          V2SessionCompactionDelta() ||
+          V2SessionCompactionEnded() ||
+          V2SessionCompactionFailed() ||
+          V2ProjectUpdated():
         return false;
     }
   }

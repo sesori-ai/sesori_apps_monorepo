@@ -9,6 +9,6 @@ part "v2_data_response.g.dart";
 sealed class V2DataResponse<T> with _$V2DataResponse<T> {
   const factory({required T data}) = _V2DataResponse<T>;
 
-  factory fromJson(Map<String, dynamic> json, T Function(Object?) fromJsonT) =>
+  factory fromJson(Map<String, dynamic> json, {required T Function(Object?) fromJsonT}) =>
       _$V2DataResponseFromJson(json, fromJsonT);
 }

@@ -51,7 +51,7 @@ class const OpenCodeMcpMapper() {
               OpenCodeMcpOAuthEnabled(:final parameters) => !supportsOpenCodeMcpCallbackOverride(
                 value: parameters.redirectUri,
               ),
-              _ => false,
+              OpenCodeMcpOAuthDisabled() || null => false,
             });
     final actions = switch (status) {
       MCPStatusDisabled() => const [PluginMcpServerAction.enable],

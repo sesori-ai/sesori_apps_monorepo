@@ -87,8 +87,8 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   List<BridgeSseEvent> map(
     SseEventData event, {
     required SummaryMessage? summary,
-    String? displaySessionId,
-    String? promptId,
+    required String? displaySessionId,
+    required String? promptId,
   }) => [
     ?_mapEvent(event, summary: summary, displaySessionId: displaySessionId, promptId: promptId),
     if (event is SseMessageUpdated) ..._settledSummaryParts(summary: summary),

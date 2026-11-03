@@ -176,20 +176,16 @@ class OpenCodeService(
     // Record `.wait` wraps source failures in `ParallelWaitError`, preventing
     // the plugin boundary from translating an `OpenCodeApiException`. The list
     // join preserves the original exception while still starting every request
-    // concurrently.
-    final results = await Future.wait<Object>([
-      getAgents(projectId: projectId),
-      getProviders(projectId: projectId),
-      getCommands(projectId: projectId),
-    ]);
-    final agents = results[0] as List<PluginAgent>;
-    final providers = results[1] as PluginProvidersResult;
-    final commands = results[2] as List<PluginCommand>;
+    // concurrently; the typed values are then read from the settled futures.
+    final agents = getAgents(projectId: projectId);
+    final providers = getProviders(projectId: projectId);
+    final commands = getCommands(projectId: projectId);
+    await Future.wait([agents, providers, commands]);
     return PluginSessionOptionsDiscoveryResult.observed(
       options: PluginSessionOptions(
-        agents: agents,
-        providers: providers,
-        commands: commands,
+        agents: await agents,
+        providers: await providers,
+        commands: await commands,
         completeness: PluginSessionOptionsCompleteness.complete,
       ),
     );
@@ -725,9 +721,9 @@ class OpenCodeService(
   /// work state and re-emit the activity summary.
   Stream<void> get summaryInvalidations => _summaryInvalidations.stream;
 
-  bool handleSseEvent(SseEventData event, String? directory) {
-    final changed = tracker.handleEvent(event, directory);
-    _maybeResolveParentId(event, directory);
+  bool handleSseEvent(SseEventData event, {required String? directory}) {
+    final changed = tracker.handleEvent(event, directory: directory);
+    _maybeResolveParentId(event, directory: directory);
     return changed;
   }
 
@@ -739,7 +735,7 @@ class OpenCodeService(
   /// `session.status:busy`, but a dropped/late `session.created` frame leaves
   /// the tracker without the parent ID — and `session.status` has no `parentID`
   /// field to recover it. This resolves the gap on demand.
-  void _maybeResolveParentId(SseEventData event, String? directory) {
+  void _maybeResolveParentId(SseEventData event, {required String? directory}) {
     if (event is! SseSessionStatus) return;
     final status = event.status;
     if (status is! SessionStatusBusy && status is! SessionStatusRetry) return;
