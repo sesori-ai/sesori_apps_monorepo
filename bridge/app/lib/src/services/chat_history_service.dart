@@ -593,7 +593,16 @@ class ChatHistoryService({
     MessagePartTool(:final state) => state.attachments.any(
       (attachment) => attachment is MessageAttachmentInlineImage,
     ),
-    _ => false,
+    MessagePartText() ||
+    MessagePartReasoning() ||
+    MessagePartSubtask() ||
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() => false,
   };
 
   /// Records a finalized part and returns it in every delivery shape.
@@ -689,7 +698,16 @@ class ChatHistoryService({
           attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
         ),
       ),
-      _ => part,
+      MessagePartText() ||
+      MessagePartReasoning() ||
+      MessagePartSubtask() ||
+      MessagePartStepStart() ||
+      MessagePartStepFinish() ||
+      MessagePartSnapshot() ||
+      MessagePartPatch() ||
+      MessagePartAgent() ||
+      MessagePartRetry() ||
+      MessagePartCompaction() => part,
     };
   }
 
@@ -784,7 +802,18 @@ class ChatHistoryService({
     MessagePartCompaction(state: CompactionStateRunning()) && final compaction => compaction.copyWith(
       state: const CompactionState.failed(reason: CompactionFailureReason.turnEnded),
     ),
-    _ => null,
+    MessagePartText() ||
+    MessagePartReasoning() ||
+    MessagePartTool() ||
+    MessagePartSubtask() ||
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartFile() ||
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() => null,
   };
 
   /// Finalizes the session's unfinished parts (tools, subtasks, compactions)

@@ -23,7 +23,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
   McpAuthenticationResult get current => switch (_current) {
     _OwnedMcpAuthentication(:final state) => McpAuthenticationStateResult(state: state),
     _OwnedMcpCredentialForgetting(:final done) when !done.isCompleted => const McpAuthenticationBusy(),
-    _ => const McpAuthenticationStateResult(state: McpAuthenticationIdle()),
+    _OwnedMcpCredentialForgetting() || null => const McpAuthenticationStateResult(state: McpAuthenticationIdle()),
   };
 
   Future<McpControlResult> forgetAuthentication({required String pluginId, required McpServerTarget target}) async {

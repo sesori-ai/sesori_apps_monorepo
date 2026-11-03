@@ -23,7 +23,9 @@ void main() {
 
     test('bridgeVersion matches pubspec and npm package versions', () async {
       final pubspec = await File('pubspec.yaml').readAsString();
-      final pubspecVersion = RegExp(r'^version:\s+(.+)$', multiLine: true).firstMatch(pubspec)!.group(1)!;
+      final pubspecVersion =
+          RegExp(r'^version:\s+(.+)$', multiLine: true).firstMatch(pubspec)?.group(1) ??
+          fail('pubspec.yaml has no version');
 
       expect(bridgeVersion, equals(pubspecVersion));
 

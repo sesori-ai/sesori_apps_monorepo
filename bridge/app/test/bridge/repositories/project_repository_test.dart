@@ -108,7 +108,7 @@ void main() {
       expect(result.single.id, "backend-project-1");
       expect(result.single.path, "/projects/one");
       expect(
-        (await db.projectsDao.getProject(projectId: "backend-project-1"))!.path,
+        (await db.projectsDao.getProject(projectId: "backend-project-1"))?.path,
         "/projects/one",
       );
       expect(plugin.getProjectsCallCount, 0);
@@ -147,9 +147,11 @@ void main() {
         ),
       ];
 
-      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      final observation =
+          await activityRepo.listProjectActivityEvidence(pluginId: plugin.id) ??
+          fail("no project activity was observed");
 
-      expect(observation!.evidence.map((item) => item.projectId), ["ordinary"]);
+      expect(observation.evidence.map((item) => item.projectId), ["ordinary"]);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["ordinary"]);
     });
 
@@ -245,9 +247,11 @@ void main() {
         updatedAt: 2,
       );
 
-      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      final observation =
+          await activityRepo.listProjectActivityEvidence(pluginId: plugin.id) ??
+          fail("no project activity was observed");
 
-      expect(observation!.evidence.single.projectId, directory);
+      expect(observation.evidence.single.projectId, directory);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
     });
 
@@ -296,12 +300,12 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       projectsDao.releaseSnapshot.complete();
 
-      final observation = await reconciliation;
+      final observation = await reconciliation ?? fail("no project activity was observed");
       await catalogImport;
 
       final rows = await db.projectsDao.getAllProjects();
       expect(rows, hasLength(1));
-      expect(observation!.evidence.single.projectId, rows.single.projectId);
+      expect(observation.evidence.single.projectId, rows.single.projectId);
     });
 
     test("native activity drops evidence and project insertion when its generation is replaced", () async {
@@ -430,10 +434,10 @@ void main() {
       final result = await repo.getProjects();
       final rows = {for (final row in await db.projectsDao.getAllProjects()) row.projectId: row};
 
-      expect(rows["direct"]!.createdAt, 10);
-      expect(rows["direct"]!.updatedAt, 20);
-      expect(rows["default"]!.createdAt, 1234);
-      expect(rows["default"]!.updatedAt, 1234);
+      expect(rows["direct"]?.createdAt, 10);
+      expect(rows["direct"]?.updatedAt, 20);
+      expect(rows["default"]?.createdAt, 1234);
+      expect(rows["default"]?.updatedAt, 1234);
       expect(result.every((project) => project.time != null), isTrue);
     });
 
@@ -733,8 +737,8 @@ void main() {
         expect(result.id, equals("/projects/a"));
         expect(result.path, equals("/moved/a"));
         expect(plugin.lastGetProjectId, isNull);
-        final row = await db.projectsDao.getProject(projectId: "/projects/a");
-        expect(row!.path, equals("/moved/a"), reason: "the live path is recorded on the canonical row");
+        final row = await db.projectsDao.getProject(projectId: "/projects/a") ?? fail("the canonical row is missing");
+        expect(row.path, equals("/moved/a"), reason: "the live path is recorded on the canonical row");
         expect(row.hidden, isFalse, reason: "re-opening unhides the canonical row");
         expect(
           row.baseBranch,
@@ -1105,9 +1109,11 @@ void main() {
         deletedAt: 1,
       );
 
-      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      final observation =
+          await activityRepo.listProjectActivityEvidence(pluginId: plugin.id) ??
+          fail("no project activity was observed");
 
-      expect(observation!.evidence.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+      expect(observation.evidence.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
     });
 
     test("derived activity uses the stored native project identity for the same directory", () async {
@@ -1152,10 +1158,12 @@ void main() {
       );
       plugin.sessions = [_session(folder, id: "scratch-session", created: 10, updated: 20)];
 
-      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      final observation =
+          await activityRepo.listProjectActivityEvidence(pluginId: plugin.id) ??
+          fail("no project activity was observed");
 
       expect(plugin.receivedKnownDirectories, contains(folder));
-      expect(observation!.evidence.map((item) => item.projectId), ["/scratch"]);
+      expect(observation.evidence.map((item) => item.projectId), ["/scratch"]);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["/scratch"]);
     });
 
@@ -1269,7 +1277,8 @@ void main() {
       // The bridge recorded this session under its parent project with the
       // worktree path it created — mirroring SessionCreationService.
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
-      final persistedActivity = await db.projectsDao.getProject(projectId: parent);
+      final persistedActivity =
+          await db.projectsDao.getProject(projectId: parent) ?? fail("the parent project row is missing");
       await db.sessionDao.insertSession(
         fastMode: false,
         sessionId: "w1",
@@ -1296,7 +1305,7 @@ void main() {
       expect(result.map((p) => p.id).toSet(), {parent});
       // Session timestamps remain reconciliation evidence. Listing preserves
       // the existing persisted timestamp.
-      expect(result.single.time?.updated, persistedActivity!.updatedAt);
+      expect(result.single.time?.updated, persistedActivity.updatedAt);
     });
   });
 

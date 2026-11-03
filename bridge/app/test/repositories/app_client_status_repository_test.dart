@@ -43,7 +43,7 @@ class _FakeSesoriServerApi() implements SesoriServerApi {
   @override
   Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) async {
     accessTokens.add(accessToken);
-    if (error != null) throw error!;
+    if (error case final failure?) throw failure;
     return response;
   }
 

@@ -142,7 +142,7 @@ void main() {
     test("the DAO counts only user rows below the given seq", () async {
       final dao = history.database.chatHistoryDao;
       // Rows come back oldest-first, so index i holds m(i + 1).
-      final seqs = [for (final row in await dao.getMessages(sessionId: "ses_a")) row.seq];
+      final seqs = [for (final row in await dao.getMessages(sessionId: "ses_a", limit: null, before: null)) row.seq];
 
       expect(await dao.countUserMessagesBefore(sessionId: "ses_a", seq: seqs[0]), 0);
       expect(
@@ -194,7 +194,14 @@ void main() {
 
       setUp(() async {
         // Index i holds m(i + 1).
-        seqs = [for (final row in await history.database.chatHistoryDao.getMessages(sessionId: "ses_a")) row.seq];
+        seqs = [
+          for (final row in await history.database.chatHistoryDao.getMessages(
+            sessionId: "ses_a",
+            limit: null,
+            before: null,
+          ))
+            row.seq,
+        ];
       });
 
       for (final storedOnly in const [false, true]) {
@@ -225,9 +232,11 @@ void main() {
       test("the archived slice matches the stored one", () async {
         final window = HistoryWindowThrough(throughSeq: seqs[2], before: seqs[7]);
         final stored = await history.service.getSessionMessages(sessionId: "ses_a", window: window);
-        final session = await _FakeSessionRepository(transcript: transcript).getStoredSession(sessionId: "ses_a");
+        final session =
+            await _FakeSessionRepository(transcript: transcript).getStoredSession(sessionId: "ses_a") ??
+            fail("missing stored session");
         await history.service.exportSessionHistory(
-          session: session!,
+          session: session,
           title: null,
           createdAt: 1,
           updatedAt: 1,

@@ -116,13 +116,15 @@ void main() {
       };
 
       expect(byFile.keys, containsAll(["tracked.txt", "lib/new_untracked.dart"]));
-      expect(byFile["tracked.txt"], isA<FileDiffContent>());
-      final tracked = byFile["tracked.txt"]! as FileDiffContent;
+      final tracked = byFile["tracked.txt"];
+      if (tracked is! FileDiffContent) fail("expected a content diff for tracked.txt, got $tracked");
       expect(tracked.before, contains("base tracked"));
       expect(tracked.after, equals("uncommitted tracked\n"));
 
-      expect(byFile["lib/new_untracked.dart"], isA<FileDiffContent>());
-      final untracked = byFile["lib/new_untracked.dart"]! as FileDiffContent;
+      final untracked = byFile["lib/new_untracked.dart"];
+      if (untracked is! FileDiffContent) {
+        fail("expected a content diff for lib/new_untracked.dart, got $untracked");
+      }
       expect(untracked.before, isEmpty);
       expect(untracked.after, equals("class New {}\n"));
       expect(untracked.status, FileDiffStatus.added);
@@ -171,8 +173,12 @@ void main() {
       final byFile = {for (final diff in diffs) diff.file: diff};
 
       expect(byFile.keys, containsAll(["tracked.txt", "new.txt"]));
-      expect((byFile["tracked.txt"]! as FileDiffContent).before, "base tracked\n");
-      expect((byFile["tracked.txt"]! as FileDiffContent).after, "local in-place\n");
+      expect(
+        byFile["tracked.txt"],
+        isA<FileDiffContent>()
+            .having((diff) => diff.before, "before", "base tracked\n")
+            .having((diff) => diff.after, "after", "local in-place\n"),
+      );
     });
 
     test("in-place session keeps its exact start tree after a branch switch", () async {
@@ -270,8 +276,12 @@ void main() {
       final byFile = {for (final diff in diffs) diff.file: diff};
 
       expect(byFile.keys, unorderedEquals(["tracked.txt", "new.txt"]));
-      expect((byFile["tracked.txt"]! as FileDiffContent).before, "nested before\n");
-      expect((byFile["tracked.txt"]! as FileDiffContent).after, "nested after\n");
+      expect(
+        byFile["tracked.txt"],
+        isA<FileDiffContent>()
+            .having((diff) => diff.before, "before", "nested before\n")
+            .having((diff) => diff.after, "after", "nested after\n"),
+      );
     });
 
     test("shows replacement content when a deleted file is recreated untracked", () async {
@@ -425,7 +435,7 @@ Future<ProcessResult> _runGit({
   required String cwd,
   required List<String> args,
 }) async {
-  final result = await runner.run(executable: "git", arguments: args, workingDirectory: cwd);
+  final result = await runner.run(executable: "git", arguments: args, workingDirectory: cwd, environment: null);
   if (result.exitCode != 0) {
     fail("git ${args.join(" ")} failed: ${result.stderr}");
   }

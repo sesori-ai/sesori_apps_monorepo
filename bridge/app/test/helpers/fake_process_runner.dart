@@ -16,8 +16,8 @@ class NoopProcessRunner() implements ProcessRunner {
   Future<ProcessResult> run({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
-    String? workingDirectory,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     throw UnimplementedError("NoopProcessRunner must not run processes");
@@ -64,8 +64,8 @@ final class RecordingProcessRunner({
   Future<ProcessResult> run({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
-    String? workingDirectory,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     invocations.add(

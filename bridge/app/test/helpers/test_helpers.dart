@@ -103,8 +103,8 @@ class FakeBridgeRegistrationRepository() implements BridgeRegistrationRepository
     registeredBridgeIds.add(bridgeId);
     registeredKinds.add(kind);
     await registerDelay;
-    if (registerError != null) {
-      throw registerError!;
+    if (registerError case final error?) {
+      throw error;
     }
     return BridgeSummary(
       id: nextBridgeId,

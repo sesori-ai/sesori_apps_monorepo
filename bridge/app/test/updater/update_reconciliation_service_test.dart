@@ -111,8 +111,8 @@ void main() {
       updateLock: lock,
       currentVersion: currentVersion,
       installRoot: '/tmp/install',
+      emitLine: (line) => (line.isError ? errorMessages : infoMessages).add(line.text),
     );
-    service.emitLine = (line) => (line.isError ? errorMessages : infoMessages).add(line.text);
     return service;
   }
 

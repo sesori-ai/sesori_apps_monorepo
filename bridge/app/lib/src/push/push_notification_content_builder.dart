@@ -59,7 +59,44 @@ class const PushNotificationContentBuilder() {
             : "A new bridge version is available.",
         session: null,
       ),
-      _ => null,
+      SesoriServerConnected() ||
+      SesoriServerHeartbeat() ||
+      SesoriServerInstanceDisposed() ||
+      SesoriGlobalDisposed() ||
+      SesoriCatalogImportProgress() ||
+      SesoriPluginManagementChanged() ||
+      SesoriMcpInventoryChanged() ||
+      SesoriMcpAuthenticationChanged() ||
+      SesoriPluginInstallProgress() ||
+      SesoriPluginAuthenticationProgress() ||
+      SesoriSessionOptionsUpdated() ||
+      SesoriSessionCreated() ||
+      SesoriSessionUpdated() ||
+      SesoriSessionDeleted() ||
+      SesoriSessionDiff() ||
+      SesoriSessionError() ||
+      SesoriSessionCompacted() ||
+      SesoriSessionPromptSettled() ||
+      SesoriSessionPromptDefaultsChanged() ||
+      SesoriSessionStatus() ||
+      SesoriCommandExecuted() ||
+      SesoriSessionQueuedPrompts() ||
+      SesoriMessageUpdated() ||
+      SesoriMessageRemoved() ||
+      SesoriMessagePartUpdated() ||
+      SesoriMessagePartDelta() ||
+      SesoriMessagePartRemoved() ||
+      SesoriPermissionReplied() ||
+      SesoriPermissionUpdated() ||
+      SesoriQuestionReplied() ||
+      SesoriQuestionRejected() ||
+      SesoriTodoUpdated() ||
+      SesoriProjectsSummary() ||
+      SesoriProjectUpdated() ||
+      SesoriVcsBranchUpdated() ||
+      SesoriSessionUnseenChanged() ||
+      SesoriFileEdited() ||
+      SesoriTuiToastShow() => null,
     };
   }
 

@@ -40,14 +40,15 @@ void main() {
     test("the audit file round-trips the transcript", () async {
       await export();
 
-      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
-      expect(page!.messages.map((message) => message.info.id), const ["m1", "m2"]);
+      final page =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a") ?? fail("missing archived page");
+      expect(page.messages.map((message) => message.info.id), const ["m1", "m2"]);
       expect(page.nextCursor, isNull);
     });
 
     test("rehydrates a released flattened part from an audit file", () async {
       await export();
-      final raw = jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!);
+      final raw = jsonDecodeMap(await history.archivedStorage.read(sessionId: "ses_a") ?? fail("missing audit file"));
       final messages = raw["messages"] as List<dynamic>;
       final firstMessage = messages.first as Map<String, dynamic>;
       firstMessage["parts"] = [
@@ -61,10 +62,11 @@ void main() {
       ];
       await history.archivedStorage.write(sessionId: "ses_a", contents: jsonEncode(raw));
 
-      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+      final page =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a") ?? fail("missing archived page");
 
       expect(
-        page!.messages.first.parts.single,
+        page.messages.first.parts.single,
         const MessagePart.retry(
           id: "legacy-retry",
           sessionID: "ses_a",
@@ -113,8 +115,9 @@ void main() {
       await export();
       await history.service.purgeSessionHistory(sessionId: "ses_a");
 
-      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
-      final attachment = page!.messages
+      final page =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a") ?? fail("missing archived page");
+      final attachment = page.messages
           .expand((message) => message.parts)
           .whereType<MessagePartFile>()
           .map((part) => part.attachment)
@@ -147,8 +150,8 @@ void main() {
           ),
         );
       }
-      Map<String, String?> titles(ChatHistoryPage? page) => {
-        for (final part in page!.messages.expand((message) => message.parts))
+      Map<String, String?> titles(ChatHistoryPage page) => {
+        for (final part in page.messages.expand((message) => message.parts))
           if (part case MessagePartTool(:final id, :final state)) id: state.title,
       };
       const expected = {"dup": null, "own": "Check the tree", "read": "lib/main.dart"};
@@ -162,24 +165,30 @@ void main() {
       await export();
       await history.service.purgeSessionHistory(sessionId: "ses_a");
 
-      expect(titles(await history.service.getArchivedSessionMessages(sessionId: "ses_a")), expected);
+      final archived =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a") ?? fail("missing archived page");
+      expect(titles(archived), expected);
     });
 
     test("archived pages use the same exclusive cursor as the live store", () async {
       await export();
       await history.service.purgeSessionHistory(sessionId: "ses_a");
 
-      final first = await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 1);
-      expect(first!.messages.single.info.id, "m2");
+      final first =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 1) ??
+          fail("missing first archived page");
+      expect(first.messages.single.info.id, "m2");
       expect(first.nextCursor, isNotNull);
       expect(first.userMessagesBefore, 1, reason: "the audit file counts the prompts before the page");
 
-      final second = await history.service.getArchivedSessionMessages(
-        sessionId: "ses_a",
-        limit: 1,
-        before: first.nextCursor,
-      );
-      expect(second!.messages.single.info.id, "m1");
+      final second =
+          await history.service.getArchivedSessionMessages(
+            sessionId: "ses_a",
+            limit: 1,
+            before: first.nextCursor,
+          ) ??
+          fail("missing second archived page");
+      expect(second.messages.single.info.id, "m1");
       expect(second.nextCursor, isNull, reason: "the start of the transcript ends paging");
       expect(second.userMessagesBefore, 0);
     });
@@ -191,7 +200,7 @@ void main() {
       await export();
 
       final file = ArchivedSessionFileDto.fromJson(
-        jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!),
+        jsonDecodeMap(await history.archivedStorage.read(sessionId: "ses_a") ?? fail("missing audit file")),
       );
       expect(file.completeness, ArchivedSessionCompleteness.storeOnly);
       expect(file.messages, hasLength(2), reason: "it still archives what the store held");
@@ -284,9 +293,10 @@ void main() {
         archivedAt: 400,
       );
 
-      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+      final page =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a") ?? fail("missing archived page");
       expect(
-        page!.messages.map((message) => message.info.id),
+        page.messages.map((message) => message.info.id),
         const ["m1", "m2"],
         reason: "the durable transcript must survive a repeated archive request",
       );
@@ -296,25 +306,27 @@ void main() {
       await export();
       await history.service.purgeSessionHistory(sessionId: "ses_a");
 
-      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 0);
+      final page =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 0) ??
+          fail("missing archived page");
 
-      expect(page!.messages, isEmpty);
+      expect(page.messages, isEmpty);
       expect(page.nextCursor, isNull);
     });
 
     test("the archived snapshot omits live prompt defaults", () async {
       await export();
 
-      final file = jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!);
-      final session = file["session"]! as Map<String, dynamic>;
+      final file = jsonDecodeMap(await history.archivedStorage.read(sessionId: "ses_a") ?? fail("missing audit file"));
+      final session = file["session"] as Map<String, dynamic>;
       expect(session, isNot(contains("lastAgent")));
       expect(session, isNot(contains("lastAgentModel")));
     });
 
     test("released archive snapshots with prompt defaults remain readable", () async {
       await export();
-      final file = jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!);
-      final session = file["session"]! as Map<String, dynamic>;
+      final file = jsonDecodeMap(await history.archivedStorage.read(sessionId: "ses_a") ?? fail("missing audit file"));
+      final session = file["session"] as Map<String, dynamic>;
       session
         ..["lastAgent"] = "build"
         ..["lastAgentModel"] = "claude-sonnet";

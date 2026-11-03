@@ -222,7 +222,7 @@ class PluginGenerationFactory({
       await for (final event in request.registration.descriptor.ensureRuntime(host: host)) {
         request.controller.add(PluginGenerationProvisionProgress(event: event));
         if (event case ProvisionReady(:final binaryPath)) {
-          host.provisionedRuntimePath = binaryPath;
+          host.recordProvisionedRuntimePath(path: binaryPath);
         }
       }
       final plugin = await request.registration.descriptor.start(host);

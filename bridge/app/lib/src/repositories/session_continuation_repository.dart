@@ -102,7 +102,11 @@ class const SessionContinuationRepository({
       SessionContinuationResetKnown(:final errorMessageId) ||
       SessionContinuationResetUnknown(:final errorMessageId) ||
       SessionContinuationPaused(:final errorMessageId) => errorMessageId,
-      _ => null,
+      SessionContinuationNone() ||
+      SessionContinuationConsumed() ||
+      SessionContinuationSubmitted() ||
+      SessionContinuationCancelled() ||
+      SessionContinuationSubmissionFailed() => null,
     };
     if (errorMessageId == null) return false;
     await writeOutcomeAlreadyReserved(
@@ -133,6 +137,11 @@ class const SessionContinuationRepository({
         SessionContinuationResetKnown(:final resetAt) => !resetAt.isAfter(resetCutoff),
         SessionContinuationPaused(:final resetAt, :final recheckAt) =>
           !resetAt.isAfter(resetCutoff) && !recheckAt.isAfter(pausedRecheckCutoff),
-        _ => false,
+        SessionContinuationNone() ||
+        SessionContinuationResetUnknown() ||
+        SessionContinuationConsumed() ||
+        SessionContinuationSubmitted() ||
+        SessionContinuationCancelled() ||
+        SessionContinuationSubmissionFailed() => false,
       };
 }

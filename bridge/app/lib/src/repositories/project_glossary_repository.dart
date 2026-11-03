@@ -71,7 +71,7 @@ class ProjectGlossaryRepository({
     final metadataPaths = <String>{
       for (final path in trackedPaths)
         if (_isMetadataPath(path)) path,
-    }.toList()..sort(_compareMetadataPaths);
+    }.toList()..sort((left, right) => _compareMetadataPaths(left: left, right: right));
 
     return ProjectGlossarySource(
       projectName: p.basename(p.normalize(projectPath)),
@@ -107,7 +107,7 @@ class ProjectGlossaryRepository({
     return basename == "readme" || basename.startsWith("readme.") || _metadataFileNames.contains(basename);
   }
 
-  int _compareMetadataPaths(String left, String right) {
+  int _compareMetadataPaths({required String left, required String right}) {
     final leftDepth = p.split(left).length;
     final rightDepth = p.split(right).length;
     final depthOrder = leftDepth.compareTo(rightDepth);

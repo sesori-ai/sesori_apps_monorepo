@@ -278,7 +278,7 @@ class _ClaudeCatalogPlugin({
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => const [];
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Reports Claude's quota support as its descriptor does, so the enriched

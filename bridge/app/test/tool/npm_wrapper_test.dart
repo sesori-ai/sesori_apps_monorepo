@@ -25,7 +25,7 @@ String _currentPlatformPackage() {
   final machine = '${uname.stdout}'.toLowerCase().trim();
   final arch = machine.contains('arm64') || machine.contains('aarch64') ? 'arm64' : 'x64';
   final platform = Platform.isMacOS ? 'darwin' : Platform.operatingSystem;
-  return packages['$platform $arch']!;
+  return packages['$platform $arch'] ?? fail('no npm package for $platform $arch');
 }
 
 String _wrapperPackageRoot() {
@@ -52,7 +52,7 @@ String _currentPlatformAssetName() {
   final machine = '${uname.stdout}'.toLowerCase().trim();
   final arch = machine.contains('arm64') || machine.contains('aarch64') ? 'arm64' : 'x64';
   final platform = Platform.isMacOS ? 'darwin' : Platform.operatingSystem;
-  return assets['$platform $arch']!;
+  return assets['$platform $arch'] ?? fail('no release asset for $platform $arch');
 }
 
 String _managedInstallRoot({required String homePath}) {

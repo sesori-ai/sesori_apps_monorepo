@@ -27,7 +27,8 @@ class _FakeReleaseRepository() implements ReleaseRepository {
   @override
   Future<ReleaseInfo?> checkForNewerRelease() async {
     checkCount++;
-    return await (onCheck == null ? null : onCheck!());
+    if (onCheck case final check?) return await check();
+    return null;
   }
 
   @override
@@ -107,8 +108,8 @@ void main() {
       managedExecutablePath: _managedPath,
       environment: environment,
       isSupervised: isSupervised,
+      emitLine: (line) => (line.isError ? errors : infoMessages).add(line.text),
     );
-    service.emitLine = (line) => (line.isError ? errors : infoMessages).add(line.text);
     return service;
   }
 

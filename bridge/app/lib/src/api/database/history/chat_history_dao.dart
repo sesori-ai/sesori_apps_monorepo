@@ -34,8 +34,8 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
   /// oldest-first within the page.
   Future<List<HistoryMessagesTableData>> getMessages({
     required String sessionId,
-    int? limit,
-    int? before,
+    required int? limit,
+    required int? before,
   }) async {
     if (limit == null) {
       return await (select(historyMessagesTable)
@@ -69,8 +69,8 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
   /// stall unrelated database work for no added consistency.
   Future<PagedHistoryRows> getPageRowsWithSyncState({
     required String sessionId,
-    int? limit,
-    int? before,
+    required int? limit,
+    required int? before,
   }) {
     return transaction(() async {
       final syncState = await getSyncState(sessionId: sessionId);
@@ -191,7 +191,7 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
   /// Parts of [messageIds], or of the whole session when [messageIds] is null.
   Future<List<HistoryPartsTableData>> getParts({
     required String sessionId,
-    List<String>? messageIds,
+    required List<String>? messageIds,
   }) {
     return (select(historyPartsTable)
           ..where(
@@ -374,15 +374,15 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
       ),
       onConflict: DoUpdate(
         (old) => HistorySyncStateTableCompanion.custom(
-          watermark: _greatest(old.watermark, Constant(watermark)),
-          backendActivityAt: _greatest(old.backendActivityAt, Constant(backendActivityAt)),
+          watermark: _greatest(left: old.watermark, right: Constant(watermark)),
+          backendActivityAt: _greatest(left: old.backendActivityAt, right: Constant(backendActivityAt)),
           syncedAt: syncedAt.present ? Constant(syncedAt.value) : null,
         ),
       ),
     );
   }
 
-  Expression<int> _greatest(Expression<int> left, Expression<int> right) =>
+  Expression<int> _greatest({required Expression<int> left, required Expression<int> right}) =>
       FunctionCallExpression("MAX", [left, right]);
 
   Future<void> clearSyncedAt({required String sessionId}) async {

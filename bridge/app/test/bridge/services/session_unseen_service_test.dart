@@ -87,10 +87,12 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "root",
         parentId: null,
+        occurredAt: null,
       );
       await service.recordSessionCreated(
         sessionId: "child",
         parentId: "root",
+        occurredAt: null,
       );
 
       expect(await unseen("root"), isTrue);
@@ -129,6 +131,7 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "native-session",
         parentId: null,
+        occurredAt: null,
       );
 
       final project = await db.projectsDao.getProject(projectId: projectId);
@@ -156,7 +159,7 @@ void main() {
       expect(await unseen("s1"), isFalse);
 
       clock = 2000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
     });
 
@@ -164,7 +167,7 @@ void main() {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
 
-      await service.recordActivity(sessionId: "never-learned", isUserMessage: false);
+      await service.recordActivity(sessionId: "never-learned", isUserMessage: false, occurredAt: null);
       await Future<void>.delayed(Duration.zero);
 
       expect(await unseen("never-learned"), isFalse);
@@ -177,6 +180,7 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "s1",
         parentId: null,
+        occurredAt: null,
       );
       viewTracker.setViewing(connID: 1, sessionId: "s1");
       // view-start marks it seen.
@@ -184,7 +188,7 @@ void main() {
       expect(await unseen("s1"), isFalse);
 
       clock = 3000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isFalse);
     });
 
@@ -205,7 +209,7 @@ void main() {
       );
       // Some AI activity exists, but it's currently seen.
       clock = 600;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       clock = 700;
       await service.markRead(sessionId: "s1");
       expect(await unseen("s1"), isFalse);
@@ -236,7 +240,7 @@ void main() {
       );
       // Latest activity is the user's own message -> normally NOT bold.
       clock = 600;
-      await service.recordActivity(sessionId: "s1", isUserMessage: true);
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: null);
       expect(await unseen("s1"), isFalse);
 
       clock = 700;
@@ -249,13 +253,14 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "s1",
         parentId: null,
+        occurredAt: null,
       );
       // Both events fall in the same wall-clock millisecond. A user message then
       // an assistant message must still leave activity strictly above the
       // user-message timestamp, so the session stays unseen.
       clock = 2000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: true);
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: null);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
     });
 
@@ -264,12 +269,13 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "s1",
         parentId: null,
+        occurredAt: null,
       );
       clock = 2000;
       // Fire a user message then an AI message without awaiting between them;
       // the AI activity (later) must win so the session stays unseen.
-      final f1 = service.recordActivity(sessionId: "s1", isUserMessage: true);
-      final f2 = service.recordActivity(sessionId: "s1", isUserMessage: false);
+      final f1 = service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: null);
+      final f2 = service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       await Future.wait([f1, f2]);
       expect(await unseen("s1"), isTrue);
     });
@@ -301,7 +307,7 @@ void main() {
       // New assistant activity arrives with a wall clock BELOW the stored
       // markers; it must still bold the session.
       clock = 1000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
     });
 
@@ -310,6 +316,7 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "s1",
         parentId: null,
+        occurredAt: null,
       );
       expect(await unseen("s1"), isTrue);
 
@@ -324,6 +331,7 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "s1",
         parentId: null,
+        occurredAt: null,
       );
 
       final events = <UnseenChange>[];
@@ -379,6 +387,7 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "s1",
         parentId: null,
+        occurredAt: null,
       );
       expect(await unseen("s1"), isTrue);
     });
@@ -404,7 +413,7 @@ void main() {
 
       // First assistant activity bolds the session and emits.
       clock = 2000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       await Future<void>.delayed(Duration.zero);
       expect(await unseen("s1"), isTrue);
       final afterFirst = events.length;
@@ -413,9 +422,9 @@ void main() {
       // Subsequent assistant activity (not viewed) is coalesced: no additional
       // DB write or emit while it's already unseen.
       clock = 2001;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       clock = 2002;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       await Future<void>.delayed(Duration.zero);
       expect(events.length, equals(afterFirst));
 
@@ -450,7 +459,7 @@ void main() {
 
       // The assistant replies -> unseen.
       clock = 3000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
 
       // The backend re-emits the SAME user message (diff-summary bookkeeping,
@@ -491,7 +500,7 @@ void main() {
       // Assistant activity clamps strictly past the (locally-future) marker
       // and still bolds despite the skew.
       clock = 1500;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
 
       // The re-emission (original creation time) must still be skipped.
@@ -609,13 +618,13 @@ void main() {
         ],
       );
       clock = 2000;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
 
       // The user then sends their own message: this must still be recorded (it
       // advances last_user_message_at), and clears the bold.
       clock = 2500;
-      await service.recordActivity(sessionId: "s1", isUserMessage: true);
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: null);
       expect(await unseen("s1"), isFalse);
     });
 
@@ -661,7 +670,7 @@ void main() {
       );
       // Bold the row so mark-read has a real effect.
       clock = 600;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isTrue);
 
       final failing = SessionUnseenService(
@@ -722,6 +731,7 @@ void main() {
       await service.recordSessionCreated(
         sessionId: "root",
         parentId: null,
+        occurredAt: null,
       );
       await Future<void>.delayed(Duration.zero);
 

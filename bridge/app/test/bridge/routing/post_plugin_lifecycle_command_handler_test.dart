@@ -33,7 +33,7 @@ void main() {
     expect(service.receivedPluginId, "one");
     expect(service.receivedRequest, const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe));
     expect(
-      PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)),
+      PluginManagementResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
       _response,
     );
   });
@@ -57,7 +57,7 @@ void main() {
     expect(invalid.status, 400);
     expect(unknown.status, 404);
     expect(conflict.status, 409);
-    expect(PluginLifecycleConflict.fromJson(jsonDecodeMap(conflict.body!)), _conflict);
+    expect(PluginLifecycleConflict.fromJson(jsonDecodeMap(conflict.body ?? fail("missing body"))), _conflict);
     expect(uncertain.status, 503);
     expect(failed.status, 500);
     expect(failed.body, "plugin command failed");

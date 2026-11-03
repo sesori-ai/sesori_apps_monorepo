@@ -473,9 +473,10 @@ void main() {
       ),
     );
 
+    final inspectionGate = Completer<void>();
     final commandRepository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
-      inspectionGate: Completer<void>(),
+      inspectionGate: inspectionGate,
       startFailureMessage: null,
     );
     final commandConflict = _commandService(
@@ -501,7 +502,7 @@ void main() {
         ),
       ),
     );
-    commandRepository.inspectionGate!.complete();
+    inspectionGate.complete();
   });
 
   test("rejects duplicate plugin ids during construction", () {
@@ -1205,7 +1206,9 @@ void main() {
 
   test("named refresh commands overlap and join only their own slot", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one", "two"]);
-    final gates = {"one": Completer<void>(), "two": Completer<void>()};
+    final gateOne = Completer<void>();
+    final gateTwo = Completer<void>();
+    final gates = {"one": gateOne, "two": gateTwo};
     final repository = _GatedInspectionRepository(runtime: runtime, gates: gates);
     final service = PluginLifecycleService(
       lifecycleRepository: repository,
@@ -1245,7 +1248,7 @@ void main() {
       ),
       throwsA(isA<PluginManagementConflictException>()),
     );
-    gates["two"]!.complete();
+    gateTwo.complete();
     final second = await two;
     expect(
       second.plugins.singleWhere((plugin) => plugin.setup.id == "two").setup.state,
@@ -1255,7 +1258,7 @@ void main() {
       () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable()),
       throwsA(isA<PluginManagementConflictException>()),
     );
-    gates["one"]!.complete();
+    gateOne.complete();
     await one;
     expect(service.managementSnapshot.plugins.every((plugin) => plugin.runtimeState.isEnabled), isTrue);
   });
@@ -1263,6 +1266,7 @@ void main() {
   test("idle timeout writes serialize and preserve unknown plugin settings", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
+    final saveGate = Completer<void>();
     final settingsRepository = _MutableBridgeSettingsRepository(
       settings: const BridgeSettings(
         plugins: BridgePluginSettings(
@@ -1278,7 +1282,7 @@ void main() {
           },
         ),
       ),
-    )..saveGate = Completer<void>();
+    )..saveGate = saveGate;
     final service = _singleIdleService(
       lifecycleRepository: repository,
       settingsRepository: settingsRepository,
@@ -1300,7 +1304,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(settingsRepository.loadCalls, 1);
-    settingsRepository.saveGate!.complete();
+    saveGate.complete();
     final responses = await Future.wait([applyAll, setOverride]);
 
     expect(responses.first.defaultIdleTimeoutMins, 30);
@@ -1326,8 +1330,8 @@ void main() {
   test("queued idle timeout writes fail closed after bridge identity is revoked", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
-    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
-      ..saveGate = Completer<void>();
+    final saveGate = Completer<void>();
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())..saveGate = saveGate;
     final bridgeIdProvider = FakeBridgeIdProvider("br_test1234");
     final service = PluginLifecycleService(
       lifecycleRepository: repository,
@@ -1361,7 +1365,7 @@ void main() {
     bridgeIdProvider.id = null;
     final activeExpectation = expectLater(active, throwsA(isA<PluginManagementMutationOutcomeUncertainException>()));
     final queuedExpectation = expectLater(queued, throwsStateError);
-    settingsRepository.saveGate!.complete();
+    saveGate.complete();
 
     await Future.wait([activeExpectation, queuedExpectation]);
     expect(settingsRepository.loadCalls, 1);
@@ -1576,8 +1580,8 @@ void main() {
 
   test("disable commits durable eligibility and equal commands join", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
-    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
-      ..saveGate = Completer<void>();
+    final saveGate = Completer<void>();
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())..saveGate = saveGate;
     final service = PluginLifecycleService(
       lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
       preferredDefaultPluginId: legacyMissingPluginId,
@@ -1613,7 +1617,7 @@ void main() {
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
     expect(service.managementSnapshot.snapshotToken, isNot(initialToken));
     expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.stopping);
-    settingsRepository.saveGate!.complete();
+    saveGate.complete();
     final responses = await Future.wait([first, joined]);
 
     expect(responses[0], responses[1]);
@@ -1627,8 +1631,8 @@ void main() {
 
   test("a different disable mode conflicts while a command is active", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
-    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
-      ..saveGate = Completer<void>();
+    final saveGate = Completer<void>();
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())..saveGate = saveGate;
     final service = PluginLifecycleService(
       lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
       preferredDefaultPluginId: legacyMissingPluginId,
@@ -1673,14 +1677,14 @@ void main() {
       ),
     );
 
-    settingsRepository.saveGate!.complete();
+    saveGate.complete();
     await safe;
   });
 
   test("command completion marks identity loss after dispatch as uncertain without hanging", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
-    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
-      ..saveGate = Completer<void>();
+    final saveGate = Completer<void>();
+    final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())..saveGate = saveGate;
     final bridgeIdProvider = FakeBridgeIdProvider("br_test1234");
     final service = PluginLifecycleService(
       lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
@@ -1713,7 +1717,7 @@ void main() {
     );
     await settingsRepository.saveStarted.future;
     bridgeIdProvider.id = null;
-    settingsRepository.saveGate!.complete();
+    saveGate.complete();
 
     await expectLater(response, throwsA(isA<PluginManagementMutationOutcomeUncertainException>()));
   });
@@ -3571,7 +3575,7 @@ class _GatedInspectionRepository({required super.runtime, required final Map<Str
   }) async {
     final id = pluginIds.single;
     inspected.add(id);
-    await gates[id]!.future;
+    await (gates[id] ?? fail("no inspection gate for $id")).future;
     return await super.inspect(pluginIds: pluginIds, markUnselectedNotInspected: markUnselectedNotInspected);
   }
 }

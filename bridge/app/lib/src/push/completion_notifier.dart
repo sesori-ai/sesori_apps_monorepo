@@ -114,7 +114,40 @@ class CompletionNotifier({
       case SesoriPermissionReplied(:final sessionID):
         _maybeResumeBlockedCompletion(sessionID);
       // Ignore unsupported events.
-      default:
+      case SesoriServerConnected() ||
+          SesoriServerHeartbeat() ||
+          SesoriServerInstanceDisposed() ||
+          SesoriGlobalDisposed() ||
+          SesoriCatalogImportProgress() ||
+          SesoriPluginManagementChanged() ||
+          SesoriMcpInventoryChanged() ||
+          SesoriMcpAuthenticationChanged() ||
+          SesoriPluginInstallProgress() ||
+          SesoriPluginAuthenticationProgress() ||
+          SesoriSessionOptionsUpdated() ||
+          SesoriSessionCreated() ||
+          SesoriSessionUpdated() ||
+          SesoriSessionDiff() ||
+          SesoriSessionError() ||
+          SesoriSessionCompacted() ||
+          SesoriSessionPromptSettled() ||
+          SesoriSessionPromptDefaultsChanged() ||
+          SesoriCommandExecuted() ||
+          SesoriSessionQueuedPrompts() ||
+          SesoriMessageUpdated() ||
+          SesoriMessageRemoved() ||
+          SesoriMessagePartUpdated() ||
+          SesoriMessagePartDelta() ||
+          SesoriMessagePartRemoved() ||
+          SesoriPermissionUpdated() ||
+          SesoriTodoUpdated() ||
+          SesoriProjectsSummary() ||
+          SesoriProjectUpdated() ||
+          SesoriVcsBranchUpdated() ||
+          SesoriSessionUnseenChanged() ||
+          SesoriFileEdited() ||
+          SesoriInstallationUpdateAvailable() ||
+          SesoriTuiToastShow():
         break;
     }
   }

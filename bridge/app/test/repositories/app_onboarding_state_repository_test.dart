@@ -76,7 +76,7 @@ class _MemoryAppOnboardingStateStorage() implements AppOnboardingStateStorage {
 
   @override
   Future<bool> markerExists({required String key}) async {
-    if (readError != null) throw readError!;
+    if (readError case final failure?) throw failure;
     return keys.contains(key);
   }
 

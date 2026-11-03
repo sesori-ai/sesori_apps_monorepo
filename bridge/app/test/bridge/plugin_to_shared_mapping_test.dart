@@ -243,12 +243,13 @@ void main() {
         expect(part.prompt, "😀" * maxToolOutputLength);
         expect(part.description, text);
         expect(part.agent, "agent");
-        expect(part.taskState!.status, status.toShared());
-        expect(part.taskState!.title, "😀" * maxToolOutputLength);
-        final taskState = part.taskState! as ToolStateFull;
-        expect(taskState.output, "😀" * maxToolOutputLength);
-        expect(taskState.error, status == PluginToolStatus.error ? "😀" * maxToolOutputLength : null);
-        expect(part.taskState!.attachments, hasLength(1));
+        final taskState = part.taskState ?? fail("the subtask has no task state");
+        expect(taskState.status, status.toShared());
+        expect(taskState.title, "😀" * maxToolOutputLength);
+        final fullState = taskState as ToolStateFull;
+        expect(fullState.output, "😀" * maxToolOutputLength);
+        expect(fullState.error, status == PluginToolStatus.error ? "😀" * maxToolOutputLength : null);
+        expect(taskState.attachments, hasLength(1));
       });
     }
     test("bounds command output and error at the common wire projection with legacy title alias", () {

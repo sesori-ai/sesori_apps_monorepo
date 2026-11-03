@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
@@ -61,7 +62,7 @@ Future<void> main(List<String> args) async {
       "perPluginStartMicros": {
         for (final entry in perPlugin.entries) entry.key: _percentiles(entry.value..sort()),
       },
-      "maximumConcurrentStarts": samples.map((sample) => sample.maximumConcurrentStarts).reduce(_max),
+      "maximumConcurrentStarts": samples.map((sample) => sample.maximumConcurrentStarts).reduce(max),
       "mutexAcquisitionCount": samples.map((sample) => sample.mutexAcquisitionCount).toSet().single,
       "singletonEnforcementCount": samples.map((sample) => sample.singletonEnforcementCount).toSet().single,
       "stateDirectories": samples.last.stateDirectories,
@@ -158,10 +159,10 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     final expectedStateDirectories = [
       for (final descriptor in descriptors) p.join(runtimeDirectory.path, "plugins", descriptor.id),
     ];
-    if (!_equalLists(probe.stateDirectories, expectedStateDirectories)) {
+    if (!_equalLists(left: probe.stateDirectories, right: expectedStateDirectories)) {
       throw StateError("plugin state directories did not come from the production host composition");
     }
-    if (!_equalLists(probe.provisioningOrder, descriptors.map((descriptor) => descriptor.id).toList())) {
+    if (!_equalLists(left: probe.provisioningOrder, right: descriptors.map((descriptor) => descriptor.id).toList())) {
       throw StateError("provisioning order changed");
     }
     final expectedOperations = [
@@ -171,7 +172,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
         "start:${descriptor.id}",
       ],
     ];
-    if (!_equalLists(probe.operations, expectedOperations)) {
+    if (!_equalLists(left: probe.operations, right: expectedOperations)) {
       throw StateError("a plugin was not launched immediately after its provisioning phase");
     }
     if (selectedCount > 1 && probe.maximumConcurrentStarts < 2) {
@@ -180,9 +181,11 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     if (runtime.activePluginIds.length != selectedCount) {
       throw StateError("composition occurred before every lifecycle settlement");
     }
+    final firstOperationalMicros = probe.firstOperationalMicros;
+    if (firstOperationalMicros == null) throw StateError("no plugin became operational");
     return _StartupSample(
       totalMicros: totalMicros,
-      firstOperationalMicros: probe.firstOperationalMicros!,
+      firstOperationalMicros: firstOperationalMicros,
       startMicros: probe.startMicros,
       maximumConcurrentStarts: probe.maximumConcurrentStarts,
       mutexAcquisitionCount: startupMutexRepository.acquisitionCount,
@@ -217,7 +220,7 @@ int _readInt({required List<String> args, required String name, required int fal
   return fallback;
 }
 
-bool _equalLists<T>(List<T> left, List<T> right) {
+bool _equalLists<T>({required List<T> left, required List<T> right}) {
   if (left.length != right.length) return false;
   for (var index = 0; index < left.length; index++) {
     if (left[index] != right[index]) return false;
@@ -225,11 +228,9 @@ bool _equalLists<T>(List<T> left, List<T> right) {
   return true;
 }
 
-int _max(int left, int right) => left > right ? left : right;
-
 class const _UnusedHostProcessService() implements HostProcessService {
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("setup inspection is not benchmarked");
+  Object? noSuchMethod(Invocation invocation) => throw UnsupportedError("setup inspection is not benchmarked");
 }
 
 class _StartupProbe({required final Stopwatch stopwatch}) {
@@ -281,7 +282,7 @@ class const _FakeDescriptor({@override required final String id, required final 
     _probe.stateDirectories.add(host.stateDirectory);
     final launchedAt = _probe.stopwatch.elapsedMicroseconds;
     _probe.concurrentStarts++;
-    _probe.maximumConcurrentStarts = _max(_probe.maximumConcurrentStarts, _probe.concurrentStarts);
+    _probe.maximumConcurrentStarts = max(_probe.maximumConcurrentStarts, _probe.concurrentStarts);
     await Future<void>.delayed(const Duration(milliseconds: 3));
     _probe.concurrentStarts--;
     _probe.startMicros[id] = _probe.stopwatch.elapsedMicroseconds - launchedAt;
@@ -346,7 +347,7 @@ class _FakePluginApi(@override final String id) extends NativeProjectsPluginApi 
   }) => throw UnimplementedError();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeStartupMutexRepository() implements StartupMutexRepository {
@@ -378,10 +379,10 @@ class _FakeBridgeInstanceService() implements BridgeInstanceService {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeProcessRepository() implements ProcessRepository {
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

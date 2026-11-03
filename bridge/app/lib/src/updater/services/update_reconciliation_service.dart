@@ -25,13 +25,12 @@ class UpdateReconciliationService({
   required final UpdateLock _updateLock,
   required final String _currentVersion,
   required final String _installRoot,
-}) {
+
   /// Sink for a fully-rendered output line. Defaults to writing to the process
   /// streams directly (stdout for status, stderr for failures) — never gated by
   /// `--log-level`, matching the branded `sesori-bridge update` path.
-  @visibleForTesting
-  void Function(RenderedLine line) emitLine = writeRenderedLine;
-
+  @visibleForTesting final void Function(RenderedLine line) _emitLine = writeRenderedLine,
+}) {
   /// Reconciliation is best-effort startup maintenance. It runs entirely under
   /// the cross-process update lock because it executes BEFORE single-live-bridge
   /// enforcement: another bridge may start an apply (writing a new attempt
@@ -185,5 +184,5 @@ class UpdateReconciliationService({
     }
   }
 
-  void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
+  void _emitLines(List<RenderedLine> lines) => lines.forEach(_emitLine);
 }

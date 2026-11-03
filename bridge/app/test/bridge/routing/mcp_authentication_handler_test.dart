@@ -118,17 +118,19 @@ void main() {
   });
 
   test("competing starts are busy during native preparation without replacing the target", () async {
-    plugin.beginGate = Completer<void>();
+    final beginGate = Completer<void>();
+    plugin.beginGate = beginGate;
     final first = service.start(request: _request);
     await _pump();
     expect(await service.start(request: _request), isA<McpAuthenticationBusy>());
     expect(plugin.targets, hasLength(1));
-    plugin.beginGate!.complete();
+    beginGate.complete();
     expect(await first, isA<McpAuthenticationStateResult>());
   });
 
   test("credential forgetting cannot start during native login preparation", () async {
-    plugin.beginGate = Completer<void>();
+    final beginGate = Completer<void>();
+    plugin.beginGate = beginGate;
     final login = service.start(request: _request);
     await _pump();
     expect(
@@ -136,12 +138,13 @@ void main() {
       isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.busy),
     );
     expect(plugin.forgotten, isEmpty);
-    plugin.beginGate!.complete();
+    beginGate.complete();
     await login;
   });
 
   test("credential forgetting reserves ownership before native work and shutdown waits for settlement", () async {
-    plugin.forgettingGate = Completer<void>();
+    final forgettingGate = Completer<void>();
+    plugin.forgettingGate = forgettingGate;
     final forgetting = service.forgetAuthentication(pluginId: _request.pluginId, target: _request.target);
     expect(service.current, isA<McpAuthenticationBusy>());
     expect(await service.start(request: _request), isA<McpAuthenticationBusy>());
@@ -156,7 +159,7 @@ void main() {
     final closing = service.dispose().then((_) => disposed = true);
     await _pump();
     expect(disposed, isFalse);
-    plugin.forgettingGate!.complete();
+    forgettingGate.complete();
     expect(await forgetting, isA<McpControlCompleted>());
     await closing;
     expect(service.current, const McpAuthenticationStateResult(state: McpAuthenticationIdle()));
@@ -190,12 +193,13 @@ void main() {
   test("cancel waits for native resources and settlement", () async {
     await service.start(request: _request);
     final attempt = (state() as McpAuthenticationStarting).attempt;
-    plugin.cancelGate = Completer<void>();
+    final cancelGate = Completer<void>();
+    plugin.cancelGate = cancelGate;
     final result = service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
     await _pump();
     expect(state(), isA<McpAuthenticationSettling>());
     expect(await service.start(request: _request), isA<McpAuthenticationBusy>());
-    plugin.cancelGate!.complete();
+    cancelGate.complete();
     expect((await result as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
     expect(plugin.cancelCount, 1);
   });
@@ -297,7 +301,8 @@ void main() {
   });
 
   test("preparation can be cancelled before a stalled native status read returns", () async {
-    plugin.beginGate = Completer<void>();
+    final beginGate = Completer<void>();
+    plugin.beginGate = beginGate;
     final starting = service.start(request: _request);
     await _pump();
     final recovered = await GetMcpAuthenticationHandler(service: service)
@@ -305,7 +310,7 @@ void main() {
     expect(recovered.status, 200);
     final recoveredState =
         (McpAuthenticationResult.fromJson(
-              jsonDecode(recovered.body!) as Map<String, dynamic>,
+              jsonDecode(recovered.body ?? fail("missing body")) as Map<String, dynamic>,
             ) as McpAuthenticationStateResult).state
             as McpAuthenticationStarting;
     expect(recoveredState.attempt.cancellation, McpAuthenticationCancellation.unknown);
@@ -316,7 +321,7 @@ void main() {
     expect((cancelled as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
     expect((await starting as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
     expect(plugin.wasListened, isFalse);
-    plugin.beginGate!.complete();
+    beginGate.complete();
     await _pump();
     expect(plugin.wasListened, isFalse);
     expect(plugin.cancelCount, 1);
@@ -324,7 +329,8 @@ void main() {
 
   test("discarded preparation starts no work for a native API without cancellation", () async {
     plugin.cancelable = false;
-    plugin.beginGate = Completer<void>();
+    final beginGate = Completer<void>();
+    plugin.beginGate = beginGate;
     final starting = service.start(request: _request);
     await _pump();
     final attempt = (state() as McpAuthenticationStarting).attempt;
@@ -332,7 +338,7 @@ void main() {
         .cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId))
         .timeout(const Duration(seconds: 1));
     await starting;
-    plugin.beginGate!.complete();
+    beginGate.complete();
     await _pump();
     expect(plugin.wasListened, isFalse);
     expect(plugin.cancelCount, 0);
@@ -352,13 +358,14 @@ void main() {
   test("duplicate cancel returns settling without repeating native cancellation", () async {
     await service.start(request: _request);
     final attempt = (state() as McpAuthenticationStarting).attempt;
-    plugin.cancelGate = Completer<void>();
+    final cancelGate = Completer<void>();
+    plugin.cancelGate = cancelGate;
     final first = service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
     await _pump();
     final second = await service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
     expect((second as McpAuthenticationStateResult).state, isA<McpAuthenticationSettling>());
     expect(plugin.cancelCount, 1);
-    plugin.cancelGate!.complete();
+    cancelGate.complete();
     await first;
   });
 
@@ -366,7 +373,8 @@ void main() {
     await service.start(request: _request);
     await challenge(destination: "https://provider.test/auth");
     final attempt = (state() as McpAuthenticationCallbackChallenge).attempt;
-    plugin.callbackGate = Completer<void>();
+    final callbackGate = Completer<void>();
+    plugin.callbackGate = callbackGate;
     final submitted = service.continueAuthentication(
       request: McpAuthenticationContinueRequest(
         attemptId: attempt.attemptId,
@@ -377,7 +385,7 @@ void main() {
     expect(state(), isA<McpAuthenticationSettling>());
     final cancellation = await service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
     expect((cancellation as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
-    plugin.callbackGate!.complete();
+    callbackGate.complete();
     expect((await submitted as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
   });
 
@@ -445,7 +453,8 @@ void main() {
     final response = await start(request: _request);
     expect(response.status, 409);
     expect(
-      SessionArchivedRejection.fromJson(jsonDecode(response.body!) as Map<String, dynamic>).reason,
+      SessionArchivedRejection.fromJson(jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>)
+          .reason,
       SessionArchivedReason.archivedReadOnly,
     );
     expect(plugin.targets, isEmpty);

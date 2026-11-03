@@ -222,13 +222,15 @@ void main() {
     );
     await _export(history: history);
 
-    final page = await history.service.getArchivedSessionMessages(
-      sessionId: "ses_a",
-      attachmentDelivery: MessageAttachmentDelivery.storedReference,
-    );
+    final page =
+        await history.service.getArchivedSessionMessages(
+          sessionId: "ses_a",
+          attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        ) ??
+        fail("missing archived page");
 
     expect(
-      (page!.messages.single.parts.single as MessagePartFile).attachment,
+      (page.messages.single.parts.single as MessagePartFile).attachment,
       isA<MessageAttachmentStoredImage>()
           .having((image) => image.bridgeId, "bridgeId", "br_test1234")
           .having((image) => image.byteLength, "byteLength", bytes.length),

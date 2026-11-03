@@ -36,10 +36,11 @@ class _FakeReleaseRepository() implements ReleaseRepository {
 
   @override
   Future<UpdateResolution> resolveUpdate() async {
-    if (resolveError != null) {
-      throw resolveError!;
+    if (resolveError case final failure?) {
+      throw failure;
     }
-    return onResolve!();
+    final resolve = onResolve ?? fail('no resolve handler configured');
+    return resolve();
   }
 
   @override

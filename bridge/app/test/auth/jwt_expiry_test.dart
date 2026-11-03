@@ -14,8 +14,8 @@ void main() {
 
       final result = parseJwtExpiry(token);
 
-      expect(result, isNotNull);
-      expect(result!.isUtc, true);
+      if (result == null) fail("expected a parsed expiry");
+      expect(result.isUtc, true);
       expect(result.millisecondsSinceEpoch, 1700000000 * 1000);
     });
 
@@ -82,8 +82,8 @@ void main() {
 
       final result = parseJwtExpiry(token);
 
-      expect(result, isNotNull);
-      expect(result!.millisecondsSinceEpoch, 1000000000 * 1000);
+      if (result == null) fail("expected a parsed expiry");
+      expect(result.millisecondsSinceEpoch, 1000000000 * 1000);
     });
   });
 }

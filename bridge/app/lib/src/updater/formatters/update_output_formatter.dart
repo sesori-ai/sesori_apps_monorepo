@@ -66,22 +66,22 @@ class const UpdateOutputFormatter({required final bool _color, required final bo
   bool get color => _color;
 
   /// A green success line: `✓ <text>` (`[OK]` without unicode).
-  String success({required String text}) => '${_glyph(_green, '\u2713', '[OK]')} $text';
+  String success({required String text}) => '${_glyph(code: _green, unicode: '\u2713', ascii: '[OK]')} $text';
 
   /// A yellow warning line: `⚠ <text>` (`!` without unicode).
-  String warn({required String text}) => '${_glyph(_yellow, '\u26a0', '!')} $text';
+  String warn({required String text}) => '${_glyph(code: _yellow, unicode: '\u26a0', ascii: '!')} $text';
 
   /// A red error line: `✗ <text>` (`x` without unicode).
-  String error({required String text}) => '${_glyph(_red, '\u2717', 'x')} $text';
+  String error({required String text}) => '${_glyph(code: _red, unicode: '\u2717', ascii: 'x')} $text';
 
   /// A brand-blue note line: `➜ <text>` (`>` without unicode).
-  String note({required String text}) => '${_glyph(_brand, '\u279c', '>')} $text';
+  String note({required String text}) => '${_glyph(code: _brand, unicode: '\u279c', ascii: '>')} $text';
 
   /// Muted secondary text.
-  String dim({required String text}) => _paint(_dim, text);
+  String dim({required String text}) => _paint(code: _dim, text: text);
 
   /// A highlighted, runnable command (brand blue + bold).
-  String command({required String text}) => _paint('$_brand$_bold', text);
+  String command({required String text}) => _paint(code: '$_brand$_bold', text: text);
 
   /// The arrow separator between two versions: `→` (`->` without unicode).
   String get arrow => _unicode ? '\u2192' : '->';
@@ -98,7 +98,8 @@ class const UpdateOutputFormatter({required final bool _color, required final bo
     return '$_brand$full$_dim$empty$_reset';
   }
 
-  String _glyph(String code, String unicode, String ascii) => _paint(code, _unicode ? unicode : ascii);
+  String _glyph({required String code, required String unicode, required String ascii}) =>
+      _paint(code: code, text: _unicode ? unicode : ascii);
 
-  String _paint(String code, String text) => _color ? '$code$text$_reset' : text;
+  String _paint({required String code, required String text}) => _color ? '$code$text$_reset' : text;
 }

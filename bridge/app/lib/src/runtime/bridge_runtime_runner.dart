@@ -1285,6 +1285,8 @@ class const BridgeRuntimeRunner._() {
         executable: "/usr/sbin/scutil",
         arguments: const ["--get", "LocalHostName"],
         timeout: const Duration(seconds: 2),
+        workingDirectory: null,
+        environment: null,
       );
       final stableName = result.stdout.toString().trim();
       if (result.exitCode == 0 && stableName.isNotEmpty) return stableName;

@@ -35,7 +35,12 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       throw const UpdateApplyException(message: 'Staged payload is missing the binary or lib directory.');
     }
 
-    final ProcessResult chmodResult = await _processRunner.run(executable: 'chmod', arguments: ['+x', newBinary.path]);
+    final ProcessResult chmodResult = await _processRunner.run(
+      executable: 'chmod',
+      arguments: ['+x', newBinary.path],
+      workingDirectory: null,
+      environment: null,
+    );
     if (chmodResult.exitCode != 0) {
       throw UpdateApplyException(message: 'Failed to mark the staged binary executable: ${chmodResult.stderr}');
     }
@@ -100,7 +105,12 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
     const List<String> attrs = ['com.apple.quarantine', 'com.apple.provenance'];
     for (final String attr in attrs) {
       try {
-        await _processRunner.run(executable: 'xattr', arguments: ['-dr', attr, path]);
+        await _processRunner.run(
+          executable: 'xattr',
+          arguments: ['-dr', attr, path],
+          workingDirectory: null,
+          environment: null,
+        );
       } on Object catch (error, stackTrace) {
         Log.w('Failed to strip $attr from $path', error, stackTrace);
       }

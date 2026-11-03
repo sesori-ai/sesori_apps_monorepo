@@ -121,10 +121,10 @@ void main() {
     });
 
     test("second SSE client receives events alongside first", () async {
-      final first = await _SseTestClient.connect(debugServer.boundPort!);
+      final first = await _SseTestClient.connect(_boundPort(server: debugServer));
       addTearDown(first.close);
 
-      final second = await _SseTestClient.connect(debugServer.boundPort!);
+      final second = await _SseTestClient.connect(_boundPort(server: debugServer));
       addTearDown(second.close);
 
       plugin.emitEvent(const BridgeSseVcsBranchUpdated());
@@ -137,7 +137,7 @@ void main() {
     });
 
     test("UTF-8 event data remains readable and the connection stays open", () async {
-      final client = await _SseTestClient.connect(debugServer.boundPort!);
+      final client = await _SseTestClient.connect(_boundPort(server: debugServer));
       addTearDown(client.close);
 
       plugin.emitEvent(const BridgeSseFileEdited(file: "developer’s workspace"));
@@ -155,10 +155,10 @@ void main() {
     test(
       "first client still receives events after second disconnects",
       () async {
-        final first = await _SseTestClient.connect(debugServer.boundPort!);
+        final first = await _SseTestClient.connect(_boundPort(server: debugServer));
         addTearDown(first.close);
 
-        final second = await _SseTestClient.connect(debugServer.boundPort!);
+        final second = await _SseTestClient.connect(_boundPort(server: debugServer));
 
         await second.close();
 
@@ -186,7 +186,7 @@ void main() {
         lastAgentModel: null,
       );
 
-      final client = await _SseTestClient.connect(debugServer.boundPort!);
+      final client = await _SseTestClient.connect(_boundPort(server: debugServer));
       addTearDown(client.close);
 
       plugin.emitEvent(
@@ -232,8 +232,8 @@ void main() {
       addTearDown(trackingHarness.close);
       addTearDown(trackingPlugin.close);
 
-      final first = await _SseTestClient.connect(trackingServer.boundPort!);
-      final second = await _SseTestClient.connect(trackingServer.boundPort!);
+      final first = await _SseTestClient.connect(_boundPort(server: trackingServer));
+      final second = await _SseTestClient.connect(_boundPort(server: trackingServer));
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(trackingPlugin.subscribeCount, equals(2));
@@ -261,7 +261,7 @@ void main() {
       addTearDown(failingHarness.close);
       addTearDown(failingPlugin.close);
 
-      final client = await _SseTestClient.connect(failingServer.boundPort!);
+      final client = await _SseTestClient.connect(_boundPort(server: failingServer));
       addTearDown(client.close);
       failingPlugin.emitEvent(const BridgeSseProjectUpdated());
       failingPlugin.emitEvent(const BridgeSseVcsBranchUpdated());
@@ -313,7 +313,7 @@ void main() {
       addTearDown(client.close);
 
       final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/projects"),
       );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
@@ -332,7 +332,7 @@ void main() {
       addTearDown(client.close);
 
       final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/plugin/management"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/plugin/management"),
       );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
@@ -353,7 +353,7 @@ void main() {
       addTearDown(client.close);
 
       final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/sessions"),
       );
       final response = await request.close();
       expect(response.statusCode, equals(HttpStatus.badRequest));
@@ -389,7 +389,7 @@ void main() {
       addTearDown(client.close);
 
       final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/sessions"),
       );
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({"projectId": "/tmp/test", "start": null, "limit": null}));
@@ -440,7 +440,7 @@ void main() {
 
       final request = await client.postUrl(
         Uri.parse(
-          "http://127.0.0.1:${debugServer.boundPort!}/session/messages",
+          "http://127.0.0.1:${_boundPort(server: debugServer)}/session/messages",
         ),
       );
       request.headers.contentType = ContentType.json;
@@ -462,7 +462,7 @@ void main() {
       addTearDown(client.close);
 
       final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/projects"),
       );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
@@ -525,7 +525,7 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
       final abortRequest = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/abort"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/session/abort"),
       );
       abortRequest.headers.contentType = ContentType.json;
       abortRequest.write(jsonEncode(const SessionIdRequest(sessionId: "s1").toJson()));
@@ -537,7 +537,7 @@ void main() {
       await harness.runtime.session.cancel();
 
       final rejectedRequest = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/health"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/global/health"),
       );
       final rejectedResponse = await rejectedRequest.close();
       expect(rejectedResponse.statusCode, HttpStatus.serviceUnavailable);
@@ -631,7 +631,7 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
       final request = await client.patchUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/title"),
+        Uri.parse("http://127.0.0.1:${_boundPort(server: debugServer)}/session/title"),
       );
       request.headers.contentType = ContentType.json;
       request.write(
@@ -656,6 +656,8 @@ void main() {
     });
   });
 }
+
+int _boundPort({required DebugServer server}) => server.boundPort ?? fail("the debug server is not bound");
 
 Future<({StreamIterator<dynamic> messages, SessionEncryptor encryptor})> _activatePhone({
   required _DebugServerHarness harness,

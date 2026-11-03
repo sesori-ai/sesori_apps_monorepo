@@ -10,10 +10,12 @@ class const SessionEventMapper() {
   ///
   /// The final step of normalization: payload kinds with a typed shared form
   /// are mapped here, once, so delivery and storage never re-parse them.
-  NormalizedBridgeEvent normalize({required BridgeSseEvent event}) => switch (event) {
-    BridgeSseTerminalHandoff(:final event) => NormalizedTerminalHandoff(payload: _normalizePayload(event: event)),
-    _ => _normalizePayload(event: event),
-  };
+  NormalizedBridgeEvent normalize({required BridgeSseEvent event}) {
+    if (event case BridgeSseTerminalHandoff(:final event)) {
+      return NormalizedTerminalHandoff(payload: _normalizePayload(event: event));
+    }
+    return _normalizePayload(event: event);
+  }
 
   NormalizedBridgePayload _normalizePayload({required BridgeSseEvent event}) => switch (event) {
     BridgeSseTerminalHandoff() => throw StateError("terminal handoff must not wrap another terminal handoff"),
@@ -33,7 +35,39 @@ class const SessionEventMapper() {
         PluginQuotaResetUnknown() => null,
       },
     ),
-    _ => NormalizedOtherEvent(event: event),
+    BridgeSseServerConnected() ||
+    BridgeSseServerHeartbeat() ||
+    BridgeSseServerInstanceDisposed() ||
+    BridgeSseGlobalDisposed() ||
+    BridgeSseCommandCatalogUpdated() ||
+    BridgeSseSessionCreated() ||
+    BridgeSseSessionUpdated() ||
+    BridgeSseSessionOptionsChanged() ||
+    BridgeSseSessionPromptDefaultsChanged() ||
+    BridgeSseSessionDeleted() ||
+    BridgeSseSessionDiff() ||
+    BridgeSseSessionError() ||
+    BridgeSseSessionCompacted() ||
+    BridgeSsePromptSettled() ||
+    BridgeSseSessionIdle() ||
+    BridgeSseCommandExecuted() ||
+    BridgeSseQueuedPromptsUpdated() ||
+    BridgeSseMessageRemoved() ||
+    BridgeSseMessagePartUpdated() ||
+    BridgeSseMessagePartDelta() ||
+    BridgeSseMessagePartRemoved() ||
+    BridgeSsePermissionAsked() ||
+    BridgeSsePermissionReplied() ||
+    BridgeSsePermissionUpdated() ||
+    BridgeSseQuestionAsked() ||
+    BridgeSseQuestionReplied() ||
+    BridgeSseQuestionRejected() ||
+    BridgeSseTodoUpdated() ||
+    BridgeSseProjectUpdated() ||
+    BridgeSseVcsBranchUpdated() ||
+    BridgeSseFileEdited() ||
+    BridgeSseInstallationUpdateAvailable() ||
+    BridgeSseTuiToastShow() => NormalizedOtherEvent(event: event),
   };
 
   Session? sessionInfo({required BridgeSseEvent event}) {
@@ -42,7 +76,39 @@ class const SessionEventMapper() {
       BridgeSseSessionCreated(:final info) ||
       BridgeSseSessionUpdated(:final info) ||
       BridgeSseSessionDeleted(:final info) => Session.fromJson(info),
-      _ => null,
+      BridgeSseServerConnected() ||
+      BridgeSseServerHeartbeat() ||
+      BridgeSseServerInstanceDisposed() ||
+      BridgeSseGlobalDisposed() ||
+      BridgeSseCommandCatalogUpdated() ||
+      BridgeSseSessionOptionsChanged() ||
+      BridgeSseSessionQuotaBlocked() ||
+      BridgeSseSessionPromptDefaultsChanged() ||
+      BridgeSseSessionDiff() ||
+      BridgeSseSessionError() ||
+      BridgeSseSessionCompacted() ||
+      BridgeSsePromptSettled() ||
+      BridgeSseSessionStatus() ||
+      BridgeSseSessionIdle() ||
+      BridgeSseCommandExecuted() ||
+      BridgeSseQueuedPromptsUpdated() ||
+      BridgeSseMessageUpdated() ||
+      BridgeSseMessageRemoved() ||
+      BridgeSseMessagePartUpdated() ||
+      BridgeSseMessagePartDelta() ||
+      BridgeSseMessagePartRemoved() ||
+      BridgeSsePermissionAsked() ||
+      BridgeSsePermissionReplied() ||
+      BridgeSsePermissionUpdated() ||
+      BridgeSseQuestionAsked() ||
+      BridgeSseQuestionReplied() ||
+      BridgeSseQuestionRejected() ||
+      BridgeSseTodoUpdated() ||
+      BridgeSseProjectUpdated() ||
+      BridgeSseVcsBranchUpdated() ||
+      BridgeSseFileEdited() ||
+      BridgeSseInstallationUpdateAvailable() ||
+      BridgeSseTuiToastShow() => null,
     };
   }
 
@@ -103,7 +169,42 @@ class const SessionEventMapper() {
   Set<String> optionalBackendSessionIds({required BridgeSseEvent event}) => switch (event) {
     BridgeSseTerminalHandoff(:final event) => optionalBackendSessionIds(event: event),
     BridgeSseMessagePartUpdated(part: PluginMessagePartSubtask(:final childSessionID)) => {?childSessionID},
-    _ => const <String>{},
+    BridgeSseServerConnected() ||
+    BridgeSseServerHeartbeat() ||
+    BridgeSseServerInstanceDisposed() ||
+    BridgeSseGlobalDisposed() ||
+    BridgeSseCommandCatalogUpdated() ||
+    BridgeSseSessionCreated() ||
+    BridgeSseSessionUpdated() ||
+    BridgeSseSessionOptionsChanged() ||
+    BridgeSseSessionQuotaBlocked() ||
+    BridgeSseSessionPromptDefaultsChanged() ||
+    BridgeSseSessionDeleted() ||
+    BridgeSseSessionDiff() ||
+    BridgeSseSessionError() ||
+    BridgeSseSessionCompacted() ||
+    BridgeSsePromptSettled() ||
+    BridgeSseSessionStatus() ||
+    BridgeSseSessionIdle() ||
+    BridgeSseCommandExecuted() ||
+    BridgeSseQueuedPromptsUpdated() ||
+    BridgeSseMessageUpdated() ||
+    BridgeSseMessageRemoved() ||
+    BridgeSseMessagePartUpdated() ||
+    BridgeSseMessagePartDelta() ||
+    BridgeSseMessagePartRemoved() ||
+    BridgeSsePermissionAsked() ||
+    BridgeSsePermissionReplied() ||
+    BridgeSsePermissionUpdated() ||
+    BridgeSseQuestionAsked() ||
+    BridgeSseQuestionReplied() ||
+    BridgeSseQuestionRejected() ||
+    BridgeSseTodoUpdated() ||
+    BridgeSseProjectUpdated() ||
+    BridgeSseVcsBranchUpdated() ||
+    BridgeSseFileEdited() ||
+    BridgeSseInstallationUpdateAvailable() ||
+    BridgeSseTuiToastShow() => const <String>{},
   };
 
   BridgeSseEvent? map({
@@ -223,7 +324,18 @@ class const SessionEventMapper() {
               sessionID: sessionId,
               childSessionID: mappedOptional(subtask.childSessionID),
             ),
-            _ => part.copyWith(sessionID: sessionId),
+            PluginMessagePartText() ||
+            PluginMessagePartReasoning() ||
+            PluginMessagePartTool() ||
+            PluginMessagePartStepStart() ||
+            PluginMessagePartStepFinish() ||
+            PluginMessagePartFile() ||
+            PluginMessagePartSnapshot() ||
+            PluginMessagePartPatch() ||
+            PluginMessagePartAgent() ||
+            PluginMessagePartRetry() ||
+            PluginMessagePartCompaction() ||
+            PluginMessagePartUnknown() => part.copyWith(sessionID: sessionId),
           },
         ),
         null => null,

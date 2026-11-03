@@ -16,6 +16,7 @@ import "package:claude_plugin/claude_plugin.dart"
         ClaudeTranscriptCatalogRepository;
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
 import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
@@ -182,9 +183,8 @@ void main() {
         message: _message(id: "m1"),
       );
 
-      final state = await history.repository.getSyncState(sessionId: "ses_a");
-      expect(state, isNotNull);
-      expect(state!.syncedAt, isNull, reason: "only a completed backfill may claim a complete transcript");
+      final state = await _syncState(history: history, sessionId: "ses_a");
+      expect(state.syncedAt, isNull, reason: "only a completed backfill may claim a complete transcript");
       expect(state.watermark, greaterThan(0));
       expect(state.backendActivityAt, greaterThan(0));
     });
@@ -200,8 +200,8 @@ void main() {
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
       await history.service.backfillSession(sessionId: "ses_b");
-      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
-      expect((await history.repository.getSyncState(sessionId: "ses_b"))!.syncedAt, isNotNull);
+      expect((await _syncState(history: history, sessionId: "ses_a")).syncedAt, isNotNull);
+      expect((await _syncState(history: history, sessionId: "ses_b")).syncedAt, isNotNull);
 
       await history.service.invalidatePluginHistory(pluginId: "opencode");
       await history.service.captureMessage(
@@ -210,12 +210,12 @@ void main() {
       );
 
       expect(
-        (await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt,
+        (await _syncState(history: history, sessionId: "ses_a")).syncedAt,
         isNull,
         reason: "live captures cannot claim that events missed during the gap were recovered",
       );
       expect(
-        (await history.repository.getSyncState(sessionId: "ses_b"))!.syncedAt,
+        (await _syncState(history: history, sessionId: "ses_b")).syncedAt,
         isNotNull,
         reason: "another plugin's transcript did not cross the event-stream gap",
       );
@@ -246,7 +246,7 @@ void main() {
       await source.close();
       await listener.dispose();
 
-      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNull);
+      expect((await _syncState(history: history, sessionId: "ses_a")).syncedAt, isNull);
     });
 
     test("the listener no longer stores finalized parts", () async {
@@ -277,7 +277,7 @@ void main() {
       await listener.dispose();
 
       expect(
-        await history.database.chatHistoryDao.getParts(sessionId: "ses_a"),
+        await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null),
         isEmpty,
         reason: "part capture belongs to the Orchestrator, which owns live attachment materialization",
       );
@@ -329,7 +329,7 @@ void main() {
         ),
       );
 
-      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null);
       expect(rows.single.partJson, isNot(contains(base64Encode(bytes))));
       expect(rows.single.partJson, contains("stored_file"));
 
@@ -390,7 +390,7 @@ void main() {
 
       final stored = await _storedMessages(history: history, sessionId: "ses_a");
       expect(stored.map((message) => message.info.id), const ["m1", "m2"]);
-      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
+      expect((await _syncState(history: history, sessionId: "ses_a")).syncedAt, isNotNull);
     });
 
     test("keeps live messages the fetched transcript does not contain", () async {
@@ -1883,7 +1883,7 @@ void main() {
         sessionId: "ses_a",
         message: _message(id: "seed"),
       );
-      final beforeFetch = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final beforeFetch = await _syncState(history: history, sessionId: "ses_a");
       repository.onFetch = () => history.service.captureMessage(
         sessionId: "ses_a",
         message: _message(id: "during-fetch"),
@@ -1891,7 +1891,7 @@ void main() {
 
       await history.service.backfillSession(sessionId: "ses_a");
 
-      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final state = await _syncState(history: history, sessionId: "ses_a");
       expect(
         state.watermark,
         greaterThanOrEqualTo(beforeFetch.watermark),
@@ -2003,7 +2003,7 @@ void main() {
       await history.service.backfillSession(sessionId: "ses_a");
 
       expect(await _storedMessages(history: history, sessionId: "ses_a"), isEmpty);
-      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
+      expect((await _syncState(history: history, sessionId: "ses_a")).syncedAt, isNotNull);
     });
   });
 
@@ -2074,6 +2074,11 @@ Future<List<MessageWithParts>> _storedMessages({
   sessionId: sessionId,
   storageScope: testAttachmentStorageScope(sessionId: sessionId),
 )).messages;
+
+Future<ChatHistorySyncState> _syncState({
+  required TestChatHistory history,
+  required String sessionId,
+}) async => await history.repository.getSyncState(sessionId: sessionId) ?? fail("missing sync state for $sessionId");
 
 Message _message({required String id}) => _messageAt(id: id, createdAt: 1);
 

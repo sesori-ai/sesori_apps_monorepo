@@ -165,13 +165,13 @@ void main() {
       final models = response.items[0].models;
       expect(models, hasLength(2));
 
-      final opus = models["claude-3-opus"]!;
+      final opus = models["claude-3-opus"] ?? fail("missing model claude-3-opus");
       expect(opus.id, equals("claude-3-opus"));
       expect(opus.providerID, equals("anthropic"));
       expect(opus.name, equals("Claude 3 Opus"));
       expect(opus.family, equals("claude-3"));
 
-      final sonnet = models["claude-3-sonnet"]!;
+      final sonnet = models["claude-3-sonnet"] ?? fail("missing model claude-3-sonnet");
       expect(sonnet.id, equals("claude-3-sonnet"));
       expect(sonnet.providerID, equals("anthropic"));
       expect(sonnet.name, equals("Claude 3 Sonnet"));
@@ -218,15 +218,15 @@ void main() {
 
       final models = response.items[0].models;
 
-      final gpt4o = models["gpt-4o"]!;
+      final gpt4o = models["gpt-4o"] ?? fail("missing model gpt-4o");
       expect(gpt4o.isAvailable, isTrue);
       expect(gpt4o.releaseDate, equals(DateTime(2025, 1, 15)));
 
-      final gpt35 = models["gpt-3.5"]!;
+      final gpt35 = models["gpt-3.5"] ?? fail("missing model gpt-3.5");
       expect(gpt35.isAvailable, isFalse);
       expect(gpt35.releaseDate, equals(DateTime(2023, 3, 1)));
 
-      final gpt4Turbo = models["gpt-4-turbo"]!;
+      final gpt4Turbo = models["gpt-4-turbo"] ?? fail("missing model gpt-4-turbo");
       expect(gpt4Turbo.isAvailable, isTrue);
       expect(gpt4Turbo.releaseDate, isNull);
     });
@@ -257,7 +257,7 @@ void main() {
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
-      final model = response.items.single.models["openai/gpt-4.1-mini"]!;
+      final model = response.items.single.models["openai/gpt-4.1-mini"] ?? fail("missing model openai/gpt-4.1-mini");
       expect(model.id, equals("openai/gpt-4.1-mini"));
       expect(model.isAvailable, isTrue);
       expect(response.items.single.defaultModelID, equals("openai/gpt-4.1-mini"));
@@ -285,8 +285,8 @@ void main() {
       );
 
       final models = response.items[0].models;
-      expect(models["m1"]!.isAvailable, isTrue);
-      expect(models["m2"]!.isAvailable, isFalse);
+      expect(models["m1"]?.isAvailable, isTrue);
+      expect(models["m2"]?.isAvailable, isFalse);
     });
 
     test("unknown model statuses remain available through the route contract", () async {
@@ -316,7 +316,7 @@ void main() {
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
-      expect(response.items.single.models["gpt-4.1"]!.isAvailable, isTrue);
+      expect(response.items.single.models["gpt-4.1"]?.isAvailable, isTrue);
     });
 
     test("provider with no models has empty models map", () async {

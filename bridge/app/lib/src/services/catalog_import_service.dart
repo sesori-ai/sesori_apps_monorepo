@@ -74,7 +74,7 @@ class CatalogImportService({
   void cancel({required String pluginId}) {
     final control = _controls[pluginId];
     if (control != null) {
-      control.cancellationRequested = true;
+      control.cancel();
       return;
     }
     _validateEnabledPlugin(pluginId);
@@ -87,7 +87,7 @@ class CatalogImportService({
     if (_disposing) return;
     _disposing = true;
     for (final control in _controls.values) {
-      control.cancellationRequested = true;
+      control.cancel();
     }
   }
 
@@ -108,7 +108,7 @@ class CatalogImportService({
     try {
       if (!control.rescanRequested) {
         final completion = await _repository.getHydrationCompletion(pluginId: pluginId);
-        if (control.cancellationRequested) {
+        if (control.isCancelled) {
           _publish(CatalogImportProgress.cancelled(pluginId: pluginId));
           return;
         }
