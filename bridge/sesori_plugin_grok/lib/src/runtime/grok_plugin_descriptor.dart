@@ -14,8 +14,9 @@ const int _setupProbeOutputLimit = 64 * 1024;
 
 /// Direct-CLI descriptor for the user-installed Grok Build runtime.
 ///
-/// Sesori never installs Grok. Setup runs a bounded `--version` probe, while
-/// authentication remains authoritative at the ACP initialize handshake.
+/// Sesori never installs Grok. Setup runs bounded `--version` and `grok models`
+/// probes; the ACP initialize handshake remains the authoritative
+/// authentication check.
 class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
