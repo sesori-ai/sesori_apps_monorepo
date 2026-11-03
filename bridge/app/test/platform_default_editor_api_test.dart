@@ -12,7 +12,6 @@ class _FakeProcessRunner({
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) => _handler(executable: executable, arguments: arguments);
 
   @override

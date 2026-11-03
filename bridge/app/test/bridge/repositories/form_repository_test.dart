@@ -74,8 +74,8 @@ void main() {
       ),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
-    expect(result.response.status, 200);
-    final form = PendingFormsResponse.fromJson(jsonDecodeMap(result.response.body!)).data.single;
+    expect(result.status, 200);
+    final form = PendingFormsResponse.fromJson(jsonDecodeMap(result.body!)).data.single;
     expect(form.sessionID, "child");
     expect(form.displaySessionId, "root");
     expect(form.fields.map((field) => field.schema.runtimeType), [
@@ -104,8 +104,8 @@ void main() {
       request: makeRequest("POST", "/form/reply", body: jsonEncode(reply.toJson())),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
-    expect(result.response.status, 200);
-    expect(FormReplyResult.fromJson(jsonDecodeMap(result.response.body!)), isA<FormReplyAccepted>());
+    expect(result.status, 200);
+    expect(FormReplyResult.fromJson(jsonDecodeMap(result.body!)), isA<FormReplyAccepted>());
     final native = plugin.replies.single;
     expect(native.sessionId, "child-native");
     expect(native.requestId, "request");
@@ -131,9 +131,9 @@ void main() {
       request: makeRequest("POST", "/form/reply", body: jsonEncode(reply.toJson())),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
-    expect(result.response.status, 200);
+    expect(result.status, 200);
     expect(
-      FormReplyResult.fromJson(jsonDecodeMap(result.response.body!)),
+      FormReplyResult.fromJson(jsonDecodeMap(result.body!)),
       const FormValidationFailed(
         fieldErrors: {
           "integer": FormValidationIssue.outOfRange,
@@ -181,8 +181,8 @@ void main() {
         ),
         targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
       );
-      expect(result.response.status, 200);
-      expect(FormReplyResult.fromJson(jsonDecodeMap(result.response.body!)), isA<FormReplyAccepted>());
+      expect(result.status, 200);
+      expect(FormReplyResult.fromJson(jsonDecodeMap(result.body!)), isA<FormReplyAccepted>());
       expect(plugin.dismissals.single.sessionId, "child-native");
       expect(plugin.dismissals.single.choice.name, choice.name);
     });
@@ -247,13 +247,13 @@ void main() {
       request: makeRequest("POST", "/form/reply", body: jsonEncode(reply.toJson())),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
-    expect(result.response.status, 409);
-    expect(SessionArchivedRejection.fromJson(jsonDecodeMap(result.response.body!)).sessionId, "child");
+    expect(result.status, 409);
+    expect(SessionArchivedRejection.fromJson(jsonDecodeMap(result.body!)).sessionId, "child");
     final dismissal = await DeclineFormHandler(service: service).routeInternal(
       request: makeRequest("POST", "/form/decline", body: jsonEncode(cancel.toJson())),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
-    expect(dismissal.response.status, 409);
+    expect(dismissal.status, 409);
     expect(plugin.reads, isZero);
     expect(plugin.replies, isEmpty);
     expect(plugin.dismissals, isEmpty);

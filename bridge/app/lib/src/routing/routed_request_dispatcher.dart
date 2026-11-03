@@ -19,7 +19,7 @@ final class const RoutedRequestShutdownRejected({required final String requestId
 
 /// Owns route acceptance and the completion barrier shared by every transport.
 class RoutedRequestDispatcher({required final RequestRouter _router}) {
-  final Set<Future<RoutedRequestOutcome>> _inFlightRoutes = <Future<RoutedRequestOutcome>>{};
+  final Set<Future<RelayResponse>> _inFlightRoutes = <Future<RelayResponse>>{};
 
   bool _accepting = true;
   Future<void>? _drainFuture;
@@ -30,7 +30,7 @@ class RoutedRequestDispatcher({required final RequestRouter _router}) {
     }
 
     final pendingRequest = _router.route(request: request);
-    late final Future<RoutedRequestOutcome> trackedCompletion;
+    late final Future<RelayResponse> trackedCompletion;
     trackedCompletion = pendingRequest.completion.whenComplete(() {
       _inFlightRoutes.remove(trackedCompletion);
     });

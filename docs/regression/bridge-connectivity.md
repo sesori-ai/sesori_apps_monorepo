@@ -67,8 +67,7 @@ presents.
   the bridge it names, or, for an app that names none, to the most recently
   connected bridge. A reconnect with the same bridge id still replaces the
   previous connection, which closes with `4007`; a second start on the same
-  computer resolves ownership explicitly, and an explicit restart hands off to
-  its successor cleanly. The capability as a whole is in
+  computer resolves ownership explicitly. The capability as a whole is in
   [multi-computer](multi-computer.md).
 - The relay names the bridge in `bridge_connected` and, when it knows one, in
   `bridge_disconnected`; the app still accepts either notice without an id.
@@ -191,7 +190,7 @@ presents.
   restores retryable state, and rethrows the original failure.
 - The desktop's single inbound control dispatcher subscribes during shell
   bootstrap, before any helper spawn, so the first token request is answered.
-- Desktop exit policy treats 86 as one immediate restart, 87 as login-required
+- Desktop exit policy treats 87 as login-required
   until a later successful sign-in when desired On, 88 as machine contention,
   and clean or expected exits as stopped. Other exits retry after 1, 2, 4, 8,
   and 16 seconds, then give up with the latest 20 helper log lines. Five minutes
@@ -213,8 +212,8 @@ presents.
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release; automated target ownership (stored target in `auth`, adoption without reconnect, retarget reconnect, logout clearing, initial-target precedence) and bridge-scoped cache resets that drop a late answer from the previous computer; automated presence notices updating a listed computer in place, refetching for an unknown one (again after a fetch already running), winning over an older in-flight fetch, and being forgotten on a drop. No plugin. |
-| L3 Release | Session pages load through the relay for the new app with the new bridge (deflated), the new app with a v1.9.0 bridge (plain), and a v1.9.0 app with the new bridge (plain). The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, several live bridges per account (per-app routing, presence notices, same-id replacement, the 10-bridge cap), and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
+| L3 Release | Session pages load through the relay for the new app with the new bridge (deflated), the new app with a v1.9.0 bridge (plain), and a v1.9.0 app with the new bridge (plain). The full connection state machine as presented, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, several live bridges per account (per-app routing, presence notices, same-id replacement, the 10-bridge cap), and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, a stop and fresh start on the same data directory, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -285,7 +284,7 @@ an id, and whether restart is explicit.
   full graceful deadline.
 - A dormant, not-installed, or zero-eligible plugin snapshot degrading aggregate
   health; or one eligible degraded/failed plugin still reporting healthy.
-- Exit 86 spawning twice, exit 87 retrying before auth changes, exit 88 entering
+- Exit 87 retrying before auth changes, exit 88 entering
   crash backoff, an expected/clean exit respawning, an unbounded crash loop,
   stable runtime failing to reset the budget, or a cancelled retry later
   spawning a second helper after manual Start or Off.

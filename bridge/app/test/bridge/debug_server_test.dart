@@ -4,7 +4,6 @@ import "dart:io";
 
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
-import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/debug_server.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
@@ -12,18 +11,8 @@ import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
-import "package:sesori_bridge/src/routing/bridge_restart_dispatcher.dart";
-import "package:sesori_bridge/src/routing/request_router.dart";
-import "package:sesori_bridge/src/routing/restart_bridge_handler.dart";
-import "package:sesori_bridge/src/routing/routed_request.dart";
-import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/runtime/bridge_shutdown_coordinator.dart";
-import "package:sesori_bridge/src/server/api/system_process_api.dart";
-import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
-import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
-import "package:sesori_bridge/src/server/repositories/process_repository.dart";
-import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -32,7 +21,6 @@ import "package:test/test.dart";
 
 import "../helpers/fakes/fake_bridge_plugin.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
-import "../helpers/restart_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -42,13 +30,11 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   required AppDatabase db,
   required int port,
   required FailureReporter failureReporter,
-  BridgeRestartService? restartService,
 }) async {
   final httpClient = http.Client();
   final relayServer = await TestRelayServer.start();
   final relayUrl = "ws://127.0.0.1:${relayServer.port}";
   final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
-  final effectiveRestartService = restartService ?? buildTestRestartService();
   final testChatHistory = createTestChatHistory();
   final composition = Orchestrator(
     connectionNotificationPolicies: const Stream.empty(),
@@ -78,7 +64,6 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     tokenRefresher: FakeTokenRefresher(),
     bridgeRegistrationService: createFakeBridgeRegistrationService(),
     failureReporter: failureReporter,
-    restartService: effectiveRestartService,
     filesystemAccessOk: true,
     bridgeKind: BridgeKind.cli,
     statusNotifier: null,
@@ -670,188 +655,6 @@ void main() {
       expect(plugin.disposeCalls, 1);
     });
   });
-
-  group("DebugServer restart", () {
-    test("closes the HTTP response before awaiting restart dispatch and drains the dispatch", () async {
-      final dispatcher = _BlockingRestartDispatcher();
-      final debugServer = DebugServer(
-        localWireEvents: const Stream<SesoriSseEvent>.empty(),
-        routedRequestDispatcher: RoutedRequestDispatcher(
-          router: RequestRouter(
-            handlers: [RestartBridgeHandler(restartService: _AlwaysRestartableService())],
-          ),
-        ),
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-        restartDispatcher: dispatcher,
-      );
-      await debugServer.start();
-      addTearDown(() async {
-        dispatcher.release();
-        await debugServer.drain();
-      });
-
-      final client = HttpClient();
-      addTearDown(client.close);
-      final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
-      );
-      final responseFuture = request.close();
-
-      await dispatcher.started.timeout(const Duration(seconds: 2));
-      final response = await responseFuture.timeout(const Duration(seconds: 2));
-      final body = await utf8.decoder.bind(response).join().timeout(const Duration(seconds: 2));
-      expect(response.statusCode, HttpStatus.ok);
-      expect(body, contains('"restarting":true'));
-
-      var stopped = false;
-      final stop = debugServer.drain().whenComplete(() => stopped = true);
-      await Future<void>.delayed(Duration.zero);
-      expect(stopped, isFalse);
-      dispatcher.release();
-      await stop.timeout(const Duration(seconds: 2));
-    });
-
-    test("POST /global/restart replies and spawns a successor", () async {
-      final plugin = _FakeBridgePlugin();
-      addTearDown(plugin.close);
-      final db = createTestDatabase();
-
-      final tempDir = await Directory.systemTemp.createTemp("debug-server-restart");
-      addTearDown(() async {
-        if (tempDir.existsSync()) {
-          await tempDir.delete(recursive: true);
-        }
-      });
-      final binaryPath = p.join(tempDir.path, "sesori-bridge");
-      File(binaryPath).writeAsStringSync("binary");
-      if (!Platform.isWindows) {
-        await Process.run("chmod", ["+x", binaryPath]);
-      }
-
-      final processRunner = _RecordingProcessRunner();
-      final harness = await _createDebugServerHarness(
-        plugin: plugin,
-        db: db,
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-        restartService: _spawnableRestartService(
-          binaryPath: binaryPath,
-          processRunner: processRunner,
-        ),
-      );
-      addTearDown(harness.close);
-      final debugServer = harness.debugServer;
-      await debugServer.start();
-
-      final client = HttpClient();
-      addTearDown(client.close);
-      final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
-      );
-      final response = await request.close();
-      final body = await utf8.decoder.bind(response).join();
-
-      expect(response.statusCode, equals(HttpStatus.ok));
-      expect(body, contains('"restarting":true'));
-      // The handoff actually ran: a successor was spawned with the predecessor
-      // pid in the environment (the phone-restart contract).
-      expect(processRunner.startDetachedCount, equals(1));
-      expect(
-        processRunner.lastEnvironment?[sesoriRestartPredecessorPidEnvVar],
-        equals("4321"),
-      );
-    });
-
-    test("concurrent restart handoffs spawn at most one successor", () async {
-      final plugin = _FakeBridgePlugin();
-      addTearDown(plugin.close);
-      final db = createTestDatabase();
-
-      final tempDir = await Directory.systemTemp.createTemp("debug-server-restart-single");
-      addTearDown(() async {
-        if (tempDir.existsSync()) {
-          await tempDir.delete(recursive: true);
-        }
-      });
-      final binaryPath = p.join(tempDir.path, "sesori-bridge");
-      File(binaryPath).writeAsStringSync("binary");
-      if (!Platform.isWindows) {
-        await Process.run("chmod", ["+x", binaryPath]);
-      }
-
-      final processRunner = _RecordingProcessRunner();
-      final harness = await _createDebugServerHarness(
-        plugin: plugin,
-        db: db,
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-        restartService: _spawnableRestartService(
-          binaryPath: binaryPath,
-          processRunner: processRunner,
-        ),
-      );
-      addTearDown(harness.close);
-
-      final debugServer = harness.debugServer;
-      await debugServer.start();
-      final client = HttpClient();
-      addTearDown(client.close);
-
-      Future<int> restart() async {
-        final request = await client.postUrl(
-          Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
-        );
-        final response = await request.close();
-        await utf8.decoder.bind(response).join();
-        return response.statusCode;
-      }
-
-      final statuses = await Future.wait([restart(), restart()]);
-
-      expect(statuses, contains(HttpStatus.ok));
-      expect(statuses, everyElement(anyOf(HttpStatus.ok, HttpStatus.serviceUnavailable)));
-      expect(processRunner.startDetachedCount, equals(1));
-    });
-
-    test("POST /global/restart returns 503 and does not spawn when binary is missing", () async {
-      final plugin = _FakeBridgePlugin();
-      addTearDown(plugin.close);
-      final db = createTestDatabase();
-
-      final tempDir = await Directory.systemTemp.createTemp("debug-server-restart-missing");
-      addTearDown(() async {
-        if (tempDir.existsSync()) {
-          await tempDir.delete(recursive: true);
-        }
-      });
-
-      final processRunner = _RecordingProcessRunner();
-      final harness = await _createDebugServerHarness(
-        plugin: plugin,
-        db: db,
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-        restartService: _spawnableRestartService(
-          binaryPath: p.join(tempDir.path, "missing"),
-          processRunner: processRunner,
-        ),
-      );
-      addTearDown(harness.close);
-      final debugServer = harness.debugServer;
-      await debugServer.start();
-
-      final client = HttpClient();
-      addTearDown(client.close);
-      final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
-      );
-      final response = await request.close();
-
-      expect(response.statusCode, equals(HttpStatus.serviceUnavailable));
-      expect(processRunner.startDetachedCount, equals(0));
-    });
-  });
 }
 
 Future<({StreamIterator<dynamic> messages, SessionEncryptor encryptor})> _activatePhone({
@@ -912,100 +715,6 @@ Future<void> _sendEncryptedRelayMessage({
     encryptor: encryptor,
   );
   socket.add(<int>[0, connId, ...payload]);
-}
-
-class _BlockingRestartDispatcher() implements BridgeRestartDispatcher {
-  final Completer<void> _started = Completer<void>();
-  final Completer<void> _release = Completer<void>();
-
-  Future<void> get started => _started.future;
-
-  @override
-  Stream<BridgeShutdownRequest> get shutdownRequests => const Stream<BridgeShutdownRequest>.empty();
-
-  @override
-  Future<void> dispatch({required RestartAccepted restart}) async {
-    if (!_started.isCompleted) _started.complete();
-    await _release.future;
-  }
-
-  void release() {
-    if (!_release.isCompleted) _release.complete();
-  }
-
-  @override
-  Future<void> dispose() async {}
-}
-
-class _AlwaysRestartableService() implements BridgeRestartService {
-  @override
-  Future<bool> canRestart() async => true;
-
-  @override
-  Future<bool> canSpawnSuccessor() async => true;
-
-  @override
-  Future<bool> performRestartHandoff() async => true;
-
-  @override
-  Future<bool> spawnSuccessor() async => true;
-}
-
-BridgeRestartService _spawnableRestartService({
-  required String binaryPath,
-  required ProcessRunner processRunner,
-}) {
-  return BridgeRestartService(
-    processRepository: ProcessRepository(
-      api: SystemProcessApi(
-        processRunner: processRunner,
-        clock: const ServerClock(),
-        isWindows: false,
-        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
-      ),
-      currentUser: null,
-    ),
-    commandBuilder: const BridgeRestartCommandBuilder(),
-    binaryPath: binaryPath,
-    cliArgs: const <String>[],
-    currentPid: 4321,
-    isSupervised: false,
-    isWindows: false,
-    onSupervisedRestartRequested: () {},
-  );
-}
-
-/// Records `startDetached` calls so the restart handoff can be asserted; `run`
-/// is never expected during these tests.
-class _RecordingProcessRunner() implements ProcessRunner {
-  int startDetachedCount = 0;
-  String? lastExecutable;
-  List<String>? lastArguments;
-  Map<String, String>? lastEnvironment;
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    startDetachedCount++;
-    lastExecutable = executable;
-    lastArguments = arguments;
-    lastEnvironment = environment;
-    return 4242;
-  }
 }
 
 class const _DebugServerHarness({

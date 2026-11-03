@@ -11,7 +11,6 @@ import "../debug_server.dart";
 import "../foundation/bandwidth_tracker.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../orchestrator.dart";
-import "../routing/bridge_restart_dispatcher.dart";
 import "../routing/routed_request_dispatcher.dart";
 import "../services/catalog_import_service.dart";
 import "bridge_shutdown_coordinator.dart";
@@ -22,7 +21,6 @@ class BridgeRuntime({
   required final FailureReporter _failureReporter,
   required final OrchestratorComposition _composition,
 }) {
-  final BridgeRestartDispatcher _restartDispatcher = _composition.restartDispatcher;
   final RoutedRequestDispatcher _routedRequestDispatcher = _composition.routedRequestDispatcher;
   Future<void>? _closeFuture;
 
@@ -52,7 +50,6 @@ class BridgeRuntime({
       routedRequestDispatcher: _routedRequestDispatcher,
       port: port,
       failureReporter: _failureReporter,
-      restartDispatcher: _restartDispatcher,
     );
   }
 
@@ -69,7 +66,6 @@ class BridgeRuntime({
       }
     }
 
-    await step(_restartDispatcher.dispose);
     await step(_composition.sessionUnseenService.dispose);
     await step(_composition.sessionViewTracker.dispose);
     await step(_composition.sessionRepository.dispose);

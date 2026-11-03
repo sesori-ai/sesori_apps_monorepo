@@ -280,7 +280,6 @@ void main() {
               processRunner: ProcessRunner(),
               clock: const ServerClock(),
               isWindows: Platform.isWindows,
-              inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
             ),
             currentUser: null,
           ),

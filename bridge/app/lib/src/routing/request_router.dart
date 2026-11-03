@@ -22,7 +22,7 @@ class RequestRouter({
     if (requestMethod == null) {
       return PendingRoutedRequest(
         routeIdentity: const InvalidMethodRoute(),
-        completion: Future<RoutedRequestOutcome>.value(ResponseOnly(response: _notFound(request))),
+        completion: Future<RelayResponse>.value(_notFound(request)),
       );
     }
 
@@ -32,11 +32,7 @@ class RequestRouter({
     } on Object catch (error) {
       return PendingRoutedRequest(
         routeIdentity: InvalidTargetRoute(method: requestMethod),
-        completion: Future<RoutedRequestOutcome>.value(
-          ResponseOnly(
-            response: _failed(request: request, error: error),
-          ),
-        ),
+        completion: Future<RelayResponse>.value(_failed(request: request, error: error)),
       );
     }
 
@@ -57,11 +53,11 @@ class RequestRouter({
 
     return PendingRoutedRequest(
       routeIdentity: UnmatchedRoute(method: requestMethod),
-      completion: Future<RoutedRequestOutcome>.value(ResponseOnly(response: _notFound(request))),
+      completion: Future<RelayResponse>.value(_notFound(request)),
     );
   }
 
-  Future<RoutedRequestOutcome> _complete({
+  Future<RelayResponse> _complete({
     required RelayRequest request,
     required Uri target,
     required RequestHandlerBase handler,
@@ -75,13 +71,11 @@ class RequestRouter({
       );
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${identity.diagnosticLabel}: upstream error", error, stackTrace);
-      return ResponseOnly(
-        response: RelayResponse(
-          id: request.id,
-          status: error.statusCode ?? 502,
-          headers: const {},
-          body: error.toString(),
-        ),
+      return RelayResponse(
+        id: request.id,
+        status: error.statusCode ?? 502,
+        headers: const {},
+        body: error.toString(),
       );
     } on Object catch (error, stackTrace) {
       Log.w(
@@ -89,9 +83,7 @@ class RequestRouter({
         error,
         stackTrace,
       );
-      return ResponseOnly(
-        response: _failed(request: request, error: error),
-      );
+      return _failed(request: request, error: error);
     }
   }
 

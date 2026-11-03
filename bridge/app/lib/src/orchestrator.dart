@@ -93,7 +93,6 @@ import "repositories/session_unseen_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
-import "routing/bridge_restart_dispatcher.dart";
 import "routing/cancel_catalog_import_handler.dart";
 import "routing/cancel_queued_prompt_handler.dart";
 import "routing/create_directory_handler.dart";
@@ -154,7 +153,6 @@ import "routing/reply_to_form_handler.dart";
 import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
-import "routing/restart_bridge_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 import "routing/search_session_prompts_handler.dart";
@@ -165,7 +163,6 @@ import "routing/set_session_auto_continuation_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
-import "server/services/bridge_restart_service.dart";
 import "services/archived_session_validator.dart";
 import "services/bridge_startup_retry_service.dart";
 import "services/catalog_import_service.dart";
@@ -215,7 +212,6 @@ typedef OrchestratorComposition = ({
   DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
   ChatHistoryReconcileService chatHistoryReconcileService,
   ScratchRepository scratchRepository,
-  BridgeRestartDispatcher restartDispatcher,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
@@ -243,7 +239,6 @@ class Orchestrator({
   required final TokenRefresher _tokenRefresher,
   required final BridgeRegistrationService _bridgeRegistrationService,
   required final FailureReporter _failureReporter,
-  required final BridgeRestartService _restartService,
   required final bool _filesystemAccessOk,
   required final BridgeKind _bridgeKind,
   // Supervised mode only: owns the status-class pushes to the desktop GUI.
@@ -658,7 +653,6 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
-    final restartDispatcher = BridgeRestartDispatcher(restartService: _restartService);
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
@@ -687,7 +681,6 @@ class Orchestrator({
           service: sessionOptionsService,
           pluginIds: pluginComposition.sessionOptionsScopeById.keys.toSet(),
         ),
-        RestartBridgeHandler(restartService: _restartService),
         GetCurrentProjectHandler(projectDetailsService: projectDetailsService),
         GetProjectsHandler(projectActivityService: projectActivityService),
         GetCommandsHandler(sessionRepository: sessionRepository),
@@ -804,7 +797,6 @@ class Orchestrator({
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionCreationService: sessionCreationService,
-      restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
       startupRetryService: _startupRetryService,
@@ -819,7 +811,6 @@ class Orchestrator({
         chatHistoryService: chatHistoryService,
       ),
       scratchRepository: scratchRepository,
-      restartDispatcher: restartDispatcher,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
@@ -918,7 +909,6 @@ class OrchestratorSession._({
   required final SessionOperationDispatcher _sessionOperationDispatcher,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final SessionCreationService _sessionCreationService,
-  required final BridgeRestartDispatcher _restartDispatcher,
   required final ControlStatusNotifier? _statusNotifier,
   required final ReconnectBackoffPolicy _reconnectBackoff,
   required final BridgeStartupRetryService _startupRetryService,
@@ -952,18 +942,6 @@ class OrchestratorSession._({
   this {
     connectionNotificationPolicies
         .listen((policy) => _client.updateConnectionNotificationPolicy(policy: policy))
-        .addTo(_subscriptions);
-    _restartDispatcher.shutdownRequests
-        .listen((request) {
-          switch (request) {
-            case BridgeShutdownRequest.restart:
-              unawaited(
-                cancel().catchError((Object error, StackTrace stackTrace) {
-                  Log.w("[restart] failed to cancel the session", error, stackTrace);
-                }),
-              );
-          }
-        })
         .addTo(_subscriptions);
     _mcpAuthenticationService.changes
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.mcpAuthenticationChanged()))
@@ -2478,9 +2456,9 @@ class OrchestratorSession._({
   }) async {
     final routeIdentity = pendingRoute.routeIdentity;
     final routeSw = Stopwatch()..start();
-    final RoutedRequestOutcome outcome;
+    final RelayResponse response;
     try {
-      outcome = await pendingRoute.completion;
+      response = await pendingRoute.completion;
     } on Object catch (error, stackTrace) {
       if (_cancelled) {
         Log.w("[shutdown] route ${routeIdentity.diagnosticLabel} failed while draining", error, stackTrace);
@@ -2490,7 +2468,6 @@ class OrchestratorSession._({
       return;
     }
 
-    final response = outcome.response;
     if (routeSw.elapsedMilliseconds > 1000) {
       Log.d(
         "slow route ${routeIdentity.diagnosticLabel} for connId $connID "
@@ -2508,18 +2485,6 @@ class OrchestratorSession._({
       phoneIncarnation: phoneIncarnation,
       activePhoneIncarnations: activePhoneIncarnations,
     );
-
-    if (_cancelled) return;
-    switch (outcome) {
-      case ResponseOnly():
-        break;
-      case final RestartAccepted accepted:
-        try {
-          await _restartDispatcher.dispatch(restart: accepted);
-        } on Object catch (error, stackTrace) {
-          Log.e("route ${routeIdentity.diagnosticLabel} failed for connId $connID", error, stackTrace);
-        }
-    }
   }
 
   Future<void> _deliverRoutedResponse({

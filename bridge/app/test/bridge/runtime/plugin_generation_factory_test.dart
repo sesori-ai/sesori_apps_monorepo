@@ -875,12 +875,6 @@ class _FakeStartupMutexRepository() implements StartupMutexRepository {
 }
 
 class _FakeBridgeInstanceService() implements BridgeInstanceService {
-  @override
-  Future<void> awaitPredecessorBridgeExit({
-    required int predecessorPid,
-    required Duration timeout,
-  }) async {}
-
   BridgeInstanceResolution resolution = const BridgeInstanceResolution(
     status: BridgeInstanceResolutionStatus.allowed,
     existingBridges: <ProcessIdentity>[],

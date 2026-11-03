@@ -415,7 +415,7 @@ void main() {
       });
     });
 
-    test("a supervised restart backstop preserves exit 86 and disposes plugins before exit", () {
+    test("a latched supervised exit survives the backstop and disposes plugins before exit", () {
       fakeAsync((async) {
         final operations = <String>[];
         BridgeSupervisedExitCode? requestedExit;
@@ -429,14 +429,14 @@ void main() {
         );
         coordinator.add(disposable: () => Completer<void>().future);
 
-        // Mirrors the runtime restart handoff: latch the sentinel before the
+        // Mirrors the runtime auth-required exit: latch the code before the
         // shutdown request arms the coordinator backstop.
-        requestedExit = BridgeSupervisedExitCode.restart;
+        requestedExit = BridgeSupervisedExitCode.authRequired;
         unawaited(coordinator.shutdown());
         async.elapse(const Duration(seconds: 11));
         async.flushMicrotasks();
 
-        expect(operations, <String>["emergency-plugin-disposal", "exit:86"]);
+        expect(operations, <String>["emergency-plugin-disposal", "exit:87"]);
       });
     });
 
