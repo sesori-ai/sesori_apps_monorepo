@@ -8,11 +8,11 @@ import "request_handler.dart";
 /// lets the unseen service emit the SSE update that syncs every client.
 class MarkSessionSeenHandler({required final SessionUnseenService _sessionUnseenService})
     extends BodyRequestHandler<MarkSessionSeenRequest, SuccessEmptyResponse> {
-  this : super(HttpMethod.post, "/session/seen", fromJson: MarkSessionSeenRequest.fromJson);
+  this : super(method: HttpMethod.post, path: "/session/seen", fromJson: MarkSessionSeenRequest.fromJson);
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required MarkSessionSeenRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
@@ -24,7 +24,7 @@ class MarkSessionSeenHandler({required final SessionUnseenService _sessionUnseen
       } on SessionUnseenRowMissingException {
         // Unknown/deleted session — the non-2xx tells the requesting client to
         // refresh its optimistic state from the authoritative list.
-        throw buildErrorResponse(request, 404, "session not found");
+        throw buildErrorResponse(request: request, status: 404, message: "session not found");
       }
     }
     return const SuccessEmptyResponse();

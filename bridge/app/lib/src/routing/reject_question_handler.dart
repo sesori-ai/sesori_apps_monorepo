@@ -10,14 +10,14 @@ class RejectQuestionHandler({required final PendingInteractionService _pendingIn
     extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/question/reject",
+        method: HttpMethod.post,
+        path: "/question/reject",
         fromJson: RejectQuestionRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required RejectQuestionRequest body,
   }) async {
     final requestId = body.requestId;

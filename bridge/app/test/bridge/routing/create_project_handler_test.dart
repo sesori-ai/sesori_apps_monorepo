@@ -104,7 +104,7 @@ void main() {
       plugin.throwOnGetProjectError = StateError("must not be called");
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/create"),
+        request: makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
       );
 
@@ -129,7 +129,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/create"),
+          request: makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: existing.path),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
@@ -139,7 +139,7 @@ void main() {
     test("empty path returns 400", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/create"),
+          request: makeRequest("POST", "/project/create"),
           body: const ProjectPathRequest(path: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -149,7 +149,7 @@ void main() {
     test("relative path returns 400", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/create"),
+          request: makeRequest("POST", "/project/create"),
           body: const ProjectPathRequest(path: "relative/project"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -159,7 +159,7 @@ void main() {
     test("path traversal returns 400", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/create"),
+          request: makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: "${tempDir.path}/../escape"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -171,7 +171,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/create"),
+          request: makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: path),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -183,7 +183,7 @@ void main() {
       plugin.throwOnGetProjectError = PluginApiException("/project", 503);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/create"),
+        request: makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
       );
 

@@ -10,14 +10,14 @@ class GetCurrentProjectHandler({required final ProjectDetailsService _projectDet
     extends BodyRequestHandler<ProjectIdRequest, Project> {
   this
     : super(
-        HttpMethod.post,
-        "/project/current",
+        method: HttpMethod.post,
+        path: "/project/current",
         fromJson: ProjectIdRequest.fromJson,
       );
 
   @override
-  Future<Project> handle(
-    RelayRequest request, {
+  Future<Project> handle({
+    required RelayRequest request,
     required ProjectIdRequest body,
   }) async {
     final projectId = body.projectId;

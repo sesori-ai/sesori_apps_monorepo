@@ -21,7 +21,7 @@ void main() {
 
     test("answers an unknown session with no matches, never a 404", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/session/prompts/search"),
+        request: makeRequest("POST", "/session/prompts/search"),
         body: const SessionPromptSearchRequest(sessionId: "unknown", query: "build"),
       );
 
@@ -31,7 +31,7 @@ void main() {
     test("returns 400 when the session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/prompts/search"),
+          request: makeRequest("POST", "/session/prompts/search"),
           body: const SessionPromptSearchRequest(sessionId: "", query: "build"),
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),

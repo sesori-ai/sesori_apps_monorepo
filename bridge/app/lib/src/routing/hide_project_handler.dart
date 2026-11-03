@@ -12,14 +12,14 @@ class HideProjectHandler({required final ProjectMutationService _projectMutation
     extends BodyRequestHandler<ProjectIdRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/project/hide",
+        method: HttpMethod.post,
+        path: "/project/hide",
         fromJson: ProjectIdRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required ProjectIdRequest body,
   }) async {
     final projectId = body.projectId;
@@ -28,7 +28,7 @@ class HideProjectHandler({required final ProjectMutationService _projectMutation
     try {
       await _projectMutationService.hideProject(projectId: projectId);
     } on ScratchProjectHideRefusedException {
-      throw buildErrorResponse(request, 409, "the No project project cannot be hidden");
+      throw buildErrorResponse(request: request, status: 409, message: "the No project project cannot be hidden");
     }
 
     return const SuccessEmptyResponse();

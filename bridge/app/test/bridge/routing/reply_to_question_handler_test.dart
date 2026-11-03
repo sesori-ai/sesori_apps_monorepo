@@ -63,7 +63,7 @@ void main() {
 
     test("extracts requestId, sessionId, and parses answers", () async {
       await handler.handle(
-        makeRequest("POST", "/question/reply"),
+        request: makeRequest("POST", "/question/reply"),
         body: const ReplyToQuestionRequest(
           requestId: "q1",
           sessionId: "ses-1",
@@ -87,7 +87,7 @@ void main() {
 
     test("returns 200", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/question/reply"),
+        request: makeRequest("POST", "/question/reply"),
         body: const ReplyToQuestionRequest(
           requestId: "q1",
           sessionId: "ses-1",
@@ -103,7 +103,7 @@ void main() {
     test("returns 400 on empty request id", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/question/reply"),
+          request: makeRequest("POST", "/question/reply"),
           body: const ReplyToQuestionRequest(
             requestId: "",
             sessionId: "ses-1",
@@ -119,7 +119,7 @@ void main() {
     test("returns 400 on empty session id", () async {
       expect(
         () => handler.handle(
-          makeRequest("POST", "/question/reply"),
+          request: makeRequest("POST", "/question/reply"),
           body: const ReplyToQuestionRequest(
             requestId: "q1",
             sessionId: "",

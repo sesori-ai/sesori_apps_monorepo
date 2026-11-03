@@ -17,7 +17,7 @@ void main() {
 
     Future<FilesystemSuggestion> create({required String parentPath, required String name}) {
       return handler.handle(
-        makeRequest("POST", "/filesystem/directory"),
+        request: makeRequest("POST", "/filesystem/directory"),
         body: FilesystemCreateDirectoryRequest(parentPath: parentPath, name: name),
       );
     }

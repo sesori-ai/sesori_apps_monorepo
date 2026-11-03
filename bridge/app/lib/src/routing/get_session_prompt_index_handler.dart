@@ -12,14 +12,14 @@ class GetSessionPromptIndexHandler({required final ChatHistoryService _chatHisto
     extends BodyRequestHandler<SessionIdRequest, SessionPromptIndexResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/prompts",
+        method: HttpMethod.post,
+        path: "/session/prompts",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<SessionPromptIndexResponse> handle(
-    RelayRequest request, {
+  Future<SessionPromptIndexResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;

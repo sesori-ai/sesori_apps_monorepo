@@ -7,29 +7,29 @@ class PostPluginLifecycleCommandHandler({required final PluginLifecycleService _
     extends TargetBodyRequestHandler<PluginLifecycleCommandRequest, PluginManagementResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/plugin/:id/command",
+        method: HttpMethod.post,
+        path: "/plugin/:id/command",
         fromJson: PluginLifecycleCommandRequest.fromJson,
       );
 
   @override
-  Future<PluginManagementResponse> handle(
-    RelayRequest request, {
+  Future<PluginManagementResponse> handle({
+    required RelayRequest request,
     required PluginLifecycleCommandRequest body,
     required Map<String, String> pathParams,
   }) async {
     try {
       final pluginId = pathParams["id"];
-      if (pluginId == null) throw buildErrorResponse(request, 400, "plugin id is required");
+      if (pluginId == null) throw buildErrorResponse(request: request, status: 400, message: "plugin id is required");
       return await _lifecycleService.command(pluginId: pluginId, request: body);
     } on PluginManagementPluginNotFoundException {
-      throw buildErrorResponse(request, 404, "plugin not found");
+      throw buildErrorResponse(request: request, status: 404, message: "plugin not found");
     } on PluginManagementConflictException catch (error) {
       throw buildJsonErrorResponse(request: request, status: 409, body: error.conflict.toJson());
     } on PluginManagementMutationOutcomeUncertainException {
-      throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
+      throw buildErrorResponse(request: request, status: 503, message: "plugin mutation outcome is uncertain");
     } on PluginManagementCommandFailedException {
-      throw buildErrorResponse(request, 500, "plugin command failed");
+      throw buildErrorResponse(request: request, status: 500, message: "plugin command failed");
     }
   }
 }

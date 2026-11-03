@@ -72,7 +72,7 @@ void main() {
 
     test("delegates to plugin with correct arguments", () async {
       await handler.handle(
-        makeRequest("POST", "/permission/reply"),
+        request: makeRequest("POST", "/permission/reply"),
         body: const ReplyToPermissionRequest(
           requestId: "perm-123",
           sessionId: "ses-456",
@@ -87,7 +87,7 @@ void main() {
 
     test("returns 200 on success", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/permission/reply"),
+        request: makeRequest("POST", "/permission/reply"),
         body: const ReplyToPermissionRequest(
           requestId: "perm-123",
           sessionId: "ses-456",
@@ -101,7 +101,7 @@ void main() {
     test("returns 400 on empty request id", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/permission/reply"),
+          request: makeRequest("POST", "/permission/reply"),
           body: const ReplyToPermissionRequest(
             requestId: "",
             sessionId: "ses-456",
@@ -115,7 +115,7 @@ void main() {
     test("returns 400 on empty session id", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/permission/reply"),
+          request: makeRequest("POST", "/permission/reply"),
           body: const ReplyToPermissionRequest(
             requestId: "perm-123",
             sessionId: "",

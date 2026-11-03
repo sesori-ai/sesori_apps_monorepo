@@ -113,7 +113,7 @@ void main() {
     test("returns 400 when path is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: const OpenProjectRequest(path: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -123,7 +123,7 @@ void main() {
     test("returns 400 when path is relative", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: const OpenProjectRequest(path: "relative/path"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -133,7 +133,7 @@ void main() {
     test("returns 400 when path contains path traversal (..) segment", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: const OpenProjectRequest(path: "/tmp/../etc"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -147,7 +147,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(path: nonExistent),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(404))),
@@ -157,7 +157,7 @@ void main() {
     test("returns 400 when path points to a file not a directory", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(path: tempFile.path),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -169,11 +169,11 @@ void main() {
       final link = Link("${tempDir.path}/folder-link")..createSync(folder.path);
 
       final throughLink = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: link.path),
       );
       final direct = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: folder.path),
       );
 
@@ -188,7 +188,7 @@ void main() {
     test("requires a choice before opening a non-Git folder", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(
             path: tempDir.path,
             gitAction: OpenProjectGitAction.promptIfNeeded,
@@ -205,7 +205,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(
             path: tempDir.path,
             gitAction: OpenProjectGitAction.promptIfNeeded,
@@ -220,7 +220,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(
           path: tempDir.path,
           gitAction: OpenProjectGitAction.openWithoutGit,
@@ -237,7 +237,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(
           path: tempDir.path,
           gitAction: OpenProjectGitAction.promptIfNeeded,
@@ -255,7 +255,7 @@ void main() {
 
       for (final gitAction in [OpenProjectGitAction.promptIfNeeded, OpenProjectGitAction.initializeGit]) {
         final result = await handler.handle(
-          makeRequest("POST", "/project/open"),
+          request: makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(
             path: tempDir.path,
             gitAction: gitAction,
@@ -274,7 +274,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(
           path: tempDir.path,
           gitAction: OpenProjectGitAction.initializeGit,
@@ -291,7 +291,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(
           path: tempDir.path,
           gitAction: OpenProjectGitAction.initializeGit,
@@ -310,7 +310,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(
           path: tempDir.path,
           gitAction: OpenProjectGitAction.initializeGit,
@@ -329,7 +329,7 @@ void main() {
       plugin.throwOnGetProjectError = StateError("must not be called");
 
       await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -340,7 +340,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -355,7 +355,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -371,7 +371,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -382,7 +382,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -395,7 +395,7 @@ void main() {
       plugin.throwOnGetProjectError = PluginApiException("/project/open", 404);
 
       final result = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -413,12 +413,12 @@ void main() {
       );
 
       final first = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
       final second = await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 
@@ -430,7 +430,7 @@ void main() {
       await db.projectsDao.hideProject(projectId: tempDir.path);
 
       await handler.handle(
-        makeRequest("POST", "/project/open"),
+        request: makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
       );
 

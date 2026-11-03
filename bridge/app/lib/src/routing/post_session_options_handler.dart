@@ -8,13 +8,13 @@ class PostSessionOptionsHandler({
   required final SessionOptionsService _service,
   required Set<String> pluginIds,
 }) extends RequestHandlerBase {
-  this : super(HttpMethod.post, "/session/options");
+  this : super(method: HttpMethod.post, path: "/session/options");
 
   final Set<String> _pluginIds = Set.unmodifiable(pluginIds);
 
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) async {
     final rawBody = request.body;

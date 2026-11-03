@@ -48,7 +48,7 @@ void main() {
 
     test("returns 200 and stores hidden project id", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/hide"),
+        request: makeRequest("POST", "/project/hide"),
         body: const ProjectIdRequest(projectId: "p1"),
       );
 
@@ -60,7 +60,7 @@ void main() {
     test("rejects empty project id", () async {
       expect(
         () => handler.handle(
-          makeRequest("POST", "/project/hide"),
+          request: makeRequest("POST", "/project/hide"),
           body: const ProjectIdRequest(projectId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
@@ -70,7 +70,7 @@ void main() {
     test("returns 409 when the service refuses to hide the No project project", () async {
       await expectLater(
         handler.handle(
-          makeRequest("POST", "/project/hide"),
+          request: makeRequest("POST", "/project/hide"),
           body: const ProjectIdRequest(projectId: "/scratch"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", 409)),
@@ -80,7 +80,7 @@ void main() {
     test("handles project IDs containing slashes", () async {
       const projectId = "/Users/alex/projects/my-app";
       final response = await handler.handle(
-        makeRequest("POST", "/project/hide"),
+        request: makeRequest("POST", "/project/hide"),
         body: const ProjectIdRequest(projectId: projectId),
       );
 

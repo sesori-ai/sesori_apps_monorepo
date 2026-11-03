@@ -203,7 +203,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -265,7 +265,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -303,7 +303,7 @@ void main() {
       worktreeService.resolveHeadCommitResult = "abc123def456";
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -358,7 +358,7 @@ void main() {
       worktreeService.resolveHeadCommitResult = "abc123def456";
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -407,7 +407,7 @@ void main() {
         worktreeService.resolveHeadCommitResult = "fallback-head";
 
         final result = await handler.handle(
-          makeRequest("POST", "/session/create"),
+          request: makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
             pluginId: legacyMissingPluginId,
@@ -458,7 +458,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -541,7 +541,7 @@ void main() {
 
       await expectLater(
         () => localHandler.handle(
-          makeRequest("POST", "/session/create"),
+          request: makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
             pluginId: legacyMissingPluginId,
@@ -578,7 +578,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: "opencode",
@@ -621,7 +621,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -648,7 +648,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -679,7 +679,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -697,7 +697,7 @@ void main() {
 
     test("passes parts, agent, and model to plugin", () async {
       await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/tmp",
           pluginId: legacyMissingPluginId,
@@ -741,7 +741,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -780,7 +780,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -809,7 +809,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -838,7 +838,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -866,7 +866,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -908,7 +908,7 @@ void main() {
 
       var responseCompleted = false;
       final response = handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -949,7 +949,7 @@ void main() {
       metadataRepository.generateResult = "Must not be used";
 
       final response = handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -984,7 +984,7 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -1049,7 +1049,7 @@ void main() {
       );
 
       await localHandler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -1090,7 +1090,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -1122,7 +1122,7 @@ void main() {
     test("rejects session creation for an unknown project id before plugin side effects", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/create"),
+          request: makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "brand-new-proj",
             pluginId: legacyMissingPluginId,
@@ -1153,7 +1153,7 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -1181,7 +1181,7 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,
@@ -1240,7 +1240,7 @@ void main() {
       );
 
       final result = await localHandler.handle(
-        makeRequest("POST", "/session/create"),
+        request: makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           pluginId: legacyMissingPluginId,

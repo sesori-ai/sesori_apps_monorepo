@@ -5,10 +5,18 @@ import "request_handler.dart";
 
 class PostMcpAuthenticationCancelHandler({required final McpAuthenticationService _service})
     extends BodyRequestHandler<McpAuthenticationCancelRequest, McpAuthenticationResult> {
-  this : super(HttpMethod.post, "/mcp/authentication/cancel", fromJson: McpAuthenticationCancelRequest.fromJson);
+  this
+    : super(
+        method: HttpMethod.post,
+        path: "/mcp/authentication/cancel",
+        fromJson: McpAuthenticationCancelRequest.fromJson,
+      );
 
   @override
-  Future<McpAuthenticationResult> handle(RelayRequest request, {required McpAuthenticationCancelRequest body}) async {
+  Future<McpAuthenticationResult> handle({
+    required RelayRequest request,
+    required McpAuthenticationCancelRequest body,
+  }) async {
     requireNonEmpty(request: request, value: body.attemptId, label: "attempt id");
     return await _service.cancel(request: body);
   }

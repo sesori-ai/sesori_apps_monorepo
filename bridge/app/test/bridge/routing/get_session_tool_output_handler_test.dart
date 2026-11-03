@@ -38,7 +38,7 @@ void main() {
     });
 
     Future<SessionToolOutputResponse> handle({required String partId}) => handler.handle(
-      makeRequest("POST", "/session/tool-output"),
+      request: makeRequest("POST", "/session/tool-output"),
       body: SessionToolOutputRequest(sessionId: "s1", messageId: "m1", partId: partId),
     );
 

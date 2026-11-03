@@ -40,7 +40,7 @@ void main() {
 
     test("extracts sessionId and atomic-stop opt-in from request body", () async {
       await handler.handle(
-        makeRequest("POST", "/session/abort"),
+        request: makeRequest("POST", "/session/abort"),
         body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
       );
 
@@ -56,7 +56,7 @@ void main() {
 
         try {
           await handler.handle(
-            makeRequest("POST", "/session/abort"),
+            request: makeRequest("POST", "/session/abort"),
             body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
           );
           fail("expected typed refusal");
@@ -73,7 +73,7 @@ void main() {
     test("returns the plugin descendant-handling acknowledgment", () async {
       plugin.abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
       final response = await handler.handle(
-        makeRequest("POST", "/session/abort"),
+        request: makeRequest("POST", "/session/abort"),
         body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
       );
 

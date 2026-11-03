@@ -96,15 +96,15 @@ void main() {
 }
 
 class _GatedHandler({
-  required String path,
+  required super.path,
   required final Completer<void> _started,
   required final Completer<void> _gate,
 }) extends RequestHandlerBase {
-  this : super(HttpMethod.get, path);
+  this : super(method: HttpMethod.get);
 
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) async {
     _started.complete();
@@ -119,11 +119,11 @@ class _GatedHandler({
 }
 
 class _FailingHandler() extends RequestHandlerBase {
-  this : super(HttpMethod.get, "/failure");
+  this : super(method: HttpMethod.get, path: "/failure");
 
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) async {
     throw StateError("route failed");

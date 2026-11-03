@@ -55,7 +55,7 @@ void main() {
 
     test("extracts requestId and records reject call", () async {
       await handler.handle(
-        makeRequest("POST", "/question/reject"),
+        request: makeRequest("POST", "/question/reject"),
         body: const RejectQuestionRequest(requestId: "q1", sessionId: "ses-1"),
       );
 
@@ -65,7 +65,7 @@ void main() {
 
     test("returns 200", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/question/reject"),
+        request: makeRequest("POST", "/question/reject"),
         body: const RejectQuestionRequest(requestId: "q1", sessionId: "ses-1"),
       );
 
@@ -75,7 +75,7 @@ void main() {
     test("throws 400 on empty request id", () async {
       expect(
         () => handler.handle(
-          makeRequest("POST", "/question/reject"),
+          request: makeRequest("POST", "/question/reject"),
           body: const RejectQuestionRequest(requestId: "", sessionId: "ses-1"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -85,7 +85,7 @@ void main() {
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(
-          makeRequest("POST", "/question/reject"),
+          request: makeRequest("POST", "/question/reject"),
           body: const RejectQuestionRequest(requestId: "q1", sessionId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),

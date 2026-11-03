@@ -31,7 +31,7 @@ void main() {
       final handler = GetSessionAttachmentHandler(chatHistoryService: history.service);
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/attachment"),
+        request: makeRequest("POST", "/session/attachment"),
         body: SessionAttachmentRequest(
           sessionId: "session-1",
           attachmentId: digest,
@@ -138,7 +138,7 @@ Future<void> _expectStatus({
 }) {
   return expectLater(
     () => handler.handle(
-      makeRequest("POST", "/session/attachment"),
+      request: makeRequest("POST", "/session/attachment"),
       body: request,
     ),
     throwsA(isA<RelayResponse>().having((response) => response.status, "status", status)),

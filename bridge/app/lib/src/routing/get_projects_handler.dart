@@ -6,12 +6,12 @@ import "request_handler.dart";
 /// Handles `GET /projects` — returns visible projects from the catalog.
 class GetProjectsHandler({required final ProjectActivityService _projectActivityService})
     extends GetRequestHandler<Projects> {
-  this : super("/projects");
+  this : super(path: "/projects");
 
   @override
-  Future<Projects> handle(
-    RelayRequest request,
-  ) async {
+  Future<Projects> handle({
+    required RelayRequest request,
+  }) async {
     final projects = await _projectActivityService.getProjects();
     return Projects(data: projects);
   }

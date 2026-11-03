@@ -5,10 +5,10 @@ import "request_handler.dart";
 
 class GetBridgeSettingsHandler({required final BridgeSettingsRepository _settingsRepository})
     extends GetRequestHandler<BridgeSettingsResponse> {
-  this : super("/settings");
+  this : super(path: "/settings");
 
   @override
-  Future<BridgeSettingsResponse> handle(
-    RelayRequest request,
-  ) => _settingsRepository.readCommittedResponse();
+  Future<BridgeSettingsResponse> handle({
+    required RelayRequest request,
+  }) => _settingsRepository.readCommittedResponse();
 }

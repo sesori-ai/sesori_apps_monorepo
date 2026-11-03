@@ -8,12 +8,12 @@ import "request_handler.dart";
 /// Returns statuses for ALL sessions globally — not filtered by session or project.
 class GetSessionStatusesHandler({required final SessionRepository _sessionRepository})
     extends GetRequestHandler<SessionStatusResponse> {
-  this : super("/session/status");
+  this : super(path: "/session/status");
 
   @override
-  Future<SessionStatusResponse> handle(
-    RelayRequest request,
-  ) async {
+  Future<SessionStatusResponse> handle({
+    required RelayRequest request,
+  }) async {
     return await _sessionRepository.getSessionStatuses();
   }
 }

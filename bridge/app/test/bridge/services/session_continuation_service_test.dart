@@ -122,20 +122,23 @@ void main() {
     final request = makeRequest("PATCH", "/session/auto-continuation");
     expect(handler.canHandle(request), isTrue);
     final enabled = await handler.handle(
-      request,
+      request: request,
       body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: true),
     );
     expect(enabled.autoContinuation!.enabled, isTrue);
     expect((await records.read(sessionId: "session")).enabled, isTrue);
     sessions.availability = AutoContinuationAvailability.unavailable;
     final disabled = await handler.handle(
-      request,
+      request: request,
       body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: false),
     );
     expect(disabled.autoContinuation!.enabled, isFalse);
     expect((await records.read(sessionId: "session")).enabled, isFalse);
     await expectLater(
-      handler.handle(request, body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: true)),
+      handler.handle(
+        request: request,
+        body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: true),
+      ),
       throwsA(isA<RelayResponse>().having((response) => response.status, "status", 501)),
     );
   });

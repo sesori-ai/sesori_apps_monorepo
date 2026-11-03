@@ -13,14 +13,14 @@ class GetBaseBranchHandler({required final ProjectRepository _projectRepository}
   // longer call it. Remove once public apps older than v1.10.1 are unsupported.
   this
     : super(
-        HttpMethod.post,
-        "/project/base-branch",
+        method: HttpMethod.post,
+        path: "/project/base-branch",
         fromJson: ProjectIdRequest.fromJson,
       );
 
   @override
-  Future<BaseBranchResponse> handle(
-    RelayRequest request, {
+  Future<BaseBranchResponse> handle({
+    required RelayRequest request,
     required ProjectIdRequest body,
   }) async {
     final projectId = body.projectId;

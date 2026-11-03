@@ -13,14 +13,14 @@ class GetSessionsHandler({
 }) extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/sessions",
+        method: HttpMethod.post,
+        path: "/sessions",
         fromJson: SessionListRequest.fromJson,
       );
 
   @override
-  Future<SessionListResponse> handle(
-    RelayRequest request, {
+  Future<SessionListResponse> handle({
+    required RelayRequest request,
     required SessionListRequest body,
   }) async {
     final projectId = requireNonEmpty(request: request, value: body.projectId, label: "project id");

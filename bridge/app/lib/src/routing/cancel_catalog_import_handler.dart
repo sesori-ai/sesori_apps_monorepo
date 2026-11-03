@@ -7,24 +7,24 @@ class CancelCatalogImportHandler({required final CatalogImportService _service})
     extends BodyRequestHandler<CatalogImportRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.delete,
-        "/plugin/import",
+        method: HttpMethod.delete,
+        path: "/plugin/import",
         fromJson: CatalogImportRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required CatalogImportRequest body,
   }) async {
     try {
       _service.cancel(pluginId: body.pluginId);
     } on CatalogImportPluginUnknownException {
-      throw buildErrorResponse(request, 404, "plugin not found");
+      throw buildErrorResponse(request: request, status: 404, message: "plugin not found");
     } on CatalogImportPluginNotEnabledException {
-      throw buildErrorResponse(request, 404, "plugin not selected");
+      throw buildErrorResponse(request: request, status: 404, message: "plugin not selected");
     } on CatalogImportPluginUnavailableException {
-      throw buildErrorResponse(request, 503, "plugin unavailable");
+      throw buildErrorResponse(request: request, status: 503, message: "plugin unavailable");
     }
     return const SuccessEmptyResponse();
   }

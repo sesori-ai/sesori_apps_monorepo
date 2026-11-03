@@ -47,7 +47,7 @@ void main() {
 
     test("passes projectId from body to plugin", () async {
       await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "opencode"),
       );
       expect(plugin.lastGetProvidersProjectId, equals("project-1"));
@@ -57,7 +57,7 @@ void main() {
 
     test("returns typed provider list response", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
       expect(response, isA<ProviderListResponse>());
@@ -65,7 +65,7 @@ void main() {
 
     test("returns empty items list when plugin has no providers", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
       expect(response.items, isEmpty);
@@ -87,7 +87,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -111,7 +111,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -133,7 +133,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -158,7 +158,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -212,7 +212,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -253,7 +253,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -280,7 +280,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -312,7 +312,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -333,7 +333,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 
@@ -368,7 +368,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
+        request: makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
       );
 

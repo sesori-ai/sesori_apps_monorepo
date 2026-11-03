@@ -55,7 +55,7 @@ void main() {
     test("throws 400 when projectId is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/sessions"),
+          request: makeRequest("POST", "/sessions"),
           body: const SessionListRequest(projectId: "", start: null, limit: null),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -89,7 +89,7 @@ void main() {
 
     test("forwards projectId to plugin.getSessions", () async {
       await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/home/user/proj", start: null, limit: null),
       );
       expect(plugin.lastGetSessionsWorktree, equals("/home/user/proj"));
@@ -97,7 +97,7 @@ void main() {
 
     test("forwards start and limit from body as ints", () async {
       await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: 5, limit: 20),
       );
       expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "/tmp", start: 5, limit: 20)));
@@ -132,7 +132,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: 2, limit: 3),
       );
 
@@ -150,7 +150,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/sessions"),
+          request: makeRequest("POST", "/sessions"),
           body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
         ),
         throwsA(same(failure)),
@@ -187,7 +187,7 @@ void main() {
       ];
 
       await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
       );
 
@@ -197,7 +197,7 @@ void main() {
 
     test("start and limit are null when absent from body", () async {
       await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
       expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "/tmp", start: null, limit: null)));
@@ -205,7 +205,7 @@ void main() {
 
     test("returns typed SessionListResponse", () async {
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
       expect(result, isA<SessionListResponse>());
@@ -224,7 +224,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -248,7 +248,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -271,7 +271,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -321,7 +321,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -344,7 +344,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -396,7 +396,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -492,7 +492,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -544,7 +544,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -593,7 +593,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -613,7 +613,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
 
@@ -667,7 +667,7 @@ void main() {
       );
 
       final result = await realHandler.handle(
-        makeRequest("POST", "/sessions"),
+        request: makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
       );
 

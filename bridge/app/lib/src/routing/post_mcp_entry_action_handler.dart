@@ -5,10 +5,10 @@ import "request_handler.dart";
 
 class PostMcpEntryActionHandler({required final McpService _mcpService})
     extends BodyRequestHandler<McpEntryActionRequest, McpEntryActionResult> {
-  this : super(HttpMethod.post, "/mcp/entry/action", fromJson: McpEntryActionRequest.fromJson);
+  this : super(method: HttpMethod.post, path: "/mcp/entry/action", fromJson: McpEntryActionRequest.fromJson);
 
   @override
-  Future<McpEntryActionResult> handle(RelayRequest request, {required McpEntryActionRequest body}) async {
+  Future<McpEntryActionResult> handle({required RelayRequest request, required McpEntryActionRequest body}) async {
     requireNonEmpty(request: request, value: body.pluginId, label: "plugin id");
     final target = body.action.entryTarget;
     switch (target) {

@@ -31,7 +31,10 @@ void main() {
     });
 
     Future<FilePreviewResponse> read(String path) {
-      return handler.handle(makeRequest("POST", "/filesystem/file"), body: FilePreviewRequest(path: path));
+      return handler.handle(
+        request: makeRequest("POST", "/filesystem/file"),
+        body: FilePreviewRequest(path: path),
+      );
     }
 
     test("handles only POST /filesystem/file", () {

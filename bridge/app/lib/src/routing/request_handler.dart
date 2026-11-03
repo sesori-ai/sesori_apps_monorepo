@@ -10,98 +10,98 @@ import "http_method.dart";
 
 export "http_method.dart";
 
-abstract class GetRequestHandler<RES extends Object>(
-  String path,
-) extends RequestHandlerBase {
-  this : super(HttpMethod.get, path);
+abstract class GetRequestHandler<RES extends Object>({
+  required super.path,
+}) extends RequestHandlerBase {
+  this : super(method: HttpMethod.get);
 
-  Future<RES> handle(
-    RelayRequest request,
-  );
+  Future<RES> handle({
+    required RelayRequest request,
+  });
 
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) async {
-    final result = await handle(request);
+    final result = await handle(request: request);
     return buildOkJsonResponse(request: request, body: result);
   }
 }
 
-abstract class _BodyRequestHandlerBase<REQ, RES extends Object>(
-  super.method,
-  super.path, {
+abstract class _BodyRequestHandlerBase<REQ, RES extends Object>({
+  required super.method,
+  required super.path,
   required final REQ Function(Map<String, dynamic> json) _fromJson,
 }) extends RequestHandlerBase {
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) async {
     final body = request.body;
     if (body == null) {
-      return buildErrorResponse(request, 400, "Bad Request: missing JSON body");
+      return buildErrorResponse(request: request, status: 400, message: "Bad Request: missing JSON body");
     }
     final Map<String, dynamic>? decoded;
     try {
       decoded = jsonDecodeMap(body);
     } catch (_) {
-      return buildErrorResponse(request, 400, "Bad Request: malformed JSON");
+      return buildErrorResponse(request: request, status: 400, message: "Bad Request: malformed JSON");
     }
     final REQ bodyParsed;
     try {
       bodyParsed = _fromJson(decoded);
     } catch (err) {
-      return buildErrorResponse(request, 400, "Bad Request: invalid JSON body: $err");
+      return buildErrorResponse(request: request, status: 400, message: "Bad Request: invalid JSON body: $err");
     }
-    final result = await handleParsed(request, body: bodyParsed, targetParams: targetParams);
+    final result = await handleParsed(request: request, body: bodyParsed, targetParams: targetParams);
     return buildOkJsonResponse(request: request, body: result);
   }
 
-  Future<RES> handleParsed(
-    RelayRequest request, {
+  Future<RES> handleParsed({
+    required RelayRequest request,
     required REQ body,
     required RequestTargetParams targetParams,
   });
 }
 
-abstract class BodyRequestHandler<REQ, RES extends Object>(
-  super.method,
-  super.path, {
+abstract class BodyRequestHandler<REQ, RES extends Object>({
+  required super.method,
+  required super.path,
   required super.fromJson,
 }) extends _BodyRequestHandlerBase<REQ, RES> {
   @override
-  Future<RES> handleParsed(
-    RelayRequest request, {
+  Future<RES> handleParsed({
+    required RelayRequest request,
     required REQ body,
     required RequestTargetParams targetParams,
-  }) => handle(request, body: body);
+  }) => handle(request: request, body: body);
 
-  Future<RES> handle(
-    RelayRequest request, {
+  Future<RES> handle({
+    required RelayRequest request,
     required REQ body,
   });
 }
 
-abstract class TargetBodyRequestHandler<REQ, RES extends Object>(
-  super.method,
-  super.path, {
+abstract class TargetBodyRequestHandler<REQ, RES extends Object>({
+  required super.method,
+  required super.path,
   required super.fromJson,
 }) extends _BodyRequestHandlerBase<REQ, RES> {
   @override
-  Future<RES> handleParsed(
-    RelayRequest request, {
+  Future<RES> handleParsed({
+    required RelayRequest request,
     required REQ body,
     required RequestTargetParams targetParams,
   }) => handle(
-    request,
+    request: request,
     body: body,
     pathParams: targetParams.pathParams,
   );
 
-  Future<RES> handle(
-    RelayRequest request, {
+  Future<RES> handle({
+    required RelayRequest request,
     required REQ body,
     required Map<String, String> pathParams,
   });
@@ -117,21 +117,21 @@ typedef RequestTargetParams = ({Map<String, String> pathParams, Map<String, Stri
 ///
 /// Example:
 /// ```dart
-/// class GetSessionMessagesHandler extends RequestHandler {
-///   GetSessionMessagesHandler(this._plugin)
-///       : super(HttpMethod.get, "/session/:id/message");
+/// class GetSessionMessagesHandler({required final SessionRepository _repository})
+///     extends RequestHandlerBase {
+///   this : super(method: HttpMethod.get, path: "/session/:id/message");
 /// }
 /// ```
-abstract class const RequestHandlerBase(
+abstract class const RequestHandlerBase({
   /// HTTP method this handler responds to.
-  final HttpMethod method,
+  required final HttpMethod method,
 
   /// URL path pattern, optionally containing `:param` placeholders.
   /// Use `"*"` to match any path (catch-all).
   ///
   /// Examples: `"/project"`, `"/session/:id/message"`.
-  final String path,
-) {
+  required final String path,
+}) {
   String get diagnosticLabel => "${method.diagnosticLabel} $path";
 
   // ── Matching ────────────────────────────────────────────────────────────────
@@ -163,8 +163,8 @@ abstract class const RequestHandlerBase(
   ///
   /// [targetParams] contains values extracted from `:param` placeholders in
   /// [path] and key/value pairs from the query string.
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   });
 
@@ -174,9 +174,9 @@ abstract class const RequestHandlerBase(
     required RequestTargetParams targetParams,
   }) async {
     try {
-      return await handleInternal(request, targetParams: targetParams);
+      return await handleInternal(request: request, targetParams: targetParams);
     } on ProjectNotFoundException {
-      return buildErrorResponse(request, 404, "project not found");
+      return buildErrorResponse(request: request, status: 404, message: "project not found");
     } on SessionArchivedReadOnlyException catch (error) {
       return buildArchivedRejectionResponse(request: request, rejection: error.rejection);
     } on StaleSessionPromptOptionsException catch (error) {
@@ -184,14 +184,18 @@ abstract class const RequestHandlerBase(
       return buildStaleOptionsRejectionResponse(request: request, message: error.message);
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: upstream failure", error, stackTrace);
-      return buildErrorResponse(request, error.statusCode ?? 502, error.toString());
+      return buildErrorResponse(request: request, status: error.statusCode ?? 502, message: error.toString());
     } on RelayResponse catch (error, stackTrace) {
       if (error.status < 200 || error.status >= 300) return error;
       Log.w("${request.method} ${request.path}: handler threw success response", error, stackTrace);
-      return buildErrorResponse(request, 500, "Internal Server Error: threw success response");
+      return buildErrorResponse(
+        request: request,
+        status: 500,
+        message: "Internal Server Error: threw success response",
+      );
     } on Object catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: handler failed", error, stackTrace);
-      return buildErrorResponse(request, 500, "Internal Server Error: $error");
+      return buildErrorResponse(request: request, status: 500, message: "Internal Server Error: $error");
     }
   }
 
@@ -230,16 +234,16 @@ abstract class const RequestHandlerBase(
       );
 
   String requireNonEmpty({required RelayRequest request, required String value, required String label}) {
-    if (value.isEmpty) throw buildErrorResponse(request, 400, "empty $label");
+    if (value.isEmpty) throw buildErrorResponse(request: request, status: 400, message: "empty $label");
     return value;
   }
 
   /// Builds an error response with the given [status] and plain-text [message].
-  RelayResponse buildErrorResponse(
-    RelayRequest request,
-    int status,
-    String message,
-  ) => RelayResponse(
+  RelayResponse buildErrorResponse({
+    required RelayRequest request,
+    required int status,
+    required String message,
+  }) => RelayResponse(
     id: request.id,
     status: status,
     headers: {},

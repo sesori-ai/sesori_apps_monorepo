@@ -8,14 +8,14 @@ class ReplyToQuestionHandler({required final PendingInteractionService _pendingI
     extends BodyRequestHandler<ReplyToQuestionRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/question/reply",
+        method: HttpMethod.post,
+        path: "/question/reply",
         fromJson: ReplyToQuestionRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required ReplyToQuestionRequest body,
   }) async {
     final requestId = body.requestId;

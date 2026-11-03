@@ -62,7 +62,7 @@ void main() {
       };
 
       final response = await handler.handle(
-        makeRequest("GET", "/session/status"),
+        request: makeRequest("GET", "/session/status"),
       );
 
       expect(response.statuses, equals({"stable-root": const SessionStatus.idle()}));
@@ -97,7 +97,7 @@ void main() {
       };
 
       final response = await handler.handle(
-        makeRequest("GET", "/session/status"),
+        request: makeRequest("GET", "/session/status"),
       );
 
       expect(response.statuses["stable-idle-session"], equals(const SessionStatus.idle()));

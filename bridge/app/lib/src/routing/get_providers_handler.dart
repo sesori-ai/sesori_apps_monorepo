@@ -8,16 +8,16 @@ class GetProvidersHandler({required final ProviderRepository _repository})
     extends BodyRequestHandler<PluginProjectIdRequest, ProviderListResponse> {
   this
     : super(
-        HttpMethod.post,
+        method: HttpMethod.post,
         // COMPATIBILITY 2026-11-03 (v1.12.0): Apps older than v1.7.1 load providers here; later apps call it only
         // on bridges without /session/options. Remove once public apps older than v1.7.1 are unsupported.
-        "/provider",
+        path: "/provider",
         fromJson: PluginProjectIdRequest.fromJson,
       );
 
   @override
-  Future<ProviderListResponse> handle(
-    RelayRequest request, {
+  Future<ProviderListResponse> handle({
+    required RelayRequest request,
     required PluginProjectIdRequest body,
   }) {
     return _repository.getProviders(

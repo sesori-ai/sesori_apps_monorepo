@@ -7,10 +7,10 @@ class GetPullRequestRefreshSettingsHandler({required final PullRequestRefreshSet
     extends GetRequestHandler<PullRequestRefreshSettingsResponse> {
   // COMPATIBILITY 2026-10-25 (v1.10.0): Apps older than v1.8.0 read the pull request refresh interval here, and it
   // no longer has any effect. Remove once public apps older than v1.8.0 are unsupported.
-  this : super("/settings/pull-request-refresh");
+  this : super(path: "/settings/pull-request-refresh");
 
   @override
-  Future<PullRequestRefreshSettingsResponse> handle(
-    RelayRequest request,
-  ) => _settingsService.readCommittedSettings();
+  Future<PullRequestRefreshSettingsResponse> handle({
+    required RelayRequest request,
+  }) => _settingsService.readCommittedSettings();
 }

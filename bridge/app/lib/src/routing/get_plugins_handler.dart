@@ -8,12 +8,12 @@ class GetPluginsHandler({
   required final PluginLifecycleService _lifecycleService,
   required final BridgeIdProvider _bridgeIdProvider,
 }) extends GetRequestHandler<PluginListResponse> {
-  this : super("/plugin");
+  this : super(path: "/plugin");
 
   @override
-  Future<PluginListResponse> handle(
-    RelayRequest request,
-  ) async {
+  Future<PluginListResponse> handle({
+    required RelayRequest request,
+  }) async {
     return PluginListResponse(
       bridgeId: _bridgeIdProvider.bridgeId,
       plugins: _lifecycleService.selectableMetadataSnapshot,

@@ -14,14 +14,14 @@ class SetSessionApprovalOverrideHandler({
 }) extends BodyRequestHandler<SetSessionApprovalOverrideRequest, Session> {
   this
     : super(
-        HttpMethod.patch,
-        "/session/approval-override",
+        method: HttpMethod.patch,
+        path: "/session/approval-override",
         fromJson: SetSessionApprovalOverrideRequest.fromJson,
       );
 
   @override
-  Future<Session> handle(
-    RelayRequest request, {
+  Future<Session> handle({
+    required RelayRequest request,
     required SetSessionApprovalOverrideRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");

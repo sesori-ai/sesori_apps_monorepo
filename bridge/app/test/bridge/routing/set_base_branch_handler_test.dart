@@ -49,7 +49,7 @@ void main() {
 
     test("valid body returns 200 with empty success response", () async {
       final response = await handler.handle(
-        makeRequest("PUT", "/project/base-branch"),
+        request: makeRequest("PUT", "/project/base-branch"),
         body: const SetBaseBranchRequest(projectId: "proj-1", baseBranch: "develop"),
       );
 
@@ -58,7 +58,7 @@ void main() {
 
     test("stores baseBranch in DB after successful PUT", () async {
       await handler.handle(
-        makeRequest("PUT", "/project/base-branch"),
+        request: makeRequest("PUT", "/project/base-branch"),
         body: const SetBaseBranchRequest(projectId: "proj-2", baseBranch: "main"),
       );
 
@@ -69,7 +69,7 @@ void main() {
     test("empty project id returns 400", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("PUT", "/project/base-branch"),
+          request: makeRequest("PUT", "/project/base-branch"),
           body: const SetBaseBranchRequest(projectId: "", baseBranch: "main"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -79,7 +79,7 @@ void main() {
     test("empty base branch returns 400", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("PUT", "/project/base-branch"),
+          request: makeRequest("PUT", "/project/base-branch"),
           body: const SetBaseBranchRequest(projectId: "proj-4", baseBranch: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),

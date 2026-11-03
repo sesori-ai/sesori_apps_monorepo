@@ -11,19 +11,19 @@ class RenameProjectHandler({required final ProjectRepository _projectRepository}
     extends BodyRequestHandler<RenameProjectRequest, Project> {
   this
     : super(
-        HttpMethod.patch,
-        "/project/name",
+        method: HttpMethod.patch,
+        path: "/project/name",
         fromJson: RenameProjectRequest.fromJson,
       );
 
   @override
-  Future<Project> handle(
-    RelayRequest request, {
+  Future<Project> handle({
+    required RelayRequest request,
     required RenameProjectRequest body,
   }) async {
     final name = body.name.trim();
     if (name.isEmpty) {
-      throw buildErrorResponse(request, 400, "Bad Request: project name must not be empty");
+      throw buildErrorResponse(request: request, status: 400, message: "Bad Request: project name must not be empty");
     }
     return await _projectRepository.renameProject(
       projectId: body.projectId,

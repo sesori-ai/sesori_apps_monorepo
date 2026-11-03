@@ -84,7 +84,7 @@ void main() {
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(
-          makeRequest("PATCH", "/session/update/archive"),
+          request: makeRequest("PATCH", "/session/update/archive"),
           body: const UpdateSessionArchiveRequest(
             sessionId: "",
             archived: true,
@@ -120,7 +120,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -164,7 +164,7 @@ void main() {
       final sub = unseenService.unseenChanges.listen(emitted.add);
 
       await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -204,7 +204,7 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -235,7 +235,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("PATCH", "/session/update/archive"),
+          request: makeRequest("PATCH", "/session/update/archive"),
           body: _archiveRequest(
             sessionId: "s1-legacy",
             archived: true,
@@ -272,7 +272,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("PATCH", "/session/update/archive"),
+          request: makeRequest("PATCH", "/session/update/archive"),
           body: _archiveRequest(
             sessionId: "s1",
             archived: true,
@@ -387,7 +387,7 @@ void main() {
       ];
 
       await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -484,7 +484,7 @@ void main() {
       ];
 
       await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -523,7 +523,7 @@ void main() {
       plugin.throwOnArchiveSessionError = Exception("OpenCode unavailable");
 
       final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -563,7 +563,7 @@ void main() {
       plugin.archiveSessionCompleter = archiveGate;
 
       final resultFuture = handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -609,7 +609,7 @@ void main() {
       ];
 
       await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -639,7 +639,7 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -676,7 +676,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,
@@ -712,7 +712,7 @@ void main() {
       ];
 
       final result = await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
+        request: makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
           sessionId: "s1",
           archived: true,

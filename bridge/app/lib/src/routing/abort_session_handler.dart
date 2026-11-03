@@ -10,14 +10,14 @@ class AbortSessionHandler({
 }) extends BodyRequestHandler<AbortSessionRequest, SessionAbortResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/abort",
+        method: HttpMethod.post,
+        path: "/session/abort",
         fromJson: AbortSessionRequest.fromJson,
       );
 
   @override
-  Future<SessionAbortResponse> handle(
-    RelayRequest request, {
+  Future<SessionAbortResponse> handle({
+    required RelayRequest request,
     required AbortSessionRequest body,
   }) async {
     final result = await _sessionAbortService.abortSession(

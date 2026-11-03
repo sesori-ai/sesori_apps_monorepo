@@ -13,35 +13,35 @@ class FilesystemSuggestionsHandler({required final FilesystemRepository _filesys
     extends BodyRequestHandler<FilesystemSuggestionsRequest, FilesystemSuggestions> {
   this
     : super(
-        HttpMethod.post,
-        "/filesystem/suggestions",
+        method: HttpMethod.post,
+        path: "/filesystem/suggestions",
         fromJson: FilesystemSuggestionsRequest.fromJson,
       );
 
   @override
-  Future<FilesystemSuggestions> handle(
-    RelayRequest request, {
+  Future<FilesystemSuggestions> handle({
+    required RelayRequest request,
     required FilesystemSuggestionsRequest body,
   }) async {
     final prefix = body.prefix;
     if (prefix != null) {
       if (!p.isAbsolute(prefix)) {
-        throw buildErrorResponse(request, 400, "prefix must be an absolute path");
+        throw buildErrorResponse(request: request, status: 400, message: "prefix must be an absolute path");
       }
       if (p.split(prefix).contains("..")) {
-        throw buildErrorResponse(request, 400, "path traversal not allowed");
+        throw buildErrorResponse(request: request, status: 400, message: "path traversal not allowed");
       }
     }
 
     try {
       return await _filesystemRepository.listBrowserSuggestions(prefix: prefix, maxResults: body.maxResults);
     } on FilesystemPermissionDeniedException catch (error) {
-      throw buildErrorResponse(request, 403, "permission denied: ${error.path}");
+      throw buildErrorResponse(request: request, status: 403, message: "permission denied: ${error.path}");
     } on FilesystemDirectoryNotFoundException {
-      throw buildErrorResponse(request, 404, "directory not found");
+      throw buildErrorResponse(request: request, status: 404, message: "directory not found");
     } on FileSystemException catch (error, stackTrace) {
       Log.w("FilesystemSuggestionsHandler: failed to list ${prefix ?? "the default browse path"}", error, stackTrace);
-      throw buildErrorResponse(request, 500, "failed to list filesystem suggestions");
+      throw buildErrorResponse(request: request, status: 500, message: "failed to list filesystem suggestions");
     }
   }
 }

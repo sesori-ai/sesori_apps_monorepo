@@ -13,26 +13,26 @@ class OpenProjectHandler({required final ProjectMutationService _projectMutation
     extends BodyRequestHandler<OpenProjectRequest, Project> {
   this
     : super(
-        HttpMethod.post,
-        "/project/open",
+        method: HttpMethod.post,
+        path: "/project/open",
         fromJson: OpenProjectRequest.fromJson,
       );
 
   @override
-  Future<Project> handle(
-    RelayRequest request, {
+  Future<Project> handle({
+    required RelayRequest request,
     required OpenProjectRequest body,
   }) async {
     final path = body.path;
 
     if (path.isEmpty) {
-      throw buildErrorResponse(request, 400, "path must not be empty");
+      throw buildErrorResponse(request: request, status: 400, message: "path must not be empty");
     }
     if (!p.isAbsolute(path)) {
-      throw buildErrorResponse(request, 400, "path must be absolute");
+      throw buildErrorResponse(request: request, status: 400, message: "path must be absolute");
     }
     if (p.split(path).contains("..")) {
-      throw buildErrorResponse(request, 400, "path traversal not allowed");
+      throw buildErrorResponse(request: request, status: 400, message: "path traversal not allowed");
     }
 
     final OpenProjectOutcome outcome;
@@ -42,19 +42,19 @@ class OpenProjectHandler({required final ProjectMutationService _projectMutation
         gitAction: body.gitAction,
       );
     } on FilesystemPermissionDeniedException {
-      throw buildErrorResponse(request, 403, "permission denied: $path");
+      throw buildErrorResponse(request: request, status: 403, message: "permission denied: $path");
     } on FileSystemException catch (error, stackTrace) {
       Log.w("OpenProjectHandler: failed to open project at $path", error, stackTrace);
-      throw buildErrorResponse(request, 500, "failed to open directory");
+      throw buildErrorResponse(request: request, status: 500, message: "failed to open directory");
     }
 
     switch (outcome) {
       case OpenProjectDirectoryNotFound():
-        throw buildErrorResponse(request, 404, "directory not found");
+        throw buildErrorResponse(request: request, status: 404, message: "directory not found");
       case OpenProjectPathNotDirectory():
-        throw buildErrorResponse(request, 400, "path is not a directory");
+        throw buildErrorResponse(request: request, status: 400, message: "path is not a directory");
       case OpenProjectGitChoiceRequired():
-        throw buildErrorResponse(request, 428, "Git setup choice required");
+        throw buildErrorResponse(request: request, status: 428, message: "Git setup choice required");
       case OpenProjectSuccess(:final project):
         return project;
     }

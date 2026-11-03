@@ -44,7 +44,7 @@ void main() {
     test("returns 400 when session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/queued_prompts"),
+          request: makeRequest("POST", "/session/queued_prompts"),
           body: const SessionIdRequest(sessionId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -72,7 +72,7 @@ void main() {
       ]);
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/queued_prompts"),
+        request: makeRequest("POST", "/session/queued_prompts"),
         body: const SessionIdRequest(sessionId: "s-1"),
       );
 
@@ -98,7 +98,7 @@ void main() {
 
     test("returns an empty list when the plugin queues nothing", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/session/queued_prompts"),
+        request: makeRequest("POST", "/session/queued_prompts"),
         body: const SessionIdRequest(sessionId: "s-1"),
       );
 
@@ -108,7 +108,7 @@ void main() {
     test("throws not-found for an unknown session", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/queued_prompts"),
+          request: makeRequest("POST", "/session/queued_prompts"),
           body: const SessionIdRequest(sessionId: "missing"),
         ),
         throwsA(isA<PluginOperationException>().having((e) => e.statusCode, "statusCode", equals(404))),
