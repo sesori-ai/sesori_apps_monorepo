@@ -93,17 +93,14 @@ Future<void> main(List<String> args) async {
 
     // Only enforce sync guard for automatic bumps; explicit --version can realign.
     if (parsed.version == null &&
-        (clientVersion.semver != bridgeCurrentVersion ||
-            desktopVersion.semver != bridgeCurrentVersion)) {
+        (clientVersion.semver != bridgeCurrentVersion || desktopVersion.semver != bridgeCurrentVersion)) {
       throw _CliError(
         'Error: Bridge ($bridgeCurrentVersion), client (${clientVersion.semver}), and desktop (${desktopVersion.semver}) versions are out of sync. '
         'Run `make bump-version VERSION=${clientVersion.semver}` to align them before bumping.',
       );
     }
 
-    final targetBridgeVersion =
-        parsed.version ??
-        _bumpVersion(baseVersion: clientVersion.semver, type: parsed.type!);
+    final targetBridgeVersion = parsed.version ?? _bumpVersion(baseVersion: clientVersion.semver, type: parsed.type!);
     _validateSemver(version: targetBridgeVersion);
 
     final targetClientVersion = clientVersion.build != null
@@ -281,8 +278,7 @@ String _join(String root, List<String> segments) {
 
 Future<String> _readFile({required String path}) => File(path).readAsString();
 
-Future<void> _writeFile({required String path, required String content}) =>
-    File(path).writeAsString(content);
+Future<void> _writeFile({required String path, required String content}) => File(path).writeAsString(content);
 
 _ClientVersion _readClientVersion({
   required String content,
@@ -398,8 +394,7 @@ Future<void> _writePackageJson({
   }
 
   final sesoriBridge = decoded['sesoriBridge'];
-  if (sesoriBridge is Map<String, dynamic> &&
-      sesoriBridge.containsKey('releaseTag')) {
+  if (sesoriBridge is Map<String, dynamic> && sesoriBridge.containsKey('releaseTag')) {
     sesoriBridge['releaseTag'] = 'v$newVersion';
   }
 

@@ -8,7 +8,8 @@ on:
       - 'shared/**'
       - 'install.sh'
       - 'install.ps1'
-      - 'tool/sync_versions.dart'
+      - 'tool/*.dart'
+      - 'tool/analysis_options.yaml'
       - 'tool/dart_format.sh'
       # Read by bridge/app/test/updater/release_contract_test.dart.
       - '.github/workflows/bridge-npm-publish.yml'
@@ -133,9 +134,10 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Check shared formatting
+      # The root tool/ scripts belong to no workspace; they are checked here.
+      - name: Check shared and tool formatting
         if: matrix.task == 'shared'
-        run: tool/dart_format.sh --check shared
+        run: tool/dart_format.sh --check shared tool
 
   # Kill-on-close of the backend runtime job object exists only on Windows.
   windows-job-object:

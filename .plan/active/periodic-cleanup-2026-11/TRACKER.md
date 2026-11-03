@@ -30,7 +30,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 24 Restart route | Merged | #2350 | Removes the route and the whole restart subsystem (Q1), including exit code 86; `/global/restart` returns 404. |
 | 25 Runtime-update seam | Merged | #2341 | Removed (Q2). The management snapshot sent to apps is byte-identical. |
 | 26 Phone desktop/web runners | Merged | #2340 | Deleted (Q3), about 3.6k lines rather than the audit's ~9.9k. `firebase_options.dart` and `firebase.json` stay as generated; the next `flutterfire configure` for Android and iOS trims them. |
-| 20.k, 20.l Dart format check (Q11 A) | PR open | | `tool/dart_format.sh` owns the generated-file exclusions; the CI jobs that analyze each workspace run it with `--check`. 20.k checks and reformats the bridge; 20.l, stacked on it, does the client and shared packages. Formatter output only: 172 files, about 2,750 lines. |
+| 20.k, 20.l Dart format check (Q11 A) | PR open | | `tool/dart_format.sh` owns the generated-file exclusions; the CI jobs that analyze each workspace run it with `--check`. 20.k checks and reformats the bridge; 20.l, stacked on it, does the client, the shared packages and the root `tool/` scripts (which get a `tool/analysis_options.yaml` with the repository's formatter settings). Formatter output only: 174 files, about 2,820 lines. |
 | 27 Regression docs | Merged | #2375 | Also runs the retired step-timers plan's step-6 reconciliation (Q6), and applies #2374's accepted README row. |
 | 28 Verify and retire | Pending | | Includes the retired opencode-v2 and step-timers live rows (Q6). |
 

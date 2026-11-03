@@ -111,8 +111,10 @@ _Options _parseArgs({required List<String> args}) {
   final to = values['to'];
   final version = values['version'];
   if (repo == null || to == null || version == null) {
-    stderr.writeln('Usage: dart tool/generate_release_notes.dart '
-        '--repo owner/name --to <ref> --version <X.Y.Z[-pre]> [--from <tag>] [--output <file>]');
+    stderr.writeln(
+      'Usage: dart tool/generate_release_notes.dart '
+      '--repo owner/name --to <ref> --version <X.Y.Z[-pre]> [--from <tag>] [--output <file>]',
+    );
     exit(1);
   }
 
@@ -126,9 +128,7 @@ _Options _parseArgs({required List<String> args}) {
 }
 
 class _GitHubApi {
-  _GitHubApi({required this.repo, required String token})
-    : _client = HttpClient(),
-      _token = token;
+  _GitHubApi({required this.repo, required String token}) : _client = HttpClient(), _token = token;
 
   final String repo;
   final HttpClient _client;
@@ -253,8 +253,10 @@ Future<String> _resolvePreviousStableTag({
     return fromTag;
   }
 
-  throw StateError('Could not resolve a previous stable v* release or tag to diff against. '
-      'Pass --from explicitly.');
+  throw StateError(
+    'Could not resolve a previous stable v* release or tag to diff against. '
+    'Pass --from explicitly.',
+  );
 }
 
 final RegExp _squashPrPattern = RegExp(r'\(#(\d+)\)');
@@ -272,9 +274,9 @@ Future<List<int>> _listMergedPrNumbers({
 
   var page = 1;
   while (true) {
-    final comparison =
-        await api.getJson(path: '/repos/${api.repo}/compare/$from...$to?per_page=100&page=$page')
-            as Map<String, dynamic>;
+    final comparison = await api.getJson(
+      path: '/repos/${api.repo}/compare/$from...$to?per_page=100&page=$page',
+    ) as Map<String, dynamic>;
     totalCommits = comparison['total_commits'] as int? ?? totalCommits;
     final commits = (comparison['commits'] as List<dynamic>).cast<Map<String, dynamic>>();
     scannedCommits += commits.length;
@@ -293,8 +295,7 @@ Future<List<int>> _listMergedPrNumbers({
       // squash titles, direct pushes): resolve through GitHub's commit -> PR
       // association instead of silently dropping them.
       final sha = commit['sha'] as String;
-      final associated =
-          await api.getJson(path: '/repos/${api.repo}/commits/$sha/pulls?per_page=10') as List<dynamic>;
+      final associated = await api.getJson(path: '/repos/${api.repo}/commits/$sha/pulls?per_page=10') as List<dynamic>;
       for (final pull in associated.cast<Map<String, dynamic>>()) {
         if (pull['merged_at'] == null) {
           continue;
@@ -314,8 +315,10 @@ Future<List<int>> _listMergedPrNumbers({
   // Never truncate silently: incomplete notes on a release are worse than a
   // failed workflow run (pass --from for a shorter range if this ever trips).
   if (scannedCommits < totalCommits) {
-    throw StateError('Compare $from...$to reports $totalCommits commits but only '
-        '$scannedCommits were returned; refusing to publish truncated release notes.');
+    throw StateError(
+      'Compare $from...$to reports $totalCommits commits but only '
+      '$scannedCommits were returned; refusing to publish truncated release notes.',
+    );
   }
 
   return numbers;
@@ -356,8 +359,8 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
   var listedFiles = 0;
   var page = 1;
   while (true) {
-    final files = await api.getJson(path: '/repos/${api.repo}/pulls/$number/files?per_page=100&page=$page')
-        as List<dynamic>;
+    final files =
+        await api.getJson(path: '/repos/${api.repo}/pulls/$number/files?per_page=100&page=$page') as List<dynamic>;
     listedFiles += files.length;
     for (final file in files.cast<Map<String, dynamic>>()) {
       final path = file['filename'] as String;
@@ -367,7 +370,8 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
       // `mobile/` is kept as a historical alias so PRs merged before the
       // mobile/->client/ rename are still classified as App in release notes
       // whose comparison range spans the rename.
-      touchesApp = touchesApp ||
+      touchesApp =
+          touchesApp ||
           path.startsWith('mobile/') ||
           (path.startsWith('client/') && !path.startsWith('client/desktop/'));
       touchesBridge = touchesBridge || path.startsWith('bridge/');
@@ -382,8 +386,10 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
   // not see every file, degrade conservatively: list it under both sections
   // rather than silently misclassifying it.
   if (listedFiles < changedFiles && !(touchesApp && touchesBridge)) {
-    stderr.writeln('PR #$number lists only $listedFiles of $changedFiles changed files; '
-        'classifying it under both App and Bridge.');
+    stderr.writeln(
+      'PR #$number lists only $listedFiles of $changedFiles changed files; '
+      'classifying it under both App and Bridge.',
+    );
     touchesApp = true;
     touchesBridge = true;
   }
@@ -423,14 +429,12 @@ Future<Map<String, String>> _resolveFirstContributions({
     // stable tag, so a commit authored long ago but merged after that tag
     // (rebase, cherry-pick, long-lived branch) correctly still counts as new.
     try {
-      final earlier =
-          await api.getJson(
-                path:
-                    '/repos/${api.repo}/commits'
-                    '?author=${Uri.encodeQueryComponent(author)}'
-                    '&sha=${Uri.encodeQueryComponent(from)}&per_page=1',
-              )
-              as List<dynamic>;
+      final earlier = await api.getJson(
+        path:
+            '/repos/${api.repo}/commits'
+            '?author=${Uri.encodeQueryComponent(author)}'
+            '&sha=${Uri.encodeQueryComponent(from)}&per_page=1',
+      ) as List<dynamic>;
       if (earlier.isEmpty) {
         firstContributionUrls[author] = entry.url;
       }
