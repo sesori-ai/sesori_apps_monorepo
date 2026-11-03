@@ -5,7 +5,6 @@
   "inlineResponseModels": {
     "global.health": "GlobalHealthResponse",
     "session.messages": "SessionMessagesResponseItem",
-    "session.command": "SessionCommandResponse",
     "config.providers": "ConfigProvidersResponse",
     "provider.list": "ProviderListResponse"
   },
@@ -23,7 +22,6 @@
     "session.update",
     "session.delete",
     "session.children",
-    "session.fork",
     "session.messages",
     "session.deleteMessage",
     "part.update",
@@ -32,7 +30,6 @@
     "session.abort",
     "session.status",
     "experimental.session.list",
-    "worktree.create",
     "worktree.remove",
     "command.list",
     "config.providers",
