@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -100,14 +101,14 @@ void main() {
       );
     });
 
-    test("encode/decode public key preserves bytes", () async {
+    test("encoded public key decodes back to the same key", () async {
       final kp = await crypto.generateKeyPair();
       final pub = await kp.extractPublicKey();
 
       final encoded = await crypto.encodePublicKey(pub);
       expect(encoded, isNotEmpty);
 
-      final decoded = crypto.decodePublicKey(encoded);
+      final decoded = crypto.decodePublicKeyFromBytes(base64Url.decode(base64Url.normalize(encoded)));
       expect(decoded.bytes, equals(pub.bytes));
       expect(decoded.type, equals(KeyPairType.x25519));
     });
