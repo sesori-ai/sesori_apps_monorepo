@@ -41,6 +41,8 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'src/json_reads.dart';
+
 const _upstreamOwner = 'anomalyco';
 const _upstreamRepo = 'opencode';
 
@@ -135,85 +137,54 @@ Future<void> main(List<String> args) async {
     }
   }
 
-  // Exactly one of --tag / --branch / --commit / --local is required.
-  final sourceCount = [tag, branch, commit, localSpecPath].where((e) => e != null).length;
-  if (sourceCount == 0) {
-    stderr.writeln('error: one of --tag, --branch, --commit, or --local is required');
-    _printUsage();
-    exit(2);
-  }
-  if (sourceCount > 1) {
-    stderr.writeln('error: --tag, --branch, --commit, and --local are mutually exclusive');
-    _printUsage();
-    exit(2);
-  }
-
   final surface = SurfaceSpec.load(surfacePath);
 
-  String? specPath;
-  SourceRef? sourceRef;
-  var deleteSpecPathOnExit = false;
-
-  if (tag != null) {
-    sourceRef = await _resolveAndFetch(
+  // Exactly one of --tag / --branch / --commit / --local is required.
+  final source = switch ((tag, branch, commit, localSpecPath)) {
+    (final tag?, null, null, null) => await _resolveAndFetch(
       kind: 'tag',
       value: tag,
       specPathInRepo: surface.specPath,
       verbose: verbose,
-      onSpecPath: (p) {
-        specPath = p;
-        deleteSpecPathOnExit = true;
-      },
-    );
-  } else if (branch != null) {
-    sourceRef = await _resolveAndFetch(
+    ),
+    (null, final branch?, null, null) => await _resolveAndFetch(
       kind: 'branch',
       value: branch,
       specPathInRepo: surface.specPath,
       verbose: verbose,
-      onSpecPath: (p) {
-        specPath = p;
-        deleteSpecPathOnExit = true;
-      },
-    );
-  } else if (commit != null) {
-    if (!RegExp(r'^[0-9a-f]{40}$').hasMatch(commit)) {
-      stderr.writeln('error: --commit must be a 40-character hex SHA; got "$commit"');
-      exit(2);
-    }
-    sourceRef = SourceRef(kind: 'commit', value: commit, commitSha: commit);
-    specPath = await _fetchSpec(
-      commit,
+    ),
+    (null, null, final commit?, null) => await _fetchCommit(
+      commit: commit,
       specPathInRepo: surface.specPath,
       verbose: verbose,
-    );
-    deleteSpecPathOnExit = true;
-  } else {
-    specPath = localSpecPath;
-  }
+    ),
+    (null, null, null, final localSpecPath?) => (sourceRef: null, specPath: localSpecPath),
+    (null, null, null, null) => _usageError('one of --tag, --branch, --commit, or --local is required'),
+    _ => _usageError('--tag, --branch, --commit, and --local are mutually exclusive'),
+  };
 
-  stdout.writeln('Reading OpenAPI spec: $specPath');
-  final raw = File(specPath!).readAsStringSync();
-  final spec = jsonDecode(raw) as Map<String, dynamic>;
-  final specSchemas = ((spec['components'] as Map<String, dynamic>?)?['schemas'] as Map<String, dynamic>?) ?? const {};
-  _hoistInlineSchemas(specSchemas, surface.hoistSchemas);
+  stdout.writeln('Reading OpenAPI spec: ${source.specPath}');
+  final raw = File(source.specPath).readAsStringSync();
+  final spec = readObject(jsonDecode(raw));
+  final specSchemas = readObjectOrNull(readObjectOrNull(spec['components'])?['schemas']) ?? const {};
+  _hoistInlineSchemas(schemas: specSchemas, hoists: surface.hoistSchemas);
   for (final entry in surface.optionalProperties.entries) {
-    final schema = specSchemas[entry.key] as Map<String, dynamic>;
-    final required = schema['required'] as List;
+    final schema = readObject(specSchemas[entry.key]);
+    final required = readList(schema['required']);
     for (final property in entry.value) {
-      if (!(schema['properties'] as Map).containsKey(property) || !required.remove(property)) {
+      if (!readObject(schema['properties']).containsKey(property) || !required.remove(property)) {
         throw StateError('Optional property override ${entry.key}.$property no longer matches upstream');
       }
     }
   }
   for (final name in surface.sealedUnions) {
-    final schema = specSchemas[name] as Map<String, dynamic>;
+    final schema = readObject(specSchemas[name]);
     final key = schema.containsKey('anyOf') ? 'anyOf' : 'oneOf';
-    schema[key] = (schema[key] as List).map((value) {
-      final variant = value as Map<String, dynamic>;
+    schema[key] = readList(schema[key]).map((value) {
+      final variant = readObject(value);
       final ref = variant[r'$ref'];
       final rawName = ref is String ? _schemaNameFromRef(ref) : null;
-      final inline = rawName == null ? variant : specSchemas[rawName] as Map<String, dynamic>;
+      final inline = rawName == null ? variant : readObject(specSchemas[rawName]);
       if (inline['type'] != 'object') throw StateError('Sealed union $name requires object variants');
       return {...inline, if (rawName != null) 'x-sesori-variant-name': _pascalFromSnake(rawName)};
     }).toList();
@@ -222,7 +193,7 @@ Future<void> main(List<String> args) async {
   // Collapse first: a collapsed named schema becomes a primitive whose
   // refs are then inlined.
   _collapseOpenStringUnions(spec);
-  _inlinePrimitiveRefs(spec, specSchemas);
+  _inlinePrimitiveRefs(spec: spec, schemas: specSchemas);
   _collidingDottedNames = _findCollidingDottedNames(specSchemas.keys);
 
   final gen = Codegen(
@@ -230,20 +201,27 @@ Future<void> main(List<String> args) async {
     surface: surface,
     outDir: outDir,
     verbose: verbose,
-    sourceRef: sourceRef,
+    sourceRef: source.sourceRef,
   );
   try {
     await gen.run();
   } finally {
-    if (deleteSpecPathOnExit) {
+    // A fetched spec is a temp file; a --local spec belongs to the user.
+    if (source.sourceRef != null) {
       try {
-        File(specPath!).deleteSync();
+        File(source.specPath).deleteSync();
       } catch (_) {
         /* best-effort cleanup */
       }
     }
   }
   stdout.writeln('Done. Output: $outDir');
+}
+
+Never _usageError(String message) {
+  stderr.writeln('error: $message');
+  _printUsage();
+  exit(2);
 }
 
 void _printUsage() {
@@ -294,15 +272,29 @@ Future<String> _fetchSpec(String ref, {required String specPathInRepo, required 
   return tmp.path;
 }
 
+/// Fetch the spec at [commit], a 40-char commit SHA that needs no
+/// resolution.
+Future<({SourceRef sourceRef, String specPath})> _fetchCommit({
+  required String commit,
+  required String specPathInRepo,
+  required bool verbose,
+}) async {
+  if (!RegExp(r'^[0-9a-f]{40}$').hasMatch(commit)) {
+    stderr.writeln('error: --commit must be a 40-character hex SHA; got "$commit"');
+    exit(2);
+  }
+  final specPath = await _fetchSpec(commit, specPathInRepo: specPathInRepo, verbose: verbose);
+  return (sourceRef: SourceRef(kind: 'commit', value: commit, commitSha: commit), specPath: specPath);
+}
+
 /// Resolve [value] (a tag or branch name) to its 40-char commit SHA via
 /// `git ls-remote`, then fetch the spec at that commit. The resolved
 /// SHA is recorded in every generated file header.
-Future<SourceRef> _resolveAndFetch({
+Future<({SourceRef sourceRef, String specPath})> _resolveAndFetch({
   required String kind,
   required String value,
   required String specPathInRepo,
   required bool verbose,
-  required void Function(String specPath) onSpecPath,
 }) async {
   if (verbose) stdout.writeln('Resolving $kind "$value" to a commit SHA...');
   final r = await Process.run('git', [
@@ -317,14 +309,13 @@ Future<SourceRef> _resolveAndFetch({
       '(exit ${r.exitCode}). '
       'Check your network connection and that the ref exists.',
     );
-    if (r.stderr is String && (r.stderr as String).isNotEmpty) {
-      stderr.writeln(r.stderr);
-    }
+    final error = readString(r.stderr);
+    if (error.isNotEmpty) stderr.writeln(error);
     exit(1);
   }
   // Output line shape: "<sha>\trefs/<kind>/<ref>"
   String? sha;
-  for (final line in (r.stdout as String).split('\n')) {
+  for (final line in readString(r.stdout).split('\n')) {
     final parts = line.split('\t');
     if (parts.length != 2) continue;
     final refName = parts[1];
@@ -341,8 +332,7 @@ Future<SourceRef> _resolveAndFetch({
   // Fetch the spec at the resolved commit so we get a reproducible
   // tree even if the branch head moves after we resolved the SHA.
   final specPath = await _fetchSpec(sha, specPathInRepo: specPathInRepo, verbose: verbose);
-  onSpecPath(specPath);
-  return SourceRef(kind: kind, value: value, commitSha: sha);
+  return (sourceRef: SourceRef(kind: kind, value: value, commitSha: sha), specPath: specPath);
 }
 
 class Codegen({
@@ -358,12 +348,11 @@ class Codegen({
   /// tracked upstream.
   final SourceRef? sourceRef,
 }) {
-  late final Map<String, dynamic> components = (spec['components'] as Map<String, dynamic>?) ?? const {};
-  late Map<String, dynamic> schemas = Map<String, dynamic>.from(
-    (components['schemas'] as Map<String, dynamic>?) ?? const {},
+  late final Map<String, dynamic> components = readObjectOrNull(spec['components']) ?? const {};
+  late final Map<String, dynamic> schemas = Map<String, dynamic>.from(
+    readObjectOrNull(components['schemas']) ?? const {},
   );
-  late final Map<String, dynamic> paths = (spec['paths'] as Map<String, dynamic>?) ?? const {};
-  late List<Operation> operations = _collectOperations();
+  late final Map<String, dynamic> paths = readObjectOrNull(spec['paths']) ?? const {};
 
   /// Maps a schema name → name of the union (sealed/interface) class it
   /// implements. Built from anyOf / oneOf in the schema registry.
@@ -376,12 +365,10 @@ class Codegen({
   /// unchanged spec must produce byte-identical output so diffs show
   /// only real upstream changes. Lines are returned WITHOUT the `// `
   /// prefix so callers can emit them as comments themselves.
-  String sourceHeader() {
-    if (sourceRef != null) {
-      return 'Source: ${sourceRef!.display}';
-    }
-    return 'Source: local (no upstream ref)';
-  }
+  String sourceHeader() => switch (sourceRef) {
+    final ref? => 'Source: ${ref.display}',
+    null => 'Source: local (no upstream ref)',
+  };
 
   Future<void> run() async {
     _run();
@@ -391,7 +378,7 @@ class Codegen({
     final out = <String, String>{};
     schemas.forEach((rawName, schema) {
       if (schema is! Map<String, dynamic>) return;
-      final variants = (schema['anyOf'] as List?) ?? (schema['oneOf'] as List?);
+      final variants = readListOrNull(schema['anyOf']) ?? readListOrNull(schema['oneOf']);
       if (variants == null) return;
       final cleanParent = _pascalFromSnake(rawName);
       for (final v in variants) {
@@ -402,10 +389,7 @@ class Codegen({
           // Skip enum variants: Dart enums cannot `implements` an
           // abstract interface class with abstract members, so treating
           // an enum as a union variant would generate broken code.
-          final childSchema = schemas[childRaw] as Map<String, dynamic>?;
-          if (childSchema != null && childSchema['type'] == 'string' && childSchema['enum'] is List) {
-            continue;
-          }
+          if (_isEnum(schemas[childRaw])) continue;
           out[childRaw] = cleanParent;
         }
       }
@@ -418,9 +402,11 @@ class Codegen({
   }
 
   void _run() {
-    _synthesizeInlineResponseModels();
-    operations = _selectSurfaceOperations(surface.operations);
-    final selectedSchemas = _selectSurfaceSchemas(surface.extraSchemas);
+    final operations = _selectSurfaceOperations(
+      operations: _synthesizeInlineResponseModels(operations: _collectOperations()),
+      allowedIds: surface.operations,
+    );
+    final selectedSchemas = _selectSurfaceSchemas(operations: operations, extraSchemas: surface.extraSchemas);
     final modelsDir = Directory('$outDir/models/openapi');
     if (modelsDir.existsSync()) {
       modelsDir.deleteSync(recursive: true);
@@ -453,8 +439,7 @@ class Codegen({
         log('SKIP $name (dotted equivalent exists)');
         continue;
       }
-      final schema = schemas[name] as Map<String, dynamic>;
-      _writeModelFile(name, schema);
+      _writeModelFile(rawName: name, schema: readObject(schemas[name]));
       log('model $name');
     }
 
@@ -472,17 +457,19 @@ class Codegen({
     }
   }
 
-  List<Operation> _selectSurfaceOperations(List<String> allowedIds) {
+  List<Operation> _selectSurfaceOperations({
+    required List<Operation> operations,
+    required List<String> allowedIds,
+  }) {
     final byId = <String, Operation>{
-      for (final op in operations)
-        if (op.operationId != null) op.operationId!: op,
+      for (final op in operations) ?op.operationId: op,
     };
     final missing = allowedIds.where((id) => !byId.containsKey(id)).toList();
     if (missing.isNotEmpty) {
       stderr.writeln('error: OpenAPI spec is missing allowlisted operationId(s): ${missing.join(', ')}');
       exit(1);
     }
-    return allowedIds.map((id) => byId[id]!).toList();
+    return [for (final id in allowedIds) ?byId[id]];
   }
 
   /// Selects the models the plugin decodes: the surface's success
@@ -492,11 +479,14 @@ class Codegen({
   /// SSE events are decoded by the manifest codegen
   /// (`generate_sse_events.dart`), so the event manifest is only
   /// cross-checked against the spec.
-  Set<String> _selectSurfaceSchemas(List<String> extraSchemas) {
+  Set<String> _selectSurfaceSchemas({
+    required List<Operation> operations,
+    required List<String> extraSchemas,
+  }) {
     final roots = <String>{...extraSchemas};
     for (final op in operations) {
       final response = op.successResponse;
-      if (response != null) _collectTypesFromDartType(response.dartType, roots);
+      if (response != null) _collectTypesFromDartType(dartType: response.dartType, out: roots);
     }
     _warnOnEventManifestDrift();
     final closure = <String>{};
@@ -524,9 +514,10 @@ class Codegen({
     if (manifestPath == null) return;
     final file = File(manifestPath);
     if (!file.existsSync()) return;
-    final manifest = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    final events = (manifest['events'] as List).cast<Map<String, dynamic>>();
-    final manifestTypes = events.map((e) => e['type'] as String).toSet();
+    final manifest = readObject(jsonDecode(file.readAsStringSync()));
+    final manifestTypes = {
+      for (final event in readList(manifest['events'])) readString(readObject(event)['type']),
+    };
     for (final type in manifestTypes) {
       if (!schemas.containsKey(_eventSchemaNameForType(type))) {
         stderr.writeln('warning: manifest event "$type" has no OpenAPI Event schema');
@@ -553,24 +544,30 @@ class Codegen({
     return candidates.first;
   }
 
-  void _synthesizeInlineResponseModels() {
+  /// Registers the inline success-response schemas the surface names as
+  /// models, and returns [operations] with those responses retyped.
+  List<Operation> _synthesizeInlineResponseModels({required List<Operation> operations}) {
     final names = surface.inlineResponseModels;
+    final out = <Operation>[];
     for (final op in operations) {
       final className = names[op.operationId];
-      if (className == null) continue;
       final schema = op.successResponseSchema;
-      if (schema == null) continue;
-      if (schema['type'] == 'array') {
+      if (className == null || schema == null) {
+        out.add(op);
+      } else if (schema['type'] != 'array') {
+        schemas[className] = schema;
+        out.add(op.withResponseDartType(className));
+      } else {
         final items = schema['items'];
         if (items is Map<String, dynamic>) {
           schemas[className] = items;
-          op.successResponse?.dartType = 'List<$className>';
+          out.add(op.withResponseDartType('List<$className>'));
+        } else {
+          out.add(op);
         }
-      } else {
-        schemas[className] = schema;
-        op.successResponse?.dartType = className;
       }
     }
+    return out;
   }
 
   // ---------------------------------------------------------------------------
@@ -596,7 +593,7 @@ class Codegen({
   // File emission
   // ---------------------------------------------------------------------------
 
-  void _writeModelFile(String rawName, Map<String, dynamic> schema) {
+  void _writeModelFile({required String rawName, required Map<String, dynamic> schema}) {
     final cleanName = _pascalFromSnake(rawName);
     final fileName = _snakeFromCamel(rawName);
     final relPath = 'models/openapi/$fileName.g.dart';
@@ -633,7 +630,7 @@ class Codegen({
     File('$outDir/$relPath').writeAsStringSync(body.toString());
   }
 
-  void _collectTypesFromDartType(String dartType, Set<String> out) {
+  void _collectTypesFromDartType({required String dartType, required Set<String> out}) {
     // Strip List<...>, Map<String, ...>, ? nullability, etc.
     final base = dartType.replaceAll(RegExp(r'[\?<>\[\], ]'), '').trim();
     if (base.isEmpty) return;
@@ -642,9 +639,7 @@ class Codegen({
       out.add(base);
     }
     // Also handle List<X> by extracting X
-    final listMatch = RegExp(r'List<(\w+)>').firstMatch(dartType);
-    if (listMatch != null) {
-      final inner = listMatch.group(1)!;
+    if (RegExp(r'List<(\w+)>').firstMatch(dartType)?.group(1) case final inner?) {
       if (schemas.containsKey(inner)) out.add(inner);
     }
   }
@@ -662,24 +657,24 @@ String _schemaNameFromRef(String ref) {
 // Operation / Response models
 // ---------------------------------------------------------------------------
 
-class Operation.fromOpenApi({required final Map<String, dynamic> op}) {
-  this {
-    operationId = op['operationId'] as String?;
-    final responses = op['responses'] as Map<String, dynamic>?;
-    if (responses != null) {
-      for (final code in ['200', '201', '202', '203', '204']) {
-        final r = responses[code];
-        if (r is Map<String, dynamic>) {
-          successResponse = ResponseSpec.fromOpenApi(r);
-          break;
-        }
+class Operation({required final String? operationId, required final ResponseSpec? successResponse}) {
+  factory fromOpenApi({required Map<String, dynamic> op}) {
+    final responses = readObjectOrNull(op['responses']) ?? const <String, dynamic>{};
+    ResponseSpec? successResponse;
+    for (final code in ['200', '201', '202', '203', '204']) {
+      final response = responses[code];
+      if (response is Map<String, dynamic>) {
+        successResponse = ResponseSpec.fromOpenApi(response);
+        break;
       }
     }
+    return Operation(operationId: readStringOrNull(op['operationId']), successResponse: successResponse);
   }
 
-  String? operationId;
-  ResponseSpec? successResponse;
   Map<String, dynamic>? get successResponseSchema => successResponse?.schema;
+
+  Operation withResponseDartType(String dartType) =>
+      Operation(operationId: operationId, successResponse: successResponse?.withDartType(dartType));
 }
 
 class SurfaceSpec({
@@ -713,41 +708,35 @@ class SurfaceSpec({
       stderr.writeln('error: missing surface file $path');
       exit(2);
     }
-    return SurfaceSpec.fromJson(jsonDecode(file.readAsStringSync()) as Map<String, dynamic>);
+    return SurfaceSpec.fromJson(readObject(jsonDecode(file.readAsStringSync())));
   }
 
   factory fromJson(Map<String, dynamic> json) {
     return SurfaceSpec(
-      specPath: json['specPath'] as String,
-      operations: (json['operations'] as List).cast<String>(),
-      extraSchemas: ((json['extraSchemas'] as List?) ?? const []).cast<String>(),
-      eventManifest: json['eventManifest'] as String?,
-      inlineResponseModels: ((json['inlineResponseModels'] as Map?) ?? const {}).cast<String, String>(),
-      hoistSchemas: ((json['hoistSchemas'] as Map?) ?? const {}).cast<String, String>(),
-      optionalProperties: ((json['optionalProperties'] as Map?) ?? const {}).map(
-        (key, value) => MapEntry(key as String, (value as List).cast<String>()),
-      ),
-      sealedUnions: ((json['sealedUnions'] as List?) ?? const []).cast<String>(),
+      specPath: readString(json['specPath']),
+      operations: readList(json['operations']).cast<String>(),
+      extraSchemas: (readListOrNull(json['extraSchemas']) ?? const []).cast<String>(),
+      eventManifest: readStringOrNull(json['eventManifest']),
+      inlineResponseModels: (readObjectOrNull(json['inlineResponseModels']) ?? const {}).cast<String, String>(),
+      hoistSchemas: (readObjectOrNull(json['hoistSchemas']) ?? const {}).cast<String, String>(),
+      optionalProperties: {
+        for (final MapEntry(:key, :value) in (readObjectOrNull(json['optionalProperties']) ?? const {}).entries)
+          key: readList(value).cast<String>(),
+      },
+      sealedUnions: (readListOrNull(json['sealedUnions']) ?? const []).cast<String>(),
     );
   }
 }
 
-class ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
-  this {
-    final content = r['content'] as Map<String, dynamic>?;
-    if (content != null) {
-      final json = content['application/json'] as Map<String, dynamic>?;
-      if (json != null) {
-        final sch = json['schema'] as Map<String, dynamic>?;
-        if (sch != null) {
-          schema = sch;
-          dartType = _dartTypeFromSchema(sch);
-        }
-      }
+class ResponseSpec({required final Map<String, dynamic>? schema, required final String dartType}) {
+  factory fromOpenApi(Map<String, dynamic> r) {
+    if (r case {'content': {'application/json': {'schema': final Map<String, dynamic> schema}}}) {
+      return ResponseSpec(schema: schema, dartType: _dartTypeFromSchema(schema));
     }
+    return ResponseSpec(schema: null, dartType: 'Object');
   }
-  Map<String, dynamic>? schema;
-  String dartType = 'Object';
+
+  ResponseSpec withDartType(String dartType) => ResponseSpec(schema: schema, dartType: dartType);
 
   static String _dartTypeFromSchema(Map<String, dynamic> sch) {
     final r = sch[r'$ref'];
@@ -767,8 +756,9 @@ class ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
       }
       return 'List<Object>';
     }
-    if (sch['anyOf'] is List) {
-      final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
+    final anyOf = sch['anyOf'];
+    if (anyOf is List) {
+      final variants = anyOf.cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
         return _dartTypeFromSchema(nonNull.first);
@@ -872,7 +862,7 @@ class ModelWriter({
       final entry = _inlineObjects[i];
       i++;
       body.writeln();
-      body.write(_emitObjectClass(entry.className, entry.schema));
+      body.write(_emitObjectClass(className: entry.className, sch: entry.schema, implementsClass: null));
     }
 
     // Emit any inline enums collected during body emission.
@@ -903,7 +893,7 @@ class ModelWriter({
     // import list must include them or the synthesized classes will
     // reference undefined identifiers.
     if (_isUnion(schema)) {
-      final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
+      final variants = readList(schema['anyOf'] ?? schema['oneOf']).cast<Map<String, dynamic>>();
       for (final v in variants) {
         final inlineRefs = _computeUsedRefs(v);
         usedRefs.addAll(inlineRefs);
@@ -916,8 +906,7 @@ class ModelWriter({
           final r = v[r'$ref'];
           if (r is String) {
             final vName = _schemaNameFromRef(r);
-            final sch = schemas[vName] as Map<String, dynamic>?;
-            if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
+            if (_isEnum(schemas[vName])) {
               usedRefs.add(vName);
             }
           }
@@ -985,7 +974,7 @@ class ModelWriter({
     }
 
     // Walk the schema's properties (each becomes a typed field).
-    final properties = sch['properties'] as Map?;
+    final properties = readObjectOrNull(sch['properties']);
     if (properties != null) {
       for (final entry in properties.entries) {
         visitField(entry.value);
@@ -1013,7 +1002,7 @@ class ModelWriter({
         if (r is! String) continue;
         final vName = _schemaNameFromRef(r);
         if (disc != null) {
-          if (_discriminatorValue(vName, schemas, disc) != null) {
+          if (_discriminatorValue(variantName: vName, discName: disc) != null) {
             addRef(r);
           }
         } else {
@@ -1041,8 +1030,8 @@ class ModelWriter({
   }) {
     final b = StringBuffer();
     b.writeln('// GENERATED FILE - DO NOT EDIT BY HAND');
-    if (sourceHeader != null && sourceHeader!.isNotEmpty) {
-      for (final line in sourceHeader!.split('\n')) {
+    if (sourceHeader case final header? when header.isNotEmpty) {
+      for (final line in header.split('\n')) {
         b.writeln('// $line');
       }
     }
@@ -1066,13 +1055,10 @@ class ModelWriter({
     return b.toString();
   }
 
-  bool _isEnum(Map<String, dynamic> s) {
-    return s['enum'] is List && s['type'] == 'string';
-  }
-
   bool _isUnion(Map<String, dynamic> s) {
-    return (s['anyOf'] is List && (s['anyOf'] as List).isNotEmpty) ||
-        (s['oneOf'] is List && (s['oneOf'] as List).isNotEmpty);
+    final anyOf = s['anyOf'];
+    final oneOf = s['oneOf'];
+    return (anyOf is List && anyOf.isNotEmpty) || (oneOf is List && oneOf.isNotEmpty);
   }
 
   bool _isArray(Map<String, dynamic> s) {
@@ -1087,11 +1073,12 @@ class ModelWriter({
     // Generate a type alias for a top-level array schema, e.g.
     // `PermissionRuleset` = `List<PermissionRule>`. Implemented as a class
     // with a single static `fromList` factory for JSON compatibility.
-    final items = schema['items'] as Map<String, dynamic>?;
+    final items = readObjectOrNull(schema['items']);
     final innerDart = items != null ? _dartTypeForInline(items, context: '${name}Item') : 'Object';
-    final innerClass = items != null && items[r'$ref'] is String
-        ? _pascalFromSnake(_schemaNameFromRef(items[r'$ref'] as String))
-        : innerDart;
+    final innerClass = switch (items?[r'$ref']) {
+      final String ref => _pascalFromSnake(_schemaNameFromRef(ref)),
+      _ => innerDart,
+    };
     final isPrimitiveInner = _isInlinePrimitive(innerDart);
     final innerElement = isPrimitiveInner ? 'e as $innerDart' : '$innerClass.fromJson(e as Map<String, dynamic>)';
     _usesImmutable = true;
@@ -1140,8 +1127,7 @@ class ModelWriter({
 
   String _emitEnum() {
     _usesJsonValue = true;
-    final values = (schema['enum'] as List).cast<String>();
-    return _emitEnumBody(name, values);
+    return _emitEnumBody(enumName: name, values: readList(schema['enum']).cast<String>());
   }
 
   // -------------------------------------------------------------------------
@@ -1151,7 +1137,7 @@ class ModelWriter({
   String _emitUnion() {
     final b = StringBuffer();
 
-    final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
+    final variants = readList(schema['anyOf'] ?? schema['oneOf']).cast<Map<String, dynamic>>();
     final declaration = schema['x-sesori-sealed'] == true ? 'sealed class' : 'abstract interface class';
 
     final disc = _findDiscriminator(variants);
@@ -1188,15 +1174,15 @@ class ModelWriter({
         final r = v[r'$ref'];
         if (r is String) {
           final vName = _schemaNameFromRef(r);
-          final d = _discriminatorValue(vName, schemas, disc);
+          final d = _discriminatorValue(variantName: vName, discName: disc);
           if (d != null) {
             b.writeln('      case ${jsonEncode(d)}:');
             b.writeln('        return ${_pascalFromSnake(vName)}.fromJson(map);');
           }
         } else {
-          final d = _inlineDiscriminatorValue(v, disc);
+          final d = _inlineDiscriminatorValue(variant: v, discName: disc);
           if (d != null) {
-            final inlineName = v['x-sesori-variant-name'] as String? ?? '$name${_pascalCore(d)}';
+            final inlineName = readStringOrNull(v['x-sesori-variant-name']) ?? '$name${_pascalCore(d)}';
             inlineVariantClasses.add(
               _InlineVariantClassEntry(
                 className: inlineName,
@@ -1219,8 +1205,8 @@ class ModelWriter({
       // covers the truly unknown case.
       var inlineIndex = 0;
       for (final v in variants) {
-        final guard = _unionTypeGuard(v, inlineIndex);
-        final decode = _unionTypeDecode(v, inlineIndex);
+        final guard = _unionTypeGuard(v);
+        final decode = _unionTypeDecode(variant: v, inlineIndex: inlineIndex);
         if (guard == null || decode == null) continue;
         b.writeln('    if ($guard) {');
         b.writeln('      return $decode;');
@@ -1233,8 +1219,7 @@ class ModelWriter({
         final r = v[r'$ref'];
         if (r is String) {
           final vName = _schemaNameFromRef(r);
-          final sch = schemas[vName] as Map<String, dynamic>?;
-          if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
+          if (_isEnum(schemas[vName])) {
             final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
             inlineVariantClasses.add(
               _InlineVariantClassEntry(
@@ -1264,7 +1249,7 @@ class ModelWriter({
     // references. Each one implements the union interface and exposes
     // a typed `toJson()`.
     for (final entry in inlineVariantClasses) {
-      b.writeln(_emitInlineVariantClass(entry.className, entry.schema, name));
+      b.writeln(_emitInlineVariantClass(className: entry.className, schema: entry.schema, unionName: name));
       b.writeln();
     }
 
@@ -1307,11 +1292,11 @@ class ModelWriter({
   /// sibling class next to the union. The synthesized name is
   /// `<Union>NNInline` where `NN` is the variant's index in the union
   /// (zero-padded to two digits).
-  String _emitInlineVariantClass(
-    String className,
-    Map<String, dynamic> schema,
-    String unionName,
-  ) {
+  String _emitInlineVariantClass({
+    required String className,
+    required Map<String, dynamic> schema,
+    required String unionName,
+  }) {
     final b = StringBuffer();
     // Wrapper case: a union variant that is a $ref to an enum (or
     // any other type Dart cannot make implement an abstract
@@ -1323,9 +1308,7 @@ class ModelWriter({
     if (ref is String) {
       final refName = _schemaNameFromRef(ref);
       final refType = _pascalFromSnake(refName);
-      final sch = schemas[refName] as Map<String, dynamic>?;
-      final isEnum = sch != null && sch['type'] == 'string' && sch['enum'] is List;
-      if (isEnum) {
+      if (_isEnum(schemas[refName])) {
         _usesImmutable = true;
         b.writeln('@immutable');
         b.writeln('class $className implements $unionName {');
@@ -1364,10 +1347,10 @@ class ModelWriter({
     if (type == 'string') {
       // Inline string variant — render an enum if the schema has an
       // `enum` list, otherwise a simple String wrapper.
-      final enumVals = (schema['enum'] as List?)?.cast<String>();
+      final enumVals = readListOrNull(schema['enum'])?.cast<String>();
       if (enumVals != null && enumVals.isNotEmpty) {
         _usesJsonValue = true;
-        b.write(_emitEnumBody(className, enumVals));
+        b.write(_emitEnumBody(enumName: className, values: enumVals));
       } else {
         _usesImmutable = true;
         b.writeln('@immutable');
@@ -1439,11 +1422,11 @@ class ModelWriter({
       return b.toString();
     }
     if (type == 'object') {
-      final properties = schema['properties'] as Map<String, dynamic>?;
+      final properties = readObjectOrNull(schema['properties']);
       if ((properties != null && properties.isNotEmpty) || schema['additionalProperties'] == false) {
         // Structured inline objects use fields; unrestricted objects below
         // retain their keys instead of decoding to an empty class.
-        return _emitObjectClass(className, schema, implementsClass: unionName);
+        return _emitObjectClass(className: className, sch: schema, implementsClass: unionName);
       }
     }
     // Free-form object or opaque fallback: preserve the original map.
@@ -1472,7 +1455,7 @@ class ModelWriter({
   }
 
   String _emitObject() {
-    final properties = (schema['properties'] as Map<String, dynamic>?) ?? const {};
+    final properties = readObjectOrNull(schema['properties']) ?? const {};
 
     // Pure map-typed schema: `type: object, additionalProperties: <schema>`
     // with no `properties`. Generate a class that wraps a single
@@ -1484,30 +1467,30 @@ class ModelWriter({
     if (properties.isEmpty) {
       final ap = schema['additionalProperties'];
       if (ap is Map<String, dynamic>) {
-        return _emitMapWrapper(StringBuffer(), ap);
+        return _emitMapWrapper(ap: ap);
       }
       // Free-form object schema with no explicit additionalProperties
       // restriction (e.g. JSONSchema). Preserve the raw JSON map rather
       // than discarding every key in an empty class.
       if (ap == true || ap == null) {
-        return _emitFreeformMapWrapper(StringBuffer());
+        return _emitFreeformMapWrapper();
       }
     }
-    return _emitObjectClass(name, schema, implementsClass: implementsClass);
+    return _emitObjectClass(className: name, sch: schema, implementsClass: implementsClass);
   }
 
   /// Emits a complete plain object class [className] for [sch]. Shared
   /// by top-level object schemas, union inline-object variants (with
   /// [implementsClass] set), and classes synthesized for inline object
   /// properties (e.g. `SessionTime`).
-  String _emitObjectClass(
-    String className,
-    Map<String, dynamic> sch, {
-    String? implementsClass,
+  String _emitObjectClass({
+    required String className,
+    required Map<String, dynamic> sch,
+    required String? implementsClass,
   }) {
     final b = StringBuffer();
-    final properties = (sch['properties'] as Map<String, dynamic>?) ?? const {};
-    final required = ((sch['required'] as List?) ?? const []).cast<String>();
+    final properties = readObjectOrNull(sch['properties']) ?? const {};
+    final required = (readListOrNull(sch['required']) ?? const []).cast<String>();
 
     // Discriminator / literal properties: a required single-value enum
     // property on a class that implements a union is a constant that
@@ -1519,13 +1502,11 @@ class ModelWriter({
     // fromJson, and emit the literal value in toJson.
     final literals = <String, String>{};
     if (implementsClass != null) {
-      for (final entry in properties.entries) {
-        final psch = entry.value as Map<String, dynamic>?;
-        if (psch == null) continue;
-        if (psch['type'] != 'string') continue;
-        final vals = psch['enum'];
-        if (vals is! List || vals.length != 1) continue;
-        literals[entry.key] = vals.first as String;
+      for (final MapEntry(:key, :value) in properties.entries) {
+        final psch = readObjectOrNull(value);
+        if (psch case {'type': 'string', 'enum': [final String literal]}) {
+          literals[key] = literal;
+        }
       }
     }
 
@@ -1538,7 +1519,7 @@ class ModelWriter({
     for (final entry in properties.entries) {
       if (literals.containsKey(entry.key)) continue;
       final fieldName = entry.key;
-      final psch = entry.value as Map<String, dynamic>;
+      final psch = readObject(entry.value);
       final isRequired = required.contains(fieldName);
       final isSchemaNullable = _isNullableSchema(psch);
       // Synthesized-class name for this field if it turns out to be an
@@ -1627,7 +1608,7 @@ class ModelWriter({
       b.writeln('    return $className(');
       for (final f in fields) {
         b.writeln(
-          '      ${_decodeField(f.jsonName, f.schema, f.isNullable, context: f.context)},',
+          '      ${_decodeField(name: f.jsonName, sch: f.schema, isNullable: f.isNullable, context: f.context)},',
         );
       }
       b.writeln('    );');
@@ -1655,12 +1636,12 @@ class ModelWriter({
       // `GlobalSession.project` must still serialize its key as `null`
       // rather than vanish, so round-trips preserve the explicit null.
       b.writeln(
-        '      ${_encodeField(f.jsonName, f.schema, isNullable: f.isNullable, omitWhenNull: !f.isRequired, context: f.context)},',
+        '      ${_encodeField(name: f.jsonName, sch: f.schema, isNullable: f.isNullable, omitWhenNull: !f.isRequired, context: f.context)},',
       );
     }
     for (final f in fields.where((field) => !properties.containsKey(field.jsonName))) {
       b.writeln(
-        '      ${_encodeField(f.jsonName, f.schema, isNullable: true, omitWhenNull: true, context: f.context)},',
+        '      ${_encodeField(name: f.jsonName, sch: f.schema, isNullable: true, omitWhenNull: true, context: f.context)},',
       );
     }
     b.writeln('    };');
@@ -1747,13 +1728,13 @@ class ModelWriter({
     return dartType.endsWith('?') ? dartType : '$dartType?';
   }
 
-  void _registerInlineObject(String className, Map<String, dynamic> sch) {
+  void _registerInlineObject({required String className, required Map<String, dynamic> sch}) {
     if (_inlineObjectNames.contains(className)) return;
     _inlineObjectNames.add(className);
     _inlineObjects.add(_InlineObjectEntry(className: className, schema: sch));
   }
 
-  void _registerInlineEnum(String className, List<String> values) {
+  void _registerInlineEnum({required String className, required List<String> values}) {
     if (!_inlineEnumNames.add(className)) return;
     _inlineEnums.add(InlineEnum(className: className, values: values));
   }
@@ -1766,7 +1747,8 @@ class ModelWriter({
   /// Used for schemas like `PermissionObjectConfig` (typed map of string
   /// → `PermissionActionConfig`) and `ReferenceConfig` (typed map of
   /// string → `ReferenceConfigEntry`).
-  String _emitMapWrapper(StringBuffer b, Map<String, dynamic> ap) {
+  String _emitMapWrapper({required Map<String, dynamic> ap}) {
+    final b = StringBuffer();
     final valueDart = _dartTypeForInline(ap, context: '${name}Value');
     final isPrimitive = _isInlinePrimitive(valueDart);
     final isNullable = _isNullableSchema(ap);
@@ -1788,9 +1770,10 @@ class ModelWriter({
     // List<dynamic>)`. For $ref string-enum values, call
     // `EnumType.fromJson(v as String)`. For primitive values, plain cast.
     String decodeExpr;
-    if (ap[r'$ref'] is String) {
-      final refName = _schemaNameFromRef(ap[r'$ref'] as String);
-      final refSchema = schemas[refName] as Map<String, dynamic>?;
+    final ref = ap[r'$ref'];
+    if (ref is String) {
+      final refName = _schemaNameFromRef(ref);
+      final refSchema = readObjectOrNull(schemas[refName]);
       final isRefArray = refSchema != null && refSchema['type'] == 'array';
       final isRefStringEnum = refSchema != null && refSchema['type'] == 'string' && refSchema['enum'] is List;
       String cast;
@@ -1858,7 +1841,8 @@ class ModelWriter({
   /// explicit `additionalProperties` restriction). The class wraps the
   /// raw `Map<String, dynamic>` so arbitrary JSON keys are preserved on
   /// round-trip (e.g. `JSONSchema`).
-  String _emitFreeformMapWrapper(StringBuffer b) {
+  String _emitFreeformMapWrapper() {
+    final b = StringBuffer();
     _usesImmutable = true;
     _usesDeepEquality = true;
     b.writeln('@immutable');
@@ -1911,7 +1895,7 @@ class ModelWriter({
         // Multi-value inline enum → a real Dart enum named after the
         // field context (e.g. `Command.source` -> `CommandSource`), so
         // consumers switch on enum members instead of magic strings.
-        _registerInlineEnum(context, enumVals.cast<String>());
+        _registerInlineEnum(className: context, values: enumVals.cast<String>());
         return context;
       }
       // Plain string, or a single-value enum (a constant/discriminator,
@@ -1935,7 +1919,7 @@ class ModelWriter({
       // v1 models they are meant to replace.
       final props = sch['properties'];
       if (props is Map<String, dynamic> && props.isNotEmpty) {
-        _registerInlineObject(context, sch);
+        _registerInlineObject(className: context, sch: sch);
         return context;
       }
       final ap = sch['additionalProperties'];
@@ -1945,8 +1929,9 @@ class ModelWriter({
       if (ap == true) return 'Map<String, dynamic>';
       return 'Map<String, dynamic>';
     }
-    if (sch['anyOf'] is List) {
-      final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
+    final anyOf = sch['anyOf'];
+    if (anyOf is List) {
+      final variants = anyOf.cast<Map<String, dynamic>>();
       // null + T -> T?
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
@@ -1954,9 +1939,10 @@ class ModelWriter({
       }
       return 'Object';
     }
-    if (sch['enum'] is List) {
+    final enumValues = sch['enum'];
+    if (enumValues is List) {
       // Inline enum — register for emission.
-      final values = (sch['enum'] as List).cast<String>();
+      final values = enumValues.cast<String>();
       final key = values.join('|');
       if (!_emittedEnumKeys.contains(key)) {
         _emittedEnumKeys.add(key);
@@ -1993,7 +1979,7 @@ class ModelWriter({
   /// it dispatches on JSON shape (string vs map vs containsKey), so the
   /// call site must NOT pre-cast the value to `Map<String, dynamic>`.
   bool _isUnionRef(String refName) {
-    final refSchema = schemas[refName] as Map<String, dynamic>?;
+    final refSchema = readObjectOrNull(schemas[refName]);
     if (refSchema == null) return false;
     for (final key in ['anyOf', 'oneOf']) {
       final v = refSchema[key];
@@ -2005,10 +1991,10 @@ class ModelWriter({
     return false;
   }
 
-  String _decodeField(
-    String name,
-    Map<String, dynamic> sch,
-    bool isNullable, {
+  String _decodeField({
+    required String name,
+    required Map<String, dynamic> sch,
+    required bool isNullable,
     required String context,
   }) {
     final keyExpr = _safeKey(name);
@@ -2024,7 +2010,7 @@ class ModelWriter({
       final refType = _pascalFromSnake(refName);
       // Look up the referenced schema to determine its shape (object, array,
       // or string enum).
-      final refSchema = schemas[refName] as Map<String, dynamic>?;
+      final refSchema = readObjectOrNull(schemas[refName]);
       final isRefArray = refSchema != null && refSchema['type'] == 'array';
       final isRefStringEnum = refSchema != null && refSchema['type'] == 'string' && refSchema['enum'] is List;
       if (isRefArray) {
@@ -2056,11 +2042,12 @@ class ModelWriter({
       return '$safeName: $refType.fromJson($jsonValue as Map<String, dynamic>)';
     }
     // anyOf [T, null] → T? (and T? in any case since one branch is null)
-    if (sch['anyOf'] is List) {
-      final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
+    final anyOf = sch['anyOf'];
+    if (anyOf is List) {
+      final variants = anyOf.cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _decodeField(name, nonNull.first, isNullable, context: context);
+        return _decodeField(name: name, sch: nonNull.first, isNullable: isNullable, context: context);
       }
     }
     final type = sch['type'];
@@ -2076,8 +2063,9 @@ class ModelWriter({
       }
       return '$safeName: Uri.parse($jsonValue as String)';
     }
-    if (type == 'string' && sch['enum'] is List) {
-      final enumVals = (sch['enum'] as List).cast<String>();
+    final enumValues = sch['enum'];
+    if (type == 'string' && enumValues is List) {
+      final enumVals = enumValues.cast<String>();
       if (enumVals.length > 1) {
         // Multi-value inline enum → generated Dart enum named after the
         // field context (e.g. `CommandSource`). `fromJson` maps values
@@ -2102,7 +2090,7 @@ class ModelWriter({
           final refType = _pascalFromSnake(refName);
           // If the items $ref points to a top-level array schema, the
           // element cast must be `as List<dynamic>` not `as Map<String, dynamic>`.
-          final refSchema = schemas[refName] as Map<String, dynamic>?;
+          final refSchema = readObjectOrNull(schemas[refName]);
           final elementCast = (refSchema != null && refSchema['type'] == 'array')
               ? 'List<dynamic>'
               : 'Map<String, dynamic>';
@@ -2144,9 +2132,10 @@ class ModelWriter({
         // depends on whether the ref points to an array wrapper (values
         // decoded via `List.fromJson`) or an object class (values decoded
         // via `Class.fromJson`). Inline schemas (no $ref) use a plain cast.
-        if (ap[r'$ref'] is String) {
-          final refName = _schemaNameFromRef(ap[r'$ref'] as String);
-          final refSchema = schemas[refName] as Map<String, dynamic>?;
+        final ref = ap[r'$ref'];
+        if (ref is String) {
+          final refName = _schemaNameFromRef(ref);
+          final refSchema = readObjectOrNull(schemas[refName]);
           if (refSchema != null && refSchema['type'] == 'array') {
             if (isNullable) {
               return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v as List<dynamic>)))";
@@ -2222,9 +2211,9 @@ class ModelWriter({
     return '$safeName: json[$keyExpr]';
   }
 
-  String _encodeField(
-    String name,
-    Map<String, dynamic> sch, {
+  String _encodeField({
+    required String name,
+    required Map<String, dynamic> sch,
     required bool isNullable,
     required bool omitWhenNull,
     required String context,
@@ -2234,11 +2223,18 @@ class ModelWriter({
     final callOp = isNullable ? '?' : '';
     final entryOp = omitWhenNull ? '?' : '';
     // anyOf [T, null] → T? — delegate to the non-null branch.
-    if (sch['anyOf'] is List) {
-      final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
+    final anyOf = sch['anyOf'];
+    if (anyOf is List) {
+      final variants = anyOf.cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _encodeField(name, nonNull.first, isNullable: isNullable, omitWhenNull: omitWhenNull, context: context);
+        return _encodeField(
+          name: name,
+          sch: nonNull.first,
+          isNullable: isNullable,
+          omitWhenNull: omitWhenNull,
+          context: context,
+        );
       }
     }
     final r = sch[r'$ref'];
@@ -2285,7 +2281,8 @@ class ModelWriter({
         }
       }
     }
-    if (type == 'string' && sch['enum'] is List && (sch['enum'] as List).length > 1) {
+    final enumValues = sch['enum'];
+    if (type == 'string' && enumValues is List && enumValues.length > 1) {
       // Multi-value inline enum is a generated Dart enum — encode via its
       // `toJson()` (which returns the wire string).
       return '$keyExpr: $entryOp$safeName$callOp.toJson()';
@@ -2323,37 +2320,33 @@ class ModelWriter({
     // are also marked as required everywhere.
     final allProps = <String>{};
     for (final sch in resolved) {
-      final props = sch['properties'] as Map<String, dynamic>?;
+      final props = readObjectOrNull(sch['properties']);
       if (props == null) return null;
-      for (final key in props.keys) {
-        final p = props[key] as Map<String, dynamic>?;
-        final enumVals = p?['enum'] as List?;
-        if (enumVals != null && enumVals.length == 1) {
-          allProps.add(key);
-        }
+      for (final MapEntry(:key, :value) in props.entries) {
+        if (readObjectOrNull(value) case {'enum': List(length: 1)}) allProps.add(key);
       }
     }
     for (final candidate in allProps) {
       var allRequired = true;
       for (final sch in resolved) {
-        final required = ((sch['required'] as List?) ?? const []).cast<String>();
+        final required = (readListOrNull(sch['required']) ?? const []).cast<String>();
         if (!required.contains(candidate)) {
           allRequired = false;
           break;
         }
       }
-      if (allRequired && _hasDistinctValues(variants, candidate)) return candidate;
+      if (allRequired && _hasDistinctValues(variants: variants, discName: candidate)) return candidate;
     }
     return null;
   }
 
-  bool _hasDistinctValues(List<Map<String, dynamic>> variants, String discName) {
+  bool _hasDistinctValues({required List<Map<String, dynamic>> variants, required String discName}) {
     final seen = <String>{};
     for (final v in variants) {
       final r = v[r'$ref'];
       final value = r is String
-          ? _discriminatorValue(_schemaNameFromRef(r), schemas, discName)
-          : _inlineDiscriminatorValue(v, discName);
+          ? _discriminatorValue(variantName: _schemaNameFromRef(r), discName: discName)
+          : _inlineDiscriminatorValue(variant: v, discName: discName);
       if (value == null || !seen.add(value)) return false;
     }
     return true;
@@ -2362,56 +2355,47 @@ class ModelWriter({
   /// The object schemas behind [schemaName]: the schema itself, or the
   /// leaves of a union of $refs (recursively).
   List<Map<String, dynamic>> _unionLeafSchemas(String schemaName) {
-    final schema = schemas[schemaName] as Map<String, dynamic>?;
+    final schema = readObjectOrNull(schemas[schemaName]);
     if (schema == null) return const [];
     final variants = schema['anyOf'] ?? schema['oneOf'];
     if (variants is! List) return [schema];
     return [
       for (final v in variants.cast<Map<String, dynamic>>())
-        if (v[r'$ref'] is String) ..._unionLeafSchemas(_schemaNameFromRef(v[r'$ref'] as String)) else v,
+        if (readStringOrNull(v[r'$ref']) case final ref?) ..._unionLeafSchemas(_schemaNameFromRef(ref)) else v,
     ];
   }
 
-  String? _discriminatorValue(String variantName, Map<String, dynamic> schemas, String? discName) {
-    if (discName == null) return null;
-    final schema = schemas[variantName] as Map<String, dynamic>?;
+  String? _discriminatorValue({required String variantName, required String discName}) {
+    final schema = readObjectOrNull(schemas[variantName]);
     if (schema == null) return null;
     if (schema['anyOf'] is List || schema['oneOf'] is List) {
       // A nested union dispatches as one variant when all its leaves
       // share the same discriminator value.
-      final values = {for (final leaf in _unionLeafSchemas(variantName)) _inlineDiscriminatorValue(leaf, discName)};
+      final values = {
+        for (final leaf in _unionLeafSchemas(variantName)) _inlineDiscriminatorValue(variant: leaf, discName: discName),
+      };
       return values.length == 1 ? values.first : null;
     }
-    final props = schema['properties'] as Map<String, dynamic>?;
-    if (props == null) return null;
-    final p = props[discName] as Map<String, dynamic>?;
-    if (p == null) return null;
-    final enumVals = p['enum'] as List?;
-    if (enumVals == null || enumVals.isEmpty) return null;
-    return enumVals.first as String;
+    return _inlineDiscriminatorValue(variant: schema, discName: discName);
   }
 
-  /// Returns the discriminator value for an INLINE variant (one
-  /// declared directly in the union's anyOf/oneOf, not via $ref).
-  String? _inlineDiscriminatorValue(Map<String, dynamic> variant, String discName) {
-    final props = variant['properties'] as Map<String, dynamic>?;
-    if (props == null) return null;
-    final p = props[discName] as Map<String, dynamic>?;
-    if (p == null) return null;
-    final enumVals = p['enum'] as List?;
-    if (enumVals == null || enumVals.isEmpty) return null;
-    return enumVals.first as String;
+  /// Returns the discriminator value declared by [variant]'s own
+  /// properties: an INLINE variant (one declared directly in the union's
+  /// anyOf/oneOf, not via $ref), or a resolved $ref variant's schema.
+  String? _inlineDiscriminatorValue({required Map<String, dynamic> variant, required String discName}) {
+    return switch (readObjectOrNull(variant['properties'])?[discName]) {
+      {'enum': [final String value, ...]} => value,
+      _ => null,
+    };
   }
 
   /// Build a runtime type guard for a union variant. Returns a string
-  /// expression suitable for use in `if (...)`. `inlineIndex` is the
-  /// variant's position in the union, used to construct synthesized
-  /// class names.
-  String? _unionTypeGuard(Map<String, dynamic> variant, int inlineIndex) {
+  /// expression suitable for use in `if (...)`.
+  String? _unionTypeGuard(Map<String, dynamic> variant) {
     final r = variant[r'$ref'];
     if (r is String) {
       final vName = _schemaNameFromRef(r);
-      final sch = schemas[vName] as Map<String, dynamic>?;
+      final sch = readObjectOrNull(schemas[vName]);
       if (sch == null) return null;
       final t = sch['type'];
       if (t == 'string') return 'json is String';
@@ -2426,13 +2410,11 @@ class ModelWriter({
       // narrows `json` to `Map<String, dynamic>` for the decode call
       // below. Without the explicit `is Map<String, dynamic>`, the
       // analyzer can't promote from a plain `is Map`.
-      final required = ((variant['required'] as List?) ?? const []).cast<String>();
-      final properties = variant['properties'] as Map<String, dynamic>?;
+      final required = (readListOrNull(variant['required']) ?? const []).cast<String>();
+      final properties = readObjectOrNull(variant['properties']);
       for (final field in required) {
-        final property = properties?[field] as Map<String, dynamic>?;
-        final values = property?['enum'];
-        if (values is List && values.length == 1) {
-          return 'json is Map<String, dynamic> && json[${jsonEncode(field)}] == ${jsonEncode(values.single)}';
+        if (readObjectOrNull(properties?[field]) case {'enum': [final value]}) {
+          return 'json is Map<String, dynamic> && json[${jsonEncode(field)}] == ${jsonEncode(value)}';
         }
       }
       if (required.isNotEmpty) {
@@ -2447,12 +2429,12 @@ class ModelWriter({
   /// [_unionTypeGuard]. Returns a string expression that returns the
   /// decoded variant. The expression may reference a synthesized
   /// class name (e.g. `Name00Inline`) for inline object variants.
-  String? _unionTypeDecode(Map<String, dynamic> variant, int inlineIndex) {
+  String? _unionTypeDecode({required Map<String, dynamic> variant, required int inlineIndex}) {
     final r = variant[r'$ref'];
     if (r is String) {
       final vName = _schemaNameFromRef(r);
       final refType = _pascalFromSnake(vName);
-      final sch = schemas[vName] as Map<String, dynamic>?;
+      final sch = readObjectOrNull(schemas[vName]);
       if (sch == null) return null;
       final t = sch['type'];
       final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
@@ -2529,7 +2511,7 @@ class _FieldRecord({
 
 /// An enum class synthesized for an inline enum in a property.
 class InlineEnum({required final String className, required final List<String> values}) {
-  String emit() => _emitEnumBody(className, values);
+  String emit() => _emitEnumBody(enumName: className, values: values);
 }
 
 /// Emits a complete enum declaration named [enumName] for the spec
@@ -2539,7 +2521,7 @@ class InlineEnum({required final String className, required final List<String> v
 /// and `toJson` encodes the synthetic member as the literal string
 /// `unknown` — mirroring the hand-written `CommandSource.unknown`
 /// convention already used in this package.
-String _emitEnumBody(String enumName, List<String> values) {
+String _emitEnumBody({required String enumName, required List<String> values}) {
   final memberNames = values.map(_camelFromSnake).toList();
   final hasNativeUnknown = memberNames.contains('unknown');
   final b = StringBuffer();
@@ -2595,7 +2577,7 @@ String _emitEnumBody(String enumName, List<String> values) {
 /// `components/schemas` and replaces them with a `$ref`, so inline unions
 /// become named, dispatchable union classes. Each location is
 /// `<SchemaName>#<json pointer>` (e.g. `Foo#/properties/bar/items`).
-void _hoistInlineSchemas(Map<String, dynamic> schemas, Map<String, String> hoists) {
+void _hoistInlineSchemas({required Map<String, dynamic> schemas, required Map<String, String> hoists}) {
   for (final MapEntry(key: name, value: location) in hoists.entries) {
     final [schemaName, pointer] = location.split('#');
     final segments = pointer.split('/').where((s) => s.isNotEmpty).toList();
@@ -2619,20 +2601,22 @@ void _hoistInlineSchemas(Map<String, dynamic> schemas, Map<String, String> hoist
 /// Dart primitives instead of referencing a class that cannot exist. An opaque
 /// "any non-null JSON" schema (`{"not": {"type": "null"}}`) is inlined too and
 /// decodes as `Object`.
-void _inlinePrimitiveRefs(Map<String, dynamic> spec, Map<String, dynamic> schemas) {
-  bool isPrimitive(Object? schema) =>
-      schema is Map &&
-      ((const {'string', 'number', 'integer', 'boolean'}.contains(schema['type']) && schema['enum'] == null) ||
-          (schema.length == 1 && schema['not'] is Map && (schema['not'] as Map)['type'] == 'null'));
+void _inlinePrimitiveRefs({required Map<String, dynamic> spec, required Map<String, dynamic> schemas}) {
+  bool isPrimitive(Map<dynamic, dynamic> schema) {
+    final not = schema['not'];
+    return (const {'string', 'number', 'integer', 'boolean'}.contains(schema['type']) && schema['enum'] == null) ||
+        (schema.length == 1 && not is Map && not['type'] == 'null');
+  }
+
   void walk(Object? node) {
     if (node is Map<String, dynamic>) {
       final ref = node[r'$ref'];
       if (ref is String && ref.startsWith('#/components/schemas/')) {
         final target = schemas[ref.substring('#/components/schemas/'.length)];
-        if (isPrimitive(target)) {
+        if (target is Map && isPrimitive(target)) {
           node
             ..remove(r'$ref')
-            ..addAll(Map<String, dynamic>.from(target as Map));
+            ..addAll(Map<String, dynamic>.from(target));
         }
       }
       node.values.forEach(walk);
@@ -2654,7 +2638,7 @@ void _collapseOpenStringUnions(Object? node) {
       if (variants is List &&
           variants.isNotEmpty &&
           variants.every((v) => v is Map && v[r'$ref'] == null && v['type'] == 'string') &&
-          variants.any((v) => (v as Map)['enum'] == null)) {
+          variants.any((v) => v is Map && v['enum'] == null)) {
         node
           ..remove(key)
           ..['type'] = 'string';
@@ -2739,6 +2723,9 @@ String _hashSuffix(String input) {
   }
   return h.toRadixString(36).padLeft(7, '0');
 }
+
+/// Whether [schema] is a string enum schema.
+bool _isEnum(Object? schema) => schema is Map && schema['enum'] is List && schema['type'] == 'string';
 
 bool _isAllUpper(String s) {
   for (var i = 0; i < s.length; i++) {
