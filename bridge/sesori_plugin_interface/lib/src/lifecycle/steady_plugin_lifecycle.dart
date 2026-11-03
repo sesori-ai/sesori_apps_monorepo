@@ -32,7 +32,8 @@ import "plugin_work_state.dart";
 ///       PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 ///
 ///   @override
-///   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
+///   Future<Set<String>> interruptActiveWork({required Duration budget}) =>
+///       _api.interruptActiveSessions(budget: budget);
 ///
 ///   @override
 ///   Future<void> onShutdown({required Duration? budget}) => _api.close();
