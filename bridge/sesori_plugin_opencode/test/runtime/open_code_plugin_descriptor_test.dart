@@ -1571,6 +1571,7 @@ class const _MissingHostProcessService() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) {
     throw ProcessException(executable, arguments, "missing", 2);
   }
@@ -1604,6 +1605,7 @@ class _FakeHostProcessService() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     if (arguments.first == "--version" || arguments.first == "service") {
       final command = arguments.join(" ");

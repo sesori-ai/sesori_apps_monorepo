@@ -4,6 +4,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class StrictFakeProcessRepository() implements ProcessRepository {
   @override
+  void bindToBridgeLifetime({required int pid}) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) {
     throw UnimplementedError();
   }

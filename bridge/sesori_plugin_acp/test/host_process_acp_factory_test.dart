@@ -68,6 +68,7 @@ class _Processes() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     inherits = includeParentEnvironment;
     this.environment = environment;

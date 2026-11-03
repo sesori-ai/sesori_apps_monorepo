@@ -182,8 +182,10 @@ class _FakeHostProcessService({
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     expect(includeParentEnvironment, isTrue);
+    expect(lifetime, ProcessLifetime.mayOutliveBridge);
     final gate = spawnGate;
     if (gate != null) await gate;
     return process;

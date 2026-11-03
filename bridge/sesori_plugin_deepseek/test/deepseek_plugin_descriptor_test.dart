@@ -375,6 +375,7 @@ class _ProcessService({
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List.of(arguments));

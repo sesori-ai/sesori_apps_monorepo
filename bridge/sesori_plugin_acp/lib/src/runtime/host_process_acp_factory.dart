@@ -29,6 +29,7 @@ AcpProcessFactory hostProcessAcpFactory({
       // ACP shims on Windows (e.g. `cursor-agent.cmd`) only resolve through a
       // shell — mirror the default factory's platform handling.
       runInShell: io.Platform.isWindows,
+      lifetime: ProcessLifetime.endsWithBridge,
     );
     return HostProcessAcpHandle(process: spawned, processes: processes);
   };

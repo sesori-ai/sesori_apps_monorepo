@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
+import "package:sesori_bridge/src/server/api/windows_job_object_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -13,6 +14,7 @@ void main() {
       api = _FakeSystemProcessApi();
       repository = ProcessRepository(
         api: api,
+        windowsJobObjectApi: WindowsJobObjectApi(),
         currentUser: ProcessUser.fromRawUser("alex"),
       );
     });

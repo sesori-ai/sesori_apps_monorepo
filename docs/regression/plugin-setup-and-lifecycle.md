@@ -372,6 +372,17 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   already leaked stays running: that bridge deleted the record when the match failed.
   Windows has no start marker and launches the runtime through `cmd.exe`; its
   matching uses the pid and executable path only and is not covered by this guarantee.
+- On Windows, every backend runtime the bridge spawns (Codex, OpenCode, Claude, Pi
+  and the ACP harnesses) is best-effort bound to one kill-on-close job object; a
+  bound runtime and its descendants end when the bridge exits, crash included, and a
+  failed bind is logged and leaves the runtime unbound. The job allows breakaway, so a
+  descendant a runtime starts with `CREATE_BREAKAWAY_FROM_JOB` leaves the job and
+  survives. Short commands stay out of the job, so the shared OpenCode 2 service that
+  `opencode service start` detaches keeps running. The bind lands just after `cmd.exe`
+  starts, so a runtime the shell launches before then escapes the job and may keep
+  running after a bridge crash; this is the Windows exception to the cleanup
+  guarantee. The `windows-job-object` job in Bridge CI proves that a bound process
+  ends when the process holding the job exits and that an unbound one survives.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed
