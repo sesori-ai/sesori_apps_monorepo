@@ -11,7 +11,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         SignalResult,
         SpawnedProcess;
 
-import "../api/windows_job_object_api.dart";
 import "../repositories/process_repository.dart";
 
 /// Spawn seam for [BridgeHostProcessService]; production passes
@@ -29,7 +28,6 @@ typedef HostProcessStarter = Future<io.Process> Function(
 class BridgeHostProcessService({
   required final HostProcessStarter _processStarter,
   required final ProcessRepository _processRepository,
-  required final WindowsJobObjectApi _windowsJobObjectApi,
   required final ServerClock _clock,
   required final ProcessUser? _currentUser,
   required final bool _isWindows,
@@ -57,7 +55,7 @@ class BridgeHostProcessService({
       // cmd.exe can start the real runtime before the bind lands and that
       // runtime escapes the job, which is today's behaviour. If that is ever
       // seen, launch suspended through CreateProcess over FFI, bind, resume.
-      _windowsJobObjectApi.bindToBridgeLifetime(pid: process.pid);
+      _processRepository.bindToBridgeLifetime(pid: process.pid);
     }
 
     final spawnIdentity = ProcessIdentity(

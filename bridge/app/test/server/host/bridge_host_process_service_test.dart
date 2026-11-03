@@ -17,19 +17,16 @@ void main() {
   group('BridgeHostProcessService', () {
     late _RecordingStarter starter;
     late _FakeProcessRepository processRepository;
-    late _RecordingWindowsJobObjectApi windowsJobObjectApi;
 
     setUp(() {
       starter = _RecordingStarter();
       processRepository = _FakeProcessRepository();
-      windowsJobObjectApi = _RecordingWindowsJobObjectApi();
     });
 
     BridgeHostProcessService service({bool isWindows = false}) {
       return BridgeHostProcessService(
         processStarter: starter.call,
         processRepository: processRepository,
-        windowsJobObjectApi: windowsJobObjectApi,
         clock: _FakeServerClock(),
         currentUser: ProcessUser.fromRawUser('alex'),
         isWindows: isWindows,
@@ -85,7 +82,7 @@ void main() {
 
       await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
 
-      expect(windowsJobObjectApi.boundPids, [7001]);
+      expect(processRepository.boundPids, [7001]);
     });
 
     test('spawn leaves a Windows process that may outlive the bridge out of the job object', () async {
@@ -93,7 +90,7 @@ void main() {
 
       await spawnAgent(isWindows: true, lifetime: ProcessLifetime.mayOutliveBridge);
 
-      expect(windowsJobObjectApi.boundPids, isEmpty);
+      expect(processRepository.boundPids, isEmpty);
     });
 
     test('spawn binds nothing on POSIX, where ownership records stop runtimes', () async {
@@ -101,7 +98,7 @@ void main() {
 
       await spawnAgent(lifetime: ProcessLifetime.endsWithBridge);
 
-      expect(windowsJobObjectApi.boundPids, isEmpty);
+      expect(processRepository.boundPids, isEmpty);
     });
 
     test('command executor spawns stay out of the Windows job object', () async {
@@ -128,7 +125,7 @@ void main() {
       );
 
       expect(starter.executable, 'opencode');
-      expect(windowsJobObjectApi.boundPids, isEmpty);
+      expect(processRepository.boundPids, isEmpty);
     });
 
     test('spawn upgrades the identity from post-spawn inspection when the command line matches', () async {
@@ -358,9 +355,9 @@ void main() {
               clock: const ServerClock(),
               isWindows: Platform.isWindows,
             ),
+            windowsJobObjectApi: WindowsJobObjectApi(),
             currentUser: null,
           ),
-          windowsJobObjectApi: WindowsJobObjectApi(),
           clock: const ServerClock(),
           currentUser: null,
           isWindows: Platform.isWindows,
@@ -476,13 +473,6 @@ class _FakeProcess({required final int _pidValue}) implements Process {
   }
 }
 
-class _RecordingWindowsJobObjectApi() implements WindowsJobObjectApi {
-  final List<int> boundPids = <int>[];
-
-  @override
-  void bindToBridgeLifetime({required int pid}) => boundPids.add(pid);
-}
-
 class _FakeServerClock() implements ServerClock {
   @override
   DateTime now() {
@@ -499,6 +489,10 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   SignalResult? gracefulResult;
   SignalResult? forceResult;
   final List<String> signalRequests = <String>[];
+  final List<int> boundPids = <int>[];
+
+  @override
+  void bindToBridgeLifetime({required int pid}) => boundPids.add(pid);
 
   @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {

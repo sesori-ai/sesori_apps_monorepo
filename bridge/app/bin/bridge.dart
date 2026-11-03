@@ -37,6 +37,7 @@ import 'package:sesori_bridge/src/runtime/plugin_registry.dart';
 import 'package:sesori_bridge/src/server/api/process_id_lookup_api.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/api/terminal_prompt_api.dart';
+import 'package:sesori_bridge/src/server/api/windows_job_object_api.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
@@ -274,6 +275,7 @@ class LogoutCommand() extends cli.Command<void> {
         replacePrompt: terminalPromptRepository,
         processRepository: ProcessRepository(
           api: systemProcessApi,
+          windowsJobObjectApi: WindowsJobObjectApi(),
           currentUser: currentUser,
         ),
         clock: const ServerClock(),

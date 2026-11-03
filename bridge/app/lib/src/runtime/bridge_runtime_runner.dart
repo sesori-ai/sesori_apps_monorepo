@@ -261,6 +261,7 @@ class const BridgeRuntimeRunner._() {
     );
     final processRepository = ProcessRepository(
       api: systemProcessApi,
+      windowsJobObjectApi: WindowsJobObjectApi(),
       currentUser: currentUser,
     );
     final startupMutexRepository = StartupMutexRepository(
@@ -573,7 +574,6 @@ class const BridgeRuntimeRunner._() {
       final hostProcessService = BridgeHostProcessService(
         processStarter: io.Process.start,
         processRepository: processRepository,
-        windowsJobObjectApi: WindowsJobObjectApi(),
         clock: serverClock,
         currentUser: currentUser,
         isWindows: io.Platform.isWindows,
