@@ -801,6 +801,7 @@ void main() {
 
         unawaited(window.renameSession(sessionId: "s0000", title: "New").then((value) => renamed = value));
         expect(title(window, "s0000"), "New");
+        expect(window.pendingTitle(sessionId: "s0000"), "New");
 
         // A reload and an update, both read before the rename, bring the old title.
         unawaited(window.reload());
@@ -812,6 +813,7 @@ void main() {
         async.flushMicrotasks();
         expect(renamed, isTrue);
         expect(title(window, "s0000"), "New");
+        expect(window.pendingTitle(sessionId: "s0000"), isNull);
         expect(ids(window), ["s0000", "s0001"]);
         unawaited(window.dispose());
       });
@@ -829,6 +831,8 @@ void main() {
           () => sessionRepository.renameSession(sessionId: "s0000", title: "Thrown"),
         ).thenThrow(StateError("transport"));
         final results = <bool>[];
+        final announced = <String?>[];
+        window.renameTitles.listen((rename) => announced.add(rename.title));
 
         unawaited(window.renameSession(sessionId: "s0000", title: "Refused").then(results.add));
         async.flushMicrotasks();
@@ -837,6 +841,8 @@ void main() {
         async.flushMicrotasks();
         expect(title(window, "s0000"), "Session s0000");
         expect(results, [false, false]);
+        // A session page follows the same titles as the row.
+        expect(announced, ["Refused", "Session s0000", "Thrown", "Session s0000"]);
         unawaited(window.dispose());
       });
     });

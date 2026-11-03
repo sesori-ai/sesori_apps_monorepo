@@ -42,6 +42,7 @@ import "../services/sse_event_tracker.dart";
 
 SessionDetailCubit createSessionDetailCubit({
   required GetIt locator,
+  required SessionWindowService window,
   required String sessionId,
   required String projectId,
 }) {
@@ -68,6 +69,7 @@ SessionDetailCubit createSessionDetailCubit({
     sseEventTracker: locator<SseEventTracker>(),
     sessionLaunchService: locator<SessionLaunchService>(),
     fileReferenceOpenService: locator<FileReferenceOpenService>(),
+    window: window,
   );
 }
 

@@ -43,6 +43,7 @@ import "package:sesori_dart_core/src/services/session_auto_continuation_service.
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+import "package:sesori_dart_core/src/services/session_window_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -150,6 +151,7 @@ void main() {
       BridgeSettingsService? bridgeSettingsService,
       SseEventTracker? sseEventTracker,
       FileReferenceOpenService? fileReferenceOpenService,
+      SessionWindowService? window,
       ClockProvider clock = const ClockProvider(),
       String pageSessionId = sessionId,
     }) => SessionDetailCubit(
@@ -174,6 +176,7 @@ void main() {
       bridgeSettingsService: bridgeSettingsService ?? stubbedBridgeSettingsService(),
       sseEventTracker: sseEventTracker ?? MockSseEventTracker(),
       fileReferenceOpenService: fileReferenceOpenService ?? MockFileReferenceOpenService(),
+      window: window ?? idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       clock: clock,
     );
@@ -2433,6 +2436,7 @@ void main() {
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
+        window: idleSessionWindow(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );
       addTearDown(cubit.close);
@@ -2580,6 +2584,39 @@ void main() {
             .having((state) => state.session.title, "hydrated session title", "Renamed Session"),
       ],
     );
+
+    test("follows the window's renames: the pending title at once and over updates, then the settled one", () async {
+      final renames = StreamController<({String sessionId, String? title})>.broadcast();
+      addTearDown(renames.close);
+      String? pendingTitle;
+      final window = MockSessionWindowService();
+      when(() => window.renameTitles).thenAnswer((_) => renames.stream);
+      when(() => window.pendingTitle(sessionId: sessionId)).thenAnswer((_) => pendingTitle);
+      final cubit = buildCubit(window: window);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      Matcher titled(String title) => isA<SessionDetailLoaded>()
+          .having((state) => state.sessionTitle, "sessionTitle", title)
+          .having((state) => state.session.title, "session title", title);
+
+      pendingTitle = "New title";
+      renames.add((sessionId: sessionId, title: "New title"));
+      await pumpEventQueue();
+      expect(cubit.state, titled("New title"));
+
+      sessionEvents.add(
+        SesoriSessionUpdated(
+          info: testSession(id: sessionId, title: "Old title"),
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state, titled("New title"));
+
+      pendingTitle = null;
+      renames.add((sessionId: sessionId, title: "Old title"));
+      await pumpEventQueue();
+      expect(cubit.state, titled("Old title"));
+    });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "children are sorted most-recent-first on initial load",

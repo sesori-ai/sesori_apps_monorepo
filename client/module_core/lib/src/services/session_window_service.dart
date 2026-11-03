@@ -96,6 +96,16 @@ class SessionWindowService({
   /// titles cover whatever loads and live events bring until they settle.
   final Map<String, OptimisticRenameTracker> _renameBySessionId = {};
   int _nextRenameToken = 0;
+  final StreamController<({String sessionId, String? title})> _renameTitles = StreamController.broadcast();
+
+  /// The title each rename leaves a listed session showing, as its row does:
+  /// the newest pending title until the bridge has answered every rename, then
+  /// the title it settles on, which is the previous one when refused.
+  Stream<({String sessionId, String? title})> get renameTitles => _renameTitles.stream;
+
+  /// The title [sessionId] shows while a rename of it waits for the bridge;
+  /// null when none does.
+  String? pendingTitle({required String sessionId}) => _renameBySessionId[sessionId]?.visibleValue;
 
   Timer? _queryTimer;
   Timer? _reloadTimer;
@@ -342,6 +352,7 @@ class SessionWindowService({
     if (rename != null) {
       rename.begin(token: token, value: title);
       _emitRows();
+      _renameTitles.add((sessionId: sessionId, title: rename.visibleValue));
     }
     final renamed = await _requestRename(sessionId: sessionId, title: title);
     if (rename != null) {
@@ -351,8 +362,10 @@ class SessionWindowService({
         // The bridge's own update of the session can come after its answer,
         // so the row keeps the confirmed title rather than the one it loaded.
         _storeTitle(sessionId: sessionId, title: rename.confirmedValue);
+        _renameTitles.add((sessionId: sessionId, title: rename.confirmedValue));
       } else {
         _emitRows();
+        _renameTitles.add((sessionId: sessionId, title: rename.visibleValue));
       }
     }
     return renamed;
@@ -971,6 +984,7 @@ class SessionWindowService({
     _cancelTimers();
     await _subscriptions.dispose();
     await _state.close();
+    await _renameTitles.close();
   }
 }
 
