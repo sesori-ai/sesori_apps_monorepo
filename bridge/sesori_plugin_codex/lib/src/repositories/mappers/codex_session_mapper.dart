@@ -11,8 +11,8 @@ import "codex_sub_agent_name_mapper.dart";
 class const CodexSessionMapper() {
   CodexThreadRecord mapPersistedThread({required CodexSessionRecord record}) => CodexThreadRecord(
     id: record.id,
-    name: _usefulText(record.threadName) ?? _usefulText(record.agentNickname),
-    directory: switch (_usefulText(record.cwd)) {
+    name: _usefulText(value: record.threadName) ?? _usefulText(value: record.agentNickname),
+    directory: switch (_usefulText(value: record.cwd)) {
       final directory? => normalizeProjectDirectory(directory: directory),
       null => null,
     },
@@ -21,11 +21,11 @@ class const CodexSessionMapper() {
     model: record.model,
     modelProvider: record.modelProvider,
     parentId: record.parentId,
-    agentNickname: _usefulText(record.agentNickname),
-    agentPath: _usefulText(record.agentPath),
+    agentNickname: _usefulText(value: record.agentNickname),
+    agentPath: _usefulText(value: record.agentPath),
   );
 
-  String? _usefulText(String? value) {
+  String? _usefulText({required String? value}) {
     final normalized = value?.trim();
     return normalized == null || normalized.isEmpty ? null : normalized;
   }

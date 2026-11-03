@@ -180,7 +180,7 @@ class const CodexPluginDescriptor({
   @override
   List<PluginOption> get options => cliOptions;
 
-  String? _explicitBin(PluginConfig config) {
+  String? _explicitBin({required PluginConfig config}) {
     final value = config.value("bin")?.trim();
     if (value == null || value.isEmpty || value == "codex") return null;
     return value;
@@ -218,7 +218,7 @@ class const CodexPluginDescriptor({
       ),
       inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
-      explicitExecutablePath: _explicitBin(config),
+      explicitExecutablePath: _explicitBin(config: config),
       fallbackExecutableCandidates: _desktopCandidates(environment: environment),
       environment: environment,
       stateDirectory: stateDirectory,
@@ -232,13 +232,13 @@ class const CodexPluginDescriptor({
       ...super.managementCapabilities(config: config),
       PluginControlCapability.authentication,
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
-      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
+      if (_explicitBin(config: config) == null) PluginControlCapability.runtimeUpdate,
     };
   }
 
   @override
   PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return null;
+    if (_explicitBin(config: config) != null) return null;
     return const PluginRuntimeUpdateSpec(
       executable: "codex",
       arguments: ["update"],
@@ -250,7 +250,7 @@ class const CodexPluginDescriptor({
   /// explicit `--codex-bin` override (that binary is authoritative) and a
   /// published release asset for this platform.
   bool _supportsManagedInstall({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return false;
+    if (_explicitBin(config: config) != null) return false;
     final PlatformTarget target;
     try {
       target = PlatformTarget.current();
@@ -374,7 +374,7 @@ class const CodexPluginDescriptor({
       case ManagedRuntimeSelected():
         selectedRuntime = selection;
       case ManagedRuntimeNotSelected(:final primaryRejection):
-        final hasExplicitBinary = _explicitBin(config) != null;
+        final hasExplicitBinary = _explicitBin(config: config) != null;
         if (selection is ManagedRuntimePathNotSelected) {
           return switch (primaryRejection) {
             ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
@@ -439,7 +439,7 @@ class const CodexPluginDescriptor({
         runtimeVersion: runtimeVersion,
       );
     }
-    final statusOutput = _normalizedStatusOutput(loginResult);
+    final statusOutput = _normalizedStatusOutput(result: loginResult);
     if (statusOutput.contains("not logged in") || statusOutput.contains("logged out")) {
       return PluginSetupAuthenticationRequired.versioned(
         actionHint: "Sign in to Codex, then retry setup detection.",
@@ -463,7 +463,7 @@ class const CodexPluginDescriptor({
   /// and `start()` fails with guidance.
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
-    if (_explicitBin(host.config) != null) {
+    if (_explicitBin(config: host.config) != null) {
       return;
     }
 
@@ -552,7 +552,7 @@ class const CodexPluginDescriptor({
     ).authenticate();
   }
 
-  String _normalizedStatusOutput(CommandResult result) {
+  String _normalizedStatusOutput({required CommandResult result}) {
     final combined = "${result.stdout}\n${result.stderr}";
     return stripAnsi(value: combined).trim().toLowerCase();
   }
@@ -568,7 +568,7 @@ class const CodexPluginDescriptor({
     // Precedence: an explicit --codex-bin override wins (trusted, no version
     // gate); otherwise the path ensureRuntime resolved (a recent PATH codex or
     // the managed download), exposed via the host.
-    final executablePath = _explicitBin(config) ?? host.provisionedRuntimePath;
+    final executablePath = _explicitBin(config: config) ?? host.provisionedRuntimePath;
     if (executablePath == null) {
       // Runtime provisioning failed and no explicit binary was given. codex has
       // no attach/degraded mode (its WebSocket client cannot reconnect), so it

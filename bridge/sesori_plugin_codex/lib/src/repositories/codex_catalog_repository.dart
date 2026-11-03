@@ -101,7 +101,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       if (_deletedDuringScan.contains(path)) continue;
       final parsed = scan.parsed.containsKey(path) ? scan.parsed[path] : previous[path]?.parsed;
       _rollouts[path] = _CachedRollout(modified: modified, parsed: parsed);
-      if (_sessionIdFromRolloutName(p.basename(path)) case final id?) _pathsById[id] = path;
+      if (_sessionIdFromRolloutName(fileName: p.basename(path)) case final id?) _pathsById[id] = path;
     }
     _indexById = scan.indexById;
     Log.d(
@@ -138,7 +138,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         noiseExcluded++;
         continue;
       }
-      final session = _toPluginSession(record);
+      final session = _toPluginSession(record: record);
       if (session == null) {
         missingCwd++;
       } else {
@@ -163,7 +163,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     final target = normalizeProjectDirectory(directory: projectId);
     return records
         .where((record) => record.parentId == null)
-        .map(_toPluginSession)
+        .map((record) => _toPluginSession(record: record))
         .nonNulls
         .where((session) => session.directory == target)
         .toList(growable: false);
@@ -174,7 +174,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     final records = await listSessionRecords();
     return records
         .where((record) => record.parentId == sessionId)
-        .map(_toPluginSession)
+        .map((record) => _toPluginSession(record: record))
         .nonNulls
         .toList(growable: false);
   }
@@ -274,9 +274,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       threadName: indexEntry?.threadName,
       createdAt: metadata?.timestamp,
       updatedAt: _latest(
-        // Native turns append to the rollout without necessarily updating the
-        // session index, so its modification time counts as activity too.
-        [metadata?.timestamp, _tryParseDate(indexEntry?.updatedAt), rollout?.modified],
+        candidates: // Native turns append to the rollout without necessarily updating the
+            // session index, so its modification time counts as activity too.
+            [
+              metadata?.timestamp,
+              _tryParseDate(raw: indexEntry?.updatedAt),
+              rollout?.modified,
+            ],
       ),
       modelProvider: metadata?.modelProvider,
       model: metadata?.model,
@@ -286,7 +290,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     );
   }
 
-  DateTime? _latest(List<DateTime?> candidates) {
+  DateTime? _latest({required List<DateTime?> candidates}) {
     DateTime? latest;
     for (final candidate in candidates.nonNulls) {
       if (latest == null || candidate.isAfter(latest)) latest = candidate;
@@ -324,7 +328,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return p.equals(directory, documentsCodexDirectory) || p.isWithin(documentsCodexDirectory, directory);
   }
 
-  PluginSession? _toPluginSession(CodexSessionRecord record) {
+  PluginSession? _toPluginSession({required CodexSessionRecord record}) {
     final cwd = record.cwd?.trim();
     if (cwd == null || cwd.isEmpty) return null;
     final created = record.createdAt?.millisecondsSinceEpoch;
@@ -336,7 +340,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       directory: directory,
       parentID: record.parentId,
       title: record.parentId == null
-          ? _usefulText(record.threadName)
+          ? _usefulText(value: record.threadName)
           : const CodexSubAgentNameMapper().map(
               name: record.threadName,
               nickname: record.agentNickname,
@@ -352,7 +356,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     );
   }
 
-  String? _usefulText(String? value) {
+  String? _usefulText({required String? value}) {
     final normalized = value?.trim();
     return normalized == null || normalized.isEmpty ? null : normalized;
   }
@@ -390,7 +394,7 @@ _ScanResult? _scanRollouts({
   }
   // A later path wins when two rollouts claim the same session id.
   final pathsById = {
-    for (final path in paths) ?_sessionIdFromRolloutName(p.basename(path)): path,
+    for (final path in paths) ?_sessionIdFromRolloutName(fileName: p.basename(path)): path,
   };
   final modifiedByPath = <String, DateTime?>{};
   final parsed = <String, _ParsedRollout?>{};
@@ -432,7 +436,7 @@ Map<String, CodexSessionIndexEntryDto> _readSessionIndexById({required CodexRoll
   };
 }
 
-String? _sessionIdFromRolloutName(String fileName) {
+String? _sessionIdFromRolloutName({required String fileName}) {
   if (!fileName.endsWith(".jsonl")) return null;
   final stem = fileName.substring(0, fileName.length - ".jsonl".length);
   final parts = stem.split("-");
@@ -493,7 +497,7 @@ _ParsedRollout? _parseRollout({
         if (metadataId == null || metadataId.isEmpty) continue;
         id = metadataId;
         cwd = payload.cwd;
-        timestamp = _tryParseDate(payload.timestamp);
+        timestamp = _tryParseDate(raw: payload.timestamp);
         modelProvider = payload.modelProvider;
         if (payload.threadSource == CodexRolloutThreadSource.subagent) {
           parentId = payload.parentThreadId;
@@ -528,7 +532,7 @@ _ParsedRollout? _parseRollout({
   );
 }
 
-DateTime? _tryParseDate(String? raw) {
+DateTime? _tryParseDate({required String? raw}) {
   if (raw == null || raw.isEmpty) return null;
   return DateTime.tryParse(raw);
 }

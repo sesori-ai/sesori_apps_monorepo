@@ -104,7 +104,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
         if (lines[i].trim().isNotEmpty)
           (
             entry: _decodeIndexEntry(
-              lines[i],
+              line: lines[i],
               warnOnMalformed: i < lines.length - 1,
             ),
             raw: lines[i],
@@ -158,7 +158,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     final (:lines, :isComplete) = _readPrefixLines(file: file, maxLines: 32);
     return CodexRolloutHeader(
       lines: _decodeRolloutLines(
-        lines,
+        lines: lines,
         malformedWarning: "[codex] skipping malformed rollout header record",
       ),
       reachedLineLimit: isComplete,
@@ -188,7 +188,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
     return _decodeRolloutLines(
-      file.readAsLinesSync(),
+      lines: file.readAsLinesSync(),
       malformedWarning: "[codex] skipping malformed rollout transcript record",
       ignoreMalformedLastLine: true,
     );
@@ -289,7 +289,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
       }
       return CodexRolloutTailChunk(
         lines: _decodeRolloutLines(
-          rawLines,
+          lines: rawLines,
           malformedWarning: "[codex] skipping malformed live rollout transcript record",
         ),
         nextOffset: length,
@@ -317,10 +317,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     file.writeAsStringSync(lines.isEmpty ? "" : "${lines.join("\n")}\n");
   }
 
-  CodexSessionIndexEntryDto? _decodeIndexEntry(
-    String line, {
-    required bool warnOnMalformed,
-  }) {
+  CodexSessionIndexEntryDto? _decodeIndexEntry({required String line, required bool warnOnMalformed}) {
     try {
       return CodexSessionIndexEntryDto.fromJson(jsonDecodeMap(line));
     } on Object {
@@ -331,8 +328,8 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     }
   }
 
-  List<CodexRolloutLineDto> _decodeRolloutLines(
-    Iterable<String> lines, {
+  List<CodexRolloutLineDto> _decodeRolloutLines({
+    required Iterable<String> lines,
     String? malformedWarning,
     bool ignoreMalformedLastLine = false,
   }) {
@@ -352,7 +349,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
           Log.w(
             "$malformedWarning "
             "(recordIndex=${i + 1}, schema=$schema, "
-            "error=${_decodeErrorForLog(error)})",
+            "error=${_decodeErrorForLog(error: error)})",
           );
         }
       }
@@ -521,7 +518,7 @@ final RegExp _schemaKeyPattern = RegExp(
 );
 
 /// Keeps decoder diagnostics useful without letting an exception echo raw JSON.
-String _decodeErrorForLog(Object error) {
+String _decodeErrorForLog({required Object error}) {
   if (error is FormatException) {
     return "FormatException(offset=${error.offset ?? "unknown"})";
   }

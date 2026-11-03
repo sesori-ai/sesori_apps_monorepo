@@ -13,14 +13,14 @@ class CodexSkillRepository({required final CodexAppServerApi _appServerApi}) {
         if (skill.enabled)
           PluginCommand(
             name: skill.name,
-            description: _description(skill),
+            description: _description(skill: skill),
             provider: null,
             source: PluginCommandSource.skill,
           ),
     ];
   }
 
-  String? _description(CodexSkillDto skill) {
+  String? _description({required CodexSkillDto skill}) {
     for (final value in [
       skill.interface?.shortDescription,
       skill.shortDescription,

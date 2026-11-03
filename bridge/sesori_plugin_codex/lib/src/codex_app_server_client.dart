@@ -314,11 +314,11 @@ class CodexAppServerClient({
         return;
       }
 
-      Log.d("[codex][ws] unrecognised frame: ${_redactForLog(raw)}");
+      Log.d("[codex][ws] unrecognised frame: ${_redactForLog(frame: raw)}");
     } catch (error, stack) {
       // The error (e.g. a FormatException from jsonDecode) can embed a snippet
       // of the offending frame, so redact it too.
-      Log.w("[codex][ws] failed to parse frame: ${_redactForLog("$error")}", null, stack);
+      Log.w("[codex][ws] failed to parse frame: ${_redactForLog(frame: "$error")}", null, stack);
     }
   }
 
@@ -332,11 +332,11 @@ class CodexAppServerClient({
     caseSensitive: false,
   );
 
-  String _redactForLog(String frame) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
+  String _redactForLog({required String frame}) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
 
   void _handleSocketError(Object error, StackTrace stack) {
-    Log.w("[codex][ws] socket error: ${_redactForLog("$error")}");
-    _failPending(error, stack);
+    Log.w("[codex][ws] socket error: ${_redactForLog(frame: "$error")}");
+    _failPending(error: error, stack: stack);
     _tearDownDeadTransport();
     _notifyDisconnected();
   }
@@ -344,8 +344,8 @@ class CodexAppServerClient({
   void _handleSocketDone() {
     Log.d("[codex][ws] socket closed");
     _failPending(
-      StateError("codex app-server WebSocket closed before reply"),
-      StackTrace.current,
+      error: StateError("codex app-server WebSocket closed before reply"),
+      stack: StackTrace.current,
     );
     _tearDownDeadTransport();
     _notifyDisconnected();
@@ -370,7 +370,7 @@ class CodexAppServerClient({
     _onDisconnected?.call();
   }
 
-  void _failPending(Object error, StackTrace stack) {
+  void _failPending({required Object error, required StackTrace stack}) {
     final inflight = List<Completer<dynamic>>.from(_pending.values);
     _pending.clear();
     for (final completer in inflight) {
@@ -395,8 +395,8 @@ class CodexAppServerClient({
 
     try {
       _failPending(
-        StateError("CodexAppServerClient disposed"),
-        StackTrace.current,
+        error: StateError("CodexAppServerClient disposed"),
+        stack: StackTrace.current,
       );
     } catch (error, stack) {
       Log.w("[codex][ws] dispose: failing pending requests threw: $error", error, stack);

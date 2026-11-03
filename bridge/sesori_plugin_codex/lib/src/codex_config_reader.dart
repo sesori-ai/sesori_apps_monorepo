@@ -76,10 +76,10 @@ class CodexConfigReader({required final Map<String, String> _environment}) {
     if (!line.startsWith("$key ") && !line.startsWith("$key=")) return null;
     final eq = line.indexOf("=");
     if (eq < 0 || line.substring(0, eq).trim() != key) return null;
-    return _normalize(line.substring(eq + 1).trim());
+    return _normalize(raw: line.substring(eq + 1).trim());
   }
 
-  static String? _normalize(String raw) {
+  static String? _normalize({required String raw}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
     if (trimmed.length >= 2) {
