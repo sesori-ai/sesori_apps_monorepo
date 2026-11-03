@@ -47,7 +47,7 @@ void main() {
 
   test("new-session route preserves typed project identity", () {
     final route = _routeWithPath(AppRouteDef.newSession.path);
-    final widget = route.builder!(
+    final widget = (route.builder ?? fail("no builder"))(
       _FakeBuildContext(),
       _FakeGoRouterState(
         queryParameters: {"project": "project-1", "name": "Sesori"},
@@ -62,7 +62,7 @@ void main() {
 
   test("diff route preserves typed project and session identity", () {
     final route = _routeWithPath(AppRouteDef.sessionDiffs.path);
-    final widget = route.builder!(
+    final widget = (route.builder ?? fail("no builder"))(
       _FakeBuildContext(),
       _FakeGoRouterState(
         pathParameters: {"projectId": "project-1", "sessionId": "session-1"},
@@ -95,7 +95,7 @@ void main() {
       lessThan(pages.indexWhere((page) => page.path == AppRouteDef.sessionDetail.path)),
     );
     expect(
-      _routeWithPath(AppRouteDef.home.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
+      (_routeWithPath(AppRouteDef.home.path).builder ?? fail("no builder"))(_FakeBuildContext(), _FakeGoRouterState()),
       isA<DesktopHomePane>(),
     );
   });
@@ -509,7 +509,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
               path: page.path,
               redirect: page.redirect,
               builder: (context, state) {
-                final screen = page.builder!(context, state);
+                final screen = (page.builder ?? fail("no builder"))(context, state);
                 Widget button({required String label, required VoidCallback action}) =>
                     TextButton(onPressed: action, child: Text(label));
                 return Scaffold(
@@ -543,13 +543,17 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                         ),
                         button(
                           label: "delete open session",
-                          action: () =>
-                              screen.sessionActions.onSessionDeleted!(context: context, sessionId: screen.sessionId),
+                          action: () => (screen.sessionActions.onSessionDeleted ?? fail("no delete action"))(
+                            context: context,
+                            sessionId: screen.sessionId,
+                          ),
                         ),
                         button(
                           label: "archive open session",
-                          action: () =>
-                              screen.sessionActions.onSessionArchived!(context: context, sessionId: screen.sessionId),
+                          action: () => (screen.sessionActions.onSessionArchived ?? fail("no archive action"))(
+                            context: context,
+                            sessionId: screen.sessionId,
+                          ),
                         ),
                         button(label: "mark unread", action: screen.onMarkedUnread),
                       ],

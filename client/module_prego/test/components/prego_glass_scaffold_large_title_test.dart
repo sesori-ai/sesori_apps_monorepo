@@ -17,7 +17,7 @@ void main() {
     );
 
     final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Projects"));
-    final style = tester.widget<Text>(largeTitle).style!;
+    final style = tester.widget<Text>(largeTitle).style ?? fail("the large title has no style");
     expect(style.fontSize, 36);
     expect(style.fontWeight, FontWeight.bold);
     expect(style.color, PregoDesignSystem.light.colors.textPrimary);

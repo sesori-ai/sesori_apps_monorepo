@@ -590,10 +590,10 @@ class _FakeOwnershipRepository() implements HostJsonRuntimeOwnershipRepository<_
 
   @override
   Future<void> upsert({required _TestRecord record}) async {
-    if (record.status == _TestStatus.ready && readyUpsertGate != null) {
+    final gate = readyUpsertGate;
+    if (record.status == _TestStatus.ready && gate != null) {
       readyUpsertReached?.complete();
       readyUpsertReached = null;
-      final gate = readyUpsertGate!;
       readyUpsertGate = null;
       await gate.future;
     }

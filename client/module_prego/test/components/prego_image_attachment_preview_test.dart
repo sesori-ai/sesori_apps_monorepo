@@ -41,13 +41,13 @@ void main() {
         (widget) =>
             widget is Container &&
             widget.decoration is BoxDecoration &&
-            (widget.decoration! as BoxDecoration).shape == BoxShape.circle,
+            (widget.decoration as BoxDecoration?)?.shape == BoxShape.circle,
       );
       final badge = tester.getRect(badgeFinder);
       expect(badge.size, const Size(14, 14));
       expect(badge.top - tile.top, 3);
       expect(tile.right - badge.right, 4);
-      expect((tester.widget<Container>(badgeFinder).decoration! as BoxDecoration).color, prego.colors.bgSurface5);
+      expect((tester.widget<Container>(badgeFinder).decoration as BoxDecoration?)?.color, prego.colors.bgSurface5);
       final icon = tester.widget<Icon>(find.byIcon(TablerRegular.x));
       expect(icon.size, 10);
       expect(icon.color, prego.colors.textPrimary);
@@ -111,7 +111,8 @@ void main() {
           Canvas(recorder).drawRect(bounds, Paint()..shader = mask.shaderCallback(bounds));
           final picture = recorder.endRecording();
           final image = await picture.toImage(364, 52);
-          final pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+          final pixels =
+              await image.toByteData(format: ui.ImageByteFormat.rawRgba) ?? fail("the mask image has no pixel data");
           final result = [
             for (final x in [6, 182, 357]) pixels.getUint8((26 * 364 + x) * 4 + 3),
           ];
@@ -119,7 +120,7 @@ void main() {
           picture.dispose();
           return direction == TextDirection.ltr ? result : result.reversed.toList();
         });
-        return alphas!;
+        return alphas ?? fail("sampling the mask did not complete");
       }
 
       await pump(count: 12);

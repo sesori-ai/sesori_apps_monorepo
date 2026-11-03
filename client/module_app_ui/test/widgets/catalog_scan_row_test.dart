@@ -82,7 +82,8 @@ void main() {
     late Color pixel;
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 3);
-      final data = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final data = (byteData ?? fail("The boundary image has no pixel data.")).buffer.asUint8List();
       final x = (logicalOffset.dx * 3).round();
       final y = (logicalOffset.dy * 3).round();
       final at = (y * image.width + x) * 4;
@@ -610,8 +611,9 @@ void main() {
       expect(tester.getSize(mark), const Size.square(20));
 
       final container = tester.widget<Container>(card);
-      final decoration = container.decoration! as ShapeDecoration;
-      final outline = container.foregroundDecoration! as ShapeDecoration;
+      final decoration = container.decoration;
+      final outline = container.foregroundDecoration;
+      if (decoration is! ShapeDecoration || outline is! ShapeDecoration) fail("The card has no shape decorations.");
       final glow = tester.widget<DecoratedBox>(
         find.descendant(
           of: card,
@@ -631,14 +633,15 @@ void main() {
         const BorderRadius.all(Radius.circular(PregoRadius.x4l)),
       );
       expect((outline.shape as RoundedRectangleBorder).side.color, PregoColorsDark.borderPrimary);
-      final gradient = (glow.decoration as BoxDecoration).gradient! as RadialGradient;
+      final gradient = (glow.decoration as BoxDecoration).gradient;
+      if (gradient is! RadialGradient) fail("The glow has no radial gradient.");
       expect(gradient.center, Alignment.topCenter);
       expect(gradient.radius, 1);
       expect(gradient.stops, const [0, 0.6, 1]);
       expect(gradient.colors.last, PregoColorsDark.bgSuccessSecondary.withValues(alpha: 0.2));
 
       for (final label in ["Scan complete", "2 new projects"]) {
-        final style = tester.widget<Text>(find.text(label)).style!;
+        final style = tester.widget<Text>(find.text(label)).style ?? fail("$label has no text style.");
         expect(style.fontSize, 14);
         expect(style.height, closeTo(20 / 14, 0.0001));
         expect(style.fontWeight, FontWeight.w500);
@@ -694,7 +697,8 @@ void main() {
             ),
           ),
         );
-        final gradient = (glow.decoration as BoxDecoration).gradient! as RadialGradient;
+        final gradient = (glow.decoration as BoxDecoration).gradient;
+        if (gradient is! RadialGradient) fail("The glow has no radial gradient.");
         expect(gradient.colors.last, outcome.accent.withValues(alpha: 0.2));
 
         final icon = tester.widget<Icon>(
@@ -729,8 +733,11 @@ void main() {
 
           final finder = find.byKey(const ValueKey("catalog-scan-terminal-card"));
           final card = tester.widget<Container>(finder);
-          final decoration = card.decoration! as ShapeDecoration;
-          final outline = card.foregroundDecoration! as ShapeDecoration;
+          final decoration = card.decoration;
+          final outline = card.foregroundDecoration;
+          if (decoration is! ShapeDecoration || outline is! ShapeDecoration) {
+            fail("The card has no shape decorations.");
+          }
           final platform = Theme.of(tester.element(finder)).platform;
           final radius = switch (decoration.shape) {
             RoundedSuperellipseBorder(:final borderRadius) => borderRadius,

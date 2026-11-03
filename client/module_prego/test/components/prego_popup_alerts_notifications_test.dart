@@ -423,7 +423,7 @@ void main() {
         theme: ThemeData(extensions: [PregoDesignSystem.dark]),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(padding: const EdgeInsets.only(top: 24)),
-          child: child!,
+          child: child ?? fail("MaterialApp gave the builder no child"),
         ),
         home: Scaffold(
           body: Builder(

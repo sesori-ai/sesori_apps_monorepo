@@ -51,7 +51,7 @@ void main() {
       },
     });
 
-    final catalog = repository.mapSessionResult(result: result)!;
+    final catalog = repository.mapSessionResult(result: result) ?? fail("session result has no catalog");
     expect(catalog.currentModel, isNull);
     expect(catalog.models.single.id, "opaque:model");
     expect(catalog.models.single.name, "opaque:model");
@@ -112,7 +112,7 @@ void main() {
       },
     });
 
-    final catalog = repository.mapSessionResult(result: result)!;
+    final catalog = repository.mapSessionResult(result: result) ?? fail("session result has no catalog");
     expect(catalog.currentModel, isNull);
     expect(catalog.models.map((model) => model.id), ["plain", "unsupported", "reasoning"]);
     expect(catalog.models.first.name, "plain");
@@ -145,8 +145,9 @@ void main() {
         }),
       ),
       repository.mapSessionResult(
-        result: AcpNewSessionResult.fromJson({"sessionId": "s1", "models": modelState}),
-      )!,
+            result: AcpNewSessionResult.fromJson({"sessionId": "s1", "models": modelState}),
+          ) ??
+          fail("session result has no catalog"),
     ];
 
     for (final catalog in catalogs) {
@@ -196,7 +197,7 @@ const Map<String, dynamic> _emptyModelState = {
 
 Map<String, dynamic> _fixture({required String name}) {
   final decoded = jsonDecode(File("test/fixtures/protocol/v1/$name").readAsStringSync());
-  return (decoded! as Map<dynamic, dynamic>).cast<String, dynamic>();
+  return (decoded as Map<dynamic, dynamic>).cast<String, dynamic>();
 }
 
 class _FakeGrokAcpApi() implements GrokAcpApi {

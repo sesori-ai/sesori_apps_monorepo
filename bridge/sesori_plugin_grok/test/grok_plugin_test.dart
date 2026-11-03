@@ -1455,8 +1455,8 @@ void main() {
       final tile = messages.single.parts.single as PluginMessagePartSubtask;
       expect(tile.prompt, "Child-owned prompt");
       expect(tile.childSessionID, "child");
-      expect(tile.taskState!.status, PluginToolStatus.completed);
-      expect(tile.taskState!.output, "Child result");
+      expect(tile.taskState?.status, PluginToolStatus.completed);
+      expect(tile.taskState?.output, "Child result");
       expect((messages.single.info as PluginMessageAssistant).modelID, "opaque/provider:model-beta");
       expect(plugin.childSessionTracker.isChild(sessionId: "child"), isFalse);
       expect((await plugin.getSessionStatuses()).containsKey("child"), isFalse);

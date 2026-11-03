@@ -204,7 +204,7 @@ void main() {
     when(() => desktopAttentionService.preference).thenAnswer((_) => attentionPreferences.stream);
     when(() => desktopAttentionService.setPreference(preference: any(named: "preference")))
         .thenAnswer((invocation) async {
-          attentionPreferences.add(invocation.namedArguments[#preference]! as DesktopAttentionPreference);
+          attentionPreferences.add(invocation.namedArguments[#preference] as DesktopAttentionPreference);
         });
     getIt.registerSingleton<DesktopAttentionService>(desktopAttentionService);
     updateStates = BehaviorSubject<DesktopUpdateState>.seeded(
@@ -220,7 +220,7 @@ void main() {
     when(() => desktopUpdateService.setAutomaticUpdates(preference: any(named: "preference"))).thenAnswer((
       invocation,
     ) async {
-      automaticUpdates.add(invocation.namedArguments[#preference]! as DesktopAutomaticUpdates);
+      automaticUpdates.add(invocation.namedArguments[#preference] as DesktopAutomaticUpdates);
     });
     getIt.registerSingleton<DesktopUpdateService>(desktopUpdateService);
     analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(
@@ -312,7 +312,7 @@ void main() {
               builder: (context) {
                 // Exercise registered shortcuts without mounting production DI or the cockpit.
                 final shell = buildDesktopRoutes().single as ShellRoute;
-                final gate = shell.builder!(context, state, child) as AuthGate;
+                final gate = (shell.builder ?? fail("no builder"))(context, state, child) as AuthGate;
                 final provider = gate.child as DesktopCockpitCubitProvider;
                 final cockpit = (provider.child as Builder).builder(context) as DesktopCockpitShell;
                 return CallbackShortcuts(
@@ -354,7 +354,7 @@ void main() {
             theme: buildPregoThemeData(brightness: Brightness.light),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            builder: (_, child) => DesktopEscapeDismissal(child: child!),
+            builder: (_, child) => DesktopEscapeDismissal(child: child ?? fail("MaterialApp built no child")),
           ),
         ),
       ),

@@ -47,7 +47,10 @@ void main() {
         final previousRoutes = appRouter.routerDelegate.currentConfiguration;
         final logs = <String>[];
         final result = runZoned(
-          () => appRouter.routeInformationParser.onParserException!(_FakeBuildContext(), unmatched),
+          () => (appRouter.routeInformationParser.onParserException ?? fail("no parser exception handler"))(
+            _FakeBuildContext(),
+            unmatched,
+          ),
           zoneSpecification: ZoneSpecification(print: (_, _, _, message) => logs.add(message)),
         );
         expect(result, same(previousRoutes));
@@ -150,13 +153,16 @@ void main() {
 
   group("flat routes", () {
     test("splash route builds SplashScreen", () {
-      final widget = AppRouteDef.splash.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
+      final widget = (AppRouteDef.splash.toGoRoute().builder ?? fail("no builder"))(
+        _FakeBuildContext(),
+        _FakeGoRouterState(),
+      );
       expect(widget, isA<SplashScreen>());
     });
 
     test("login route builds LoginScreen behind a fade transition page", () {
       final goRoute = AppRouteDef.login.toGoRoute();
-      final page = goRoute.pageBuilder!(
+      final page = (goRoute.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(),
       );
@@ -165,14 +171,20 @@ void main() {
     });
 
     test("home route builds HomeScreen", () {
-      final widget = AppRouteDef.home.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
+      final widget = (AppRouteDef.home.toGoRoute().builder ?? fail("no builder"))(
+        _FakeBuildContext(),
+        _FakeGoRouterState(),
+      );
       expect(widget, isA<HomeScreen>());
     });
 
     // A CupertinoPage, so the bottom-up modal slide is the same on Android,
     // whose default page transition ignores fullscreenDialog.
     test("settings route builds SettingsScreen inside a fullscreen-dialog page", () {
-      final page = AppRouteDef.settings.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
+      final page = (AppRouteDef.settings.toGoRoute().pageBuilder ?? fail("no page builder"))(
+        _FakeBuildContext(),
+        _FakeGoRouterState(),
+      );
       expect(page, isA<CupertinoPage<void>>());
       final settingsPage = page as CupertinoPage<void>;
       expect(settingsPage.fullscreenDialog, isTrue);
@@ -197,14 +209,14 @@ void main() {
       expect(overview.path, AppRouteDef.settingsHarnesses.path);
       expect((overview.routes.single as GoRoute).path, ":$pluginIdPathParam");
       const child = SizedBox();
-      final modal = harnessShell.pageBuilder!(
+      final modal = (harnessShell.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "modal"}),
         child,
       ) as CupertinoPage<void>;
       expect(modal.fullscreenDialog, isTrue);
       expect((modal.child as NavigatorPopHandler<void>).child, isA<HarnessesSettingsScreen>());
-      final pushed = harnessShell.pageBuilder!(
+      final pushed = (harnessShell.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
         child,
@@ -232,7 +244,7 @@ void main() {
         await activity.onDispose();
         await unseen.onDispose();
       });
-      final page = buildArchivedSessionsRoute().pageBuilder!(
+      final page = (buildArchivedSessionsRoute().pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(),
         const SizedBox(),
@@ -242,7 +254,7 @@ void main() {
     });
 
     test("newSession route builds NewSessionScreen", () {
-      final widget = AppRouteDef.newSession.toGoRoute().builder!(
+      final widget = (AppRouteDef.newSession.toGoRoute().builder ?? fail("no builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {"project": "proj-42", "name": "Project One"}),
       );
@@ -310,7 +322,7 @@ void main() {
 
     test("session shell lists the home beside the open session", () {
       final shell = _sessionShellRoute();
-      final widget = shell.builder!(
+      final widget = (shell.builder ?? fail("no builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
         const SizedBox(),
@@ -326,14 +338,14 @@ void main() {
     test("detail route preserves typed route decoding and stable key", () {
       final detailRoute = _sessionDetailRoute();
 
-      final page = detailRoute.pageBuilder!(
+      final page = (detailRoute.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
           queryParameters: {"name": "My Project", "title": "Debug session", "readOnly": "true"},
         ),
       );
-      final otherSessionPage = detailRoute.pageBuilder!(
+      final otherSessionPage = (detailRoute.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-100"},
@@ -357,11 +369,11 @@ void main() {
     test("newSession grows out of the + only when its URL carries the + origin", () {
       final newSessionRoute = _newSessionRoute();
 
-      final platform = newSessionRoute.pageBuilder!(
+      final platform = (newSessionRoute.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {"project": "proj-42"}),
       );
-      final revealed = newSessionRoute.pageBuilder!(
+      final revealed = (newSessionRoute.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {"reveal": "0.8750,0.9000"}),
       );
@@ -380,7 +392,7 @@ void main() {
     test("diffs route preserves typed route decoding and stable key", () {
       final diffsRoute = _sessionDiffsRoute();
 
-      final page = diffsRoute.pageBuilder!(
+      final page = (diffsRoute.pageBuilder ?? fail("no page builder"))(
         _FakeBuildContext(),
         _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
       );

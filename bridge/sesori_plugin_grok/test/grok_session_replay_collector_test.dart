@@ -133,8 +133,8 @@ void main() {
     expect(tile.messageID, "root-subagent-child-a");
     expect(tile.childSessionID, "child-a");
     expect(tile.prompt, "Prompt A");
-    expect(tile.taskState!.status, PluginToolStatus.completed);
-    expect(tile.taskState!.output, "Result A");
+    expect(tile.taskState?.status, PluginToolStatus.completed);
+    expect(tile.taskState?.output, "Result A");
     expect(messages.every((message) => message.parts.isNotEmpty), isTrue);
     final tileMessage = messages[1].info as PluginMessageAssistant;
     expect(
@@ -191,8 +191,9 @@ void main() {
     ]);
     final tiles = messages.expand((message) => message.parts).whereType<PluginMessagePartSubtask>().toList();
     expect(tiles.map((tile) => tile.childSessionID), ["child-a", "child-b"]);
-    expect(tiles.last.taskState!.status, PluginToolStatus.cancelled);
-    expect(tiles.last.taskState!.error, isNull);
+    final lastTaskState = tiles.last.taskState ?? fail("child-b tile has no task state");
+    expect(lastTaskState.status, PluginToolStatus.cancelled);
+    expect(lastTaskState.error, isNull);
   });
 
   test("missing child prompt or description never fabricates a tile", () {
@@ -223,7 +224,7 @@ void main() {
     );
     expect(
       build().single.parts.single,
-      isA<PluginMessagePartSubtask>().having((part) => part.taskState!.status, "status", PluginToolStatus.running),
+      isA<PluginMessagePartSubtask>().having((part) => part.taskState?.status, "status", PluginToolStatus.running),
     );
 
     replayCollector
@@ -241,7 +242,7 @@ void main() {
       );
 
     final tile = build().single.parts.single as PluginMessagePartSubtask;
-    expect(tile.taskState!.status, PluginToolStatus.error);
-    expect(tile.taskState!.error, "Failure");
+    expect(tile.taskState?.status, PluginToolStatus.error);
+    expect(tile.taskState?.error, "Failure");
   });
 }

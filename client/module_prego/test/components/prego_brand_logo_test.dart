@@ -20,11 +20,14 @@ SvgAssetLoader _loaderOf(WidgetTester tester) =>
     tester.widget<SvgPicture>(find.byType(SvgPicture)).bytesLoader as SvgAssetLoader;
 
 List<String> _pathElements(String svg) =>
-    RegExp(r"<path\b[^>]*>").allMatches(svg).map((match) => match.group(0)!).toList();
+    RegExp(r"<path\b[^>]*>")
+        .allMatches(svg)
+        .map((match) => match.group(0) ?? fail("the path match has no text"))
+        .toList();
 
 List<String> _pathData(String svg) => RegExp(
   r'<path\b[^>]*\bd="([^"]+)"',
-).allMatches(svg).map((match) => match.group(1)!).toList();
+).allMatches(svg).map((match) => match.group(1) ?? fail("the path has no d attribute")).toList();
 
 void main() {
   for (final mapping in <({String pluginId, String lightAsset, String darkAsset})>[

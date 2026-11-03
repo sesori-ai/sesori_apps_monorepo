@@ -49,7 +49,10 @@ void main() {
         expect(tester.getTopLeft(previews.last).dx - tester.getTopRight(previews.first).dx, 12);
         for (var index = 0; index < 2; index++) {
           final preview = tester.widget<Container>(previews.at(index));
-          final border = (preview.foregroundDecoration! as BoxDecoration).border! as Border;
+          final border = switch (preview.foregroundDecoration) {
+            BoxDecoration(:final Border border) => border,
+            _ => fail("The preview has no box border."),
+          };
           final selected = index == (mode == ChatInputMode.voiceFirst ? 0 : 1);
           expect(border.top.width, 2);
           expect(border.top.color, selected ? colors.borderBrand : Colors.transparent);
@@ -61,7 +64,7 @@ void main() {
             );
         expect(waveform, hasLength(22));
         expect(
-          (waveform.elementAt(2).decoration! as BoxDecoration).color,
+          (waveform.elementAt(2).decoration as BoxDecoration?)?.color,
           mode == ChatInputMode.voiceFirst ? colors.textSecondaryOnBrand : colors.textSecondary.withValues(alpha: 0.8),
         );
         final microphone = find.descendant(of: previews.first, matching: find.byIcon(TablerRegular.microphone));

@@ -164,17 +164,19 @@ void main() {
 
   test("a running replay and later live end address the same child tile", () async {
     final tracker = AcpChildSessionTracker();
-    final liveStart = tracker.spawn(
-      sessionId: "s1",
-      spawn: const AcpChildSpawn(
-        childSessionId: "child-1",
-        description: "Research child",
-        agent: DeepSeekIdentity.id,
-        prompt: "Inspect the synthetic module",
-        isBackground: true,
-      ),
-      directory: "/project",
-    )!;
+    final liveStart =
+        tracker.spawn(
+          sessionId: "s1",
+          spawn: const AcpChildSpawn(
+            childSessionId: "child-1",
+            description: "Research child",
+            agent: DeepSeekIdentity.id,
+            prompt: "Inspect the synthetic module",
+            isBackground: true,
+          ),
+          directory: "/project",
+        ) ??
+        fail("live child spawn was not tracked");
     final liveTile = liveStart.events.whereType<BridgeSseMessagePartUpdated>().single.part;
     final repository = _repository(
       api: _HistoryApi([

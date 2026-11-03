@@ -52,9 +52,9 @@ void main() {
       );
       final text = tester.widget<Text>(find.text(_errorText));
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      expect(text.style!.fontSize, 14);
-      expect(text.style!.height, closeTo(20 / 14, 0.001));
-      expect(text.style!.color, prego.colors.fgErrorPrimary);
+      expect(text.style?.fontSize, 14);
+      expect(text.style?.height, closeTo(20 / 14, 0.001));
+      expect(text.style?.color, prego.colors.fgErrorPrimary);
       expect(text.maxLines, isNull);
       expect(tester.getTopLeft(find.text(_errorText)).dx, 16);
       expect(find.byType(PregoAiLoader), findsNothing);
@@ -74,8 +74,8 @@ void main() {
       );
       final text = tester.widget<Text>(find.text("Retry #2: Provider unavailable"));
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      expect(text.style!.fontSize, 14);
-      expect(text.style!.color, prego.colors.textSecondary);
+      expect(text.style?.fontSize, 14);
+      expect(text.style?.color, prego.colors.textSecondary);
       expect(tester.widget<Icon>(find.byIcon(TablerRegular.refresh)).color, prego.colors.textTertiary);
       expect(find.byType(PregoShimmer), findsNothing);
       expect(tester.takeException(), isNull);

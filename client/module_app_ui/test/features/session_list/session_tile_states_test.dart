@@ -68,7 +68,7 @@ void main() {
     wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
   );
 
-  FontWeight? titleWeight(WidgetTester tester, String title) => tester.widget<Text>(find.text(title)).style!.fontWeight;
+  FontWeight? titleWeight(WidgetTester tester, String title) => tester.widget<Text>(find.text(title)).style?.fontWeight;
 
   /// Whether the row's sparkle is twinkling. `tester.hasRunningAnimations` is
   /// avoided for symmetry with the project list's states test: the sparkle's
@@ -133,14 +133,14 @@ void main() {
           find.descendant(
             of: find.byType(SessionTile),
             matching: find.byWidgetPredicate(
-              (widget) =>
-                  widget is Container &&
-                  widget.decoration is BoxDecoration &&
-                  (widget.decoration! as BoxDecoration).shape == BoxShape.circle,
+              (widget) => switch (widget) {
+                Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
+                _ => false,
+              },
             ),
           ),
         );
-        expect((dot.decoration! as BoxDecoration).color, colors.fgWarningPrimary);
+        expect((dot.decoration as BoxDecoration?)?.color, colors.fgWarningPrimary);
         expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
         expect(find.text("now"), findsOneWidget);
       });

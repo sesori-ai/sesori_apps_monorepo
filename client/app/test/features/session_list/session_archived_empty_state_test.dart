@@ -28,7 +28,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-          child: child!,
+          child: child ?? fail("MaterialApp built no child"),
         ),
         home: const Scaffold(
           body: CustomScrollView(
@@ -46,7 +46,7 @@ void main() {
   }
 
   String emptyLabel(WidgetTester tester) =>
-      AppLocalizations.of(tester.element(find.byType(SessionArchivedEmptyState)))!.sessionListEmptyArchived;
+      tester.element(find.byType(SessionArchivedEmptyState)).loc.sessionListEmptyArchived;
 
   String artworkOf(WidgetTester tester) => (tester.widget<Image>(find.byType(Image)).image as AssetImage).assetName;
 

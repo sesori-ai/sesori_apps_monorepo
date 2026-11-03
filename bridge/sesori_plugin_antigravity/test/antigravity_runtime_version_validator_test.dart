@@ -88,7 +88,7 @@ void main() {
       );
 
       expect(await validator.validate(context: _context(abortSignal: StartAbortSignal.never)), isTrue);
-      final call = service.call!;
+      final call = service.call ?? fail("validator did not probe the runtime");
       expect(call.serverPath, pair.serverPath);
       expect(call.workingDirectory, "/managed/staging/validation-cwd");
       expect(call.target, PlatformTarget.current());

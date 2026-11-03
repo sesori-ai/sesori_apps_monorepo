@@ -59,12 +59,12 @@ void main() {
     await pumpTitle(tester, title: "Session title", subtitle: "feature/some-branch");
     final colors = PregoDesignSystem.light.colors;
 
-    final title = tester.widget<Text>(find.text("Session title")).style!;
+    final title = tester.widget<Text>(find.text("Session title")).style ?? fail("title has no style");
     expect(title.fontSize, 18);
     expect(title.fontWeight, FontWeight.bold);
     expect(title.color, colors.textPrimary);
 
-    final subtitle = tester.widget<Text>(find.text("feature/some-branch")).style!;
+    final subtitle = tester.widget<Text>(find.text("feature/some-branch")).style ?? fail("subtitle has no style");
     expect(subtitle.fontSize, 12);
     expect(subtitle.color, colors.textTertiary);
   });

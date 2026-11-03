@@ -345,7 +345,7 @@ void main() {
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
       ).thenAnswer((_) => createCompleter.future);
-      final loc = AppLocalizations.of(tester.element(inSidebar(find.text("Session Two"))))!;
+      final loc = tester.element(inSidebar(find.text("Session Two"))).loc;
 
       // A new session pushed over the open one, as from a first project.
       unawaited(

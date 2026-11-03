@@ -26,7 +26,7 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `prefer_specific_type` | Prevents `Object` and `dynamic` outside JSON maps, JSON decode callbacks and error values |
 | `prefer_text_align_directional` | Enforces `TextAlign.start`/`end` instead of `left`/`right` for RTL support |
 
-`avoid_legacy_flutter_design_imports` also checks test files. The other rules skip files under `test/` and files ending in `_test.dart`.
+`avoid_bang_operator` and `avoid_legacy_flutter_design_imports` also check test files. The other rules skip files under `test/` and files ending in `_test.dart`.
 
 ## Setup
 
