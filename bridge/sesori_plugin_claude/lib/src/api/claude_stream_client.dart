@@ -55,19 +55,14 @@ class ClaudeStreamClient({
   final Map<String, Completer<Map<String, Object?>>> _pending = {};
   final StreamController<ClaudeStreamMessage> _messages = StreamController.broadcast();
   Completer<int> _exited = Completer<int>();
-  ClaudeInitMessage? _init;
   Map<String, Object?>? _handshake;
 
   /// Every parsed stdout frame, including unknown ones (broadcast).
-  Stream<ClaudeStreamMessage> get messages => _messages.stream;
-
-  /// The `system`/`init` frame, once seen.
   ///
-  /// Null until the session's first turn: the CLI emits this frame when a turn
-  /// starts, not when the process spawns. Nothing in the connect path may
-  /// require it, and capability detection through [ClaudeInitMessage.supports]
-  /// is unavailable until a turn has run.
-  ClaudeInitMessage? get init => _init;
+  /// The `system`/`init` frame arrives when the session's first turn starts,
+  /// not when the process spawns, so nothing in the connect path may wait on
+  /// it.
+  Stream<ClaudeStreamMessage> get messages => _messages.stream;
 
   /// The `initialize` control response: the command, agent, model, and account
   /// catalog in one payload. Null until [connect] completes.
@@ -75,8 +70,6 @@ class ClaudeStreamClient({
 
   /// Completes with the process's exit code.
   Future<int> get processExit => _exited.future;
-
-  bool get isConnected => _process != null && !_disposed && !_exited.isCompleted;
 
   /// Spawns the process, wires the framing, and performs the `initialize`
   /// handshake.
@@ -274,16 +267,6 @@ class ClaudeStreamClient({
     });
   }
 
-  /// Answers a CLI-originated control request with a failure.
-  bool sendControlResponseError({required String requestId, required String message}) {
-    final process = _process;
-    if (process == null || _exited.isCompleted) return false;
-    return _writeFrame(process, {
-      "type": "control_response",
-      "response": {"subtype": "error", "request_id": requestId, "error": message},
-    });
-  }
-
   bool _writeFrame(ClaudeProcessHandle process, Map<String, Object?> envelope) {
     try {
       process.stdin.add(utf8.encode("${jsonEncode(envelope)}\n"));
@@ -311,8 +294,6 @@ class ClaudeStreamClient({
 
     final message = ClaudeStreamMessage.parse(decoded.cast<String, Object?>());
     switch (message) {
-      case ClaudeInitMessage():
-        _init = message;
       case ClaudeControlResponseMessage(:final requestId):
         final completer = requestId == null ? null : _pending.remove(requestId);
         if (completer == null) {
@@ -332,22 +313,18 @@ class ClaudeStreamClient({
         // Debug, never a warning per line: the protocol adds message types
         // frequently and a warning would drown the log on a routine upgrade.
         Log.d("[$_logTag] unmodelled frame type=$type subtype=$subtype");
+      case ClaudeInitMessage():
       case ClaudeStatusMessage():
-      case ClaudeThinkingTokensMessage():
-      case ClaudeTaskProgressMessage():
       case ClaudeTaskStartedMessage():
       case ClaudeTaskNotificationMessage():
       case ClaudeCompactBoundaryMessage():
-      case ClaudeToolProgressMessage():
-      case ClaudeHookStartedMessage():
-      case ClaudeHookOutputMessage():
       case ClaudeApiRetryMessage():
       case ClaudeAssistantMessage():
       case ClaudeUserMessage():
       case ClaudeStreamEventMessage():
       case ClaudeResultMessage():
       case ClaudeControlRequestMessage():
-      case ClaudeRateLimitMessage():
+      case ClaudeIgnoredMessage():
         break;
     }
 

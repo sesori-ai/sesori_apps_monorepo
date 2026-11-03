@@ -3,9 +3,10 @@ import "dart:convert";
 import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
-import "package:claude_plugin/claude_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+import "../support/fake_claude_process.dart";
 
 void main() {
   const config = PluginConfig(values: {ClaudePluginDescriptor.binOption: "claude"});

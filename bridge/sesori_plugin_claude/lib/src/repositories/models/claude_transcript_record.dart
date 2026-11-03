@@ -23,10 +23,6 @@ sealed class const ClaudeTranscriptRecord({
   /// authoritative session id is the transcript's filename, and this field is
   /// only ever used to cross-check it.
   required final String? sessionId,
-
-  /// The undecoded record, so later steps can reach fields this build does not
-  /// model without a second parse.
-  required final Map<String, Object?> raw,
 });
 
 /// A non-message record that still attributes a transcript to a project.
@@ -57,12 +53,7 @@ sealed class const ClaudeTranscriptAttributedRecord({
   /// The sub-agent that wrote the record. Sub-agent transcripts carry the
   /// **parent's** [sessionId], so this is what attributes them.
   required final String? agentId,
-  required final String? gitBranch,
-
-  /// The CLI version that wrote the record.
-  required final String? version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptRecord;
 
 /// A persisted user message.
@@ -84,10 +75,7 @@ final class const ClaudeTranscriptUserRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord {
   static const String wireType = "user";
 }
@@ -105,10 +93,7 @@ final class const ClaudeTranscriptAssistantRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord {
   static const String wireType = "assistant";
 }
@@ -127,10 +112,7 @@ final class const ClaudeTranscriptApiErrorRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord;
 
 /// A command Claude queued while a turn was running: a follow-up the user sent
@@ -155,10 +137,7 @@ final class const ClaudeTranscriptQueuedCommandRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord {
   static const String attachmentType = "queued_command";
 }
@@ -172,10 +151,7 @@ final class const ClaudeTranscriptUnreplayableMessageRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord;
 
 /// Internal context attached by Claude rather than a user-visible message.
@@ -185,10 +161,7 @@ final class const ClaudeTranscriptContextRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord;
 
 /// A `system` record with `subtype: "compact_boundary"`: the CLI compacted the
@@ -200,10 +173,7 @@ final class const ClaudeTranscriptCompactBoundaryRecord({
   required super.timestamp,
   required super.isSidechain,
   required super.agentId,
-  required super.gitBranch,
-  required super.version,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptAttributedRecord {
   static const String subtype = "compact_boundary";
 }
@@ -229,7 +199,6 @@ final class const ClaudeTranscriptTitleRecord({
   /// Non-empty by construction; the repository rejects a blank title.
   required final String title,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptRecord;
 
 /// Any record type this build does not model.
@@ -240,5 +209,4 @@ final class const ClaudeTranscriptUnknownRecord({
   /// Null when the record had no string `type` at all.
   required final String? type,
   required super.sessionId,
-  required super.raw,
 }) extends ClaudeTranscriptRecord;

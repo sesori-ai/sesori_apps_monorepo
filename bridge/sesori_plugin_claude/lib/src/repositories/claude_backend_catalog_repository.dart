@@ -204,8 +204,6 @@ final class const ClaudeBackendCatalogRepository() {
   PluginModel? _model(ClaudeModelDto dto, {required PluginFastModeSupport? fastMode}) {
     final id = dto.value?.trim();
     if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
-    final displayName = dto.displayName?.trim();
-    final resolvedModel = dto.resolvedModel?.trim();
     final variants = dto.supportsEffort ?? false
         ? CatalogStrengthOrder.variants({
             for (final raw in dto.supportedEffortLevels) ?ClaudeEffortLevel.tryParse(raw)?.wireValue,
@@ -214,11 +212,7 @@ final class const ClaudeBackendCatalogRepository() {
     return PluginModel(
       fastMode: dto.supportsFastMode ?? false ? fastMode : null,
       id: id,
-      name: displayName?.isNotEmpty ?? false
-          ? displayName!
-          : resolvedModel?.isNotEmpty ?? false
-          ? resolvedModel!
-          : id,
+      name: _trimmedOrNull(dto.displayName) ?? _trimmedOrNull(dto.resolvedModel) ?? id,
       variants: variants,
       defaultVariant: variants.contains(_defaultEffort.wireValue) ? _defaultEffort.wireValue : null,
       family: null,
@@ -230,16 +224,19 @@ final class const ClaudeBackendCatalogRepository() {
   PluginCommand? _command(ClaudeCommandDto dto) {
     final name = dto.name?.trim();
     if (name == null || name.isEmpty || name == fastModeCommand) return null;
-    final description = dto.description?.trim();
-    final hint = dto.argumentHint?.trim();
     return PluginCommand(
       name: name,
-      description: description?.isNotEmpty ?? false ? description : null,
-      hints: [if (hint?.isNotEmpty ?? false) hint!],
+      description: _trimmedOrNull(dto.description),
+      hints: [?_trimmedOrNull(dto.argumentHint)],
       provider: null,
       source: PluginCommandSource.command,
     );
   }
+}
+
+String? _trimmedOrNull(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }
 
 typedef _CatalogEntry = ({ClaudeModelDto dto, PluginModel model});

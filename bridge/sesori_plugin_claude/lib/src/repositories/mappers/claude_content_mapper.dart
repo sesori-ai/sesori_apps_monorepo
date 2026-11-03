@@ -13,6 +13,7 @@ import "../../api/models/claude_content_block_dto.dart";
 import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
+import "../claude_backend_catalog_repository.dart";
 import "claude_shell_command_mapper.dart";
 import "claude_task_status_mapping.dart";
 import "claude_tool_title_mapper.dart";
@@ -56,9 +57,8 @@ final class const ClaudeMappedUnknownContentBlock() extends ClaudeMappedContentB
 
 /// Maps Claude's standard Anthropic content blocks into backend-neutral parts.
 ///
-/// This class is stateless. Tool-use correlation and lifecycle remain Step 7's
-/// responsibility; the mapped variants retain the identities and input needed
-/// there.
+/// This class is stateless. `ClaudeToolTracker` owns tool-use correlation and
+/// lifecycle; the mapped variants retain the identities and input it needs.
 final class const ClaudeContentMapper() {
   static const int _maxMimeCharacters = 255;
   static const Set<String> _supportedImageMimes = {
@@ -309,7 +309,7 @@ final class const ClaudeContentMapper() {
     sessionID: sessionId,
     agent: "claude",
     modelID: null,
-    providerID: "anthropic",
+    providerID: ClaudeBackendCatalogRepository.providerId,
     variant: null,
     sender: PluginMessageSender.agent,
     time: time,

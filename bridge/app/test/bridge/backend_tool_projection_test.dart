@@ -76,10 +76,7 @@ void main() {
                 timestamp: null,
                 isSidechain: null,
                 agentId: null,
-                gitBranch: null,
-                version: null,
                 sessionId: "s",
-                raw: const {},
               ),
               ClaudeTranscriptUserRecord(
                 id: "u",
@@ -95,10 +92,7 @@ void main() {
                 timestamp: null,
                 isSidechain: null,
                 agentId: null,
-                gitBranch: null,
-                version: null,
                 sessionId: "s",
-                raw: const {},
               ),
             ],
           )
@@ -169,10 +163,7 @@ void main() {
                   timestamp: null,
                   isSidechain: null,
                   agentId: null,
-                  gitBranch: null,
-                  version: null,
                   sessionId: "s",
-                  raw: const {},
                 ),
                 ClaudeTranscriptUserRecord(
                   id: "u",
@@ -188,10 +179,7 @@ void main() {
                   timestamp: null,
                   isSidechain: null,
                   agentId: null,
-                  gitBranch: null,
-                  version: null,
                   sessionId: "s",
-                  raw: const {},
                 ),
               ],
             )

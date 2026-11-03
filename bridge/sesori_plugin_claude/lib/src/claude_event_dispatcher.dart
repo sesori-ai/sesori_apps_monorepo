@@ -7,6 +7,7 @@ import "models/claude_message_origin_kind.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_task_type.dart";
 import "models/claude_tool_use_result.dart";
+import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
@@ -207,16 +208,9 @@ final class ClaudeEventDispatcher({
         ClaudeStatusMessage() => _mapStatus(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeCompactBoundaryMessage() => _mapCompactBoundary(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
-        // ponytail: parsed but not surfaced — no client UI consumes thinking
-        // token estimates, task/tool progress, or hook output yet.
-        ClaudeThinkingTokensMessage() ||
-        ClaudeTaskProgressMessage() ||
-        ClaudeToolProgressMessage() ||
-        ClaudeHookStartedMessage() ||
-        ClaudeHookOutputMessage() ||
         ClaudeControlRequestMessage() ||
         ClaudeControlResponseMessage() ||
-        ClaudeRateLimitMessage() ||
+        ClaudeIgnoredMessage() ||
         ClaudeUnknownMessage() => const [],
       };
     }
@@ -387,7 +381,7 @@ final class ClaudeEventDispatcher({
             sessionID: sessionId,
             agent: ClaudeAgentSelection.messageAgent,
             modelID: _modelId(sessionId: sessionId),
-            providerID: "anthropic",
+            providerID: ClaudeBackendCatalogRepository.providerId,
             variant: _variant(sessionId: sessionId),
             errorName: error.name,
             errorMessage: error.message,
@@ -667,21 +661,10 @@ final class ClaudeEventDispatcher({
     required String sessionId,
     required ClaudeApiRetryMessage message,
     required DateTime now,
-  }) {
-    final attempt = message.attempt;
-    final delay = message.retryDelayMs;
-    if (attempt == null || delay == null) return const [];
-    return [
-      BridgeSseSessionStatus(
-        sessionID: sessionId,
-        status: PluginSessionStatus.retry(
-          attempt: attempt,
-          message: _retryMessage(message),
-          next: now.millisecondsSinceEpoch + delay,
-        ),
-      ),
-    ];
-  }
+  }) => switch (retryStatus(message: message, now: now)) {
+    final status? => [BridgeSseSessionStatus(sessionID: sessionId, status: status)],
+    null => const [],
+  };
 
   List<BridgeSseEvent> _mapResult({
     required String sessionId,
@@ -702,7 +685,7 @@ final class ClaudeEventDispatcher({
           sessionID: sessionId,
           agent: ClaudeAgentSelection.messageAgent,
           modelID: _modelId(sessionId: sessionId),
-          providerID: "anthropic",
+          providerID: ClaudeBackendCatalogRepository.providerId,
           variant: _variant(sessionId: sessionId),
           errorName: error.name,
           errorMessage: error.message,
@@ -721,7 +704,7 @@ final class ClaudeEventDispatcher({
     sessionID: sessionId,
     agent: ClaudeAgentSelection.messageAgent,
     modelID: _modelId(sessionId: sessionId),
-    providerID: "anthropic",
+    providerID: ClaudeBackendCatalogRepository.providerId,
     variant: _variant(sessionId: sessionId),
     sender: PluginMessageSender.agent,
     time: time,

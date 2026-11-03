@@ -12,6 +12,7 @@ import "../models/claude_task_status.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
+import "../repositories/mappers/claude_content_mapper.dart";
 import "../repositories/mappers/claude_quota_interruption_mapper.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
@@ -819,17 +820,13 @@ final class ClaudeSessionService({
     if (message is! ClaudeAssistantMessage) return;
     final state = _turns[sessionId];
     if (state == null) return;
-    final content = message.message["content"];
-    if (content is! List) return;
-    for (final block in content) {
-      if (block is! Map || block["type"] != "tool_use" || block["name"] != "ScheduleWakeup") continue;
-      final rawInput = block["input"];
-      if (rawInput is! Map) continue;
-      final input = rawInput.cast<String, Object?>();
-      if (input["stop"] == true) {
-        state.wakeupAt = null;
-      } else if (input["delaySeconds"] case final num delaySeconds) {
-        state.wakeupAt = _clock.now().add(Duration(seconds: delaySeconds.toInt()));
+    for (final block in const ClaudeContentMapper().map(content: message.message["content"])) {
+      if (block case ClaudeMappedToolUseContentBlock(name: "ScheduleWakeup", :final Map<Object?, Object?> input)) {
+        if (input["stop"] == true) {
+          state.wakeupAt = null;
+        } else if (input["delaySeconds"] case final num delaySeconds) {
+          state.wakeupAt = _clock.now().add(Duration(seconds: delaySeconds.toInt()));
+        }
       }
     }
   }

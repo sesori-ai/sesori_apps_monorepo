@@ -30,15 +30,13 @@ void main() {
     });
 
     test("builds a session from a transcript header", () async {
-      _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "Refactor the parser", branch: "main");
+      _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "Refactor the parser");
 
       final record = (await catalog.listSessionRecordsInIsolate()).single;
 
       expect(record.id, _sessionA);
       expect(record.cwd, "/work/alpha");
       expect(record.title, "Refactor the parser");
-      expect(record.gitBranch, "main");
-      expect(record.cliVersion, "2.1.221");
       expect(record.createdAt, DateTime.utc(2026, 8, 4, 10));
       expect(record.updatedAt, isNotNull);
     });
@@ -309,7 +307,7 @@ void main() {
 
       expect(p.basename(await catalog.findTranscriptPath(sessionId: _sessionA) ?? "missing"), "$_sessionA.jsonl");
       expect(await catalog.findTranscriptPath(sessionId: _sessionB), isNull);
-      expect((await catalog.findSessionById(sessionId: _sessionA))?.cwd, "/work/alpha");
+      expect((await catalog.findSessionById(sessionId: _sessionA))?.directory, "/work/alpha");
       expect(await catalog.findSessionById(sessionId: _sessionB), isNull);
     });
 
@@ -413,7 +411,7 @@ void main() {
         await catalog.listSessionRecordsInIsolate();
 
         final logs = await _captureDebugLogs(() async {
-          expect((await catalog.findSessionById(sessionId: _sessionA))?.cwd, "/work/alpha");
+          expect((await catalog.findSessionById(sessionId: _sessionA))?.directory, "/work/alpha");
           expect(await catalog.findTranscriptPath(sessionId: _sessionA), isNotNull);
           expect(await catalog.getChildSessions(sessionId: _sessionA), isEmpty);
         });
@@ -427,7 +425,7 @@ void main() {
         _writeSession(claudeHome, id: _sessionB, cwd: "/work/beta");
 
         final logs = await _captureDebugLogs(() async {
-          expect((await catalog.findSessionById(sessionId: _sessionB))?.cwd, "/work/beta");
+          expect((await catalog.findSessionById(sessionId: _sessionB))?.directory, "/work/beta");
           expect(await catalog.findSessionById(sessionId: _indexedSessionId(9)), isNull);
         });
 
@@ -440,7 +438,7 @@ void main() {
 /// Holds the scan isolate after each parse, so a test can act mid-scan.
 final class _SlowTailTranscriptApi({required super.environment}) extends ClaudeTranscriptApi {
   @override
-  List<ClaudeTranscriptLineDto> readTailTitleRecords({required String transcriptPath}) {
+  List<ClaudeTranscriptRecordDto> readTailTitleRecords({required String transcriptPath}) {
     final tail = super.readTailTitleRecords(transcriptPath: transcriptPath);
     sleep(const Duration(milliseconds: 800));
     return tail;
@@ -476,7 +474,6 @@ Map<String, Object?> _userRecord(
   required String cwd,
   bool isSidechain = false,
   String timestamp = "2026-08-04T10:00:00.000Z",
-  String? branch,
   String? uuid,
   Object? content,
   bool isMeta = false,
@@ -487,7 +484,6 @@ Map<String, Object?> _userRecord(
   "isSidechain": isSidechain,
   "timestamp": timestamp,
   "version": "2.1.221",
-  "gitBranch": ?branch,
   "uuid": ?uuid,
   if (content != null) "message": {"role": "user", "content": content},
   if (isMeta) "isMeta": true,
@@ -499,7 +495,6 @@ void _writeSession(
   required String cwd,
   String project = "-work-alpha",
   String? title,
-  String? branch,
   String timestamp = "2026-08-04T10:00:00.000Z",
 }) {
   _writeTranscript(
@@ -507,7 +502,7 @@ void _writeSession(
     project: project,
     name: "$id.jsonl",
     records: [
-      _userRecord(id, cwd: cwd, timestamp: timestamp, branch: branch),
+      _userRecord(id, cwd: cwd, timestamp: timestamp),
       if (title != null) {"type": "ai-title", "aiTitle": title, "sessionId": id},
     ],
   );

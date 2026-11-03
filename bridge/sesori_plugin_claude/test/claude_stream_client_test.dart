@@ -2,10 +2,10 @@ import "dart:async";
 import "dart:convert";
 
 import "package:claude_plugin/claude_plugin.dart";
-import "package:claude_plugin/claude_testing.dart";
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
+import "support/fake_claude_process.dart";
 
 void main() {
   group("connect", () {
@@ -22,7 +22,6 @@ void main() {
       expect(connected.client.handshake, isNotNull);
       expect(connected.client.handshake!["models"], hasLength(3));
       expect(connected.client.handshake!["commands"], hasLength(1));
-      expect(connected.client.isConnected, isTrue);
     });
 
     test("tears down and rethrows when the handshake fails", () async {
@@ -41,7 +40,6 @@ void main() {
       // Continuing without the catalog would surface an empty model and command
       // list as if the backend genuinely had none.
       await expectLater(connecting, throwsA(isA<ClaudeControlException>()));
-      expect(client.isConnected, isFalse);
       expect(fake.killed, isTrue);
     });
 
@@ -152,19 +150,6 @@ void main() {
       await pump(10);
 
       expect(seen.single, isA<ClaudeResultMessage>());
-      expect(connected.client.isConnected, isTrue);
-    });
-
-    test("captures the init frame as it passes through", () async {
-      final connected = await connectTestClient();
-      addTearDown(connected.client.dispose);
-
-      expect(connected.client.init, isNull);
-      connected.fake.emit(sampleInit());
-      await pump(10);
-
-      expect(connected.client.init?.cliVersion, "2.1.221");
-      expect(connected.client.init?.permissionMode, ClaudePermissionMode.auto);
     });
   });
 
@@ -227,8 +212,10 @@ void main() {
       connected.fake.emitControlResponse(requestId: "not-ours", payload: {"a": 1});
       await pump(10);
 
-      // Absorbed, and the client stays usable.
-      expect(connected.client.isConnected, isTrue);
+      // Absorbed, and the client stays usable. The handshake used the first id.
+      final pending = connected.client.sendControlRequest(subtype: "list_models");
+      connected.fake.emitControlResponse(requestId: "sesori-2", payload: const {});
+      expect(await pending, isEmpty);
     });
 
     test("fails an in-flight request when the process exits", () async {
@@ -259,7 +246,6 @@ void main() {
         connected.client.sendControlRequest(subtype: "list_models"),
         throwsA(isA<ClaudeControlException>()),
       );
-      expect(connected.client.isConnected, isFalse);
     });
 
     test("times out when no reply arrives", () async {
@@ -333,19 +319,7 @@ void main() {
       expect(response["response"], {"behavior": "allow"});
     });
 
-    test("answers a control request with an error", () async {
-      final connected = await connectTestClient();
-      addTearDown(connected.client.dispose);
-
-      connected.client.sendControlResponseError(requestId: "ask-2", message: "no");
-      await pump();
-
-      final response = connected.fake.written.last["response"]! as Map;
-      expect(response["subtype"], "error");
-      expect(response["error"], "no");
-    });
-
-    test("rejects control responses after the process exits", () async {
+    test("rejects a control response after the process exits", () async {
       final connected = await connectTestClient();
       addTearDown(connected.client.dispose);
       connected.fake.exit(1);
@@ -354,10 +328,6 @@ void main() {
 
       expect(
         connected.client.sendControlResponse(requestId: "ask-3", payload: const {}),
-        isFalse,
-      );
-      expect(
-        connected.client.sendControlResponseError(requestId: "ask-4", message: "no"),
         isFalse,
       );
       expect(connected.fake.written, hasLength(before));
@@ -391,7 +361,6 @@ void main() {
       // before signalling.
       expect((connected.fake.stdin as CapturingIOSink).closed, isTrue);
       expect(connected.fake.killed, isTrue);
-      expect(connected.client.isConnected, isFalse);
     });
 
     test("terminates when closing stdin stalls", () async {
@@ -403,7 +372,6 @@ void main() {
       );
 
       expect(fake.killed, isTrue);
-      expect(connected.client.isConnected, isFalse);
     });
 
     test("is idempotent", () async {
@@ -412,7 +380,7 @@ void main() {
       await connected.client.dispose();
       await connected.client.dispose();
 
-      expect(connected.client.isConnected, isFalse);
+      expect(connected.fake.killed, isTrue);
     });
 
     test("ignores frames from a process torn down earlier", () async {
