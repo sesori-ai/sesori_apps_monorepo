@@ -1,7 +1,7 @@
 import "package:material_ui/material_ui.dart";
 
-import "../../utils/non_null_text_theme.dart";
 import "../primitives/prego_colors.g.dart";
+import "guaranteed_text_theme.dart";
 
 enum _PregoTextThemeVariant() {
   dark,
@@ -130,7 +130,7 @@ class PregoTextTheme {
         textMd: FontVariation.lerpVariation(a: a.textMd, b: b.textMd, t: t),
         textSm: FontVariation.lerpVariation(a: a.textSm, b: b.textSm, t: t),
         textXs: FontVariation.lerpVariation(a: a.textXs, b: b.textXs, t: t),
-        code: TextStyle.lerp(a.code, b.code, t) ?? a.code,
+        code: _lerpTextStyle(a: a.code, b: b.code, t: t),
       );
 
   new _lerped({
@@ -166,6 +166,10 @@ class PregoTextTheme {
     bodySmall: textXs.regular,
   );
 }
+
+/// [TextStyle.lerp] between two non-null styles, which never yields null.
+TextStyle _lerpTextStyle({required TextStyle a, required TextStyle b, required double t}) =>
+    TextStyle.lerp(a, b, t) ?? a;
 
 class FontVariation {
   new({
@@ -225,16 +229,12 @@ class FontVariation {
 
   static FontVariation lerpVariation({required FontVariation a, required FontVariation b, required double t}) =>
       FontVariation._fromStyles(
-        light: _lerpStyleNonNull(a.light, b.light, t),
-        regular: _lerpStyleNonNull(a.regular, b.regular, t),
-        medium: _lerpStyleNonNull(a.medium, b.medium, t),
-        bold: _lerpStyleNonNull(a.bold, b.bold, t),
-        black: _lerpStyleNonNull(a.black, b.black, t),
+        light: _lerpTextStyle(a: a.light, b: b.light, t: t),
+        regular: _lerpTextStyle(a: a.regular, b: b.regular, t: t),
+        medium: _lerpTextStyle(a: a.medium, b: b.medium, t: t),
+        bold: _lerpTextStyle(a: a.bold, b: b.bold, t: t),
+        black: _lerpTextStyle(a: a.black, b: b.black, t: t),
       );
-
-  /// Non-null [TextStyle.lerp] for interpolating between two non-null text styles.
-  // ignore: no_slop_linter/avoid_bang_operator, no_slop_linter/prefer_required_named_parameters, private lerp helper mirrors TextStyle.lerp and only accepts non-null styles
-  static TextStyle _lerpStyleNonNull(TextStyle a, TextStyle b, double t) => TextStyle.lerp(a, b, t)!;
 
   static TextStyle _createStyle({
     required double fontSize,

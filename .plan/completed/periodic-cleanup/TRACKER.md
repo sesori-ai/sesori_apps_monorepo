@@ -420,7 +420,7 @@ asked to start working the plan; steps execute in order from step 2.
   became links to it. `bridge/README.md`'s catalog section now links to the
   architecture page instead of restating the import endpoints, and keeps the
   operational CLI detail that is genuinely its own.
-- `docs/cleanup-audit-2026-09-04.md` keeps its findings and its stated baseline
+- `AUDIT.md` keeps its findings and its stated baseline
   commit; a one-line note records that some of its file references no longer
   resolve because this series has since executed them. The README/GETTING_STARTED
   overlap was left alone: the README's three-step summary is a landing page that
@@ -646,6 +646,6 @@ Step 25 executes the recorded matrix against this reconciled state.
   coverage is retired unexecuted rather than passed.
 - Plan directory moved from `.plan/active/periodic-cleanup/` to
   `.plan/completed/periodic-cleanup/`. The only inbound references, from
-  `docs/cleanup-audit-2026-09-04.md`, were repointed.
+  `AUDIT.md`, were repointed.
 - All 25 steps merged or in review; no step was skipped, and no matrix row was
   reported as passing on coverage that did not run.
