@@ -130,19 +130,8 @@ class AntigravityPlugin({
       _withoutDiscoverySessions(await super.listAllSessions(knownDirectories: knownDirectories));
 
   @override
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
-    final visible = _withoutDiscoverySessions(
-      await super.getSessions(projectId: projectId, start: null, limit: null),
-    );
-    final from = start ?? 0;
-    if (from >= visible.length) return const [];
-    final until = limit == null ? visible.length : (from + limit).clamp(0, visible.length);
-    return visible.sublist(from, until);
-  }
+  Future<List<PluginSession>> getSessions({required String projectId}) async =>
+      _withoutDiscoverySessions(await super.getSessions(projectId: projectId));
 
   List<PluginSession> _withoutDiscoverySessions(List<PluginSession> sessions) => [
     for (final session in sessions)

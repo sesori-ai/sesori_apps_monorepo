@@ -4,7 +4,6 @@ import "dart:io";
 
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -31,7 +30,7 @@ void main() {
 
       expect(harness.processes, isEmpty);
       expect(
-        (await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null)).single.id,
+        (await harness.plugin.getSessions(projectId: harness.project.path)).single.id,
         session.id,
       );
       expect(await harness.plugin.getSessionMessages(session.id), isEmpty);
@@ -47,7 +46,7 @@ void main() {
 
     test("session snapshot includes an active compaction for late viewers", () async {
       harness.writeSession(id: "session", parentPath: null);
-      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+      await harness.plugin.getSessions(projectId: harness.project.path);
       await harness.plugin.sendPrompt(
         fastMode: false,
         sessionId: "session",
@@ -136,7 +135,7 @@ void main() {
       test("restored thinking level respects reasoning=$reasoning model capabilities", () async {
         harness.catalogModelReasoning = reasoning;
         harness.writeSession(id: "session", parentPath: null);
-        await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+        await harness.plugin.getSessions(projectId: harness.project.path);
 
         await harness.plugin.sendPrompt(
           sessionId: "session",
@@ -168,7 +167,7 @@ void main() {
       final partial = _Harness(failCommandDiscovery: true)..catalogModelReasoning = false;
       addTearDown(partial.dispose);
       partial.writeSession(id: "session", parentPath: null);
-      await partial.plugin.getSessions(projectId: partial.project.path, start: null, limit: null);
+      await partial.plugin.getSessions(projectId: partial.project.path);
 
       final discovery = await partial.plugin.getSessionOptions(
         projectId: partial.project.path,
@@ -194,7 +193,7 @@ void main() {
     test("catalog refresh replaces the model's implicit off capability with its options", () async {
       harness.catalogModelReasoning = false;
       harness.writeSession(id: "session", parentPath: null);
-      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+      await harness.plugin.getSessions(projectId: harness.project.path);
       await harness.plugin.getSessionOptions(
         projectId: harness.project.path,
         discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
@@ -236,7 +235,7 @@ void main() {
     test("partial thinking discovery cannot establish an implicit off level", () async {
       harness.failThinkingDiscovery = true;
       harness.writeSession(id: "session", parentPath: null);
-      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+      await harness.plugin.getSessions(projectId: harness.project.path);
 
       await expectLater(
         harness.plugin.sendPrompt(
@@ -795,9 +794,7 @@ void main() {
       expect(File(harness.sessionPath("persisted")).existsSync(), isFalse);
     });
 
-    test("health is bounded and disposal rejects dialogs before closing events", () async {
-      expect(await harness.plugin.healthCheck(), isTrue);
-      expect(harness.commands.calls.single, ("pi", const ["--version"]));
+    test("disposal rejects dialogs before closing events", () async {
       await harness.plugin.createSession(
         fastMode: false,
         directory: harness.project.path,
@@ -828,7 +825,6 @@ void main() {
 
       expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
       expect(closed, isTrue);
-      expect(await harness.plugin.healthCheck(), isFalse);
     });
 
     test("shutdown bounds stalled process teardown by its caller budget", () async {
@@ -909,13 +905,11 @@ final class _Harness({
         );
         return process;
       },
-      commandExecutor: commands,
       clock: const _Clock(),
       launchDirectory: project.path,
       startupExitTimeout: const Duration(milliseconds: 100),
       historyRpcTimeout: const Duration(seconds: 2),
       catalogTimeout: const Duration(seconds: 2),
-      healthTimeout: const Duration(seconds: 1),
       resolveIdleTimeout: () => const Duration(minutes: 5),
       idleTimeoutChanges: const Stream<Duration?>.empty(),
       editorTimeout: const Duration(minutes: 1),
@@ -927,7 +921,6 @@ final class _Harness({
   late final Directory sessions;
   late final PiPlugin plugin;
   final List<({PiLaunchSpec spec, FakePiProcess process})> processes = [];
-  final _CommandExecutor commands = _CommandExecutor();
   bool catalogModelReasoning = true;
   bool failThinkingDiscovery = false;
 
@@ -1052,22 +1045,6 @@ Future<void> _answerProcess({
       }
     }
     await pump();
-  }
-}
-
-final class _CommandExecutor() implements CommandExecutor {
-  final List<(String, List<String>)> calls = [];
-
-  @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
-  }) async {
-    calls.add((executable, arguments));
-    return const CommandResult(exitCode: 0, stdout: "pi 0.99.0", stderr: "");
   }
 }
 

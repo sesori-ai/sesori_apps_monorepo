@@ -495,11 +495,7 @@ class FakeSessionRepository({
   }) async {
     getSessionsCallCount++;
     lastGetSessionsArgs = (projectId: projectId, start: start, limit: limit);
-    final pluginSessions = await _plugin.getSessions(
-      projectId: projectId,
-      start: start,
-      limit: limit,
-    );
+    final pluginSessions = await _plugin.getSessions(projectId: projectId);
     final sessions = pluginSessions.map((session) => _sharedSessionFromPlugin(session, _plugin.id)).toList();
     final sessionIds = sessions.map((s) => s.id).toList();
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);

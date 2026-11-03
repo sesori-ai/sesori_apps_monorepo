@@ -744,8 +744,7 @@ class _ThrowingBenchmarkPlugin({@override required final String id})
   Future<PluginProject> getProject(String projectId) => _throwListRead(read: "project detail");
 
   @override
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
-      _throwListRead(read: "root sessions");
+  Future<List<PluginSession>> getSessions({required String projectId}) => _throwListRead(read: "root sessions");
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) => _throwListRead(read: "child sessions");

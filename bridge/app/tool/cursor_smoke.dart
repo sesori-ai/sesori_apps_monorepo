@@ -36,7 +36,7 @@ Future<void> main(List<String> args) async {
     }
   });
 
-  stdout.writeln("healthCheck: ${await plugin.healthCheck()}");
+  stdout.writeln("connected: ${await plugin.ensureConnected()}");
 
   final session = await plugin.createSession(
     fastMode: false,

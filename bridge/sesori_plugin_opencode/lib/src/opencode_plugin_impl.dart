@@ -328,11 +328,6 @@ class OpenCodePlugin._({
   PluginWorkState get currentWorkState => _workState.current;
 
   @override
-  Future<bool> healthCheck() {
-    return _service.repository.api.healthCheck();
-  }
-
-  @override
   Future<PluginProvidersResult> getProviders({required String projectId}) {
     return _call(
       () => _service.getProviders(projectId: projectId),
@@ -401,18 +396,8 @@ class OpenCodePlugin._({
   }) => _call(() => _service.readCatalogSnapshot(cancellation: cancellation));
 
   @override
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
-    final sessions = await _call(
-      () => _service.getSessions(
-        worktree: projectId,
-        start: start,
-        limit: limit,
-      ),
-    );
+  Future<List<PluginSession>> getSessions({required String projectId}) async {
+    final sessions = await _call(() => _service.getSessions(worktree: projectId));
     for (final session in sessions) {
       _service.tracker.registerSession(
         sessionId: session.id,
@@ -859,16 +844,6 @@ class OpenCodePlugin._({
       () => _service.repository.api.removeWorktree(
         directory: projectId,
         worktreePath: worktreePath,
-      ),
-    );
-  }
-
-  @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) {
-    return _call(
-      () => _service.repository.renameProject(
-        directory: projectId,
-        name: name,
       ),
     );
   }

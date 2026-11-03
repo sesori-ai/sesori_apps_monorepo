@@ -78,15 +78,8 @@ class CodexSessionService({
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
       _catalogRepository.listAllSessions(knownDirectories: knownDirectories);
 
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) => _catalogRepository.getSessions(
-    projectId: projectId,
-    start: start,
-    limit: limit,
-  );
+  Future<List<PluginSession>> getSessions({required String projectId}) =>
+      _catalogRepository.getSessions(projectId: projectId);
 
   /// Persisted children of [sessionId] plus the live children this connection
   /// learned that Codex has not flushed to a rollout yet.

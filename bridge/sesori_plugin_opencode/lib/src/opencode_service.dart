@@ -240,16 +240,7 @@ class OpenCodeService(
     return result;
   }
 
-  Future<List<Session>> getSessions({
-    required String worktree,
-    int? start,
-    int? limit,
-  }) async {
-    final sessions = await repository.getSessions(worktree: worktree);
-
-    final afterStart = _applyStart(sessions, start);
-    return _applyLimit(afterStart, limit);
-  }
+  Future<List<Session>> getSessions({required String worktree}) => repository.getSessions(worktree: worktree);
 
   /// Returns the pending questions to surface on [sessionId]'s screen — its own
   /// plus any descendant (sub-agent) session whose top-most root resolves to
@@ -867,18 +858,6 @@ class OpenCodeService(
 
   List<ProjectActivitySummary> buildSummary() {
     return tracker.buildSummary();
-  }
-
-  List<Session> _applyStart(List<Session> sessions, int? start) {
-    if (start == null || start <= 0) return sessions;
-    if (sessions.length > start) return sessions.sublist(start);
-    return [];
-  }
-
-  List<Session> _applyLimit(List<Session> sessions, int? limit) {
-    if (limit == null || limit <= 0) return sessions;
-    if (sessions.length > limit) return sessions.sublist(0, limit);
-    return sessions;
   }
 
   bool _isLikelyDecodeOrSchemaDriftError(Object error) {
