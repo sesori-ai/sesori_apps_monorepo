@@ -200,10 +200,10 @@ void main() {
       },
     );
     final state = _parity(params: params);
-    expect(state.output!.length, maxToolOutputLength);
+    expect(state.output?.length, maxToolOutputLength);
     expect(state.output, startsWith("[Earlier output truncated]"));
     expect(state.output, endsWith("TAIL\n[Process exit code: 17]"));
-    expect(state.title!.length, AntigravityProtocolMapper.toolTextLimit);
+    expect(state.title?.length, AntigravityProtocolMapper.toolTextLimit);
     final contentOnly = _parity(
       params: _envelope(
         update: {
@@ -218,7 +218,7 @@ void main() {
         },
       ),
     );
-    expect(contentOnly.output!.length, maxToolOutputLength);
+    expect(contentOnly.output?.length, maxToolOutputLength);
     expect(contentOnly.output, endsWith("TAIL\n[Process exit code: 17]"));
   });
 
@@ -255,7 +255,7 @@ void main() {
     expect((update["content"] as List).last, same(image));
     expect((update["rawOutput"] as Map<String, Object?>)["imagePath"], "/synthetic/image.png");
     expect((update["rawOutput"] as Map).containsKey("formatted_output"), isFalse);
-    expect(((update["_meta"] as Map<String, Object?>)["preview"]! as Map)["filename"], "image.png");
+    expect(((update["_meta"] as Map<String, Object?>)["preview"] as Map?)?["filename"], "image.png");
     final state = _parity(params: params);
     expect(state.output, "image output\n[Process exit code: 3]");
     expect(state.attachments.single.filename, "image.png");
@@ -279,7 +279,8 @@ void main() {
     );
     final update = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
     expect(jsonEncode(update["_meta"]), isNot(contains(':"deep"')));
-    expect(((update["_meta"] as Map<String, Object?>)["entries"]! as List).length, lessThan(512));
+    final entries = (update["_meta"] as Map<String, Object?>)["entries"] ?? fail("metadata entries were dropped");
+    expect((entries as List).length, lessThan(512));
     final retainedText = (update["rawInput"] as Map).values.cast<String>().fold<int>(0, (n, s) => n + s.length);
     expect(retainedText, lessThanOrEqualTo(64000));
   });
@@ -321,7 +322,7 @@ void main() {
       expect(state.output, contains("stdout-tail"));
       expect(state.output, contains("stderr-tail"));
       expect(state.output, endsWith("[Process exit code: 3]"));
-      expect(state.output!.length, lessThanOrEqualTo(maxToolOutputLength));
+      expect(state.output?.length, lessThanOrEqualTo(maxToolOutputLength));
     }
   });
 
@@ -411,7 +412,7 @@ void main() {
         "content": {"type": "text", "text": "${"s" * 2000}STANDARD"},
       },
     );
-    final output = _parity(params: params).output!;
+    final output = _parity(params: params).output ?? fail("parity state has no output");
     expect(output.length, maxToolOutputLength);
     expect(output, contains("NATIVE\n"));
     expect(output, endsWith("STANDARD\n[Process exit code: 8]"));

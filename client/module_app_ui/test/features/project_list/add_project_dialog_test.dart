@@ -93,7 +93,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
     cubit: cubit,
     child: Builder(
       builder: (context) {
-        final loc = AppLocalizations.of(context)!;
+        final loc = context.loc;
         final state = context.watch<ProjectListCubit>().state;
 
         return Scaffold(

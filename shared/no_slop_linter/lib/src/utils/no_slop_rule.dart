@@ -20,10 +20,7 @@ abstract class NoSlopRule extends AnalysisRule {
   bool get isCurrentFileExcluded {
     final currentPath = _context?.currentUnit?.file.path;
     if (currentPath == null) return false;
-    if (ignoreTestFiles) {
-      if (currentPath.endsWith('_test.dart')) return true;
-      if (currentPath.contains('/test/')) return true;
-    }
+    if (ignoreTestFiles && _isTestFile(currentPath)) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
     final isAnalyzed = libraryElement.session.analysisContext.contextRoot
@@ -46,6 +43,9 @@ abstract class NoSlopRule extends AnalysisRule {
   );
 }
 
+/// Separators are normalised so the `test/` check also matches Windows paths.
+bool _isTestFile(String path) => path.endsWith('_test.dart') || path.replaceAll(r'\', '/').contains('/test/');
+
 abstract class NoSlopMultiRule extends MultiAnalysisRule {
   NoSlopMultiRule({
     required super.name,
@@ -62,10 +62,7 @@ abstract class NoSlopMultiRule extends MultiAnalysisRule {
   bool get isCurrentFileExcluded {
     final currentPath = _context?.currentUnit?.file.path;
     if (currentPath == null) return false;
-    if (ignoreTestFiles) {
-      if (currentPath.endsWith('_test.dart')) return true;
-      if (currentPath.contains('/test/')) return true;
-    }
+    if (ignoreTestFiles && _isTestFile(currentPath)) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
     final isAnalyzed = libraryElement.session.analysisContext.contextRoot

@@ -11,7 +11,7 @@ void main() {
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(disableAnimations: disableAnimations),
-        child: child!,
+        child: child ?? fail("MaterialApp gave the builder no child"),
       ),
       home: Scaffold(
         body: PregoLaunchStatus(

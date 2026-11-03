@@ -343,7 +343,7 @@ void main() {
     expect(loaded.session.time?.archived, isNull);
     await tester.tap(find.byKey(const Key("session-detail-more")));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(AppLocalizations.of(context)!.mcpMenuLabel));
+    await tester.tap(find.text(context.loc.mcpMenuLabel));
     await tester.pumpAndSettle();
 
     expect(tester.element(find.byType(McpInventoryView)).read<McpCubit>().mutationsAllowed, isFalse);
@@ -363,7 +363,7 @@ void main() {
     await tester.pumpWidget(_buildApp(sessionTitle: "Carried title", navigatorKey: null));
     await tester.pump();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(SessionDetailScreen)))!;
+    final loc = tester.element(find.byType(SessionDetailScreen)).loc;
     expect(find.text("Carried title"), findsOneWidget);
     expect(find.byType(PregoLaunchStatus), findsOneWidget);
     expect(find.bySemanticsLabel(loc.sessionDetailLoadingSemantics), findsOneWidget);
@@ -460,7 +460,8 @@ void main() {
     );
     await tester.pump();
 
-    navigatorKey.currentState!.push<void>(
+    final navigator = navigatorKey.currentState ?? fail("navigator is not mounted");
+    navigator.push<void>(
       MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Covering route"))),
     );
     await tester.pumpAndSettle();
@@ -476,7 +477,7 @@ void main() {
     );
 
     clearInteractions(sessionViewingService);
-    navigatorKey.currentState!.pop();
+    navigator.pop();
     await tester.pumpAndSettle();
 
     verify(() => sessionViewingService.setViewingSession("session-1")).called(1);

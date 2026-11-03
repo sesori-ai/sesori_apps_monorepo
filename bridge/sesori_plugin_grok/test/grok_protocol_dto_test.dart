@@ -109,4 +109,5 @@ Map<String, dynamic> _fixture({required String name}) {
   return _map(value: decoded);
 }
 
-Map<String, dynamic> _map({required Object? value}) => (value! as Map<dynamic, dynamic>).cast<String, dynamic>();
+Map<String, dynamic> _map({required Object? value}) =>
+    ((value ?? fail("expected a JSON object, got null")) as Map<dynamic, dynamic>).cast<String, dynamic>();

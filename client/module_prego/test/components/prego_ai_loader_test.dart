@@ -35,7 +35,7 @@ void main() {
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(disableAnimations: disableAnimations),
-        child: child!,
+        child: child ?? fail("MaterialApp gave the builder no child"),
       ),
       home: Scaffold(body: Center(child: child)),
     );
@@ -54,7 +54,10 @@ void main() {
     late Color centre;
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 3);
-      final pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      final pixels =
+          (await image.toByteData(format: ui.ImageByteFormat.rawRgba) ?? fail("the sparkle image has no pixel data"))
+              .buffer
+              .asUint8List();
       final at = ((image.height ~/ 2) * image.width + (image.width ~/ 2)) * 4;
       centre = Color.fromARGB(pixels[at + 3], pixels[at], pixels[at + 1], pixels[at + 2]);
       image.dispose();
@@ -70,7 +73,10 @@ void main() {
     late int visiblePixels;
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 3);
-      final pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      final pixels =
+          (await image.toByteData(format: ui.ImageByteFormat.rawRgba) ?? fail("the sparkle image has no pixel data"))
+              .buffer
+              .asUint8List();
       visiblePixels = 0;
       for (var alpha = 3; alpha < pixels.length; alpha += 4) {
         if (pixels[alpha] > 0) visiblePixels++;
@@ -87,7 +93,10 @@ void main() {
     late Uint8List pixels;
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 3);
-      pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      pixels =
+          (await image.toByteData(format: ui.ImageByteFormat.rawRgba) ?? fail("the sparkle image has no pixel data"))
+              .buffer
+              .asUint8List();
       image.dispose();
     });
     return pixels;
@@ -98,11 +107,13 @@ void main() {
 
   clockTestWidgets("steps the synchronized loop at 40 FPS without a repeating ticker", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader()));
-    final painter = tester
-        .widget<CustomPaint>(
-          find.descendant(of: find.byType(PregoAiLoader), matching: find.byType(CustomPaint)),
-        )
-        .painter!;
+    final painter =
+        tester
+            .widget<CustomPaint>(
+              find.descendant(of: find.byType(PregoAiLoader), matching: find.byType(CustomPaint)),
+            )
+            .painter ??
+        fail("the loader has no painter");
     var repaints = 0;
     void countRepaint() => repaints++;
     painter.addListener(countRepaint);
@@ -137,16 +148,20 @@ void main() {
       ),
     );
 
-    final firstPainter = tester
-        .widget<CustomPaint>(
-          find.descendant(of: find.byKey(const ValueKey("first")), matching: find.byType(CustomPaint)),
-        )
-        .painter!;
-    final secondPainter = tester
-        .widget<CustomPaint>(
-          find.descendant(of: find.byKey(const ValueKey("second")), matching: find.byType(CustomPaint)),
-        )
-        .painter!;
+    final firstPainter =
+        tester
+            .widget<CustomPaint>(
+              find.descendant(of: find.byKey(const ValueKey("first")), matching: find.byType(CustomPaint)),
+            )
+            .painter ??
+        fail("the loader has no painter");
+    final secondPainter =
+        tester
+            .widget<CustomPaint>(
+              find.descendant(of: find.byKey(const ValueKey("second")), matching: find.byType(CustomPaint)),
+            )
+            .painter ??
+        fail("the loader has no painter");
     var firstRepaints = 0;
     var secondRepaints = 0;
     void countFirst() => firstRepaints++;
@@ -397,7 +412,8 @@ void main() {
 
     await tester.pumpWidget(harness(const PregoAiLoader()));
     final original = tester.state(find.byType(AppKitView));
-    tester.widget<AppKitView>(find.byType(AppKitView)).onPlatformViewCreated!(99);
+    (tester.widget<AppKitView>(find.byType(AppKitView)).onPlatformViewCreated ??
+        fail("the native view has no creation callback"))(99);
     await tester.pump();
     await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
     await tester.pump();
@@ -467,7 +483,7 @@ void main() {
       await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
 
       final view = tester.widget<AppKitView>(find.byType(AppKitView));
-      expect((view.creationParams! as Map)["loading"], isFalse);
+      expect((view.creationParams as Map)["loading"], isFalse);
       expect(painter(), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));

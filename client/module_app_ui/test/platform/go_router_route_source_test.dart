@@ -137,7 +137,7 @@ void main() {
     // `readOnly` lives in the query and is the only thing separating the
     // read-only session screen from the editable one, so a location that drops
     // the query cannot tell them apart.
-    final location = Uri.parse(routeSource.currentLocation!);
+    final location = Uri.parse(routeSource.currentLocation ?? fail("The route source has no location."));
     expect(location.path, "/sessions/p1/s1");
     expect(location.queryParameters["readOnly"], "true");
   });

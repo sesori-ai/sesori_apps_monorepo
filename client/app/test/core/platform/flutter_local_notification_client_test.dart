@@ -247,7 +247,7 @@ void main() {
 
       final payloadJson = captured.single as String?;
       expect(payloadJson, isNotNull);
-      final decoded = jsonDecode(payloadJson!) as Map<String, dynamic>;
+      final decoded = jsonDecode(payloadJson ?? fail("notification has no payload")) as Map<String, dynamic>;
       expect(decoded["sessionId"], equals("s1"));
       expect(decoded["projectId"], equals("p1"));
       expect(decoded["sessionTitle"], equals("Session Title"));
@@ -298,8 +298,8 @@ void main() {
         }),
       );
 
-      expect(request, isNotNull);
-      expect(request!.sessionId, equals("ses_123"));
+      if (request == null) fail("payload did not open a session");
+      expect(request.sessionId, equals("ses_123"));
       expect(request.projectId, equals("proj_456"));
       expect(request.sessionTitle, equals("Warm title"));
       expect(request.bridgeId, equals("br_workstation"));
@@ -313,8 +313,8 @@ void main() {
         }),
       );
 
-      expect(request, isNotNull);
-      expect(request!.sessionId, equals("ses_legacy"));
+      if (request == null) fail("legacy payload did not open a session");
+      expect(request.sessionId, equals("ses_legacy"));
       expect(request.projectId, equals("proj_legacy"));
       expect(request.sessionTitle, isNull);
     });

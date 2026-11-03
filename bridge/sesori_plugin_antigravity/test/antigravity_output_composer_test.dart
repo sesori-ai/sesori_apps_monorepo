@@ -34,7 +34,7 @@ void main() {
     final bytes = utf8.encode('${jsonEncode({"method": "session/update", "params": params})}\n');
     expect(bytes.length, greaterThan(16384));
     for (var process = 0; process < 2; process++) {
-      final gate = composer.compose().stdout!;
+      final gate = composer.compose().stdout ?? fail("composer has no stdout gate");
       final output = await gate
           .intercept(
             bytes: Stream.fromIterable([
@@ -70,10 +70,9 @@ void main() {
       '${AntigravityAuthorizationMapper.prefix}https://accounts.google.com/?state=synthetic-secret\n',
     );
     for (var split = 0; split <= bytes.length; split++) {
+      final gate = composer.compose().stdout ?? fail("composer has no stdout gate");
       await expectLater(
-        composer
-            .compose()
-            .stdout!
+        gate
             .intercept(
               bytes: Stream.fromIterable([
                 bytes.sublist(0, split),

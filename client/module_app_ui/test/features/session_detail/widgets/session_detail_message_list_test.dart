@@ -456,7 +456,13 @@ const _jumpToLatestKey = Key("session-detail-jump-to-latest");
 Finder _messageKey(String messageId) => find.byKey(ValueKey(messageId));
 
 ScrollPosition _position(WidgetTester tester) {
-  return tester.widget<ListView>(find.byKey(_listViewKey)).controller!.position;
+  final controller = tester.widget<ListView>(find.byKey(_listViewKey)).controller;
+  return (controller ?? fail("The message list has no scroll controller.")).position;
+}
+
+extension on GlobalKey<_SessionDetailMessageListHarnessState> {
+  /// The mounted harness state; fails the test when the harness is not on screen.
+  _SessionDetailMessageListHarnessState get harness => currentState ?? fail("The harness is not mounted.");
 }
 
 Future<void> _pumpListUpdate(WidgetTester tester) async {
@@ -1663,19 +1669,19 @@ void main() {
       }
 
       expectThumbnails();
-      harnessKey.currentState!.beginSending();
+      harnessKey.harness.beginSending();
       await tester.pump();
       expectThumbnails();
 
-      harnessKey.currentState!.acceptSendingSubmission();
+      harnessKey.harness.acceptSendingSubmission();
       await tester.pumpAndSettle();
       expectThumbnails();
 
-      harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: {submission.promptId: attachments});
+      harnessKey.harness.updateBridgeQueue(prompts: [prompt], attachments: {submission.promptId: attachments});
       await tester.pumpAndSettle();
       expectThumbnails();
 
-      harnessKey.currentState!.updateBridgeQueue(
+      harnessKey.harness.updateBridgeQueue(
         prompts: [prompt.copyWith(dispatchState: QueuedPromptDispatchState.dispatched)],
         attachments: {submission.promptId: attachments},
       );
@@ -1685,7 +1691,7 @@ void main() {
       expectThumbnails();
       expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
-      harnessKey.currentState!.deliverBridgePrompt(
+      harnessKey.harness.deliverBridgePrompt(
         promptId: submission.promptId,
         message: _message(
           messageId: "delivered-image-prompt",
@@ -1740,9 +1746,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    harnessKey.currentState!.sendDirectly(submission);
+    harnessKey.harness.sendDirectly(submission);
     // No pump: a fast bridge handoff can coalesce both local states away.
-    harnessKey.currentState!.updateBridgeQueue(
+    harnessKey.harness.updateBridgeQueue(
       prompts: [prompt],
       attachments: {
         submission.promptId: [attachment],
@@ -1767,7 +1773,7 @@ void main() {
     );
 
     // The bounded owner may evict an older preview while its row is pending.
-    harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: const {});
+    harnessKey.harness.updateBridgeQueue(prompts: [prompt], attachments: const {});
     await _pumpListUpdate(tester);
     expect(find.text("1 image"), findsOneWidget);
     expect(find.byType(Image), findsNothing);
@@ -1822,9 +1828,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    harnessKey.currentState!.beginSending();
+    harnessKey.harness.beginSending();
     await tester.pump();
-    harnessKey.currentState!.failSending();
+    harnessKey.harness.failSending();
     await tester.pumpAndSettle();
 
     expect(find.text("Couldn’t send"), findsOneWidget);
@@ -1834,7 +1840,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, "Retry"));
     await tester.pumpAndSettle();
 
-    expect(harnessKey.currentState!.retriedFailedSends, 1);
+    expect(harnessKey.harness.retriedFailedSends, 1);
     expect(find.text("Couldn’t send"), findsNothing);
     expect(find.text("first"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -1954,7 +1960,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    harnessKey.currentState!.sendDirectly(_textSubmission(promptId: "prm_slow", text: "slow"));
+    harnessKey.harness.sendDirectly(_textSubmission(promptId: "prm_slow", text: "slow"));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2015,7 +2021,7 @@ void main() {
         ),
       ),
     );
-    harnessKey.currentState!.setBusy(true);
+    harnessKey.harness.setBusy(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     final promptRow = find.ancestor(of: find.text("first message"), matching: find.byType(AnimatedSize));
@@ -2025,7 +2031,7 @@ void main() {
       lessThan(tester.getTopLeft(find.byType(TranscriptWorkingRow)).dy),
     );
 
-    harnessKey.currentState!.echoLaunch(_message(messageId: "user-1", role: "user", text: "first message"));
+    harnessKey.harness.echoLaunch(_message(messageId: "user-1", role: "user", text: "first message"));
     await tester.pump();
 
     // The bubble's row eases into the echo's instead of remounting elsewhere.
@@ -2055,7 +2061,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final harness = harnessKey.currentState!;
+    final harness = harnessKey.harness;
     double top(Finder finder) => tester.getTopLeft(finder).dy;
     final working = find.byType(TranscriptWorkingRow);
 
@@ -2124,7 +2130,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final harness = harnessKey.currentState!..setBusy(true);
+    final harness = harnessKey.harness..setBusy(true);
     await tester.pump();
     harness.updateBridgeQueue(
       prompts: const [
@@ -2164,7 +2170,7 @@ void main() {
         initialStreamingText: const {},
       ),
     );
-    final harness = harnessKey.currentState!..setBusy(true);
+    final harness = harnessKey.harness..setBusy(true);
     Future<void> settle() async {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -2233,7 +2239,7 @@ void main() {
     await tester.tap(inBubble("refused", "Retry"));
     await tester.tap(inBubble("refused", "Remove"));
     await tester.tap(inBubble("waiting", "Cancel"));
-    final state = harnessKey.currentState!;
+    final state = harnessKey.harness;
     expect(state.retriedLaunchFollowUpIds, ["prm_refused"]);
     expect(state.removedLaunchFollowUpIds, ["prm_refused", "prm_waiting"]);
 
@@ -2266,7 +2272,7 @@ void main() {
     final before = tester.state(row);
 
     // The echo lands and the launch forgets the follow-up in the same emission.
-    harnessKey.currentState!
+    harnessKey.harness
       ..appendNewestMessage(_message(messageId: "user-2", role: "user", text: "late", promptId: "prm_late"))
       ..setLaunchFollowUps(const []);
     await tester.pump();
@@ -2302,7 +2308,7 @@ void main() {
     await tester.pump();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
-    harnessKey.currentState!.deliverBridgePrompt(
+    harnessKey.harness.deliverBridgePrompt(
       promptId: "prm_1",
       message: _message(messageId: "u2", role: "user", text: "thanks", promptId: "prm_1", createdAtMs: 3),
       insertionIndex: 2,
@@ -2359,7 +2365,7 @@ void main() {
     expect(find.text("steer it"), findsOneWidget);
     expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
-    harnessKey.currentState?.deliverBridgePrompt(
+    harnessKey.harness.deliverBridgePrompt(
       promptId: "prm_1",
       message: _message(messageId: "replay-user-1", role: "user", text: "steer it", promptId: "prm_1"),
       insertionIndex: 1,
@@ -2396,7 +2402,7 @@ void main() {
     final promptRow = find.ancestor(of: find.text("steer it"), matching: find.byType(AnimatedSize));
     final before = tester.state(promptRow);
 
-    harnessKey.currentState!.deliverBridgePrompt(
+    harnessKey.harness.deliverBridgePrompt(
       promptId: "prm_1",
       message: _message(messageId: "delivered", role: "user", text: "steer it", promptId: "prm_1"),
       insertionIndex: 1,
@@ -2424,7 +2430,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    harnessKey.currentState?.deliverBridgePrompt(
+    harnessKey.harness.deliverBridgePrompt(
       promptId: "prm_1",
       message: _message(
         messageId: "replay-user-1",
@@ -2464,7 +2470,7 @@ void main() {
 
     expect(_messageKey("empty-user"), findsNothing);
 
-    key.currentState!.appendNewestMessage(
+    key.harness.appendNewestMessage(
       _message(messageId: "visible-user", role: "user", text: "Visible prompt"),
     );
     await tester.pumpAndSettle();
@@ -2493,9 +2499,9 @@ void main() {
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
     await tester.pumpAndSettle();
 
-    key.currentState!.startLoadingOlderMessages();
+    key.harness.startLoadingOlderMessages();
     await tester.pump();
-    key.currentState!.prependOlderMessages(
+    key.harness.prependOlderMessages(
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
@@ -2533,11 +2539,11 @@ void main() {
 
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
     await tester.pumpAndSettle();
-    key.currentState!.startLoadingOlderMessages();
+    key.harness.startLoadingOlderMessages();
     await tester.pump();
-    key.currentState!.removeMessage("m20");
+    key.harness.removeMessage("m20");
     await tester.pump();
-    key.currentState!.prependOlderMessages(
+    key.harness.prependOlderMessages(
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
@@ -2676,7 +2682,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    key.currentState!.startLoadingOlderMessages();
+    key.harness.startLoadingOlderMessages();
     await tester.pump();
 
     for (var attempt = 0; attempt < 12; attempt++) {
@@ -2685,7 +2691,7 @@ void main() {
     }
     expect(requested, 0);
 
-    key.currentState!.finishLoadingOlderMessages();
+    key.harness.finishLoadingOlderMessages();
     await tester.pump();
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
     await tester.pump();
@@ -2703,7 +2709,7 @@ void main() {
           initialStreamingText: const {},
           onLoadOlderMessages: () async {
             requested++;
-            key.currentState?.prependOlderMessages(
+            key.harness.prependOlderMessages(
               older: _page(prefix: "page$requested", count: 2),
               hasOlderMessages: true,
             );
@@ -2727,7 +2733,7 @@ void main() {
           initialStreamingText: const {},
           onLoadOlderMessages: () async {
             requested++;
-            key.currentState?.prependOlderMessages(
+            key.harness.prependOlderMessages(
               older: [
                 MessageWithParts(
                   info: Message.user(
@@ -2771,7 +2777,7 @@ void main() {
 
       // A taller window and a new oldest message would each ask again.
       await tester.binding.setSurfaceSize(const Size(800, 700));
-      key.currentState?.replaceMessages([
+      key.harness.replaceMessages([
         _message(messageId: "earlier", role: "user", text: "earlier"),
         ..._page(prefix: "newest", count: 2),
       ]);
@@ -2779,7 +2785,7 @@ void main() {
       expect(pages, hasLength(1));
 
       // The page lands with its load, still too short, so the next one follows.
-      key.currentState?.prependOlderMessages(older: _page(prefix: "older", count: 2), hasOlderMessages: true);
+      key.harness.prependOlderMessages(older: _page(prefix: "older", count: 2), hasOlderMessages: true);
       pages.single.complete();
       await tester.pumpAndSettle();
       expect(pages, hasLength(2));
@@ -2797,13 +2803,13 @@ void main() {
           onLoadOlderMessages: () async => requested++,
         ),
       );
-      key.currentState?.setRefreshing(refreshing: true);
+      key.harness.setRefreshing(refreshing: true);
       await tester.pumpAndSettle();
       expect(requested, 1);
 
       // The refresh lands on the same newest page.
-      key.currentState?.replaceMessages(_page(prefix: "newest", count: 2));
-      key.currentState?.setRefreshing(refreshing: false);
+      key.harness.replaceMessages(_page(prefix: "newest", count: 2));
+      key.harness.setRefreshing(refreshing: false);
       await tester.pumpAndSettle();
       expect(requested, 2);
     });
@@ -2826,9 +2832,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(pages, hasLength(1));
 
-      key.currentState?.setRefreshing(refreshing: true);
+      key.harness.setRefreshing(refreshing: true);
       await tester.pump();
-      key.currentState?.setRefreshing(refreshing: false);
+      key.harness.setRefreshing(refreshing: false);
       await tester.pumpAndSettle();
       expect(pages, hasLength(1));
 
@@ -2847,7 +2853,7 @@ void main() {
           initialMessages: _page(prefix: "newest", count: 2),
           initialStreamingText: const {},
           onLoadOlderMessages: () {
-            key.currentState?.startLoadingOlderMessages();
+            key.harness.startLoadingOlderMessages();
             final page = Completer<void>();
             pages.add(page);
             return page.future;
@@ -2858,7 +2864,7 @@ void main() {
       expect(pages, hasLength(1));
 
       // The bridge fails the page: the cursor stays and loading stops.
-      key.currentState?.finishLoadingOlderMessages();
+      key.harness.finishLoadingOlderMessages();
       pages.single.complete();
       await tester.pumpAndSettle();
       expect(pages, hasLength(1));
@@ -2889,7 +2895,7 @@ void main() {
     expect(requested, 0);
 
     // The oldest message stays, so only the shorter layout can ask for the page.
-    key.currentState?.replaceMessages(messages.take(2).toList());
+    key.harness.replaceMessages(messages.take(2).toList());
     await tester.pumpAndSettle();
     expect(requested, 1);
   });
@@ -2934,7 +2940,7 @@ void main() {
     final anchor = _messageKey("user-7");
     final before = tester.getTopLeft(anchor).dy;
 
-    harnessKey.currentState!.appendNewestMessage(
+    harnessKey.harness.appendNewestMessage(
       _message(
         messageId: "user-new",
         role: "user",
@@ -2977,7 +2983,7 @@ void main() {
     final anchor = _messageKey("user-7");
     final before = tester.getTopLeft(anchor).dy;
 
-    harnessKey.currentState!.updateStreamingText(
+    harnessKey.harness.updateStreamingText(
       partId: streamingPartId,
       text: _multilineText(label: "Streaming newest", lines: 18),
     );
@@ -3024,19 +3030,19 @@ void main() {
     await _detachViewport(tester);
     expect(find.text("Jump to latest"), findsOneWidget);
 
-    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-1", status: ToolStatus.running));
+    harnessKey.harness.appendNewestMessage(toolMessage(id: "run-1", status: ToolStatus.running));
     await _pumpListUpdate(tester);
     final pill = find.byKey(_jumpToLatestKey);
     expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
     expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
 
-    harnessKey.currentState!.removeMessage("run-1");
-    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
+    harnessKey.harness.removeMessage("run-1");
+    harnessKey.harness.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
     await _pumpListUpdate(tester);
     expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
 
-    harnessKey.currentState!.removeMessage("queued");
-    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));
+    harnessKey.harness.removeMessage("queued");
+    harnessKey.harness.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));
     await _pumpListUpdate(tester);
     expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
     expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
@@ -3094,37 +3100,37 @@ void main() {
     await settle();
     expect(find.text("Working…"), findsNothing);
 
-    harnessKey.currentState!.setBusy(true);
+    harnessKey.harness.setBusy(true);
     await settle();
     expect(find.text("Working…"), findsOneWidget);
     expectSparkleLeads(find.text("Working…"));
 
-    harnessKey.currentState!.appendNewestMessage(toolMessage(status: ToolStatus.running));
+    harnessKey.harness.appendNewestMessage(toolMessage(status: ToolStatus.running));
     await settle();
     expect(find.text("Working…"), findsNothing);
     expectSparkleLeads(find.text("Read notes.md"));
 
-    harnessKey.currentState!
+    harnessKey.harness
       ..removeMessage("assistant-1")
       ..appendNewestMessage(toolMessage(status: ToolStatus.completed));
     await settle();
     expect(find.text("Working…"), findsOneWidget);
 
     // Streaming text already shows progress.
-    harnessKey.currentState!.updateStreamingText(partId: "assistant-1-text", text: "Reading the");
+    harnessKey.harness.updateStreamingText(partId: "assistant-1-text", text: "Reading the");
     await settle();
     expect(find.text("Working…"), findsNothing);
 
-    harnessKey.currentState!.clearStreamingText();
+    harnessKey.harness.clearStreamingText();
     await settle();
     expect(find.text("Working…"), findsOneWidget);
 
-    harnessKey.currentState!.setBusy(false);
+    harnessKey.harness.setBusy(false);
     await settle();
     expect(find.text("Working…"), findsNothing);
 
     // A retry row already says the session works.
-    harnessKey.currentState!
+    harnessKey.harness
       ..setBusy(true)
       ..setRetryErrorMessage("Rate limited");
     await settle();
@@ -3166,7 +3172,7 @@ void main() {
           initialStreamingText: const {},
         ),
       );
-      harnessKey.currentState?.setBusy(true);
+      harnessKey.harness.setBusy(true);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -3177,7 +3183,7 @@ void main() {
       final row = tester.element(find.byType(CompactionPartWidget));
       final height = tester.getSize(find.byType(CompactionPartWidget)).height;
 
-      harnessKey.currentState?.replaceMessages([
+      harnessKey.harness.replaceMessages([
         ...prompt,
         compaction(
           state: const CompactionState.completed(summary: null, freedTokens: 142000, trigger: CompactionTrigger.auto),
@@ -3297,7 +3303,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    harnessKey.currentState!
+    harnessKey.harness
       ..setBusy(true)
       ..appendNewestMessage(assistant(last: ToolStatus.running));
     await tester.pump();
@@ -3305,7 +3311,7 @@ void main() {
     expect(find.text("Read second"), findsOneWidget);
     expect(_position(tester).pixels, 0);
 
-    harnessKey.currentState!
+    harnessKey.harness
       ..removeMessage("assistant-1")
       ..appendNewestMessage(assistant(last: ToolStatus.completed));
     // Every frame of the fold, and of the Working row easing in, keeps the
@@ -3344,7 +3350,7 @@ void main() {
         platform: TargetPlatform.iOS,
       ),
     );
-    final harness = harnessKey.currentState!;
+    final harness = harnessKey.harness;
     harness.setBusy(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -3443,7 +3449,7 @@ void main() {
         platform: TargetPlatform.iOS,
       ),
     );
-    final harness = harnessKey.currentState!;
+    final harness = harnessKey.harness;
     harness.setBusy(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -3508,7 +3514,7 @@ void main() {
     expect(_position(tester).pixels, 0);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
 
-    harnessKey.currentState!.appendNewestMessage(
+    harnessKey.harness.appendNewestMessage(
       _message(
         messageId: "user-following",
         role: "user",
@@ -3636,7 +3642,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, "Cancel"));
     await _pumpListUpdate(tester);
 
-    expect(harnessKey.currentState!.lastCancelledQueuedMessageIndex, 0);
+    expect(harnessKey.harness.lastCancelledQueuedMessageIndex, 0);
     expect(find.text("Queued while reading history"), findsNothing);
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
@@ -3666,7 +3672,7 @@ void main() {
     await tester.pumpAndSettle();
     await _detachViewport(tester);
 
-    harnessKey.currentState!.enqueueSubmission(submission);
+    harnessKey.harness.enqueueSubmission(submission);
     await tester.pumpAndSettle();
 
     expect(find.text("New prompt from history"), findsOneWidget);
@@ -3705,7 +3711,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
-    harnessKey.currentState!.beginSending();
+    harnessKey.harness.beginSending();
     await _pumpListUpdate(tester);
 
     // The outgoing status rail cross-fades out; settle it before asserting
@@ -3753,7 +3759,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
-    harnessKey.currentState!.replaceFirstQueuedSubmission(unavailable);
+    harnessKey.harness.replaceFirstQueuedSubmission(unavailable);
     await _pumpListUpdate(tester);
 
     expect(find.text("Command unavailable"), findsOneWidget);
@@ -3782,7 +3788,7 @@ void main() {
     await _detachViewport(tester);
     final detachedPixels = _position(tester).pixels;
 
-    harnessKey.currentState?.acceptLaunchFollowUp(promptId: "prm_follow");
+    harnessKey.harness.acceptLaunchFollowUp(promptId: "prm_follow");
     await _pumpListUpdate(tester);
     await tester.pumpAndSettle();
 
@@ -3814,7 +3820,7 @@ void main() {
     await tester.pumpAndSettle();
     await _detachViewport(tester);
 
-    harnessKey.currentState!.sendDirectly(submission);
+    harnessKey.harness.sendDirectly(submission);
     await tester.pump();
     // The glide starts counting on the frame after the row appears.
     await tester.pump();
@@ -4139,7 +4145,7 @@ void main() {
     // helper lets any delayed post-frame scroll adjustment run before
     // we assert.
     for (var i = 0; i < 10; i++) {
-      harnessKey.currentState!.appendNewestMessage(
+      harnessKey.harness.appendNewestMessage(
         _message(
           messageId: "burst-$i",
           role: "user",
@@ -4197,7 +4203,7 @@ void main() {
     // post-frame jump that could yank the viewport to offset 0 mid-
     // drag — this test locks that door shut.
     for (var i = 0; i < 8; i++) {
-      harnessKey.currentState!.updateStreamingText(
+      harnessKey.harness.updateStreamingText(
         partId: streamingPartId,
         text: _multilineText(label: "Streaming", lines: 2 + i * 2),
       );
@@ -4238,7 +4244,7 @@ void main() {
     await _detachViewport(tester);
 
     // Arrives while frozen: the detached snapshot must not surface it yet.
-    harnessKey.currentState!.appendNewestMessage(
+    harnessKey.harness.appendNewestMessage(
       _message(
         messageId: "user-while-detached",
         role: "user",
@@ -4282,7 +4288,7 @@ void main() {
     final newestMessageBottom = tester.getBottomLeft(_messageKey("user-2")).dy;
     expect(tester.getCenter(retryCard).dy, greaterThan(newestMessageBottom));
 
-    harnessKey.currentState!.setRetryErrorMessage(null);
+    harnessKey.harness.setRetryErrorMessage(null);
     await _pumpListUpdate(tester);
     // The card folds away rather than vanishing in one frame.
     expect(find.byType(RetryErrorMessageCard), findsOneWidget);
@@ -5384,7 +5390,7 @@ void main() {
 
     expect(_messageKey("user-10"), findsOneWidget);
 
-    harnessKey.currentState!.removeMessage("user-10");
+    harnessKey.harness.removeMessage("user-10");
     await _pumpListUpdate(tester);
 
     expect(_messageKey("user-10"), findsNothing);
@@ -5420,7 +5426,7 @@ void main() {
 
     // Content updates must reach the visible row through the rebuilt list on the very
     // next frame while the list stays pinned to the newest edge.
-    harnessKey.currentState!.updateStreamingText(
+    harnessKey.harness.updateStreamingText(
       partId: streamingPartId,
       text: "Streaming start with a freshly streamed token",
     );

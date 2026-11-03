@@ -82,6 +82,6 @@ PRETTY_NAME='Fedora Linux 40'
     const osRelease = 'PRETTY_NAME="A Very Long Distribution Name That Exceeds The Limit"';
     final result = format(os: "linux", osRelease: osRelease);
     expect(result, isNotNull);
-    expect(result!.length, lessThanOrEqualTo(OsVersionFormatter.maxLength));
+    expect(result?.length, lessThanOrEqualTo(OsVersionFormatter.maxLength));
   });
 }

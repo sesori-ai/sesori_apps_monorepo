@@ -46,7 +46,7 @@ void main() {
     );
 
     final field = find.byType(TextField);
-    final controller = tester.widget<TextField>(field).controller!;
+    final controller = tester.widget<TextField>(field).controller ?? fail("The field has no controller.");
     controller.value = const TextEditingValue(
       text: "候補",
       selection: TextSelection.collapsed(offset: 2),

@@ -101,7 +101,7 @@ void main() {
       });
       final visibility = <bool>[];
       when(() => cubit.setRouteVisible(isVisible: any(named: "isVisible"))).thenAnswer((invocation) {
-        visibility.add(invocation.namedArguments[#isVisible]! as bool);
+        visibility.add(invocation.namedArguments[#isVisible] as bool);
       });
 
       final rootNavigator = GlobalKey<NavigatorState>();
@@ -167,7 +167,7 @@ void main() {
       expect(ModalRoute.of(ownerElement)?.isCurrent, nested);
       expect(visibility.last, isFalse);
       expect(events, 1);
-      rootNavigator.currentState!.pop();
+      (rootNavigator.currentState ?? fail("The root navigator is not mounted.")).pop();
       await tester.pumpAndSettle();
       expect(visibility.last, isTrue);
       expect(tester.element(find.byType(SessionDetailActivityOwner)), same(ownerElement));

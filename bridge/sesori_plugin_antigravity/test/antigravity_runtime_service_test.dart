@@ -43,7 +43,7 @@ class _FakeStorage({
   @override
   AntigravityRuntimePairReadResult inspectPair({required String serverPath, required PlatformTarget target}) {
     inspectedPaths.add(serverPath);
-    return pairResults[serverPath]!;
+    return pairResults[serverPath] ?? fail("no pair result configured for $serverPath");
   }
 
   @override

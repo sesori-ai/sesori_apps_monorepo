@@ -30,7 +30,7 @@ class _ThreadStateMotionPlaybookState() extends State<ThreadStateMotionPlaybook>
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(disableAnimations: _reducedMotion),
-      child: child!,
+      child: child ?? (throw StateError("MaterialApp built no child")),
     ),
     home: Builder(builder: _buildScene),
   );

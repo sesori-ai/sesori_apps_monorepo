@@ -269,7 +269,7 @@ Future<void> enterTextAndSend({required WidgetTester tester, required String tex
 }
 
 void main() {
-  late MockSessionRepository sessionService;
+  late MockSessionRepository launchSessionRepository;
   late MockSessionApi sessionApi;
   late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
@@ -291,7 +291,7 @@ void main() {
   setUp(() async {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
-    sessionService = MockSessionRepository();
+    launchSessionRepository = MockSessionRepository();
     sessionApi = MockSessionApi();
     sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
@@ -371,8 +371,8 @@ void main() {
         mode: any(named: "mode"),
       ),
     ).thenAnswer((invocation) async {
-      final projectId = invocation.namedArguments[#projectId]! as String;
-      final pluginId = invocation.namedArguments[#pluginId]! as String;
+      final projectId = invocation.namedArguments[#projectId] as String;
+      final pluginId = invocation.namedArguments[#pluginId] as String;
       final (agents, providers, commands) = await (
         sessionApi.listAgents(projectId: projectId, pluginId: pluginId),
         sessionApi.listProviders(projectId: projectId, pluginId: pluginId),
@@ -405,8 +405,8 @@ void main() {
         pluginId: any(named: "pluginId"),
       ),
     ).thenAnswer((invocation) async {
-      final projectId = invocation.namedArguments[#projectId]! as String;
-      final pluginId = invocation.namedArguments[#pluginId]! as String;
+      final projectId = invocation.namedArguments[#projectId] as String;
+      final pluginId = invocation.namedArguments[#pluginId] as String;
       final (agents, providers, commands) = await (
         sessionApi.listAgents(projectId: projectId, pluginId: pluginId),
         sessionApi.listProviders(projectId: projectId, pluginId: pluginId),
@@ -470,7 +470,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    GetIt.instance.registerSingleton<SessionRepository>(sessionService);
+    GetIt.instance.registerSingleton<SessionRepository>(launchSessionRepository);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
     GetIt.instance.registerSingleton<NewSessionPluginService>(
       NewSessionPluginService(
@@ -498,7 +498,7 @@ void main() {
     GetIt.instance.registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
     GetIt.instance.registerSingleton<SessionLaunchService>(
       SessionLaunchService(
-        sessionRepository: sessionService,
+        sessionRepository: launchSessionRepository,
         launchRepository: GetIt.instance<SessionLaunchRepository>(),
         feedbackPromptService: GetIt.instance<FeedbackPromptService>(),
         productAnalyticsService: productAnalyticsService,
@@ -662,7 +662,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     // The composer is replaced by a blocked notice: nothing can be typed or
     // sent until the project's worktree capability can be checked again.
@@ -702,7 +702,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     expect(find.byKey(const Key("new_session_options_load")), findsOneWidget);
     expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionOptionsLoad), findsOneWidget);
@@ -743,7 +743,7 @@ void main() {
       ),
     ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -759,7 +759,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
     expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionOptionsRetry), findsOneWidget);
 
     await enterTypingMode(tester);
@@ -767,7 +767,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: "project-1",
         pluginId: "plugin-1",
@@ -790,7 +790,7 @@ void main() {
         mode: any(named: "mode"),
       ),
     ).thenAnswer((invocation) async {
-      final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
+      final mode = invocation.namedArguments[#mode] as SessionOptionsRequestMode;
       return mode == SessionOptionsRequestMode.dynamic
           ? const SessionOptionsRepositoryAuthenticationRequired(
               actionHint: "Run the harness locally and use /login.",
@@ -800,7 +800,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     // The login card takes the composer's place; nothing was usable before,
     // so the popup — reserved for a harness that logged out mid-session —
@@ -842,7 +842,7 @@ void main() {
     // logged out since it was last checked.
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
     expect(loadCalls, 2);
 
     expect(find.byKey(const Key("new_session_login_required")), findsOneWidget);
@@ -1121,7 +1121,7 @@ void main() {
     await openHarnessMenu(tester);
 
     final settings = find.byKey(const Key("new_session_harness_settings"));
-    final loc = AppLocalizations.of(tester.element(settings))!;
+    final loc = tester.element(settings).loc;
     expect(
       tester.getSemantics(settings),
       matchesSemantics(
@@ -1247,7 +1247,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
     expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
   });
 
@@ -1320,7 +1320,7 @@ void main() {
 
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -1466,7 +1466,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final context = tester.element(find.byType(NewSessionScreen));
-    final loc = AppLocalizations.of(context)!;
+    final loc = context.loc;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
     await openHarnessMenu(tester);
@@ -1482,7 +1482,7 @@ void main() {
 
     expect(find.byType(QueuedMessageBubble), findsNothing);
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -1506,7 +1506,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final context = tester.element(find.byType(NewSessionScreen));
-    final loc = AppLocalizations.of(context)!;
+    final loc = context.loc;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     expect(find.text(loc.newSessionCreationDuplicateWarning), findsNothing);
     expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
@@ -1520,7 +1520,7 @@ void main() {
 
     expect(find.byType(QueuedMessageBubble), findsNothing);
     verifyNever(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -1544,7 +1544,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     // A machine with no coding tool installed reports no harness at all. The
     // page has to name that rather than render blank or unusable controls.
@@ -2346,7 +2346,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     final retry = find.byKey(const Key("new_session_options_retry"));
@@ -2595,7 +2595,7 @@ void main() {
   testWidgets("shows the submitted message as a sending bubble during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2612,7 +2612,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
@@ -2646,7 +2646,7 @@ void main() {
   testWidgets("a message sent while the first one is sending queues below it in the same composer", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2684,7 +2684,7 @@ void main() {
     expect(first.bottom, lessThan(firstRect.bottom));
     // Only the first message created the session.
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2702,7 +2702,7 @@ void main() {
   testWidgets("keeps the composer and its voice session while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2728,7 +2728,7 @@ void main() {
     verifyNever(() => voiceTranscriptionService.close(session: voiceSession));
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2745,7 +2745,7 @@ void main() {
 
   testWidgets("releasing a hold creates the session with the words", (tester) async {
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2772,7 +2772,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2792,7 +2792,7 @@ void main() {
   ) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2848,7 +2848,7 @@ void main() {
   testWidgets("a hold released while creating follows the first message once the transcript lands", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2866,7 +2866,7 @@ void main() {
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) => afterRecordingResultOf(transcript: transcript.future));
     when(
-      () => sessionService.sendMessage(
+      () => launchSessionRepository.sendMessage(
         sessionId: any(named: "sessionId"),
         promptId: any(named: "promptId"),
         text: any(named: "text"),
@@ -2911,7 +2911,7 @@ void main() {
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(handoff?.composer?.unsent, isNull, reason: "the words were sent, not left in the composer");
     verify(
-      () => sessionService.sendMessage(
+      () => launchSessionRepository.sendMessage(
         sessionId: "session-1",
         promptId: any(named: "promptId"),
         text: wrapDictatedText(text: "spoken words"),
@@ -2928,7 +2928,7 @@ void main() {
   testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2945,7 +2945,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
@@ -2972,7 +2972,7 @@ void main() {
   testWidgets("does not hijack navigation when creation completes after the user navigated away", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -2989,7 +2989,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
@@ -3021,7 +3021,7 @@ void main() {
   testWidgets("still navigates to session detail after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -3061,7 +3061,7 @@ void main() {
   ) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -3148,7 +3148,7 @@ void main() {
     // Past the slow-send threshold, so the words must survive the swap too.
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
-    final loc = AppLocalizations.of(tester.element(find.byType(QueuedMessageBubble)))!;
+    final loc = tester.element(find.byType(QueuedMessageBubble)).loc;
     final slowSendCopy = loc.sessionDetailSendingToHarness(PregoBrandLogo.displayNameFor("plugin-1"));
     expect(find.text(slowSendCopy), findsOneWidget);
     final sendingRect = tester.getRect(find.byType(QueuedMessageBubble));
@@ -3172,7 +3172,7 @@ void main() {
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -3189,7 +3189,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
@@ -3233,7 +3233,7 @@ void main() {
     final submittedAttachments = <List<ComposerAttachment>>[];
     var creationCalls = 0;
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: any(named: "attachments"),
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -3248,7 +3248,7 @@ void main() {
     ).thenAnswer((invocation) {
       creationCalls++;
       submittedAttachments.add(
-        invocation.namedArguments[#attachments]! as List<ComposerAttachment>,
+        invocation.namedArguments[#attachments] as List<ComposerAttachment>,
       );
       if (creationCalls == 1) return Future.value(ApiResponse.error(ApiError.generic()));
       return retryCompleter.future;
@@ -3268,7 +3268,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
     expect(find.byType(PromptInput), findsOneWidget);
     expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, "test message");
     expect(find.bySemanticsLabel("screenshot.png"), findsOneWidget);
@@ -3293,7 +3293,7 @@ void main() {
   testWidgets("removes the sending bubble and keeps retry UI usable after an error", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
-      () => sessionService.createSessionWithMessage(
+      () => launchSessionRepository.createSessionWithMessage(
         attachments: const [],
         projectId: any(named: "projectId"),
         pluginId: any(named: "pluginId"),
@@ -3323,7 +3323,7 @@ void main() {
     // Error text now comes from the shared, localized ApiError mapping.
     expect(find.text("An unknown error occurred"), findsOneWidget);
 
-    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
     expect(find.text("test message"), findsOneWidget);
     expect(find.text(loc.newSessionCreationDuplicateWarning), findsOneWidget);
     expect(find.byType(EditableText), findsOneWidget);
@@ -3791,7 +3791,7 @@ void main() {
 
       testWidgets("a send fades its bubble in with the composer unmoved", (tester) async {
         when(
-          () => sessionService.createSessionWithMessage(
+          () => launchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),

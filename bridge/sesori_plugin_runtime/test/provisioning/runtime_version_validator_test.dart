@@ -27,10 +27,10 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
     ranWorkingDirectory = workingDirectory;
     ranEnvironment = environment;
     ranTimeout = timeout;
-    if (error != null) {
-      throw error!;
+    if (error case final failure?) {
+      throw failure;
     }
-    return result!;
+    return result ?? fail("no command result configured");
   }
 }
 

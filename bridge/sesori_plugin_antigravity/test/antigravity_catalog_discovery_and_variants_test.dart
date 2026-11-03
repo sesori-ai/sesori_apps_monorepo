@@ -87,7 +87,9 @@ class _CatalogRepository() implements AntigravityCatalogRepository {
     if (createFailure case final failure?) throw failure;
     return (
       sessionId: createResult.sessionId,
-      catalog: const AntigravityProtocolMapper().mapModelCatalog(result: createResult)!,
+      catalog:
+          const AntigravityProtocolMapper().mapModelCatalog(result: createResult) ??
+          fail("create result has no model catalog"),
     );
   }
 
@@ -99,7 +101,9 @@ class _CatalogRepository() implements AntigravityCatalogRepository {
     if (resumeFailure case final failure?) throw failure;
     return (
       sessionId: resumeResult.sessionId,
-      catalog: const AntigravityProtocolMapper().mapModelCatalog(result: resumeResult)!,
+      catalog:
+          const AntigravityProtocolMapper().mapModelCatalog(result: resumeResult) ??
+          fail("resume result has no model catalog"),
     );
   }
 }
@@ -404,7 +408,8 @@ void main() {
   });
 
   test("cold discovery coalesces, creates once, reuses cache, and refresh resumes", () async {
-    final repository = _CatalogRepository()..listGate = Completer<void>();
+    final listGate = Completer<void>();
+    final repository = _CatalogRepository()..listGate = listGate;
     Future<AntigravityCatalogRepository> provider() async => repository;
     final first = service.discover(
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
@@ -415,7 +420,7 @@ void main() {
       repositoryProvider: provider,
     );
     expect(identical(first, second), isTrue);
-    repository.listGate!.complete();
+    listGate.complete();
     expect(await first, isA<PluginSessionOptionsDiscoveryObserved>());
     expect((repository.listCalls, repository.createCalls, repository.resumeCalls), (1, 1, 0));
 
@@ -510,14 +515,15 @@ void main() {
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       repositoryProvider: () async => repository,
     );
-    repository.resumeGate = Completer<void>();
+    final resumeGate = Completer<void>();
+    repository.resumeGate = resumeGate;
     final refresh = service.discover(
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
       repositoryProvider: () async => repository,
     );
     await Future<void>.delayed(Duration.zero);
     service.resetConnection();
-    repository.resumeGate!.complete();
+    resumeGate.complete();
     expect(await refresh, isA<PluginSessionOptionsDiscoveryFailed>());
     expect(tracker.snapshot, isNull);
 

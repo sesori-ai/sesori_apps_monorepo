@@ -12,7 +12,7 @@ void main() {
     // opening the document sheet.
     final urls = _markdownLink
         .allMatches(AppLocalizationsEn().loginAgreementText)
-        .map((match) => match.group(1)!)
+        .map((match) => match.group(1) ?? fail("A link has no URL."))
         .toList();
 
     expect(urls, isNotEmpty);

@@ -90,7 +90,7 @@ class _Harness() {
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
-      child: child!,
+      child: child ?? fail("The app built no router child."),
     ),
   );
   Future<void> close() async {
