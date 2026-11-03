@@ -34,8 +34,9 @@ void main() {
         serverUrl: "ws://127.0.0.1:0",
         environment: {"CODEX_HOME": codexHome.path},
         projectCwd: projectCwd.path,
-        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
     }
 

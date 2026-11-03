@@ -180,7 +180,7 @@ class const CodexPluginDescriptor({
   @override
   List<PluginOption> get options => cliOptions;
 
-  String? _explicitBin(PluginConfig config) {
+  String? _explicitBin({required PluginConfig config}) {
     final value = config.value("bin")?.trim();
     if (value == null || value.isEmpty || value == "codex") return null;
     return value;
@@ -218,7 +218,7 @@ class const CodexPluginDescriptor({
       ),
       inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
-      explicitExecutablePath: _explicitBin(config),
+      explicitExecutablePath: _explicitBin(config: config),
       fallbackExecutableCandidates: _desktopCandidates(environment: environment),
       environment: environment,
       stateDirectory: stateDirectory,
@@ -239,7 +239,7 @@ class const CodexPluginDescriptor({
   /// explicit `--codex-bin` override (that binary is authoritative) and a
   /// published release asset for this platform.
   bool _supportsManagedInstall({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return false;
+    if (_explicitBin(config: config) != null) return false;
     final PlatformTarget target;
     try {
       target = PlatformTarget.current();
@@ -358,49 +358,52 @@ class const CodexPluginDescriptor({
       abortSignal: StartAbortSignal.never,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
-    if (selection case ManagedRuntimeNotSelected(:final primaryRejection)) {
-      final hasExplicitBinary = _explicitBin(config) != null;
-      if (selection is ManagedRuntimePathNotSelected) {
+    final ManagedRuntimeSelected selectedRuntime;
+    switch (selection) {
+      case ManagedRuntimeSelected():
+        selectedRuntime = selection;
+      case ManagedRuntimeNotSelected(:final primaryRejection):
+        final hasExplicitBinary = _explicitBin(config: config) != null;
+        if (selection is ManagedRuntimePathNotSelected) {
+          return switch (primaryRejection) {
+            ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+              actionHint: "Update the global Codex installation to ${manifest.minPathVersion.raw} or newer.",
+              runtimeVersion: version.raw,
+            ),
+            ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+              actionHint:
+                  "The global Codex installation could not be verified. Check it locally and retry setup detection.",
+            ),
+          };
+        }
         return switch (primaryRejection) {
-          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
-            actionHint: "Update the global Codex installation to ${manifest.minPathVersion.raw} or newer.",
-            runtimeVersion: version.raw,
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => PluginSetupRuntimeMissing(
+            actionHint: hasExplicitBinary
+                ? "Fix the configured Codex binary path, then restart the bridge."
+                : missingRuntimeHint(),
           ),
-          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-            actionHint:
-                "The global Codex installation could not be verified. Check it locally and retry setup detection.",
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeTimedOut()) => const PluginSetupUnknown(
+            actionHint: "Codex did not answer its setup check. Verify the local installation and retry.",
           ),
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeFailed()) => const PluginSetupUnknown(
+            actionHint: "Codex setup could not be determined. Verify the local installation and retry.",
+          ),
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeNonZeroExit()) => const PluginSetupUnknown(
+            actionHint: "Codex did not answer its setup check. Verify the local installation and retry.",
+          ),
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeUnrecognized()) => const PluginSetupUnknown(
+            actionHint: "Codex returned an unrecognized version. Update Codex and retry.",
+          ),
+          ManagedRuntimeVersionRejected() =>
+            hasExplicitBinary
+                ? const PluginSetupUnavailable(
+                    actionHint: "The configured Codex binary is too old. Update it and restart the bridge.",
+                  )
+                : PluginSetupRuntimeMissing(
+                    actionHint: missingRuntimeHint(),
+                  ),
         };
-      }
-      return switch (primaryRejection) {
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => PluginSetupRuntimeMissing(
-          actionHint: hasExplicitBinary
-              ? "Fix the configured Codex binary path, then restart the bridge."
-              : missingRuntimeHint(),
-        ),
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeTimedOut()) => const PluginSetupUnknown(
-          actionHint: "Codex did not answer its setup check. Verify the local installation and retry.",
-        ),
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeFailed()) => const PluginSetupUnknown(
-          actionHint: "Codex setup could not be determined. Verify the local installation and retry.",
-        ),
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeNonZeroExit()) => const PluginSetupUnknown(
-          actionHint: "Codex did not answer its setup check. Verify the local installation and retry.",
-        ),
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeUnrecognized()) => const PluginSetupUnknown(
-          actionHint: "Codex returned an unrecognized version. Update Codex and retry.",
-        ),
-        ManagedRuntimeVersionRejected() =>
-          hasExplicitBinary
-              ? const PluginSetupUnavailable(
-                  actionHint: "The configured Codex binary is too old. Update it and restart the bridge.",
-                )
-              : PluginSetupRuntimeMissing(
-                  actionHint: missingRuntimeHint(),
-                ),
-      };
     }
-    final selectedRuntime = selection as ManagedRuntimeSelected;
     final executable = selectedRuntime.binaryPath;
     final runtimeVersion = selectedRuntime.version.raw;
     final executor = HostProcessCommandExecutor(
@@ -418,13 +421,14 @@ class const CodexPluginDescriptor({
         environment: environment,
         timeout: codexVersionProbeTimeout,
       );
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] `codex login status` failed during setup inspection", error, stackTrace);
       return PluginSetupUnknown.versioned(
         actionHint: "Codex authentication could not be determined. Run `codex login status` locally and retry.",
         runtimeVersion: runtimeVersion,
       );
     }
-    final statusOutput = _normalizedStatusOutput(loginResult);
+    final statusOutput = _normalizedStatusOutput(result: loginResult);
     if (statusOutput.contains("not logged in") || statusOutput.contains("logged out")) {
       return PluginSetupAuthenticationRequired.versioned(
         actionHint: "Sign in to Codex, then retry setup detection.",
@@ -448,7 +452,7 @@ class const CodexPluginDescriptor({
   /// and `start()` fails with guidance.
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
-    if (_explicitBin(host.config) != null) {
+    if (_explicitBin(config: host.config) != null) {
       return;
     }
 
@@ -508,16 +512,20 @@ class const CodexPluginDescriptor({
     if (aborted.isAborted) {
       throw const PluginStartAbortedException();
     }
-    if (selection case ManagedRuntimeNotSelected()) {
-      yield const PluginAuthenticationFailed(
-        message: "No supported Codex runtime is available for login.",
-      );
-      return;
+    final String executable;
+    switch (selection) {
+      case ManagedRuntimeSelected(:final binaryPath):
+        executable = binaryPath;
+      case ManagedRuntimeNotSelected():
+        yield const PluginAuthenticationFailed(
+          message: "No supported Codex runtime is available for login.",
+        );
+        return;
     }
 
     final client = CodexStdioAppServerClient(
       processes: processes,
-      executable: (selection as ManagedRuntimeSelected).binaryPath,
+      executable: executable,
       environment: environment,
       shutdownTimeout: codexGracefulShutdownWait,
     );
@@ -533,7 +541,7 @@ class const CodexPluginDescriptor({
     ).authenticate();
   }
 
-  String _normalizedStatusOutput(CommandResult result) {
+  String _normalizedStatusOutput({required CommandResult result}) {
     final combined = "${result.stdout}\n${result.stderr}";
     return stripAnsi(value: combined).trim().toLowerCase();
   }
@@ -549,7 +557,7 @@ class const CodexPluginDescriptor({
     // Precedence: an explicit --codex-bin override wins (trusted, no version
     // gate); otherwise the path ensureRuntime resolved (a recent PATH codex or
     // the managed download), exposed via the host.
-    final executablePath = _explicitBin(config) ?? host.provisionedRuntimePath;
+    final executablePath = _explicitBin(config: config) ?? host.provisionedRuntimePath;
     if (executablePath == null) {
       // Runtime provisioning failed and no explicit binary was given. codex has
       // no attach/degraded mode (its WebSocket client cannot reconnect), so it

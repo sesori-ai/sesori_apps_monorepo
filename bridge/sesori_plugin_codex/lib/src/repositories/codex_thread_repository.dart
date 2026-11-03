@@ -112,7 +112,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
         fastMode: fastMode,
       ),
     );
-    final turnId = _usefulText(response.turn?.id);
+    final turnId = _usefulText(value: response.turn?.id);
     if (turnId == null) {
       throw StateError("turn/start response missing turn.id");
     }
@@ -148,19 +148,19 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
 
   CodexThreadRecord? _map({required CodexThreadEnvelopeDto dto}) {
     final thread = dto.thread;
-    final id = _usefulText(thread?.id);
+    final id = _usefulText(value: thread?.id);
     if (thread == null || id == null) return null;
-    final cwd = _usefulText(thread.cwd) ?? _usefulText(dto.cwd);
+    final cwd = _usefulText(value: thread.cwd) ?? _usefulText(value: dto.cwd);
     return CodexThreadRecord(
       id: id,
       name: thread.name,
       directory: cwd == null ? null : normalizeProjectDirectory(directory: cwd),
-      createdAt: _milliseconds(thread.createdAt),
-      updatedAt: _milliseconds(thread.updatedAt),
-      model: _usefulText(dto.model),
-      modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
+      createdAt: _milliseconds(seconds: thread.createdAt),
+      updatedAt: _milliseconds(seconds: thread.updatedAt),
+      model: _usefulText(value: dto.model),
+      modelProvider: _usefulText(value: thread.modelProvider) ?? _usefulText(value: dto.modelProvider),
       parentId: _subAgentParentId(thread: thread),
-      agentNickname: _usefulText(thread.agentNickname),
+      agentNickname: _usefulText(value: thread.agentNickname),
       agentPath: null,
     );
   }
@@ -170,7 +170,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     CodexThreadSource.subAgentReview ||
     CodexThreadSource.subAgentCompact ||
     CodexThreadSource.subAgentThreadSpawn ||
-    CodexThreadSource.subAgentOther => _usefulText(thread.parentThreadId),
+    CodexThreadSource.subAgentOther => _usefulText(value: thread.parentThreadId),
     CodexThreadSource.unknown || null => null,
   };
 
@@ -247,7 +247,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     try {
       return await request();
     } on CodexRpcException catch (error, stackTrace) {
-      final exception = _isThreadNotFound(error)
+      final exception = _isThreadNotFound(error: error)
           ? CodexThreadNotFoundException(
               operation: operation,
               message: error.message,
@@ -260,16 +260,16 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     }
   }
 
-  bool _isThreadNotFound(CodexRpcException error) {
+  bool _isThreadNotFound({required CodexRpcException error}) {
     final message = error.message.toLowerCase();
     return message.contains("thread not found") ||
         message.contains("no such thread") ||
         (error.code == -32600 && message.contains("not found"));
   }
 
-  int? _milliseconds(num? seconds) => seconds == null ? null : (seconds * 1000).round();
+  int? _milliseconds({required num? seconds}) => seconds == null ? null : (seconds * 1000).round();
 
-  String? _usefulText(String? value) {
+  String? _usefulText({required String? value}) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }

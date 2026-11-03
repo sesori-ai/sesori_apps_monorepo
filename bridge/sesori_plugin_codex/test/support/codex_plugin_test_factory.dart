@@ -11,20 +11,19 @@ CodexPlugin createInjectedCodexPlugin({
   required String projectCwd,
   required CodexAppServerClient Function()? clientFactory,
   required Duration keepaliveInterval,
-  CodexToolOutcomeRepository? toolOutcomeRepository,
-  Duration rolloutPollInterval = const Duration(milliseconds: 10),
+  required CodexToolOutcomeRepository toolOutcomeRepository,
 }) {
   return buildCodexPlugin(
     serverUrl: serverUrl,
     environment: environment,
     clock: const ServerClock(),
-    toolOutcomeRepository: toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
+    toolOutcomeRepository: toolOutcomeRepository,
     launchDirectory: projectCwd,
     clientFactory: clientFactory,
     onConnected: null,
     onDisconnected: null,
     keepaliveInterval: keepaliveInterval,
-    rolloutPollInterval: rolloutPollInterval,
+    rolloutPollInterval: const Duration(milliseconds: 10),
   );
 }
 
