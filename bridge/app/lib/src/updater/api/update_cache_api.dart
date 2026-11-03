@@ -40,7 +40,9 @@ class UpdateCacheApi({
     } on FormatException {
       return null;
     } on Object catch (error) {
-      if (error is TypeError) return null;
+      // An unknown enum value (a track written by a newer bridge) throws an
+      // ArgumentError; like any unreadable entry it is a cache miss.
+      if (error is TypeError || error is ArgumentError) return null;
       rethrow;
     }
   }

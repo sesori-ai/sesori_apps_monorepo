@@ -18,7 +18,6 @@ void main() {
     fromVersion: '1.0.0',
     toVersion: '2.0.0',
     startedAt: DateTime.utc(2026, 6, 17),
-    stage: UpdateStage.swapping,
     status: status,
     reason: null,
   );

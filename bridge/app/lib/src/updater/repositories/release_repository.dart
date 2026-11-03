@@ -57,10 +57,8 @@ class ReleaseRepository({
 
   Future<ReleaseInfo?> checkForNewerRelease() async {
     final cached = await _cache.read(ttl: const Duration(minutes: 10));
-    if (cached != null) {
-      if (cached.assetName == _target.assetName && cached.track == _track.wireValue) {
-        return _evaluateCached(cached: cached);
-      }
+    if (cached != null && cached.assetName == _target.assetName && cached.track == _track) {
+      return _evaluateCached(cached: cached);
     }
 
     return await _fetchAndEvaluate();
@@ -73,8 +71,8 @@ class ReleaseRepository({
   /// what is published right now (a just-cut release is never missed, and a
   /// repair reinstall sees current truth). It still writes the cache as a side
   /// effect, so the background updater benefits. The returned [UpdateResolution]
-  /// also reports the current version and whether it is eligible for the track,
-  /// so the caller can detect a track/version mismatch.
+  /// also reports the current version, so the caller can detect a track/version
+  /// mismatch.
   Future<UpdateResolution> resolveUpdate() async {
     final releases = await _api.fetchReleases();
     final selected = _selectLatestBridgeRelease(releases: releases);
@@ -89,16 +87,11 @@ class ReleaseRepository({
 
     return UpdateResolution(
       currentVersion: _currentVersion,
-      currentEligible: _isEligible(_currentVersion),
       latest: latest,
     );
   }
 
   ReleaseInfo? _evaluateCached({required CachedRelease cached}) {
-    if (cached.assetName != _target.assetName || cached.track != _track.wireValue) {
-      return null;
-    }
-
     final SemanticVersion? latestVersion = SemanticVersion.tryParse(value: cached.latestVersion);
     if (latestVersion == null || !_isEligible(latestVersion)) {
       return null;
@@ -109,7 +102,6 @@ class ReleaseRepository({
         version: latestVersion.toString(),
         assetUrl: cached.downloadUrl,
         checksumsUrl: cached.checksumsUrl,
-        publishedAt: cached.publishedAt,
       );
     }
 
@@ -174,7 +166,7 @@ class ReleaseRepository({
   }
 
   /// Parses [release] into a typed [ReleaseInfo] (version + asset/checksums
-  /// URLs + published date) and writes the metadata cache as a side effect.
+  /// URLs) and writes the metadata cache as a side effect.
   /// Returns `null` when the tag/version is unparseable or the required assets
   /// are missing. Applies NO eligibility or "is newer" gating — callers decide.
   Future<({ReleaseInfo info, SemanticVersion version})?> _extractReleaseInfo({
@@ -189,17 +181,6 @@ class ReleaseRepository({
     final SemanticVersion? version = SemanticVersion.tryParse(value: versionString);
     if (version == null) {
       return null;
-    }
-
-    final DateTime publishedAt;
-    try {
-      final String? publishedAtRaw = release.publishedAt;
-      if (publishedAtRaw == null) {
-        throw const FormatException('published_at is null');
-      }
-      publishedAt = DateTime.parse(publishedAtRaw);
-    } on FormatException catch (error) {
-      throw StateError('Invalid published_at for release $tagName: ${error.message}');
     }
 
     final assetName = _target.assetName;
@@ -229,13 +210,12 @@ class ReleaseRepository({
             downloadUrl: assetUrl,
             checksumsUrl: checksumsUrl,
             assetName: assetName,
-            track: _track.wireValue,
-            publishedAt: publishedAt,
+            track: _track,
             checkedAt: DateTime.now(),
           ),
         );
-      } on Object catch (error) {
-        Log.w('Failed to cache the latest release metadata: $error');
+      } on Object catch (error, stackTrace) {
+        Log.w('Failed to cache the latest release metadata', error, stackTrace);
       }
     }
 
@@ -248,7 +228,6 @@ class ReleaseRepository({
         version: version.toString(),
         assetUrl: assetUrl,
         checksumsUrl: checksumsUrl,
-        publishedAt: publishedAt,
       ),
       version: version,
     );

@@ -76,7 +76,8 @@ client's update steps shown wherever a feature needs a newer bridge.
   shared extractor, covering both member listing and extraction where separate. Traversal,
   symlink rejection and timeout diagnostics remain enforced before an update can be adopted.
 - Applying happens in place under a cross-process lock with a durable attempt record and
-  log, and can roll back; startup reconciliation is local and network-free, reports the
+  log, and can roll back; a failed rollback step is logged with its error and stack.
+  Startup reconciliation is local and network-free, reports the
   prior attempt, and never fails startup. Residue sweeping is best-effort: lock
   contention skips it, deletion failure is observable, and a later launch retries.
 - The update command moves to the newest release on the track and exits, with force
@@ -159,9 +160,9 @@ after apply. Use a throwaway machine when mutating an install root.
   an artifact installed without verification.
 - Auto-update running for a supervised run, npm payload, CI, or opted-out process, or a
   managed install never checking at all.
-- An apply without the lock, a swap leaving a mixed-version install, residue
-  becoming permanently untracked or an unsuccessful sweep going unreported, or
-  reconciliation doing network work or failing startup.
+- An apply without the lock, a swap leaving a mixed-version install, a failed rollback
+  step going unlogged, residue becoming permanently untracked or an unsuccessful sweep
+  going unreported, or reconciliation doing network work or failing startup.
 - The npm package presenting itself as the long-lived runtime, its removal deleting the
   managed install, an auto-update transient reported as a hard failure, or a manual
   failure hidden instead of returned with guidance.

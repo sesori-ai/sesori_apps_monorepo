@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
-import 'package:sesori_shared/sesori_shared.dart';
 
 import '../../foundation/filesystem_cleaner.dart';
 import '../../foundation/filesystem_permission_validator.dart';
 import '../../foundation/process_runner.dart';
+import 'update_policy.dart';
 
 const Duration _invalidLockGracePeriod = Duration(seconds: 2);
 
@@ -32,12 +32,10 @@ class UpdateLock({
   /// well under a second, so this never trips a legitimate update.
   static const Duration updateStaleLockMaxAge = Duration(minutes: 15);
 
-
   Future<T> locked<T>({
     required File lockFile,
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
-    required bool Function(T value) shouldReleaseLock,
     Duration? staleLockMaxAge,
   }) async {
     final LockAcquireResult lockResult = await _acquireLock(
@@ -48,16 +46,10 @@ class UpdateLock({
       return await onLockRejected(lockResult);
     }
 
-    late final T value;
-    var completed = false;
     try {
-      value = await onLockAcquired();
-      completed = true;
-      return value;
+      return await onLockAcquired();
     } finally {
-      if (!completed || shouldReleaseLock(value)) {
-        await _releaseLock(lockFile: lockFile);
-      }
+      await _releaseLock(lockFile: lockFile);
     }
   }
 
@@ -90,13 +82,13 @@ class UpdateLock({
       } on PathExistsException {
         return LockAcquireResult.alreadyLocked;
       } on FileSystemException catch (error) {
-        if (_isPermissionDenied(error: error)) {
+        if (isUpdatePermissionDenied(error: error)) {
           return LockAcquireResult.permissionDenied;
         }
         rethrow;
       }
     } on FileSystemException catch (error) {
-      if (_isPermissionDenied(error: error)) {
+      if (isUpdatePermissionDenied(error: error)) {
         return LockAcquireResult.permissionDenied;
       }
       rethrow;
@@ -133,7 +125,7 @@ class UpdateLock({
         await lockFile.delete();
       }
     } on Object catch (error, stackTrace) {
-      Log.w('Failed to clean up the lock file after a write failure: $error', error, stackTrace);
+      Log.w('Failed to clean up the lock file after a write failure', error, stackTrace);
     }
   }
 
@@ -148,7 +140,7 @@ class UpdateLock({
       if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return LockAcquireResult.acquired;
       }
-      if (_isPermissionDenied(error: error)) {
+      if (isUpdatePermissionDenied(error: error)) {
         return LockAcquireResult.permissionDenied;
       }
       rethrow;
@@ -171,7 +163,7 @@ class UpdateLock({
       return await _deleteStaleLock(lockFile: lockFile);
     }
 
-    final bool isAlive = await isProcessAlive(pidToCheck: owner.pid);
+    final bool isAlive = await _isProcessAlive(pidToCheck: owner.pid);
     if (isAlive) {
       // Liveness says the holder is still running. As a last resort, reap a
       // lock held far longer than any real swap takes (which is sub-second);
@@ -227,7 +219,7 @@ class UpdateLock({
     return marker.isEmpty ? null : marker;
   }
 
-  Future<bool> isProcessAlive({required int pidToCheck}) async {
+  Future<bool> _isProcessAlive({required int pidToCheck}) async {
     if (pidToCheck <= 0) {
       return false;
     }
@@ -270,47 +262,33 @@ class UpdateLock({
       if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return LockAcquireResult.acquired;
       }
-      if (_isPermissionDenied(error: error)) {
+      if (isUpdatePermissionDenied(error: error)) {
         return LockAcquireResult.permissionDenied;
       }
       rethrow;
     }
   }
 
-
-  static bool _isPermissionDenied({required FileSystemException error}) {
-    // The shared validator covers EPERM(1)/EACCES(13) and permission messages.
-    // EIO(5) is additionally treated as a denial here because a failing lock
-    // volume must abort acquisition just like a permission error.
-    if (const FilesystemPermissionValidator().isPermissionDenied(error)) {
-      return true;
-    }
-    return error.osError?.errorCode == 5;
-  }
-
+  /// The owner a lock file records, or null for an empty, partial or
+  /// otherwise unreadable write.
   static _LockOwner? _parseOwner({required String content}) {
+    final Object? json;
     try {
-      final Map<String, dynamic> json = jsonDecodeMap(content);
-      return _LockOwner.fromJson(json);
-    } on Object {
-      final int? legacyPid = int.tryParse(content.trim());
-      if (legacyPid == null) {
-        return null;
-      }
-      return _LockOwner(pid: legacyPid, processMarker: null);
+      json = jsonDecode(content);
+    } on FormatException {
+      return null;
     }
+    return switch (json) {
+      {'pid': final int pid, 'processMarker': final String? processMarker} => _LockOwner(
+        pid: pid,
+        processMarker: processMarker,
+      ),
+      _ => null,
+    };
   }
-
 }
 
 final class const _LockOwner({required final int pid, required final String? processMarker}) {
-  factory fromJson(Map<String, dynamic> json) {
-    return _LockOwner(
-      pid: json['pid'] as int,
-      processMarker: json['processMarker'] as String?,
-    );
-  }
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'pid': pid,

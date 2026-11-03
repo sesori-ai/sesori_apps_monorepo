@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GitHubReleaseDto {
 
-@JsonKey(name: 'tag_name') String get tagName;@JsonKey(name: 'published_at') String? get publishedAt; bool get draft; bool get prerelease; List<GitHubAssetDto> get assets;
+@JsonKey(name: 'tag_name') String get tagName; bool get draft; bool get prerelease; List<GitHubAssetDto> get assets;
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +28,20 @@ $GitHubReleaseDtoCopyWith<GitHubReleaseDto> get copyWith => _$GitHubReleaseDtoCo
 @override
 bool operator ==(Object other) {
   final _this = this as GitHubReleaseDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GitHubReleaseDto&&(identical(other.tagName, _this.tagName) || other.tagName == _this.tagName)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.prerelease, _this.prerelease) || other.prerelease == _this.prerelease)&&const DeepCollectionEquality().equals(other.assets, _this.assets));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GitHubReleaseDto&&(identical(other.tagName, _this.tagName) || other.tagName == _this.tagName)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.prerelease, _this.prerelease) || other.prerelease == _this.prerelease)&&const DeepCollectionEquality().equals(other.assets, _this.assets));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as GitHubReleaseDto;
-  return Object.hash(runtimeType,_this.tagName,_this.publishedAt,_this.draft,_this.prerelease,const DeepCollectionEquality().hash(_this.assets));
+  return Object.hash(runtimeType,_this.tagName,_this.draft,_this.prerelease,const DeepCollectionEquality().hash(_this.assets));
 }
 
 @override
 String toString() {
   final _this = this as GitHubReleaseDto;
-  return 'GitHubReleaseDto(tagName: ${_this.tagName}, publishedAt: ${_this.publishedAt}, draft: ${_this.draft}, prerelease: ${_this.prerelease}, assets: ${_this.assets})';
+  return 'GitHubReleaseDto(tagName: ${_this.tagName}, draft: ${_this.draft}, prerelease: ${_this.prerelease}, assets: ${_this.assets})';
 }
 
 
@@ -52,7 +52,7 @@ abstract mixin class $GitHubReleaseDtoCopyWith<$Res>  {
   factory $GitHubReleaseDtoCopyWith(GitHubReleaseDto value, $Res Function(GitHubReleaseDto) _then) = _$GitHubReleaseDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'tag_name') String tagName,@JsonKey(name: 'published_at') String? publishedAt, bool draft, bool prerelease, List<GitHubAssetDto> assets
+@JsonKey(name: 'tag_name') String tagName, bool draft, bool prerelease, List<GitHubAssetDto> assets
 });
 
 
@@ -69,11 +69,10 @@ class _$GitHubReleaseDtoCopyWithImpl<$Res>
 
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? publishedAt = freezed,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
   return _then(GitHubReleaseDto(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as String?,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
+as String,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as bool,prerelease: null == prerelease ? _self.prerelease : prerelease // ignore: cast_nullable_to_non_nullable
 as bool,assets: null == assets ? _self.assets : assets // ignore: cast_nullable_to_non_nullable
 as List<GitHubAssetDto>,
@@ -88,11 +87,10 @@ as List<GitHubAssetDto>,
 @JsonSerializable(createToJson: false)
 
 class _GitHubReleaseDto implements GitHubReleaseDto {
-  const _GitHubReleaseDto({@JsonKey(name: 'tag_name') required this.tagName, @JsonKey(name: 'published_at') required this.publishedAt, required this.draft, required this.prerelease, required  List<GitHubAssetDto> assets}): _assets = assets;
+  const _GitHubReleaseDto({@JsonKey(name: 'tag_name') required this.tagName, required this.draft, required this.prerelease, required  List<GitHubAssetDto> assets}): _assets = assets;
   factory _GitHubReleaseDto.fromJson(Map<String, dynamic> json) => _$GitHubReleaseDtoFromJson(json);
 
 @override@JsonKey(name: 'tag_name') final  String tagName;
-@override@JsonKey(name: 'published_at') final  String? publishedAt;
 @override final  bool draft;
 @override final  bool prerelease;
  final  List<GitHubAssetDto> _assets;
@@ -113,18 +111,18 @@ _$GitHubReleaseDtoCopyWith<_GitHubReleaseDto> get copyWith => __$GitHubReleaseDt
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GitHubReleaseDto&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease)&&const DeepCollectionEquality().equals(other.assets, _assets));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GitHubReleaseDto&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease)&&const DeepCollectionEquality().equals(other.assets, _assets));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,tagName,publishedAt,draft,prerelease,const DeepCollectionEquality().hash(_assets));
+    return Object.hash(runtimeType,tagName,draft,prerelease,const DeepCollectionEquality().hash(_assets));
 }
 
 @override
 String toString() {
-    return 'GitHubReleaseDto(tagName: $tagName, publishedAt: $publishedAt, draft: $draft, prerelease: $prerelease, assets: $assets)';
+    return 'GitHubReleaseDto(tagName: $tagName, draft: $draft, prerelease: $prerelease, assets: $assets)';
 }
 
 
@@ -135,7 +133,7 @@ abstract mixin class _$GitHubReleaseDtoCopyWith<$Res> implements $GitHubReleaseD
   factory _$GitHubReleaseDtoCopyWith(_GitHubReleaseDto value, $Res Function(_GitHubReleaseDto) _then) = __$GitHubReleaseDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'tag_name') String tagName,@JsonKey(name: 'published_at') String? publishedAt, bool draft, bool prerelease, List<GitHubAssetDto> assets
+@JsonKey(name: 'tag_name') String tagName, bool draft, bool prerelease, List<GitHubAssetDto> assets
 });
 
 
@@ -152,11 +150,10 @@ class __$GitHubReleaseDtoCopyWithImpl<$Res>
 
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? tagName = null,Object? publishedAt = freezed,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? tagName = null,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
   return _then(_GitHubReleaseDto(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as String?,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
+as String,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as bool,prerelease: null == prerelease ? _self.prerelease : prerelease // ignore: cast_nullable_to_non_nullable
 as bool,assets: null == assets ? _self._assets : assets // ignore: cast_nullable_to_non_nullable
 as List<GitHubAssetDto>,

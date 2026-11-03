@@ -20,7 +20,7 @@ enum UpdateAppliedKind() {
 
 /// A release was staged and applied; it activates on the next launch.
 final class const ExplicitUpdateApplied({
-    required final String? fromVersion,
+    required final String fromVersion,
     required final String toVersion,
     required final UpdateAppliedKind kind,
     required final ReleaseTrack track,

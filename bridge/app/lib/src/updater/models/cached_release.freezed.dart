@@ -20,13 +20,12 @@ mixin _$CachedRelease {
  String get latestVersion;/// The download URL for the latest release.
  String get downloadUrl;/// The URL to the checksums file for verification.
  String get checksumsUrl;/// The release asset name this cache entry was resolved for.
- String get assetName;/// The release track ([ReleaseTrack.wireValue]) this cache entry was
-/// resolved for. A cache entry from a different track is ignored so a
-/// recent stable check can't mask an internal build (or vice versa).
-/// Defaults to `stable` so cache files written before this field existed
-/// (always the stable channel) parse without throwing during upgrades.
- String get track;/// When this release was published upstream.
- DateTime get publishedAt;/// When this cache entry was created.
+ String get assetName;/// The release track this cache entry was resolved for. A cache entry
+/// from a different track is ignored so a recent stable check can't mask
+/// an internal build (or vice versa). Defaults to stable so cache files
+/// written before this field existed (always the stable channel) parse
+/// without throwing during upgrades.
+ ReleaseTrack get track;/// When this cache entry was created.
  DateTime get checkedAt;
 /// Create a copy of CachedRelease
 /// with the given fields replaced by the non-null parameter values.
@@ -41,20 +40,20 @@ $CachedReleaseCopyWith<CachedRelease> get copyWith => _$CachedReleaseCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as CachedRelease;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CachedRelease&&(identical(other.latestVersion, _this.latestVersion) || other.latestVersion == _this.latestVersion)&&(identical(other.downloadUrl, _this.downloadUrl) || other.downloadUrl == _this.downloadUrl)&&(identical(other.checksumsUrl, _this.checksumsUrl) || other.checksumsUrl == _this.checksumsUrl)&&(identical(other.assetName, _this.assetName) || other.assetName == _this.assetName)&&(identical(other.track, _this.track) || other.track == _this.track)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt)&&(identical(other.checkedAt, _this.checkedAt) || other.checkedAt == _this.checkedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CachedRelease&&(identical(other.latestVersion, _this.latestVersion) || other.latestVersion == _this.latestVersion)&&(identical(other.downloadUrl, _this.downloadUrl) || other.downloadUrl == _this.downloadUrl)&&(identical(other.checksumsUrl, _this.checksumsUrl) || other.checksumsUrl == _this.checksumsUrl)&&(identical(other.assetName, _this.assetName) || other.assetName == _this.assetName)&&(identical(other.track, _this.track) || other.track == _this.track)&&(identical(other.checkedAt, _this.checkedAt) || other.checkedAt == _this.checkedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CachedRelease;
-  return Object.hash(runtimeType,_this.latestVersion,_this.downloadUrl,_this.checksumsUrl,_this.assetName,_this.track,_this.publishedAt,_this.checkedAt);
+  return Object.hash(runtimeType,_this.latestVersion,_this.downloadUrl,_this.checksumsUrl,_this.assetName,_this.track,_this.checkedAt);
 }
 
 @override
 String toString() {
   final _this = this as CachedRelease;
-  return 'CachedRelease(latestVersion: ${_this.latestVersion}, downloadUrl: ${_this.downloadUrl}, checksumsUrl: ${_this.checksumsUrl}, assetName: ${_this.assetName}, track: ${_this.track}, publishedAt: ${_this.publishedAt}, checkedAt: ${_this.checkedAt})';
+  return 'CachedRelease(latestVersion: ${_this.latestVersion}, downloadUrl: ${_this.downloadUrl}, checksumsUrl: ${_this.checksumsUrl}, assetName: ${_this.assetName}, track: ${_this.track}, checkedAt: ${_this.checkedAt})';
 }
 
 
@@ -65,7 +64,7 @@ abstract mixin class $CachedReleaseCopyWith<$Res>  {
   factory $CachedReleaseCopyWith(CachedRelease value, $Res Function(CachedRelease) _then) = _$CachedReleaseCopyWithImpl;
 @useResult
 $Res call({
- String latestVersion, String downloadUrl, String checksumsUrl, String assetName, String track, DateTime publishedAt, DateTime checkedAt
+ String latestVersion, String downloadUrl, String checksumsUrl, String assetName, ReleaseTrack track, DateTime checkedAt
 });
 
 
@@ -82,15 +81,14 @@ class _$CachedReleaseCopyWithImpl<$Res>
 
 /// Create a copy of CachedRelease
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? latestVersion = null,Object? downloadUrl = null,Object? checksumsUrl = null,Object? assetName = null,Object? track = null,Object? publishedAt = null,Object? checkedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? latestVersion = null,Object? downloadUrl = null,Object? checksumsUrl = null,Object? assetName = null,Object? track = null,Object? checkedAt = null,}) {
   return _then(CachedRelease(
 latestVersion: null == latestVersion ? _self.latestVersion : latestVersion // ignore: cast_nullable_to_non_nullable
 as String,downloadUrl: null == downloadUrl ? _self.downloadUrl : downloadUrl // ignore: cast_nullable_to_non_nullable
 as String,checksumsUrl: null == checksumsUrl ? _self.checksumsUrl : checksumsUrl // ignore: cast_nullable_to_non_nullable
 as String,assetName: null == assetName ? _self.assetName : assetName // ignore: cast_nullable_to_non_nullable
 as String,track: null == track ? _self.track : track // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,checkedAt: null == checkedAt ? _self.checkedAt : checkedAt // ignore: cast_nullable_to_non_nullable
+as ReleaseTrack,checkedAt: null == checkedAt ? _self.checkedAt : checkedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,
   ));
 }
@@ -103,7 +101,7 @@ as DateTime,
 @JsonSerializable()
 
 class _CachedRelease implements CachedRelease {
-  const _CachedRelease({required this.latestVersion, required this.downloadUrl, required this.checksumsUrl, required this.assetName, this.track = 'stable', required this.publishedAt, required this.checkedAt});
+  const _CachedRelease({required this.latestVersion, required this.downloadUrl, required this.checksumsUrl, required this.assetName, this.track = ReleaseTrack.stable, required this.checkedAt});
   factory _CachedRelease.fromJson(Map<String, dynamic> json) => _$CachedReleaseFromJson(json);
 
 /// The latest version string found during the check.
@@ -114,14 +112,12 @@ class _CachedRelease implements CachedRelease {
 @override final  String checksumsUrl;
 /// The release asset name this cache entry was resolved for.
 @override final  String assetName;
-/// The release track ([ReleaseTrack.wireValue]) this cache entry was
-/// resolved for. A cache entry from a different track is ignored so a
-/// recent stable check can't mask an internal build (or vice versa).
-/// Defaults to `stable` so cache files written before this field existed
-/// (always the stable channel) parse without throwing during upgrades.
-@override@JsonKey() final  String track;
-/// When this release was published upstream.
-@override final  DateTime publishedAt;
+/// The release track this cache entry was resolved for. A cache entry
+/// from a different track is ignored so a recent stable check can't mask
+/// an internal build (or vice versa). Defaults to stable so cache files
+/// written before this field existed (always the stable channel) parse
+/// without throwing during upgrades.
+@override@JsonKey() final  ReleaseTrack track;
 /// When this cache entry was created.
 @override final  DateTime checkedAt;
 
@@ -138,18 +134,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CachedRelease&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.assetName, assetName) || other.assetName == assetName)&&(identical(other.track, track) || other.track == track)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.checkedAt, checkedAt) || other.checkedAt == checkedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CachedRelease&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.assetName, assetName) || other.assetName == assetName)&&(identical(other.track, track) || other.track == track)&&(identical(other.checkedAt, checkedAt) || other.checkedAt == checkedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,latestVersion,downloadUrl,checksumsUrl,assetName,track,publishedAt,checkedAt);
+    return Object.hash(runtimeType,latestVersion,downloadUrl,checksumsUrl,assetName,track,checkedAt);
 }
 
 @override
 String toString() {
-    return 'CachedRelease(latestVersion: $latestVersion, downloadUrl: $downloadUrl, checksumsUrl: $checksumsUrl, assetName: $assetName, track: $track, publishedAt: $publishedAt, checkedAt: $checkedAt)';
+    return 'CachedRelease(latestVersion: $latestVersion, downloadUrl: $downloadUrl, checksumsUrl: $checksumsUrl, assetName: $assetName, track: $track, checkedAt: $checkedAt)';
 }
 
 
@@ -160,7 +156,7 @@ abstract mixin class _$CachedReleaseCopyWith<$Res> implements $CachedReleaseCopy
   factory _$CachedReleaseCopyWith(_CachedRelease value, $Res Function(_CachedRelease) _then) = __$CachedReleaseCopyWithImpl;
 @override @useResult
 $Res call({
- String latestVersion, String downloadUrl, String checksumsUrl, String assetName, String track, DateTime publishedAt, DateTime checkedAt
+ String latestVersion, String downloadUrl, String checksumsUrl, String assetName, ReleaseTrack track, DateTime checkedAt
 });
 
 
@@ -177,15 +173,14 @@ class __$CachedReleaseCopyWithImpl<$Res>
 
 /// Create a copy of CachedRelease
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? latestVersion = null,Object? downloadUrl = null,Object? checksumsUrl = null,Object? assetName = null,Object? track = null,Object? publishedAt = null,Object? checkedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? latestVersion = null,Object? downloadUrl = null,Object? checksumsUrl = null,Object? assetName = null,Object? track = null,Object? checkedAt = null,}) {
   return _then(_CachedRelease(
 latestVersion: null == latestVersion ? _self.latestVersion : latestVersion // ignore: cast_nullable_to_non_nullable
 as String,downloadUrl: null == downloadUrl ? _self.downloadUrl : downloadUrl // ignore: cast_nullable_to_non_nullable
 as String,checksumsUrl: null == checksumsUrl ? _self.checksumsUrl : checksumsUrl // ignore: cast_nullable_to_non_nullable
 as String,assetName: null == assetName ? _self.assetName : assetName // ignore: cast_nullable_to_non_nullable
 as String,track: null == track ? _self.track : track // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,checkedAt: null == checkedAt ? _self.checkedAt : checkedAt // ignore: cast_nullable_to_non_nullable
+as ReleaseTrack,checkedAt: null == checkedAt ? _self.checkedAt : checkedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,
   ));
 }

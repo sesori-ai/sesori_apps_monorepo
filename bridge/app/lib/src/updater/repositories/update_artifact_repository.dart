@@ -74,11 +74,7 @@ class UpdateArtifactRepository({
       if (isTransientNetworkError(error)) {
         rethrow;
       }
-      Log.w(
-        'verifyDownloadedArchive: unexpected error, failing checksum verification: $error',
-        error,
-        stackTrace,
-      );
+      Log.w('verifyDownloadedArchive: unexpected error, failing checksum verification', error, stackTrace);
       return false;
     }
   }

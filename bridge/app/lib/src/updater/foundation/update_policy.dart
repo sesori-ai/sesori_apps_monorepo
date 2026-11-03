@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
+import '../../foundation/filesystem_permission_validator.dart';
+
 bool isNpmInstall({required String executablePath}) {
   return executablePath.contains('node_modules');
 }
@@ -76,6 +78,13 @@ bool shouldSkipUpdates({
 /// throttling) rather than a genuine failure. The best-effort updater stays
 /// quiet on these and retries on the next cycle; other non-2xx statuses (404,
 /// auth rejections, etc.) are genuine and surfaced with reinstall guidance.
+/// The shared validator covers EPERM(1)/EACCES(13) and permission messages.
+/// The updater additionally treats EIO(5) as a denial because a read-only or
+/// failing install volume must abort the update just like a permission error.
+bool isUpdatePermissionDenied({required FileSystemException error}) {
+  return const FilesystemPermissionValidator().isPermissionDenied(error) || error.osError?.errorCode == 5;
+}
+
 bool isRetryableHttpStatus(int statusCode) {
   return statusCode >= 500 || statusCode == 429 || statusCode == 408;
 }

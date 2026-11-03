@@ -8,7 +8,10 @@ import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository
 import 'package:sesori_bridge/src/updater/repositories/update_installation_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dart';
 import 'package:sesori_bridge/src/updater/services/update_reconciliation_service.dart';
+import 'package:sesori_plugin_interface/plugin_interface_testing.dart';
 import 'package:test/test.dart';
+
+import '../helpers/log_capture.dart';
 
 class _FakeAttemptRepository() implements UpdateAttemptRepository {
   UpdateAttempt? stored;
@@ -66,7 +69,6 @@ class _FakeUpdateLock() implements UpdateLock {
     required File lockFile,
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
-    required bool Function(T value) shouldReleaseLock,
     Duration? staleLockMaxAge,
   }) {
     if (outcome == LockAcquireResult.acquired) {
@@ -74,9 +76,6 @@ class _FakeUpdateLock() implements UpdateLock {
     }
     return onLockRejected(outcome);
   }
-
-  @override
-  Future<bool> isProcessAlive({required int pidToCheck}) async => false;
 }
 
 UpdateAttempt _attempt({
@@ -88,7 +87,6 @@ UpdateAttempt _attempt({
     fromVersion: '1.0.0',
     toVersion: toVersion,
     startedAt: DateTime.utc(2026, 6, 17),
-    stage: UpdateStage.swapping,
     status: status,
     reason: reason,
   );
@@ -101,7 +99,7 @@ void main() {
   late _FakeUpdateLock lock;
   late List<String> infoMessages;
   late List<String> errorMessages;
-  late List<String> warnings;
+  late BufferingStdout logOutput;
 
   UpdateReconciliationService buildService({required String currentVersion}) {
     const plainFormatter = UpdateOutputFormatter(color: false, unicode: false);
@@ -115,7 +113,6 @@ void main() {
       installRoot: '/tmp/install',
     );
     service.emitLine = (line) => (line.isError ? errorMessages : infoMessages).add(line.text);
-    service.logWarning = warnings.add;
     return service;
   }
 
@@ -126,7 +123,7 @@ void main() {
     lock = _FakeUpdateLock();
     infoMessages = <String>[];
     errorMessages = <String>[];
-    warnings = <String>[];
+    logOutput = captureLogOutput();
   });
 
   test('no attempt: sweeps residue, nothing reported, nothing cleared', () async {
@@ -160,8 +157,7 @@ void main() {
     // Nothing is touched, but the inaccessible lock is surfaced as a distinct
     // warning rather than benign "held by another process".
     expect(installation.sweepCount, 0);
-    expect(warnings, hasLength(1));
-    expect(warnings.single, contains('not accessible'));
+    expect(logOutput.text, contains('the update lock is not accessible'));
     expect(infoMessages, isEmpty);
     expect(errorMessages, isEmpty);
     expect(attempts.cleared, isFalse);

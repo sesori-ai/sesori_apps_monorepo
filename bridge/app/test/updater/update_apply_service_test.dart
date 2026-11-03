@@ -11,7 +11,10 @@ import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository
 import 'package:sesori_bridge/src/updater/repositories/update_installation_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dart';
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
+import 'package:sesori_plugin_interface/plugin_interface_testing.dart';
 import 'package:test/test.dart';
+
+import '../helpers/log_capture.dart';
 
 class _FakeInstallationRepository() implements UpdateInstallationRepository {
   Object? applyError;
@@ -101,7 +104,6 @@ class _FakeUpdateLock() implements UpdateLock {
     required File lockFile,
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
-    required bool Function(T value) shouldReleaseLock,
     Duration? staleLockMaxAge,
   }) {
     if (outcome == LockAcquireResult.acquired) {
@@ -109,16 +111,12 @@ class _FakeUpdateLock() implements UpdateLock {
     }
     return onLockRejected(outcome);
   }
-
-  @override
-  Future<bool> isProcessAlive({required int pidToCheck}) async => false;
 }
 
-ReleaseInfo _release() => ReleaseInfo(
+ReleaseInfo _release() => const ReleaseInfo(
   version: '2.0.0',
   assetUrl: 'https://example.com/bridge.tar.gz',
   checksumsUrl: 'https://example.com/checksums.txt',
-  publishedAt: DateTime.utc(2026),
 );
 
 void main() {
@@ -128,10 +126,10 @@ void main() {
   late _FakeAttemptRepository attempts;
   late _FakeLogRepository logs;
   late _FakeUpdateLock lock;
-  late List<String> warnings;
+  late BufferingStdout logOutput;
 
   UpdateApplyService buildService() {
-    final service = UpdateApplyService(
+    return UpdateApplyService(
       installationRepository: installation,
       attemptRepository: attempts,
       logRepository: logs,
@@ -141,8 +139,6 @@ void main() {
       currentVersion: '1.0.0',
       installRoot: installRoot.path,
     );
-    service.logWarning = warnings.add;
-    return service;
   }
 
   setUp(() async {
@@ -153,7 +149,7 @@ void main() {
     attempts = _FakeAttemptRepository();
     logs = _FakeLogRepository();
     lock = _FakeUpdateLock();
-    warnings = <String>[];
+    logOutput = captureLogOutput();
   });
 
   tearDown(() async {
@@ -180,7 +176,6 @@ void main() {
     expect(installation.recordedVersion, '2.0.0');
     expect(attempts.saved.first.status, UpdateAttemptStatus.inFlight);
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
-    expect(attempts.saved.last.stage, UpdateStage.activated);
     // The staging directory is cleaned after a successful apply.
     expect(Directory(stagingPath).existsSync(), isFalse);
   });
@@ -205,7 +200,7 @@ void main() {
     // npm sees the new version.
     expect(attempts.cleared, isTrue);
     expect(installation.recordedVersion, '2.0.0');
-    expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
+    expect(logOutput.text, contains('Failed to record the pending activation'));
   });
 
   test('a manifest bump failure marks the apply as not durably recorded', () async {
@@ -222,7 +217,7 @@ void main() {
       isA<UpdateApplied>().having((o) => o.durablyRecorded, 'durablyRecorded', isFalse),
     );
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
-    expect(warnings, contains(predicate<String>((w) => w.contains('managed runtime manifest'))));
+    expect(logOutput.text, contains('Failed to update the managed runtime manifest'));
   });
 
   test('a log-append failure after the status write still bumps the manifest', () async {
@@ -242,7 +237,7 @@ void main() {
     );
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
     expect(installation.recordedVersion, '2.0.0');
-    expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
+    expect(logOutput.text, contains('Failed to record the pending activation'));
   });
 
   test('failed swap records a failure and returns it with the log path', () async {
@@ -271,7 +266,7 @@ void main() {
     expect(outcome, isA<UpdateApplyLockBusy>());
     expect(installation.applyCount, 0);
     expect(attempts.saved, isEmpty);
-    expect(warnings, hasLength(1));
+    expect(logOutput.text, contains('another update is in progress'));
     // The swap never ran, so the staged payload is cleaned up rather than left
     // to accumulate (important for the per-process manual staging dirs).
     expect(Directory(stagingPath).existsSync(), isFalse);
