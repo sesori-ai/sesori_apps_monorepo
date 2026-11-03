@@ -40,8 +40,9 @@ class const DesktopSessionDetailScreen({
     return MultiBlocProvider(
       providers: [
         BlocProvider<SessionDetailCubit>(
-          create: (_) => createSessionDetailCubit(
+          create: (context) => createSessionDetailCubit(
             locator: getIt,
+            window: context.read<SessionWindowService>(),
             sessionId: sessionId,
             projectId: projectId,
           ),

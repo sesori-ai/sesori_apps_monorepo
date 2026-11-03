@@ -94,6 +94,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
     addTearDown(cubit.close);
@@ -206,6 +207,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
     addTearDown(cubit.close);

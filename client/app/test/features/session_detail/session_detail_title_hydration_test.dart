@@ -31,7 +31,11 @@ class MockPermissionRepository() extends Mock implements PermissionRepository;
 
 class MockMcpService() extends Mock implements McpService;
 
-class _MockSessionWindowService() extends Mock implements SessionWindowService;
+class _MockSessionWindowService() extends Mock implements SessionWindowService {
+  this {
+    when(() => renameTitles).thenAnswer((_) => const Stream.empty());
+  }
+}
 
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
