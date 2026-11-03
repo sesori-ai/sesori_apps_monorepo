@@ -82,18 +82,15 @@ existing rules or decisions:
 | XC-DOC-6 | Condense the orphaned auth-reconnect plan into a short draft under `.plan/drafts/`. |
 | XC-DOC-11 | Rewrite `docs/cursor-acp-followups/README.md` against current code. |
 
-Pending user decisions, asked on the review page:
+User decisions (review page, 2026-11-02):
 
-| Q | Item | Options (suggested first) | Affects step |
+| Q | Item | Decision | Step |
 | --- | --- | --- | --- |
-| Q1 | BA-2 bridge restart route and subsystem | remove; or keep it debug-only and off the relay | 24 |
-| Q2 | PI-4 / XC-DOC-2 inert runtime-update seam and the stalled `path-runtime-authority-split` plan | remove and retire the plan; or keep it and re-plan steps 7–9 | 23, 25 |
-| Q3 | UI-7 phone app macOS/Linux/Windows/web runners | delete; or keep for local development | 26 |
-| Q4 | UI-8 "temporary" voice-engine picker in v1.11.0 | gate it to internal builds; remove it; or make it permanent | 16 |
-| Q5 | XC-DOC-1 retire eight finished or stalled plans | all eight, accepting the named gaps; or only the four without gaps | 23 |
-
-A step whose decision removes its work is marked **dropped** in the tracker.
-Its number stays, so series titles keep one total.
+| Q1 | BA-2 bridge restart route and subsystem | Remove the route and the whole restart subsystem. | 24 |
+| Q2 | PI-4 / XC-DOC-2 inert runtime-update seam | Remove the seam and retire `path-runtime-authority-split` as abandoned at step 6. Updating harnesses from the app would be a new plan. | 23, 25 |
+| Q3 | UI-7 phone app macOS/Linux/Windows/web runners | Delete them. The phone app is iOS and Android only. | 26 |
+| Q4 | UI-8 "temporary" voice-engine picker in v1.11.0 | Remove the picker, its route, cubit and stored preference. The automatic device-then-server fallback stays. | 16 |
+| Q5 | XC-DOC-1 eight finished or stalled plans | Retire all eight. The user accepts these unexecuted checks: quota-auto-continuation macOS QA; mcp-management step 37 L4 and external checks; desktop-sign-in full Apple sign-in on a macOS build; user-analytics Looker report and 3-day reconciliation. | 23 |
 
 ## Phase 1 steps
 
@@ -118,17 +115,17 @@ authored and generated.
 | 13 | ⚙️ Remove dead and test-only module_core APIs | MC-1, MC-3, MC-4, MC-5, MC-6, MC-7 | ~500 | 1 |
 | 14 | 🌿 Show renamed session titles immediately and drop the unrendered list state | MC-2 | ~560 | 13 |
 | 15 | 🌿 Delete dead Prego components | UI-1, UI-11 | ~620 | 1 |
-| 16 | 🌿 Clean up the phone app | UI-2, UI-4, UI-5, UI-6, UI-8 (per Q4), UI-9, UI-10, UI-12 | ~500–1,000 | 13 |
+| 16 | 🌿 Clean up the phone app and remove the voice-engine picker | UI-2, UI-4, UI-5, UI-6, UI-8, UI-9, UI-10, UI-12 | ~1,000 | 13 |
 | 17 | 🌿 Share the platform adapters between phone and desktop | UI-3, DS-7 | ~610 | 16 |
 | 18 | 🌿 Delete dead sesori_shared code | DS-1, DS-3, DS-5, DS-8 | ~1,300 + ~390 gen | 1 |
 | 19 | 🌿 Remove the unrendered login control prompt and share notification routing | DS-4, DS-6a | ~125 | 17, 18 |
 | 20 | 🌿 Retire dead lint rules and tighten the live ones | DS-2, DS-9, DS-13, DS-14, XC-6 (linter part) | ~1,150 | all code steps up to 19 |
 | 21 | 🌱 Remove CI leftovers | XC-CI-1…12 | ~250 | 1 |
 | 22 | 🌱 Correct compatibility markers | XC-2 (auth branch), XC-3 (Codex), XC-5, XC-7, BA-8, DS-11, PN-16, PI-7 | ~220 | 4, 6 |
-| 23 | 🌱 Retire finished plans and fix stale docs | XC-DOC-1 (per Q5), XC-DOC-2 (per Q2), XC-DOC-3…14, DS-10, PI-6 | docs | answers |
-| 24 | per Q1: 🌿 Remove the bridge restart subsystem, or 🌱 keep restart debug-only | BA-2 | ~940 or ~5 | 12 |
-| 25 | per Q2: 🌿 Remove the inert runtime-update seam, or dropped | PI-4 | ~230 | 4 |
-| 26 | per Q3: 🌱 Remove the phone app's desktop and web runners, or dropped | UI-7 | ~9.9k scaffold | 17 |
+| 23 | 🌱 Retire finished plans and fix stale docs | XC-DOC-1, XC-DOC-2, XC-DOC-3…14, DS-10, PI-6 | docs | 1 |
+| 24 | 🌿 Remove the bridge restart subsystem | BA-2 | ~940 | 12 |
+| 25 | 🌿 Remove the inert runtime-update seam | PI-4 | ~230 | 4 |
+| 26 | 🌱 Remove the phone app's desktop and web runners | UI-7 | ~9.9k scaffold | 17 |
 | 27 | 🌱 Reconcile regression docs | — | docs | 2–26 |
 | 28 | 🌱 Run the verification matrix and retire the plan | — | docs | 27 |
 
@@ -180,7 +177,7 @@ Only what the findings do not already make obvious.
   - The `projects-and-sessions.md` rename claim becomes true. Feel check: the title changes in place with no row jump or reorder flicker.
 - **16.**
   - Removing the deep-link stack drops the `app_links` dependency.
-  - UI-8 follows Q4.
+  - UI-8 removes the picker view and screen, the `settingsVoiceEngine` route, `VoiceEngineCubit`, the `VoiceEngine` preference and its storage, and their ARB keys. Dictation always tries on-device first and falls back to the server, still behind `voice_on_device_enabled`. A stored preference becomes a dead key; do not migrate it. Settings visibly loses the voice-engine row, so include before and after screenshots.
   - Unused ARB keys are deleted from the source ARB and regenerated.
 - **17.** Move the identical adapters and the shared route dispatcher and no-op config sources into `module_app_ui/lib/src/platform/`. Both shells keep only their genuinely different adapters.
 - **18.** Before deleting `GlobalSession` and `SessionProject`, confirm that no public client tag decodes them (DS-3).
@@ -199,9 +196,7 @@ Only what the findings do not already make obvious.
   - `git mv` each retired plan to `.plan/completed/`, adding a dated "Retired with accepted gaps" note that names each unexecuted check.
   - Repoint every `.plan/active/` link that the move breaks.
   - Correct the stale tracker states.
-- **24.**
-  - Option A removes the route, `RoutedRequestOutcome`, the restart service and launcher, exit code 86 and the desktop respawn case. The supervised E2E test restarts by stop/start on the same data directory.
-  - Option B only unregisters the route from the relay router.
+- **24.** Remove the route, `RoutedRequestOutcome`, the restart dispatcher, service and Windows successor launcher, the restart command and env, exit code 86 and its runner branches, and the desktop respawn case. The supervised E2E test restarts by stop/start on the same data directory. Check the restart exit code against public desktop builds before removing it from `BridgeSupervisedExitCode`.
 - **25.**
   - Confirm that `PluginControlCapability.runtimeUpdate` never reached a public client before deleting the enum value. If it did, keep the value with a marker and remove only the inert spec and overrides.
   - Retire `path-runtime-authority-split` as abandoned at step 6.
@@ -215,7 +210,7 @@ otherwise a rename visibly lags until the bridge echoes it.
 
 Everything else only removes state. The biggest removals:
 - the unrendered `SessionListCubit` list state and its SSE subscription;
-- the restart subsystem's exit-86 branches (if Q1 = remove);
+- the restart subsystem's exit-86 branches;
 - duplicated push requestId maps;
 - the updater's dead stage state;
 - the two-phase lifecycle init.
@@ -236,8 +231,8 @@ changes, not a fresh pass of whole feature documents.
 | Rows | Proof |
 | --- | --- |
 | Plugin interface, routes and plugins (steps 2–8, 25) | Owning suites for every plugin package. Headless live bridge on macOS: setup inspection of every registered harness; a real turn on OpenCode v2, Claude Code and Codex including turn completion; one question or permission round trip. |
-| Bridge services (steps 9–12, 24) | Owning suites, including `supervised_e2e_test`. A headless bridge start, relay connect, reconnect and clean shutdown. With Q1 = remove, a desktop-supervised stop/start keeps the same data directory. |
-| Client (steps 13–17) | Owning cubit, widget and golden suites. Headless iOS simulator (`xcrun simctl boot`, never Simulator.app) on the device the local testing setup assigns: project list, session list, rename showing the new title at once without a jump, session detail, settings (voice entry per Q4), sign-out and in. |
+| Bridge services (steps 9–12, 24) | Owning suites, including `supervised_e2e_test`. A headless bridge start, relay connect, reconnect and clean shutdown. A desktop-supervised stop/start keeps the same data directory, now that restart is gone. |
+| Client (steps 13–17) | Owning cubit, widget and golden suites. Headless iOS simulator (`xcrun simctl boot`, never Simulator.app) on the device the local testing setup assigns: project list, session list, rename showing the new title at once without a jump, session detail, settings without the voice-engine row, dictation still working, sign-out and in. |
 | Desktop-specific (step 19) | Owning `module_desktop_core` suites (`dart test`). Notification-open routing on a macOS desktop build if a display is available. Otherwise record it as not run; it is not a pass. |
 | Shared, linter, CI, docs (steps 18, 20–23, 26) | Owning suites, analyzers, generator dry runs, the CI workflow run itself, link checks over the moved plans. |
 

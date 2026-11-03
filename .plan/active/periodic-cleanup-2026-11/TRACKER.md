@@ -1,6 +1,6 @@
 # Periodic cleanup 2026-11 tracker
 
-Status values: Pending, In progress, PR open, Merged, Dropped (decision removed the work), Blocked.
+Status values: Pending, In progress, PR open, Merged, Blocked.
 
 | Step | Status | PR | Notes |
 | --- | --- | --- | --- |
@@ -19,17 +19,17 @@ Status values: Pending, In progress, PR open, Merged, Dropped (decision removed 
 | 13 module_core APIs | Pending | | |
 | 14 Optimistic session rename | Pending | | |
 | 15 Prego components | Pending | | |
-| 16 Phone app | Pending | | UI-8 waits for Q4. |
+| 16 Phone app | Pending | | Includes UI-8 picker removal (Q4). |
 | 17 Shared platform adapters | Pending | | |
 | 18 sesori_shared dead code | Pending | | |
 | 19 Login control prompt and notification routing | Pending | | |
 | 20 Lint rules | Pending | | |
 | 21 CI leftovers | Pending | | |
 | 22 Compatibility markers | Pending | | |
-| 23 Plans and docs | Pending | | Waits for Q2 and Q5. |
-| 24 Restart route | Pending | | Waits for Q1. |
-| 25 Runtime-update seam | Pending | | Waits for Q2. |
-| 26 Phone desktop/web runners | Pending | | Waits for Q3. |
+| 23 Plans and docs | Pending | | Retires all eight plans with accepted gaps (Q5) plus path-runtime-authority-split (Q2). |
+| 24 Restart route | Pending | | Remove (Q1). |
+| 25 Runtime-update seam | Pending | | Remove (Q2). |
+| 26 Phone desktop/web runners | Pending | | Delete (Q3). |
 | 27 Regression docs | Pending | | |
 | 28 Verify and retire | Pending | | |
 
