@@ -8,11 +8,11 @@ variant, and worktree mode, and creating the session with its first input.
 
 ## Required Behavior
 
-- Every new-session entry point opens in one default project: the session list's filter, else (the desktop
-  New session row and Cmd+N only) the open session's project, else the project the user last picked in the
-  new-session composer or started a session in on this computer, while it is still listed, else "No project" on
-  a bridge that has it, else the project of the newest session. The last project is stored per computer on the
-  device, so it survives leaving the composer, the desktop home rebuilding on return from a session, and an app
+- Every new-session entry point opens in one default project. The desktop New session row and Cmd+N start with the
+  open session's project, which beats even the filter, since it is where the user is. After that, for every entry
+  point: the session list's filter, else the project the user last picked in the new-session composer or started a
+  session in on the computer being viewed, while it is still listed, else "No project" on a bridge that has it, else
+  the project of the newest session. The last project is stored per computer on the device, so it survives leaving the composer, the desktop home rebuilding on return from a session, and an app
   restart; another computer keeps its own. Any project pick in a composer or in the "What should we work on?"
   prompt counts, the move a filter change makes on a home composer included; opening in the default does not.
   Until the computer's stored project is read, only the filter is a default and the list counts as loading, so
@@ -596,7 +596,8 @@ startup-extension file failure, retry once the filesystem is usable.
 ## Failure Signals
 
 - The phone home's New session opens a project other than its default (the filtered one, else the last project
-  picked or started in on this computer, else "No project" on a bridge that has it, else the newest session's),
+  picked or started in on the computer being viewed, else "No project" on a bridge that has it, else the newest
+  session's),
   or, with no default, preselects a project, creates a session before one is chosen, or hides the known projects
   behind the zero-project state.
 - A project picked in the composer, or a session started in it, is not where the next composer opens after Back,

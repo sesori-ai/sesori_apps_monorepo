@@ -299,7 +299,7 @@ state.
   list. The bar holds the computer button and Settings, and a round glass + for New session floats at the bottom
   right, above the home indicator, holding still while the list scrolls under it. New session grows out of the + as a
   circle over the still home and shrinks back into it on Back ([navigation transitions](navigation-transitions.md)).
-  It opens in the filtered project, else the project last picked or started in on this computer, else "No
+  It opens in the filtered project, else the project last picked or started in on the computer being viewed, else "No
   project", else the project of the newest session, else asks for a project, its picker rising once the circle has settled
   ([session creation](session-creation-and-options.md)). Settings' Bridge section lists Archived after Projects
   (dimmed and disabled offline); it pushes like the other Settings pages and opens under the current filter. A pull
@@ -364,7 +364,7 @@ state.
   its footer holds the computer switcher, Settings and collapse. With no session open the pane is a new
   session in the list's default project ([session creation](session-creation-and-options.md)), which holds once
   chosen so another session turning newest never moves the draft. Without a filter, the project last picked or
-  started in lands once this computer's stored choice is read, else "No project" on a bridge that has it;
+  started in lands once the viewed computer's stored choice is read, else "No project" on a bridge that has it;
   otherwise the default lands only once the unsearched list on All has answered, so a guess never takes the
   draft; until then the pane waits blank.
   With no
