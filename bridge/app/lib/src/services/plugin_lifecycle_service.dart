@@ -38,7 +38,6 @@ typedef RegisteredPluginMetadata = ({
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
   List<String> eagerPluginIds,
-  String? defaultPluginId,
 });
 
 /// One producer-coalesced install progress update, ready for wire mapping.
@@ -64,6 +63,17 @@ List<RegisteredPluginMetadata> _validateAndSortPlugins(List<RegisteredPluginMeta
   return List<RegisteredPluginMetadata>.unmodifiable(sorted);
 }
 
+Map<String, PluginSetupStatus> _validateSetupById({
+  required List<RegisteredPluginMetadata> plugins,
+  required Map<String, PluginSetupStatus> setupById,
+}) {
+  final pluginIds = {for (final plugin in plugins) plugin.id};
+  if (!const SetEquality<String>().equals(setupById.keys.toSet(), pluginIds)) {
+    throw ArgumentError.value(setupById, "setupById", "must contain exactly every registered plugin id");
+  }
+  return Map<String, PluginSetupStatus>.unmodifiable(setupById);
+}
+
 class const PluginIdleTimerScheduler() {
   Timer schedule({required Duration duration, required void Function() onElapsed}) {
     return Timer(duration, onElapsed);
@@ -77,6 +87,8 @@ class PluginLifecycleService({
   required final PluginIdleTimerScheduler _idleTimerScheduler,
   required final BridgeIdProvider _bridgeIdProvider,
   required List<RegisteredPluginMetadata> plugins,
+  required Set<String> disabledPluginIds,
+  required Map<String, PluginSetupStatus> setupById,
 }) {
   final List<RegisteredPluginMetadata> _registeredPlugins = _validateAndSortPlugins(plugins);
   final Set<String> _knownPluginIds = Set<String>.unmodifiable(plugins.map((plugin) => plugin.id));
@@ -92,19 +104,25 @@ class PluginLifecycleService({
         for (final plugin in plugins)
           plugin.id: Set<PluginControlCapability>.unmodifiable(plugin.managementCapabilities),
       });
-  List<String>? _eligiblePluginIds;
-  Set<String> _startAllowedPluginIds = {};
+  List<String> _eligiblePluginIds = List<String>.unmodifiable([
+    for (final plugin in _validateAndSortPlugins(plugins))
+      if (!disabledPluginIds.contains(plugin.id)) plugin.id,
+  ]);
+  Set<String> _startAllowedPluginIds = {
+    for (final plugin in plugins)
+      if (!disabledPluginIds.contains(plugin.id) && setupById[plugin.id] is PluginSetupReady) plugin.id,
+  };
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
-  Map<String, PluginSetupStatus>? _setupById;
-  BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
-  BehaviorSubject<List<String>>? _readyPluginIdsSubject;
+  Map<String, PluginSetupStatus> _setupById = _validateSetupById(plugins: plugins, setupById: setupById);
+  final BehaviorSubject<List<PluginMetadata>> _metadataSubject = BehaviorSubject<List<PluginMetadata>>();
+  final BehaviorSubject<List<String>> _readyPluginIdsSubject = BehaviorSubject<List<String>>();
   final StreamController<String> _managementSnapshotTokenController = StreamController<String>.broadcast(sync: true);
   final StreamController<PluginInstallProgressUpdate> _installProgressController =
       StreamController<PluginInstallProgressUpdate>.broadcast(sync: true);
   final StreamController<PluginAuthenticationProgressUpdate> _authenticationProgressController =
       StreamController<PluginAuthenticationProgressUpdate>.broadcast(sync: true);
   final Map<String, DateTime> _lastInstallDownloadEmit = {};
-  StreamSubscription<List<PluginRuntimeSnapshot>>? _runtimeSubscription;
+  late final StreamSubscription<List<PluginRuntimeSnapshot>> _runtimeSubscription;
   Future<void>? _disposeFuture;
   final ParallelLock _settingsMutationLock = ParallelLock(maxParallelOperations: 1);
   final Map<String, _ActivePluginCommand> _activePluginCommands = {};
@@ -115,67 +133,47 @@ class PluginLifecycleService({
   final Random _random = Random.secure();
   bool _disposing = false;
 
-  Set<String> uncontrollableDisabledPluginIds({required Set<String> disabledPluginIds}) {
-    if (_eligiblePluginIds != null) throw StateError("Plugin lifecycle is already initialized.");
-    return Set<String>.unmodifiable(
-      disabledPluginIds.intersection(
-        _pluginIdsWithout(capability: PluginControlCapability.lifecycle),
-      ),
-    );
-  }
+  /// Fixed when the service is built, from the startup settings and inspection.
+  late final PluginStartupPolicy startupPolicy;
 
-  PluginStartupPolicy initialize({
-    required Set<String> disabledPluginIds,
-    required Map<String, PluginSetupStatus> setupById,
-  }) {
-    if (_eligiblePluginIds != null) throw StateError("Plugin lifecycle is already initialized.");
-    if (setupById.keys.toSet().difference(_knownPluginIds).isNotEmpty ||
-        _knownPluginIds.difference(setupById.keys.toSet()).isNotEmpty) {
-      throw ArgumentError.value(setupById, "setupById", "must contain exactly every registered plugin id");
-    }
-
-    _setupById = Map<String, PluginSetupStatus>.unmodifiable(setupById);
-    final eligiblePluginIds = List<String>.unmodifiable([
-      for (final plugin in _registeredPlugins)
-        if (!disabledPluginIds.contains(plugin.id)) plugin.id,
-    ]);
-    final setupReadyPluginIds = <String>{
-      for (final pluginId in eligiblePluginIds)
-        if (setupById[pluginId] is PluginSetupReady) pluginId,
-    };
-    _eligiblePluginIds = eligiblePluginIds;
-    _startAllowedPluginIds = setupReadyPluginIds;
+  this {
     _applyAccess();
     _rebuildMetadata();
-    final defaultPluginId = _selectableDefaultPluginId();
-    final eagerPluginIds = List<String>.unmodifiable([
-      for (final plugin in _registeredPlugins)
-        if (eligiblePluginIds.contains(plugin.id) &&
-            setupReadyPluginIds.contains(plugin.id) &&
-            plugin.activationPolicy == PluginActivationPolicy.eager)
-          plugin.id,
-    ]);
-    _metadataSubject = BehaviorSubject<List<PluginMetadata>>.seeded(_orderedMetadata());
-    _readyPluginIdsSubject = BehaviorSubject<List<String>>.seeded(
-      _buildReadyPluginIds(_lifecycleRepository.snapshot),
+    startupPolicy = (
+      eligiblePluginIds: _eligiblePluginIds,
+      eagerPluginIds: List<String>.unmodifiable([
+        for (final plugin in _registeredPlugins)
+          if (_startAllowedPluginIds.contains(plugin.id) && plugin.activationPolicy == PluginActivationPolicy.eager)
+            plugin.id,
+      ]),
     );
+    _metadataSubject.add(_orderedMetadata());
+    _readyPluginIdsSubject.add(_buildReadyPluginIds(_lifecycleRepository.snapshot));
     if (_hasCompleteManagementRuntimeSnapshot) {
       _lastPublishedManagementSnapshot = _buildManagementSnapshot(snapshotToken: _newManagementSnapshotToken());
     }
     _runtimeSubscription = _lifecycleRepository.snapshots.listen(_applyRuntimeSnapshots);
-    return (
-      eligiblePluginIds: eligiblePluginIds,
-      eagerPluginIds: eagerPluginIds,
-      defaultPluginId: defaultPluginId,
-    );
+  }
+
+  /// Disabled plugins without lifecycle control: no client can re-enable them,
+  /// so startup refuses to run while any is disabled.
+  static Set<String> uncontrollableDisabledPluginIds({
+    required List<RegisteredPluginMetadata> plugins,
+    required Set<String> disabledPluginIds,
+  }) {
+    return Set<String>.unmodifiable({
+      for (final plugin in plugins)
+        if (disabledPluginIds.contains(plugin.id) &&
+            !plugin.managementCapabilities.contains(PluginControlCapability.lifecycle))
+          plugin.id,
+    });
   }
 
   PluginCompositionView get compositionView {
-    final eligiblePluginIds = _requireEligiblePluginIds();
     return (
       knownPluginIds: _knownPluginIds,
       orderedPluginIds: List<String>.unmodifiable(_registeredPlugins.map((plugin) => plugin.id)),
-      eligiblePluginIds: eligiblePluginIds,
+      eligiblePluginIds: _eligiblePluginIds,
       defaultPluginId: _selectableDefaultPluginId(),
       projectOwnershipById: Map<String, PluginProjectOwnership>.unmodifiable({
         for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot.projectOwnership,
@@ -183,8 +181,6 @@ class PluginLifecycleService({
       sessionOptionsScopeById: _sessionOptionsScopeById,
     );
   }
-
-  List<PluginMetadata> get metadataSnapshot => List<PluginMetadata>.unmodifiable(_orderedMetadata());
 
   List<PluginMetadata> get selectableMetadataSnapshot {
     final selectableIds = {
@@ -199,13 +195,13 @@ class PluginLifecycleService({
   }
 
   PluginSetupResponse get setupSnapshot {
-    final setupById = _setupById;
-    if (setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     return PluginSetupResponse(
       plugins: [
-        for (final plugin in _registeredPlugins) _mapSetupMetadata(plugin: plugin, setup: setupById[plugin.id]!),
+        for (final plugin in _registeredPlugins)
+          _mapSetupMetadata(
+            plugin: plugin,
+            setup: _setupOf(pluginId: plugin.id),
+          ),
       ],
     );
   }
@@ -216,9 +212,6 @@ class PluginLifecycleService({
   }
 
   _PluginManagementSnapshot _requireManagementSnapshot() {
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     final snapshot = _lastPublishedManagementSnapshot;
     if (snapshot == null) throw StateError("Plugin management snapshot is not ready.");
     return snapshot;
@@ -244,17 +237,9 @@ class PluginLifecycleService({
     return _buildManagementResponse(snapshot: snapshot, bridgeId: bridgeId);
   }
 
-  Stream<List<PluginMetadata>> get metadataSnapshots {
-    final subject = _metadataSubject;
-    if (subject == null) throw StateError("Plugin lifecycle has not been initialized.");
-    return subject.stream;
-  }
+  Stream<List<PluginMetadata>> get metadataSnapshots => _metadataSubject.stream;
 
-  Stream<List<String>> get readyPluginIds {
-    final subject = _readyPluginIdsSubject;
-    if (subject == null) throw StateError("Plugin lifecycle has not been initialized.");
-    return subject.stream;
-  }
+  Stream<List<String>> get readyPluginIds => _readyPluginIdsSubject.stream;
 
   Stream<String> get managementSnapshotTokens => _managementSnapshotTokenController.stream;
 
@@ -267,9 +252,6 @@ class PluginLifecycleService({
     required PluginLifecycleCommandRequest request,
   }) {
     _requireAcceptingRequests();
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
@@ -366,7 +348,7 @@ class PluginLifecycleService({
   Future<void> upgradeManagedRuntimes() async {
     if (_disposing) return;
     final pluginIds = [
-      for (final pluginId in _requireEligiblePluginIds())
+      for (final pluginId in _eligiblePluginIds)
         if (!_activePluginCommands.containsKey(pluginId)) pluginId,
     ];
     final decisions = await Future.wait(
@@ -411,9 +393,6 @@ class PluginLifecycleService({
 
   Future<PluginAuthenticationChallengeResponse> authenticate({required String pluginId}) {
     _requireAcceptingRequests();
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
@@ -441,7 +420,7 @@ class PluginLifecycleService({
         ),
       );
     }
-    if (_setupById![pluginId] is! PluginSetupAuthenticationRequired) {
+    if (_setupOf(pluginId: pluginId) is! PluginSetupAuthenticationRequired) {
       throw PluginAuthenticationConflictException(
         PluginAuthenticationConflict(
           pluginId: pluginId,
@@ -489,9 +468,6 @@ class PluginLifecycleService({
     required Future<PluginRuntimeAuthenticationContinuationResult> Function({required int generation}) submit,
   }) async {
     _requireAcceptingRequests();
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
@@ -543,9 +519,6 @@ class PluginLifecycleService({
 
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
     _requireAcceptingRequests();
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
@@ -676,7 +649,7 @@ class PluginLifecycleService({
     final setup = inspected[pluginId];
     if (setup == null) throw StateError('Plugin "$pluginId" inspection returned no result.');
     _applyInspectedSetup(pluginId: pluginId, setup: setup);
-    if (setup is PluginSetupReady && _requireEligiblePluginIds().contains(pluginId)) {
+    if (setup is PluginSetupReady && _eligiblePluginIds.contains(pluginId)) {
       _handleRuntimeCommandResult(
         pluginId: pluginId,
         result: await _lifecycleRepository.start(pluginId: pluginId),
@@ -749,7 +722,7 @@ class PluginLifecycleService({
           // Authentication is a separate setup step, not an installation
           // failure. Keep the login-required card blocked without telling the
           // client to reinstall a runtime that was successfully provisioned.
-          final setup = _requireSetupById()[pluginId];
+          final setup = _setupById[pluginId];
           final installed = setup is PluginSetupReady || setup is PluginSetupAuthenticationRequired;
           _emitInstallProgress(
             pluginId: pluginId,
@@ -829,9 +802,6 @@ class PluginLifecycleService({
 
   Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
     _requireAcceptingRequests();
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     if (_lastPublishedManagementSnapshot == null) {
       throw StateError("Plugin management snapshot is not ready.");
     }
@@ -935,7 +905,7 @@ class PluginLifecycleService({
   }
 
   Future<void> _enable({required String pluginId, required _ActivePluginCommand command}) async {
-    if (!_requireEligiblePluginIds().contains(pluginId)) {
+    if (!_eligiblePluginIds.contains(pluginId)) {
       await _persistPluginDisabled(pluginId: pluginId, disabled: false);
       _setEligibility(pluginId: pluginId, eligible: true);
     }
@@ -953,7 +923,7 @@ class PluginLifecycleService({
   }
 
   Future<void> _disable({required String pluginId, required PluginStopMode mode}) async {
-    if (!_requireEligiblePluginIds().contains(pluginId)) return;
+    if (!_eligiblePluginIds.contains(pluginId)) return;
     final result = await _lifecycleRepository.prepareDisable(
       pluginId: pluginId,
       intent: _mapStopIntent(mode: mode),
@@ -1001,7 +971,7 @@ class PluginLifecycleService({
     required PluginStopMode mode,
     required _ActivePluginCommand command,
   }) async {
-    if (!_requireEligiblePluginIds().contains(pluginId)) {
+    if (!_eligiblePluginIds.contains(pluginId)) {
       throw PluginManagementConflictException(
         PluginLifecycleConflict(
           pluginId: pluginId,
@@ -1050,8 +1020,8 @@ class PluginLifecycleService({
   }
 
   void _applyInspectedSetup({required String pluginId, required PluginSetupStatus setup}) {
-    _setupById = Map<String, PluginSetupStatus>.unmodifiable({..._requireSetupById(), pluginId: setup});
-    if (_requireEligiblePluginIds().contains(pluginId) && setup is PluginSetupReady) {
+    _setupById = Map<String, PluginSetupStatus>.unmodifiable({..._setupById, pluginId: setup});
+    if (_eligiblePluginIds.contains(pluginId) && setup is PluginSetupReady) {
       _startAllowedPluginIds.add(pluginId);
     } else {
       _startAllowedPluginIds.remove(pluginId);
@@ -1100,7 +1070,7 @@ class PluginLifecycleService({
   };
 
   void _setEligibility({required String pluginId, required bool eligible}) {
-    final eligibleIds = _requireEligiblePluginIds().toSet();
+    final eligibleIds = _eligiblePluginIds.toSet();
     if (eligible) {
       eligibleIds.add(pluginId);
     } else {
@@ -1118,7 +1088,7 @@ class PluginLifecycleService({
 
   void _applyAccess() {
     _lifecycleRepository.applyAccess(
-      eligiblePluginIds: _requireEligiblePluginIds().toSet(),
+      eligiblePluginIds: _eligiblePluginIds.toSet(),
       startAllowedPluginIds: _startAllowedPluginIds,
     );
   }
@@ -1132,13 +1102,10 @@ class PluginLifecycleService({
   };
 
   void _applyRuntimeSnapshots(List<PluginRuntimeSnapshot> snapshots) {
-    final setupById = _setupById;
-    if (setupById != null) {
-      _setupById = Map<String, PluginSetupStatus>.unmodifiable({
-        ...setupById,
-        for (final snapshot in snapshots) snapshot.pluginId: snapshot.setup,
-      });
-    }
+    _setupById = Map<String, PluginSetupStatus>.unmodifiable({
+      ..._setupById,
+      for (final snapshot in snapshots) snapshot.pluginId: snapshot.setup,
+    });
     _startAllowedPluginIds = {
       for (final snapshot in snapshots)
         if (snapshot.accessGate != PluginRuntimeAccessGate.disabled && snapshot.startAllowed) snapshot.pluginId,
@@ -1155,8 +1122,7 @@ class PluginLifecycleService({
         actionHint: _metadataActionHint(runtimeState: snapshot.state, state: state),
       );
     }
-    final subject = _metadataSubject;
-    if (subject != null && !subject.isClosed) subject.add(_orderedMetadata());
+    if (!_metadataSubject.isClosed) _metadataSubject.add(_orderedMetadata());
     _publishReadyPluginIds(snapshots);
     _syncIdleTimers(snapshots);
     _publishManagementIfChanged();
@@ -1164,16 +1130,15 @@ class PluginLifecycleService({
 
   void _rebuildMetadata() {
     final snapshots = {for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot};
-    final setupById = _requireSetupById();
     _metadataById = <String, PluginMetadata>{
       for (final plugin in _registeredPlugins)
-        if (_requireEligiblePluginIds().contains(plugin.id))
+        if (_eligiblePluginIds.contains(plugin.id))
           plugin.id: () {
             final snapshot = snapshots[plugin.id];
             final runtimeState = snapshot?.state;
             final state = _lifecycleState(
               runtimeState: runtimeState,
-              unavailableState: setupById[plugin.id] is PluginSetupReady
+              unavailableState: _setupById[plugin.id] is PluginSetupReady
                   ? PluginLifecycleState.ready
                   : PluginLifecycleState.unavailable,
             );
@@ -1190,10 +1155,9 @@ class PluginLifecycleService({
   }
 
   List<PluginMetadata> _orderedMetadata() {
-    final eligiblePluginIds = _requireEligiblePluginIds();
     final defaultPluginId = _selectableDefaultPluginId();
     return List<PluginMetadata>.unmodifiable([
-      for (final pluginId in eligiblePluginIds)
+      for (final pluginId in _eligiblePluginIds)
         _metadataById[pluginId]!.copyWith(isDefault: pluginId == defaultPluginId),
     ]);
   }
@@ -1208,8 +1172,7 @@ class PluginLifecycleService({
 
   String? _defaultPluginIdFrom({required Set<String> candidateIds}) {
     if (candidateIds.contains(_preferredDefaultPluginId)) return _preferredDefaultPluginId;
-    final eligiblePluginIds = _requireEligiblePluginIds();
-    for (final pluginId in eligiblePluginIds) {
+    for (final pluginId in _eligiblePluginIds) {
       if (candidateIds.contains(pluginId)) return pluginId;
     }
     return null;
@@ -1238,16 +1201,8 @@ class PluginLifecycleService({
     };
   }
 
-  List<String> _requireEligiblePluginIds() {
-    final eligiblePluginIds = _eligiblePluginIds;
-    if (eligiblePluginIds == null) throw StateError("Plugin lifecycle has not been initialized.");
-    return eligiblePluginIds;
-  }
-
-  Map<String, PluginSetupStatus> _requireSetupById() {
-    final setupById = _setupById;
-    if (setupById == null) throw StateError("Plugin lifecycle has not been initialized.");
-    return setupById;
+  PluginSetupStatus _setupOf({required String pluginId}) {
+    return _setupById[pluginId] ?? (throw StateError('Plugin "$pluginId" is not registered.'));
   }
 
   PluginSetupMetadata _mapSetupMetadata({
@@ -1274,8 +1229,10 @@ class PluginLifecycleService({
 
   PluginManagementMetadata _managementRow({required RegisteredPluginMetadata plugin}) {
     final snapshot = _lifecycleRepository.snapshot.singleWhere((entry) => entry.pluginId == plugin.id);
-    final setupStatus = _setupById![plugin.id]!;
-    final setup = _mapSetupMetadata(plugin: plugin, setup: setupStatus);
+    final setup = _mapSetupMetadata(
+      plugin: plugin,
+      setup: _setupOf(pluginId: plugin.id),
+    );
     final settings = _bridgeSettingsRepository.currentSettings;
     return PluginManagementMetadata(
       setup: setup,
@@ -1314,13 +1271,6 @@ class PluginLifecycleService({
     };
   }
 
-  Set<String> _pluginIdsWithout({required PluginControlCapability capability}) {
-    return {
-      for (final MapEntry(key: pluginId, value: capabilities) in _managementCapabilitiesById.entries)
-        if (!capabilities.contains(capability)) pluginId,
-    };
-  }
-
   Set<PluginControlCapability> _managementCapabilitiesForPluginId({required String pluginId}) {
     return _managementCapabilitiesById[pluginId] ?? (throw StateError('Plugin "$pluginId" is not registered.'));
   }
@@ -1343,7 +1293,7 @@ class PluginLifecycleService({
   bool _isManagementCapabilityAvailable({required String pluginId, required PluginControlCapability capability}) {
     if (!_supportsManagementCapability(pluginId: pluginId, capability: capability)) return false;
     if (capability != PluginControlCapability.install) return true;
-    final setup = _setupById?[pluginId] ?? (throw StateError('Plugin "$pluginId" setup is not available.'));
+    final setup = _setupOf(pluginId: pluginId);
     return setup is! PluginSetupRuntimeOutdated && setup is! PluginSetupManagedInstallBlockedUnknown;
   }
 
@@ -1364,9 +1314,6 @@ class PluginLifecycleService({
   }
 
   _PluginManagementSnapshot _buildManagementSnapshot({required String snapshotToken}) {
-    if (_setupById == null) {
-      throw StateError("Plugin lifecycle has not been initialized.");
-    }
     final settings = _bridgeSettingsRepository.currentSettings;
     return _PluginManagementSnapshot(
       snapshotToken: snapshotToken,
@@ -1446,19 +1393,19 @@ class PluginLifecycleService({
       firstStackTrace = stackTrace;
     }
     try {
-      await _runtimeSubscription?.cancel();
+      await _runtimeSubscription.cancel();
     } on Object catch (error, stackTrace) {
       firstError = error;
       firstStackTrace = stackTrace;
     }
     try {
-      await _metadataSubject?.close();
+      await _metadataSubject.close();
     } on Object catch (error, stackTrace) {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
     }
     try {
-      await _readyPluginIdsSubject?.close();
+      await _readyPluginIdsSubject.close();
     } on Object catch (error, stackTrace) {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
@@ -1500,7 +1447,7 @@ class PluginLifecycleService({
       for (final snapshot in snapshots) snapshot.pluginId: snapshot,
     };
     return List<String>.unmodifiable([
-      for (final pluginId in _requireEligiblePluginIds())
+      for (final pluginId in _eligiblePluginIds)
         if (!_deferredReadyPluginIds.contains(pluginId))
           if (byId[pluginId] case final snapshot?)
             if (snapshot.accessGate == PluginRuntimeAccessGate.enabled &&
@@ -1511,14 +1458,13 @@ class PluginLifecycleService({
   }
 
   void _publishReadyPluginIds(List<PluginRuntimeSnapshot> snapshots) {
-    final subject = _readyPluginIdsSubject;
-    if (subject == null || subject.isClosed) return;
+    if (_readyPluginIdsSubject.isClosed) return;
     final next = _buildReadyPluginIds(snapshots);
-    if (const ListEquality<String>().equals(subject.value, next)) return;
-    subject.add(next);
+    if (const ListEquality<String>().equals(_readyPluginIdsSubject.value, next)) return;
+    _readyPluginIdsSubject.add(next);
   }
 
-  bool _isPublishedReady({required String pluginId}) => _readyPluginIdsSubject?.value.contains(pluginId) ?? false;
+  bool _isPublishedReady({required String pluginId}) => _readyPluginIdsSubject.value.contains(pluginId);
 
   void _publishDeferredReadyPlugin({required String pluginId}) {
     if (!_deferredReadyPluginIds.remove(pluginId)) return;

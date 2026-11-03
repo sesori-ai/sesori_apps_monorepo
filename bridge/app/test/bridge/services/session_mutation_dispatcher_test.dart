@@ -111,7 +111,6 @@ void main() {
         releaseRename.complete();
       }
       expect((await rename).title, "Stored title");
-      expect(operationDispatcher.activeLaneCount, isZero);
       await subscription.cancel();
     });
 

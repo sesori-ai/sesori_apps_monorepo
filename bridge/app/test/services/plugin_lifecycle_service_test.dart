@@ -30,9 +30,6 @@ void main() {
         PluginControlCapability.install,
         PluginControlCapability.runtimeUpdate,
       },
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {
         "one": PluginSetupRuntimeOutdated(
@@ -41,6 +38,7 @@ void main() {
         ),
       },
     );
+    addTearDown(service.dispose);
 
     final plugin = service.managementSnapshot.plugins.single;
     expect(plugin.setup.state, PluginSetupState.runtimeOutdated);
@@ -54,9 +52,6 @@ void main() {
         PluginControlCapability.setupRefresh,
         PluginControlCapability.install,
       },
-    );
-    addTearDown(newerService.dispose);
-    newerService.initialize(
       disabledPluginIds: const {},
       setupById: const {
         "one": PluginSetupManagedInstallBlockedUnknown(
@@ -65,6 +60,7 @@ void main() {
         ),
       },
     );
+    addTearDown(newerService.dispose);
 
     expect(newerService.managementSnapshot.plugins.single.managementCapabilities, {
       PluginManagementCapability.setupRefresh,
@@ -79,17 +75,15 @@ void main() {
     expect(repository.upgradeQueries, ["one"]);
     expect(repository.installCalls, isZero);
 
-    final managedUnknownService =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: const {PluginControlCapability.setupRefresh, PluginControlCapability.install},
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {
-            "one": PluginSetupUnknown.versioned(actionHint: "Retry managed setup.", runtimeVersion: "1.0.0"),
-          },
-        );
+    final managedUnknownService = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.setupRefresh, PluginControlCapability.install},
+      disabledPluginIds: const {},
+      setupById: const {
+        "one": PluginSetupUnknown.versioned(actionHint: "Retry managed setup.", runtimeVersion: "1.0.0"),
+      },
+    );
     addTearDown(managedUnknownService.dispose);
     expect(
       managedUnknownService.managementSnapshot.plugins.single.managementCapabilities,
@@ -107,12 +101,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final progress = <PluginAuthenticationProgressUpdate>[];
     service.authenticationProgress.listen(progress.add);
 
@@ -151,12 +143,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final terminal = service.authenticationProgress.first;
     final challenge = service.authenticate(pluginId: "one");
     repository.authenticationEvents.add(
@@ -185,12 +175,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final terminal = service.authenticationProgress.first;
     final challenge = service.authenticate(pluginId: "one");
     repository.authenticationEvents.add(
@@ -225,12 +213,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final challenge = service.authenticate(pluginId: "one");
     final redirectUri = Uri.parse("http://127.0.0.1/callback?code=code");
 
@@ -309,12 +295,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final progress = <PluginAuthenticationProgressUpdate>[];
     service.authenticationProgress.listen(progress.add);
     final challenge = service.authenticate(pluginId: "one");
@@ -357,12 +341,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final progress = <PluginAuthenticationProgressUpdate>[];
     service.authenticationProgress.listen(progress.add);
     final started = service.authenticate(pluginId: "one");
@@ -385,12 +367,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final progress = <PluginAuthenticationProgressUpdate>[];
     service.authenticationProgress.listen(progress.add);
     final started = service.authenticate(pluginId: "one");
@@ -426,12 +406,10 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
     );
+    addTearDown(service.dispose);
     final progress = <PluginAuthenticationProgressUpdate>[];
     service.authenticationProgress.listen(progress.add);
     final challenge = service.authenticate(pluginId: "one");
@@ -459,11 +437,12 @@ void main() {
       inspectionGate: Completer<void>(),
       startFailureMessage: null,
     );
-    final unsupported = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {},
-        setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
-      );
+    final unsupported = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
     addTearDown(unsupported.dispose);
     expect(
       () => unsupported.authenticate(pluginId: "one"),
@@ -480,7 +459,9 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: const {PluginControlCapability.authentication},
-    )..initialize(disabledPluginIds: const {}, setupById: const {"one": PluginSetupReady()});
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(ready.dispose);
     expect(
       () => ready.authenticate(pluginId: "one"),
@@ -498,18 +479,16 @@ void main() {
       inspectionGate: Completer<void>(),
       startFailureMessage: null,
     );
-    final commandConflict =
-        _commandService(
-          repository: commandRepository,
-          settingsRepository: null,
-          managementCapabilities: const {
-            PluginControlCapability.authentication,
-            PluginControlCapability.setupRefresh,
-          },
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
-        );
+    final commandConflict = _commandService(
+      repository: commandRepository,
+      settingsRepository: null,
+      managementCapabilities: const {
+        PluginControlCapability.authentication,
+        PluginControlCapability.setupRefresh,
+      },
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
     addTearDown(commandConflict.dispose);
     unawaited(commandConflict.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()));
     await Future<void>.delayed(Duration.zero);
@@ -540,7 +519,12 @@ void main() {
     );
 
     expect(
-      () => _service(runtime: runtime, plugins: const [plugin, plugin]),
+      () => _service(
+        runtime: runtime,
+        plugins: const [plugin, plugin],
+        disabledPluginIds: const {},
+        setupById: {plugin.id: const PluginSetupReady()},
+      ),
       throwsArgumentError,
     );
   });
@@ -579,10 +563,6 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-
-    final policy = service.initialize(
       disabledPluginIds: const {"beta", "future-plugin"},
       setupById: const {
         "alpha": PluginSetupReady(),
@@ -590,9 +570,12 @@ void main() {
         "zeta": PluginSetupRuntimeMissing(actionHint: "Install Zeta."),
       },
     );
+    addTearDown(service.dispose);
+
+    final policy = service.startupPolicy;
 
     expect(policy.eligiblePluginIds, ["alpha", "zeta"]);
-    expect(policy.defaultPluginId, "alpha");
+    expect(service.compositionView.defaultPluginId, "alpha");
     expect(policy.eagerPluginIds, isEmpty);
     expect(service.compositionView.eligiblePluginIds, ["alpha", "zeta"]);
     expect(service.compositionView.orderedPluginIds, ["alpha", "beta", "zeta"]);
@@ -653,10 +636,6 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-
-    final policy = service.initialize(
       disabledPluginIds: const {"yeti"},
       setupById: const {
         "zebra": PluginSetupReady(),
@@ -665,6 +644,9 @@ void main() {
         "wombat": PluginSetupReady(),
       },
     );
+    addTearDown(service.dispose);
+
+    final policy = service.startupPolicy;
 
     expect(policy.eagerPluginIds, ["zebra"]);
   });
@@ -696,19 +678,16 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-
-    final policy = service.initialize(
       disabledPluginIds: const {},
       setupById: const {
         "alpha": PluginSetupReady(),
         "opencode": PluginSetupReady(),
       },
     );
+    addTearDown(service.dispose);
+
     await Future<void>.delayed(Duration.zero);
 
-    expect(policy.defaultPluginId, "opencode");
     expect(service.compositionView.defaultPluginId, "opencode");
     expect(
       service.selectableMetadataSnapshot.singleWhere((entry) => entry.isDefault).id,
@@ -741,18 +720,15 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-
-    final policy = service.initialize(
       disabledPluginIds: const {},
       setupById: const {
         "opencode": PluginSetupRuntimeMissing(actionHint: "Install OpenCode."),
         "alpha": PluginSetupReady(),
       },
     );
+    addTearDown(service.dispose);
 
-    expect(policy.defaultPluginId, "alpha");
+    expect(service.compositionView.defaultPluginId, "alpha");
   });
 
   test("setup endpoint remains an alphabetical startup snapshot", () {
@@ -780,9 +756,6 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {"cursor"},
       setupById: const {
         "cursor": PluginSetupNotInspected(),
@@ -792,6 +765,7 @@ void main() {
         ),
       },
     );
+    addTearDown(service.dispose);
 
     expect(
       service.setupSnapshot.plugins,
@@ -828,50 +802,48 @@ void main() {
       ),
     );
     final bridgeIdProvider = FakeBridgeIdProvider();
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: bridgeIdProvider,
-          plugins: const [
-            (
-              id: "opencode",
-              displayName: "OpenCode",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.resident,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-            (
-              id: "alpha",
-              displayName: "Alpha",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-            (
-              id: "beta",
-              displayName: "Beta",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.plugin,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {"beta"},
-          setupById: const {
-            "opencode": PluginSetupReady(),
-            "alpha": PluginSetupRuntimeMissing(actionHint: "Install Alpha."),
-            "beta": PluginSetupNotInspected(),
-          },
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: bridgeIdProvider,
+      plugins: const [
+        (
+          id: "opencode",
+          displayName: "OpenCode",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.resident,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "alpha",
+          displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "beta",
+          displayName: "Beta",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {"beta"},
+      setupById: const {
+        "opencode": PluginSetupReady(),
+        "alpha": PluginSetupRuntimeMissing(actionHint: "Install Alpha."),
+        "beta": PluginSetupNotInspected(),
+      },
+    );
     addTearDown(service.dispose);
 
     // Lifecycle initialization precedes bridge registration in the runtime;
@@ -921,15 +893,13 @@ void main() {
       inspectionGate: null,
       startFailureMessage: null,
     );
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: const {PluginControlCapability.setupRefresh},
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.setupRefresh},
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await repository.dispose();
@@ -952,14 +922,12 @@ void main() {
       repository: repository,
       settingsRepository: null,
       managementCapabilities: capabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
     );
     capabilities
       ..clear()
       ..add(PluginControlCapability.lifecycle);
-    service.initialize(
-      disabledPluginIds: const {},
-      setupById: const {"one": PluginSetupReady()},
-    );
     addTearDown(() async {
       await service.dispose();
       await repository.dispose();
@@ -972,19 +940,7 @@ void main() {
   });
 
   test("reports disabled plugins that cannot be lifecycle-managed", () {
-    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["external", "managed"]);
-    addTearDown(runtime.dispose);
-    final settingsRepository = _MutableBridgeSettingsRepository(
-      settings: const BridgeSettings(
-        plugins: BridgePluginSettings(disabledPluginIds: {"external", "managed", "future-plugin"}),
-      ),
-    );
-    final service = PluginLifecycleService(
-      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-      preferredDefaultPluginId: legacyMissingPluginId,
-      bridgeSettingsRepository: settingsRepository,
-      idleTimerScheduler: const PluginIdleTimerScheduler(),
-      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+    final disabledPluginIds = PluginLifecycleService.uncontrollableDisabledPluginIds(
       plugins: const [
         (
           id: "external",
@@ -1005,40 +961,30 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-
-    final disabledPluginIds = service.uncontrollableDisabledPluginIds(
-      disabledPluginIds: settingsRepository.currentSettings.plugins.disabledPluginIds,
+      disabledPluginIds: const {"external", "managed", "future-plugin"},
     );
 
     expect(disabledPluginIds, const {"external"});
-    expect(
-      settingsRepository.currentSettings.plugins.disabledPluginIds,
-      const {"external", "managed", "future-plugin"},
-    );
   });
 
   test("management snapshot tokens publish only externally visible changes", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha"]);
-    final service =
-        _service(
-          runtime: runtime,
-          plugins: const [
-            (
-              id: "alpha",
-              displayName: "Alpha",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"alpha": PluginSetupReady()},
-        );
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (
+          id: "alpha",
+          displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"alpha": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1085,33 +1031,31 @@ void main() {
     final alpha = _FakePluginApi(id: "alpha");
     final beta = _FakePluginApi(id: "beta");
     final runtime = createTestPluginRuntime(plugins: [alpha, beta]);
-    final service =
-        _service(
-          runtime: runtime,
-          plugins: const [
-            (
-              id: "alpha",
-              displayName: "Alpha",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-            (
-              id: "beta",
-              displayName: "Beta",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.plugin,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"alpha": PluginSetupReady(), "beta": PluginSetupReady()},
-        );
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (
+          id: "alpha",
+          displayName: "Alpha",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "beta",
+          displayName: "Beta",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"alpha": PluginSetupReady(), "beta": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1208,40 +1152,38 @@ void main() {
         ),
       ),
     );
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: const [
-            (
-              id: "managed",
-              displayName: "Managed",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: {PluginControlCapability.idleTimeout},
-              supportsPromptAttachments: false,
-            ),
-            (
-              id: "external",
-              displayName: "External",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.plugin,
-              managementCapabilities: {PluginControlCapability.setupRefresh},
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {
-            "managed": PluginSetupReady(),
-            "external": PluginSetupReady(),
-          },
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "managed",
+          displayName: "Managed",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: {PluginControlCapability.idleTimeout},
+          supportsPromptAttachments: false,
+        ),
+        (
+          id: "external",
+          displayName: "External",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.plugin,
+          managementCapabilities: {PluginControlCapability.setupRefresh},
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {
+        "managed": PluginSetupReady(),
+        "external": PluginSetupReady(),
+      },
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1266,29 +1208,27 @@ void main() {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one", "two"]);
     final gates = {"one": Completer<void>(), "two": Completer<void>()};
     final repository = _GatedInspectionRepository(runtime: runtime, gates: gates);
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: repository,
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: [
-            for (final id in gates.keys)
-              (
-                id: id,
-                displayName: id,
-                activationPolicy: PluginActivationPolicy.onDemand,
-                residencyPolicy: PluginResidencyPolicy.transient,
-                sessionOptionsScope: PluginSessionOptionsScope.project,
-                managementCapabilities: defaultManagementCapabilities,
-                supportsPromptAttachments: false,
-              ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupNotInspected(), "two": PluginSetupNotInspected()},
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: [
+        for (final id in gates.keys)
+          (
+            id: id,
+            displayName: id,
+            activationPolicy: PluginActivationPolicy.onDemand,
+            residencyPolicy: PluginResidencyPolicy.transient,
+            sessionOptionsScope: PluginSessionOptionsScope.project,
+            managementCapabilities: defaultManagementCapabilities,
+            supportsPromptAttachments: false,
+          ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupNotInspected(), "two": PluginSetupNotInspected()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1390,28 +1330,26 @@ void main() {
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
       ..saveGate = Completer<void>();
     final bridgeIdProvider = FakeBridgeIdProvider("br_test1234");
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: repository,
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: bridgeIdProvider,
-          plugins: const [
-            (
-              id: "one",
-              displayName: "One",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: bridgeIdProvider,
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
 
     final active = service.updateIdleTimeout(
@@ -1566,15 +1504,13 @@ void main() {
       startFailureMessage: null,
     );
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings());
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: settingsRepository,
-          managementCapabilities: const {PluginControlCapability.setupRefresh},
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: settingsRepository,
+      managementCapabilities: const {PluginControlCapability.setupRefresh},
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await repository.dispose();
@@ -1614,15 +1550,13 @@ void main() {
       startFailureMessage: null,
     );
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings());
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: settingsRepository,
-          managementCapabilities: const {PluginControlCapability.setupRefresh},
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: settingsRepository,
+      managementCapabilities: const {PluginControlCapability.setupRefresh},
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
+    );
     addTearDown(() async {
       await service.dispose();
       await repository.dispose();
@@ -1645,28 +1579,26 @@ void main() {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
       ..saveGate = Completer<void>();
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: const [
-            (
-              id: "one",
-              displayName: "One",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1698,28 +1630,26 @@ void main() {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
       ..saveGate = Completer<void>();
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: const [
-            (
-              id: "one",
-              displayName: "One",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1753,28 +1683,26 @@ void main() {
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
       ..saveGate = Completer<void>();
     final bridgeIdProvider = FakeBridgeIdProvider("br_test1234");
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: bridgeIdProvider,
-          plugins: const [
-            (
-              id: "one",
-              displayName: "One",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: bridgeIdProvider,
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1795,28 +1723,26 @@ void main() {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one"]);
     final settingsRepository = _MutableBridgeSettingsRepository(settings: const BridgeSettings())
       ..saveError = StateError("disk full");
-    final service =
-        PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
-          preferredDefaultPluginId: legacyMissingPluginId,
-          bridgeSettingsRepository: settingsRepository,
-          idleTimerScheduler: const PluginIdleTimerScheduler(),
-          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          plugins: const [
-            (
-              id: "one",
-              displayName: "One",
-              activationPolicy: PluginActivationPolicy.onDemand,
-              residencyPolicy: PluginResidencyPolicy.transient,
-              sessionOptionsScope: PluginSessionOptionsScope.project,
-              managementCapabilities: defaultManagementCapabilities,
-              supportsPromptAttachments: false,
-            ),
-          ],
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = PluginLifecycleService(
+      lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: settingsRepository,
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(() async {
       await service.dispose();
       await runtime.dispose();
@@ -1911,11 +1837,12 @@ void main() {
       startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {},
-        setupById: const {"one": PluginSetupReady()},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
 
     final first = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
@@ -1950,11 +1877,12 @@ void main() {
         plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
       ),
     );
-    final service = _commandService(repository: repository, settingsRepository: settingsRepository)
-      ..initialize(
-        disabledPluginIds: const {"one"},
-        setupById: const {"one": PluginSetupNotInspected()},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: settingsRepository,
+      disabledPluginIds: const {"one"},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
 
     final blocked = await service.command(
@@ -1989,11 +1917,12 @@ void main() {
       startFailureMessage: "start failed",
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {"one"},
-        setupById: const {"one": PluginSetupNotInspected()},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {"one"},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
     final readyEvents = <List<String>>[];
     final readySubscription = service.readyPluginIds.listen(readyEvents.add);
@@ -2034,15 +1963,13 @@ void main() {
         plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
       ),
     );
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: settingsRepository,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {"one"},
-          setupById: const {"one": PluginSetupNotInspected()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: settingsRepository,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {"one"},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2087,15 +2014,13 @@ void main() {
         plugins: BridgePluginSettings(disabledPluginIds: {"one"}),
       ),
     );
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: settingsRepository,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {"one"},
-          setupById: const {"one": PluginSetupNotInspected()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: settingsRepository,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {"one"},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2119,15 +2044,13 @@ void main() {
       startFailureMessage: null,
     )..installEvents = const [ProvisionReady(binaryPath: "/managed/one")];
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {"one"},
-          setupById: const {"one": PluginSetupNotInspected()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {"one"},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2157,15 +2080,13 @@ void main() {
           ..installEvents = const [ProvisionFailed(message: "aborted")]
           ..installGate = installGate;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupNotInspected()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
     addTearDown(progressSubscription.cancel);
@@ -2191,11 +2112,12 @@ void main() {
       startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {},
-        setupById: const {"one": PluginSetupReady()},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
 
     final refresh = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
     await _waitUntil(() => repository.inspectCalls == 1);
@@ -2239,15 +2161,13 @@ void main() {
           ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
           ..installGate = installGate;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupNotInspected()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2284,15 +2204,13 @@ void main() {
           ..installGate = installGate
           ..needsUpgrade = true;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2323,15 +2241,13 @@ void main() {
           ..needsUpgrade = true
           ..upgradeGate = upgradeGate;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
 
     final upgrading = service.upgradeManagedRuntimes();
     await _waitUntil(() => repository.upgradeQueries.isNotEmpty);
@@ -2350,15 +2266,13 @@ void main() {
       startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
 
     await service.upgradeManagedRuntimes();
@@ -2374,15 +2288,13 @@ void main() {
       startFailureMessage: null,
     )..needsUpgrade = true;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {"one"},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {"one"},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
 
     await service.upgradeManagedRuntimes();
@@ -2401,15 +2313,13 @@ void main() {
           ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
           ..needsUpgrade = true;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2437,15 +2347,13 @@ void main() {
           ..needsUpgrade = true;
     addTearDown(repository.dispose);
     const priorSetup = PluginSetupReady.versioned(runtimeVersion: "1.0.0");
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": priorSetup},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": priorSetup},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2471,15 +2379,13 @@ void main() {
           ..installGate = installGate
           ..needsUpgrade = true;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2520,15 +2426,13 @@ void main() {
           ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
           ..needsUpgrade = true;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2558,15 +2462,13 @@ void main() {
           ..installGate = installGate
           ..needsUpgrade = true;
     addTearDown(repository.dispose);
-    final service =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: installCapableManagementCapabilities,
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {"one": PluginSetupReady()},
-        );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: installCapableManagementCapabilities,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
     final progress = <PluginInstallProgressUpdate>[];
     final progressSubscription = service.installProgress.listen(progress.add);
@@ -2586,11 +2488,12 @@ void main() {
       startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {},
-        setupById: const {"one": PluginSetupNotInspected()},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupNotInspected()},
+    );
     addTearDown(service.dispose);
 
     expect(
@@ -2612,11 +2515,12 @@ void main() {
       startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {},
-        setupById: const {"one": PluginSetupReady()},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
     addTearDown(service.dispose);
 
     final response = await service.command(
@@ -2663,11 +2567,12 @@ void main() {
       startFailureMessage: null,
     );
     addTearDown(repository.dispose);
-    final service = _commandService(repository: repository, settingsRepository: null)
-      ..initialize(
-        disabledPluginIds: const {},
-        setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
-      );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
+    );
     addTearDown(service.dispose);
     final ready = service.readyPluginIds.firstWhere((ids) => ids.contains("one"));
 
@@ -2709,15 +2614,13 @@ void main() {
           supportsPromptAttachments: true,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {
         "alpha": PluginSetupReady(),
         "beta": PluginSetupReady(),
       },
     );
+    addTearDown(service.dispose);
 
     await Future<void>.delayed(Duration.zero);
 
@@ -2731,41 +2634,45 @@ void main() {
     expect(service.compositionView.defaultPluginId, "alpha");
   });
 
-  test("supports a zero-plugin composition", () {
+  test("supports a zero-plugin composition", () async {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const []);
     addTearDown(runtime.dispose);
-    final service = _service(runtime: runtime, plugins: const []);
+    final service = _service(
+      runtime: runtime,
+      plugins: const [],
+      disabledPluginIds: const {},
+      setupById: const {},
+    );
     addTearDown(service.dispose);
 
-    final policy = service.initialize(disabledPluginIds: const {}, setupById: const {});
+    final policy = service.startupPolicy;
 
     expect(policy.eligiblePluginIds, isEmpty);
-    expect(policy.defaultPluginId, isNull);
-    expect(service.metadataSnapshot, isEmpty);
+    expect(service.compositionView.defaultPluginId, isNull);
+    expect(await service.metadataSnapshots.first, isEmpty);
     expect(service.setupSnapshot.plugins, isEmpty);
   });
 
   test("rejects incomplete setup snapshots", () {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha"]);
     addTearDown(runtime.dispose);
-    final service = _service(
-      runtime: runtime,
-      plugins: const [
-        (
-          id: "alpha",
-          displayName: "Alpha",
-          activationPolicy: PluginActivationPolicy.onDemand,
-          residencyPolicy: PluginResidencyPolicy.transient,
-          sessionOptionsScope: PluginSessionOptionsScope.project,
-          managementCapabilities: defaultManagementCapabilities,
-          supportsPromptAttachments: false,
-        ),
-      ],
-    );
-    addTearDown(service.dispose);
-
     expect(
-      () => service.initialize(disabledPluginIds: const {}, setupById: const {}),
+      () => _service(
+        runtime: runtime,
+        plugins: const [
+          (
+            id: "alpha",
+            displayName: "Alpha",
+            activationPolicy: PluginActivationPolicy.onDemand,
+            residencyPolicy: PluginResidencyPolicy.transient,
+            sessionOptionsScope: PluginSessionOptionsScope.project,
+            managementCapabilities: defaultManagementCapabilities,
+            supportsPromptAttachments: false,
+          ),
+        ],
+        disabledPluginIds: const {},
+        setupById: const {},
+      ),
       throwsArgumentError,
     );
   });
@@ -2790,12 +2697,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupReady()},
     );
+    addTearDown(service.dispose);
 
     expect(await service.readyPluginIds.first, ["one"]);
     expect(service.selectableMetadataSnapshot.map((entry) => entry.id), ["one"]);
@@ -2821,12 +2726,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupReady()},
     );
+    addTearDown(service.dispose);
 
     repository.publish(
       state: const PluginRuntimeStopping(),
@@ -2834,16 +2737,16 @@ void main() {
       leaseCount: 0,
       transition: PluginRuntimeTransition.stopping,
     );
-    expect(service.metadataSnapshot.single.state, PluginLifecycleState.ready);
-    expect(service.metadataSnapshot.single.actionHint, isNull);
+    expect((await service.metadataSnapshots.first).single.state, PluginLifecycleState.ready);
+    expect((await service.metadataSnapshots.first).single.actionHint, isNull);
 
     repository.publish(
       state: const PluginRuntimeDegraded(actionHint: null),
       workState: PluginWorkState.idle,
       leaseCount: 0,
     );
-    expect(service.metadataSnapshot.single.state, PluginLifecycleState.degraded);
-    expect(service.metadataSnapshot.single.actionHint, isNotNull);
+    expect((await service.metadataSnapshots.first).single.state, PluginLifecycleState.degraded);
+    expect((await service.metadataSnapshots.first).single.actionHint, isNotNull);
   });
 
   test("a degraded plugin's own hint replaces the generic one in its metadata and management row", () async {
@@ -2866,12 +2769,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupReady()},
     );
+    addTearDown(service.dispose);
     const genericHint = "Check the bridge console if this plugin needs attention.";
     const pluginHint = "Verify the configured One binary and retry.";
 
@@ -2880,7 +2781,7 @@ void main() {
       workState: PluginWorkState.idle,
       leaseCount: 0,
     );
-    expect(service.metadataSnapshot.single.actionHint, genericHint);
+    expect((await service.metadataSnapshots.first).single.actionHint, genericHint);
     expect(service.managementSnapshot.plugins.single.actionHint, genericHint);
 
     repository.publish(
@@ -2888,12 +2789,12 @@ void main() {
       workState: PluginWorkState.idle,
       leaseCount: 0,
     );
-    expect(service.metadataSnapshot.single.state, PluginLifecycleState.degraded);
-    expect(service.metadataSnapshot.single.actionHint, pluginHint);
+    expect((await service.metadataSnapshots.first).single.state, PluginLifecycleState.degraded);
+    expect((await service.metadataSnapshots.first).single.actionHint, pluginHint);
     expect(service.managementSnapshot.plugins.single.actionHint, pluginHint);
 
     repository.publish(state: const PluginRuntimeActive(), workState: PluginWorkState.idle, leaseCount: 0);
-    expect(service.metadataSnapshot.single.actionHint, isNull);
+    expect((await service.metadataSnapshots.first).single.actionHint, isNull);
     expect(service.managementSnapshot.plugins.single.actionHint, isNull);
   });
 
@@ -2918,12 +2819,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupReady()},
     );
+    addTearDown(service.dispose);
 
     repository.publish(workState: PluginWorkState.busy, leaseCount: 0);
     repository.publish(workState: PluginWorkState.idle, leaseCount: 1);
@@ -2963,9 +2862,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
     );
     addTearDown(service.dispose);
-    service.initialize(disabledPluginIds: const {}, setupById: const {"one": PluginSetupReady()});
 
     repository.publish(
       workState: PluginWorkState.idle,
@@ -3013,12 +2913,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupReady()},
     );
+    addTearDown(service.dispose);
 
     repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
     await Future<void>.delayed(Duration.zero);
@@ -3057,12 +2955,10 @@ void main() {
           supportsPromptAttachments: false,
         ),
       ],
-    );
-    addTearDown(service.dispose);
-    service.initialize(
       disabledPluginIds: const {},
       setupById: const {"one": PluginSetupReady()},
     );
+    addTearDown(service.dispose);
 
     repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
     await Future<void>.delayed(Duration.zero);
@@ -3093,6 +2989,8 @@ Future<void> installSettled({required List<PluginInstallProgressUpdate> progress
 PluginLifecycleService _service({
   required PluginRuntime runtime,
   required List<RegisteredPluginMetadata> plugins,
+  required Set<String> disabledPluginIds,
+  required Map<String, PluginSetupStatus> setupById,
 }) {
   return PluginLifecycleService(
     lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
@@ -3101,6 +2999,8 @@ PluginLifecycleService _service({
     idleTimerScheduler: const PluginIdleTimerScheduler(),
     bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
     plugins: plugins,
+    disabledPluginIds: disabledPluginIds,
+    setupById: setupById,
   );
 }
 
@@ -3128,7 +3028,6 @@ PluginLifecycleService _singleIdleService({
         supportsPromptAttachments: false,
       ),
     ],
-  )..initialize(
     disabledPluginIds: const {},
     setupById: const {"one": PluginSetupReady()},
   );
@@ -3137,6 +3036,8 @@ PluginLifecycleService _singleIdleService({
 PluginLifecycleService _commandService({
   required PluginLifecycleRepository repository,
   required BridgeSettingsRepository? settingsRepository,
+  required Set<String> disabledPluginIds,
+  required Map<String, PluginSetupStatus> setupById,
   Set<PluginControlCapability> managementCapabilities = defaultManagementCapabilities,
 }) {
   return PluginLifecycleService(
@@ -3156,6 +3057,8 @@ PluginLifecycleService _commandService({
         supportsPromptAttachments: false,
       ),
     ],
+    disabledPluginIds: disabledPluginIds,
+    setupById: setupById,
   );
 }
 

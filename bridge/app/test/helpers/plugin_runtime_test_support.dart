@@ -89,8 +89,7 @@ class TestPluginRuntime({
     return generationCurrent && generation == currentGeneration && _plugins.containsKey(pluginId);
   }
 
-  @override
-  bool isCurrentEventGeneration({required String pluginId, required int generation}) {
+  bool _isCurrentEventGeneration({required String pluginId, required int generation}) {
     return eventGenerationCurrent && generation == currentGeneration && _plugins.containsKey(pluginId);
   }
 
@@ -101,7 +100,7 @@ class TestPluginRuntime({
     required bool allowDuringStop,
   }) {
     return isCurrentGeneration(pluginId: pluginId, generation: generation) ||
-        (allowDuringStop && isCurrentEventGeneration(pluginId: pluginId, generation: generation));
+        (allowDuringStop && _isCurrentEventGeneration(pluginId: pluginId, generation: generation));
   }
 
   @override
@@ -305,11 +304,12 @@ class TestPluginRuntime({
   }
 
   @override
-  Stream<T> useStream<T>({
+  Stream<T> useStreamIfActive<T>({
     required String pluginId,
     required Enum operation,
     required Stream<T> Function(BridgePluginApi api, int generation) body,
   }) {
+    if (stoppedPluginIds.contains(pluginId)) return const Stream.empty();
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       return Stream.error(
@@ -318,15 +318,6 @@ class TestPluginRuntime({
     }
     return body(plugin, currentGeneration);
   }
-
-  @override
-  Stream<T> useStreamIfActive<T>({
-    required String pluginId,
-    required Enum operation,
-    required Stream<T> Function(BridgePluginApi api, int generation) body,
-  }) => stoppedPluginIds.contains(pluginId)
-      ? const Stream.empty()
-      : useStream(pluginId: pluginId, operation: operation, body: body);
 
   @override
   Future<T?> useIfActive<T>({
@@ -367,9 +358,6 @@ class _AlwaysCurrentTestPluginRuntime() extends TestPluginRuntime {
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) => generation == 1;
-
-  @override
-  bool isCurrentEventGeneration({required String pluginId, required int generation}) => generation == 1;
 
   @override
   bool isCurrentEvent({

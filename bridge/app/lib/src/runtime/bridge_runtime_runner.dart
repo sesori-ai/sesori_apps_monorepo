@@ -631,27 +631,20 @@ class const BridgeRuntimeRunner._() {
       );
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
-      final activePluginLifecycleService = PluginLifecycleService(
-        lifecycleRepository: lifecycleRepository,
-        preferredDefaultPluginId: preferredDefaultPluginId,
-        bridgeSettingsRepository: bridgeSettingsRepository,
-        idleTimerScheduler: const PluginIdleTimerScheduler(),
-        bridgeIdProvider: bridgeRegistrationService,
-        plugins: [
-          for (final descriptor in knownPlugins)
-            (
-              id: descriptor.id,
-              displayName: descriptor.displayName,
-              activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
-              residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
-              sessionOptionsScope: descriptor.sessionOptionsScope,
-              managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
-              supportsPromptAttachments: descriptor.supportsPromptAttachments,
-            ),
-        ],
-      );
-      pluginLifecycleService = activePluginLifecycleService;
-      final uncontrollableDisabledPluginIds = activePluginLifecycleService.uncontrollableDisabledPluginIds(
+      final registeredPlugins = <RegisteredPluginMetadata>[
+        for (final descriptor in knownPlugins)
+          (
+            id: descriptor.id,
+            displayName: descriptor.displayName,
+            activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
+            residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
+            sessionOptionsScope: descriptor.sessionOptionsScope,
+            managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
+            supportsPromptAttachments: descriptor.supportsPromptAttachments,
+          ),
+      ];
+      final uncontrollableDisabledPluginIds = PluginLifecycleService.uncontrollableDisabledPluginIds(
+        plugins: registeredPlugins,
         disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
       );
       if (uncontrollableDisabledPluginIds.isNotEmpty) {
@@ -670,10 +663,18 @@ class const BridgeRuntimeRunner._() {
         pluginIds: eligiblePluginIds,
         markUnselectedNotInspected: true,
       );
-      final startupPolicy = activePluginLifecycleService.initialize(
+      final activePluginLifecycleService = PluginLifecycleService(
+        lifecycleRepository: lifecycleRepository,
+        preferredDefaultPluginId: preferredDefaultPluginId,
+        bridgeSettingsRepository: bridgeSettingsRepository,
+        idleTimerScheduler: const PluginIdleTimerScheduler(),
+        bridgeIdProvider: bridgeRegistrationService,
+        plugins: registeredPlugins,
         disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
         setupById: setupById,
       );
+      pluginLifecycleService = activePluginLifecycleService;
+      final startupPolicy = activePluginLifecycleService.startupPolicy;
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
       if (restartPredecessorPid != null) {
