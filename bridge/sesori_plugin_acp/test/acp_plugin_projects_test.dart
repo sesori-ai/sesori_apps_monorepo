@@ -36,12 +36,6 @@ void main() {
           childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);

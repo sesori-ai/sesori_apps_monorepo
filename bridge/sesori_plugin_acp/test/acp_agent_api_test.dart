@@ -149,6 +149,31 @@ void main() {
       await initializing;
     });
 
+    test("advertised auth methods without an id still require authentication", () async {
+      final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
+        formElicitation: false,
+        capabilityMeta: null,
+        authMethodId: null,
+        authMethodAllowlist: null,
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": initializeResult(
+          authMethods: [
+            {"name": "Missing id"},
+            {"id": "", "name": "Empty id"},
+          ],
+        ),
+      });
+
+      await expectLater(initializing, throwsA(isA<PluginAuthenticationRequiredException>()));
+      expect(fake.written.where((frame) => frame["method"] == "authenticate"), isEmpty);
+    });
+
     test("an allowlist selects only an advertised permitted method", () async {
       final initializing = api.initialize(
         clientIdentity: acpDefaultClientIdentity,

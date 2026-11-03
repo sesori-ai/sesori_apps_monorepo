@@ -1,4 +1,5 @@
 import "package:claude_plugin/claude_plugin.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

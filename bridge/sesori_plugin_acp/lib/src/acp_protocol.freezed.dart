@@ -60,6 +60,7 @@ Map<String, dynamic> toJson() {
 /// @nodoc
 mixin _$AcpSessionInfo {
 
+/// Required by the spec; an entry without one is skipped as malformed.
  String get sessionId;/// The session's working directory. Required by the spec, but kept
 /// nullable — a missing value falls back to the directory the caller
 /// scanned.
@@ -138,10 +139,11 @@ as int?,
 @JsonSerializable()
 
 class _AcpSessionInfo implements AcpSessionInfo {
-  const _AcpSessionInfo({this.sessionId = "", required this.cwd, required this.title, @JsonKey(name: "_meta")  Map<String, dynamic>? metadata = null, @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") required this.updatedAtMs}): _metadata = metadata;
+  const _AcpSessionInfo({required this.sessionId, required this.cwd, required this.title, @JsonKey(name: "_meta")  Map<String, dynamic>? metadata = null, @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") required this.updatedAtMs}): _metadata = metadata;
   factory _AcpSessionInfo.fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
 
-@override@JsonKey() final  String sessionId;
+/// Required by the spec; an entry without one is skipped as malformed.
+@override final  String sessionId;
 /// The session's working directory. Required by the spec, but kept
 /// nullable — a missing value falls back to the directory the caller
 /// scanned.

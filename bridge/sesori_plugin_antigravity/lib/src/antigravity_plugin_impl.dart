@@ -19,7 +19,6 @@ class AntigravityPlugin({
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
   required final AntigravitySessionOptionsService _options,
   required final AntigravitySessionMetadataService _metadata,
@@ -50,11 +49,9 @@ class AntigravityPlugin({
   void onConnectionReset() => _options.resetConnection();
   @override
   void captureSessionConfig(AcpNewSessionResult result, {required String? sessionId, required bool fromNewSession}) {
-    final capturedSessionId = sessionId ?? result.sessionId;
-    if (capturedSessionId.isEmpty) throw StateError("Antigravity session configuration has no session ID");
     _options.capture(
       result: result,
-      sessionId: capturedSessionId,
+      sessionId: sessionId ?? result.sessionId,
       source: fromNewSession ? AntigravityCatalogSource.newSession : AntigravityCatalogSource.existingSession,
     );
   }

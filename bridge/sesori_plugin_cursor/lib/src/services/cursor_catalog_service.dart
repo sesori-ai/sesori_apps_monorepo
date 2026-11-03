@@ -99,8 +99,7 @@ class CursorCatalogService({
   Future<void> dispose() => _repository.dispose();
 
   Future<bool> _refreshCatalog({required String scope}) async {
-    while (_inFlight != null) {
-      final pending = _inFlight!;
+    for (var pending = _inFlight; pending != null; pending = _inFlight) {
       await pending;
     }
 
