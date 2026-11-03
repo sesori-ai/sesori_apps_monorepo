@@ -348,10 +348,14 @@ class const CodexRolloutAgentMessageContentListConverter()
     }
     final content = <CodexRolloutAgentMessageContentDto>[];
     for (final item in json) {
-      try {
-        content.add(CodexRolloutAgentMessageContentDto.fromJson((item as Map).cast<String, dynamic>()));
-      } on Object {
+      if (item is! Map) {
         Log.w("[codex] skipping malformed agent-message content item");
+        continue;
+      }
+      try {
+        content.add(CodexRolloutAgentMessageContentDto.fromJson(item.cast<String, dynamic>()));
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] skipping malformed agent-message content item", error, stackTrace);
       }
     }
     return content;
@@ -405,14 +409,14 @@ class const CodexRolloutContentListConverter() implements JsonConverter<List<Cod
     }
     final content = <CodexRolloutContentDto>[];
     for (final item in json) {
-      try {
-        content.add(
-          CodexRolloutContentDto.fromJson(
-            (item as Map).cast<String, dynamic>(),
-          ),
-        );
-      } on Object {
+      if (item is! Map) {
         Log.w("[codex] skipping malformed rollout content item");
+        continue;
+      }
+      try {
+        content.add(CodexRolloutContentDto.fromJson(item.cast<String, dynamic>()));
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] skipping malformed rollout content item", error, stackTrace);
       }
     }
     return content;

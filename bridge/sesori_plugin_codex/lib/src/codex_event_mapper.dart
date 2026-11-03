@@ -317,7 +317,7 @@ class CodexEventMapper({
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: null,
       errorName: "CodexError",
       errorMessage: message,
@@ -336,7 +336,7 @@ class CodexEventMapper({
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: null,
       errorName: "CodexError",
       errorMessage: message,
@@ -727,7 +727,7 @@ class CodexEventMapper({
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: null,
       sender: PluginMessageSender.agent,
       time: time,
@@ -793,15 +793,28 @@ class CodexEventMapper({
     required String partSuffix,
     required String? text,
   }) {
+    final partId = "$itemId-$partSuffix";
+    // The part exists from the item's start so streamed deltas land on it;
+    // until text arrives its content is genuinely empty.
+    final content = text ?? "";
     return [
       BridgeSseMessageUpdated(info: message),
-      _messagePartEvent(
-        threadId: threadId,
-        itemId: itemId,
-        partId: "$itemId-$partSuffix",
-        partType: partType,
-        text: text ?? "",
-        attachment: null,
+      BridgeSseMessagePartUpdated(
+        part: switch (partType) {
+          PluginMessagePartType.text => PluginMessagePart.text(
+            id: partId,
+            sessionID: threadId,
+            messageID: itemId,
+            text: content,
+          ),
+          PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+            id: partId,
+            sessionID: threadId,
+            messageID: itemId,
+            text: content,
+          ),
+          _ => throw StateError("Codex message part cannot use $partType"),
+        },
       ),
     ];
   }
@@ -816,57 +829,24 @@ class CodexEventMapper({
     return [
       BridgeSseMessageUpdated(info: message),
       if (text != null)
-        _messagePartEvent(
-          threadId: threadId,
-          itemId: itemId,
-          partId: "$itemId-text",
-          partType: PluginMessagePartType.text,
-          text: text,
-          attachment: null,
+        BridgeSseMessagePartUpdated(
+          part: PluginMessagePart.text(
+            id: "$itemId-text",
+            sessionID: threadId,
+            messageID: itemId,
+            text: text,
+          ),
         ),
       for (var index = 0; index < attachments.length; index++)
-        _messagePartEvent(
-          threadId: threadId,
-          itemId: itemId,
-          partId: "$itemId-file-${index + 1}",
-          partType: PluginMessagePartType.file,
-          text: null,
-          attachment: attachments[index],
+        BridgeSseMessagePartUpdated(
+          part: PluginMessagePart.file(
+            id: "$itemId-file-${index + 1}",
+            sessionID: threadId,
+            messageID: itemId,
+            attachment: attachments[index],
+          ),
         ),
     ];
-  }
-
-  BridgeSseMessagePartUpdated _messagePartEvent({
-    required String threadId,
-    required String itemId,
-    required String partId,
-    required PluginMessagePartType partType,
-    required String? text,
-    required PluginMessageAttachment? attachment,
-  }) {
-    return BridgeSseMessagePartUpdated(
-      part: switch (partType) {
-        PluginMessagePartType.text => PluginMessagePart.text(
-          id: partId,
-          sessionID: threadId,
-          messageID: itemId,
-          text: text!,
-        ),
-        PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
-          id: partId,
-          sessionID: threadId,
-          messageID: itemId,
-          text: text!,
-        ),
-        PluginMessagePartType.file => PluginMessagePart.file(
-          id: partId,
-          sessionID: threadId,
-          messageID: itemId,
-          attachment: attachment!,
-        ),
-        _ => throw StateError("Codex message part cannot use $partType"),
-      },
-    );
   }
 
   /// Builds a full [shared.Session] from a normalized Codex thread record.

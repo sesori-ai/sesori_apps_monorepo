@@ -878,13 +878,13 @@ class CodexSessionService({
       if (directory == target || p.isWithin(target, directory)) {
         return (
           modelID: record.model ?? config.model,
-          providerID: record.modelProvider ?? config.modelProvider ?? "openai",
+          providerID: record.modelProvider ?? config.effectiveModelProvider,
         );
       }
     }
     return (
       modelID: config.model,
-      providerID: config.modelProvider ?? "openai",
+      providerID: config.effectiveModelProvider,
     );
   }
 

@@ -159,11 +159,11 @@ class CodexMessageRepository({
   static List<CodexRolloutLineDto> trimForkedParentHistory({
     required List<CodexRolloutLineDto> lines,
   }) {
-    if (lines.isEmpty ||
-        lines.first is! CodexRolloutSessionMetadataLineDto ||
-        (lines.first as CodexRolloutSessionMetadataLineDto).payload.threadSource != CodexRolloutThreadSource.subagent) {
-      return lines;
-    }
+    final startsAsSubAgent = switch (lines.firstOrNull) {
+      CodexRolloutSessionMetadataLineDto(:final payload) => payload.threadSource == CodexRolloutThreadSource.subagent,
+      _ => false,
+    };
+    if (!startsAsSubAgent) return lines;
     var copyStart = -1;
     for (var index = 1; index < lines.length; index++) {
       if (lines[index] is CodexRolloutSessionMetadataLineDto) {
@@ -369,7 +369,7 @@ class CodexMessageRepository({
       sessionID: sessionId,
       agent: "codex",
       modelID: currentModel ?? config.model,
-      providerID: sessionProvider ?? config.modelProvider ?? "openai",
+      providerID: sessionProvider ?? config.effectiveModelProvider,
       variant: currentVariant,
       sender: PluginMessageSender.agent,
       time: time,
@@ -397,12 +397,13 @@ class CodexMessageRepository({
     }) {
       if (subAgentTracker.hasRenderedTile(parentId: sessionId, callId: tool.canonicalId)) return;
       final existingIndex = toolMessageIndexById[tool.canonicalId];
-      final info = existingIndex == null
-          ? assistantInfo(
-              id: tool.canonicalId,
-              time: _messageTimeFrom(timestamp),
-            )
-          : messages[existingIndex]!.info;
+      final existing = existingIndex == null ? null : messages[existingIndex];
+      final info =
+          existing?.info ??
+          assistantInfo(
+            id: tool.canonicalId,
+            time: _messageTimeFrom(timestamp),
+          );
       final message = PluginMessageWithParts(
         info: info,
         parts: [
@@ -435,9 +436,8 @@ class CodexMessageRepository({
       required String? timestamp,
     }) {
       final existingIndex = toolMessageIndexById[task.callId];
-      final info = existingIndex == null
-          ? assistantInfo(id: task.callId, time: _messageTimeFrom(timestamp))
-          : messages[existingIndex]!.info;
+      final existing = existingIndex == null ? null : messages[existingIndex];
+      final info = existing?.info ?? assistantInfo(id: task.callId, time: _messageTimeFrom(timestamp));
       final message = PluginMessageWithParts(
         info: info,
         parts: [const CodexSessionMapper().mapSubAgentTile(task: task).part],
@@ -567,7 +567,7 @@ class CodexMessageRepository({
               sessionID: sessionId,
               agent: "codex",
               modelID: currentModel ?? config.model,
-              providerID: sessionProvider ?? config.modelProvider ?? "openai",
+              providerID: sessionProvider ?? config.effectiveModelProvider,
               variant: currentVariant,
               errorName: "CodexError",
               errorMessage: error.message,

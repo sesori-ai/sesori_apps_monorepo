@@ -403,11 +403,12 @@ class const CodexRolloutToolMapper({
 
   String? _codeModeFileChangePatch({required String input}) {
     final invocation = _codeModeFileChangeInvocationPattern.firstMatch(input);
-    if (invocation == null || invocation.group(1) != invocation.group(3)) {
+    final patchLiteral = invocation?.group(2);
+    if (invocation == null || patchLiteral == null || invocation.group(1) != invocation.group(3)) {
       return null;
     }
     try {
-      final decoded = jsonDecode(invocation.group(2)!);
+      final decoded = jsonDecode(patchLiteral);
       if (decoded is! String ||
           !_patchEnvelopePattern.hasMatch(decoded) ||
           !_patchFileHeaderPattern.hasMatch(decoded)) {
@@ -613,8 +614,8 @@ class const CodexRolloutToolMapper({
           )
         : lines.take(outputBoundary);
     for (final line in envelope) {
-      final match = exitPattern.firstMatch(line);
-      final exitCode = match == null ? null : int.tryParse(match.group(1)!);
+      final exitDigits = exitPattern.firstMatch(line)?.group(1);
+      final exitCode = exitDigits == null ? null : int.tryParse(exitDigits);
       if (exitCode != null && exitCode != 0) return true;
     }
     return false;
@@ -707,7 +708,8 @@ class const CodexRolloutToolMapper({
             literal = '"$body"';
           }
           try {
-            return _usefulText(jsonDecode(literal) as String);
+            final decoded = jsonDecode(literal);
+            return decoded is String ? _usefulText(decoded) : null;
           } on FormatException {
             return null;
           }

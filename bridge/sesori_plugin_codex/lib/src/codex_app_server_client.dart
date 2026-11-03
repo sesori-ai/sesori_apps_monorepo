@@ -8,19 +8,10 @@ import "package:web_socket_channel/web_socket_channel.dart";
 ///
 /// Fields mirror codex's `InitializeResponse` shape (see codex's
 /// `app-server generate-json-schema` output for the source of truth).
-class const CodexInitializeResult({
-  required final String userAgent,
-  required final String codexHome,
-  required final String platformOs,
-  required final String platformFamily,
-}) {
+class const CodexInitializeResult({required final String? userAgent}) {
   factory fromJson(Map<String, dynamic> json) {
-    return CodexInitializeResult(
-      userAgent: (json["userAgent"] ?? "") as String,
-      codexHome: (json["codexHome"] ?? "") as String,
-      platformOs: (json["platformOs"] ?? "") as String,
-      platformFamily: (json["platformFamily"] ?? "") as String,
-    );
+    final userAgent = json["userAgent"];
+    return CodexInitializeResult(userAgent: userAgent is String ? userAgent : null);
   }
 }
 
@@ -277,7 +268,7 @@ class CodexAppServerClient({
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return;
       final map = decoded.cast<String, dynamic>();
-      final id = map["id"];
+      final Object? id = map["id"];
       final method = map["method"] as String?;
 
       if (id != null && method == null) {
@@ -288,12 +279,14 @@ class CodexAppServerClient({
           return;
         }
         if (map.containsKey("error")) {
-          final err = (map["error"] as Map).cast<String, dynamic>();
+          final error = map["error"];
+          final code = error is Map ? error["code"] : null;
+          final message = error is Map ? error["message"] : null;
           completer.completeError(
             CodexRpcException(
               method: "<response>",
-              code: (err["code"] ?? -32603) as int,
-              message: (err["message"] ?? "unknown error") as String,
+              code: code is int ? code : -32603,
+              message: message is String ? message : "unknown error",
             ),
           );
         } else {
@@ -307,7 +300,7 @@ class CodexAppServerClient({
         // Server-originated request.
         final params = (map["params"] as Map?)?.cast<String, dynamic>() ?? {};
         _serverRequests.add(
-          CodexServerRequest(id: id as Object, method: method, params: params),
+          CodexServerRequest(id: id, method: method, params: params),
         );
         return;
       }

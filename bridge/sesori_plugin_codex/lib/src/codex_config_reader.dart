@@ -1,8 +1,9 @@
 import "dart:io";
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
+import "api/codex_rollout_api.dart" show resolveCodexHome;
 
 /// Top-level defaults read from `~/.codex/config.toml`.
 ///
@@ -15,16 +16,19 @@ class CodexConfigDefaults {
 
   const new empty() : model = null, modelProvider = null;
 
+  /// Codex's built-in provider, used when `config.toml` names none.
+  static const String builtInModelProvider = "openai";
+
   final String? model;
   final String? modelProvider;
+
+  String get effectiveModelProvider => modelProvider ?? builtInModelProvider;
 }
 
 /// Reads the top-level `model` and `model_provider` keys from
 /// `~/.codex/config.toml`.
 ///
-/// CODEX_HOME resolution mirrors codex itself (and `CodexRolloutApi`):
-///   1. `$CODEX_HOME` if set.
-///   2. `$HOME/.codex` (or `$USERPROFILE\.codex` on Windows).
+/// The file lives under [resolveCodexHome].
 ///
 /// Intentionally minimal: only top-level assignments (above any `[section]`)
 /// are read. Profile-scoped model overrides (`[profiles.*]`) are not resolved
@@ -32,19 +36,9 @@ class CodexConfigDefaults {
 /// fallback for sessions that predate `turn_context` records.
 // COMPATIBILITY: Codex rollouts may omit `turn_context` model metadata. Keep this
 // live backend fallback unless Codex guarantees that metadata for every rollout.
-class CodexConfigReader({Map<String, String>? environment}) {
-  final Map<String, String> _environment = environment ?? Platform.environment;
-
-  String? get _codexHome {
-    final explicit = _environment["CODEX_HOME"];
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = resolveUserHomeDirectory(environment: _environment);
-    if (home == null) return null;
-    return p.join(home, ".codex");
-  }
-
+class CodexConfigReader({required final Map<String, String> _environment}) {
   CodexConfigDefaults readDefaults() {
-    final home = _codexHome;
+    final home = resolveCodexHome(environment: _environment);
     if (home == null) return const CodexConfigDefaults.empty();
 
     final file = File(p.join(home, "config.toml"));

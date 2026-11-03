@@ -36,17 +36,19 @@ class const CodexDesktopStateReadException({required final Object cause}) implem
   String toString() => "Codex Desktop state read failed (${cause.runtimeType})";
 }
 
-/// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
-class CodexRolloutApi({Map<String, String>? environment}) {
-  final Map<String, String> _environment = environment ?? Platform.environment;
+/// Codex's state directory, resolved as codex itself does: `$CODEX_HOME` when
+/// set, otherwise `.codex` under the user home.
+String? resolveCodexHome({required Map<String, String> environment}) {
+  final explicit = environment["CODEX_HOME"];
+  if (explicit != null && explicit.isNotEmpty) return explicit;
+  final home = resolveUserHomeDirectory(environment: environment);
+  if (home == null) return null;
+  return p.join(home, ".codex");
+}
 
-  String? get codexHome {
-    final explicit = _environment["CODEX_HOME"];
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = resolveUserHomeDirectory(environment: _environment);
-    if (home == null) return null;
-    return p.join(home, ".codex");
-  }
+/// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
+class CodexRolloutApi({required final Map<String, String> _environment}) {
+  String? get codexHome => resolveCodexHome(environment: _environment);
 
   String? get indexPath {
     final home = codexHome;

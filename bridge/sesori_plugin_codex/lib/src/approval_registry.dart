@@ -262,6 +262,12 @@ class ApprovalRegistry({
     }
 
     final sessionId = _extractSessionId(request.params);
+    if (sessionId == null) {
+      // Every v2 approval and input request names its thread; one without a
+      // thread has no session to surface in.
+      _respondError(request.id, -32602, "$method carries no threadId");
+      return;
+    }
     final entry = _PendingApproval(
       codexId: request.id,
       method: method,
@@ -269,8 +275,7 @@ class ApprovalRegistry({
       respond: _respond,
       respondError: _respondError,
     );
-    final resolvedSessionId = sessionId ?? "";
-    final displaySessionId = _resolvePendingInputScope(sessionId: resolvedSessionId).displaySessionId;
+    final displaySessionId = _resolvePendingInputScope(sessionId: sessionId).displaySessionId;
 
     final nativeTurnId = _extractNativeTurnId(request.params);
     final String pendingId;
@@ -278,7 +283,7 @@ class ApprovalRegistry({
       final allowAlways = _allowsAlways(entry);
       pendingId = registerPendingPermission(
         payload: entry,
-        sessionId: resolvedSessionId,
+        sessionId: sessionId,
         displaySessionId: displaySessionId,
         tool: _toolHintFor(method),
         description: _permissionDescriptionFor(entry),
@@ -293,7 +298,7 @@ class ApprovalRegistry({
       pendingId = registerPendingQuestion(
         interactionKind: PluginQuestionInteractionKind.question,
         payload: _PendingUserInput(codexId: request.id, input: input, respond: _respond, respondError: _respondError),
-        sessionId: resolvedSessionId,
+        sessionId: sessionId,
         displaySessionId: displaySessionId,
         questions: _questionMapper.mapUserInput(request: input),
       );
@@ -308,7 +313,8 @@ class ApprovalRegistry({
   void _handleMcpRequest({required CodexServerRequest request}) {
     try {
       final input = _questionParser.parseMcpElicitation(params: request.params);
-      if (input.threadId.isEmpty || input.serverName.isEmpty || input.message == null) {
+      final message = input.message;
+      if (input.threadId.isEmpty || input.serverName.isEmpty || message == null) {
         throw const FormatException("Missing MCP request identity or message");
       }
       final _PendingMcpRequest payload;
@@ -321,22 +327,24 @@ class ApprovalRegistry({
             codexId: request.id,
             sessionId: input.threadId,
             title: input.serverName,
-            message: input.message!,
+            message: message,
             respond: _respond,
             schema: schema,
           );
           kind = PluginQuestionInteractionKind.form;
         case CodexMcpElicitationMode.url:
-          if (input.url == null || input.url!.isEmpty || input.elicitationId == null || input.elicitationId!.isEmpty) {
+          final url = input.url;
+          final elicitationId = input.elicitationId;
+          if (url == null || url.isEmpty || elicitationId == null || elicitationId.isEmpty) {
             throw const FormatException("Missing MCP external action");
           }
           payload = _PendingMcpExternalAction(
             codexId: request.id,
             sessionId: input.threadId,
             title: input.serverName,
-            message: input.message!,
+            message: message,
             respond: _respond,
-            authorizationUrl: input.url!,
+            authorizationUrl: url,
           );
           kind = PluginQuestionInteractionKind.externalAction;
         case CodexMcpElicitationMode.unknown:

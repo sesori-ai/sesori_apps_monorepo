@@ -7,6 +7,7 @@ import "models/codex_thread_record.dart";
 /// `spawn_agent` call id and the live `subAgentActivity` item id.
 final class const CodexTrackedSubAgent({
   required final String callId,
+  required final String parentId,
   required final CodexThreadRecord child,
   required final String prompt,
   required final String agent,
@@ -272,6 +273,7 @@ final class _CodexTrackedSubAgentState({
     rendered = true;
     return CodexTrackedSubAgent(
       callId: callId,
+      parentId: parentId,
       child: child,
       prompt: value,
       agent: agent,

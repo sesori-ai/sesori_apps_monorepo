@@ -226,12 +226,7 @@ class _FakeStdioClient({final Object? connectError}) implements CodexStdioAppSer
   }) async {
     final error = connectError;
     if (error != null) throw error;
-    return const CodexInitializeResult(
-      userAgent: "codex_cli_rs/0.146.0",
-      codexHome: "/private/codex-home",
-      platformOs: "macos",
-      platformFamily: "unix",
-    );
+    return const CodexInitializeResult(userAgent: "codex_cli_rs/0.146.0");
   }
 
   @override

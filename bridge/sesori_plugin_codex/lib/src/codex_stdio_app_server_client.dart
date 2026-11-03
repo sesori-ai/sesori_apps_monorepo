@@ -121,9 +121,9 @@ class CodexStdioAppServerClient({
     }
     final rawParams = frame["params"];
     final params = rawParams is Map ? rawParams.cast<String, dynamic>() : <String, dynamic>{};
-    final id = frame["id"];
+    final Object? id = frame["id"];
     if (id != null) {
-      _serverRequests.add(CodexServerRequest(id: id as Object, method: method, params: params));
+      _serverRequests.add(CodexServerRequest(id: id, method: method, params: params));
     } else {
       _notifications.add(CodexServerNotification(method: method, params: params));
     }

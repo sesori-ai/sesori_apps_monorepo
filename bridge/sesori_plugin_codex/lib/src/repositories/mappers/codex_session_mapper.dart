@@ -72,7 +72,7 @@ class const CodexSessionMapper() {
     return BridgeSseMessagePartUpdated(
       part: PluginMessagePart.subtask(
         id: "${task.callId}-tool",
-        sessionID: child.parentId!,
+        sessionID: task.parentId,
         messageID: task.callId,
         prompt: task.prompt,
         description: description,
