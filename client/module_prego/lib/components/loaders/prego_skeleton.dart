@@ -3,9 +3,7 @@
 /// The designed loading state for content-bearing surfaces: pill-shaped
 /// placeholder bars that fade toward their trailing edge, swept by a moving
 /// sheen while real data loads. Compose a bespoke layout from
-/// [PregoSkeletonBar] and [PregoSkeletonListTile] and wrap it in
-/// [PregoShimmer], or drop in [PregoSkeletonList] — the ready-made shimmering
-/// list for list screens loading their first page.
+/// [PregoSkeletonBar] and wrap it in [PregoShimmer].
 library;
 
 import "dart:async";
@@ -250,92 +248,6 @@ class const PregoSkeletonBar({
           begin: AlignmentDirectional.centerStart,
           end: AlignmentDirectional.centerEnd,
           colors: [color, color.withValues(alpha: 0)],
-        ),
-      ),
-    );
-  }
-}
-
-/// A two-line list-row skeleton: a title bar over a shorter indented detail
-/// bar, closed by the hairline bottom border list rows carry.
-class const PregoSkeletonListTile({
-  super.key,
-
-  /// Fraction of the row's content width the title bar spans. Varying this
-  /// across rows keeps the placeholder list looking organic.
-  final double titleWidthFraction = 1.0,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(PregoSpacing.lg),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.prego.colors.borderTertiary)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: PregoSpacing.xxs,
-        children: [
-          // Title slot: a 20px bar centred in its 24px line box.
-          SizedBox(
-            height: 24,
-            child: FractionallySizedBox(
-              alignment: AlignmentDirectional.centerStart,
-              widthFactor: titleWidthFraction,
-              child: const Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: PregoSkeletonBar(height: 20),
-              ),
-            ),
-          ),
-          // Detail slot: a fixed-width 14px bar in its 20px line box, indented
-          // like the metadata row under a list title.
-          const SizedBox(
-            height: 20,
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(start: PregoSpacing.xl),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: PregoSkeletonBar(height: 14, width: 99),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The ready-made shimmering list skeleton: [itemCount] two-line rows with a
-/// varied title-width rhythm, wrapped in a [PregoShimmer].
-class const PregoSkeletonList({
-  super.key,
-  final int itemCount = 6,
-  final EdgeInsetsGeometry padding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl, vertical: 10),
-
-  /// Announced to screen readers in place of the decorative rows.
-  final String? semanticLabel,
-
-  /// See [PregoShimmer.leaving].
-  final bool leaving = false,
-}) extends StatelessWidget {
-  /// Title-bar width fractions cycled across rows; the variation keeps the
-  /// placeholder from reading as a striped pattern.
-  static const List<double> _titleWidths = [0.74, 0.51, 0.51, 0.83, 1.0, 0.51];
-
-  @override
-  Widget build(BuildContext context) {
-    return PregoShimmer(
-      semanticLabel: semanticLabel,
-      leaving: leaving,
-      child: Padding(
-        padding: padding,
-        child: Column(
-          spacing: 10,
-          children: [
-            for (var i = 0; i < itemCount; i++)
-              PregoSkeletonListTile(titleWidthFraction: _titleWidths[i % _titleWidths.length]),
-          ],
         ),
       ),
     );
