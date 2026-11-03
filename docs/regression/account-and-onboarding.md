@@ -203,5 +203,5 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Bridge app-client onboarding service and runtime runner, plus their owning tests.
 - Bridge registration: `bridge/app/lib/src/auth/machine_id_api.dart`,
   `bridge_registration_repository.dart`, and their tests.
-- Plan: `.plan/active/desktop-sign-in/PLAN.md` (decisions, approved copy, regression matrix).
+- Plan: `.plan/completed/desktop-sign-in/PLAN.md` (decisions, approved copy, regression matrix).
 - Historical: `.plan/completed/bridge-ready-onboarding/`

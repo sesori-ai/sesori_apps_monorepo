@@ -106,6 +106,15 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
                     self.run_prepare(current_run_id=current_run_id, tooling_sha=tooling_sha)
         self.run_prepare(current_run_id=42, tooling_sha=SOURCE)
 
+    def test_shared_finalizer_accepts_its_own_run_while_a_sibling_job_waits(self):
+        path = self.root / "run.json"
+        original = json.loads(path.read_text()) | {"path": ".github/workflows/release-all-platforms.yml"}
+        self.save(path, original | {"status": "completed", "conclusion": None})
+        with self.assertRaisesRegex(ValueError, "successful producer"):
+            self.run_prepare(current_run_id=42, tooling_sha=SOURCE)
+        self.save(path, original | {"status": "waiting", "conclusion": None})
+        self.run_prepare(current_run_id=42, tooling_sha=SOURCE)
+
     def test_completed_production_run_preserves_product_and_workflow_sources(self):
         path = self.root / "run.json"
         self.save(path, json.loads(path.read_text()) | {

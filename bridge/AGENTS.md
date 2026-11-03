@@ -104,7 +104,7 @@ Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
 - **Tool wrappers** use `Api`: `GitCliApi` (git), `SesoriServerApi` (HTTP)
 - **Transport wrappers** use `Client`: `RelayClient`, `PushNotificationClient`
 - **Layer 3 orchestration** uses `Service`: `WorktreeService`, `SessionCreationService`, `PluginLifecycleService`
-- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns only outbound push sends: immediate sends, completion sends, rate limiting, payload building, and client disposal)
+- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns only outbound push sends: immediate sends, completion sends, rate limiting, and payload building)
 - **Stream-driven triggers** use `Listener`: `CompletionPushListener`, `MaintenancePushListener`
 - **State derived from events** uses `Tracker`: `ActiveSessionTracker`, `PushSessionStateTracker`
 - **Pure transformations** use `Builder`/`Mapper`/`Parser`: `PushNotificationContentBuilder`, `BridgeEventMapper`, `SseEventParser`
@@ -185,7 +185,7 @@ Name a coordinator for the full invariant it owns. A class that orders title upd
 
 Keep bridge review fixes proportional. Do not add cross-repository locks, new lifecycle machinery, or broad routing changes for a rare timing window unless a realistic bridge/client flow demonstrates meaningful user impact that simpler existing semantics cannot handle.
 
-In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
+In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and the one-line maintenance summary log.
 
 ### Backend Quirks Live In The Plugin
 

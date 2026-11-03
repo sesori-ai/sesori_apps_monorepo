@@ -313,8 +313,9 @@ listing via the standalone Sync workflow.
   build is already on TestFlight / the internal track, so re-running the submit
   is safe.
 - **Metadata tracks the latest `STORE_METADATA_REF` of the private repo, not the
-  build's commit.** The app is checked out at the historical `build-<N>` commit,
-  but the listing comes from `STORE_METADATA_REF` (default `main`). This is
+  build's commit.** The binary comes from the historical `v*-internal.<N>` build
+  and the submit jobs run the workflow's own revision, but the listing comes from
+  `STORE_METADATA_REF` (default `main`). This is
   intentional — you normally want current store copy. Note the gate keys off
   *that* commit's tags, so pinning `STORE_METADATA_REF` to an already-`v*`-tagged
   commit will skip publishing.

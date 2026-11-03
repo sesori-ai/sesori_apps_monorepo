@@ -8,7 +8,6 @@ enum SupportChannel({required final String wireValue}) {
 
 enum OnboardingSurface({required final String wireValue}) {
   connectSetup(wireValue: "connect_setup"),
-  connectedEmpty(wireValue: "connected_empty"),
   bridgeOffline(wireValue: "bridge_offline");
 }
 

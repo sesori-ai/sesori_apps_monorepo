@@ -301,7 +301,7 @@ void main() {
     when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
-    statusController.add(const ConnectionStatus.bridgeOffline(config: config, health: health));
+    statusController.add(const ConnectionStatus.bridgeOffline(config: config));
 
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();

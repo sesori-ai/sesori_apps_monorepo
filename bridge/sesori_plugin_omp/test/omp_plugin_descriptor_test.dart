@@ -364,7 +364,9 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(plugin.currentStatus, isA<PluginDegraded>());
 
-      final reconnecting = plugin.api.healthCheck();
+      final api = plugin.api;
+      if (api is! AcpPlugin) fail("expected the OMP ACP plugin api");
+      final reconnecting = api.ensureConnected();
       final initialize = await _waitForFrame(process: process, method: AcpMethods.initialize);
       process.emit({
         "jsonrpc": "2.0",

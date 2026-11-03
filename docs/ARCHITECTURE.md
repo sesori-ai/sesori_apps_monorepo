@@ -26,10 +26,13 @@ sesori_apps_monorepo/
 ├── client/                     # Flutter workspace — mobile + desktop shells
 │   app/                        # Mobile Flutter UI shell
 │   desktop/                    # Desktop Flutter product shell
+│   module_app_ui/              # Flutter UI shared by the mobile and desktop shells
 │   module_core/                # Pure Dart business logic
 │   module_desktop_core/        # Pure Dart desktop supervision and state
 │   module_auth/                # Auth & token lifecycle
+│   module_persistence/         # Shared local persistence store
 │   module_prego/               # Prego design system — theme, fonts, icons, UI components
+│   design_catalog/             # Interactive catalog of design-system components
 ├── shared/
 │   sesori_shared/              # Shared crypto & protocol types
 │   no_slop_linter/             # Custom Dart lint rules (dev tooling)
@@ -107,18 +110,31 @@ graph TD
   sesori_plugin_pi --> sesori_plugin_runtime
   sesori_plugin_pi --> sesori_shared
 
-  mobile_app[client/app] --> module_core[client/module_core]
+  mobile_app[client/app] --> module_app_ui[client/module_app_ui]
+  mobile_app --> module_core[client/module_core]
   mobile_app --> module_prego[client/module_prego]
   mobile_app --> module_auth[client/module_auth]
+  mobile_app --> module_persistence[client/module_persistence]
   mobile_app --> sesori_shared
-  desktop_app[client/desktop] --> module_core
+  desktop_app[client/desktop] --> module_app_ui
+  desktop_app --> module_core
   desktop_app --> module_desktop_core[client/module_desktop_core]
+  desktop_app --> module_prego
   desktop_app --> module_auth
+  desktop_app --> module_persistence
   desktop_app --> sesori_shared
+  module_app_ui --> module_core
+  module_app_ui --> module_prego
+  module_app_ui --> sesori_shared
   module_desktop_core --> module_core
   module_desktop_core --> sesori_shared
   module_core --> module_auth
+  module_core --> module_persistence
+  module_core --> sesori_shared
+  module_auth --> module_persistence
   module_auth --> sesori_shared
+  module_prego --> sesori_shared
+  design_catalog[client/design_catalog] --> module_prego
 ```
 
 `shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency. It is a dev dependency of the client packages, and `shared/sesori_shared` enables it as an analyzer plugin by path.

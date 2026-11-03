@@ -6,7 +6,7 @@ import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:test/test.dart";
 
 // Fixtures mirror the codex-cli 0.148.0 app-server frames captured in
-// .plan/active/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
+// .plan/completed/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
 CodexCollabItem collabOf(CodexSubAgentItemEventDto? event) => switch (event) {
   CodexCollabItem() => event,
   _ => fail("expected CodexCollabItem, got $event"),

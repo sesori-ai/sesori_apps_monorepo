@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:clock/clock.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
@@ -30,9 +29,6 @@ class UpdateApplyService({
   required final String _currentVersion,
   required final String _installRoot,
 }) {
-  @visibleForTesting
-  void Function(String message) logWarning = Log.w;
-
   /// Whether a successful apply can be chained with another in the same session
   /// before a restart activates it. Delegates to the platform applier: POSIX can
   /// clear the displaced backup of the still-running binary, Windows cannot until
@@ -54,7 +50,7 @@ class UpdateApplyService({
         switch (result) {
           case LockAcquireResult.alreadyLocked:
             // Another bridge is applying — benign; the next cycle retries.
-            logWarning('Skipping in-place update to ${release.version}: another update is in progress');
+            Log.w('Skipping in-place update to ${release.version}: another update is in progress');
             outcome = const UpdateApplyLockBusy();
           case LockAcquireResult.permissionDenied:
             // A stale/root-owned `.update.lock` the user can't read or delete
@@ -73,7 +69,6 @@ class UpdateApplyService({
         await _cleanupStaging(stagingPath: stagingPath);
         return outcome;
       },
-      shouldReleaseLock: (_) => true,
     );
   }
 
@@ -82,8 +77,8 @@ class UpdateApplyService({
       await _logRepository.log(
         message: 'Update lock permission denied applying ${release.version} (check ownership of .update.lock)',
       );
-    } on Object catch (error) {
-      logWarning('Failed to log update lock failure: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to log update lock failure', error, stackTrace);
     }
     return UpdateApplyFailed(
       reason: 'the update lock could not be acquired (permission denied on .update.lock)',
@@ -96,7 +91,6 @@ class UpdateApplyService({
       fromVersion: _currentVersion,
       toVersion: release.version,
       startedAt: _clock.now(),
-      stage: UpdateStage.swapping,
       status: UpdateAttemptStatus.inFlight,
       reason: null,
     );
@@ -140,8 +134,8 @@ class UpdateApplyService({
         attempt: attempt.copyWith(status: UpdateAttemptStatus.failed, reason: error.toString()),
       );
       await _logRepository.log(message: 'Swap failed: $error\n$stackTrace');
-    } on Object catch (recordError) {
-      logWarning('Failed to record the update failure: $recordError');
+    } on Object catch (recordError, stackTrace) {
+      Log.w('Failed to record the update failure', recordError, stackTrace);
     }
     return UpdateApplyFailed(reason: error.toString(), logPath: _logRepository.logPath);
   }
@@ -167,14 +161,14 @@ class UpdateApplyService({
     var pendingActivationRecorded = false;
     try {
       await _attemptRepository.saveAttempt(
-        attempt: attempt.copyWith(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
+        attempt: attempt.copyWith(status: UpdateAttemptStatus.appliedPendingActivation),
       );
       // Set the flag right after the durable STATUS write, before the incidental
       // log append, so a log failure doesn't misclassify a recorded activation.
       pendingActivationRecorded = true;
       await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
-    } on Object catch (recordError) {
-      logWarning('Failed to record the pending activation: $recordError');
+    } on Object catch (recordError, stackTrace) {
+      Log.w('Failed to record the pending activation', recordError, stackTrace);
     }
 
     if (!pendingActivationRecorded) {
@@ -185,8 +179,8 @@ class UpdateApplyService({
       // can no longer diverge from an `inFlight` record.
       try {
         await _attemptRepository.clearAttempt();
-      } on Object catch (clearError) {
-        logWarning('Failed to clear the in-flight attempt after a status-write failure: $clearError');
+      } on Object catch (clearError, stackTrace) {
+        Log.w('Failed to clear the in-flight attempt after a status-write failure', clearError, stackTrace);
       }
     }
 
@@ -198,8 +192,8 @@ class UpdateApplyService({
     // contradicts. Best-effort: a failure only risks a later npm re-install.
     try {
       await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
-    } on Object catch (manifestError) {
-      logWarning('Failed to update the managed runtime manifest: $manifestError');
+    } on Object catch (manifestError, stackTrace) {
+      Log.w('Failed to update the managed runtime manifest', manifestError, stackTrace);
       return false;
     }
 

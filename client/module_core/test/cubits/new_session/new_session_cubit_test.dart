@@ -315,7 +315,6 @@ void main() {
         NewSessionProjectWorktreeCapability.unavailable,
       );
       expect(cubit.canCreateSession, isFalse);
-      expect(cubit.canRefreshOptions, isTrue);
 
       await cubit.refreshOptions();
 

@@ -45,10 +45,6 @@ class EventQueue<T extends Object>({
   void Function(T event, Object error) _onError = _defaultOnError;
   EventQueueSubscription<T>? _activeSubscription;
 
-  // Pause/resume (only meaningful while a listener is attached).
-  bool _paused = false;
-  Completer<void>? _resumeCompleter;
-
   /// Attaches a listener that will receive buffered and future events.
   ///
   /// If events have been buffered while no listener was attached, they are
@@ -70,7 +66,6 @@ class EventQueue<T extends Object>({
     }
     _onData = onData;
     _onError = onError ?? _defaultOnError;
-    _paused = false;
     final subscription = EventQueueSubscription<T>._(this);
     _activeSubscription = subscription;
 
@@ -80,14 +75,11 @@ class EventQueue<T extends Object>({
     return subscription;
   }
 
-  /// Whether a listener is currently attached.
-  bool get hasListener => _activeSubscription != null;
-
   /// Adds [event] to the back of the queue.
   ///
   /// If [maxSize] is set and exceeded, the oldest event is dropped.
-  /// If a listener is attached and the queue is not paused, the drain loop
-  /// starts automatically. If no listener is attached, the event is buffered.
+  /// If a listener is attached, the drain loop starts automatically. If no
+  /// listener is attached, the event is buffered.
   void enqueue(T event) {
     if (_disposed) return;
     _buffer.addLast(event);
@@ -96,60 +88,25 @@ class EventQueue<T extends Object>({
         _buffer.removeFirst();
       }
     }
-    if (_onData != null && !_draining && !_paused) {
-      unawaited(_drain());
-    }
-  }
-
-  /// Pauses the drain loop. Events continue to accumulate but are not
-  /// delivered until [resume] is called.
-  ///
-  /// The pause takes effect before the *next* event — the currently
-  /// in-flight listener call (if any) will complete normally.
-  void pause() {
-    if (_paused || _disposed || _activeSubscription == null) return;
-    _paused = true;
-    _resumeCompleter = Completer<void>();
-  }
-
-  /// Resumes the drain loop. If events are pending, draining starts or
-  /// continues immediately.
-  void resume() {
-    if (!_paused) return;
-    _paused = false;
-    final resumeCompleter = _resumeCompleter;
-    if (resumeCompleter != null && !resumeCompleter.isCompleted) {
-      resumeCompleter.complete();
-    }
-    _resumeCompleter = null;
-    if (!_draining && _buffer.isNotEmpty && _onData != null) {
+    if (_onData != null && !_draining) {
       unawaited(_drain());
     }
   }
 
   /// Releases resources.
   ///
-  /// Clears pending events and unblocks any waiting drain loop so it can
-  /// exit cleanly. The queue should not be used after calling this.
+  /// Clears pending events so the drain loop exits after the in-flight event.
+  /// The queue should not be used after calling this.
   void dispose() {
     _disposed = true;
     _buffer.clear();
-    _paused = false;
     _headAttempts = 0;
     _onData = null;
     _activeSubscription = null;
-    final resumeCompleter = _resumeCompleter;
-    if (resumeCompleter != null && !resumeCompleter.isCompleted) {
-      resumeCompleter.complete();
-    }
-    _resumeCompleter = null;
   }
 
   /// Number of events currently buffered.
   int get length => _buffer.length;
-
-  /// Whether the queue is currently paused.
-  bool get isPaused => _paused;
 
   // ---------------------------------------------------------------------------
 
@@ -157,12 +114,6 @@ class EventQueue<T extends Object>({
     _onData = null;
     _onError = _defaultOnError;
     _activeSubscription = null;
-    _paused = false;
-    final resumeCompleter = _resumeCompleter;
-    if (resumeCompleter != null && !resumeCompleter.isCompleted) {
-      resumeCompleter.complete();
-    }
-    _resumeCompleter = null;
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters
@@ -180,16 +131,6 @@ class EventQueue<T extends Object>({
     try {
       while (_buffer.isNotEmpty && !_disposed) {
         // No listener? Stop draining — events stay buffered.
-        if (_onData == null) break;
-
-        // Paused? Hold here until resumed, detached, or disposed.
-        if (_paused) {
-          final completer = _resumeCompleter;
-          if (completer == null) break;
-          await completer.future;
-          continue;
-        }
-
         final onData = _onData;
         if (onData == null) break;
         final activeSubscription = _activeSubscription;
@@ -215,7 +156,7 @@ class EventQueue<T extends Object>({
             continue;
           }
 
-          // Retry on next drain trigger (enqueue / resume).
+          // Retry on next drain trigger (enqueue / listen).
           break;
         }
       }
@@ -236,17 +177,5 @@ class EventQueueSubscription<T extends Object>._(final EventQueue<T> _queue) {
   /// No-op if this subscription is no longer active.
   void cancel() {
     if (_isActive) _queue._detach();
-  }
-
-  /// Pauses event delivery. Events continue to buffer.
-  /// No-op if this subscription is no longer active.
-  void pause() {
-    if (_isActive) _queue.pause();
-  }
-
-  /// Resumes event delivery.
-  /// No-op if this subscription is no longer active.
-  void resume() {
-    if (_isActive) _queue.resume();
   }
 }

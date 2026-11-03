@@ -205,9 +205,6 @@ class _FakeCatalogRepository({required final List<Object> results}) implements P
   int maxActive = 0;
 
   @override
-  Future<bool> healthCheck() async => true;
-
-  @override
   Future<PiCatalogProbeResult> probe({
     required String projectId,
     required Duration totalTimeout,

@@ -9,7 +9,6 @@ import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/api_paths.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -40,8 +39,8 @@ final class FakeRelayBridge({required final RelayResponse? Function(RelayRequest
     if (!_toPhone.isClosed) await _toPhone.close();
   }
 
-  /// A [ConnectionService] connected to this bridge. Its token refresh never
-  /// answers, so after a drop it stays reconnecting.
+  /// A [ConnectionService] connected to this bridge. Its token refresh answers
+  /// only the first connect, so after a drop it stays reconnecting.
   Future<ConnectionService> connect() async {
     final roomKeyStorage = MockRoomKeyStorage();
     when(roomKeyStorage.getRoomKey).thenAnswer((_) async => _roomKey);
@@ -59,9 +58,10 @@ final class FakeRelayBridge({required final RelayResponse? Function(RelayRequest
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
     );
     final authTokenProvider = MockAuthTokenProvider();
+    var tokenRequests = 0;
     when(
       () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
-    ).thenAnswer((_) => Completer<String?>().future);
+    ).thenAnswer((_) => tokenRequests++ == 0 ? Future.value("token") : Completer<String?>().future);
     final lifecycleSource = FakeLifecycleSource();
     final authSession = FakeAuthSession(initialState: const AuthState.initial());
     final service = ConnectionService(
@@ -81,9 +81,7 @@ final class FakeRelayBridge({required final RelayResponse? Function(RelayRequest
       await lifecycleSource.close();
       await authSession.dispose();
     });
-    await service.connect(
-      const ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
-    );
+    expect(await service.connectWithFreshAuthToken(), isTrue);
     return service;
   }
 

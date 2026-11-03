@@ -9,9 +9,10 @@ unknown reset. The headless bridge persists session opt-in, exposes
 a known reset plus two minutes. Phone and desktop chat share an inline opt-in
 hint, a notice shown only while a continuation is due or needs explaining, a
 quiet model-row chip while it is merely enabled, and a top-right menu toggle.
-Session lists show when a scheduled continuation resumes. Live
-provider and platform verification remains in the
-[active plan](../../.plan/active/quota-auto-continuation/PLAN.md).
+Session lists show when a scheduled continuation resumes. Live-provider
+recovery and macOS desktop QA were never verified; the
+[retired plan's verification record](../../.plan/completed/quota-auto-continuation/VERIFICATION.md)
+lists the rows that stayed unexecuted.
 
 ## Required Behavior
 
@@ -130,7 +131,7 @@ provider and platform verification remains in the
 - **L2:** Pi managed-target and minimum-PATH RPC probes with a synthetic provider:
   terminal quota text with known/unknown resets, transient recovery and retry exhaustion must each end in
   exactly one final settlement. See the dated
-  [evidence record](../../.plan/active/quota-auto-continuation/EVIDENCE.md).
+  [evidence record](../../.plan/completed/quota-auto-continuation/EVIDENCE.md).
 - **L1/L2:** Scheduler, timer, mutation and route suites plus the composed bridge
   event/handoff test. Cover opt-in persistence, reset buffer, recheck backoff,
   disable/re-enable, future interruptions, normal prompt selection, durable

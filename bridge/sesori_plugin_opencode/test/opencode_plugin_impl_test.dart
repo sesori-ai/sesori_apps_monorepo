@@ -134,7 +134,7 @@ void main() {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await plugin.initialize();
 
-      final sessions = await plugin.getSessions(projectId: "/repo", start: null, limit: null);
+      final sessions = await plugin.getSessions(projectId: "/repo");
 
       expect(sessions, hasLength(2));
 
@@ -169,7 +169,7 @@ void main() {
 
       await plugin.getProjects();
 
-      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
+      final sessions = await plugin.getSessions(projectId: "/moved/repo");
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       expect(moved.projectID, equals("/repo"));
     });
@@ -198,7 +198,7 @@ void main() {
       expect(project.directory, equals("/moved/repo"));
       expect(project.activity, isNull);
 
-      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
+      final sessions = await plugin.getSessions(projectId: "/moved/repo");
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       // Without the alias this would fall back to the requested directory.
       expect(moved.projectID, equals("/repo"));
@@ -1433,27 +1433,6 @@ void main() {
         expect(sessionTime!["archived"], isA<int>());
       });
     });
-
-    group("renameProject", () {
-      test("resolves worktree to project UUID then sends PATCH with name", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-        await plugin.initialize();
-        await server.waitForSseConnection();
-        server.requestLog.clear();
-
-        final project = await plugin.renameProject(projectId: "/repo", name: "Renamed Repo");
-
-        // PluginProject.id is always the worktree path, not the OpenCode UUID
-        expect(project.id, equals("/repo"));
-        expect(project.directory, equals("/repo"));
-        expect(project.name, equals("Renamed Repo"));
-        expect(project.activity, isNull);
-        expect(
-          server.requestLog,
-          equals(["GET /project/current", "PATCH /project/p1"]),
-        );
-      });
-    });
   });
 }
 
@@ -1709,30 +1688,6 @@ class _FakeOpenCodeServer() {
           request.response.statusCode = HttpStatus.notFound;
           await request.response.close();
           return;
-        }
-        await _sendJson(request.response, project);
-        return;
-      }
-
-      final projectMatch = RegExp(r"^/project/([^/]+)$").firstMatch(path);
-      if (projectMatch != null && request.method == "PATCH") {
-        final directoryHeader = request.headers.value("x-opencode-directory");
-        if (directoryHeader == null || directoryHeader.isEmpty) {
-          request.response.statusCode = HttpStatus.badRequest;
-          await request.response.close();
-          return;
-        }
-        final projectId = projectMatch.group(1)!;
-        final project = _projects[projectId];
-        if (project == null) {
-          request.response.statusCode = HttpStatus.notFound;
-          await request.response.close();
-          return;
-        }
-        final rawBody = await utf8.decoder.bind(request).join();
-        final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
-        if (body.containsKey("name")) {
-          project["name"] = body["name"];
         }
         await _sendJson(request.response, project);
         return;

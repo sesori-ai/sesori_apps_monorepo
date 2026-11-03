@@ -47,7 +47,8 @@ class AnalyticsRepository {
     try {
       await operation().timeout(_deliveryDeadline);
       return AnalyticsDeliveryResult.acceptedBySdk;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      logw("Analytics SDK did not accept the event", error, stackTrace);
       return AnalyticsDeliveryResult.failed;
     }
   }

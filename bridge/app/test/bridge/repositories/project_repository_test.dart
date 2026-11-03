@@ -788,7 +788,6 @@ void main() {
         expect(fetched.path, equals("/moved/a"));
 
         final renamed = await repo.renameProject(projectId: "/projects/a", name: "Renamed");
-        expect(plugin.lastRenameProjectId, isNull);
         expect(renamed.name, "Renamed");
         expect(renamed.path, equals("/moved/a"));
       });
@@ -825,7 +824,6 @@ void main() {
 
         final renamed = await repo.renameProject(projectId: directory, name: "Renamed");
 
-        expect(plugin.lastRenameProjectId, isNull);
         expect(renamed.id, directory);
         expect(renamed.hasUnseenChanges, isTrue);
       });
@@ -1388,14 +1386,13 @@ PluginSession _session(
 }
 
 /// Minimal [BridgePluginApi] fake for plugin activity evidence. Every other
-/// member throws so accidental project open/rename delegation is loud.
+/// member throws so accidental project open delegation is loud.
 class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   Future<List<PluginProject>>? getProjectsFuture;
   Object? getProjectsError;
   PluginProject projectResult = const PluginProject(id: "project-id", directory: "project-id");
   String? lastGetProjectId;
-  String? lastRenameProjectId;
   int getProjectsCallCount = 0;
 
   @override
@@ -1411,12 +1408,6 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     final err = getProjectsError;
     if (err != null) throw err;
     return projectsResult;
-  }
-
-  @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) async {
-    lastRenameProjectId = projectId;
-    return projectResult;
   }
 
   @override

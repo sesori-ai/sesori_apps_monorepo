@@ -1,7 +1,7 @@
 # Step 9 — Linux packages, signed repositories and publication
 
-Ordinal 11/14. Linux remains ahead of Windows (D10/D13). CLI signatures, public
-internal previews and their website discovery are complete. On 2026-10-14 the user
+Ordinal 11/14. Done: stable Linux shipped with `v1.10.1`
+([11.k](#stable-linux-publication--11k14)). Linux remains ahead of Windows (D10/D13). On 2026-10-14 the user
 approved public GCS package hosting/scoped GitHub publishing IAM in `sesori-ai`, then
 requested finishing Linux including stable publication. That direction authorizes the
 remaining implementation/publication work, not a waiver of repository trust, native
@@ -223,10 +223,31 @@ read the autostarted app's cgroup before gnome-session moved it into its scope. 
 login check now waits for that move.
 
 No host, signing-policy, publication or installed-Mac change is authorized by this
-tooling. Stable stays closed.
+tooling. Stable stayed closed until 11.k.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not
 historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
 recreated release or silent same-version substitution.
+
+## Stable Linux publication — 11.k/14
+
+Website step 11.j (landingpage #113, `7ff65d9`) went live on 2026-10-25 with the AppImage
+anchors and internal APT/DNF setup. #2042 merged on 2026-10-25 as `468cdf8a01`: production
+`submit-release.yml` builds stable Linux from the approved source/build with the compiled
+`stable` channel, attaches it after `store-production` approval, and `linux-repository.yml`
+publishes per-channel repositories.
+
+The first stable Linux release was `v1.10.1`, build 1082, from Submit Release run
+`40582445355` (source `bcb9ea085b`, 2026-10-27). It carries DEB, RPM and AppImage for
+both CPUs with signed checksums and `desktop-linux-release.json`. The same run published
+the stable APT/RPM repositories and AppImage feed; anonymous `InRelease` and both
+`repomd.xml` files served `1.10.1-1082`. No real APT/DNF client check against the stable
+repository was recorded. landingpage #115 merged on 2026-10-28 and admitted the stable
+Linux rows and stable APT/DNF setup on sesori.com/desktop/. Step 9 is done.
+
+Still open as ship gates, not step 9 work: repository-owned N→N+1 through
+unattended-upgrades/dnf-automatic, a real APT/DNF client check against the stable
+repository, and the AppImage update rows that
+[desktop-auto-update](../../../completed/desktop-auto-update/VERIFICATION.md) left unexecuted.
 
 ## Signing continuation — 11.a/14 (merged)
 

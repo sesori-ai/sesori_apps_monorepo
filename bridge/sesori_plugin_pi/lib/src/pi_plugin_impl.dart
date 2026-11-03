@@ -42,13 +42,11 @@ final class PiPlugin._({
     required Map<String, String> storageEnvironment,
     required Map<String, String> processEnvironment,
     required PiProcessFactory processFactory,
-    required CommandExecutor commandExecutor,
     required ServerClock clock,
     required String launchDirectory,
     required Duration startupExitTimeout,
     required Duration historyRpcTimeout,
     required Duration catalogTimeout,
-    required Duration healthTimeout,
     required Duration? Function() resolveIdleTimeout,
     required Stream<Duration?> idleTimeoutChanges,
     required Duration editorTimeout,
@@ -100,8 +98,6 @@ final class PiPlugin._({
         binaryPath: binaryPath,
         environment: processEnvironment,
         processFactory: processFactory,
-        commandExecutor: commandExecutor,
-        healthTimeout: healthTimeout,
       ),
       tracker: PiCatalogTracker(),
       totalTimeout: catalogTimeout,
@@ -124,7 +120,6 @@ final class PiPlugin._({
 
   final List<StreamSubscription<Object?>> _subscriptions = [];
   Future<void>? _disposeFuture;
-  bool _disposed = false;
 
   @override
   String get id => pluginId;
@@ -144,8 +139,8 @@ final class PiPlugin._({
       _catalogRepository.primeSessionDirectory(sessionId: sessionId, directory: directory);
 
   @override
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
-      _catalogRepository.getSessions(projectId: projectId, start: start, limit: limit);
+  Future<List<PluginSession>> getSessions({required String projectId}) =>
+      _catalogRepository.getSessions(projectId: projectId);
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
@@ -488,9 +483,6 @@ final class PiPlugin._({
   );
 
   @override
-  Future<bool> healthCheck() => _disposed ? Future.value(false) : _catalogService.healthCheck();
-
-  @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
       (await _catalogService.requireCatalog(projectId: projectId)).options.providers;
 
@@ -504,7 +496,6 @@ final class PiPlugin._({
       _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
 
   Future<void> _dispose({required Duration? shutdownBudget}) async {
-    _disposed = true;
     Object? firstError;
     StackTrace? firstStack;
     Future<void> capture(Future<void> Function() cleanup) async {

@@ -125,9 +125,9 @@ Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
 the Claude Code and Pi cases below. Scheduled continuation is implemented through
 the headless API for those reporting formats; live post-reset provider recovery
 remains unverified. The
-[active plan](../.plan/active/quota-auto-continuation/PLAN.md) tracks remaining
-live-provider and platform verification.
-The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
+[plan](../.plan/completed/quota-auto-continuation/PLAN.md) was retired on
+2026-11-02 with live-provider recovery and macOS desktop QA accepted as unexecuted.
+The [evidence record](../.plan/completed/quota-auto-continuation/EVIDENCE.md)
 distinguishes observed local errors from upstream contracts and open checks.
 
 Eligibility depends on a terminal quota interruption **and** a usable reset
@@ -143,7 +143,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 | Codex | Local and documented reset timestamps | Not implemented; failed-turn bucket binding unverified. |
 | OpenCode | Raw error data reaches mapper | Not implemented; reset payload/provider attribution unverified. |
 | GitHub Copilot | ACP payload needs inspection | Not implemented; reset reporting unverified. |
-| Cursor | Headless payload needs inspection | Not implemented; reset reporting unverified. |
+| Cursor | ACP payload needs inspection | Not implemented; reset reporting unverified. |
 | Hermes Agent | ACP payload needs inspection | Not implemented; reset reporting unverified. |
 | Oh My Pi | ACP seam differs from Pi RPC | Not implemented; reset reporting unverified. |
 | DeepSeek | ACP payload needs inspection | Not implemented; reset reporting unverified. |
@@ -164,7 +164,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   or malformed resets remain unknown. Synthetic-provider RPC probes on the
   then-current managed target (0.85.1) and PATH floor (0.84.1) confirmed that
   `agent_settled` follows final retry resolution; they have not been re-run on
-  the current target (1.0.4) or floor (0.99.0). Those probes did not exhaust a real account;
+  the current target (1.4.0) or floor (0.99.0). Those probes did not exhaust a real account;
   provider-format evidence comes from local errors and pinned upstream source.
   This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
@@ -198,7 +198,8 @@ the current wait while retaining the preference for later quota interruptions.
 Pi's installed 0.85.1 RPC `clear_queue` clears **all** steering/follow-up work,
 including extension-owned input, and carries no Sesori prompt IDs. It cannot
 safely implement deletion of one row; Sesori does not clear/replay that native
-queue. This limit is verified from installed native source. Dispatch-state and
+queue. This limit is verified from installed 0.85.1 native source and has not
+been re-checked on the current target (1.4.0) or floor (0.99.0). Dispatch-state and
 cancellation evidence is synthetic plugin/bridge/core/widget coverage, not a new
 live authenticated run. Older public bridge payloads without dispatch ownership
 remain explicitly unknown and retain best-effort cancellation. Only a reported
@@ -307,7 +308,7 @@ sub-agents finish.
 | Codex | ✅ The sub-agent step's message time. | ✅ `turn/start` at once. Verified live 2026-09-26 on codex-cli 0.156.1 (app-server): the parent's turn ended with its sub-agent still running `sleep 90`, and a new prompt started a parent turn answered in 2 s. |
 | OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. A foreground Task is the parent's own running step, so the row does not show. |
 | DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A foreground child keeps the parent's turn running, so the row does not show. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
-| Grok | ❌ None: no message or child session carries one, so without a bridge busy time the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
+| Grok | ✅ The child session's `time.created`: a saved child's `created_at`, else its `updated_at`, else the instant the bridge first stored the child. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
 | Cursor | Not applicable: the root turn stays open while any sub-agent runs, so the row never shows. | Not applicable: a follow-up prompt is stop-and-send, and the root cancel stops every sub-agent, background ones included. |
 | Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
 
@@ -342,9 +343,7 @@ and local harness as siblings, uses a conservative two-minute bound for each arc
 and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
 A 2026-10-25 network-denied macOS arm64 run of package `1.4.3` passed `--version`, initialize and teardown; the
-production managed installation was last run on `1.3.0`. Other native targets and authenticated behavior
-remain unverified. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
-verification of the current pin.
+production managed installation, other native targets and authenticated behavior have not been run on `1.4.3`.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
@@ -399,9 +398,10 @@ retains its existing monotonic timestamp merge and local title overrides.
 | Metadata-only import before harness startup | ✅ |
 
 OpenCode can read a safely identified local SQLite database as a coherent,
-read-only snapshot. The reader consumes the pinned v1.18.19 project,
-project-directory, and session schema and safely falls back to live import when
-that contract is absent or invalid. Other harnesses retain their existing
+read-only snapshot. The reader consumes the OpenCode 1.x project,
+project-directory, and session schema (verified on 1.18.19) and safely falls back
+to live import when that contract is absent or invalid, or when OpenCode 2.x has
+migrated the database. Other harnesses retain their existing
 plugin-backed import; no pre-start capability claim is made for them.
 All harnesses cold-started only by import fallback or by session options
 discovery use the shared five-minute transient idle residency cap.
@@ -591,14 +591,16 @@ those installs is worse than the stale ready state this capability replaces.
 
 The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running still moves the slot to
-`authenticationRequired` and blocks further starts; the ⬜ plugins do not do
-that either.
+`authenticationRequired` and blocks further starts. Copilot does: a failed ACP
+`authenticate` raises it with the `copilot login` hint. DeepSeek reports a
+provider with no models only as an `authenticationRequired` session-options
+result, which leaves the slot unchanged.
 
 ## Managed runtime platform coverage
 
 | Capability | Harness | Sesori implementation | Native verification |
 |---|---|---|---|
-| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.1.19`; install/version/ACP/teardown still needs a native ARM64 host |
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.12.6`; install/version/ACP/teardown still needs a native ARM64 host |
 
 OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
 architecture selection. This implementation status is not a native verification
@@ -660,303 +662,73 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 ## MCP management native evidence
 
-Read-only MCP inventory and server details are **implemented** in the shared
-phone/desktop UI, opened from session menus and harness settings. Connection
-action and authentication UI are **implemented** as a separate shared modal layer.
-
-Backend-neutral authentication attempt/request/response codecs are implemented,
-including explicit native cancellation availability and private callback
-presentation. Claude's headless authentication routes and the shared client
-API/repository/connection-fenced lifecycle are implemented. The observing Cubit
-does not cancel on view closure. Request-scoped recovery never auto-launches a
-browser; busy retains the challenge, and reconnect fences callbacks to the old
-bridge. Visible client controls use declared capabilities. Native MCP sign-in is
-implemented for Claude, Codex and eligible OpenCode v1/v2 servers. Secondary
-adapter limits are recorded in the source/adapter audit below.
-The shared entry-action API/repository, per-view request owner and observing Cubit
-are implemented for reconnect, enable/disable and credential forgetting. Shells
-provide the read-only posture; pending requests retain readable inventory, late
-responses are connection-fenced, and native completion supplies inventory truth.
-API failures retain their causes and trigger a read rather than an automatic
-action retry. Mutable surfaces expose declared controls; read-only surfaces retain
-inspection. Sign-in needs explicit browser intent, and credential forgetting
-requires scope confirmation. Closing a layer does not cancel authentication.
-The backend-neutral inventory wire models and optional plugin read interface
-are implemented. Claude implements session inventory through its resident
-process status control request, exposed headlessly by `POST /mcp/inventory`.
-The shared client API, repository, per-view loading service, and cubit are
-implemented, including reconnect and refresh failure state.
-Project/harness inventory and offered-connector discovery remain **not implemented**
-for Claude. Claude live-session reconnect, enable and disable are **implemented**
-headlessly through `POST /mcp/entry/action`, with authoritative refresh and scoped
-client invalidation. They change the live process only, with no persistent
-configuration write or implicit session launch. Archived mutations return the
-canonical structured 409 rejection before native access.
-Each declared control includes its effect scope. Claude native plugin HTTP
-authentication and its headless read/start/continue/cancel routes are implemented
-as described below. Each server now declares independent sign-in and credential-forgetting
-availability, including native effect scopes and explicit configuration/platform gaps.
-Headless credential forgetting is **implemented** through `POST /mcp/entry/action`;
-it shares the native authentication owner, preserves server definitions, and refreshes
-inventory without claiming that an existing resident connection has disconnected.
-Shared client action UI is **implemented**; native actions remain capability-gated
-per adapter as recorded below.
-Reads never start an integration or agent session.
-Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
-endpoint origin crosses the wire. See
-[MCP management regression coverage](regression/mcp-management.md).
-Existing tool permissions are separate from this management capability. Native
-protocol probes on macOS arm64 (2026-10-13) establish the following integration
-boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
-
-| Harness/version | Native capability | Verified limit |
-|---|---|---|
-| Claude, both pins | Inventory, toggle, reconnect, forms, CLI OAuth | Terminal login; session toggle |
-| Claude 2.1.221 | URL elicitation not supported | Native rejects before forwarding |
-| Claude 2.1.291 | URL elicitation native support | Separate from tool permission |
-| Codex, both pins | Inventory, forms/URL, fixture OAuth | No MCP attempt ID or completion/cancel RPC |
-| Codex 0.139.0 | Basic native inventory | No runtime/discovery-error/origin fields |
-| Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
-
-Codex configured-server inventory is **implemented** through the existing
-app-server connection for exact session and harness scopes. Reads consume all
-native pages without starting/resuming a session, issuing a tool call or writing
-configuration. Project-scoped inventory is **not supported** by the pinned native
-selector. Missing minimum-version runtime/discovery metadata stays unknown;
-discovery failure remains separate from a successful empty tool catalog.
-Only safe endpoint origins and declared tool names/descriptions cross the wire.
-Native OAuth integration is **implemented** for native-capable configured servers,
-using the existing headless attempt owner and shared sign-in controls. The exact
-session context is sent only on initialized native versions at least 0.160.1.
-Older/unknown versions explicitly require native configuration for session
-sign-in, with no OAuth RPC: a same-name override probe found 0.139.0 ignores
-the login thread and selects the harness issuer; 0.160.1 selects the session
-issuer. Harness sign-in remains available on the minimum. Minimum completion
-is name-only; target also correlates thread context. Credential effects are harness-scoped. Native expiry,
-provider denial and completion remain authoritative; there is no cancellation RPC,
-so the attempt retains ownership until native settlement or runtime teardown.
-Callback forwarding validates exact native loopback origin/path/state and disables
-redirects. No credential store or provider-account login is added. Credential forgetting,
-enable/disable and resident reconnect are **not supported** by the pinned API;
-no action is advertised. A 2026-10-15 isolated probe at both pins found status
-discovery can open a fresh connection while the resident tool call retains its
-original connection, including after `config/mcpServer/reload`. Reloading
-configuration therefore does not establish resident reconnect support.
-Offered-connector inventory is **implemented** through native `app/list`, with
-complete pagination and exact thread/harness context. Offers retain distinct
-targets and native enabled/accessibility state. A catalog failure preserves the
-server inventory; server authentication never fetches the connector catalog.
-Catalog-resolved connector setup is **implemented** through a distinct offer
-action. Enabled inaccessible offers with a verified native HTTPS installUrl expose
-Open setup; offers without one give a native-tool handoff. Setup refreshes the
-native catalog and never installs, writes configuration or logs into an account.
-The headless service validates the destination before forwarding; the client opens
-it only for a current explicit setup request. Browser opening does not prove
-connection. Fresh inventory remains authoritative. Exact-pin fixtures verify
-force-refetched empty catalogs; real authenticated offers, setup destinations and
-native entitlement policy remain unqualified. Codex typed MCP forms
-and URL requests are **implemented**, reusing the existing native pending owner
-and shared request-scoped controls. Supported scalar/choice forms retain native
-types and opaque key/value aliases; invalid replies remain pending. Unsupported
-schemas/modes explicitly decline. Integer bounds accept the native JSON-number
-representation, with fractional bounds rounded inward to integral choices.
-Forwarded legacy titled enums retain matching enumNames. Native 0.139.0 omits
-enumNames in the isolated fixture, so native values become visible labels;
-0.160.1 forwards the titles, and native oneOf titles work at both pins.
-Blank or ambiguous field/option labels and unfulfillable choice counts decline with
-a display-session warning instead of offering indistinguishable inputs.
-URLs/defaults/answers remain outside question broadcasts. Legacy clients receive
-cancel-only notices; generic replies cancel instead of coercing answers or
-accepting an external action. Tagged tool approval and declared persistent grants
-remain on the permission path. Session cancellation/disconnect retires the same
-owner; URL acceptance alone does not establish OAuth completion.
-
-Claude's toggle changes the resident process, not persisted configuration.
-Its status omits tool descriptions. Approval frames name the tool at both pins;
-explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
-Plain-pipe login does not expose the
-no-browser URL/paste journey. Codex completion must be correlated by the
-adapter; a browser open does not confirm success. Claude live-session reconnect
-and enable/disable are **implemented** as Sesori management actions. Claude plugin
-HTTP authentication, its headless attempt routes and shared client controls are
-implemented. Claude session URL elicitation has **implemented** headless snapshot
-and accept/decline/cancel routes, using the original native request owner. URL
-support requires Claude 2.1.291; 2.1.221 rejects it before forwarding. Current
-clients have **implemented** explicit browser opening and declared native
-accept/decline/cancel controls, with original-owner routing and connection fencing.
-Dismissal leaves the request pending; browser opening and native reply acceptance
-do not claim authorization completion. Claude native form handling is **implemented**
-for flat plain text, integer, finite number, boolean, string choice and string-choice-array
-fields, including supported defaults and inclusive length/count/numeric bounds. Native
-format constraints, nested/secret schemas and other unsupported keywords explicitly decline
-with an in-session warning. Invalid submissions and failed native writes retain pending
-requests. Stop, archive notification, process exit and teardown cancel existing waits.
-Failed archive cancellation retains pending state without a false settlement event.
-Choice descriptions are retained in visible option labels.
-Codex typed form/external-action management is **implemented** through the same
-shared controls, with cancel-only legacy notices. Offered-connector inventory
-and catalog-resolved setup are **implemented**. Other harnesses without a declared
-connector setup API remain explicitly unavailable for that action.
-
-Typed form transport codecs are available for scalar and bounded choice inputs;
-Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed
-reply/decline routes are **implemented** with canonical original-owner routing,
-active-only reads, deleted-target checks and archived-owner rejection. Unsupported plugins
-return empty snapshots and explicit unsupported mutation outcomes. Shared client typed
-draft conversion and request-scoped connection/submission ownership are **implemented**,
-including draft retention after validation or transport failure and sensitive response
-redaction. Visible typed form controls are **implemented** on desktop and phone:
-draft-preserving text/numeric inputs, explicit boolean and opaque choice controls,
-field errors, submit/decline/cancel, and original-owner settlement. Unknown schemas
-cannot be accepted. Retired connections preserve drafts with read-only controls.
-Native presentation recording remains deferred; full provider/package qualification
-is still required before claiming the priority journeys qualified.
-
-The Claude native plugin authentication API is **implemented** for an existing
-resident's native-configured HTTP server: no-browser sign-in, matching callback,
-provider denial, bounded cancellation/expiry, and native credential clearing.
-Both pins passed isolated OAuth on macOS arm64, including reconnect/tools in the
-existing resident. Server definitions remain unchanged; the CLI may update its
-own credential and preference bookkeeping. Headless read/start/continue/cancel
-routes are **implemented**, with one bridge-owned leased attempt and request-only
-URLs. Shared client authentication actions are **implemented**. Linux's terminal
-path is implemented but unqualified; Windows integration and SSE authentication
-are **not implemented**.
-Dynamic/unknown session configuration cannot be safely addressed by named CLI
-credential operations and returns an explicit native-configuration handoff.
-Stdio OAuth is **not supported** by this native method. Native authentication
-adapters for the remaining harnesses are **not implemented**;
-the recorded retirement matrix is unchanged. Codex OAuth passed isolated
-macOS arm64 native fixtures at both pins; other hosts, real providers and packaged
-browser return remain unqualified.
-
-Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
-authenticated connector setup. Management outside Claude, Codex and OpenCode
-remains **not implemented**, with native support still to be audited. Real provider policy,
-credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
-ownership were not qualified by these probes. See the
-[versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
+Phone and desktop share MCP inventory, server details, connection controls,
+native sign-in, credential forgetting, typed forms and URL requests. Clients
+show only the controls a plugin declares. Behavior, lifecycle and the
+qualification matrix live in
+[MCP management regression coverage](regression/mcp-management.md); this section
+records the per-harness gaps. Evidence comes from isolated macOS arm64 native
+fixtures (2026-10-13 to 2026-10-15) at the versions named below. Real providers,
+packaged clients, relay modes, Linux and Windows hosts and the final L4 matrix
+remain unqualified, and native recording is deferred. See the
+[versioned contract evidence](../.plan/completed/mcp-management/evidence/native-contracts.md)
 and [reproduction tools](../tool/mcp-contracts/README.md).
 
-OpenCode v2 configured MCP inventory and connect/reconnect/disable controls are
-**implemented** through the existing location-scoped API. Project and exact
-native-session locations are supported; harness scope is explicitly unavailable.
-The adapter exposes native connection status without inferring tools, endpoint
-metadata, configuration ownership or authentication success. Effects are scoped
-to the native project/location, with authoritative refresh after controls.
-Project effects invalidate all open inventories for that plugin, covering views
-of other sessions at the same native location.
-The v2 MCP API provides no offered-connector catalog. Native MCP OAuth and
-credential removal are **implemented** through the Integration API when the
-server declares an `integrationID`; authentication additionally requires exactly
-one form-free OAuth method. It is **not supported** for servers without an
-integration. The pinned MCP core registers that method shape; preparation
-validates fresh integration metadata before starting. Forgetting independently
-uses the integration's native credential IDs. Project and exact session locations
-use native integration/method IDs; authentication and forgetting affect the native
-harness profile. Read-only preparation precedes subscription; native OAuth attempt
-creation starts only after subscription. A plugin-local operation observes native status,
-validates/forwards the exact loopback callback without server credentials, and
-confirms attempt removal after cancellation. DELETE can be a no-op during native
-credential persistence; native completion wins that race. Lost start responses
-remain uncertain until runtime retirement; no retry or invented timeout outcome.
-Forgetting reads fresh secret-free integration credential IDs and excludes
-environment connections. Isolated 2.0.11 and 2.0.24 production-owner probes verify
-confirmed cancellation, automatic callback completion, forgetting and signing in
-again, with configuration unchanged. This is native fixture evidence, not full
-client/provider qualification.
-Exact integrity-verified 2.0.11 and
-2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
-session-location lookup through the production adapter in isolated fixtures.
-Controls preserve the fixture configuration file. This proves native local
-control behavior, not authenticated providers or packaged client journeys.
-OpenCode v1 configured-server inventory and enable/reconnect/disable are also
-**implemented** through its separate name-keyed status map and directory-scoped
-native routes. Exact native session lookup determines its directory; harness
-scope is unavailable without native work. Connection effects are project-scoped.
-Needs-auth and needs-client-registration remain authentication-required, with
-client registration explicitly requiring native configuration. Unknown metadata,
-tools and credential state are not inferred. Offered connectors are **not
-supported by this seam**. V1 authentication and credential forgetting are
-**implemented** for configured remote servers with OAuth enabled. Native
-configuration is read through a minimal projection that discards credentials;
-local, OAuth-disabled and unknown server types remain unsupported. Unsupported
-configured callback overrides and malformed remote URLs require native
-configuration before sign-in starts;
-only non-secret redirect metadata is retained and forgetting stays independent.
-Sign-in starts
-on subscription and requires manual callback delivery through native OpenCode's
-code-only API; a browser loopback return alone does not settle this flow. The
-native callback's connected or disabled result is authentication completion;
-disabled follows successful native token persistence without enabling the server.
-Forgetting affects the native
-harness profile and does not write server configuration.
-V1 has no credential-preserving cancellation or pending-status seam. DELETE auth
-also removes credentials, so it is never used for cancellation or retirement.
-Provider-denial callbacks cannot safely settle native pending work; Sesori rejects
-them and retains ownership until native completion or runtime retirement. Lost
-start/callback replies remain uncertain without retry or invented expiry.
-Attached runtimes may retain pending native transports after local retirement.
-An already-authorized start completes directly on 1.17.7; 1.14.17 returns a native
-serialization failure, which remains uncertain until runtime retirement.
-The existing PATH floor remains
-1.14.0, but no exact Git tag/npm artifact exists for it; qualification uses the
-earliest published 1.14.x artifact, 1.14.17, plus target 1.17.7.
-Both integrity-verified binaries pass the production adapter's isolated inventory,
-enable, resident reconnect, disable and exact session lookup; configuration bytes
-remain unchanged and reconnect replaces the fixture process. No model/tool call
-or external provider sign-in occurs. Both exact versions also pass the production
-authentication service/repository/API using an exact native session, manual
-callback completion, profile credential forgetting and signing in again, with
-configuration unchanged and two fixture token exchanges verified.
-The bounded Pi/ACP source audit follows below. Original provider/package/client/
-L4 qualification remains partial; native fixture success does not establish those
-boundaries. The cumulative [regression matrix](regression/mcp-management.md#regression-levels)
-records the required coverage, including selected packaged/external checks.
+| Harness | Inventory | Reconnect, enable, disable | Sign-in and credential forgetting | Offered connectors |
+|---|---|---|---|---|
+| Claude | ✅ Live resident session; ⬜ project and harness scope | ✅ Live process only; no configuration write | ✅ Native-configured HTTP servers; ⬜ SSE servers and Windows; 🚫 stdio | ⬜ |
+| Codex | ✅ Exact session and harness; 🚫 project scope | 🚫 Not in the native API | ✅ Sign-in; 🚫 forgetting | ✅ Native `app/list` with a setup handoff |
+| OpenCode v2 | ✅ Project and exact session location; harness scope unavailable | ✅ Location effect | ✅ Servers with an `integrationID`; 🚫 others | 🚫 No catalog in the v2 MCP API |
+| OpenCode v1 | ✅ Project and exact session directory; harness scope unavailable | ✅ Project effect | ✅ Remote servers with OAuth enabled; 🚫 local, OAuth-disabled and unknown types | 🚫 Not in this seam |
+| Pi | 🚫 No MCP method in the resident RPC | 🚫 | 🚫 | 🚫 |
+| Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes, OMP | 🚫 Standard ACP has no management API | 🚫 | 🚫 | 🚫 |
+
+Typed MCP forms and URL requests are implemented for Claude and Codex only;
+other plugins return empty snapshots and refuse typed replies.
+
+- **Claude** (2.1.221 and 2.1.291): sign-in runs the CLI's terminal login, since
+  plain-pipe login lacks the no-browser journey; the Linux terminal path is
+  unqualified. Dynamic or unknown session configuration needs native setup.
+  Forgetting keeps server definitions, though the CLI may update its own
+  bookkeeping. Status omits tool descriptions. Approval frames carry `mcp_server`
+  context, and URL requests work, only from 2.1.291; 2.1.221 rejects URL
+  requests before forwarding.
+- **Codex** (0.139.0 and 0.160.1): 0.139.0 reports no runtime status, discovery
+  error or endpoint origin, which stay unknown, and omits legacy `enumNames`, so
+  form labels show native values (`oneOf` titles work on both). Session sign-in
+  needs 0.160.1 or later, because 0.139.0 ignores the login thread and picks the harness
+  issuer; harness sign-in works on both, with harness-scoped credential effects.
+  There is no MCP attempt ID or cancel RPC, so an attempt holds ownership until
+  native settlement or teardown. `config/mcpServer/reload` keeps the resident
+  tool call on its old connection, so it is not reconnect. Unauthenticated
+  `app/list` returned an empty catalog; real offers, setup and entitlement are
+  unqualified.
+- **OpenCode v2** (2.0.11 and 2.0.24): sign-in also needs exactly one form-free
+  OAuth method. Sign-in and forgetting affect the native harness profile.
+- **OpenCode v1** (1.14.17, the earliest published 1.14.x since the 1.14.0 floor
+  has no artifact, and 1.17.7): client registration, unsupported callback
+  overrides and malformed remote URLs need native setup. Sign-in completes only
+  by manual callback delivery to the native code-only API. 🚫 There is no
+  credential-preserving cancel or pending-status seam: denial callbacks are
+  rejected and the attempt holds ownership until native completion or runtime
+  retirement. An already-authorized start completes on 1.17.7 but returns a
+  serialization failure on 1.14.17, which stays uncertain until retirement.
 
 ### Secondary MCP source and adapter audit
 
-Audited 2026-10-15. These are source/protocol findings, not new native binary,
-provider or client qualification. Existing generic approvals and bounded forms
-remain available independently of MCP management.
+Audited from source on 2026-10-15 and not re-audited on later pins. Pi's
+[0.99.0][pi-mcp-rpc-min] and [1.0.4][pi-mcp-rpc-target] RPC types expose no
+structured MCP management method. The bundled `/mcp` command stays usable (see
+"Command limitations"), but its [login][pi-mcp-extension] opens the browser on
+the bridge host and its [CLI list][pi-mcp-cli] connects servers in a fresh
+process, so neither serves resident inventory or Sesori-owned sign-in.
 
-| Adapter | Repository minimum → target | Structured MCP management in Sesori |
-|---|---|---|
-| Pi | 0.99.0 → 1.0.4 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
-| Antigravity | Exact official ACP pair 1.3.0 | Not implemented; standard ACP has no management API. |
-| Copilot | 1.0.78 → 1.0.92 | Not implemented; standard ACP has no management API. |
-| Cursor | 2026.09.23 → 2026.10.01-e373342 | Not implemented; standard ACP has no management API. |
-| DeepSeek | 0.1.5 → 0.2.0 | Not implemented; standard ACP has no management API. |
-| Grok Build | 1.0.5 → 1.0.46 | Not implemented; standard ACP has no management API. |
-| Hermes | 0.20.0 → 0.21.5 | Not implemented; standard ACP has no management API. |
-| Oh My Pi | 17.2.13 → 18.8.0 | Not implemented; standard ACP has no management API. |
-
-Pi's exact [0.99.0 RPC types][pi-mcp-rpc-min] and
-[1.0.4 RPC types][pi-mcp-rpc-target] expose no structured MCP management methods.
-Their files are identical (SHA-256
-`be06a1d53916e03e9274cce9e4833692b235494e4047f1f7139d7f0147daae1a`).
-The native extension retains text status plus login/logout/reconnect commands;
-its [login path][pi-mcp-extension] opens the browser on the native host. Generic
-extension input is not a request-scoped Sesori OAuth operation. The separate
-[CLI list command][pi-mcp-cli] supports JSON but connects enabled servers in a
-fresh process. It cannot report resident session state without starting new
-connections. Neither path is promoted into passive inventory or remote sign-in.
-
-In the [ACP protocol-1 schema snapshot][acp-mcp-schema], `mcpCapabilities.http`
-and `.sse` describe accepted server transports; `session/new` and `session/load`
-take server definitions. They are not inventory, connection controls, OAuth
-attempts or connector discovery. Sesori's `AcpAgentApi` passes an empty
-`mcpServers` list on activation, and each listed ACP adapter uses the same base
-without implementing the optional MCP interfaces. Standard MCP management is
-**not supported by that protocol seam**. Vendor extensions and separate native
-CLIs are **not implemented or qualified** here; this is not a claim that those
-harnesses lack MCP internally.
-
-Existing `session/request_permission` option selection and declared
-`elicitation/create` bounded-form handling stay on their generic owners.
-Agent-account `authenticate` is separate from MCP-server OAuth. Native text,
-command titles or transport-capability flags never imply a product action.
-The existing unsupported-harness inventory result remains authoritative.
+In the [ACP protocol-1 schema][acp-mcp-schema], `mcpCapabilities.http` and
+`.sse` and the server definitions that `session/new` and `session/load` take
+describe accepted transports only, not inventory, controls, OAuth or connector
+discovery; Sesori passes an empty `mcpServers` list. Vendor extensions and
+separate native CLIs are not implemented or audited, so this does not claim
+those harnesses lack MCP internally.
 
 [pi-mcp-rpc-min]: https://github.com/earendil-works/pi/blob/4b060d3a98618019adb9985d517516c8e99a2bbe/packages/coding-agent/src/modes/rpc/rpc-types.ts
 [pi-mcp-rpc-target]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/modes/rpc/rpc-types.ts
@@ -1013,8 +785,9 @@ handed back to native RPC unchanged, and native Pi owns later dialogs.
 Startup dialog fixtures and catalog discovery were verified on macOS arm64 with
 Pi 1.0.4 (npm) and managed Pi 0.85.1 and 0.84.4. Pi 1.0.4 also passed installed
 MCP adapter approvals, new/resume/fork RPC launches, and a full Sesori plugin
-session completing an authenticated GPT-6.1 request. Pi 1.0.4 currently awaits
-extension startup before reading stdin; an unanswered startup dialog can
+session completing an authenticated GPT-6.1 request. Pi 1.0.4 awaits
+extension startup before reading stdin (not re-probed on the current target
+1.4.0 or floor 0.99.0); an unanswered startup dialog can
 otherwise exit or hang the process. Sesori forwards startup questions before
 waiting for initial history. A runtime already reading stdin uses its own
 implementation directly.
@@ -1096,11 +869,12 @@ pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
 
 ⁴ Copilot CLI (plugin targets 1.0.103) runs custom agents as subagents. When
-probed on 1.0.80, its Agent Client Protocol server exposed no subagent
-lifecycle, no child session, and only the turn-wide `session/cancel`. Copilot's
-changelog says ACP clients receive subagent IDs since 1.0.81; Sesori has not
-re-probed, so these cells stay 🚫 until a probe confirms usable sub-agent
-identity.
+probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client
+Protocol server exposed no subagent lifecycle, no child session, and only the
+turn-wide `session/cancel`. Copilot's changelog says ACP clients receive
+subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.103 pin and maps
+no Copilot sub-agent data, so these cells stay 🚫 until a probe confirms usable
+sub-agent identity, lifecycle and per-child stop.
 
 ⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.10.22-27dcf5f`;
 shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
@@ -1131,11 +905,13 @@ it cancels every running sub-agent, background ones included, as on Grok.
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a
 hard interrupt of the whole agent; no child ids or per-delegate stop cross the
-seam.
+seam. Not re-probed on the supported range (minimum 0.20.0); the plugin still
+maps no delegation data.
 
 ⁷ Pi (0.84.4) has no native sub-agents. Delegation exists only through
 third-party extensions (`pi-subagents`) that spawn separate `pi` processes with
-their own control channel, invisible to the RPC stream Sesori drives.
+their own control channel, invisible to the RPC stream Sesori drives. Not
+re-probed on the supported range (minimum 0.99.0).
 
 ⁸ Oh My Pi (18.0.3) has subagents, but its ACP mode maps the task tool to a
 generic `tool_call` with no ids or lifecycle notifications; those exist only in
@@ -1154,17 +930,8 @@ provider credential is configured, so session-option discovery fails with setup
 guidance instead of a later failed prompt. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
-Released clients retain their own child fanout. Phone QA on unchanged published
-adapter 0.1.4 passed the requested stop/input scope after the shared transport fix:
-confirmation dismissal, main-only keep, root/independently resumed child/grandchild
-cancellation, authoritative settlement, runtime reuse, a follow-up turn, earlier
-pending-input cleanup, and one later question preserved and answered. The
-permission sheet's generic label and opaque call ID are not presentation coverage,
-and surviving root-owned shell jobs do not imply failed descendant cancellation or
-broader process-stop support. Cold tile/history reload, read-only child navigation,
-push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
-and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
-user choice. This 0.1.4 evidence does not requalify the current 0.2.1 managed target.
+Released clients retain their own child fanout. Phone stop/input QA ran only on
+adapter 0.1.4, below the 0.1.5 minimum, and has not been repeated on a supported version.
 The adapter loads explicitly installed local plugins from only the application-owned
 `$DSH_HOME/profiles/sesori` profile on startup, including after `dsh --profile sesori`
 rewrites the profile root, then reapplies Sesori's mandatory
@@ -1225,7 +992,8 @@ history, descendant busy state, or scoped stop from call order, prompt text, or
 replay's contradictory status. Standard turn-wide `session/cancel` remains
 available, but it cannot implement any sub-agent-specific stop row above. This
 is a limitation of the ACP projection Sesori drives, not a claim that native
-Antigravity lacks delegation. Details:
+Antigravity lacks delegation. Not re-probed on the current `1.4.3` pair; the
+plugin still maps no sub-agent data. Details:
 [completed probe record](../.plan/completed/claude-inline-subtasks/followups/antigravity-probe.md).
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
@@ -1239,7 +1007,7 @@ file alone would not: a user carrying only an environment key or a local
 provider has no `auth.json` entry and a working install. `pi auth check` is
 unusable here because it requires an explicit `--provider` or `--model` and Pi
 exposes no global variant. Verified against a fresh Sesori-managed 0.84.2
-install with no credentials.
+install with no credentials; not re-probed on the supported range (minimum 0.99.0).
 
 ¹² OpenCode (1.18.25, probed 2026-09-05) has no logged-out state to report.
 `opencode models` lists the bundled free `opencode/…` models identically with
@@ -1255,7 +1023,7 @@ OpenCode regardless of stored credentials.
 which returns `{"models":[]}` with no credentials and a populated list
 otherwise — the same signal Pi exposes, in a structured form. Only a listing
 that parses and reports no models downgrades setup: supported releases reach
-back to 17.3.8 and `models --json` is not guaranteed across that range, so an
+back to 17.2.13 and `models --json` is not guaranteed across that range, so an
 unparsable or failing listing leaves setup ready instead of regressing a
 working older install.
 
@@ -1271,7 +1039,8 @@ setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
 
 ¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
-ACP seam, so there is nothing to order.
+ACP seam, so there is nothing to order. Not re-probed on the supported range
+(minimum 0.20.0).
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.

@@ -48,9 +48,11 @@ def require_producer(*, root: Path, source_sha: str, tooling_sha: str,
     require(isinstance(run.get("head_sha"), str) and bool(re.fullmatch(r"[0-9a-f]{40}", run["head_sha"])),
             "Expected immutable producer workflow SHA")
     # A shared finalizer runs after its native build dependency, before its own run completes.
+    # The run reports "waiting" or "pending" while a sibling job waits for an environment or
+    # concurrency group, so any status short of completed counts.
     own_finalizer = (run_id == current_run_id and run.get("head_sha") == tooling_sha
                      and producer != ".github/workflows/desktop-qualification.yml"
-                     and run.get("status") == "in_progress" and run.get("conclusion") is None)
+                     and run.get("status") != "completed" and run.get("conclusion") is None)
     require(run.get("conclusion") == "success" or own_finalizer, "Select a successful producer or its own finalizer")
     # Production and private qualification may rebuild an older main-ancestor product source.
     # Their sealed identity/compiled defines and producer-side ancestry guard bind that source.

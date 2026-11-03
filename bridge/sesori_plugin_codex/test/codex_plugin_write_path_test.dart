@@ -53,7 +53,7 @@ void main() {
 
     Future<void> connectWithPendingPermission({required String threadId}) async {
       fake.respondInOrder([const _Response(result: _initOk)]);
-      await plugin.healthCheck();
+      await plugin.initialize();
       fake.pushNotification("thread/started", {
         "thread": {
           "id": threadId,
@@ -114,7 +114,7 @@ void main() {
       writeScopedThread(id: _scopeInactiveChildId, parentId: _scopeRootId);
       writeScopedThread(id: _scopeSiblingId, parentId: _scopeAncestorId);
       fake.respondInOrder([const _Response(result: _initOk)]);
-      await plugin.healthCheck();
+      await plugin.initialize();
       for (final sessionId in activeSessionIds) {
         fake.pushNotification("turn/started", {
           "threadId": sessionId,
@@ -140,7 +140,7 @@ void main() {
     for (final running in [true, false]) {
       test("async question answers reach the owning ${running ? 'running' : 'completed'} conversation", () async {
         fake.respondInOrder([const _Response(result: _initOk)]);
-        await plugin.healthCheck();
+        await plugin.initialize();
         fake.pushNotification("thread/started", {
           "thread": {"id": "t-question", "cwd": "/work/sample"},
         });
@@ -222,7 +222,7 @@ void main() {
 
     test("async question submission failure leaves the card available for retry", () async {
       fake.respondInOrder([const _Response(result: _initOk)]);
-      await plugin.healthCheck();
+      await plugin.initialize();
       final asked = plugin.events.where((e) => e is BridgeSseQuestionAsked).cast<BridgeSseQuestionAsked>().first;
       fake.pushNotification("item/completed", {
         "threadId": "t-question",
@@ -938,7 +938,7 @@ void main() {
       fake.respondInOrder([
         const _Response(result: _initOk),
       ]);
-      await plugin.healthCheck();
+      await plugin.initialize();
 
       final permissionAsked = plugin.events
           .where(
@@ -1865,7 +1865,7 @@ void main() {
           },
         ),
       ]);
-      await plugin.healthCheck();
+      await plugin.initialize();
       fake.holdNextResponse("turn/start");
       final send = plugin.sendPrompt(
         fastMode: false,
@@ -2675,7 +2675,7 @@ void main() {
       });
 
       // Trigger _ensureConnected.
-      await plugin.healthCheck();
+      await plugin.initialize();
 
       fake.pushNotification("thread/started", {
         "thread": {
@@ -3071,7 +3071,7 @@ void main() {
         ...List<_Response>.filled(6, const _Response(result: {"data": <Object>[]})),
       ]);
 
-      await kaPlugin.healthCheck(); // connect → starts keepalive
+      await kaPlugin.initialize(); // connect → starts keepalive
       await Future<void>.delayed(const Duration(milliseconds: 90));
 
       final firedWhileConnected = kaFake.sentMethods.where((m) => m == "thread/loaded/list").length;
@@ -3115,7 +3115,7 @@ void main() {
         ),
       ]);
 
-      await plugin.healthCheck(); // connect so model/list can be called
+      await plugin.initialize(); // connect so model/list can be called
       final result = await plugin.getProviders(projectId: "/work/sample");
 
       expect(result.providers, hasLength(1));
@@ -3155,7 +3155,7 @@ void main() {
         ),
       ]);
 
-      await plugin.healthCheck();
+      await plugin.initialize();
       final agents = await plugin.getAgents(projectId: "/work/sample");
 
       expect(agents.map((agent) => agent.name), ["Agent"]);
@@ -3260,7 +3260,7 @@ void main() {
         ),
       ]);
 
-      await scopedPlugin.healthCheck(); // connect so model/list can be called
+      await scopedPlugin.initialize(); // connect so model/list can be called
       final result = await scopedPlugin.getProviders(projectId: "/work/sample");
 
       expect(result.providers.single.defaultModelID, equals("gpt-5.4-mini"));
@@ -3449,7 +3449,7 @@ void main() {
           "payload": {"id": "019a0000-1111-2222-3333-aaaaaaaaaaaa", "cwd": "/work/other"},
         })}\n",
       );
-      await plugin.healthCheck();
+      await plugin.initialize();
 
       fake.pushNotification("thread/started", {
         "thread": {
@@ -3874,7 +3874,7 @@ void main() {
           .cast<T>()
           .first
           .timeout(const Duration(seconds: 2));
-      await plugin.healthCheck();
+      await plugin.initialize();
       fake.pushNotification("thread/started", {
         "thread": {"id": "root-pending-start", "cwd": "/work/sample"},
       });
@@ -3993,7 +3993,7 @@ void main() {
           .cast<T>()
           .first
           .timeout(const Duration(seconds: 2));
-      await plugin.healthCheck();
+      await plugin.initialize();
       fake.pushNotification("thread/started", {
         "thread": {"id": "root-unloaded", "cwd": "/work/sample"},
       });
@@ -4068,7 +4068,7 @@ void main() {
       ]);
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
-      await plugin.healthCheck();
+      await plugin.initialize();
       fake.pushNotification("thread/started", {
         "thread": {"id": "root-1", "cwd": "/work/other"},
       });

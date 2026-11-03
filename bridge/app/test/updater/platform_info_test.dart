@@ -75,14 +75,6 @@ void main() {
     });
   });
 
-  group('currentDistributionTarget', () {
-    test('uses the canonical runtime target for current asset name', () {
-      final target = currentDistributionTarget();
-
-      expect(currentDistributionTarget().assetName, equals(target.assetName));
-    });
-  });
-
   group('isNpmInstall', () {
     test('returns true when path contains node_modules', () {
       final result = isNpmInstall(

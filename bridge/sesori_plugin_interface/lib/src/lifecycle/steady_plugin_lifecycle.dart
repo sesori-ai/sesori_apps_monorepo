@@ -18,6 +18,12 @@ import "plugin_work_state.dart";
 ///
 /// ```dart
 /// class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
+///   RemotePlugin({required RemoteApi api, required String url}) : _api = api, _url = url;
+///
+///   /// The plugin's own `BridgePluginApi`, which owns its HTTP client.
+///   final RemoteApi _api;
+///   final String _url;
+///
 ///   @override
 ///   BridgePluginApi get api => _api;
 ///
@@ -26,10 +32,11 @@ import "plugin_work_state.dart";
 ///       PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 ///
 ///   @override
-///   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
+///   Future<Set<String>> interruptActiveWork({required Duration budget}) =>
+///       _api.interruptActiveSessions(budget: budget);
 ///
 ///   @override
-///   Future<void> onShutdown({required Duration? budget}) => _api.dispose();
+///   Future<void> onShutdown({required Duration? budget}) => _api.close();
 /// }
 /// ```
 ///
@@ -38,12 +45,11 @@ import "plugin_work_state.dart";
 /// degradation persists for [degradedDebounce] without an intervening
 /// [markReady]. Recovery is immediate: [markReady] cancels any pending
 /// degradation and restores `Ready` at once. This is what makes `status` the
-/// debounced lifecycle signal, distinct from the instantaneous
-/// plugin-scoped `BridgePluginApi.healthCheck` probe.
+/// debounced lifecycle signal.
 ///
 /// All transitions go through the legal-transition machine: after
-/// [shutdown] starts, late [markFailed] / [markDegraded] calls are silently
-/// dropped (no `Failed` after `Stopping`), and [shutdown] is idempotent.
+/// [shutdown] starts, late [markDegraded] calls are silently dropped, and
+/// [shutdown] is idempotent.
 mixin SteadyPluginLifecycle implements BridgePlugin {
   PluginStatusController? _statusController;
   Future<void>? _shutdownFuture;
@@ -91,12 +97,12 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// *latest* reported — an escalation arriving during the debounce window
   /// (e.g. auth expiry detected after a generic probe failure) is not lost.
   /// While already degraded, updates the details immediately (keeping
-  /// `since`). A no-op once the plugin is failed or stopping: those states
-  /// can never legally reach `Degraded`.
+  /// `since`). A no-op once the plugin is stopping: that state can never
+  /// legally reach `Degraded`.
   @protected
   void markDegraded({required bool recoverable, required bool requiresUserAction, required String? userActionHint}) {
     final current = _statusMachine.current;
-    if (current is PluginFailed || current is PluginStopping || current is PluginStopped) {
+    if (current is PluginStopping || current is PluginStopped) {
       return;
     }
     if (current is PluginDegraded) {
@@ -149,15 +155,6 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
             Log.w("SteadyPluginLifecycle: degraded debounce failed", error, stackTrace);
           }),
     );
-  }
-
-  /// Reports a terminal failure. Dropped silently once [shutdown] has
-  /// started (no `Failed` after `Stopping`).
-  @protected
-  // ignore: no_slop_linter/prefer_specific_type, caught failure causes are opaque
-  void markFailed(String reason, {required Object? cause}) {
-    _cancelPendingDegraded();
-    _statusMachine.trySet(PluginFailed(reason: reason, cause: cause));
   }
 
   /// Releases the plugin's resources. Override point for the mixed-in class;

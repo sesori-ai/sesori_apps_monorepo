@@ -100,8 +100,7 @@ void main() {
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: 5, limit: 20),
       );
-      expect(plugin.lastGetSessionsStart, equals(5));
-      expect(plugin.lastGetSessionsLimit, equals(20));
+      expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "/tmp", start: 5, limit: 20)));
     });
 
     test("persists the project and sessions after a successful repository fetch", () async {
@@ -201,8 +200,7 @@ void main() {
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
       );
-      expect(plugin.lastGetSessionsStart, isNull);
-      expect(plugin.lastGetSessionsLimit, isNull);
+      expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "/tmp", start: null, limit: null)));
     });
 
     test("returns typed SessionListResponse", () async {

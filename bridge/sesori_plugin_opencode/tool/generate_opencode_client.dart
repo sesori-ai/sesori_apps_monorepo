@@ -24,16 +24,17 @@
 // This script consumes an OpenAPI 3.1 JSON document (the surface file's
 // `specPath`, e.g. OpenCode's `packages/sdk/openapi.json`) and emits,
 // relative to outDir:
-//   - opencode_client.dart                 — public API client class (Layer 1, only with --with-client)
 //   - models/openapi/<SchemaName>.g.dart   — one file per included top-level schema (Layer 0)
+//
+// The API clients that call these endpoints are hand-written.
 //
 // Models live under `models/openapi/` to avoid filename collisions with the
 // hand-written v1 models already in `models/` (e.g. session.dart, message.dart).
 // Layer-mirror rule (bridge/AGENTS.md): directory structure mirrors layers.
 //
-// Generated code uses package:http directly (no codegen runtime),
-// immutable classes with hand-written fromJson/toJson (no freezed/json_serializable),
-// and Dart 3 sealed classes for unions.
+// Generated code has no codegen runtime: immutable classes with
+// hand-written fromJson/toJson (no freezed/json_serializable), and Dart 3
+// sealed classes for unions.
 
 import 'dart:convert';
 import 'dart:io';
@@ -71,7 +72,6 @@ Future<void> main(List<String> args) async {
   var outDir = 'lib/src';
   var surfacePath = 'tool/opencode_v1_surface.json';
   var verbose = false;
-  var withClient = false;
 
   // Positional args are not used; everything is an explicit flag so the
   // script never has to guess what the user meant.
@@ -124,8 +124,6 @@ Future<void> main(List<String> args) async {
       case '--verbose':
       case '-v':
         verbose = true;
-      case '--with-client':
-        withClient = true;
       case '--help':
       case '-h':
         _printUsage();
@@ -233,7 +231,6 @@ Future<void> main(List<String> args) async {
     outDir: outDir,
     verbose: verbose,
     sourceRef: sourceRef,
-    withClient: withClient,
   );
   try {
     await gen.run();
@@ -254,7 +251,7 @@ void _printUsage() {
   stderr.writeln(
     'Usage: dart run tool/generate_opencode_client.dart '
     '[--tag <tag> | --branch <branch> | --commit <sha> | --local <path>] '
-    '[--out-dir <dir>] [--surface <file>] [--with-client] [--verbose]',
+    '[--out-dir <dir>] [--surface <file>] [--verbose]',
   );
   stderr.writeln('');
   stderr.writeln(
@@ -275,7 +272,6 @@ void _printUsage() {
   );
   stderr.writeln('  --out-dir <dir>     Output directory (default: lib/src)');
   stderr.writeln('  --surface <file>    API surface allowlist (default: tool/opencode_v1_surface.json)');
-  stderr.writeln('  --with-client       Also generate opencode_client.dart (default: off)');
   stderr.writeln('  --verbose, -v       Print extra progress information');
 }
 
@@ -354,7 +350,6 @@ class Codegen({
   required final SurfaceSpec surface,
   required final String outDir,
   required final bool verbose,
-  required final bool withClient,
 
   /// Upstream ref (tag, branch, or commit SHA) the spec was fetched
   /// from, pre-resolved to a commit SHA. Recorded in every generated
@@ -374,10 +369,6 @@ class Codegen({
   /// implements. Built from anyOf / oneOf in the schema registry.
   late final Map<String, String> _unionParents = _buildUnionParents();
 
-  /// Pre-scan: list of schema names that are top-level array schemas.
-  /// Populated eagerly so the API client emitter can detect them.
-  late final Set<String> _arrayWrapperClassNames = _buildArrayWrapperClassNames();
-
   /// Header block describing the upstream source the code was
   /// generated from: the upstream ref and resolved commit SHA when
   /// [sourceRef] is set, or a `local` marker otherwise. Deliberately
@@ -394,17 +385,6 @@ class Codegen({
 
   Future<void> run() async {
     _run();
-  }
-
-  Set<String> _buildArrayWrapperClassNames() {
-    final out = <String>{};
-    schemas.forEach((rawName, schema) {
-      if (schema is! Map<String, dynamic>) return;
-      if (schema['type'] == 'array') {
-        out.add(_pascalFromSnake(rawName.toString()));
-      }
-    });
-    return out;
   }
 
   Map<String, String> _buildUnionParents() {
@@ -490,17 +470,6 @@ class Codegen({
       _writeUnionParentStub(parent);
       log('union parent stub $parent');
     }
-
-    final apiFile = File('$outDir/opencode_client.dart');
-    if (withClient) {
-      var apiBody = _emitApiClient().trimRight();
-      apiBody = '$apiBody\n';
-      apiFile.writeAsStringSync(apiBody);
-      log('api client -> ${apiFile.path}');
-    } else if (apiFile.existsSync()) {
-      apiFile.deleteSync();
-      log('deleted ${apiFile.path} (--with-client not set)');
-    }
   }
 
   List<Operation> _selectSurfaceOperations(List<String> allowedIds) {
@@ -513,20 +482,23 @@ class Codegen({
       stderr.writeln('error: OpenAPI spec is missing allowlisted operationId(s): ${missing.join(', ')}');
       exit(1);
     }
-    return allowedIds.map((id) => byId[id]!).toList()..sort((a, b) => a.methodName.compareTo(b.methodName));
+    return allowedIds.map((id) => byId[id]!).toList();
   }
 
+  /// Selects the models the plugin decodes: the surface's success
+  /// responses and extra schemas, plus every model their generated files
+  /// import. The adapters send hand-written request bodies, so a body
+  /// model is generated only when the surface lists it in extraSchemas.
+  /// SSE events are decoded by the manifest codegen
+  /// (`generate_sse_events.dart`), so the event manifest is only
+  /// cross-checked against the spec.
   Set<String> _selectSurfaceSchemas(List<String> extraSchemas) {
     final roots = <String>{...extraSchemas};
     for (final op in operations) {
       final response = op.successResponse;
       if (response != null) _collectTypesFromDartType(response.dartType, roots);
-      if (op.requestBodySchema != null) _collectRefsFromSchema(op.requestBodySchema!, roots);
-      for (final p in op.parameters) {
-        if (p.schema != null) _collectRefsFromSchema(p.schema!, roots);
-      }
     }
-    roots.addAll(_eventSchemasFromManifest());
+    _warnOnEventManifestDrift();
     final closure = <String>{};
     final stack = roots.where(schemas.containsKey).toList();
     while (stack.isNotEmpty) {
@@ -534,8 +506,12 @@ class Codegen({
       if (!closure.add(name)) continue;
       final schema = schemas[name];
       if (schema is! Map<String, dynamic>) continue;
-      final refs = <String>{};
-      _collectRefsFromSchema(schema, refs);
+      final refs = ModelWriter(
+        name: _pascalFromSnake(name),
+        rawName: name,
+        schema: schema,
+        schemas: schemas,
+      ).importedSchemas();
       for (final ref in refs) {
         if (schemas.containsKey(ref) && !closure.contains(ref)) stack.add(ref);
       }
@@ -543,20 +519,16 @@ class Codegen({
     return closure;
   }
 
-  Set<String> _eventSchemasFromManifest() {
+  void _warnOnEventManifestDrift() {
     final manifestPath = surface.eventManifest;
-    if (manifestPath == null) return const {};
+    if (manifestPath == null) return;
     final file = File(manifestPath);
-    if (!file.existsSync()) return const {};
+    if (!file.existsSync()) return;
     final manifest = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
     final events = (manifest['events'] as List).cast<Map<String, dynamic>>();
     final manifestTypes = events.map((e) => e['type'] as String).toSet();
-    final out = <String>{};
     for (final type in manifestTypes) {
-      final schemaName = _eventSchemaNameForType(type);
-      if (schemas.containsKey(schemaName)) {
-        out.add(schemaName);
-      } else {
+      if (!schemas.containsKey(_eventSchemaNameForType(type))) {
         stderr.writeln('warning: manifest event "$type" has no OpenAPI Event schema');
       }
     }
@@ -567,7 +539,6 @@ class Codegen({
         stderr.writeln('warning: OpenAPI schema $schemaName is absent from $manifestPath');
       }
     }
-    return out;
   }
 
   String _eventSchemaNameForType(String type) {
@@ -580,32 +551,6 @@ class Codegen({
       if (schemas.containsKey(candidate)) return candidate;
     }
     return candidates.first;
-  }
-
-  void _collectRefsFromSchema(Map<String, dynamic> sch, Set<String> out) {
-    final r = sch[r'$ref'];
-    if (r is String) {
-      out.add(_schemaNameFromRef(r));
-      return;
-    }
-    for (final key in ['anyOf', 'oneOf', 'allOf']) {
-      final variants = sch[key];
-      if (variants is List) {
-        for (final item in variants) {
-          if (item is Map<String, dynamic>) _collectRefsFromSchema(item, out);
-        }
-      }
-    }
-    final props = sch['properties'];
-    if (props is Map) {
-      for (final value in props.values) {
-        if (value is Map<String, dynamic>) _collectRefsFromSchema(value, out);
-      }
-    }
-    final items = sch['items'];
-    if (items is Map<String, dynamic>) _collectRefsFromSchema(items, out);
-    final ap = sch['additionalProperties'];
-    if (ap is Map<String, dynamic>) _collectRefsFromSchema(ap, out);
   }
 
   void _synthesizeInlineResponseModels() {
@@ -636,15 +581,14 @@ class Codegen({
 
   List<Operation> _collectOperations() {
     final out = <Operation>[];
-    paths.forEach((path, item) {
-      if (item is! Map<String, dynamic>) return;
+    for (final item in paths.values) {
+      if (item is! Map<String, dynamic>) continue;
       for (final verb in _httpVerbs) {
         final op = item[verb];
         if (op is! Map<String, dynamic>) continue;
-        out.add(Operation.fromOpenApi(path: path, method: verb, op: op));
+        out.add(Operation.fromOpenApi(op: op));
       }
-    });
-    out.sort((a, b) => a.methodName.compareTo(b.methodName));
+    }
     return out;
   }
 
@@ -689,61 +633,6 @@ class Codegen({
     File('$outDir/$relPath').writeAsStringSync(body.toString());
   }
 
-  String _emitApiClient() {
-    // Collect all schema names referenced by operations (return types, body
-    // types, parameter types). Emit a per-type import for each.
-    final referenced = _collectOperationSchemas();
-    final imports = <String>[];
-    for (final schemaName in referenced) {
-      imports.add("import 'models/openapi/${_snakeFromCamel(schemaName)}.g.dart';");
-    }
-    imports.sort();
-
-    final b = StringBuffer();
-    b.writeln('// GENERATED FILE - DO NOT EDIT BY HAND');
-    b.writeln('//');
-    b.writeln('// Auto-generated OpenCode v2 client generated from the OpenAPI spec.');
-    for (final line in sourceHeader().split('\n')) {
-      b.writeln('// $line');
-    }
-    b.writeln('//');
-    b.writeln('// To regenerate, run:');
-    b.writeln('//   make opencode-codegen OPENCODE_TAG=<tag>');
-    b.writeln('//   make opencode-codegen OPENCODE_BRANCH=<branch>');
-    b.writeln('//   make opencode-codegen OPENCODE_COMMIT=<40-char-sha>');
-    b.writeln('//   make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json');
-    b.writeln();
-    b.writeln("import 'dart:async';");
-    b.writeln("import 'dart:convert';");
-    b.writeln();
-    b.writeln("import 'package:http/http.dart' as http;");
-    b.writeln("import 'package:meta/meta.dart';");
-    b.writeln();
-    imports.forEach(b.writeln);
-    b.writeln();
-
-    b.writeln(_emitClientClass());
-    return b.toString();
-  }
-
-  /// Returns the set of schema names referenced by all operations.
-  Set<String> _collectOperationSchemas() {
-    final out = <String>{};
-    for (final op in operations) {
-      final r = op.successResponse;
-      if (r != null) {
-        _collectTypesFromDartType(r.dartType, out);
-      }
-      if (op.requestBodySchema != null) {
-        _collectTypesFromSchema(op.requestBodySchema!, out);
-      }
-      for (final p in op.parameters) {
-        if (p.schema != null) _collectTypesFromSchema(p.schema!, out);
-      }
-    }
-    return out;
-  }
-
   void _collectTypesFromDartType(String dartType, Set<String> out) {
     // Strip List<...>, Map<String, ...>, ? nullability, etc.
     final base = dartType.replaceAll(RegExp(r'[\?<>\[\], ]'), '').trim();
@@ -759,386 +648,6 @@ class Codegen({
       if (schemas.containsKey(inner)) out.add(inner);
     }
   }
-
-  void _collectTypesFromSchema(Map<String, dynamic> sch, Set<String> out) {
-    final r = sch[r'$ref'];
-    if (r is String) {
-      final name = _schemaNameFromRef(r);
-      if (schemas.containsKey(name)) out.add(name);
-      return;
-    }
-    // anyOf / oneOf: if there is exactly one non-null variant, the type
-    // resolves to that variant's type; otherwise the type collapses to
-    // `dynamic` (or `Map<String, dynamic>` for request bodies), and the
-    // individual variant refs are NOT referenced as Dart types.
-    for (final key in ['anyOf', 'oneOf']) {
-      final v = sch[key];
-      if (v is List) {
-        final nonNull = v.where((x) => x is Map && x['type'] != 'null').cast<Map<String, dynamic>>().toList();
-        if (nonNull.length == 1) {
-          _collectTypesFromSchema(nonNull.first.cast<String, dynamic>(), out);
-        }
-        return;
-      }
-    }
-    final type = sch['type'];
-    if (type == 'array') {
-      final items = sch['items'];
-      if (items is Map<String, dynamic>) _collectTypesFromSchema(items, out);
-    } else if (type == 'object') {
-      final ap = sch['additionalProperties'];
-      if (ap is Map<String, dynamic>) _collectTypesFromSchema(ap, out);
-    }
-  }
-
-  String _emitClientClass() {
-    final b = StringBuffer();
-    b.writeln('/// OpenCode REST API client.');
-    b.writeln('///');
-    b.writeln('/// HTTP Basic auth: username `opencode`, password supplied at construction.');
-    b.writeln('@immutable');
-    b.writeln('class OpenCodeClient {');
-    b.writeln('  const OpenCodeClient({');
-    b.writeln('    required this.baseUrl,');
-    b.writeln('    required String password,');
-    b.writeln('    required http.Client httpClient,');
-    b.writeln('  })  : _password = password,');
-    b.writeln('        _http = httpClient;');
-    b.writeln();
-    b.writeln('  /// Base URL of the OpenCode server, e.g. `http://127.0.0.1:4096`.');
-    b.writeln('  final String baseUrl;');
-    b.writeln('  final String _password;');
-    b.writeln('  final http.Client _http;');
-    b.writeln();
-    b.writeln('  Map<String, String> get _authHeaders => {');
-    b.writeln(r"    'Authorization': 'Basic ${base64Encode(utf8.encode('opencode:$_password'))}',");
-    b.writeln('  };');
-    b.writeln();
-    b.writeln('  /// Builds the request URI for [path], preserving any path prefix');
-    b.writeln('  /// on [baseUrl] and omitting the query string entirely when');
-    b.writeln('  /// [query] is empty (avoids a trailing `?`).');
-    b.writeln('  Uri _uri(String path, Map<String, String> query) {');
-    b.writeln('    final base = Uri.parse(baseUrl);');
-    b.writeln("    final basePath = base.path.endsWith('/')");
-    b.writeln('        ? base.path.substring(0, base.path.length - 1)');
-    b.writeln('        : base.path;');
-    b.writeln('    return base.replace(');
-    b.writeln(r"      path: '$basePath$path',");
-    b.writeln('      queryParameters: query.isEmpty ? null : query,');
-    b.writeln('    );');
-    b.writeln('  }');
-    b.writeln();
-    b.writeln('  void close() => _http.close();');
-    b.writeln();
-    b.writeln('  // -------------------------------------------------------------------');
-    b.writeln('  // Operations');
-    b.writeln('  // -------------------------------------------------------------------');
-    b.writeln();
-
-    final methodOwners = <String, Operation>{};
-    for (final op in operations) {
-      final existing = methodOwners[op.methodName];
-      if (existing != null) {
-        if (existing.operationId != null && existing.operationId == op.operationId) {
-          // The same operation exposed on an alias path; first wins.
-          continue;
-        }
-        // Two DIFFERENT operations collapsing onto the same method name
-        // would silently drop one of them. Abort loudly so the naming
-        // logic gets explicit disambiguation instead.
-        throw StateError(
-          'Method name collision: "${op.methodName}" generated from both '
-          '"${existing.method.toUpperCase()} ${existing.path}" '
-          '(operationId: ${existing.operationId}) and '
-          '"${op.method.toUpperCase()} ${op.path}" '
-          '(operationId: ${op.operationId}).',
-        );
-      }
-      methodOwners[op.methodName] = op;
-      b.writeln(_emitApiMethod(op));
-      b.writeln();
-    }
-
-    b.writeln('}');
-
-    b.writeln();
-    b.writeln('@immutable');
-    b.writeln('class OpenCodeApiException implements Exception {');
-    b.writeln('  const OpenCodeApiException({');
-    b.writeln('    required this.statusCode,');
-    b.writeln('    required this.body,');
-    b.writeln('  });');
-    b.writeln();
-    b.writeln('  final int statusCode;');
-    b.writeln('  final String body;');
-    b.writeln();
-    b.writeln('  @override');
-    b.writeln(r'  String toString() => "OpenCodeApiException($statusCode): $body";');
-    b.writeln('}');
-    return b.toString().trimRight();
-  }
-
-  // ---------------------------------------------------------------------------
-  // API method emission
-  // ---------------------------------------------------------------------------
-
-  String _emitApiMethod(Operation op) {
-    final b = StringBuffer();
-    final methodName = op.methodName;
-
-    final pathParams = <Parameter>[];
-    final queryParams = <Parameter>[];
-    for (final p in op.parameters) {
-      if (p.inBody == 'path') {
-        pathParams.add(p);
-      } else if (p.inBody == 'query') {
-        queryParams.add(p);
-      }
-    }
-
-    final response = op.successResponse;
-    final responseType = _responseTypeString(response);
-
-    b.writeln('/// ${op.summary ?? op.description ?? "${op.method.toUpperCase()} ${op.path}"}');
-    if (op.description != null && op.description != op.summary) {
-      b.writeln('///');
-      b.writeln('/// ${op.description}');
-    }
-    b.writeln('///');
-    b.writeln("/// `operationId`: `${op.operationId ?? methodName}`");
-
-    final params = <String>[];
-    for (final p in pathParams) {
-      final dartType = _dartTypeForParameter(p.schema);
-      params.add('required $dartType ${_safeIdentifier(p.name)}');
-    }
-    if (op.requestBodySchema != null) {
-      // Inline (non-$ref) request bodies are emitted as Map<String, dynamic>
-      // — they don't get a synthetic class.
-      if (op.requestBodySchema![r'$ref'] is String) {
-        final bodyType = _classNameForRef(op.requestBodySchema!);
-        params.add('required $bodyType body');
-      } else {
-        params.add('required Map<String, dynamic> body');
-      }
-    }
-    for (final p in queryParams) {
-      final dartType = _dartTypeForParameter(p.schema);
-      if (p.required) {
-        params.add('required $dartType ${p.name}');
-      } else {
-        params.add('$dartType? ${p.name}');
-      }
-    }
-
-    final paramsString = params.isEmpty ? '()' : '({\n    ${params.join(',\n    ')},\n  })';
-    b.writeln('Future<$responseType> $methodName$paramsString async {');
-
-    // Build path with substitutions: '/session/{sessionID}/message/{messageID}'
-    final pathExpr = _buildPathExpression(op.path);
-
-    // Build query parameters map
-    final queryParts = <String>[];
-    for (final p in queryParams) {
-      // Object-typed query parameters (e.g. `Map<String, dynamic>? location`)
-      // can't use `toString()` — that produces Dart's debug format
-      // `{directory: /repo}` rather than a query-serializable value.
-      // JSON-encode them so the server sees a structured payload (the
-      // server is expected to URL-decode the JSON string).
-      final isMap = p.schema != null && p.schema!['type'] == 'object';
-      final valueExpr = isMap ? 'jsonEncode(${p.name})' : '${p.name}.toString()';
-      if (p.required) {
-        queryParts.add("'${p.name}': $valueExpr");
-      } else {
-        queryParts.add("if (${p.name} != null) '${p.name}': $valueExpr");
-      }
-    }
-    final queryExpr = queryParts.isEmpty ? 'const <String, String>{}' : '<String, String>{${queryParts.join(', ')}}';
-
-    b.writeln('    final uri = _uri($pathExpr, $queryExpr);');
-
-    b.writeln('    final headers = <String, String>{');
-    b.writeln('      ..._authHeaders,');
-    b.writeln("      'Content-Type': 'application/json',");
-    b.writeln('    };');
-
-    if (op.requestBodySchema != null) {
-      // If the body is a $ref to a generated class, call .toJson(). If it's
-      // an inline schema (Map<String, dynamic>), serialize directly.
-      if (op.requestBodySchema![r'$ref'] is String) {
-        b.writeln('    final encoded = jsonEncode(body.toJson());');
-      } else {
-        b.writeln('    final encoded = jsonEncode(body);');
-      }
-    }
-
-    final methodUpper = op.method.toLowerCase();
-    final bodyArg = op.requestBodySchema != null ? ', body: encoded' : '';
-    b.writeln('    final http.Response resp = await _http.$methodUpper(uri, headers: headers$bodyArg);');
-
-    b.writeln('    if (resp.statusCode < 200 || resp.statusCode >= 300) {');
-    b.writeln('      throw OpenCodeApiException(');
-    b.writeln('        statusCode: resp.statusCode,');
-    b.writeln('        body: resp.body,');
-    b.writeln('      );');
-    b.writeln('    }');
-
-    if (response == null || response.isNoContent) {
-      b.writeln('    return;');
-    } else if (_isPrimitiveType(response.dartType)) {
-      b.writeln('    return ${_parsePrimitive(response.dartType, 'resp.body')};');
-    } else if (_arrayWrapperClassNames.contains(response.dartType)) {
-      // Top-level array schema — response body is a raw JSON array.
-      b.writeln('    final decoded = jsonDecode(resp.body) as List<dynamic>;');
-      b.writeln('    return ${response.dartType}.fromJson(decoded);');
-    } else if (response.dartType.startsWith('List<')) {
-      // Extract inner type between the first '<' and the last '>'.
-      final inner = response.dartType.substring(5, response.dartType.length - 1);
-      b.writeln('    final decoded = jsonDecode(resp.body) as List<dynamic>;');
-      if (_isPrimitiveType(inner)) {
-        b.writeln('    return decoded.cast<$inner>();');
-      } else if (inner.contains('<')) {
-        // Nested generic — fall back to a manual mapping.
-        b.writeln('    return []; // TODO: nested generic $inner');
-      } else {
-        b.writeln('    return decoded.map((e) => $inner.fromJson(e as Map<String, dynamic>)).toList();');
-      }
-    } else {
-      b.writeln('    final decoded = jsonDecode(resp.body) as Map<String, dynamic>;');
-      b.writeln('    return ${response.dartType}.fromJson(decoded);');
-    }
-
-    b.writeln('  }');
-    return b.toString();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Type emission
-  // ---------------------------------------------------------------------------
-
-  /// Used for query / path parameters — always returns a non-nullable Dart type
-  /// (we accept the runtime value as-is).
-  String _dartTypeForParameter(Map<String, dynamic>? sch) {
-    if (sch == null) return 'String';
-    return _dartTypeForSchema(sch, nullable: false);
-  }
-
-  /// Core type emitter.
-  String _dartTypeForSchema(Map<String, dynamic> sch, {required bool nullable}) {
-    final r = sch[r'$ref'];
-    if (r is String) {
-      final name = _schemaNameFromRef(r);
-      return _wrap(_pascalFromSnake(name), nullable);
-    }
-    final type = sch['type'];
-    final format = sch['format'];
-    if (type == 'string') {
-      if (format == 'date-time') return _wrap('DateTime', nullable);
-      if (format == 'uri' || format == 'url') return _wrap('Uri', nullable);
-      return _wrap('String', nullable);
-    }
-    if (type == 'integer') return _wrap('int', nullable);
-    if (type == 'number') return _wrap('double', nullable);
-    if (type == 'boolean') return _wrap('bool', nullable);
-    if (type == 'array') {
-      final items = sch['items'];
-      if (items is Map<String, dynamic>) {
-        return _wrap('List<${_dartTypeForSchema(items, nullable: false)}>', nullable);
-      }
-      return _wrap('List<Object>', nullable);
-    }
-    if (type == 'object') {
-      final ap = sch['additionalProperties'];
-      if (ap is Map<String, dynamic>) {
-        return _wrap('Map<String, ${_dartTypeForSchema(ap, nullable: false)}>', nullable);
-      }
-      if (ap == true) {
-        return _wrap('Map<String, Object>', nullable);
-      }
-      return _wrap('Map<String, Object>', nullable);
-    }
-    if (sch['anyOf'] is List) {
-      final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
-      // If one variant is `null`, use the non-null variant's type.
-      final nonNull = variants.where((v) => v['type'] != 'null').toList();
-      if (nonNull.length == 1) {
-        return _dartTypeForSchema(nonNull.first, nullable: nullable);
-      }
-      // Multiple non-null variants: emit as String (best-effort fallback).
-      return _wrap('String', nullable);
-    }
-    if (sch['enum'] is List) {
-      return _wrap('String', nullable);
-    }
-    return _wrap('Object', nullable);
-  }
-
-  String _wrap(String t, bool nullable) => nullable ? '$t?' : t;
-
-  bool _isPrimitiveType(String t) {
-    return t == 'bool' ||
-        t == 'int' ||
-        t == 'double' ||
-        t == 'String' ||
-        t == 'DateTime' ||
-        t == 'Uri' ||
-        t == 'Object';
-  }
-
-  String _parsePrimitive(String type, String body) {
-    if (type == 'bool') return 'jsonDecode($body) as bool';
-    if (type == 'int') return 'int.parse($body)';
-    if (type == 'double') return 'double.parse($body)';
-    if (type == 'DateTime') return 'DateTime.parse($body)';
-    if (type == 'Uri') return 'Uri.parse($body)';
-    if (type == 'Object') return 'jsonDecode($body) as Object';
-    return body;
-  }
-
-  /// Used for typed body parameters and response types.
-  String _classNameForRef(Map<String, dynamic> ref) {
-    final r = ref[r'$ref'] as String;
-    final name = _schemaNameFromRef(r);
-    return _pascalFromSnake(name);
-  }
-
-  String _responseTypeString(ResponseSpec? r) {
-    if (r == null) return 'void';
-    if (r.isNoContent) return 'void';
-    return r.dartType;
-  }
-
-  /// Builds a string expression that evaluates to the URL path with
-  /// {paramName} interpolations.
-  /// E.g., '/session/{sessionID}' -> "'/session/' + sessionID"
-  String _buildPathExpression(String path) {
-    final re = RegExp(r'\{([^}]+)\}');
-    final matches = re.allMatches(path).toList();
-    if (matches.isEmpty) {
-      return "'${_escapeDartString(path)}'";
-    }
-    // Emit a single interpolated string literal: `'/auth/$id/...'` rather
-    // than concatenating fragments with `+`. Keeps the generated code free
-    // of the `prefer_interpolation_to_compose_strings` lint.
-    final out = StringBuffer("'");
-    var lastEnd = 0;
-    for (final m in matches) {
-      if (m.start > lastEnd) {
-        out.write(_escapeDartString(path.substring(lastEnd, m.start)));
-      }
-      out.write(r'${Uri.encodeComponent(');
-      out.write(_safeIdentifier(m.group(1) ?? ''));
-      out.write(')}');
-      lastEnd = m.end;
-    }
-    if (lastEnd < path.length) {
-      out.write(_escapeDartString(path.substring(lastEnd)));
-    }
-    out.write("'");
-    return out.toString();
-  }
-
-  String _escapeDartString(String s) => s.replaceAll(r'\', r'\\').replaceAll(r'$', r'\$').replaceAll("'", r"\'");
 }
 
 String _schemaNameFromRef(String ref) {
@@ -1150,80 +659,27 @@ String _schemaNameFromRef(String ref) {
 }
 
 // ---------------------------------------------------------------------------
-// Operation / Parameter / Response models
+// Operation / Response models
 // ---------------------------------------------------------------------------
 
-class Operation.fromOpenApi({
-  required final String path,
-  required final String method,
-  required final Map<String, dynamic> op,
-}) {
+class Operation.fromOpenApi({required final Map<String, dynamic> op}) {
   this {
     operationId = op['operationId'] as String?;
-    summary = op['summary'] as String?;
-    description = op['description'] as String?;
-
-    final params = (op['parameters'] as List?) ?? const [];
-    for (final p in params) {
-      if (p is! Map<String, dynamic>) continue;
-      parameters.add(Parameter.fromOpenApi(p));
-    }
-
-    final rb = op['requestBody'];
-    if (rb is Map<String, dynamic>) {
-      final content = rb['content'] as Map<String, dynamic>?;
-      if (content != null) {
-        final json = content['application/json'] as Map<String, dynamic>?;
-        if (json != null) {
-          final sch = json['schema'] as Map<String, dynamic>?;
-          if (sch != null) requestBodySchema = sch;
-        }
-      }
-    }
-
     final responses = op['responses'] as Map<String, dynamic>?;
     if (responses != null) {
-      ResponseSpec? found;
       for (final code in ['200', '201', '202', '203', '204']) {
         final r = responses[code];
         if (r is Map<String, dynamic>) {
-          found = ResponseSpec.fromOpenApi(r);
-          if (code == '204') found.isNoContent = true;
+          successResponse = ResponseSpec.fromOpenApi(r);
           break;
         }
       }
-      successResponse = found;
     }
-
-    methodName = _methodNameFromId(operationId, method, path);
   }
 
   String? operationId;
-  String? summary;
-  String? description;
-  final List<Parameter> parameters = [];
-  Map<String, dynamic>? requestBodySchema;
   ResponseSpec? successResponse;
   Map<String, dynamic>? get successResponseSchema => successResponse?.schema;
-  late final String methodName;
-
-  static String _methodNameFromId(String? id, String verb, String path) {
-    if (id != null && id.isNotEmpty) {
-      // OpenAPI `operationId` like "app.agents" or "event.subscribe" become
-      // `appAgents` / `eventSubscribe`. Uses `_camelCore` (NOT
-      // `_camelFromSnake`): the hash suffix that disambiguates dotted
-      // SCHEMA names must not leak into method names. operationIds are
-      // unique by spec; if two ever camelize to the same method name,
-      // `_emitClientClass` aborts generation with a `StateError`.
-      return _camelCore(id);
-    }
-    final cleaned = path
-        .split('/')
-        .where((s) => s.isNotEmpty)
-        .map((s) => s.startsWith('{') ? 'by${s.substring(1, s.length - 1)}' : s)
-        .join('_');
-    return _camelCore('${verb}_$cleaned');
-  }
 }
 
 class SurfaceSpec({
@@ -1276,22 +732,8 @@ class SurfaceSpec({
   }
 }
 
-class Parameter.fromOpenApi(Map<String, dynamic> p) {
-  this {
-    name = p['name'] as String;
-    inBody = p['in'] as String;
-    required = (p['required'] as bool?) ?? false;
-    schema = p['schema'] as Map<String, dynamic>?;
-  }
-  late final String name;
-  late final String inBody;
-  late final bool required;
-  Map<String, dynamic>? schema;
-}
-
 class ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
   this {
-    description = r['description'] as String?;
     final content = r['content'] as Map<String, dynamic>?;
     if (content != null) {
       final json = content['application/json'] as Map<String, dynamic>?;
@@ -1302,14 +744,10 @@ class ResponseSpec.fromOpenApi(Map<String, dynamic> r) {
           dartType = _dartTypeFromSchema(sch);
         }
       }
-    } else {
-      isNoContent = true;
     }
   }
-  String? description;
   Map<String, dynamic>? schema;
   String dartType = 'Object';
-  bool isNoContent = false;
 
   static String _dartTypeFromSchema(Map<String, dynamic> sch) {
     final r = sch[r'$ref'];
@@ -1399,8 +837,7 @@ class ModelWriter({
 
   String emit() {
     // First pass: figure out which refs the body will actually use.
-    final usedRefs = _computeUsedRefs(schema);
-    usedRefs.remove(rawName);
+    final usedRefs = importedSchemas();
     if (implementsClass != null) {
       String? parentRaw;
       for (final entry in schemas.entries) {
@@ -1410,32 +847,6 @@ class ModelWriter({
         }
       }
       if (parentRaw != null) usedRefs.add(parentRaw);
-    }
-    // Inline variants synthesized in `_emitUnion` reference refs of
-    // their own (e.g. `PermissionRuleConfig.fromJson`). The header
-    // import list must include them or the synthesized classes will
-    // reference undefined identifiers.
-    if (_isUnion(schema)) {
-      final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
-      for (final v in variants) {
-        final inlineRefs = _computeUsedRefs(v);
-        usedRefs.addAll(inlineRefs);
-      }
-      // Refs that flow through an enum wrapper also need to be
-      // imported.
-      final disc = _findDiscriminator(variants);
-      if (disc == null) {
-        for (final v in variants) {
-          final r = v[r'$ref'];
-          if (r is String) {
-            final vName = _schemaNameFromRef(r);
-            final sch = schemas[vName] as Map<String, dynamic>?;
-            if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
-              usedRefs.add(vName);
-            }
-          }
-        }
-      }
     }
 
     // Emit the body FIRST: body emission populates the usage flags and
@@ -1478,6 +889,42 @@ class ModelWriter({
       usesDeepEquality: _usesDeepEquality,
     );
     return header + body.toString();
+  }
+
+  /// Raw names of the schemas this model's file imports, apart from the
+  /// union parent it implements. [Codegen] walks these to select the
+  /// models a surface needs, so a schema reached only through a field that
+  /// collapses to `Object?` is not generated.
+  Set<String> importedSchemas() {
+    final usedRefs = _computeUsedRefs(schema);
+    usedRefs.remove(rawName);
+    // Inline variants synthesized in `_emitUnion` reference refs of
+    // their own (e.g. `PermissionRuleConfig.fromJson`). The header
+    // import list must include them or the synthesized classes will
+    // reference undefined identifiers.
+    if (_isUnion(schema)) {
+      final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
+      for (final v in variants) {
+        final inlineRefs = _computeUsedRefs(v);
+        usedRefs.addAll(inlineRefs);
+      }
+      // Refs that flow through an enum wrapper also need to be
+      // imported.
+      final disc = _findDiscriminator(variants);
+      if (disc == null) {
+        for (final v in variants) {
+          final r = v[r'$ref'];
+          if (r is String) {
+            final vName = _schemaNameFromRef(r);
+            final sch = schemas[vName] as Map<String, dynamic>?;
+            if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
+              usedRefs.add(vName);
+            }
+          }
+        }
+      }
+    }
+    return usedRefs;
   }
 
   /// Returns the set of raw schema names that the emitted body actually
@@ -3259,9 +2706,8 @@ String _pascalFromSnake(String name) {
 
 /// Pascal-cases [s] by splitting on underscores, dashes, and dots —
 /// WITHOUT the dotted-name hash suffix that [_pascalFromSnake] appends.
-/// Used where the input space is known to be collision-free: API method
-/// names (operationIds are unique by spec; collisions abort generation)
-/// and synthesized nested-class names (always parent-prefixed).
+/// Used where the input space is known to be collision-free, such as
+/// synthesized nested-class names (always parent-prefixed).
 String _pascalCore(String s) {
   final parts = s.split(RegExp(r'[_\-.]+'));
   final out = StringBuffer();
@@ -3276,13 +2722,6 @@ String _pascalCore(String s) {
     }
   }
   return out.toString();
-}
-
-/// lowerCamelCase form of [_pascalCore] (no hash suffix).
-String _camelCore(String name) {
-  final pascal = _pascalCore(name);
-  if (pascal.isEmpty) return pascal;
-  return pascal[0].toLowerCase() + pascal.substring(1);
 }
 
 /// 4-character hash suffix derived from a string, base-36 encoded.

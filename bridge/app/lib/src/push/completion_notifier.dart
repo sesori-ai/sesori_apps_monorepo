@@ -19,15 +19,8 @@ class CompletionNotifier({
   final Set<String> _completionBlockedByPendingInteraction = {};
   final Set<String> _pendingAbortRoots = {};
   final Set<String> _abortedRoots = {};
-  final Map<String, String> _permissionRequestToSession = {};
 
   Stream<String> get completions => _completionController.stream;
-
-  int get permissionRequestCount => _permissionRequestToSession.length;
-
-  int get completionSentRootCount => _completionSentForRoots.length;
-
-  int get abortedRootCount => _abortedRoots.length;
 
   void markSessionAbortPending(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
@@ -62,8 +55,7 @@ class CompletionNotifier({
       case SesoriQuestionAsked(:final sessionID):
         _cancelDebounceForSessionGroup(sessionID);
       // A new permission request blocks completion for this session group.
-      case SesoriPermissionAsked(:final requestID, :final sessionID):
-        _permissionRequestToSession[requestID] = sessionID;
+      case SesoriPermissionAsked(:final sessionID):
         _cancelDebounceForSessionGroup(sessionID);
       // Session status transitions determine when completion can fire.
       case SesoriSessionStatus(:final sessionID, :final status):
@@ -92,7 +84,6 @@ class CompletionNotifier({
         _completionSentForRoots.remove(info.id);
         _pendingAbortRoots.remove(info.id);
         _abortedRoots.remove(info.id);
-        _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
         // The deleted session may have been the last pending interaction
         // blocking its root. Resume completion for the root if it is still
         // reachable via the parent and now eligible. Pass the deleted sessionId
@@ -119,11 +110,8 @@ class CompletionNotifier({
         _maybeResumeBlockedCompletion(sessionID);
       // Permission replies are user actions; resume completion if this was the
       // last blocker for an idle session group.
-      case SesoriPermissionReplied(:final requestID):
-        final sessionId = _permissionRequestToSession.remove(requestID);
-        if (sessionId != null) {
-          _maybeResumeBlockedCompletion(sessionId);
-        }
+      case SesoriPermissionReplied(:final sessionID):
+        _maybeResumeBlockedCompletion(sessionID);
       // Ignore unsupported events.
       default:
         break;
@@ -143,7 +131,6 @@ class CompletionNotifier({
       _pendingAbortRoots.remove(sessionId);
       _abortedRoots.remove(sessionId);
     }
-    _permissionRequestToSession.removeWhere((_, sessionId) => prunedRootIds.contains(sessionId));
   }
 
   /// Cancels all timers and closes the completion stream.
@@ -152,16 +139,6 @@ class CompletionNotifier({
     if (!_completionController.isClosed) {
       _completionController.close();
     }
-  }
-
-  /// Clears debounce state but keeps the completion stream open.
-  void reset() {
-    _cancelAllDebounceTimers();
-    _completionSentForRoots.clear();
-    _completionBlockedByPendingInteraction.clear();
-    _pendingAbortRoots.clear();
-    _abortedRoots.clear();
-    _permissionRequestToSession.clear();
   }
 
   /// Cancels every active debounce timer.

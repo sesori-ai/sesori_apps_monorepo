@@ -10,7 +10,6 @@ import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
-import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
@@ -64,10 +63,8 @@ Map<String, dynamic> _releaseJson({
   bool draft = false,
   bool prerelease = false,
   String? tagName,
-  String? publishedAt = '2024-06-01T00:00:00Z',
 }) => {
   'tag_name': tagName ?? 'v$version',
-  'published_at': publishedAt,
   'draft': draft,
   'prerelease': prerelease,
   'assets': [
@@ -140,7 +137,6 @@ void main() {
             'https://example.com/releases/download/0.3.0/checksums.txt',
           ),
         );
-        expect(result.publishedAt, equals(DateTime.parse('2024-06-01T00:00:00Z')));
       });
 
       test('same version as current → returns null', () async {
@@ -359,25 +355,6 @@ void main() {
           throwsA(isA<Exception>()),
         );
       });
-
-      test('invalid published_at on selected stable release → throws', () async {
-        final client = MockClient(
-          (_) async => http.Response(
-            jsonEncode([
-              {
-                ..._releaseJson(version: '0.3.0'),
-                'published_at': 'not-a-date',
-              },
-            ]),
-            200,
-          ),
-        );
-
-        await expectLater(
-          _makeRepository(httpClient: client).checkForNewerRelease(),
-          throwsA(isA<StateError>()),
-        );
-      });
     });
 
     // -----------------------------------------------------------------------
@@ -415,8 +392,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
-          track: 'stable',
-          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          track: ReleaseTrack.stable,
           checkedAt: DateTime.now(),
         );
         final repository = _makeRepository(
@@ -429,7 +405,6 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.version, equals('0.9.0'));
-        expect(result.publishedAt, equals(DateTime.parse('2024-06-01T00:00:00Z')));
         expect(httpCallCount, equals(0), reason: 'should not hit HTTP when cache is fresh');
       });
 
@@ -445,8 +420,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
-          track: 'stable',
-          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          track: ReleaseTrack.stable,
           checkedAt: DateTime.now(),
         );
         final repository = _makeRepository(
@@ -471,8 +445,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
-          track: 'stable',
-          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          track: ReleaseTrack.stable,
           checkedAt: DateTime.now(),
         );
         final repository = _makeRepository(
@@ -514,10 +487,6 @@ void main() {
         expect(cache.writtenReleases.first.latestVersion, equals('0.3.0'));
         expect(cache.writtenReleases.first.assetName, equals(_defaultTarget.assetName));
         expect(
-          cache.writtenReleases.first.publishedAt,
-          equals(DateTime.parse('2024-06-01T00:00:00Z')),
-        );
-        expect(
           cache.writtenReleases.first.downloadUrl,
           equals(
             'https://example.com/releases/download/0.3.0/sesori-bridge-macos-arm64.tar.gz',
@@ -551,11 +520,11 @@ void main() {
         expect(cache.writtenReleases, isEmpty);
       });
 
-      test('draft releases with null published_at do not break stable resolution', () async {
+      test('draft releases do not break stable resolution', () async {
         final repository = _makeRepository(
           httpClient: _mockOk(
             body: [
-              _releaseJson(version: '0.4.0', draft: true, publishedAt: null),
+              _releaseJson(version: '0.4.0', draft: true),
               _releaseJson(version: '0.3.1'),
             ],
           ),
@@ -580,8 +549,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/windows.zip',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: 'sesori-bridge-windows-x64.zip',
-          track: 'stable',
-          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          track: ReleaseTrack.stable,
           checkedAt: DateTime.now(),
         );
         final repository = _makeRepository(
@@ -771,7 +739,7 @@ void main() {
         await repository.checkForNewerRelease();
 
         expect(cache.writtenReleases, hasLength(1));
-        expect(cache.writtenReleases.first.track, equals('internal'));
+        expect(cache.writtenReleases.first.track, equals(ReleaseTrack.internal));
         expect(cache.writtenReleases.first.latestVersion, equals('0.5.0-internal.3'));
       });
 
@@ -790,8 +758,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
-          track: 'stable',
-          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          track: ReleaseTrack.stable,
           checkedAt: DateTime.now(),
         );
         final repository = _makeRepository(
@@ -827,7 +794,6 @@ void main() {
         expect(resolution.latest?.release.version, equals('0.4.0'));
         expect(resolution.latest?.version.toString(), equals('0.4.0'));
         expect(resolution.currentVersion.toString(), equals('0.2.0'));
-        expect(resolution.currentEligible, isTrue);
       });
 
       test('returns the latest eligible release even when it is not newer (for --force)', () async {
@@ -843,7 +809,7 @@ void main() {
         expect(resolution.latest?.version.toString(), equals('0.3.0'));
       });
 
-      test('reports an off-track running build as ineligible', () async {
+      test('resolves the latest stable release for an off-track running build', () async {
         final repository = _makeRepository(
           httpClient: _mockOk(body: [_releaseJson(version: '0.3.0')]),
           currentVersion: '0.5.0-internal.3',
@@ -851,7 +817,6 @@ void main() {
 
         final resolution = await repository.resolveUpdate();
 
-        expect(resolution.currentEligible, isFalse);
         expect(resolution.latest?.release.version, equals('0.3.0'));
       });
 
@@ -866,8 +831,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
-          track: 'stable',
-          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          track: ReleaseTrack.stable,
           checkedAt: DateTime.now(),
         );
         final repository = _makeRepository(
@@ -947,37 +911,6 @@ void main() {
         repository.advanceBaselineTo(version: 'not-a-version');
         expect(await repository.checkForNewerRelease(), isNull);
       });
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  group('ReleaseInfo', () {
-    test('toJson / fromJson roundtrip preserves all fields', () {
-      final now = DateTime.parse('2024-06-01T00:00:00.000Z');
-      final original = ReleaseInfo(
-        version: '0.3.0',
-        assetUrl: 'https://example.com/download/asset.tar.gz',
-        checksumsUrl: 'https://example.com/download/checksums.txt',
-        publishedAt: now,
-      );
-
-      final restored = ReleaseInfo.fromJson(original.toJson());
-
-      expect(restored.version, equals(original.version));
-      expect(restored.assetUrl, equals(original.assetUrl));
-      expect(restored.checksumsUrl, equals(original.checksumsUrl));
-      expect(restored.publishedAt, equals(original.publishedAt));
-    });
-
-    test('fromJson parses ISO-8601 date correctly', () {
-      final info = ReleaseInfo.fromJson({
-        'version': '1.0.0',
-        'assetUrl': 'https://example.com/a',
-        'checksumsUrl': 'https://example.com/c',
-        'publishedAt': '2025-01-15T12:30:00.000Z',
-      });
-
-      expect(info.publishedAt, equals(DateTime.parse('2025-01-15T12:30:00.000Z')));
     });
   });
 }

@@ -13,12 +13,10 @@
   Stable build 981's authenticated/Off acceptance and the 82-test shutdown audit
   retain their recorded scope; public links do not establish fresh authenticated
   replacement or shared-store qualification.
-  Linux CLI signatures, signed desktop previews, website discovery and signed preview
-  repositories are delivered through 11.h. The user approved GCS hosting/scoped publishing IAM and
-  directed finishing Linux through stable publication on 2026-10-14 (D13).
-  Repository trust, native desktop/account checks and genuine package upgrades still
-  precede stable admission. Windows signing/winget, six-target onboarding and final
-  reconciliation/retirement remain open; Linux stays ahead of Windows.
+  Linux (step 9) is delivered through stable publication: the user approved GCS
+  hosting/scoped publishing IAM on 2026-10-14 (D13), #2042 wired stable Linux, and
+  `v1.10.1` was its first stable release. Windows signing/winget, six-target onboarding
+  and final reconciliation/retirement remain open.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -32,13 +30,13 @@ software on macOS, Windows, and Linux, each natively on x64 and arm64. Release m
 first, then Linux, then Windows under the user's revised priority; both architectures
 must pass before their platform ships. A working CLI target or an emulated run does not prove native desktop support.
 
-This succeeds [desktop-app](../desktop-app/PLAN.md), whose step 22 explicitly named
+This succeeds [desktop-app](../../completed/desktop-app/PLAN.md), whose step 22 explicitly named
 this work. The user requested distribution planning before that plan's retirement.
 On 2026-09-26 the user explicitly retired MT Gate C and directed continuation after
 its remaining QA was enumerated. That acceptance removes Gate C and parent closeout
-as prerequisites for macOS publication; it does not report unexecuted tests as passes
-or retire the entire parent. Regression reconciliation and parent retirement keep
-their own numbering and ownership.
+as prerequisites for macOS publication; it does not report unexecuted tests as passes.
+Desktop-app retired on 2026-11-02 with its steps 21–22 (regression reconciliation and
+coverage run) accepted as unexecuted.
 
 [Desktop UX](../../completed/desktop-ux/PLAN.md) is a parallel workstream, merged into `main`
 during this plan's review. It owns cockpit/navigation, autostart defaults, permission
@@ -82,7 +80,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D14 | 2026-10-18: manual, ephemeral private Linux runner diagnostics through restricted Tailscale GitHub OIDC. Admin-to-runner SSH only; VNC through SSH forwarding. No signing/account credentials, public desktop, runner access into other tailnet devices or replacement of automated qualification. |
 
 U1: on 2026-10-25 the update policy in D4–D6 was superseded by
-[desktop-auto-update](../desktop-auto-update/PLAN.md). macOS updates through Sparkle,
+[desktop-auto-update](../../completed/desktop-auto-update/PLAN.md). macOS updates through Sparkle,
 Windows and AppImage through Velopack (its `Setup.exe` replaces Inno), and DEB/RPM through
 the system updater. The manual macOS updates delivered in step 5 are replaced by
 desktop-auto-update step 4. Steps 7–8 below keep signing, publication and winget. Their packaging
@@ -585,6 +583,7 @@ these are executable substeps, not a new plan or a Windows dependency.
   only a matching already-approved stable tag, never relabel internal binaries or
   dispatch stores for proof. Record live anonymous package/repository/site acceptance
   with this substantive continuation, not another acceptance-only PR.
+  Merged as #2042; first stable release `v1.10.1`, recorded in [step 9](steps/step-09.md).
 
 The first two slices are release tooling, not application architecture changes.
 Review architecture only if native qualification requires architecture-bearing product
@@ -1051,7 +1050,7 @@ private material. The user's all-six-target decision remains binding while block
 
 ## References
 
-- [Parent implementation plan](../desktop-app/PLAN.md) and [tracker](../desktop-app/TRACKER.md)
+- [Parent implementation plan](../../completed/desktop-app/PLAN.md) and [tracker](../../completed/desktop-app/TRACKER.md)
 - [Regression proof and retirement rules](../../../docs/regression/README.md)
 - [Apple distribution](https://developer.apple.com/macos/distribution/)
 - [Sparkle integration/signing](https://sparkle-project.org/documentation/) and

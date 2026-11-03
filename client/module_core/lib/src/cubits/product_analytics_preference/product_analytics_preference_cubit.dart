@@ -25,8 +25,6 @@ class ProductAnalyticsPreferenceCubit({required final ProductAnalyticsService _s
 
   Future<void> refresh() => _service.refreshPreference();
 
-  Future<void> retryPendingDisable() => _service.retryPendingDisable();
-
   @override
   Future<void> close() async {
     await _subscription.cancel();

@@ -59,10 +59,9 @@ void main() {
     expect(server.streams, hasLength(1));
     expect(plugin.currentWorkState, PluginWorkState.idle);
     expect(plugin.id, "opencode");
-    expect(await plugin.healthCheck(), isTrue);
     expect((await plugin.getProjects()).single.id, _directory);
     expect((await plugin.getProject(_directory)).directory, _directory);
-    expect((await plugin.getSessions(projectId: _directory, start: 0, limit: 1)).single.id, _sessionId);
+    expect((await plugin.getSessions(projectId: _directory)).single.id, _sessionId);
     final options = await plugin.getSessionOptions(
       projectId: _directory,
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,

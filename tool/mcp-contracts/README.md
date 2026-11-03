@@ -27,33 +27,12 @@ before doing so. It never opens a browser. Native fixture credentials may remain
 in the temporary harness configuration. Captures contain fixture authorization
 URLs and should stay local; publish the bounded evidence summary instead.
 
-The released-peer runner and its missing-Dart test require the fixed public
-release tree in local Git history. For a shallow/partial checkout, fetch it
-explicitly before running either command:
-
-```sh
-git fetch origin ffa5935c8363c6429fdf2e3c3fb95b3a906f5ab5
-```
-
-After `dart pub get` in `shared/sesori_shared`, run:
-
-```sh
-node tool/mcp-contracts/released-peer.mjs /absolute/path/to/dart
-```
-
-This executes the public v1.9.0/build 970 SSE parsing methods directly from Git,
-with fixture transport/log sinks. It first checks that the six question/SSE
-model and generated codec files match that release after LF/CRLF normalization, then tests
-unknown typed events, additive notice fields, both event orders, legacy
-completion/cancellation, and snapshot decoding. It fails on decoder drift rather
-than silently testing a current decoder as an older peer. Native mixed-client
-ownership and competing-reply tests belong with the production pending owner.
-
-Focused tooling tests: `node --test tool/mcp-contracts/*.test.mjs`. HTTP fixtures
-advertise only the echo tool; form/URL elicitation is exercised through stdio.
+Focused tooling tests: `node --test tool/mcp-contracts/*.test.mjs`, which Release
+Workflow CI runs. HTTP fixtures advertise only the echo tool; form/URL elicitation is
+exercised through stdio.
 
 Versioned results and the remaining qualification boundaries are in
-[the contract evidence](../../.plan/active/mcp-management/evidence/native-contracts.md).
+[the contract evidence](../../.plan/completed/mcp-management/evidence/native-contracts.md).
 
 Codex App Server intentionally omits the JSON-RPC version marker on JSONL
 requests, responses, and notifications, as described in the

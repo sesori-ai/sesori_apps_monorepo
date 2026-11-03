@@ -459,7 +459,7 @@ void main() {
         harness.dispatch(
           const SesoriSseEvent.permissionReplied(
             requestID: "perm-1",
-            sessionID: "s1",
+            sessionID: "session-a",
             displaySessionId: null,
             reply: "allow",
           ),
@@ -757,24 +757,6 @@ void main() {
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
         expect(harness.completedRoots, equals(["root"]));
-      });
-    });
-
-    test("reset clears timers and internal state", () {
-      fakeAsync((async) {
-        final harness = _newHarness();
-
-        harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
-        );
-        harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
-        );
-        harness.notifier.reset();
-
-        async.elapse(const Duration(seconds: 1));
-        async.flushMicrotasks();
-        expect(harness.completedRoots, isEmpty);
       });
     });
 

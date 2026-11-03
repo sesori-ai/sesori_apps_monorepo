@@ -26,9 +26,10 @@ client can choose a plugin plus its scoped agent/model resources when creating a
 session. The destination is many surfaces (phone, desktop, later web), many
 bridges (your laptop, your desktop, managed VMs), and many setup-aware plugins
 (including our own harness) that wake only when needed instead of permanently
-consuming resources. The phone will manage plugin lifecycle and, later, install
-backend runtimes and complete plugin-owned login flows. Opt-in autonomy over
-CI/review and eventually a master agent coordinate work across sessions.
+consuming resources. The phone already manages plugin lifecycle, installs
+backend runtimes and completes plugin-owned login flows where the harness
+supports them. Opt-in autonomy over CI/review and eventually a master agent
+coordinate work across sessions.
 
 ## Where this is going (the pillars)
 
@@ -38,11 +39,10 @@ The client is the same brain on every surface. `module_core` is the shared,
 Flutter-free logic; each surface (mobile `client/app`, `client/desktop`, future
 web) is a thin shell. The client is **online-first by design** — it caches almost
 nothing locally, precisely so it can switch between bridges cheaply. A single
-bridge already serves **multiple clients** concurrently; the new axis is
-**multi-bridge**: the client (with the relay + auth server) lets a user choose
-*which* bridge to talk to. The seam already exists
-(`bridge_api` / `bridge_repository` / `registered_bridges_store` in
-`module_core`).
+bridge already serves **multiple clients** concurrently, and the client is
+**multi-bridge**: with the relay + auth server it lets a user choose *which*
+bridge (computer) to talk to (`bridge_api` / `bridge_repository` /
+`registered_bridges_store` in `module_core`).
 
 - *Door to keep open:* per-bridge addressing/identity is first-class; never
   collapse it into "the user's one bridge", and don't bake phone-only
@@ -63,9 +63,9 @@ plugins.
 
 - *Door to keep open:* the bridge must always be runnable headless; the desktop
   GUI supervises the *same* daemon and is never the only way to run it (this is
-  what makes managed VMs possible). Implementation closeout lives in
-  `.plan/active/desktop-app/PLAN.md`; signed native distribution and updates
-  are planned in `.plan/active/desktop-distribution/PLAN.md`.
+  what makes managed VMs possible). The desktop app ships on macOS and Linux;
+  the remaining signed native distribution (Windows) and platform ship gates
+  live in `.plan/active/desktop-distribution/PLAN.md`.
 
 ### 3. The plugin interface is a platform contract
 
@@ -85,9 +85,9 @@ The product is expected to support many plugins. Sesori therefore treats
 different states. Setup-ready plugins may be auto-enabled; enabled plugins may
 remain dormant; active generations may start, stop, fail, and restart
 independently. Phone and headless callers use the same bridge API seam to manage
-that lifecycle. A later workstream will let the phone initiate installation of a
-registered plugin's backend runtime and complete plugin-owned authentication; it
-will not download arbitrary plugin implementation code into the bridge.
+that lifecycle. The phone can also install a registered plugin's backend
+runtime and complete plugin-owned authentication where the harness supports
+it; it never downloads arbitrary plugin implementation code into the bridge.
 
 - *Door to keep open:* nothing assistant-specific (OpenCode / Codex / own
   harness) leaks past the plugin boundary into `shared/`, the relay protocol, or
@@ -129,7 +129,7 @@ always-on; it is a **paid** tier and **not currently in play**.
    our own harness is *just a plugin*; differing abilities are declared by the
    plugin contract rather than inferred by shared code or clients.
 2. **The bridge is one of many** — per-bridge addressing across client / relay /
-   auth (multi-client per bridge already works; multi-bridge is the new axis).
+   auth (multi-client per bridge and multi-bridge per client both work).
 3. **Shared brain, thin shells** — `module_core` stays Flutter-free and
    surface-agnostic; the client is online-first with minimal local cache.
 4. **Headless-first bridge** — GUI supervision is additive and gated; the
@@ -179,10 +179,9 @@ line here as intent, not commitment.
 ## Related docs
 
 - `ROADMAP.md` — dependency-ordered implementation suggestion.
-- `.plan/active/desktop-app/PLAN.md` — desktop-app implementation closeout
-  (pillar 2).
-- `.plan/active/desktop-distribution/PLAN.md` — macOS-first distribution,
-  six native OS/CPU targets, signed installers and platform-owned updates.
-- `.plan/active/setup-aware-plugin-lifecycle/PLAN.md` — setup-aware automatic
+- `.plan/completed/desktop-app/PLAN.md` — desktop-app implementation (pillar 2).
+- `.plan/active/desktop-distribution/PLAN.md` — distribution for six native
+  OS/CPU targets, signed installers and platform-owned updates.
+- `.plan/completed/setup-aware-plugin-lifecycle/PLAN.md` — setup-aware automatic
   selection, transient activation, hot lifecycle control, and mobile management.
 - `AGENTS.md` — the *how* (layer architecture). This doc is the *where*.

@@ -24,7 +24,7 @@ void main() {
     const connected = ConnectionStatus.connected(config: config, health: health);
     const reconnecting = ConnectionStatus.reconnecting(config: config);
     const connectionLost = ConnectionStatus.connectionLost(config: config);
-    const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
+    const bridgeOffline = ConnectionStatus.bridgeOffline(config: config);
 
     setUp(() {
       mockConnectionService = MockConnectionService();

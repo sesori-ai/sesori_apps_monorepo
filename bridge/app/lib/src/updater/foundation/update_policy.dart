@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
+import '../../foundation/filesystem_permission_validator.dart';
+
 bool isNpmInstall({required String executablePath}) {
   return executablePath.contains('node_modules');
 }
@@ -69,6 +71,14 @@ bool shouldSkipUpdates({
         executablePath: executablePath,
         managedExecutablePath: managedExecutablePath,
       );
+}
+
+/// Whether a filesystem error means the updater cannot write the install.
+/// The shared validator covers EPERM(1)/EACCES(13) and permission messages.
+/// Code 5 is ERROR_ACCESS_DENIED on Windows and EIO on POSIX; the updater
+/// aborts on both just like a permission error.
+bool isUpdatePermissionDenied({required FileSystemException error}) {
+  return const FilesystemPermissionValidator().isPermissionDenied(error) || error.osError?.errorCode == 5;
 }
 
 /// Whether an HTTP status from a release check or artifact download is a

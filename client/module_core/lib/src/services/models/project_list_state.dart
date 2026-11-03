@@ -19,15 +19,6 @@ sealed class ProjectListState with _$ProjectListState {
 
     /// The bridge's "No project" project, or null on a bridge without one.
     required ProjectSummary? scratchProject,
-
-    /// Map of project ID -> its running root sessions. Projects with none are
-    /// absent; a session only waiting for input is not running.
-    @Default({}) Map<String, int> runningByProjectId,
-
-    /// Map of project ID -> whether it has unseen changes (bold title). Merges
-    /// the REST-seeded `Project.hasUnseenChanges` with live
-    /// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
-    @Default({}) Map<String, bool> unseenByProjectId,
     @Default(false) bool isRefreshing,
   }) = ProjectListLoaded;
 

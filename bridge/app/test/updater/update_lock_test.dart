@@ -105,7 +105,6 @@ void main() {
           return LockAcquireResult.acquired;
         },
         onLockRejected: (reason) async => reason,
-        shouldReleaseLock: (_) => true,
       );
 
       expect(acquired, isFalse);
@@ -129,31 +128,10 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => 7,
         onLockRejected: (_) async => -1,
-        shouldReleaseLock: (_) => true,
       );
 
       expect(result, equals(7));
       expect(lockFile.existsSync(), isFalse);
-    });
-
-    test('uses injected process runner for liveness checks', () async {
-      final runner = _RecordingProcessRunner(exitCode: 1);
-      final lock = UpdateLock(
-        currentPid: pid,
-        processRunner: runner,
-        clock: const Clock(),
-      );
-
-      final result = await lock.isProcessAlive(pidToCheck: 999999);
-
-      expect(result, isFalse);
-      if (Platform.isWindows) {
-        expect(runner.lastExecutable, equals('tasklist'));
-      } else if (!Platform.isLinux) {
-        expect(runner.lastExecutable, equals('kill'));
-      } else {
-        expect(runner.lastExecutable, equals('kill'));
-      }
     });
 
     test('locked auto-releases lock after callback completes', () async {
@@ -171,7 +149,6 @@ void main() {
           return 42;
         },
         onLockRejected: (_) async => -1,
-        shouldReleaseLock: (_) => true,
       );
 
       expect(result, equals(42));
@@ -201,29 +178,9 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => LockAcquireResult.acquired,
         onLockRejected: (reason) async => reason,
-        shouldReleaseLock: (_) => true,
       );
 
       expect(result, equals(LockAcquireResult.permissionDenied));
-    });
-
-    test('successful operation can keep lock for handoff flows', () async {
-      final lockFile = File('${tempDir.path}/.update.lock');
-      final lock = UpdateLock(
-        currentPid: pid,
-        processRunner: _RecordingProcessRunner(exitCode: 1),
-        clock: const Clock(),
-      );
-
-      final result = await lock.locked<int>(
-        lockFile: lockFile,
-        onLockAcquired: () async => 99,
-        onLockRejected: (_) async => -1,
-        shouldReleaseLock: (_) => false,
-      );
-
-      expect(result, equals(99));
-      expect(lockFile.existsSync(), isTrue);
     });
 
     test('stale lock is reclaimed when the pid has been reused by another process marker', () async {
@@ -246,7 +203,6 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => 1,
         onLockRejected: (_) async => -1,
-        shouldReleaseLock: (_) => true,
       );
 
       expect(result, equals(1));
@@ -278,7 +234,6 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => LockAcquireResult.acquired,
         onLockRejected: (reason) async => reason,
-        shouldReleaseLock: (_) => true,
       );
 
       expect(result, equals(LockAcquireResult.permissionDenied));
@@ -307,7 +262,6 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => 1,
         onLockRejected: (_) async => -1,
-        shouldReleaseLock: (_) => true,
         staleLockMaxAge: const Duration(minutes: 15),
       );
 
@@ -333,8 +287,32 @@ void main() {
         lockFile: lockFile,
         onLockAcquired: () async => LockAcquireResult.acquired,
         onLockRejected: (reason) async => reason,
-        shouldReleaseLock: (_) => true,
         staleLockMaxAge: const Duration(minutes: 15),
+      );
+
+      expect(result, equals(LockAcquireResult.alreadyLocked));
+      expect(lockFile.existsSync(), isTrue);
+    });
+
+    test('a lock without a processMarker key still names a live holder', () async {
+      if (Platform.isWindows) {
+        return;
+      }
+
+      final lockFile = File('${tempDir.path}/.update.lock');
+      await lockFile.writeAsString('{"pid":999999}', flush: true);
+      await lockFile.setLastModified(DateTime.now().subtract(const Duration(seconds: 5)));
+
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 0, stdout: 'marker\n'),
+        clock: const Clock(),
+      );
+
+      final result = await lock.locked<LockAcquireResult>(
+        lockFile: lockFile,
+        onLockAcquired: () async => LockAcquireResult.acquired,
+        onLockRejected: (reason) async => reason,
       );
 
       expect(result, equals(LockAcquireResult.alreadyLocked));
@@ -354,7 +332,6 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
-          shouldReleaseLock: (_) => true,
         ),
         throwsA(isA<FileSystemException>()),
       );
@@ -379,7 +356,6 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
-          shouldReleaseLock: (_) => true,
         ),
         throwsA(isA<FileSystemException>()),
       );
@@ -399,7 +375,6 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
-          shouldReleaseLock: (_) => true,
         ),
         throwsA(isA<FileSystemException>()),
       );
@@ -419,7 +394,6 @@ void main() {
           lockFile: lockFile,
           onLockAcquired: () async => 1,
           onLockRejected: (_) async => -1,
-          shouldReleaseLock: (_) => true,
         ),
         throwsA(isA<FileSystemException>()),
       );

@@ -156,27 +156,17 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return sessions;
   }
 
-  /// Lists root sessions only, filtered by normalized rollout CWD before
-  /// applying pagination. Sub-agent rollouts are reachable through
-  /// [getChildSessions] and [listAllSessions].
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
+  /// Lists root sessions only, filtered by normalized rollout CWD. Sub-agent
+  /// rollouts are reachable through [getChildSessions] and [listAllSessions].
+  Future<List<PluginSession>> getSessions({required String projectId}) async {
     final records = await listSessionRecords();
     final target = normalizeProjectDirectory(directory: projectId);
-    final sessions = records
+    return records
         .where((record) => record.parentId == null)
         .map(_toPluginSession)
         .nonNulls
         .where((session) => session.directory == target)
         .toList(growable: false);
-    final from = (start ?? 0).clamp(0, sessions.length);
-    final pageSize = limit?.clamp(0, sessions.length);
-    final until = pageSize == null ? sessions.length : (from + pageSize).clamp(from, sessions.length);
-    if (from >= sessions.length) return const [];
-    return sessions.sublist(from, until);
   }
 
   /// Persisted sub-agent rollouts whose direct parent is [sessionId].

@@ -252,7 +252,12 @@ class ProductAnalyticsPreferenceRepository({
         ),
       );
       return ProductAnalyticsPreferenceSynchronized(record: record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      logw(
+        "Failed to store the server-confirmed analytics preference",
+        _ProductAnalyticsPreferenceStorageException(innerError: error),
+        stackTrace,
+      );
       return ProductAnalyticsPreferenceServerConfirmedStorageFailed(record: record);
     }
   }
@@ -273,7 +278,12 @@ class ProductAnalyticsPreferenceRepository({
         ),
       );
       return ProductAnalyticsPreferenceSynchronized(record: record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      logw(
+        "Failed to finalize the synced analytics preference",
+        _ProductAnalyticsPreferenceStorageException(innerError: error),
+        stackTrace,
+      );
       // The write-ahead record remains recoverable. Keep reporting inactive
       // until a later reconciliation can finalize synchronized storage.
       return ProductAnalyticsPreferencePendingSync(pending: pending);
@@ -343,7 +353,7 @@ class ProductAnalyticsPreferenceRepository({
 
 final class const _ProductAnalyticsPreferenceStorageException({required final Object innerError}) implements Exception {
   @override
-  String toString() => "Product analytics preference storage operation failed";
+  String toString() => "Product analytics preference storage operation failed (${innerError.runtimeType.toString()})";
 }
 
 ProductAnalyticsPreferenceRecord _recordFromStored(StoredProductAnalyticsPreference stored) =>

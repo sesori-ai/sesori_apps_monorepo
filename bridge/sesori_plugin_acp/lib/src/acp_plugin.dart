@@ -770,15 +770,6 @@ abstract class AcpPlugin({
     }
   }
 
-  @override
-  Future<bool> healthCheck() async {
-    try {
-      return await ensureConnected();
-    } catch (_) {
-      return false;
-    }
-  }
-
   /// Enumerates every session the agent will report, by unioning:
   ///
   ///  - one *unfiltered* `session/list` (per the ACP spec `cwd` is only a
@@ -878,11 +869,7 @@ abstract class AcpPlugin({
   }
 
   @override
-  Future<List<PluginSession>> getSessions({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
+  Future<List<PluginSession>> getSessions({required String projectId}) async {
     final AcpStdioClient client;
     try {
       client = await _connectedClient();
@@ -895,7 +882,7 @@ abstract class AcpPlugin({
     if (!(_initResult?.agentCapabilities.listSessions ?? false)) return const [];
     final target = normalizeProjectDirectory(directory: projectId);
     try {
-      final mapped = [
+      return [
         for (final info in await _listSessionPages(client, cwd: target))
           _toPluginSession(
             info,
@@ -903,10 +890,6 @@ abstract class AcpPlugin({
             fallbackIsAuthoritative: true,
           ),
       ];
-      final from = start ?? 0;
-      if (from >= mapped.length) return const [];
-      final until = limit == null ? mapped.length : (from + limit).clamp(0, mapped.length);
-      return mapped.sublist(from, until);
     } on PluginAuthenticationRequiredException {
       rethrow;
     } on Object catch (error, stack) {

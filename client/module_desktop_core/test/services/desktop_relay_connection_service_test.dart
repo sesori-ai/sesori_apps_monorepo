@@ -19,11 +19,6 @@ const ServerConnectionConfig _config = ServerConnectionConfig(
   authToken: "test-token",
   bridgeId: null,
 );
-const HealthResponse _health = HealthResponse(
-  healthy: true,
-  version: "0.1.200",
-  filesystemAccessDegraded: false,
-);
 
 void main() {
   setUpAll(() {
@@ -67,7 +62,7 @@ void main() {
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _user));
     when(
       () => connectionService.currentStatus,
-    ).thenReturn(const ConnectionStatus.bridgeOffline(config: _config, health: _health));
+    ).thenReturn(const ConnectionStatus.bridgeOffline(config: _config));
     when(
       () => connectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")),
     ).thenAnswer((_) async => true);

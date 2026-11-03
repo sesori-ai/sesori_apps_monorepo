@@ -56,7 +56,6 @@ final class ClaudePlugin({
   final Set<String> _unstartedSessions = {};
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
-  bool _disposed = false;
   int _messageSequence = 0;
 
   @override
@@ -89,14 +88,13 @@ final class ClaudePlugin({
   String get launchDirectory => _launchDirectory;
 
   @override
-  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
+  Future<List<PluginSession>> getSessions({required String projectId}) async {
     final persisted = await _transcripts.getSessions(projectId: projectId);
     final target = normalizeProjectDirectory(directory: projectId);
-    final combined = _mergeSessions(persisted, [
+    return _mergeSessions(persisted, [
       for (final session in _createdSessions.values)
         if (session.directory == target) session,
     ]);
-    return _page(combined, start: start, limit: limit);
   }
 
   @override
@@ -409,7 +407,7 @@ final class ClaudePlugin({
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async {
-    final sessions = await getSessions(projectId: projectId, start: null, limit: null);
+    final sessions = await getSessions(projectId: projectId);
     return [
       for (final session in sessions) ..._approvals.pendingQuestionsForSession(sessionId: session.id),
     ];
@@ -552,9 +550,6 @@ final class ClaudePlugin({
   }
 
   @override
-  Future<bool> healthCheck() async => !_disposed;
-
-  @override
   // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
       (await _catalogService.getCatalog(refresh: false)).providers;
@@ -597,7 +592,6 @@ final class ClaudePlugin({
   Future<void> dispose() => _disposeFuture ??= _dispose();
 
   Future<void> _dispose() async {
-    _disposed = true;
     await _subscriptions.cancel();
     await _sessions.dispose();
     _createdSessions.clear();
@@ -906,12 +900,4 @@ List<PluginSession> _mergeSessions(Iterable<PluginSession> persisted, Iterable<P
     byId.putIfAbsent(session.id, () => session);
   }
   return byId.values.toList(growable: false);
-}
-
-List<PluginSession> _page(List<PluginSession> sessions, {required int? start, required int? limit}) {
-  final from = (start ?? 0).clamp(0, sessions.length);
-  if (from >= sessions.length) return const [];
-  final count = limit?.clamp(0, sessions.length);
-  final until = count == null ? sessions.length : (from + count).clamp(from, sessions.length);
-  return sessions.sublist(from, until);
 }

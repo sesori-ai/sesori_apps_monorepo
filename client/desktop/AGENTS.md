@@ -4,7 +4,7 @@ The desktop app shell (macOS/Windows/Linux). It wires DI, owns presentation
 (window/tray composition), and implements concrete platform adapters. ALL
 desktop business logic lives in `module_desktop_core` — never here.
 
-## Target Package Structure (built out step by step — see `.plan/active/desktop-app/PLAN.md`)
+## Package Structure
 
 ```
 lib/
@@ -12,6 +12,7 @@ lib/
 ├── core/di/                 # DI wiring (5-phase, see below)
 ├── core/routing/            # window/router composition
 ├── core/widgets/            # desktop-only presentation
+├── features/                # desktop screens (auth gate, home, login, sessions, settings, …)
 ├── app.dart                 # root widget
 └── main.dart
 ```
@@ -58,9 +59,7 @@ moving logs, helper state or other desktop files. macOS uses the new master-item
 service in classic Keychain mode; Windows/Linux keep existing native plugin
 protection and use the scoped logical master key. No desktop legacy importer or
 automatic credential cleanup is added. Primary-process admission remains before
-storage I/O. Desktop is unpublished: sign out in an old per-value-storage build
-before replacing it, then sign in once. New-store logout cannot revoke an old
-build's separate session.
+storage I/O.
 
 ## Commands
 

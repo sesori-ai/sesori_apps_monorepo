@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandExecutor, normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/models/pi_catalog_dto.dart";
@@ -42,8 +42,6 @@ class PiBackendCatalogRepository({
   required final String _binaryPath,
   required final Map<String, String> _environment,
   required final PiProcessFactory _processFactory,
-  required final CommandExecutor _commandExecutor,
-  required final Duration _healthTimeout,
 }) {
   static const _rpcExcludedCommandSourcePaths = <String>{
     // Pi's bundled llama.cpp extension only exposes /llama, whose handler
@@ -52,15 +50,6 @@ class PiBackendCatalogRepository({
     // support to this extension (verified against Pi 1.0.4).
     "builtin:llama.cpp",
   };
-
-  Future<bool> healthCheck() async {
-    try {
-      return (await _commandExecutor.run(_binaryPath, const ["--version"], timeout: _healthTimeout)).exitCode == 0;
-    } on Object catch (error, stack) {
-      Log.w("[pi] health check failed", error, stack);
-      return false;
-    }
-  }
 
   Future<PiCatalogProbeResult> probe({
     required String projectId,

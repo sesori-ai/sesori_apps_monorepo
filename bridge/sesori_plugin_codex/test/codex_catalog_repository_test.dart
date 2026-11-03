@@ -104,7 +104,7 @@ void main() {
       expect(record.updatedAt, DateTime.utc(2026, 8, 1, 12));
     });
 
-    test("filters normalized project directories before paginating", () async {
+    test("filters by normalized project directory", () async {
       final repository = _StubCodexCatalogRepository(
         [
           _record(id: "first", cwd: "/repo/app", title: "First"),
@@ -114,45 +114,9 @@ void main() {
         ],
       );
 
-      final page = await repository.getSessions(
-        projectId: "/repo/app/.",
-        start: 1,
-        limit: 1,
-      );
+      final sessions = await repository.getSessions(projectId: "/repo/app/.");
 
-      expect(page.map((session) => session.id), ["second"]);
-      expect(
-        await repository.getSessions(
-          projectId: "/repo/app",
-          start: 3,
-          limit: null,
-        ),
-        isEmpty,
-      );
-      expect(
-        await repository.getSessions(
-          projectId: "/repo/app",
-          start: -1,
-          limit: 1,
-        ),
-        hasLength(1),
-      );
-      expect(
-        await repository.getSessions(
-          projectId: "/repo/app",
-          start: 1,
-          limit: -1,
-        ),
-        isEmpty,
-      );
-      expect(
-        await repository.getSessions(
-          projectId: "/repo/app",
-          start: null,
-          limit: 0,
-        ),
-        isEmpty,
-      );
+      expect(sessions.map((session) => session.id), ["first", "second", "third"]);
     });
 
     test("discovery excludes projectless ids and every session under Documents/Codex", () async {
@@ -207,7 +171,7 @@ void main() {
       expect(logs, isNot(contains("generated-child")));
       expect(logs, isNot(contains(generatedChat)));
       expect(
-        (await repository.getSessions(projectId: generatedChat, start: null, limit: null)).map(
+        (await repository.getSessions(projectId: generatedChat)).map(
           (session) => session.id,
         ),
         ["generated-child"],

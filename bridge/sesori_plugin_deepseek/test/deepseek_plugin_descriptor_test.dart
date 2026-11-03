@@ -291,7 +291,9 @@ void main() {
 
     processes.acpProcesses.single.exit(1);
     await _waitFor(() => plugin.currentStatus is PluginDegraded);
-    expect(await plugin.api.healthCheck(), isTrue);
+    final api = plugin.api;
+    if (api is! AcpPlugin) fail("expected the DeepSeek ACP plugin api");
+    expect(await api.ensureConnected(), isTrue);
     await _waitFor(() => plugin.currentStatus is PluginReady);
     expect(processes.acpProcesses, hasLength(2));
 

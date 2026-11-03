@@ -24,8 +24,6 @@ permissions:
 
 jobs:
   publish:
-    # Default-off platform admission is separate from approval for each production release.
-    if: vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

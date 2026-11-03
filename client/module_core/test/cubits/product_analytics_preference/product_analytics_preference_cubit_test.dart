@@ -23,7 +23,6 @@ void main() {
       () => service.setPreference(preference: any(named: "preference")),
     ).thenAnswer((_) async {});
     when(service.refreshPreference).thenAnswer((_) async {});
-    when(service.retryPendingDisable).thenAnswer((_) async {});
     cubit = ProductAnalyticsPreferenceCubit(service: service);
   });
 
@@ -45,11 +44,10 @@ void main() {
     expect(await emitted, same(nextState));
   });
 
-  test("delegates closed toggle and retry intents", () async {
+  test("delegates closed toggle and refresh intents", () async {
     await cubit.setEnabled(enabled: false);
     await cubit.setEnabled(enabled: true);
     await cubit.refresh();
-    await cubit.retryPendingDisable();
 
     verify(
       () => service.setPreference(preference: ProductAnalyticsPreference.disabled),
@@ -58,6 +56,5 @@ void main() {
       () => service.setPreference(preference: ProductAnalyticsPreference.enabled),
     ).called(1);
     verify(service.refreshPreference).called(1);
-    verify(service.retryPendingDisable).called(1);
   });
 }

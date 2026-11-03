@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../../foundation/filesystem_cleaner.dart';
 import 'platform_update_api.dart';
@@ -126,8 +127,9 @@ class const WindowsUpdateApi() implements PlatformUpdateApi {
           _clearConflictingDirectory(destPath: move.fromPath);
           moved.renameSync(move.fromPath);
         }
-      } on Object {
-        // Best-effort rollback; keep reversing the remaining moves.
+      } on Object catch (error, stackTrace) {
+        // Best-effort: keep reversing the remaining moves.
+        Log.w('Failed to roll back ${move.toPath} to ${move.fromPath}', error, stackTrace);
       }
     }
   }
