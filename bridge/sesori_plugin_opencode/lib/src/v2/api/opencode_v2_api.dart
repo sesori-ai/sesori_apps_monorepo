@@ -477,7 +477,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   static List<T> _decodeList<T>({required Object? value, required T Function(Map<String, dynamic>) fromJson}) =>
       switch (value) {
         final List<Object?> items => [for (final item in items) fromJson(jsonCastMap(item))],
-        _ => throw FormatException("Invalid JSON Array (not a List)", value),
+        _ => throw const FormatException("Invalid JSON Array (not a List)"),
       };
 
   Future<T> _getData<T>({
