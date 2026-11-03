@@ -98,10 +98,7 @@ class ProjectInventoryService({
     // 1a2. A committed catalog import raises no list invalidation of its own.
     _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
 
-    // 1b. Immediate unseen (bold) updates (no API call).
-    _subscriptions.add(
-      _sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
-    );
+    // 1b. Session list-state updates reorder running projects (no API call).
     _subscriptions.add(
       _sessionUnseenTracker.sessionUnseen.listen((_) => _onSessionListStateUpdated()),
     );
@@ -198,24 +195,6 @@ class ProjectInventoryService({
         }
       }),
     );
-  }
-
-  void _onUnseenUpdated() {
-    if (_state.isClosed) return;
-    if (state case final ProjectListLoaded loaded) {
-      _emit(
-        state: loaded.copyWith(unseenByProjectId: _unseenByProjectId(projects: loaded.projects)),
-      );
-    }
-  }
-
-  /// Merges the REST-loaded `Project.hasUnseenChanges` with the live tracker
-  /// map (the tracker takes precedence once it has an entry).
-  Map<String, bool> _unseenByProjectId({required List<ProjectSummary> projects}) {
-    final live = _sessionUnseenTracker.currentProjectUnseen;
-    return {
-      for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
-    };
   }
 
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
@@ -596,7 +575,7 @@ class ProjectInventoryService({
     required List<ProjectSummary> projects,
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
   }) {
-    final (projects: ordered, :runningByProjectId) = _projectListService.orderProjects(
+    final ordered = _projectListService.orderProjects(
       projects: _withOptimisticProjectNames(projects: projects),
       activityByProjectId: activityByProjectId,
       listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
@@ -606,8 +585,6 @@ class ProjectInventoryService({
         projects: ordered,
         folderProjects: _folderProjects(projects: ordered),
         scratchProject: _scratchProject(projects: ordered),
-        runningByProjectId: runningByProjectId,
-        unseenByProjectId: _unseenByProjectId(projects: ordered),
       ),
     );
   }
@@ -835,9 +812,6 @@ class ProjectInventoryService({
   }) async {
     var didApplySnapshot = false;
     try {
-      // Captured BEFORE the fetch so the seed can't overwrite a live update
-      // that arrives while the request is in flight.
-      final unseenTick = _sessionUnseenTracker.tick;
       final projectResponse = await _projectListService.listProjects();
       if (_state.isClosed) return _ProjectFetchOutcome.superseded;
       if (requestGeneration != _fetchGeneration) {
@@ -859,25 +833,16 @@ class ProjectInventoryService({
                 timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
               )
               .projects;
-          final (projects: sortedProjects, :runningByProjectId) = _projectListService.orderProjects(
+          final sortedProjects = _projectListService.orderProjects(
             projects: _withOptimisticProjectNames(projects: mergedProjects),
             activityByProjectId: _sseEventTracker.currentSessionActivity,
             listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-          );
-          // The REST aggregate is authoritative at fetch time — seed the tracker
-          // so a stale live `true` can't keep a project bold after its last
-          // unseen session was archived/deleted while an echo was missed.
-          _sessionUnseenTracker.seedProjects(
-            {for (final p in sortedProjects) p.id: p.hasUnseenChanges},
-            sinceTick: unseenTick,
           );
           _emit(
             state: ProjectListState.loaded(
               projects: sortedProjects,
               folderProjects: _folderProjects(projects: sortedProjects),
               scratchProject: _scratchProject(projects: sortedProjects),
-              runningByProjectId: runningByProjectId,
-              unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
             ),
           );
           _loadedStateAnalyticsReporter.reportLoaded(

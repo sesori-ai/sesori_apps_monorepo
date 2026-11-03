@@ -19,9 +19,6 @@ class PersisterRepository({required PersisterApi persisterApi}) {
 
   Future<String?> readString({required StringPersistenceKey key}) => _api.readString(key: key.storageKey);
 
-  Future<String> readStringOrDefault({required StringPersistenceKey key, required String defaultValue}) async =>
-      await readString(key: key) ?? defaultValue;
-
   Future<void> writeString({required StringPersistenceKey key, required String value}) =>
       _api.writeString(key: key.storageKey, value: value);
 

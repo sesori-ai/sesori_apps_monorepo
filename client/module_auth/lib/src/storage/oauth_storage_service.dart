@@ -2,41 +2,11 @@ import "dart:developer" as developer;
 
 import "package:injectable/injectable.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../models/auth_secret_key.dart";
 
 @lazySingleton
 class OAuthStorageService({required final SecureStorageRepository _storage}) {
-  Future<void> saveAuthProviderAndPkceVerifier({required String codeVerifier, required AuthProvider provider}) async {
-    try {
-      await _storage.write(key: AuthSecretKey.pkceVerifier, value: codeVerifier);
-      await _storage.write(key: AuthSecretKey.oauthProvider, value: provider.key);
-    } catch (error, stackTrace) {
-      developer.log(
-        "Failed to persist OAuth provider or PKCE verifier",
-        error: error,
-        stackTrace: stackTrace,
-        name: "sesori_auth",
-      );
-      rethrow;
-    }
-  }
-
-  Future<String?> getPkceVerifier() async {
-    try {
-      return await _storage.read(key: AuthSecretKey.pkceVerifier);
-    } catch (error, stackTrace) {
-      developer.log(
-        "Failed to read PKCE verifier",
-        error: error,
-        stackTrace: stackTrace,
-        name: "sesori_auth",
-      );
-      return null;
-    }
-  }
-
   Future<void> clearPkceVerifier() async {
     try {
       await _storage.delete(key: AuthSecretKey.pkceVerifier);
@@ -48,21 +18,6 @@ class OAuthStorageService({required final SecureStorageRepository _storage}) {
         name: "sesori_auth",
       );
       rethrow;
-    }
-  }
-
-  Future<AuthProvider?> getAuthProvider() async {
-    try {
-      final providerKey = await _storage.read(key: AuthSecretKey.oauthProvider);
-      return AuthProvider.fromKey(providerKey);
-    } catch (error, stackTrace) {
-      developer.log(
-        "Failed to read OAuth provider",
-        error: error,
-        stackTrace: stackTrace,
-        name: "sesori_auth",
-      );
-      return null;
     }
   }
 

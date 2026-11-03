@@ -190,10 +190,8 @@ ConnectionStatus _connected({required String targetId}) => ConnectionStatus.conn
   health: _health,
 );
 
-ConnectionStatus _bridgeOffline({required String targetId}) => ConnectionStatus.bridgeOffline(
-  config: _config(targetId: targetId),
-  health: _health,
-);
+ConnectionStatus _bridgeOffline({required String targetId}) =>
+    ConnectionStatus.bridgeOffline(config: _config(targetId: targetId));
 
 ConnectionStatus _reconnecting({required String? targetId}) =>
     ConnectionStatus.reconnecting(config: _config(targetId: targetId));

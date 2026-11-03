@@ -381,38 +381,6 @@ void main() {
       verify(() => mockStorage.delete(key: AuthSecretKey.oauthSessionExpiry)).called(1);
     });
 
-    test("saveAuthProviderAndPkceVerifier writes provider and verifier", () async {
-      // given
-      when(() => mockStorage.write(key: AuthSecretKey.pkceVerifier, value: "test_pkce_verifier")).thenAnswer((_) async {
-        return;
-      });
-      when(() => mockStorage.write(key: AuthSecretKey.oauthProvider, value: "github")).thenAnswer((_) async {
-        return;
-      });
-
-      // when
-      await oauthStorageService.saveAuthProviderAndPkceVerifier(
-        codeVerifier: "test_pkce_verifier",
-        provider: AuthProvider.github,
-      );
-
-      // then
-      verify(() => mockStorage.write(key: AuthSecretKey.pkceVerifier, value: "test_pkce_verifier")).called(1);
-      verify(() => mockStorage.write(key: AuthSecretKey.oauthProvider, value: "github")).called(1);
-    });
-
-    test("getPkceVerifier reads with correct key and returns value", () async {
-      // given
-      when(() => mockStorage.read(key: AuthSecretKey.pkceVerifier)).thenAnswer((_) async => "stored_pkce_verifier");
-
-      // when
-      final result = await oauthStorageService.getPkceVerifier();
-
-      // then
-      verify(() => mockStorage.read(key: AuthSecretKey.pkceVerifier)).called(1);
-      expect(result, "stored_pkce_verifier");
-    });
-
     test("clearPkceVerifier deletes with correct key", () async {
       // given
       when(() => mockStorage.delete(key: AuthSecretKey.pkceVerifier)).thenAnswer((_) async {
@@ -424,30 +392,6 @@ void main() {
 
       // then
       verify(() => mockStorage.delete(key: AuthSecretKey.pkceVerifier)).called(1);
-    });
-
-    test("getAuthProvider returns enum for stored provider key", () async {
-      // given
-      when(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).thenAnswer((_) async => "google");
-
-      // when
-      final result = await oauthStorageService.getAuthProvider();
-
-      // then
-      verify(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).called(1);
-      expect(result, AuthProvider.google);
-    });
-
-    test("getAuthProvider returns null for unknown provider key", () async {
-      // given
-      when(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).thenAnswer((_) async => "unknown");
-
-      // when
-      final result = await oauthStorageService.getAuthProvider();
-
-      // then
-      verify(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).called(1);
-      expect(result, isNull);
     });
 
     test("clearAuthProvider deletes with correct key", () async {

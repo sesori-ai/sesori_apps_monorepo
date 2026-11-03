@@ -252,7 +252,12 @@ class ProductAnalyticsPreferenceRepository({
         ),
       );
       return ProductAnalyticsPreferenceSynchronized(record: record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      logw(
+        "Failed to store the server-confirmed analytics preference",
+        _ProductAnalyticsPreferenceStorageException(innerError: error),
+        stackTrace,
+      );
       return ProductAnalyticsPreferenceServerConfirmedStorageFailed(record: record);
     }
   }
@@ -273,7 +278,12 @@ class ProductAnalyticsPreferenceRepository({
         ),
       );
       return ProductAnalyticsPreferenceSynchronized(record: record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      logw(
+        "Failed to finalize the synced analytics preference",
+        _ProductAnalyticsPreferenceStorageException(innerError: error),
+        stackTrace,
+      );
       // The write-ahead record remains recoverable. Keep reporting inactive
       // until a later reconciliation can finalize synchronized storage.
       return ProductAnalyticsPreferencePendingSync(pending: pending);

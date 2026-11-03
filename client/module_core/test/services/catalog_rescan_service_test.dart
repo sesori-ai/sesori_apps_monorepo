@@ -761,7 +761,7 @@ void main() {
       ("disconnected", const ConnectionStatus.disconnected()),
       ("reconnecting", const ConnectionStatus.reconnecting(config: _config)),
       ("connection lost", const ConnectionStatus.connectionLost(config: _config)),
-      ("bridge offline", const ConnectionStatus.bridgeOffline(config: _config, health: _health)),
+      ("bridge offline", const ConnectionStatus.bridgeOffline(config: _config)),
     ]) {
       test("settles silently while $label", () async {
         connection.emitStatus(status);

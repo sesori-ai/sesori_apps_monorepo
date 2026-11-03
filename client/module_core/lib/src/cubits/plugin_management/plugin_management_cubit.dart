@@ -3,6 +3,7 @@ import "package:collection/collection.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../logging/logging.dart";
 import "../../platform/url_launcher.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../services/models/plugin_install_state.dart";
@@ -96,7 +97,12 @@ class PluginManagementCubit({
         bool launched;
         try {
           launched = await _urlLauncher.launch(uri);
-        } on Object {
+        } on Object catch (error, stackTrace) {
+          logw(
+            "Failed to open the harness sign-in page",
+            ExternalLinkLaunchFailure(url: uri, innerError: error),
+            stackTrace,
+          );
           launched = false;
         }
         if (isClosed || launched || generation != _authenticationGeneration) return;

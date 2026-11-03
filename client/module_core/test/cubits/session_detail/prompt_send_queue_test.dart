@@ -257,16 +257,6 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["b"]);
     });
 
-    test("completeSend clears the active submission", () {
-      queue.enqueue(_a);
-      queue.beginSend();
-
-      queue.completeSend();
-
-      expect(queue.active, isNull);
-      expect(queue.isSending, isFalse);
-    });
-
     test("failSend restores the active submission at the front", () {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
@@ -303,7 +293,7 @@ void main() {
       final resent = queue.beginSend();
       expect(resent, same(first));
       expect(resent?.promptId, first?.promptId);
-      queue.completeSend();
+      queue.parkAccepted(epoch: 1);
       expect(queue.beginSend()?.displayText, "existing");
     });
 
@@ -389,7 +379,7 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["c"]);
     });
 
-    test("full cycle: enqueue, begin, fail, begin, complete", () {
+    test("full cycle: enqueue, begin, fail, begin, park", () {
       queue.enqueue(_msg1);
       queue.enqueue(_msg2);
 
@@ -400,7 +390,7 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["msg1", "msg2"]);
 
       expect(queue.beginSend()?.displayText, "msg1");
-      queue.completeSend();
+      queue.parkAccepted(epoch: 1);
       expect(queue.items.map((e) => e.displayText), ["msg2"]);
       expect(queue.active, isNull);
     });

@@ -727,7 +727,6 @@ void main() {
       );
       expect(cubit.state.agentModelData?.agentModel?.variant, "max");
       expect(cubit.canCreateSession, isFalse);
-      expect(cubit.canRefreshOptions, isTrue);
     });
 
     test("typed retained refresh failure preserves the staged command and prior catalog", () async {
@@ -819,7 +818,6 @@ void main() {
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
       expect(cubit.canCreateSession, isFalse);
-      expect(cubit.canRefreshOptions, isTrue);
 
       await cubit.refreshOptions();
 
@@ -1384,7 +1382,7 @@ void main() {
 
       expect(state.config.availablePlugins, isNull);
       expect(state.config.selectedPlugin, isNull);
-      expect(state.isComposerDataLoading, isTrue);
+      expect(state.agentModelData?.isLoading, isTrue);
       expect(state.config.isPluginDiscoveryInFlight, isTrue);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
@@ -1408,7 +1406,7 @@ void main() {
         state.config.options,
         isA<NewSessionOptionsLoadingState>().having((options) => options.source, "source", isNull),
       );
-      expect(state.isComposerDataLoading, isTrue);
+      expect(state.agentModelData?.isLoading, isTrue);
       expect(state.config.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
@@ -1616,7 +1614,7 @@ void main() {
 
       final state = cubit.state as NewSessionComposing;
       expect(state.config.selectedPlugin?.id, "plugin-b");
-      expect(state.isComposerDataLoading, isTrue);
+      expect(state.agentModelData?.isLoading, isTrue);
       expect(state.config.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
@@ -1923,11 +1921,11 @@ void main() {
       createCompleter.complete(ApiResponse.error(ApiError.generic()));
       await send;
 
-      expect(cubit.canRefreshOptions, isFalse);
+      expect(cubit.state.agentModelData?.backendScope.isVerified, isFalse);
       await _waitUntil(() => discoveryCalls == 2);
       rediscovery.complete(ApiResponse.success(_pluginSnapshot(bridgeId: "br_b", plugins: [pluginA])));
       await _waitForComposer(cubit);
-      expect(cubit.canRefreshOptions, isTrue);
+      expect(cubit.state.agentModelData?.backendScope.isVerified, isTrue);
     });
 
     test("failed rediscovery does not record under the stale bridge key", () async {

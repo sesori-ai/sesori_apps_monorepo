@@ -321,11 +321,10 @@ $ServerConnectionConfigCopyWith<$Res> get config {
 
 
 class ConnectionBridgeOffline implements ConnectionStatus {
-  const ConnectionBridgeOffline({required this.config, required this.health});
+  const ConnectionBridgeOffline({required this.config});
   
 
  final  ServerConnectionConfig config;
- final  HealthResponse health;
 
 /// Create a copy of ConnectionStatus
 /// with the given fields replaced by the non-null parameter values.
@@ -337,18 +336,18 @@ $ConnectionBridgeOfflineCopyWith<ConnectionBridgeOffline> get copyWith => _$Conn
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionBridgeOffline&&(identical(other.config, config) || other.config == config)&&(identical(other.health, health) || other.health == health));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionBridgeOffline&&(identical(other.config, config) || other.config == config));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,config,health);
+    return Object.hash(runtimeType,config);
 }
 
 @override
 String toString() {
-    return 'ConnectionStatus.bridgeOffline(config: $config, health: $health)';
+    return 'ConnectionStatus.bridgeOffline(config: $config)';
 }
 
 
@@ -359,11 +358,11 @@ abstract mixin class $ConnectionBridgeOfflineCopyWith<$Res> implements $Connecti
   factory $ConnectionBridgeOfflineCopyWith(ConnectionBridgeOffline value, $Res Function(ConnectionBridgeOffline) _then) = _$ConnectionBridgeOfflineCopyWithImpl;
 @useResult
 $Res call({
- ServerConnectionConfig config, HealthResponse health
+ ServerConnectionConfig config
 });
 
 
-$ServerConnectionConfigCopyWith<$Res> get config;$HealthResponseCopyWith<$Res> get health;
+$ServerConnectionConfigCopyWith<$Res> get config;
 
 }
 /// @nodoc
@@ -376,11 +375,10 @@ class _$ConnectionBridgeOfflineCopyWithImpl<$Res>
 
 /// Create a copy of ConnectionStatus
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? config = null,Object? health = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? config = null,}) {
   return _then(ConnectionBridgeOffline(
 config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
-as ServerConnectionConfig,health: null == health ? _self.health : health // ignore: cast_nullable_to_non_nullable
-as HealthResponse,
+as ServerConnectionConfig,
   ));
 }
 
@@ -392,15 +390,6 @@ $ServerConnectionConfigCopyWith<$Res> get config {
   
   return $ServerConnectionConfigCopyWith<$Res>(_self.config, (value) {
     return _then(_self.copyWith(config: value));
-  });
-}/// Create a copy of ConnectionStatus
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$HealthResponseCopyWith<$Res> get health {
-  
-  return $HealthResponseCopyWith<$Res>(_self.health, (value) {
-    return _then(_self.copyWith(health: value));
   });
 }
 }

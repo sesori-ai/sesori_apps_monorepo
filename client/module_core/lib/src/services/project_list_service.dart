@@ -66,9 +66,8 @@ class ProjectListService({
     return remaining;
   }
 
-  /// Running projects first, and each one's running-session count. A session
-  /// only waiting for input is not running.
-  ({List<ProjectSummary> projects, Map<String, int> runningByProjectId}) orderProjects({
+  /// Running projects first. A session only waiting for input is not running.
+  List<ProjectSummary> orderProjects({
     required Iterable<ProjectSummary> projects,
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
     required Map<String, Map<String, SessionListItemState>> listStateByProjectId,
@@ -76,13 +75,11 @@ class ProjectListService({
     final running = <ProjectSummary>[];
     final remaining = <ProjectSummary>[];
     final runningActivityAtByProjectId = <String, int>{};
-    final runningByProjectId = <String, int>{};
     for (final project in projects) {
       final activity = activityByProjectId[project.id];
       final runningSessions = activity?.entries.where((entry) => entry.value.isRunning).toList(growable: false);
       if (runningSessions != null && runningSessions.isNotEmpty) {
         running.add(project);
-        runningByProjectId[project.id] = runningSessions.length;
         runningActivityAtByProjectId[project.id] = runningSessions
             .map(
               (entry) =>
@@ -105,7 +102,7 @@ class ProjectListService({
       final activityCompare = bActivityAt.compareTo(aActivityAt);
       return activityCompare != 0 ? activityCompare : a.id.compareTo(b.id);
     });
-    return (projects: [...running, ..._sortProjects(remaining)], runningByProjectId: runningByProjectId);
+    return [...running, ..._sortProjects(remaining)];
   }
 
   List<ProjectSummary> _sortProjects(Iterable<ProjectSummary> projects) {

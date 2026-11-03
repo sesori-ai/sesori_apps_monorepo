@@ -87,6 +87,11 @@ void main() {
 
       when(() => lifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleController.stream);
       when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
+      when(() => authSession.currentState).thenReturn(const AuthState.initial());
+      final authTokenProvider = _MockAuthTokenProvider();
+      when(
+        () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
+      ).thenAnswer((_) async => "token");
       when(relayClient.connect).thenAnswer((_) async {});
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
@@ -113,7 +118,7 @@ void main() {
         _MockRelayCryptoService(),
         _MockRoomKeyStorage(),
         FakeTargetBridgeStorage(),
-        _MockAuthTokenProvider(),
+        authTokenProvider,
         authSession,
         lifecycleSource,
         failureReporter,
@@ -130,7 +135,7 @@ void main() {
     });
 
     test("observation tokens deduplicate the ready connection, not a later reconnect", () async {
-      await service.connect(config);
+      await service.connectWithFreshAuthToken();
       final api = ConnectionNotificationObservationApi(connectionService: service);
       final storage = _MockObservationDeviceIdStorage();
       final deviceId = Completer<String>();
@@ -147,7 +152,7 @@ void main() {
       verify(() => relayClient.sendBridgeConnectionObserved(deviceId: "123e4567-e89b-42d3-a456-426614174000"))
           .called(1);
 
-      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
+      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config));
       expect(api.captureCurrentConnection(), isNull);
       service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
       expect(api.captureCurrentConnection(), isNot(firstToken));
@@ -173,8 +178,7 @@ void main() {
 
         await runZoned(
           () async {
-            final result = await service.connect(config);
-            expect(result, isA<SuccessResponse<HealthResponse>>());
+            expect(await service.connectWithFreshAuthToken(), isTrue);
 
             final nextKnownEvent = service.events.first;
             sseController.add(
@@ -243,8 +247,7 @@ void main() {
         return Future<void>.value();
       });
 
-      final result = await service.connect(config);
-      expect(result, isA<SuccessResponse<HealthResponse>>());
+      expect(await service.connectWithFreshAuthToken(), isTrue);
 
       sseController.add(
         RelaySseEvent(

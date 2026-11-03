@@ -254,7 +254,7 @@ void main() {
       // re-establish a live socket; because a bridge-absent connect now succeeds
       // (re-parking in ConnectionBridgeOffline) rather than failing, this no
       // longer risks dropping into the blocking ConnectionLost state.
-      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
+      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config));
 
       lifecycleController.add(LifecycleState.paused);
       await flush();
@@ -307,7 +307,14 @@ void main() {
       );
       addTearDown(staleService.dispose);
 
-      await staleService.connect(config);
+      // Only the first connect gets a token; the post-resume reconnect still
+      // parks at the group's pending refresh.
+      when(() => authSession.currentState).thenReturn(const AuthState.initial());
+      var tokenRequests = 0;
+      when(
+        () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
+      ).thenAnswer((_) => tokenRequests++ == 0 ? Future.value("token") : pendingToken.future);
+      expect(await staleService.connectWithFreshAuthToken(), isTrue);
       expect(staleService.relayClient, isNotNull);
 
       lifecycleController.add(LifecycleState.paused);

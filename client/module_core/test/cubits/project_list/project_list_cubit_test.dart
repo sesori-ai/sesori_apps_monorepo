@@ -45,10 +45,7 @@ const _connectedStatus = ConnectionStatus.connected(
   config: _connectionConfig,
   health: _connectionHealth,
 );
-const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
-  config: _connectionConfig,
-  health: _connectionHealth,
-);
+const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(config: _connectionConfig);
 
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
@@ -288,7 +285,7 @@ void main() {
       });
     }
 
-    test("disposing a headless inventory fences a pending result and unseen seeding", () async {
+    test("disposing a headless inventory fences a pending result", () async {
       final response = Completer<ApiResponse<Projects>>();
       when(mockProjectRepository.listProjects).thenAnswer((_) => response.future);
       final inventory = buildInventory();
@@ -299,7 +296,6 @@ void main() {
       response.complete(ApiResponse.success(Projects(data: [projectA])));
       await Future<void>.delayed(Duration.zero);
       expect(inventory.state, same(previous));
-      expect(fakeSessionUnseenTracker.currentProjectUnseen, isEmpty);
       verifyNever(
         () => mockProductAnalyticsService.logEvent(
           event: any(named: "event"),
@@ -524,7 +520,7 @@ void main() {
       addTearDown(cubit.close);
       await Future<void>.delayed(Duration.zero);
 
-      await cubit.loadProjects();
+      await cubitInventory.loadProjects();
       expect(cubit.state, isA<ProjectListFailed>());
       analyticsStateController.add(
         const ProductAnalyticsState(
@@ -776,7 +772,7 @@ void main() {
           when(() => mockProjectRepository.listProjects()).thenAnswer(
             (_) async => ApiResponse.error(ApiError.generic()),
           );
-          await cubit.loadProjects();
+          await cubitInventory.loadProjects();
         },
         skip: 1, // constructor's ProjectListLoaded
         expect: () => [
@@ -1093,7 +1089,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final hide = cubit.hideProject(projectId: "B");
-      final staleLoad = cubit.loadProjects();
+      final staleLoad = cubitInventory.loadProjects();
       expect(cubit.state, isA<ProjectListLoading>());
       hideResponse.complete(ApiResponse.success(null));
       expect(await hide, isTrue);
@@ -1577,7 +1573,7 @@ void main() {
       final reloadCompleter = Completer<ApiResponse<Projects>>();
       when(() => mockProjectRepository.listProjects()).thenAnswer((_) => reloadCompleter.future);
       final rename = cubit.renameProject(projectId: "A", name: "New Name");
-      final reload = cubit.loadProjects();
+      final reload = cubitInventory.loadProjects();
       expect(cubit.state, isA<ProjectListLoading>());
 
       renameCompleter.complete(ApiResponse<Project>.error(ApiError.generic()));
@@ -1647,7 +1643,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.loadProjects();
+        await cubitInventory.loadProjects();
       },
       expect: () => [
         isA<ProjectListLoaded>(), // constructor's async load
@@ -2704,7 +2700,7 @@ void main() {
 
         unawaited(cubitInventory.refreshProjects());
         await Future<void>.delayed(Duration.zero);
-        unawaited(cubit.loadProjects());
+        unawaited(cubitInventory.loadProjects());
         await Future<void>.delayed(Duration.zero);
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
@@ -2738,7 +2734,7 @@ void main() {
         addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
 
-        final load = cubit.loadProjects();
+        final load = cubitInventory.loadProjects();
         await Future<void>.delayed(Duration.zero);
         final failure = cubit.stream.firstWhere((state) => state is ProjectListFailed);
         fakeCatalogRescanService.emitCatalogChanged();

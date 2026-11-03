@@ -79,7 +79,7 @@ String toString() {
 
 
 class ProjectListLoaded implements ProjectListState {
-  const ProjectListLoaded({required  List<ProjectSummary> projects, required  List<ProjectSummary> folderProjects, required this.scratchProject,  Map<String, int> runningByProjectId = const {},  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false}): _projects = projects,_folderProjects = folderProjects,_runningByProjectId = runningByProjectId,_unseenByProjectId = unseenByProjectId;
+  const ProjectListLoaded({required  List<ProjectSummary> projects, required  List<ProjectSummary> folderProjects, required this.scratchProject, this.isRefreshing = false}): _projects = projects,_folderProjects = folderProjects;
   
 
 /// Every project, "No project" included: what a name lookup searches.
@@ -104,30 +104,6 @@ class ProjectListLoaded implements ProjectListState {
 
 /// The bridge's "No project" project, or null on a bridge without one.
  final  ProjectSummary? scratchProject;
-/// Map of project ID -> its running root sessions. Projects with none are
-/// absent; a session only waiting for input is not running.
- final  Map<String, int> _runningByProjectId;
-/// Map of project ID -> its running root sessions. Projects with none are
-/// absent; a session only waiting for input is not running.
-@JsonKey() Map<String, int> get runningByProjectId {
-  if (_runningByProjectId is EqualUnmodifiableMapView) return _runningByProjectId;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_runningByProjectId);
-}
-
-/// Map of project ID -> whether it has unseen changes (bold title). Merges
-/// the REST-seeded `Project.hasUnseenChanges` with live
-/// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
- final  Map<String, bool> _unseenByProjectId;
-/// Map of project ID -> whether it has unseen changes (bold title). Merges
-/// the REST-seeded `Project.hasUnseenChanges` with live
-/// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
-@JsonKey() Map<String, bool> get unseenByProjectId {
-  if (_unseenByProjectId is EqualUnmodifiableMapView) return _unseenByProjectId;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_unseenByProjectId);
-}
-
 @JsonKey() final  bool isRefreshing;
 
 /// Create a copy of ProjectListState
@@ -140,18 +116,18 @@ $ProjectListLoadedCopyWith<ProjectListLoaded> get copyWith => _$ProjectListLoade
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other.projects, _projects)&&const DeepCollectionEquality().equals(other.folderProjects, _folderProjects)&&(identical(other.scratchProject, scratchProject) || other.scratchProject == scratchProject)&&const DeepCollectionEquality().equals(other.runningByProjectId, _runningByProjectId)&&const DeepCollectionEquality().equals(other.unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other.projects, _projects)&&const DeepCollectionEquality().equals(other.folderProjects, _folderProjects)&&(identical(other.scratchProject, scratchProject) || other.scratchProject == scratchProject)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_folderProjects),scratchProject,const DeepCollectionEquality().hash(_runningByProjectId),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_folderProjects),scratchProject,isRefreshing);
 }
 
 @override
 String toString() {
-    return 'ProjectListState.loaded(projects: $projects, folderProjects: $folderProjects, scratchProject: $scratchProject, runningByProjectId: $runningByProjectId, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing)';
+    return 'ProjectListState.loaded(projects: $projects, folderProjects: $folderProjects, scratchProject: $scratchProject, isRefreshing: $isRefreshing)';
 }
 
 
@@ -162,7 +138,7 @@ abstract mixin class $ProjectListLoadedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListLoadedCopyWith(ProjectListLoaded value, $Res Function(ProjectListLoaded) _then) = _$ProjectListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<ProjectSummary> projects, List<ProjectSummary> folderProjects, ProjectSummary? scratchProject, Map<String, int> runningByProjectId, Map<String, bool> unseenByProjectId, bool isRefreshing
+ List<ProjectSummary> projects, List<ProjectSummary> folderProjects, ProjectSummary? scratchProject, bool isRefreshing
 });
 
 
@@ -179,14 +155,12 @@ class _$ProjectListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? folderProjects = null,Object? scratchProject = freezed,Object? runningByProjectId = null,Object? unseenByProjectId = null,Object? isRefreshing = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? folderProjects = null,Object? scratchProject = freezed,Object? isRefreshing = null,}) {
   return _then(ProjectListLoaded(
 projects: null == projects ? _self._projects : projects // ignore: cast_nullable_to_non_nullable
 as List<ProjectSummary>,folderProjects: null == folderProjects ? _self._folderProjects : folderProjects // ignore: cast_nullable_to_non_nullable
 as List<ProjectSummary>,scratchProject: freezed == scratchProject ? _self.scratchProject : scratchProject // ignore: cast_nullable_to_non_nullable
-as ProjectSummary?,runningByProjectId: null == runningByProjectId ? _self._runningByProjectId : runningByProjectId // ignore: cast_nullable_to_non_nullable
-as Map<String, int>,unseenByProjectId: null == unseenByProjectId ? _self._unseenByProjectId : unseenByProjectId // ignore: cast_nullable_to_non_nullable
-as Map<String, bool>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
+as ProjectSummary?,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

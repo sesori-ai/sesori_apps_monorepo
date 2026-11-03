@@ -102,7 +102,7 @@ void main() {
       const ConnectionStatus.disconnected(),
       const ConnectionStatus.connectionLost(config: config),
       const ConnectionStatus.reconnecting(config: config),
-      const ConnectionStatus.bridgeOffline(config: config, health: health),
+      const ConnectionStatus.bridgeOffline(config: config),
       connected,
     ]) {
       for (final result in <PluginManagementLoadResult?>[null, const PluginManagementLoadResult.loading()]) {
