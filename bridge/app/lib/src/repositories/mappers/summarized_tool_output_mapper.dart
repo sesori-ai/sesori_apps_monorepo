@@ -10,28 +10,28 @@ extension SummarizedToolOutputMapping on MessageWithParts {
   MessageWithParts withSummarizedToolOutput() => copyWith(
     parts: [
       for (final part in parts)
-        switch (part) {
-          MessagePartTool(
-            state: ToolStateFull(
-              :final status,
-              :final title,
-              :final shellCommand,
-              :final output,
-              :final error,
-              :final attachments,
+        if (part
+            case MessagePartTool(
+              state: ToolStateFull(
+                :final status,
+                :final title,
+                :final shellCommand,
+                :final output,
+                :final error,
+                :final attachments,
+              ),
+            )
+            when _isFinished(status: status) && (output != null || error != null))
+          part.copyWith(
+            state: ToolState.summary(
+              status: status,
+              title: title,
+              shellCommand: shellCommand,
+              attachments: attachments,
             ),
           )
-              when _isFinished(status: status) && (output != null || error != null) =>
-            part.copyWith(
-              state: ToolState.summary(
-                status: status,
-                title: title,
-                shellCommand: shellCommand,
-                attachments: attachments,
-              ),
-            ),
-          _ => part,
-        },
+        else
+          part,
     ],
   );
 

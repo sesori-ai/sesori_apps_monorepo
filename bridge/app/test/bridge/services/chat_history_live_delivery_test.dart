@@ -95,7 +95,7 @@ void main() {
         ),
       );
 
-      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null);
       expect(rows, hasLength(1), reason: "one event stores one row");
       expect(rows.single.partJson, isNot(contains(base64Encode(bytes))));
       expect(rows.single.partJson, contains("stored_file"));
@@ -203,7 +203,7 @@ void main() {
 
       await precedingCapture;
       expect(await capture, isA<CapturedPartUnavailable>());
-      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null);
       expect(rows.map((row) => row.partId), equals(["blocker"]));
     });
 
@@ -244,7 +244,7 @@ void main() {
 
       await precedingCapture;
       await removal;
-      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null);
       expect(rows.map((row) => row.partId), contains("kept"));
       expect(blockingRepository.syncStateAdvances, 1, reason: "only the preceding capture committed");
     });
@@ -431,7 +431,7 @@ void main() {
         isNull,
       );
       expect(
-        (await history.database.chatHistoryDao.getParts(sessionId: "ses_a")).map((row) => row.partId),
+        (await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null)).map((row) => row.partId),
         isNot(contains("p1")),
       );
     });

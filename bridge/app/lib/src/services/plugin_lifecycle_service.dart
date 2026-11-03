@@ -1551,10 +1551,10 @@ class PluginLifecycleService({
   static String? _metadataActionHint({
     required PluginRuntimeState? runtimeState,
     required PluginLifecycleState state,
-  }) => switch (runtimeState) {
-    PluginRuntimeDegraded(:final actionHint?) => actionHint,
-    _ => _actionHint(state),
-  };
+  }) {
+    if (runtimeState case PluginRuntimeDegraded(:final actionHint?)) return actionHint;
+    return _actionHint(state);
+  }
 
   static String? _actionHint(PluginLifecycleState state) => switch (state) {
     PluginLifecycleState.unavailable => "Check the bridge console to make this plugin available.",

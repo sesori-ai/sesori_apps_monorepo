@@ -117,7 +117,12 @@ class const SessionContinuationService({
         :final observedAt,
         :final resetAt,
       ) => (errorMessageId, observedAt, resetAt),
-      _ => throw StateError("Eligible continuation has no known reset: $sessionId"),
+      SessionContinuationNone() ||
+      SessionContinuationResetUnknown() ||
+      SessionContinuationConsumed() ||
+      SessionContinuationSubmitted() ||
+      SessionContinuationCancelled() ||
+      SessionContinuationSubmissionFailed() => throw StateError("Eligible continuation has no known reset: $sessionId"),
     };
     Future<void> pause({required AutoContinuationPauseReason reason}) => _pause(
       record: record,

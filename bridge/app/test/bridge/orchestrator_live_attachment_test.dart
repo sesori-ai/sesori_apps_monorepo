@@ -53,7 +53,7 @@ void main() {
       isA<MessageAttachmentInlineImage>().having((image) => image.base64, "base64", base64Encode(imageBytes)),
       reason: "the local debug stream has no capability surface, so it keeps the released shape",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(
       rows.single.partJson,
       contains("stored_file"),
@@ -87,10 +87,15 @@ void main() {
     await lastDelivered;
 
     await _waitFor(
-      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).length == 2,
+      () async =>
+          (await harness.chatHistory.database.chatHistoryDao.getParts(
+            sessionId: _sessionId,
+            messageIds: null,
+          )).length ==
+          2,
       reason: "both parts stored",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(
       (rows..sort((left, right) => left.orderIndex.compareTo(right.orderIndex))).map((row) => row.partId),
       const ["p_image", "p_text"],
@@ -115,10 +120,15 @@ void main() {
     await delivered;
 
     await _waitFor(
-      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).length == 2,
+      () async =>
+          (await harness.chatHistory.database.chatHistoryDao.getParts(
+            sessionId: _sessionId,
+            messageIds: null,
+          )).length ==
+          2,
       reason: "both parts stored",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(rows.map((row) => row.partId), containsAll(const ["p_snapshot", "p_text"]));
     expect(
       harness.deliveredPartIds,
@@ -145,10 +155,13 @@ void main() {
     await delivered;
 
     await _waitFor(
-      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(
+        sessionId: _sessionId,
+        messageIds: null,
+      )).isNotEmpty,
       reason: "the later visible part to be stored",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(rows.map((row) => row.partId), equals(["p_text"]));
     expect(harness.deliveredPartIds, isNot(contains("p_unknown")));
   });
@@ -173,10 +186,13 @@ void main() {
 
     expect((event.part as MessagePartText).text, "Fix the login bug");
     await _waitFor(
-      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(
+        sessionId: _sessionId,
+        messageIds: null,
+      )).isNotEmpty,
       reason: "the joined part to be stored",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(rows.map((row) => row.partId), equals(["p_joined"]));
     expect(rows.single.partJson, isNot(contains("SYSTEM CONTEXT")));
     expect(harness.deliveredPartIds, isNot(contains("p_note")));
@@ -214,10 +230,13 @@ void main() {
     await delivered;
 
     await _waitFor(
-      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(
+        sessionId: _sessionId,
+        messageIds: null,
+      )).isNotEmpty,
       reason: "the part after the removal to be stored",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(rows.map((row) => row.partId), equals(["p_after"]));
   });
 
@@ -249,10 +268,13 @@ void main() {
     await delivered;
 
     await _waitFor(
-      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(
+        sessionId: _sessionId,
+        messageIds: null,
+      )).isNotEmpty,
       reason: "the part after the message removal to be stored",
     );
-    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null);
     expect(rows.map((row) => row.partId), equals(["p_after"]));
   });
 
@@ -276,7 +298,10 @@ void main() {
     );
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    expect(await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId), isEmpty);
+    expect(
+      await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId, messageIds: null),
+      isEmpty,
+    );
     expect(harness.deliveredPartIds, isEmpty);
   });
 }

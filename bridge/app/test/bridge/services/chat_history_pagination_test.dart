@@ -142,7 +142,7 @@ void main() {
     test("the DAO counts only user rows below the given seq", () async {
       final dao = history.database.chatHistoryDao;
       // Rows come back oldest-first, so index i holds m(i + 1).
-      final seqs = [for (final row in await dao.getMessages(sessionId: "ses_a")) row.seq];
+      final seqs = [for (final row in await dao.getMessages(sessionId: "ses_a", limit: null, before: null)) row.seq];
 
       expect(await dao.countUserMessagesBefore(sessionId: "ses_a", seq: seqs[0]), 0);
       expect(
@@ -194,7 +194,14 @@ void main() {
 
       setUp(() async {
         // Index i holds m(i + 1).
-        seqs = [for (final row in await history.database.chatHistoryDao.getMessages(sessionId: "ses_a")) row.seq];
+        seqs = [
+          for (final row in await history.database.chatHistoryDao.getMessages(
+            sessionId: "ses_a",
+            limit: null,
+            before: null,
+          ))
+            row.seq,
+        ];
       });
 
       for (final storedOnly in const [false, true]) {

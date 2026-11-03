@@ -18,8 +18,8 @@ class const StreamingProcessRunner() {
     required String executable,
     required List<String> arguments,
     required Future<T> Function({required StreamingProcess process}) operation,
-    String? workingDirectory,
-    Map<String, String>? environment,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     final ioProcess = await Process.start(

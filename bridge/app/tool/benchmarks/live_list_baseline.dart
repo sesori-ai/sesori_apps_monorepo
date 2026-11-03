@@ -666,7 +666,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
         stderr.writeln("git ${arguments.join(" ")} failed with exit code ${result.exitCode}: ${result.stderr}");
         return null;
       }
-      return (result.stdout as String).trim();
+      return result.stdout.toString().trim();
     } on ProcessException catch (error, stackTrace) {
       stderr.writeln("git ${arguments.join(" ")} failed: $error");
       stderr.writeln(stackTrace);
@@ -678,7 +678,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
     if (Platform.isMacOS) {
       try {
         final result = Process.runSync("sysctl", const ["-n", "machdep.cpu.brand_string"]);
-        if (result.exitCode == 0) return (result.stdout as String).trim();
+        if (result.exitCode == 0) return result.stdout.toString().trim();
         stderr.writeln("sysctl CPU query failed with exit code ${result.exitCode}: ${result.stderr}");
       } on ProcessException catch (error, stackTrace) {
         stderr.writeln("sysctl CPU query failed: $error");
@@ -708,17 +708,20 @@ String _projectId({required int index}) => "/benchmark/project-${index.toString(
 String _sessionId({required String prefix, required int index}) => "$prefix-${index.toString().padLeft(5, "0")}";
 
 mixin _PluginCounters {
-  int calls = 0;
-  int rowsEnumerated = 0;
+  int _calls = 0;
+  int _rowsEnumerated = 0;
+
+  int get calls => _calls;
+  int get rowsEnumerated => _rowsEnumerated;
 
   void recordCall({required int rows}) {
-    calls++;
-    rowsEnumerated += rows;
+    _calls++;
+    _rowsEnumerated += rows;
   }
 
   void resetCounters() {
-    calls = 0;
-    rowsEnumerated = 0;
+    _calls = 0;
+    _rowsEnumerated = 0;
   }
 }
 
@@ -761,7 +764,7 @@ class _ThrowingBenchmarkPlugin({@override required final String id})
   }) => throw UnimplementedError();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) {
+  Object? noSuchMethod(Invocation invocation) {
     recordCall(rows: 0);
     throw StateError("catalog benchmark unexpectedly called ${invocation.memberName} on plugin $id");
   }
@@ -775,5 +778,5 @@ class _ExistingFilesystemApi() implements FilesystemApi {
   Future<bool> directoryExistsAsync({required String path}) async => true;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

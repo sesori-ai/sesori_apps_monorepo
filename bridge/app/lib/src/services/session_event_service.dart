@@ -276,7 +276,41 @@ class SessionEventService({
         updateCatalogTitle: switch (source.event) {
           BridgeSseSessionCreated() => true,
           BridgeSseSessionUpdated(:final titleChanged) => titleChanged || observed.title != null,
-          _ => observed.title != null,
+          BridgeSseTerminalHandoff() ||
+          BridgeSseServerConnected() ||
+          BridgeSseServerHeartbeat() ||
+          BridgeSseServerInstanceDisposed() ||
+          BridgeSseGlobalDisposed() ||
+          BridgeSseCommandCatalogUpdated() ||
+          BridgeSseSessionOptionsChanged() ||
+          BridgeSseSessionQuotaBlocked() ||
+          BridgeSseSessionPromptDefaultsChanged() ||
+          BridgeSseSessionDeleted() ||
+          BridgeSseSessionDiff() ||
+          BridgeSseSessionError() ||
+          BridgeSseSessionCompacted() ||
+          BridgeSsePromptSettled() ||
+          BridgeSseSessionStatus() ||
+          BridgeSseSessionIdle() ||
+          BridgeSseCommandExecuted() ||
+          BridgeSseQueuedPromptsUpdated() ||
+          BridgeSseMessageUpdated() ||
+          BridgeSseMessageRemoved() ||
+          BridgeSseMessagePartUpdated() ||
+          BridgeSseMessagePartDelta() ||
+          BridgeSseMessagePartRemoved() ||
+          BridgeSsePermissionAsked() ||
+          BridgeSsePermissionReplied() ||
+          BridgeSsePermissionUpdated() ||
+          BridgeSseQuestionAsked() ||
+          BridgeSseQuestionReplied() ||
+          BridgeSseQuestionRejected() ||
+          BridgeSseTodoUpdated() ||
+          BridgeSseProjectUpdated() ||
+          BridgeSseVcsBranchUpdated() ||
+          BridgeSseFileEdited() ||
+          BridgeSseInstallationUpdateAvailable() ||
+          BridgeSseTuiToastShow() => observed.title != null,
         },
         projectionUpdatedAt: source.projectionUpdatedAt,
       );
@@ -518,7 +552,40 @@ class SessionEventService({
         ),
         null => null,
       },
-      _ => translated,
+      BridgeSseTerminalHandoff() ||
+      BridgeSseServerConnected() ||
+      BridgeSseServerHeartbeat() ||
+      BridgeSseServerInstanceDisposed() ||
+      BridgeSseGlobalDisposed() ||
+      BridgeSseCommandCatalogUpdated() ||
+      BridgeSseSessionOptionsChanged() ||
+      BridgeSseSessionQuotaBlocked() ||
+      BridgeSseSessionDeleted() ||
+      BridgeSseSessionDiff() ||
+      BridgeSseSessionError() ||
+      BridgeSseSessionCompacted() ||
+      BridgeSsePromptSettled() ||
+      BridgeSseSessionStatus() ||
+      BridgeSseSessionIdle() ||
+      BridgeSseCommandExecuted() ||
+      BridgeSseQueuedPromptsUpdated() ||
+      BridgeSseMessageUpdated() ||
+      BridgeSseMessageRemoved() ||
+      BridgeSseMessagePartUpdated() ||
+      BridgeSseMessagePartDelta() ||
+      BridgeSseMessagePartRemoved() ||
+      BridgeSsePermissionAsked() ||
+      BridgeSsePermissionReplied() ||
+      BridgeSsePermissionUpdated() ||
+      BridgeSseQuestionAsked() ||
+      BridgeSseQuestionReplied() ||
+      BridgeSseQuestionRejected() ||
+      BridgeSseTodoUpdated() ||
+      BridgeSseProjectUpdated() ||
+      BridgeSseVcsBranchUpdated() ||
+      BridgeSseFileEdited() ||
+      BridgeSseInstallationUpdateAvailable() ||
+      BridgeSseTuiToastShow() => translated,
     };
   }
 
@@ -567,7 +634,39 @@ class SessionEventService({
     return switch (event) {
       BridgeSseTerminalHandoff(:final event) => _isSessionPayloadEvent(event),
       BridgeSseSessionCreated() || BridgeSseSessionUpdated() || BridgeSseSessionDeleted() => true,
-      _ => false,
+      BridgeSseServerConnected() ||
+      BridgeSseServerHeartbeat() ||
+      BridgeSseServerInstanceDisposed() ||
+      BridgeSseGlobalDisposed() ||
+      BridgeSseCommandCatalogUpdated() ||
+      BridgeSseSessionOptionsChanged() ||
+      BridgeSseSessionQuotaBlocked() ||
+      BridgeSseSessionPromptDefaultsChanged() ||
+      BridgeSseSessionDiff() ||
+      BridgeSseSessionError() ||
+      BridgeSseSessionCompacted() ||
+      BridgeSsePromptSettled() ||
+      BridgeSseSessionStatus() ||
+      BridgeSseSessionIdle() ||
+      BridgeSseCommandExecuted() ||
+      BridgeSseQueuedPromptsUpdated() ||
+      BridgeSseMessageUpdated() ||
+      BridgeSseMessageRemoved() ||
+      BridgeSseMessagePartUpdated() ||
+      BridgeSseMessagePartDelta() ||
+      BridgeSseMessagePartRemoved() ||
+      BridgeSsePermissionAsked() ||
+      BridgeSsePermissionReplied() ||
+      BridgeSsePermissionUpdated() ||
+      BridgeSseQuestionAsked() ||
+      BridgeSseQuestionReplied() ||
+      BridgeSseQuestionRejected() ||
+      BridgeSseTodoUpdated() ||
+      BridgeSseProjectUpdated() ||
+      BridgeSseVcsBranchUpdated() ||
+      BridgeSseFileEdited() ||
+      BridgeSseInstallationUpdateAvailable() ||
+      BridgeSseTuiToastShow() => false,
     };
   }
 }

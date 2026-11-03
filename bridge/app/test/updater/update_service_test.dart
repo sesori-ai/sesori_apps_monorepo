@@ -108,8 +108,8 @@ void main() {
       managedExecutablePath: _managedPath,
       environment: environment,
       isSupervised: isSupervised,
+      emitLine: (line) => (line.isError ? errors : infoMessages).add(line.text),
     );
-    service.emitLine = (line) => (line.isError ? errors : infoMessages).add(line.text);
     return service;
   }
 

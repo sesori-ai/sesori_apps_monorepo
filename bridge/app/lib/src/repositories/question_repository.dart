@@ -39,7 +39,7 @@ class QuestionRepository({
           pluginId: plugin.id,
           questions: [
             for (final question in questions)
-              if (_isVisible(question, tombstones)) question,
+              if (_isVisible(question: question, tombstoned: tombstones)) question,
           ],
         );
       },
@@ -49,11 +49,12 @@ class QuestionRepository({
     return pending ?? const [];
   }
 
-  bool _isVisible(PluginPendingQuestion question, Set<String> tombstoned) => _pendingSupport.isVisible(
-    sessionId: question.sessionID,
-    displaySessionId: question.displaySessionId,
-    tombstones: tombstoned,
-  );
+  bool _isVisible({required PluginPendingQuestion question, required Set<String> tombstoned}) =>
+      _pendingSupport.isVisible(
+        sessionId: question.sessionID,
+        displaySessionId: question.displaySessionId,
+        tombstones: tombstoned,
+      );
 
   Future<void> replyToQuestion({
     required String questionId,

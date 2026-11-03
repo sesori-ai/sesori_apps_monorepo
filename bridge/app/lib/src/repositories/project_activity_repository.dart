@@ -170,6 +170,8 @@ class ProjectActivityRepository({
               createdAt: project.activity?.createdAt ?? 0,
               updatedAt: project.activity?.updatedAt ?? 0,
               projectionUpdatedAt: 0,
+              baseBranch: null,
+              displayName: null,
             );
             projectsById[projectId] = inserted;
             projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;

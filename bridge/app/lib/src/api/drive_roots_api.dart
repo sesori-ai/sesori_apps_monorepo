@@ -58,7 +58,12 @@ Future<String> _readMountTable({
   required String command,
   required List<String> arguments,
 }) async {
-  final result = await processRunner.run(executable: command, arguments: arguments);
+  final result = await processRunner.run(
+    executable: command,
+    arguments: arguments,
+    workingDirectory: null,
+    environment: null,
+  );
   if (result.exitCode != 0) {
     throw ProcessException(command, arguments, "${result.stderr}", result.exitCode);
   }

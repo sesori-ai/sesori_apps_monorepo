@@ -24,6 +24,8 @@ void main() {
     final result = await ProcessRunner().run(
       executable: Platform.resolvedExecutable,
       arguments: [script.path],
+      workingDirectory: null,
+      environment: null,
     );
 
     final expectedStdout = List<String>.generate(4096, (index) => "stdout-$index\n").join();
@@ -86,6 +88,8 @@ Future<void> main(List<String> arguments) async {
       executable: Platform.resolvedExecutable,
       arguments: [parentScript.path, childScript.path, server.port.toString(), childPidFile.path],
       timeout: const Duration(seconds: 3),
+      workingDirectory: null,
+      environment: null,
     );
     final timeoutObserved = expectLater(run, throwsA(isA<TimeoutException>()));
     var childConnected = false;

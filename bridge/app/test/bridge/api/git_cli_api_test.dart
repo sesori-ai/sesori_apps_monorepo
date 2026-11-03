@@ -245,8 +245,8 @@ class _RecordingProcessRunner({
   Future<ProcessResult> run({
     required String executable,
     required List<String> arguments,
-    String? workingDirectory,
-    Map<String, String>? environment,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     expect(executable, "git");
@@ -277,8 +277,8 @@ class _FakeStreamingProcessRunner(final StreamingProcess process) extends Stream
     required String executable,
     required List<String> arguments,
     required Future<T> Function({required StreamingProcess process}) operation,
-    String? workingDirectory,
-    Map<String, String>? environment,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) {
     runCount++;
