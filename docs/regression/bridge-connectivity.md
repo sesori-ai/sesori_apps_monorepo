@@ -60,6 +60,8 @@ presents.
 - Client relay disconnect closes active SSE streams and the socket without
   attempting encrypted sends after disposal. The bridge releases the connection's
   SSE subscription when it receives the phone-disconnected notification.
+  The bridge logs and ignores a relay control frame of a type it does not know
+  and drops a malformed one, so a newer relay does not break this bridge.
 - An account keeps up to 10 bridges live at once, one per registered computer;
   a different bridge id never displaces another. The relay routes each app to
   the bridge it names, or, for an app that names none, to the most recently

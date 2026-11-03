@@ -184,7 +184,10 @@ class ProjectRepository({
       displayName: name,
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
-    final row = (await _projectsDao.getProject(projectId: projectId))!;
+    final row = await _projectsDao.getProject(projectId: projectId);
+    if (row == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
     return _projectCatalogMapper.mapProject(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),

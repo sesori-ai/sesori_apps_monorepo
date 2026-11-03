@@ -1464,4 +1464,247 @@ String toString() {
 
 
 
+RelayControlMessage _$RelayControlMessageFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'phone_connected':
+          return PhoneConnectedMessage.fromJson(
+            json
+          );
+                case 'phone_disconnected':
+          return PhoneDisconnectedMessage.fromJson(
+            json
+          );
+        
+          default:
+            return UnknownRelayControlMessage.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$RelayControlMessage {
+
+
+
+  /// Serializes this RelayControlMessage to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayControlMessage);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'RelayControlMessage()';
+}
+
+
+}
+
+/// @nodoc
+class $RelayControlMessageCopyWith<$Res>  {
+$RelayControlMessageCopyWith(RelayControlMessage _, $Res Function(RelayControlMessage) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PhoneConnectedMessage implements RelayControlMessage {
+  const PhoneConnectedMessage({required this.connId,  String? $type}): $type = $type ?? 'phone_connected';
+  factory PhoneConnectedMessage.fromJson(Map<String, dynamic> json) => _$PhoneConnectedMessageFromJson(json);
+
+ final  int connId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayControlMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PhoneConnectedMessageCopyWith<PhoneConnectedMessage> get copyWith => _$PhoneConnectedMessageCopyWithImpl<PhoneConnectedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PhoneConnectedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PhoneConnectedMessage&&(identical(other.connId, connId) || other.connId == connId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,connId);
+}
+
+@override
+String toString() {
+    return 'RelayControlMessage.phoneConnected(connId: $connId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PhoneConnectedMessageCopyWith<$Res> implements $RelayControlMessageCopyWith<$Res> {
+  factory $PhoneConnectedMessageCopyWith(PhoneConnectedMessage value, $Res Function(PhoneConnectedMessage) _then) = _$PhoneConnectedMessageCopyWithImpl;
+@useResult
+$Res call({
+ int connId
+});
+
+
+
+
+}
+/// @nodoc
+class _$PhoneConnectedMessageCopyWithImpl<$Res>
+    implements $PhoneConnectedMessageCopyWith<$Res> {
+  _$PhoneConnectedMessageCopyWithImpl(this._self, this._then);
+
+  final PhoneConnectedMessage _self;
+  final $Res Function(PhoneConnectedMessage) _then;
+
+/// Create a copy of RelayControlMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? connId = null,}) {
+  return _then(PhoneConnectedMessage(
+connId: null == connId ? _self.connId : connId // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class PhoneDisconnectedMessage implements RelayControlMessage {
+  const PhoneDisconnectedMessage({required this.connId,  String? $type}): $type = $type ?? 'phone_disconnected';
+  factory PhoneDisconnectedMessage.fromJson(Map<String, dynamic> json) => _$PhoneDisconnectedMessageFromJson(json);
+
+ final  int connId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayControlMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PhoneDisconnectedMessageCopyWith<PhoneDisconnectedMessage> get copyWith => _$PhoneDisconnectedMessageCopyWithImpl<PhoneDisconnectedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PhoneDisconnectedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PhoneDisconnectedMessage&&(identical(other.connId, connId) || other.connId == connId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,connId);
+}
+
+@override
+String toString() {
+    return 'RelayControlMessage.phoneDisconnected(connId: $connId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PhoneDisconnectedMessageCopyWith<$Res> implements $RelayControlMessageCopyWith<$Res> {
+  factory $PhoneDisconnectedMessageCopyWith(PhoneDisconnectedMessage value, $Res Function(PhoneDisconnectedMessage) _then) = _$PhoneDisconnectedMessageCopyWithImpl;
+@useResult
+$Res call({
+ int connId
+});
+
+
+
+
+}
+/// @nodoc
+class _$PhoneDisconnectedMessageCopyWithImpl<$Res>
+    implements $PhoneDisconnectedMessageCopyWith<$Res> {
+  _$PhoneDisconnectedMessageCopyWithImpl(this._self, this._then);
+
+  final PhoneDisconnectedMessage _self;
+  final $Res Function(PhoneDisconnectedMessage) _then;
+
+/// Create a copy of RelayControlMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? connId = null,}) {
+  return _then(PhoneDisconnectedMessage(
+connId: null == connId ? _self.connId : connId // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class UnknownRelayControlMessage implements RelayControlMessage {
+  const UnknownRelayControlMessage({ String? $type}): $type = $type ?? 'unknown';
+  factory UnknownRelayControlMessage.fromJson(Map<String, dynamic> json) => _$UnknownRelayControlMessageFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$UnknownRelayControlMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UnknownRelayControlMessage);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'RelayControlMessage.unknown()';
+}
+
+
+}
+
+
+
+
 // dart format on

@@ -233,8 +233,7 @@ class RelayClient({
       throw RangeError.range(connID, 0, 0xFFFF, "connID");
     }
 
-    final current = _connection;
-    if (!identical(current, connection)) return RelaySendOutcome.stale;
+    if (!identical(_connection, connection)) return RelaySendOutcome.stale;
 
     final framed = Uint8List(2 + payload.length);
     final byteData = ByteData.sublistView(framed);
@@ -242,7 +241,7 @@ class RelayClient({
     framed.setRange(2, framed.length, payload);
 
     try {
-      current!._channel.sink.add(framed);
+      connection._channel.sink.add(framed);
     } on Object {
       // This call claims the exact handle before returning its close future.
       // An obsolete send can therefore never close a successor connection.
@@ -273,12 +272,11 @@ class RelayClient({
   ///
   /// A stale handle is a typed no-op and can never close the current socket.
   Future<RelayCloseOutcome> closeIfCurrent({required RelayConnection connection}) {
-    final current = _connection;
-    if (!identical(current, connection)) {
+    if (!identical(_connection, connection)) {
       return Future<RelayCloseOutcome>.value(RelayCloseOutcome.stale);
     }
     _connection = null;
-    return _closeClaimedConnection(connection: current!);
+    return _closeClaimedConnection(connection: connection);
   }
 
   Future<RelayCloseOutcome> _closeClaimedConnection({required RelayConnection connection}) async {

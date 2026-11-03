@@ -1368,8 +1368,8 @@ final class _PiMetadataLineScanner() {
     final result = switch ((_classification, _oversized)) {
       (_, true) => const _PiScannedLineOversizedMetadata(),
       (_PiLineClassification.metadata, false) => _PiScannedLineMetadata(
-        bytes: List<int>.unmodifiable(_metadataBytes),
-      ),
+          bytes: List<int>.unmodifiable(_metadataBytes),
+        ),
       (_PiLineClassification.nonMetadata, false) => const _PiScannedLineNonMetadata(),
       (_PiLineClassification.pending || _PiLineClassification.ignored, false) => const _PiScannedLineIgnored(),
     };

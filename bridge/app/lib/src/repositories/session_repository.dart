@@ -344,7 +344,11 @@ class SessionRepository({
             updatedAt: updatedAt,
             projectionUpdatedAt: projectionUpdatedAt,
           );
-          return (await _sessionDao.getSession(sessionId: sessionId))!;
+          final committed = await _sessionDao.getSession(sessionId: sessionId);
+          if (committed == null) {
+            throw StateError("session $sessionId is missing right after it was inserted in this transaction");
+          }
+          return committed;
         });
         return (row: committedRow, backendSessionId: created.id, generation: generation);
       },

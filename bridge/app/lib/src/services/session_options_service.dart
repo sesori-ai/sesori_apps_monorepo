@@ -446,8 +446,8 @@ class SessionOptionsService({
     if (!await _isCurrentInvalidationEpoch(key: resolved.key, expected: invalidationEpoch)) {
       return _invalidatedRefreshOutcome(automatic: automatic);
     }
-    if (!_canReplace(observation: capture, retained: retained)) {
-      return SessionOptionsAvailable(response: retained!.response);
+    if (_entryKeptOver(observation: capture, retained: retained) case final kept?) {
+      return SessionOptionsAvailable(response: kept.response);
     }
 
     return await _commitObservation(
@@ -492,8 +492,8 @@ class SessionOptionsService({
     if (!await _isCurrentInvalidationEpoch(key: resolved.key, expected: invalidationEpoch)) {
       return _invalidatedRefreshOutcome(automatic: automatic);
     }
-    if (!_canReplace(observation: observation, retained: newest)) {
-      return SessionOptionsAvailable(response: newest!.response);
+    if (_entryKeptOver(observation: observation, retained: newest) case final kept?) {
+      return SessionOptionsAvailable(response: kept.response);
     }
 
     final secondCommit = await _tryCommit(
@@ -599,11 +599,14 @@ class SessionOptionsService({
     );
   }
 
-  bool _canReplace({
+  /// Returns the retained entry when [observation] must not replace it: a
+  /// partial observation never overwrites an existing entry.
+  SessionOptionsCacheEntry? _entryKeptOver({
     required SessionOptionsCaptureObserved observation,
     required SessionOptionsCacheEntry? retained,
   }) {
-    return observation.completeness == PluginSessionOptionsCompleteness.complete || retained == null;
+    if (observation.completeness == PluginSessionOptionsCompleteness.complete) return null;
+    return retained;
   }
 
   SessionOptionsOutcome _refreshFailure({

@@ -83,7 +83,7 @@ class _Process() implements AcpProcessHandle {
         expect(params["clientInfo"], {
           "name": "zed",
           "title": "Sesori Bridge (Zed compatibility)",
-          "version": "0.0.0",
+          "version": bridgeVersion,
         });
         if (auth == _Auth.failure) {
           emit(

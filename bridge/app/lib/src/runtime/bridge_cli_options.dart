@@ -36,13 +36,12 @@ class const BridgeCliOptions({
     required String defaultAuthUrl,
     required String defaultDataDirectory,
   }) {
-    final authBackendFlag = results["auth-backend"] as String;
     final authBackendUrl = resolveAuthBackendUrl(
-      authBackendFlag: authBackendFlag,
+      authBackendFlag: results["auth-backend"] as String?,
       environment: environment,
       defaultAuthUrl: defaultAuthUrl,
     );
-    final debugPortRaw = results["debug-port"] as String;
+    final debugPortRaw = results["debug-port"] as String?;
     final dataDirectory = resolveDataDirectory(
       dataDirectoryFlag: results["data-dir"] as String?,
       defaultDataDirectory: defaultDataDirectory,
@@ -60,7 +59,7 @@ class const BridgeCliOptions({
       relayUrl: results["relay"] as String,
       authBackendUrl: authBackendUrl,
       dataDirectory: dataDirectory,
-      debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
+      debugPort: debugPortRaw == null ? null : int.tryParse(debugPortRaw),
       logLevelName: results["log-level"] as String,
       controlUrl: controlUrl,
     );
@@ -121,13 +120,13 @@ class const BridgeCliOptions({
   /// Resolves the auth backend URL from the CLI flag, the
   /// `AUTH_BACKEND_URL` environment variable, or the default, in that order.
   static String resolveAuthBackendUrl({
-    required String authBackendFlag,
+    required String? authBackendFlag,
     required Map<String, String> environment,
     required String defaultAuthUrl,
   }) {
     final String rawUrl;
-    if (authBackendFlag.isNotEmpty) {
-      rawUrl = authBackendFlag;
+    if (authBackendFlag case final flag? when flag.isNotEmpty) {
+      rawUrl = flag;
     } else if (environment["AUTH_BACKEND_URL"] case final envValue? when envValue.isNotEmpty) {
       rawUrl = envValue;
     } else {

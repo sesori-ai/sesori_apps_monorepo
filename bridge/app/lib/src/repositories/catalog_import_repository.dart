@@ -517,8 +517,15 @@ class CatalogImportRepository({
         );
         final publicationProjects = <String, _ObservedProject>{};
         if (observation.projectOwnership == PluginProjectOwnership.bridgeDerived) {
-          final launchDirectory = derivedLaunchDirectory!;
-          _mergeObservedProject(publicationProjects, observedProjects[_publishedProjectPath(path: launchDirectory)]!);
+          // Bridge-derived enumeration always records its launch directory and observes its project.
+          final launchProject = switch (derivedLaunchDirectory) {
+            final launchDirectory? => observedProjects[_publishedProjectPath(path: launchDirectory)],
+            null => null,
+          };
+          if (launchProject == null) {
+            throw StateError("bridge-derived catalog import for $pluginId observed no launch directory project");
+          }
+          _mergeObservedProject(publicationProjects, launchProject);
           for (final observation in orderedSessions) {
             if (observation.session.parentID != null) continue;
             final existing = currentBindings[observation.session.id];
@@ -847,10 +854,16 @@ class CatalogImportRepository({
     }
     existing.displayName ??= observation.displayName;
     if (observation.createdAt case final createdAt?) {
-      existing.createdAt = existing.createdAt == null ? createdAt : min(existing.createdAt!, createdAt);
+      existing.createdAt = switch (existing.createdAt) {
+        final existingCreatedAt? => min(existingCreatedAt, createdAt),
+        null => createdAt,
+      };
     }
     if (observation.updatedAt case final updatedAt?) {
-      existing.updatedAt = existing.updatedAt == null ? updatedAt : max(existing.updatedAt!, updatedAt);
+      existing.updatedAt = switch (existing.updatedAt) {
+        final existingUpdatedAt? => max(existingUpdatedAt, updatedAt),
+        null => updatedAt,
+      };
     }
   }
 

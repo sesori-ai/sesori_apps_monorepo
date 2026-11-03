@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/codex_stdio_app_server_client.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -26,11 +27,7 @@ void main() {
     CodexStdioAppServerClient appServerClient,
     _FakeProcess process,
   ) async {
-    final connect = appServerClient.connect(
-      clientName: "sesori-bridge",
-      clientVersion: "1.2.3",
-      timeout: const Duration(seconds: 1),
-    );
+    final connect = appServerClient.connect(timeout: const Duration(seconds: 1));
     await process.waitForFrames(1);
     return (future: connect);
   }
@@ -65,7 +62,7 @@ void main() {
           "clientInfo": {
             "name": "sesori-bridge",
             "title": "Sesori Bridge",
-            "version": "1.2.3",
+            "version": bridgeVersion,
           },
         },
       });

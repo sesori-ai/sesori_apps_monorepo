@@ -12,7 +12,6 @@ dependencies:
   meta: ^1.19.0
 
 dev_dependencies:
-  lints: ^6.1.0
   freezed: ^4.0.3
   json_serializable: ^6.15.2
   build_runner: any

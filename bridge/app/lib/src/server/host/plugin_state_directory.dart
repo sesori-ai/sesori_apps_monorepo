@@ -8,7 +8,7 @@ import "../../updater/models/managed_runtime_paths.dart";
 ///
 /// Isolated plugins live under `<installRoot>/plugins/<id>/`. Plugins that
 /// declare [PluginStateStorage.legacySharedRuntime] keep the shipped
-/// `<cacheDirectory>/runtime` path.
+/// `<installRoot>/runtime` path.
 String pluginStateDirectoryPath({
   required ManagedRuntimePaths paths,
   required String pluginId,
@@ -22,6 +22,6 @@ String pluginStateDirectoryPath({
     case PluginStateStorage.isolated:
       return p.join(paths.installRoot, "plugins", pluginId);
     case PluginStateStorage.legacySharedRuntime:
-      return p.join(paths.cacheDirectory, "runtime");
+      return p.join(paths.installRoot, "runtime");
   }
 }

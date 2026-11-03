@@ -47,8 +47,8 @@ class const GitRemoteIdentityParser() {
     }
 
     final scpMatch = _scpLikeRemote.firstMatch(url);
-    if (scpMatch != null) {
-      return _identity(host: scpMatch.group(1)!.toLowerCase(), path: scpMatch.group(2)!);
+    if ((scpMatch?.group(1), scpMatch?.group(2)) case (final String host, final String path)) {
+      return _identity(host: host.toLowerCase(), path: path);
     }
 
     return null;

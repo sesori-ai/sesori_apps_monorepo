@@ -1,5 +1,6 @@
-import 'dart:io' show Platform;
+import 'dart:io' show FileSystemException, OSError, Platform;
 
+import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/foundation/update_policy.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
@@ -225,19 +226,29 @@ void main() {
     });
   });
 
-  group('getCacheDirectory', () {
-    test('returns correct path format on Unix', () {
-      final dir = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).cacheDirectory;
-      if (!Platform.isWindows) {
-        expect(dir, endsWith('/.local/share/sesori'));
+  group('isUpdatePermissionDenied', () {
+    FileSystemException failure(int code) => FileSystemException('write failed', '/install', OSError('failed', code));
+
+    test('treats permission, access and read-only filesystem codes as denials', () {
+      for (final code in const [1, 5, 13, 30]) {
+        expect(isUpdatePermissionDeniedOn(error: failure(code), isWindows: false), isTrue, reason: 'errno $code');
+      }
+      for (final code in const [5, 19]) {
+        expect(isUpdatePermissionDeniedOn(error: failure(code), isWindows: true), isTrue, reason: 'Windows $code');
       }
     });
 
-    test('returns correct path format on Windows', () {
-      final dir = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).cacheDirectory;
-      if (Platform.isWindows) {
-        expect(dir, endsWith(r'\sesori'));
-      }
+    test("does not treat a missing file or the other platform's code as a denial", () {
+      expect(isUpdatePermissionDeniedOn(error: failure(2), isWindows: false), isFalse);
+      // 30 is ERROR_READ_FAULT on Windows, and 19 is ENODEV on POSIX.
+      expect(isUpdatePermissionDeniedOn(error: failure(30), isWindows: true), isFalse);
+      expect(isUpdatePermissionDeniedOn(error: failure(19), isWindows: false), isFalse);
     });
+  });
+
+  test('install root is the canonical Sesori data directory', () {
+    // Managed runtimes and plugin state live here; a different path would orphan them.
+    final paths = const ManagedRuntimePathService().currentPaths(environment: Platform.environment);
+    expect(p.equals(paths.installRoot, sesoriDataDirectory()), isTrue, reason: paths.installRoot);
   });
 }

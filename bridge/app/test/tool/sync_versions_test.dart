@@ -29,7 +29,8 @@ class _FixtureApp({required final String rootPath}) {
   String get clientPubspecPath => p.join(rootPath, 'client', 'app', 'pubspec.yaml');
   String get desktopPubspecPath => p.join(rootPath, 'client', 'desktop', 'pubspec.yaml');
   String get bridgePubspecPath => p.join(rootPath, 'bridge', 'app', 'pubspec.yaml');
-  String get bridgeVersionPath => p.join(rootPath, 'bridge', 'app', 'lib', 'src', 'version.dart');
+  String get bridgeVersionPath =>
+      p.join(rootPath, 'bridge', 'sesori_bridge_foundation', 'lib', 'src', 'bridge_version.dart');
   String get wrapperPackagePath => p.join(rootPath, 'bridge', 'app', 'npm', 'sesori-bridge', 'package.json');
 
   List<String> get packagePaths =>
@@ -43,7 +44,7 @@ Future<_FixtureApp> _createFixtureApp({required String clientVersion, String? br
 
   for (final relativeDir in <List<String>>[
     ['tool'],
-    ['bridge', 'app', 'lib', 'src'],
+    ['bridge', 'sesori_bridge_foundation', 'lib', 'src'],
     ['bridge', 'app', 'npm', 'sesori-bridge'],
     ['bridge', 'app', 'npm', 'sesori-bridge-darwin-arm64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-darwin-x64'],
@@ -76,8 +77,8 @@ publish_to: none
 resolution: workspace
 ''');
 
-  await File(p.join(rootPath, 'bridge', 'app', 'lib', 'src', 'version.dart')).writeAsString(
-    "const String appVersion = '$resolvedBridgeVersion';\n",
+  await File(p.join(rootPath, 'bridge', 'sesori_bridge_foundation', 'lib', 'src', 'bridge_version.dart')).writeAsString(
+    "const String bridgeVersion = '$resolvedBridgeVersion';\n",
   );
 
   await _writeJsonFile(
@@ -199,7 +200,7 @@ version: 1.0.6
 publish_to: none
 resolution: workspace
 ''');
-        await File(currentFixture.bridgeVersionPath).writeAsString("const String appVersion = '1.0.6';\n");
+        await File(currentFixture.bridgeVersionPath).writeAsString("const String bridgeVersion = '1.0.6';\n");
         await File(currentFixture.clientPubspecPath).writeAsString('''
 name: sesori_mobile
 version: 1.0.6+8
@@ -249,7 +250,7 @@ environment:
         final wrapperPackage = await _readJson(path: currentFixture.wrapperPackagePath);
 
         expect(bridgePubspec, contains('version: ${testCase.bridgeVersion}'));
-        expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
+        expect(bridgeVersion, equals("const String bridgeVersion = '${testCase.bridgeVersion}';\n"));
         expect(clientPubspec, contains('version: ${testCase.clientVersion}'));
         expect(
           await File(currentFixture.desktopPubspecPath).readAsString(),

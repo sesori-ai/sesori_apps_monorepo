@@ -76,15 +76,13 @@ class DebugServer({
   }
 
   Future<void> _drain() async {
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    (Object, StackTrace)? firstFailure;
 
     Future<void> attempt(FutureOr<void> Function() action) async {
       try {
         await action();
       } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
+        firstFailure ??= (error, stackTrace);
       }
     }
 
@@ -102,8 +100,8 @@ class DebugServer({
       }),
     ]);
     await attempt(_routedRequestDispatcher.drain);
-    if (firstError != null) {
-      Error.throwWithStackTrace(firstError!, firstStackTrace!);
+    if (firstFailure case (final error, final stackTrace)) {
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -169,10 +167,10 @@ class DebugServer({
             request.response.headers.set(k, v);
           }
         });
-        if (message.body != null) {
+        if (message.body case final body?) {
           // Write as UTF-8 bytes — dart:io defaults to Latin1 which
           // cannot represent the full range of characters in JSON payloads.
-          request.response.add(utf8.encode(message.body!));
+          request.response.add(utf8.encode(body));
         }
       }
     } on Object catch (error, stackTrace) {
@@ -250,14 +248,14 @@ class DebugServer({
       );
 
       await disconnected.future;
-    } catch (e) {
-      Log.d("SSE handler: error during client lifecycle (ignored): $e");
+    } catch (error, stackTrace) {
+      Log.w("SSE handler: error during client lifecycle (ignored)", error, stackTrace);
     } finally {
       _removeSseClient(response);
       try {
         await response.close();
-      } catch (e) {
-        Log.d("SSE cleanup: response close failed (ignored): $e");
+      } catch (error, stackTrace) {
+        Log.w("SSE cleanup: response close failed (ignored)", error, stackTrace);
       }
     }
   }
@@ -268,13 +266,13 @@ class DebugServer({
       try {
         client.add(utf8.encode("data: $eventData\n\n"));
         await client.flush();
-      } catch (e) {
-        Log.d("fan-out: client write/flush failed, removing: $e");
+      } catch (error, stackTrace) {
+        Log.w("fan-out: client write/flush failed, removing", error, stackTrace);
         _removeSseClient(client);
         try {
           await client.close();
-        } catch (e) {
-          Log.d("fan-out cleanup: client close failed (ignored): $e");
+        } catch (error, stackTrace) {
+          Log.w("fan-out cleanup: client close failed (ignored)", error, stackTrace);
         }
       }
     }

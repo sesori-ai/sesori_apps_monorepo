@@ -617,6 +617,8 @@ void main() {
       final shutdownCoordinator =
           BridgeShutdownCoordinator(
               startAbortSignal: StartAbortSignal.never,
+              backstopExitCode: () => 0,
+              emergencyDisposal: () async {},
               exitProcess: (_) {},
             )
             ..addPhase(

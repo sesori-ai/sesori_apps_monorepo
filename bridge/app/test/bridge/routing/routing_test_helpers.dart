@@ -54,6 +54,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       filesystemApi: FakeFilesystemApi(),
     ),
     viewTracker: SessionViewTracker(),
+    now: () => DateTime.now().millisecondsSinceEpoch,
   );
 }
 

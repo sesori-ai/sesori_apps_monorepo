@@ -119,3 +119,24 @@ sealed class RelayNoticeMessage with _$RelayNoticeMessage {
 
   factory fromJson(Map<String, dynamic> json) => _$RelayNoticeMessageFromJson(json);
 }
+
+/// Plaintext control frames the relay itself sends to a bridge as text frames.
+/// Unlike [RelayMessage] they are not end-to-end encrypted. [connId] is the
+/// relay's 16-bit id for the phone connection, the same id that prefixes that
+/// phone's binary frames.
+@Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake, fallbackUnion: "unknown")
+sealed class RelayControlMessage with _$RelayControlMessage {
+  /// A phone joined this bridge, or moved to it from another bridge.
+  @FreezedUnionValue("phone_connected")
+  const factory phoneConnected({required int connId}) = PhoneConnectedMessage;
+
+  /// A phone left this bridge, or moved to another bridge.
+  @FreezedUnionValue("phone_disconnected")
+  const factory phoneDisconnected({required int connId}) = PhoneDisconnectedMessage;
+
+  /// A control type this bridge does not know yet. The relay deploys on its
+  /// own schedule, so a newer relay can send types an older bridge ignores.
+  const factory unknown() = UnknownRelayControlMessage;
+
+  factory fromJson(Map<String, dynamic> json) => _$RelayControlMessageFromJson(json);
+}
