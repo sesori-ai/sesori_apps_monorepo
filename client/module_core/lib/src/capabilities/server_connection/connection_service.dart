@@ -379,6 +379,7 @@ class ConnectionService(
             closeCode: relayClient.lastCloseCode,
           );
         }
+        _logRelayConnected(detail: "bridge offline");
         _status.add(ConnectionStatus.bridgeOffline(config: committedConfig, health: bridgeOfflineHealth));
         return (response: ApiResponse.success(bridgeOfflineHealth), closeCode: null);
       }
@@ -465,10 +466,7 @@ class ConnectionService(
           closeCode: relayClient.lastCloseCode,
         );
       }
-      final droppedAt = _droppedAt;
-      _droppedAt = null;
-      final downFor = droppedAt == null ? "" : ", down=${_clock().difference(droppedAt).inMilliseconds}ms";
-      logi("Relay connected (resumed=${relayClient.didResume}$downFor)");
+      _logRelayConnected(detail: "resumed=${relayClient.didResume}");
       _status.add(ConnectionStatus.connected(config: committedConfig, health: health));
       return (response: ApiResponse.success(health), closeCode: null);
     } catch (error, stackTrace) {
@@ -853,6 +851,16 @@ class ConnectionService(
     // Resume is user-visible and the prior socket is already dead, so attempt
     // the first reconnect immediately; backoff still applies to later retries.
     unawaited(_reconnectRelayWithRefresh(config, immediate: true));
+  }
+
+  /// Logs a committed relay connect, consuming the pending drop time so the
+  /// reported downtime always covers the relay outage that just ended.
+  /// [detail] describes the connect, e.g. `resumed=true` or `bridge offline`.
+  void _logRelayConnected({required String detail}) {
+    final droppedAt = _droppedAt;
+    _droppedAt = null;
+    final downFor = droppedAt == null ? "" : ", down=${_clock().difference(droppedAt).inMilliseconds}ms";
+    logi("Relay connected ($detail$downFor)");
   }
 
   void _onRelayConnectionDrop() {
