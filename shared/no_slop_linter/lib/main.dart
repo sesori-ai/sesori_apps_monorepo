@@ -1,26 +1,24 @@
 // The entrypoint for the no_slop_linter analysis server plugin.
 //
-// This package provides analyzer plugin rules including:
-// - `avoid_bang_operator`: Prevents usage of the null assertion operator (`!`)
-// - `avoid_implicit_tostring`: Prevents implicit toString() in string interpolation
-// - `avoid_dynamic_return_type`: Prevents implicit/dynamic return types on functions
-// - `avoid_legacy_flutter_design_imports`: Forbids SDK Material/Cupertino imports
+// Every rule below is registered as a warning rule, so it is enabled by
+// default wherever the plugin is loaded:
+// - `avoid_as_cast`: Forbids force casts, use `is` checks or patterns
+// - `avoid_bang_operator`: Forbids the null assertion operator (`!`)
+// - `avoid_dynamic_return_type`: Forbids implicit or `dynamic` return types
 // - `avoid_flutter_spinners`: Forbids direct Flutter spinner widgets
+// - `avoid_implicit_tostring`: Forbids implicit toString() in string interpolation
+// - `avoid_legacy_flutter_design_imports`: Forbids SDK Material/Cupertino imports
 // - `avoid_material_icons`: Forbids Material Icons glyphs, use Tabler
-// - `prefer_specific_type`: Forbids usage of `dynamic` type (except fromJson/toJson)
-// - `avoid_hardcoded_colors`: Forbids Color() and Colors.xxx, use theme colorScheme
-// - `avoid_hardcoded_text_styles`: Forbids TextStyle(), use theme textTheme
-// - `avoid_navigator_of`: Forbids Navigator.of(), use AutoRoute
+// - `avoid_mutable_class_fields`: Forbids non-final public instance fields
+// - `avoid_navigator_of`: Forbids direct Navigator usage, use GoRouter
+// - `avoid_raw_go_router`: Forbids raw GoRouter navigation, use the typed extensions
 // - `avoid_raw_modal_presenters`: Forbids showDialog/showModalBottomSheet/etc., use showPregoModal
-// - `avoid_as_cast`: Forbids force casts, use `is` or `as Type?`
-// - `avoid_mutable_class_fields`: Forbids non-final fields, use final
 // - `avoid_string_literals_in_widgets`: Forbids hardcoded strings in Text()
-// - `avoid_dartz_tuple`: Forbids Tuple from dartz, use Dart 3 records
 // - `prefer_edge_insets_directional`: Enforces EdgeInsetsDirectional for RTL
-// - `prefer_text_align_directional`: Enforces TextAlign.start/end for RTL
-// - `prefer_size_const`: Enforces SizeConst for spacing values
-// - `prefer_required_named_parameters`: Enforces required named params for multi-arg functions
 // - `prefer_exhaustive_switch`: Forbids default case in switch statements
+// - `prefer_required_named_parameters`: Enforces required named params for multi-arg functions
+// - `prefer_specific_type`: Forbids `Object` and `dynamic` (except fromJson/toJson maps and error values)
+// - `prefer_text_align_directional`: Enforces TextAlign.start/end for RTL
 
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
@@ -30,18 +28,14 @@ import 'package:analysis_server_plugin/src/plugin_server.dart' show PluginServer
 import 'package:analysis_server_plugin/src/registry.dart' show PluginRegistryImpl;
 
 import 'src/fixes/add_return_type_fix.dart';
-import 'src/fixes/dartz_tuple_to_record_fix.dart';
 import 'src/fixes/exhaustive_switch_fix.dart';
 import 'src/fixes/required_named_parameters_fix.dart';
 import 'src/rules/avoid_as_cast_rule.dart';
 import 'src/rules/avoid_bang_operator_rule.dart';
-import 'src/rules/avoid_dartz_tuple_rule.dart';
 import 'src/rules/avoid_dynamic_return_type_rule.dart';
 import 'src/rules/avoid_flutter_spinners_rule.dart';
 import 'src/rules/avoid_material_icons_rule.dart';
 import 'src/rules/prefer_specific_type_rule.dart';
-import 'src/rules/avoid_hardcoded_colors_rule.dart';
-import 'src/rules/avoid_hardcoded_text_styles_rule.dart';
 import 'src/rules/avoid_implicit_tostring_rule.dart';
 import 'src/rules/avoid_legacy_flutter_design_imports_rule.dart';
 import 'src/rules/avoid_mutable_class_fields_rule.dart';
@@ -66,7 +60,6 @@ class _NoSlopLinterPlugin extends Plugin {
     // Warning rules (enabled by default)
     registry.registerWarningRule(AvoidAsCastRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidDartzTupleRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidFlutterSpinnersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
@@ -81,21 +74,12 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferExhaustiveSwitchRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferRequiredNamedParametersRule(ignoreTestFiles: true));
-    // registry.registerWarningRule(PreferSizeConstRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferTextAlignDirectionalRule(ignoreTestFiles: true));
-
-    // Lint rules (disabled by default, must be enabled in analysis_options.yaml)
-    registry.registerLintRule(AvoidHardcodedColorsRule(ignoreTestFiles: true));
-    registry.registerLintRule(AvoidHardcodedTextStylesRule(ignoreTestFiles: true));
 
     // Fixes
     registry.registerFixForRule(
       AvoidDynamicReturnTypeRule.code,
       AddReturnTypeFix.new,
-    );
-    registry.registerFixForRule(
-      AvoidDartzTupleRule.code,
-      DartzTupleToRecordFix.new,
     );
     registry.registerFixForRule(
       PreferExhaustiveSwitchRule.code,

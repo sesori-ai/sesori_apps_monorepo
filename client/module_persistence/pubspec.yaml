@@ -21,6 +21,4 @@ dev_dependencies:
   drift_dev: 2.35.2
   injectable_generator: ^3.1.3
   mocktail: ^1.0.5
-  no_slop_linter:
-    path: ../../shared/no_slop_linter
   test: ^1.31.1
