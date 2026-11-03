@@ -13,12 +13,12 @@ class PushNotificationClient({
 }) {
   Future<void> sendNotification({required SendNotificationPayload payload}) async {
     final token = await _tokenRefreshManager.getAccessToken();
-    final response = await _sendPost(payload, token);
+    final response = await _sendPost(payload: payload, token: token);
 
     // 401: force refresh and retry once
     if (response.statusCode == 401) {
       final refreshedToken = await _tokenRefreshManager.getAccessToken(forceRefresh: true);
-      final retryResponse = await _sendPost(payload, refreshedToken);
+      final retryResponse = await _sendPost(payload: payload, token: refreshedToken);
       if (retryResponse.statusCode < 200 || retryResponse.statusCode >= 300) {
         throw PushSendException(statusCode: retryResponse.statusCode, isRetry: true);
       }
@@ -30,7 +30,7 @@ class PushNotificationClient({
     }
   }
 
-  Future<http.Response> _sendPost(SendNotificationPayload payload, String token) {
+  Future<http.Response> _sendPost({required SendNotificationPayload payload, required String token}) {
     return _client.post(
       Uri.parse("$authBackendURL/notifications/send"),
       headers: {

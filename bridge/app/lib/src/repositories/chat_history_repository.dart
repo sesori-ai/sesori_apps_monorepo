@@ -327,7 +327,16 @@ class ChatHistoryRepository({
           attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
         ),
       ),
-      _ => part,
+      MessagePartText() ||
+      MessagePartReasoning() ||
+      MessagePartSubtask() ||
+      MessagePartStepStart() ||
+      MessagePartStepFinish() ||
+      MessagePartSnapshot() ||
+      MessagePartPatch() ||
+      MessagePartAgent() ||
+      MessagePartRetry() ||
+      MessagePartCompaction() => part,
     };
   }
 
@@ -336,7 +345,16 @@ class ChatHistoryRepository({
     MessagePartTool(:final state) => state.attachments.any(
       (attachment) => attachment is MessageAttachmentInlineImage,
     ),
-    _ => false,
+    MessagePartText() ||
+    MessagePartReasoning() ||
+    MessagePartSubtask() ||
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() => false,
   };
 
   int _storedImageBytes({required String partJson}) {
@@ -410,7 +428,7 @@ class ChatHistoryRepository({
   }) async {
     // Every ToolStatus wire value equals its enum name.
     final statusMarkers = [for (final status in statuses) '"status":"${status.name}"'];
-    final rows = await _chatHistoryDao.getParts(sessionId: sessionId);
+    final rows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: null);
     final rewritten = <StoredPartRef>[];
     for (final row in rows) {
       if (!statusMarkers.any(row.partJson.contains)) continue;
@@ -513,9 +531,9 @@ class ChatHistoryRepository({
     required int syncedAt,
   }) async {
     final importedIds = {for (final message in messages) message.info.id};
-    final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
+    final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId, limit: null, before: null);
     final storedIds = {for (final row in storedRows) row.messageId};
-    final storedPartRows = await _chatHistoryDao.getParts(sessionId: sessionId);
+    final storedPartRows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: null);
     final storedPartJsonByMessage = <String, List<String>>{};
     for (final row in storedPartRows) {
       storedPartJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
@@ -744,8 +762,8 @@ class ChatHistoryRepository({
     required int archivedAt,
     required ArchivedSessionCompleteness completeness,
   }) async {
-    final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id);
-    final partRows = await _chatHistoryDao.getParts(sessionId: session.id);
+    final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id, limit: null, before: null);
+    final partRows = await _chatHistoryDao.getParts(sessionId: session.id, messageIds: null);
     final partsByMessage = <String, List<Map<String, dynamic>>>{};
     for (final row in partRows) {
       // Stored (spilled) form, kept verbatim: the audit file references the
@@ -1031,10 +1049,12 @@ class ChatHistoryRepository({
 
   /// A stored tool part decodes directly: output and error never hold
   /// attachments, so a `stored_file` attachment reading as unknown is unused.
-  ToolOutputLookup _toolOutputOf({required Map<String, dynamic> json}) => switch (MessagePart.fromJson(json)) {
-    MessagePartTool(state: ToolStateFull(:final output, :final error)) => ToolOutputFound(output: output, error: error),
-    _ => const ToolOutputMissing(),
-  };
+  ToolOutputLookup _toolOutputOf({required Map<String, dynamic> json}) {
+    if (MessagePart.fromJson(json) case MessagePartTool(state: ToolStateFull(:final output, :final error))) {
+      return ToolOutputFound(output: output, error: error);
+    }
+    return const ToolOutputMissing();
+  }
 
   Future<bool> hasArchive({required String sessionId}) => _archivedSessionStorage.exists(sessionId: sessionId);
 

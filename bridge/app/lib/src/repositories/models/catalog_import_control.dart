@@ -4,8 +4,10 @@ class CatalogImportControl({
   required var bool rescanRequested,
   required var bool hydrationMarkerRequested,
 }) implements PluginCatalogCancellationSignal {
-  bool cancellationRequested = false;
+  bool _cancelled = false;
 
   @override
-  bool get isCancelled => cancellationRequested;
+  bool get isCancelled => _cancelled;
+
+  void cancel() => _cancelled = true;
 }

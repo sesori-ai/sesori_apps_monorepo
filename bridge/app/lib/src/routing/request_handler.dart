@@ -140,7 +140,7 @@ abstract class const RequestHandlerBase({
   bool matches({required HttpMethod requestMethod, required Uri target}) {
     if (!method.matches(requestMethod: requestMethod)) return false;
     if (path == "*") return true;
-    return _matchPathParams(target.path, path) != null;
+    return _matchPathParams(requestPath: target.path, pattern: path) != null;
   }
 
   /// Extracts route values from the target parsed once by [RequestRouter].
@@ -150,7 +150,9 @@ abstract class const RequestHandlerBase({
   })
   extractTargetParams({required Uri target}) {
     final uri = target;
-    final pathParams = path == "*" ? <String, String>{} : (_matchPathParams(uri.path, path) ?? {});
+    final pathParams = path == "*"
+        ? <String, String>{}
+        : (_matchPathParams(requestPath: uri.path, pattern: path) ?? {});
     final queryParams = Map<String, String>.from(uri.queryParameters);
     return (pathParams: pathParams, queryParams: queryParams);
   }
@@ -258,12 +260,12 @@ abstract class const RequestHandlerBase({
   /// Pattern segments starting with `:` are named placeholders that match any
   /// single path segment and capture its value.
   ///
-  /// Example: `_matchPathParams("/session/abc/message", "/session/:id/message")`
+  /// Example: `_matchPathParams(requestPath: "/session/abc/message", pattern: "/session/:id/message")`
   /// → `{"id": "abc"}`.
-  static Map<String, String>? _matchPathParams(
-    String requestPath,
-    String pattern,
-  ) {
+  static Map<String, String>? _matchPathParams({
+    required String requestPath,
+    required String pattern,
+  }) {
     final patternSegs = pattern.split("/").where((s) => s.isNotEmpty).toList();
     final requestSegs = requestPath.split("/").where((s) => s.isNotEmpty).toList();
 

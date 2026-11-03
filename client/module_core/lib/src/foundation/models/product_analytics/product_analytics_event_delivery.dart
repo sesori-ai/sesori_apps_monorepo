@@ -26,7 +26,6 @@ sealed class ProductAnalyticsEventDeliveryResult with _$ProductAnalyticsEventDel
   /// failure has a [stackTrace].
   const factory transientFailure({
     required String description,
-    // ignore: no_slop_linter/prefer_specific_type, Dart permits arbitrary thrown objects
     required Object? cause,
     required StackTrace? stackTrace,
   }) = ProductAnalyticsEventTransientFailure;

@@ -218,6 +218,7 @@ class const BridgeSettings({
     };
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, copyWith replaces only the fields a caller passes
   BridgeSettings copyWith({
     SleepPreventionMode? sleepPrevention,
     bool? yolo,

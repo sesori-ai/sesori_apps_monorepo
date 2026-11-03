@@ -33,7 +33,41 @@ class SessionOptionsChangedRefreshListener({
             pluginId: source.pluginId,
             generation: source.generation,
           ),
-          _ => null,
+          BridgeSseTerminalHandoff() ||
+          BridgeSseServerConnected() ||
+          BridgeSseServerHeartbeat() ||
+          BridgeSseServerInstanceDisposed() ||
+          BridgeSseGlobalDisposed() ||
+          BridgeSseSessionCreated() ||
+          BridgeSseSessionUpdated() ||
+          BridgeSseSessionQuotaBlocked() ||
+          BridgeSseSessionPromptDefaultsChanged() ||
+          BridgeSseSessionDeleted() ||
+          BridgeSseSessionDiff() ||
+          BridgeSseSessionError() ||
+          BridgeSseSessionCompacted() ||
+          BridgeSsePromptSettled() ||
+          BridgeSseSessionStatus() ||
+          BridgeSseSessionIdle() ||
+          BridgeSseCommandExecuted() ||
+          BridgeSseQueuedPromptsUpdated() ||
+          BridgeSseMessageUpdated() ||
+          BridgeSseMessageRemoved() ||
+          BridgeSseMessagePartUpdated() ||
+          BridgeSseMessagePartDelta() ||
+          BridgeSseMessagePartRemoved() ||
+          BridgeSsePermissionAsked() ||
+          BridgeSsePermissionReplied() ||
+          BridgeSsePermissionUpdated() ||
+          BridgeSseQuestionAsked() ||
+          BridgeSseQuestionReplied() ||
+          BridgeSseQuestionRejected() ||
+          BridgeSseTodoUpdated() ||
+          BridgeSseProjectUpdated() ||
+          BridgeSseVcsBranchUpdated() ||
+          BridgeSseFileEdited() ||
+          BridgeSseInstallationUpdateAvailable() ||
+          BridgeSseTuiToastShow() => null,
         };
         if (refresh == null) return;
         if (!_runtime.isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return;

@@ -84,7 +84,7 @@ class SessionUnseenService({
   /// can be ahead of the candidate (clock rollback, restart, cross-domain
   /// drift), and without the clamp a new activity could write a value <= the
   /// markers and the session would never bold.
-  int _activityTimestamp({required int? userMessageAt, required int? seenAt, int? occurredAt}) {
+  int _activityTimestamp({required int? userMessageAt, required int? seenAt, required int? occurredAt}) {
     final floor = (userMessageAt ?? 0) > (seenAt ?? 0) ? (userMessageAt ?? 0) : (seenAt ?? 0);
     final candidate = occurredAt ?? _nextTimestamp();
     if (candidate > floor) return candidate;
@@ -108,62 +108,65 @@ class SessionUnseenService({
   Future<void> recordActivity({
     required String sessionId,
     required bool isUserMessage,
-    int? occurredAt,
+    required int? occurredAt,
   }) {
     // Capture the viewed state at submission time, not when the (possibly
     // delayed) serialized write executes — otherwise navigating away while
     // events are queued could persist already-viewed activity as unseen.
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
-    return _serialize(sessionId, () async {
-      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) return;
-      // A user message may only count ONCE. Backends re-emit the user message
-      // record whenever server-side bookkeeping attached to it changes (e.g.
-      // OpenCode updates its diff summary mid- and post-response); treating a
-      // re-emission as a fresh interaction would stamp `last_user_message_at`
-      // past the assistant's activity and permanently clear the unseen state.
-      // A re-emission carries the message's ORIGINAL creation time — never
-      // newer than the marker stored when it was first processed (stamped from
-      // that same creation time, see below) — so it is skipped entirely (its
-      // content change is bookkeeping, not unseen-worthy transcript activity).
-      if (isUserMessage && occurredAt != null && (row.userMessageAt ?? 0) >= occurredAt) {
-        return;
-      }
-      // Coalesce repeated assistant activity: once the session is already
-      // unseen and no phone is viewing it, another non-user event changes
-      // nothing observable — skip the redundant write + emit. (A later
-      // mark-read stamps seen at `now`, which is always past the skipped,
-      // older activity timestamp, so correctness is preserved.)
-      if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row: row)) {
-        return;
-      }
-      // A user message with a known creation time advances ONLY the
-      // user-message marker, stamped at that creation time. A user message
-      // proves engagement as of when it was written; it must not rewrite the
-      // activity/seen timeline — otherwise a re-emission that slips past the
-      // guard above (a row whose marker was never stamped, e.g. learned via a
-      // `/sessions` placeholder) would drag `last_activity_at` down onto the
-      // old message and clear genuinely-unseen assistant activity. Whether the
-      // session is seen falls out of the formula: a fresh reply's creation
-      // time exceeds the (same-domain) activity stamp; an old re-emission's
-      // does not.
-      if (isUserMessage && occurredAt != null) {
-        await _unseenRepository.recordUserMessage(sessionId: sessionId, at: occurredAt);
+    return _serialize(
+      contextId: sessionId,
+      operation: () async {
+        final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+        if (row == null) return;
+        // A user message may only count ONCE. Backends re-emit the user message
+        // record whenever server-side bookkeeping attached to it changes (e.g.
+        // OpenCode updates its diff summary mid- and post-response); treating a
+        // re-emission as a fresh interaction would stamp `last_user_message_at`
+        // past the assistant's activity and permanently clear the unseen state.
+        // A re-emission carries the message's ORIGINAL creation time — never
+        // newer than the marker stored when it was first processed (stamped from
+        // that same creation time, see below) — so it is skipped entirely (its
+        // content change is bookkeeping, not unseen-worthy transcript activity).
+        if (isUserMessage && occurredAt != null && (row.userMessageAt ?? 0) >= occurredAt) {
+          return;
+        }
+        // Coalesce repeated assistant activity: once the session is already
+        // unseen and no phone is viewing it, another non-user event changes
+        // nothing observable — skip the redundant write + emit. (A later
+        // mark-read stamps seen at `now`, which is always past the skipped,
+        // older activity timestamp, so correctness is preserved.)
+        if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row: row)) {
+          return;
+        }
+        // A user message with a known creation time advances ONLY the
+        // user-message marker, stamped at that creation time. A user message
+        // proves engagement as of when it was written; it must not rewrite the
+        // activity/seen timeline — otherwise a re-emission that slips past the
+        // guard above (a row whose marker was never stamped, e.g. learned via a
+        // `/sessions` placeholder) would drag `last_activity_at` down onto the
+        // old message and clear genuinely-unseen assistant activity. Whether the
+        // session is seen falls out of the formula: a fresh reply's creation
+        // time exceeds the (same-domain) activity stamp; an old re-emission's
+        // does not.
+        if (isUserMessage && occurredAt != null) {
+          await _unseenRepository.recordUserMessage(sessionId: sessionId, at: occurredAt);
+          await _emit(sessionId: sessionId, projectId: row.projectId);
+          return;
+        }
+        await _unseenRepository.recordActivity(
+          sessionId: sessionId,
+          at: _activityTimestamp(
+            userMessageAt: row.userMessageAt,
+            seenAt: row.seenAt,
+            occurredAt: isUserMessage ? null : occurredAt,
+          ),
+          isUserMessage: isUserMessage,
+          advanceSeen: viewedAtSubmit,
+        );
         await _emit(sessionId: sessionId, projectId: row.projectId);
-        return;
-      }
-      await _unseenRepository.recordActivity(
-        sessionId: sessionId,
-        at: _activityTimestamp(
-          userMessageAt: row.userMessageAt,
-          seenAt: row.seenAt,
-          occurredAt: isUserMessage ? null : occurredAt,
-        ),
-        isUserMessage: isUserMessage,
-        advanceSeen: viewedAtSubmit,
-      );
-      await _emit(sessionId: sessionId, projectId: row.projectId);
-    });
+      },
+    );
   }
 
   /// Records that a persisted ROOT session was created (observed live). Child
@@ -180,32 +183,35 @@ class SessionUnseenService({
   Future<void> recordSessionCreated({
     required String sessionId,
     required String? parentId,
-    int? occurredAt,
+    required int? occurredAt,
   }) {
     if (parentId != null) return Future<void>.value();
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
-    return _serialize(sessionId, () async {
-      final existing = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (existing == null) return;
-      // If an earlier activity event already stamped this row (it has any
-      // unseen marker), don't overwrite it — that would advance activity past
-      // the user's own message and wrongly bold it. But a bare placeholder
-      // inserted by a `/sessions` refresh (no markers at all) must still be
-      // stamped with creation activity so a new laptop-created session bolds
-      // instead of staying seen forever.
-      final hasMarkers = existing.activityAt != null || existing.userMessageAt != null || existing.seenAt != null;
-      if (hasMarkers) {
+    return _serialize(
+      contextId: sessionId,
+      operation: () async {
+        final existing = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+        if (existing == null) return;
+        // If an earlier activity event already stamped this row (it has any
+        // unseen marker), don't overwrite it — that would advance activity past
+        // the user's own message and wrongly bold it. But a bare placeholder
+        // inserted by a `/sessions` refresh (no markers at all) must still be
+        // stamped with creation activity so a new laptop-created session bolds
+        // instead of staying seen forever.
+        final hasMarkers = existing.activityAt != null || existing.userMessageAt != null || existing.seenAt != null;
+        if (hasMarkers) {
+          await _emit(sessionId: sessionId, projectId: existing.projectId);
+          return;
+        }
+        await _unseenRepository.recordActivity(
+          sessionId: sessionId,
+          at: occurredAt ?? _nextTimestamp(),
+          advanceSeen: viewedAtSubmit,
+          isUserMessage: false,
+        );
         await _emit(sessionId: sessionId, projectId: existing.projectId);
-        return;
-      }
-      await _unseenRepository.recordActivity(
-        sessionId: sessionId,
-        at: occurredAt ?? _nextTimestamp(),
-        advanceSeen: viewedAtSubmit,
-        isUserMessage: false,
-      );
-      await _emit(sessionId: sessionId, projectId: existing.projectId);
-    });
+      },
+    );
   }
 
   /// Records that a session was deleted (observed live via `session.deleted`,
@@ -219,10 +225,13 @@ class SessionUnseenService({
   /// wrong aggregate and leave the real project bold on other clients. The
   /// event id is only the fallback for a row-less delete.
   Future<void> recordSessionDeleted({required String sessionId, required String projectId}) {
-    return _serialize(sessionId, () async {
-      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      await _deleteRowAndEmit(sessionId: sessionId, projectId: row?.projectId ?? projectId);
-    });
+    return _serialize(
+      contextId: sessionId,
+      operation: () async {
+        final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+        await _deleteRowAndEmit(sessionId: sessionId, projectId: row?.projectId ?? projectId);
+      },
+    );
   }
 
   /// "Mark as Read": stamp seen at max(now, lastActivity) so it clears.
@@ -230,17 +239,21 @@ class SessionUnseenService({
   /// session bold from an authoritative source, so there is nothing to clear.
   /// Errors are propagated to the caller (this is a user-initiated request).
   Future<void> markRead({required String sessionId}) {
-    return _serialize(sessionId, rethrowErrors: true, () async {
-      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) return;
-      final seenAt = max(row.activityAt ?? 0, _nextTimestamp());
-      await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
-      // The row mutation has committed, so the request has succeeded. The
-      // follow-up SSE emit is a best-effort notification (_emit swallows+logs):
-      // propagating its failure would fail a request whose write already
-      // landed, desyncing the requesting client from the persisted state.
-      await _emit(sessionId: sessionId, projectId: row.projectId);
-    });
+    return _serialize(
+      contextId: sessionId,
+      rethrowErrors: true,
+      operation: () async {
+        final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+        if (row == null) return;
+        final seenAt = max(row.activityAt ?? 0, _nextTimestamp());
+        await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
+        // The row mutation has committed, so the request has succeeded. The
+        // follow-up SSE emit is a best-effort notification (_emit swallows+logs):
+        // propagating its failure would fail a request whose write already
+        // landed, desyncing the requesting client from the persisted state.
+        await _emit(sessionId: sessionId, projectId: row.projectId);
+      },
+    );
   }
 
   /// "Mark as Unread": force the session bold regardless of prior state.
@@ -249,18 +262,22 @@ class SessionUnseenService({
   /// the requesting client refreshes its optimistic state.
   /// Errors are propagated to the caller (this is a user-initiated request).
   Future<void> markUnread({required String sessionId}) {
-    return _serialize(sessionId, rethrowErrors: true, () async {
-      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) {
-        throw SessionUnseenRowMissingException(sessionId: sessionId);
-      }
-      // Force activity strictly past both the user-message and seen markers so
-      // the session reliably bolds even when the user's own message is latest.
-      final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);
-      await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
-      // Committed write; the emit is best-effort (see markRead).
-      await _emit(sessionId: sessionId, projectId: row.projectId);
-    });
+    return _serialize(
+      contextId: sessionId,
+      rethrowErrors: true,
+      operation: () async {
+        final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+        if (row == null) {
+          throw SessionUnseenRowMissingException(sessionId: sessionId);
+        }
+        // Force activity strictly past both the user-message and seen markers so
+        // the session reliably bolds even when the user's own message is latest.
+        final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt, occurredAt: null);
+        await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
+        // Committed write; the emit is best-effort (see markRead).
+        await _emit(sessionId: sessionId, projectId: row.projectId);
+      },
+    );
   }
 
   /// Recomputes and emits the unseen state for [sessionId] after a change made
@@ -268,21 +285,27 @@ class SessionUnseenService({
   /// unarchiving a session (archived rows are excluded from the aggregate).
   /// [projectId] is the STORED project id of the row.
   Future<void> notifyExternalChange({required String sessionId, required String projectId}) {
-    return _serialize(sessionId, () async {
-      await _emit(sessionId: sessionId, projectId: projectId);
-    });
+    return _serialize(
+      contextId: sessionId,
+      operation: () async {
+        await _emit(sessionId: sessionId, projectId: projectId);
+      },
+    );
   }
 
   Future<void> _onViewStarted(String sessionId) {
-    return _serialize(sessionId, () async {
-      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) return;
-      // Write at least the persisted activity timestamp so a clock skew or
-      // restart can't leave seen below activity (which would keep it bold).
-      final seenAt = max(row.activityAt ?? 0, _nextTimestamp());
-      await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
-      await _emit(sessionId: sessionId, projectId: row.projectId);
-    });
+    return _serialize(
+      contextId: sessionId,
+      operation: () async {
+        final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+        if (row == null) return;
+        // Write at least the persisted activity timestamp so a clock skew or
+        // restart can't leave seen below activity (which would keep it bold).
+        final seenAt = max(row.activityAt ?? 0, _nextTimestamp());
+        await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
+        await _emit(sessionId: sessionId, projectId: row.projectId);
+      },
+    );
   }
 
   /// Shared delete pipeline: removes the row (no-op when absent) and emits the
@@ -355,9 +378,9 @@ class SessionUnseenService({
   /// operations pass [rethrowErrors] so the failure surfaces to the request
   /// handler (which turns it into a non-2xx response) — while keeping the queue
   /// intact for writes chained after it.
-  Future<void> _serialize(
-    String contextId,
-    Future<void> Function() operation, {
+  Future<void> _serialize({
+    required String contextId,
+    required Future<void> Function() operation,
     bool rethrowErrors = false,
   }) {
     final result = _writeLock.use(operation: operation);

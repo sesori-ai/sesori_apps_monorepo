@@ -36,30 +36,29 @@ Future<void> flushLogs({required Duration timeout}) async {
   }
 }
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logt(String message, [Object? error, StackTrace? stackTrace]) =>
     _write(level: LogLevel.trace, message: message, error: error, stackTrace: stackTrace);
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logd(String message, [Object? error, StackTrace? stackTrace]) =>
     _write(level: LogLevel.debug, message: message, error: error, stackTrace: stackTrace);
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logi(String message, [Object? error, StackTrace? stackTrace]) =>
     _write(level: LogLevel.info, message: message, error: error, stackTrace: stackTrace);
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logw(String message, [Object? error, StackTrace? stackTrace]) =>
     _write(level: LogLevel.warning, message: message, error: error, stackTrace: stackTrace);
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void loge(String message, [Object? error, StackTrace? stackTrace]) =>
     _write(level: LogLevel.error, message: message, error: error, stackTrace: stackTrace);
 
 void _write({
   required LogLevel level,
   required String message,
-  // ignore: no_slop_linter/prefer_specific_type, original diagnostic errors are converted at the logging boundary
   required Object? error,
   required StackTrace? stackTrace,
 }) {

@@ -218,8 +218,8 @@ class CatalogImportRepository({
             for (final project in projects) {
               final path = _normalizeRequiredPath(project.directory);
               _mergeObservedProject(
-                observedProjects,
-                _ObservedProject(
+                observations: observedProjects,
+                observed: _ObservedProject(
                   preferredId: project.id,
                   path: path,
                   displayName: _usefulText(project.name),
@@ -262,8 +262,8 @@ class CatalogImportRepository({
               final pendingChildren = Queue<PluginSession>();
               for (final session in roots) {
                 _recordObservedSession(
-                  observedSessions,
-                  _ObservedSession(session: session, rootProjectPath: projectPath),
+                  observations: observedSessions,
+                  observation: _ObservedSession(session: session, rootProjectPath: projectPath),
                 );
                 pendingChildren.add(session);
                 if (observedSessions.length % _responsivenessBatchSize == 0) {
@@ -294,8 +294,8 @@ class CatalogImportRepository({
                 for (final child in children) {
                   final observedChild = child.copyWith(parentID: parent.id);
                   _recordObservedSession(
-                    observedSessions,
-                    _ObservedSession(session: observedChild, rootProjectPath: null),
+                    observations: observedSessions,
+                    observation: _ObservedSession(session: observedChild, rootProjectPath: null),
                   );
                   pendingChildren.add(observedChild);
                 }
@@ -336,8 +336,8 @@ class CatalogImportRepository({
                   _normalizeRequiredPath(row.directory),
             };
             _mergeObservedProject(
-              observedProjects,
-              _ObservedProject(
+              observations: observedProjects,
+              observed: _ObservedProject(
                 preferredId: launchDirectory,
                 path: launchDirectory,
                 displayName: null,
@@ -352,8 +352,8 @@ class CatalogImportRepository({
             }
             for (final session in sessions) {
               _recordObservedSession(
-                observedSessions,
-                _ObservedSession(
+                observations: observedSessions,
+                observation: _ObservedSession(
                   session: session,
                   rootProjectPath: session.parentID == null ? _normalizeRequiredPath(session.directory) : null,
                 ),
@@ -385,8 +385,8 @@ class CatalogImportRepository({
         final time = observation.session.time;
         observation.rootProjectPath = projectPath;
         _mergeObservedProject(
-          observedProjects,
-          _ObservedProject(
+          observations: observedProjects,
+          observed: _ObservedProject(
             preferredId: projectPath,
             path: projectPath,
             displayName: null,
@@ -447,8 +447,8 @@ class CatalogImportRepository({
       final project = family.project;
       final projectPath = _normalizeRequiredPath(project.directory);
       _mergeObservedProject(
-        observedProjects,
-        _ObservedProject(
+        observations: observedProjects,
+        observed: _ObservedProject(
           preferredId: project.id,
           path: projectPath,
           displayName: _usefulText(project.name),
@@ -458,8 +458,8 @@ class CatalogImportRepository({
       );
       for (final session in family.sessions) {
         _recordObservedSession(
-          observedSessions,
-          _ObservedSession(
+          observations: observedSessions,
+          observation: _ObservedSession(
             session: session,
             rootProjectPath: session.parentID == null ? projectPath : null,
           ),
@@ -525,7 +525,7 @@ class CatalogImportRepository({
           if (launchProject == null) {
             throw StateError("bridge-derived catalog import for $pluginId observed no launch directory project");
           }
-          _mergeObservedProject(publicationProjects, launchProject);
+          _mergeObservedProject(observations: publicationProjects, observed: launchProject);
           for (final observation in orderedSessions) {
             if (observation.session.parentID != null) continue;
             final existing = currentBindings[observation.session.id];
@@ -535,8 +535,8 @@ class CatalogImportRepository({
                 : _normalizeRequiredPath(existingProject.path);
             final time = observation.session.time;
             _mergeObservedProject(
-              publicationProjects,
-              _ObservedProject(
+              observations: publicationProjects,
+              observed: _ObservedProject(
                 preferredId: existingProject?.projectId ?? projectPath,
                 path: projectPath,
                 displayName: null,
@@ -774,7 +774,7 @@ class CatalogImportRepository({
     final validity = <String, bool>{};
     final depths = <String, int>{};
 
-    bool validate(String backendId, Set<String> visiting) {
+    bool validate({required String backendId, required Set<String> visiting}) {
       final known = validity[backendId];
       if (known != null) return known;
       final observation = observedSessions[backendId];
@@ -783,7 +783,7 @@ class CatalogImportRepository({
         return false;
       }
       final parentId = observation.session.parentID;
-      final valid = parentId == null || validate(parentId, visiting);
+      final valid = parentId == null || validate(backendId: parentId, visiting: visiting);
       visiting.remove(backendId);
       validity[backendId] = valid;
       if (valid) depths[backendId] = parentId == null ? 0 : (depths[parentId] ?? 0) + 1;
@@ -791,7 +791,7 @@ class CatalogImportRepository({
     }
 
     for (final backendId in observedSessions.keys) {
-      validate(backendId, <String>{});
+      validate(backendId: backendId, visiting: <String>{});
     }
     final result = [
       for (final entry in observedSessions.entries)
@@ -816,10 +816,10 @@ class CatalogImportRepository({
     return result;
   }
 
-  void _recordObservedSession(
-    Map<String, _ObservedSession> observations,
-    _ObservedSession observation,
-  ) {
+  void _recordObservedSession({
+    required Map<String, _ObservedSession> observations,
+    required _ObservedSession observation,
+  }) {
     final existing = observations[observation.session.id];
     if (existing == null) {
       observations[observation.session.id] = observation;
@@ -833,10 +833,10 @@ class CatalogImportRepository({
 
   /// Merges [observed] into [observations] by path. Every scratch folder
   /// merges into the one "No project" row instead of becoming a project.
-  void _mergeObservedProject(
-    Map<String, _ObservedProject> observations,
-    _ObservedProject observed,
-  ) {
+  void _mergeObservedProject({
+    required Map<String, _ObservedProject> observations,
+    required _ObservedProject observed,
+  }) {
     final publishedPath = _publishedProjectPath(path: observed.path);
     final observation = publishedPath == observed.path
         ? observed

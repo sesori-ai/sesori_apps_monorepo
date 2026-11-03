@@ -244,8 +244,8 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       await plugin.enumerationStarted.future;
 
       schedulingProbe = _SchedulingLagProbe()..start();
-      final writerStarted = Completer<void>();
       final writerDatabase = database;
+      final writerStarted = Completer<void>();
       heldWriter = writerDatabase.transaction(() async {
         try {
           await writerDatabase.customStatement(
@@ -289,9 +289,9 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       await heldWriter;
       heldWriter = null;
 
-      await _waitForTimestampAfter(
-        timestamp: plugin.enumerationStartedAt ?? (throw StateError("enumeration start time was not recorded")),
-      );
+      final enumerationStartedAt = plugin.enumerationStartedAt;
+      if (enumerationStartedAt == null) throw StateError("catalog enumeration started without recording its time");
+      await _waitForTimestampAfter(timestamp: enumerationStartedAt);
       var translatedEvents = 0;
       for (var index = 0; index < _configuration.warmupCount; index++) {
         translatedEvents += await _projectMapAndEnqueue(
@@ -670,8 +670,8 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
     final finalTitle = "sentinel-${_configuration.eventCount - 1}";
     final finalUpdatedAt = _eventTimestamp + _configuration.warmupCount + _configuration.eventCount - 1;
     final enumerationStartedAt = plugin.enumerationStartedAt;
-    if (enumerationStartedAt == null) throw StateError("enumeration start time was not recorded");
     if (sentinel == null ||
+        enumerationStartedAt == null ||
         sentinel.backendSessionId != fixture.sessions.first.id ||
         sentinel.catalogTitle != finalTitle ||
         sentinel.updatedAt != finalUpdatedAt ||
@@ -730,7 +730,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
         stderr.writeln("git ${arguments.join(" ")} failed with exit code ${result.exitCode}: ${result.stderr}");
         return null;
       }
-      return (result.stdout as String).trim();
+      return result.stdout.toString().trim();
     } on ProcessException catch (error, stackTrace) {
       stderr.writeln("git ${arguments.join(" ")} failed: $error");
       stderr.writeln(stackTrace);
@@ -742,7 +742,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
     if (Platform.isMacOS) {
       try {
         final result = Process.runSync("sysctl", const ["-n", "machdep.cpu.brand_string"]);
-        if (result.exitCode == 0) return (result.stdout as String).trim();
+        if (result.exitCode == 0) return result.stdout.toString().trim();
         stderr.writeln("sysctl CPU query failed with exit code ${result.exitCode}: ${result.stderr}");
       } on ProcessException catch (error, stackTrace) {
         stderr.writeln("sysctl CPU query failed: $error");
@@ -882,7 +882,7 @@ class _BenchmarkPlugin({
   }) => throw UnimplementedError();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
@@ -910,7 +910,7 @@ class _ExistingFilesystemApi() implements FilesystemApi {
   Future<bool> directoryExistsAsync({required String path}) async => true;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _BenchmarkFailureReporter() implements FailureReporter {
@@ -936,6 +936,6 @@ class _BenchmarkFailureReporter() implements FailureReporter {
 /// The benchmark plugins report no prompt defaults, so nothing reaches this.
 final class const _UnusedSessionPromptService() implements SessionPromptService {
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
+  Object? noSuchMethod(Invocation invocation) =>
       throw UnsupportedError("benchmark does not publish prompt defaults: ${invocation.memberName}");
 }

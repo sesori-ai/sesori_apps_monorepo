@@ -277,7 +277,7 @@ void main() {
       await listener.dispose();
 
       expect(
-        await history.database.chatHistoryDao.getParts(sessionId: "ses_a"),
+        await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null),
         isEmpty,
         reason: "part capture belongs to the Orchestrator, which owns live attachment materialization",
       );
@@ -329,7 +329,7 @@ void main() {
         ),
       );
 
-      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a");
+      final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: null);
       expect(rows.single.partJson, isNot(contains(base64Encode(bytes))));
       expect(rows.single.partJson, contains("stored_file"));
 

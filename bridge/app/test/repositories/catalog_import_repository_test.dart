@@ -1342,7 +1342,7 @@ void main() {
         ).importCatalog(pluginId: plugin.id, control: control).toList();
         await started.future;
 
-        control.cancellationRequested = true;
+        control.cancel();
         gate.complete(snapshot());
         final statuses = await result;
 
@@ -1470,7 +1470,7 @@ void main() {
       final result = repository.importCatalog(pluginId: plugin.id, control: control).toList();
       await plugin.getProjectsStarted.future;
 
-      control.cancellationRequested = true;
+      control.cancel();
       gate.complete();
       final statuses = await result;
 
@@ -1510,7 +1510,7 @@ void main() {
         [isA<CatalogImportEnumerating>()],
         reason: "progress must be visible before runtime acquisition finishes",
       );
-      control.cancellationRequested = true;
+      control.cancel();
       await completed.future;
 
       expect(statuses, [isA<CatalogImportEnumerating>(), isA<CatalogImportCancelled>()]);

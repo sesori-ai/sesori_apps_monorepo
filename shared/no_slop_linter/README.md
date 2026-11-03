@@ -23,7 +23,7 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `prefer_edge_insets_directional` | Enforces `EdgeInsetsDirectional` for RTL support |
 | `prefer_exhaustive_switch` | Prevents `default` cases in switches over enums and sealed classes |
 | `prefer_required_named_parameters` | Enforces required named parameters for multi-argument functions |
-| `prefer_specific_type` | Prevents `Object` and `dynamic` (except `fromJson`/`toJson` maps and error values) |
+| `prefer_specific_type` | Prevents `Object` and `dynamic` outside JSON maps, JSON decode callbacks and error values |
 | `prefer_text_align_directional` | Enforces `TextAlign.start`/`end` instead of `left`/`right` for RTL support |
 
 `avoid_legacy_flutter_design_imports` also checks test files. The other rules skip files under `test/` and files ending in `_test.dart`.

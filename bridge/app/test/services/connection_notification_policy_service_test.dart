@@ -27,7 +27,7 @@ void main() {
     );
     service.start();
     final callback = api.callback ?? fail("observer was not started");
-    callback(1, 0);
+    callback(event: 1, errorCode: 0);
     await Future<void>.delayed(Duration.zero);
 
     expect(await service.policies.first, BridgeConnectionNotificationPolicy.suppress);
@@ -44,10 +44,10 @@ void main() {
 
     service.start();
     final callback = api.callback ?? fail("observer was not started");
-    callback(1, 0);
-    callback(1, 0);
-    callback(2, 0);
-    callback(3, -1);
+    callback(event: 1, errorCode: 0);
+    callback(event: 1, errorCode: 0);
+    callback(event: 2, errorCode: 0);
+    callback(event: 3, errorCode: -1);
     await Future<void>.delayed(Duration.zero);
 
     expect(policies, [

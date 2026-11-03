@@ -29,6 +29,8 @@ class DeviceTypeDetector({
       final result = await _processRunner.run(
         executable: "sysctl",
         arguments: <String>["-n", "hw.model"],
+        workingDirectory: null,
+        environment: null,
       );
       if (result.exitCode != 0) {
         Log.w(
@@ -53,6 +55,8 @@ class DeviceTypeDetector({
           "-Command",
           "Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count",
         ],
+        workingDirectory: null,
+        environment: null,
       );
       if (result.exitCode != 0) {
         Log.w(

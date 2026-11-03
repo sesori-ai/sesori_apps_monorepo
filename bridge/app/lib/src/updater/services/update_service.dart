@@ -37,18 +37,16 @@ class UpdateService({
   required final String _managedExecutablePath,
   required final Map<String, String> _environment,
   required final bool _isSupervised,
-}) {
-  StreamSubscription<void>? _subscription;
-  bool _disposed = false;
 
   /// Sink for a fully-rendered output line. Defaults to writing to the
   /// process streams directly (stdout for status, stderr for failures) — never
   /// gated by `--log-level`, matching the branded `sesori-bridge update` path.
-  @visibleForTesting
-  void Function(RenderedLine line) emitLine = writeRenderedLine;
+  @visibleForTesting final void Function(RenderedLine line) _emitLine = writeRenderedLine,
+}) {
+  StreamSubscription<void>? _subscription;
+  bool _disposed = false;
 
-  @visibleForTesting
-  Duration pollInterval = const Duration(hours: 4);
+  static const Duration _pollInterval = Duration(hours: 4);
 
   /// Begins the initial + periodic check/stage/apply pipeline in the
   /// background. A no-op when updates are disabled, this is not the managed
@@ -62,7 +60,7 @@ class UpdateService({
     _subscription =
         Rx.concat<void>([
               Stream<void>.value(null),
-              Stream<void>.periodic(pollInterval, (_) {}),
+              Stream<void>.periodic(_pollInterval, (_) {}),
             ])
             .asyncMap((_) => _runCycle())
             .listen(
@@ -243,7 +241,7 @@ class UpdateService({
     );
   }
 
-  void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
+  void _emitLines(List<RenderedLine> lines) => lines.forEach(_emitLine);
 
   String _rateLimitMessage(GitHubRateLimitException error) {
     final reset = error.resetAt;

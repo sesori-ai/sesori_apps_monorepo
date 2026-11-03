@@ -30,6 +30,7 @@ final class _PosixProcessIdLookupApi({required final ProcessRunner _processRunne
       executable: command,
       arguments: arguments,
       environment: const <String, String>{"LC_ALL": "C"},
+      workingDirectory: null,
     );
     if (result.exitCode == 1) {
       return const <int>[];
@@ -67,7 +68,12 @@ final class _WindowsProcessIdLookupApi({required final ProcessRunner _processRun
       "/FI",
       "IMAGENAME eq $executableName.exe",
     ];
-    final result = await _processRunner.run(executable: command, arguments: arguments);
+    final result = await _processRunner.run(
+      executable: command,
+      arguments: arguments,
+      workingDirectory: null,
+      environment: null,
+    );
     if (result.exitCode != 0) {
       throw ProcessException(command, arguments, result.stderr.toString(), result.exitCode);
     }

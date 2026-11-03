@@ -67,7 +67,41 @@ class ProjectActivityService({
           SesoriPermissionReplied(:final sessionID, :final displaySessionId):
         if (displaySessionId != null) return;
         await _touchStoredSession(sessionId: sessionID, occurredAt: _now());
-      default:
+      case SesoriServerConnected() ||
+          SesoriServerHeartbeat() ||
+          SesoriServerInstanceDisposed() ||
+          SesoriGlobalDisposed() ||
+          SesoriCatalogImportProgress() ||
+          SesoriPluginManagementChanged() ||
+          SesoriMcpInventoryChanged() ||
+          SesoriMcpAuthenticationChanged() ||
+          SesoriPluginInstallProgress() ||
+          SesoriPluginAuthenticationProgress() ||
+          SesoriSessionOptionsUpdated() ||
+          SesoriSessionCreated() ||
+          SesoriSessionUpdated() ||
+          SesoriSessionDeleted() ||
+          SesoriSessionDiff() ||
+          SesoriSessionError() ||
+          SesoriSessionCompacted() ||
+          SesoriSessionPromptSettled() ||
+          SesoriSessionPromptDefaultsChanged() ||
+          SesoriSessionStatus() ||
+          SesoriCommandExecuted() ||
+          SesoriSessionQueuedPrompts() ||
+          SesoriMessageRemoved() ||
+          SesoriMessagePartUpdated() ||
+          SesoriMessagePartDelta() ||
+          SesoriMessagePartRemoved() ||
+          SesoriPermissionUpdated() ||
+          SesoriTodoUpdated() ||
+          SesoriProjectsSummary() ||
+          SesoriProjectUpdated() ||
+          SesoriVcsBranchUpdated() ||
+          SesoriSessionUnseenChanged() ||
+          SesoriFileEdited() ||
+          SesoriInstallationUpdateAvailable() ||
+          SesoriTuiToastShow():
         return;
     }
   }

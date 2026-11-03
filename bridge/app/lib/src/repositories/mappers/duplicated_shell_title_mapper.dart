@@ -9,12 +9,11 @@ extension DuplicatedShellTitleMapping on MessageWithParts {
   MessageWithParts withoutDuplicatedShellTitles() => copyWith(
     parts: [
       for (final part in parts)
-        switch (part) {
-          MessagePartTool(state: ToolState(:final title, shellCommand: final String command) && final state)
-              when title == command =>
-            part.copyWith(state: state.copyWith(title: null)),
-          _ => part,
-        },
+        if (part case MessagePartTool(state: ToolState(:final title, shellCommand: final String command) && final state)
+            when title == command)
+          part.copyWith(state: state.copyWith(title: null))
+        else
+          part,
     ],
   );
 }

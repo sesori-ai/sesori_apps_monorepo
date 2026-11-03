@@ -96,6 +96,7 @@ class SessionEventDispatcher({required final SessionEventService _sessionEventSe
     );
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, listeners pass this as the Stream.listen onError callback
   void addSourceError(Object error, StackTrace stackTrace) {
     if (!_eventsController.isClosed) _eventsController.addError(error, stackTrace);
   }
