@@ -516,17 +516,20 @@ class Codegen({
     return allowedIds.map((id) => byId[id]!).toList()..sort((a, b) => a.methodName.compareTo(b.methodName));
   }
 
+  /// Selects the models the plugin decodes: the surface's success
+  /// responses and extra schemas, plus every model their generated files
+  /// import. The adapters send hand-written request bodies, so bodies and
+  /// parameters are roots only for the generated client. SSE events are
+  /// decoded by the manifest codegen (`generate_sse_events.dart`), so the
+  /// event manifest is only cross-checked against the spec.
   Set<String> _selectSurfaceSchemas(List<String> extraSchemas) {
     final roots = <String>{...extraSchemas};
     for (final op in operations) {
       final response = op.successResponse;
       if (response != null) _collectTypesFromDartType(response.dartType, roots);
-      if (op.requestBodySchema != null) _collectRefsFromSchema(op.requestBodySchema!, roots);
-      for (final p in op.parameters) {
-        if (p.schema != null) _collectRefsFromSchema(p.schema!, roots);
-      }
     }
-    roots.addAll(_eventSchemasFromManifest());
+    if (withClient) roots.addAll(_collectOperationSchemas());
+    _warnOnEventManifestDrift();
     final closure = <String>{};
     final stack = roots.where(schemas.containsKey).toList();
     while (stack.isNotEmpty) {
@@ -534,8 +537,12 @@ class Codegen({
       if (!closure.add(name)) continue;
       final schema = schemas[name];
       if (schema is! Map<String, dynamic>) continue;
-      final refs = <String>{};
-      _collectRefsFromSchema(schema, refs);
+      final refs = ModelWriter(
+        name: _pascalFromSnake(name),
+        rawName: name,
+        schema: schema,
+        schemas: schemas,
+      ).importedSchemas();
       for (final ref in refs) {
         if (schemas.containsKey(ref) && !closure.contains(ref)) stack.add(ref);
       }
@@ -543,20 +550,16 @@ class Codegen({
     return closure;
   }
 
-  Set<String> _eventSchemasFromManifest() {
+  void _warnOnEventManifestDrift() {
     final manifestPath = surface.eventManifest;
-    if (manifestPath == null) return const {};
+    if (manifestPath == null) return;
     final file = File(manifestPath);
-    if (!file.existsSync()) return const {};
+    if (!file.existsSync()) return;
     final manifest = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
     final events = (manifest['events'] as List).cast<Map<String, dynamic>>();
     final manifestTypes = events.map((e) => e['type'] as String).toSet();
-    final out = <String>{};
     for (final type in manifestTypes) {
-      final schemaName = _eventSchemaNameForType(type);
-      if (schemas.containsKey(schemaName)) {
-        out.add(schemaName);
-      } else {
+      if (!schemas.containsKey(_eventSchemaNameForType(type))) {
         stderr.writeln('warning: manifest event "$type" has no OpenAPI Event schema');
       }
     }
@@ -567,7 +570,6 @@ class Codegen({
         stderr.writeln('warning: OpenAPI schema $schemaName is absent from $manifestPath');
       }
     }
-    return out;
   }
 
   String _eventSchemaNameForType(String type) {
@@ -580,32 +582,6 @@ class Codegen({
       if (schemas.containsKey(candidate)) return candidate;
     }
     return candidates.first;
-  }
-
-  void _collectRefsFromSchema(Map<String, dynamic> sch, Set<String> out) {
-    final r = sch[r'$ref'];
-    if (r is String) {
-      out.add(_schemaNameFromRef(r));
-      return;
-    }
-    for (final key in ['anyOf', 'oneOf', 'allOf']) {
-      final variants = sch[key];
-      if (variants is List) {
-        for (final item in variants) {
-          if (item is Map<String, dynamic>) _collectRefsFromSchema(item, out);
-        }
-      }
-    }
-    final props = sch['properties'];
-    if (props is Map) {
-      for (final value in props.values) {
-        if (value is Map<String, dynamic>) _collectRefsFromSchema(value, out);
-      }
-    }
-    final items = sch['items'];
-    if (items is Map<String, dynamic>) _collectRefsFromSchema(items, out);
-    final ap = sch['additionalProperties'];
-    if (ap is Map<String, dynamic>) _collectRefsFromSchema(ap, out);
   }
 
   void _synthesizeInlineResponseModels() {
@@ -1399,8 +1375,7 @@ class ModelWriter({
 
   String emit() {
     // First pass: figure out which refs the body will actually use.
-    final usedRefs = _computeUsedRefs(schema);
-    usedRefs.remove(rawName);
+    final usedRefs = importedSchemas();
     if (implementsClass != null) {
       String? parentRaw;
       for (final entry in schemas.entries) {
@@ -1410,32 +1385,6 @@ class ModelWriter({
         }
       }
       if (parentRaw != null) usedRefs.add(parentRaw);
-    }
-    // Inline variants synthesized in `_emitUnion` reference refs of
-    // their own (e.g. `PermissionRuleConfig.fromJson`). The header
-    // import list must include them or the synthesized classes will
-    // reference undefined identifiers.
-    if (_isUnion(schema)) {
-      final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
-      for (final v in variants) {
-        final inlineRefs = _computeUsedRefs(v);
-        usedRefs.addAll(inlineRefs);
-      }
-      // Refs that flow through an enum wrapper also need to be
-      // imported.
-      final disc = _findDiscriminator(variants);
-      if (disc == null) {
-        for (final v in variants) {
-          final r = v[r'$ref'];
-          if (r is String) {
-            final vName = _schemaNameFromRef(r);
-            final sch = schemas[vName] as Map<String, dynamic>?;
-            if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
-              usedRefs.add(vName);
-            }
-          }
-        }
-      }
     }
 
     // Emit the body FIRST: body emission populates the usage flags and
@@ -1478,6 +1427,42 @@ class ModelWriter({
       usesDeepEquality: _usesDeepEquality,
     );
     return header + body.toString();
+  }
+
+  /// Raw names of the schemas this model's file imports, apart from the
+  /// union parent it implements. [Codegen] walks these to select the
+  /// models a surface needs, so a schema reached only through a field that
+  /// collapses to `Object?` is not generated.
+  Set<String> importedSchemas() {
+    final usedRefs = _computeUsedRefs(schema);
+    usedRefs.remove(rawName);
+    // Inline variants synthesized in `_emitUnion` reference refs of
+    // their own (e.g. `PermissionRuleConfig.fromJson`). The header
+    // import list must include them or the synthesized classes will
+    // reference undefined identifiers.
+    if (_isUnion(schema)) {
+      final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
+      for (final v in variants) {
+        final inlineRefs = _computeUsedRefs(v);
+        usedRefs.addAll(inlineRefs);
+      }
+      // Refs that flow through an enum wrapper also need to be
+      // imported.
+      final disc = _findDiscriminator(variants);
+      if (disc == null) {
+        for (final v in variants) {
+          final r = v[r'$ref'];
+          if (r is String) {
+            final vName = _schemaNameFromRef(r);
+            final sch = schemas[vName] as Map<String, dynamic>?;
+            if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
+              usedRefs.add(vName);
+            }
+          }
+        }
+      }
+    }
+    return usedRefs;
   }
 
   /// Returns the set of raw schema names that the emitted body actually
