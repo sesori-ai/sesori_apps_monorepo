@@ -11,8 +11,9 @@ name: Bridge Build (reusable)
 #
 # Version contract: the binaries MUST report `inputs.version`.
 #   - pubspec already matches  → build as-is.
-#   - pre-release requested    → bake it at build time via bump_version.dart
-#                                (never committed).
+#   - pre-release requested    → bake it at build time via bump_version.dart,
+#                                which also rewrites `bridgeVersion` in
+#                                sesori_bridge_foundation (never committed).
 #   - clean version mismatch   → fail loudly: the committed tree is out of
 #                                sync (run tool/sync_versions.dart), and
 #                                silently rewriting would mask it.

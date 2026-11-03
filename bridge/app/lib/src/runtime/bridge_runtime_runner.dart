@@ -6,7 +6,7 @@ import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show DownloadProgress, OsVersionFormatter, PlatformOs, sesoriAttachmentsDirectory;
+    show DownloadProgress, OsVersionFormatter, PlatformOs, bridgeVersion, sesoriAttachmentsDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
@@ -99,7 +99,6 @@ import "../updater/services/update_lifecycle_service.dart";
 import "../updater/services/update_reconciliation_service.dart";
 import "../updater/services/update_service.dart";
 import "../updater/updater_composition.dart";
-import "../version.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
 import "bridge_runtime_auth.dart";
@@ -1200,7 +1199,7 @@ class const BridgeRuntimeRunner._() {
       installationRepository: updater.installationRepository,
       messageFormatter: messageFormatter,
       updateLock: updater.updateLock,
-      currentVersion: appVersion,
+      currentVersion: bridgeVersion,
       installRoot: installRoot,
     );
 
@@ -1305,7 +1304,7 @@ class const BridgeRuntimeRunner._() {
         operatingSystemVersion: io.Platform.operatingSystemVersion,
         osReleaseContents: _readLinuxOsRelease(),
       ),
-      appVersion: appVersion,
+      appVersion: bridgeVersion,
     );
   }
 

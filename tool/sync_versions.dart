@@ -18,7 +18,7 @@ final RegExp _pubspecVersionPattern = RegExp(
   multiLine: true,
 );
 final RegExp _versionDartPattern = RegExp(
-  r"^const String appVersion = '([^']+)';$",
+  r"^const String bridgeVersion = '([^']+)';$",
   multiLine: true,
 );
 
@@ -73,10 +73,10 @@ Future<void> main(List<String> args) async {
     ]);
     final bridgeVersionDartPath = _join(repoRoot, <String>[
       'bridge',
-      'app',
+      'sesori_bridge_foundation',
       'lib',
       'src',
-      'version.dart',
+      'bridge_version.dart',
     ]);
 
     final clientVersion = _readClientVersion(
@@ -116,7 +116,7 @@ Future<void> main(List<String> args) async {
 
     final plannedPaths = <String>[
       'bridge/app/pubspec.yaml',
-      'bridge/app/lib/src/version.dart',
+      'bridge/sesori_bridge_foundation/lib/src/bridge_version.dart',
       ..._bridgePackageManifests,
       'client/app/pubspec.yaml',
       'client/desktop/pubspec.yaml',
@@ -366,11 +366,11 @@ Future<void> _writeVersionDart({
 }) async {
   final content = await _readFile(path: path);
   if (!_versionDartPattern.hasMatch(content)) {
-    throw _CliError('Error: Could not update version.dart at $path');
+    throw _CliError('Error: Could not update bridge_version.dart at $path');
   }
   final updated = content.replaceFirst(
     _versionDartPattern,
-    "const String appVersion = '$newVersion';",
+    "const String bridgeVersion = '$newVersion';",
   );
   if (updated != content) {
     await _writeFile(path: path, content: updated);

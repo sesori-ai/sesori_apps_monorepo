@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -248,7 +249,7 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       final initialize = await waitForFrame("initialize");
-      expect((initialize["params"] as Map)["clientInfo"], {"name": "sesori-bridge", "version": "0.0.0"});
+      expect((initialize["params"] as Map)["clientInfo"], {"name": "sesori-bridge", "version": bridgeVersion});
       fake.emit({
         "jsonrpc": "2.0",
         "id": initialize["id"],

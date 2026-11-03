@@ -51,7 +51,6 @@ import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
 import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
 import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
 import 'package:sesori_bridge/src/updater/updater_composition.dart';
-import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
@@ -126,7 +125,7 @@ class RunCommand() extends cli.Command<void> {
     }
 
     if (results['version'] as bool) {
-      stdout.writeln(appVersion);
+      stdout.writeln(bridgeVersion);
       return;
     }
 
@@ -167,7 +166,7 @@ class RunCommand() extends cli.Command<void> {
       final banner = BridgeStartupBannerFormatter(
         out: stdout,
         environment: Platform.environment,
-      ).format(version: appVersion);
+      ).format(version: bridgeVersion);
       if (banner != null) Console.message(banner);
     }
 
