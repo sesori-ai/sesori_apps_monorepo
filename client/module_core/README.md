@@ -31,8 +31,8 @@ See the [root README](../README.md) for the full monorepo overview.
 
 **Platform Interfaces**
 
-Representative abstract interfaces defined here and implemented by Flutter adapters in the product shells,
-mostly under `app/lib/core/platform/`:
+Representative abstract interfaces defined here and implemented by Flutter adapters in each product shell's
+`lib/core/platform/`, or once in `module_app_ui/lib/src/platform/` when both shells use them unchanged:
 
 | Interface | Flutter Adapter |
 |-----------|----------------|
@@ -74,4 +74,4 @@ Pure Dart — no Flutter toolchain needed.
 
 ## Important
 
-This module must not import `package:flutter`. Any Flutter-specific code belongs in `app/`. If you need a new platform capability, define an abstract interface here and implement it as a Flutter adapter in `app/lib/core/platform/`.
+This module must not import `package:flutter`. Any Flutter-specific code belongs in the Flutter packages. If you need a new platform capability, define an abstract interface here and implement it as a Flutter adapter in the shell's `lib/core/platform/`, or once in `module_app_ui/lib/src/platform/` when both shells use it unchanged.

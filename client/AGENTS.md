@@ -65,8 +65,10 @@ settings/harness-management screens, and adaptive-screen foundations above
 and surface-specific composition. The one exception: a Flutter implementation
 of a `module_core` platform interface that both shells use unchanged may live in
 `module_app_ui/lib/src/platform/` with the platform plugins it needs, exported
-only as a composition entry point (for example `createFlutterVoiceCapture`).
-Shells still register it in DI and own any shell-specific native code.
+only as a composition entry point (a factory such as `createFlutterVoiceCapture`
+or `createFlutterImageClipboard`, or the adapter class itself when it has no
+internal seam, such as `GoRouterRouteDispatcher`). Its plugin seams stay
+private. Shells still register it in DI and own any shell-specific native code.
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
 have `module_auth` as a pubspec dependency solely for the
@@ -162,7 +164,9 @@ streams exposed by `ConnectionService`. Desktop control cubits may subscribe to
 Root `AGENTS.md` has the full suffix vocabulary. Concrete client examples:
 
 - **Platform abstractions** (in `module_core/lib/src/platform/` and `module_core/lib/src/foundation/platform/`) are interfaces named by capability: `UrlLauncher`, `LifecycleSource`, `RouteSource`, `NotificationCanceller`
-- **Platform implementations** (mostly in `app/lib/core/platform/`) use `Adapter` or `Flutter*` prefix for the concrete Flutter version: `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`
+- **Platform implementations** (in each shell's `lib/core/platform/`, or once in `module_app_ui/lib/src/platform/`
+  when both shells use them unchanged) use `Adapter` or `Flutter*` prefix for the concrete Flutter version:
+  `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`, shared `FlutterImageClipboard`
 - **Transport Layer 0** uses `Client` / `Service`: `RelayClient` (raw WebSocket), `ConnectionService` (lifecycle + reconnect), `RelayHttpApiClient` (HTTP-over-relay)
 - **Layer 1 APIs** use `Api`: `SessionApi`, `ProjectApi`, `VoiceApi`, `NotificationApi`
 - **Layer 2 Repositories** use `Repository`: `SessionRepository`, `ProjectRepository`, `NotificationPreferencesRepository`
@@ -197,7 +201,7 @@ cubit into Flutter widgets and provides concrete platform adapters.
 If a mobile feature needs a platform capability not already abstracted:
 
 1. Define an abstract interface in `module_core/lib/src/foundation/platform/<capability>.dart`
-2. Implement it in `app/lib/core/platform/flutter_<capability>.dart`
+2. Implement it in `app/lib/core/platform/flutter_<capability>.dart`, or once in `module_app_ui/lib/src/platform/` when desktop needs the same implementation
 3. Register the implementation in DI phase 1 (`getIt.init()`)
 4. Consume it from `module_core` via the interface — never reach for `package:flutter` from `module_core`
 
