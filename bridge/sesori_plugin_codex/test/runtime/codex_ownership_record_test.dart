@@ -66,10 +66,10 @@ void main() {
       expect(mapper.bridgeStartMarkerOf(record: record), equals("bridge-marker"));
     });
 
-    test("rebuilds the spawn command line (command + args joined)", () {
+    test("exposes the spawn args the supervisor matches on", () {
       expect(
-        mapper.runtimeCommandLineOf(record: record),
-        equals("/usr/local/bin/codex app-server --listen ws://127.0.0.1:51000"),
+        mapper.runtimeArgsOf(record: record),
+        equals(<String>["app-server", "--listen", "ws://127.0.0.1:51000"]),
       );
     });
 

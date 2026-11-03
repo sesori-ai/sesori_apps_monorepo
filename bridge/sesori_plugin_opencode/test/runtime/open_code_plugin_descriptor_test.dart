@@ -14,6 +14,7 @@ import "package:opencode_plugin/src/runtime/open_code_runtime_policy.dart";
 import "package:opencode_plugin/src/v2/opencode_v2_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show RuntimeRecordDraft;
 import "package:test/test.dart";
 
 Future<PluginCatalogSnapshotResult> _unavailableCatalogSnapshot({
@@ -735,6 +736,54 @@ void main() {
       await plugin.shutdown(budget: null);
     });
 
+    group("interpreter-shim child", () {
+      test("shutdown stops it", () async {
+        host.ports.defaultBindable = true;
+        host.processes.spawnsNodeShim = true;
+        final plugin = await descriptor().start(host);
+
+        await plugin.shutdown(budget: null);
+
+        expect(host.processes.signals, equals(<String>["graceful:4242"]));
+        expect(host.ownershipRecord("owner-current"), isNull);
+      });
+
+      test("stale cleanup reclaims one a dead bridge left running", () async {
+        host.ports.defaultBindable = true;
+        final shim = _nodeShimIdentity(
+          pid: 7777,
+          startMarker: "old-run",
+          spawnCommandLine: "/bin/opencode serve --port 50999 --hostname 127.0.0.1",
+        );
+        final record = buildOpenCodeOwnershipRecord(
+          draft: RuntimeRecordDraft(
+            ownerSessionId: "owner-old",
+            runtimeIdentity: shim,
+            port: 50999,
+            bridgeIdentity: ProcessIdentity(
+              pid: 200,
+              startMarker: "old-bridge-start",
+              executablePath: "/bin/sesori-bridge",
+              commandLine: "sesori-bridge",
+              ownerUser: null,
+              capturedAt: DateTime.utc(2026, 5, 1),
+            ),
+            startedAt: DateTime.utc(2026, 5, 1),
+          ),
+          bindHost: "127.0.0.1",
+        );
+        host.store.files["opencode-processes.json"] = jsonEncode(<String, dynamic>{"owner-old": record.toJson()});
+        host.processes.inspectResults[7777] = shim;
+
+        final plugin = await descriptor().start(host);
+
+        expect(host.processes.signals, contains("graceful:7777"));
+        expect(host.ownershipRecord("owner-old"), isNull, reason: "the reclaimed record is deleted");
+
+        await plugin.shutdown(budget: null);
+      });
+    });
+
     test("shutdown disposes the api, stops the owned runtime, and is idempotent", () async {
       host.ports.defaultBindable = true;
       final plugin = await descriptor().start(host);
@@ -1325,6 +1374,19 @@ void _seedStaleRecord(_FakeHost host) {
   );
 }
 
+/// The identity `ps` reports for a `#!/usr/bin/env node` shim: the interpreter,
+/// then the exact command line the shim was spawned with.
+ProcessIdentity _nodeShimIdentity({required int pid, required String startMarker, required String spawnCommandLine}) {
+  return ProcessIdentity(
+    pid: pid,
+    startMarker: startMarker,
+    executablePath: "node",
+    commandLine: "node $spawnCommandLine",
+    ownerUser: null,
+    capturedAt: DateTime.utc(2026, 6, 1),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Fakes
 // ---------------------------------------------------------------------------
@@ -1524,6 +1586,10 @@ class _FakeHostProcessService() implements HostProcessService {
   final Map<int, ProcessIdentity> inspectResults = <int, ProcessIdentity>{};
   int nextPid = 4242;
 
+  /// Spawns `opencode serve` as a `#!/usr/bin/env node` shim that `ps` reports
+  /// until it is signalled.
+  bool spawnsNodeShim = false;
+
   /// Short OpenCode CLI commands (`--version`, `service ...`), keyed by their
   /// arguments. Each prints its output and exits 0; an unscripted one exits 1.
   final List<String> commands = <String>[];
@@ -1544,11 +1610,31 @@ class _FakeHostProcessService() implements HostProcessService {
       commands.add(command);
       if (command == "service start") onServiceStart?.call();
       final output = commandOutputs[command];
-      return _FakeSpawnedProcess(pid: nextPid++, executablePath: executable, stdoutText: output ?? "")
-        ..completeExit(output == null ? 1 : 0);
+      return _FakeSpawnedProcess(
+        pid: nextPid++,
+        executablePath: executable,
+        stdoutText: output ?? "",
+        shimIdentity: null,
+      )..completeExit(output == null ? 1 : 0);
     }
     spawnEnvironments.add(environment);
-    final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable, stdoutText: "");
+    final pid = nextPid++;
+    final shimIdentity = spawnsNodeShim
+        ? _nodeShimIdentity(
+            pid: pid,
+            startMarker: "shim-start",
+            spawnCommandLine: <String>[executable, ...arguments].join(" "),
+          )
+        : null;
+    if (shimIdentity != null) {
+      inspectResults[pid] = shimIdentity;
+    }
+    final process = _FakeSpawnedProcess(
+      pid: pid,
+      executablePath: executable,
+      stdoutText: "",
+      shimIdentity: shimIdentity,
+    );
     spawnedProcesses.add(process);
     return process;
   }
@@ -1590,6 +1676,7 @@ class _FakeSpawnedProcess({
   @override required final int pid,
   required final String _executablePath,
   required final String _stdoutText,
+  required final ProcessIdentity? _shimIdentity,
 }) implements SpawnedProcess {
   final Completer<int> _exit = Completer<int>();
 
@@ -1603,14 +1690,16 @@ class _FakeSpawnedProcess({
   Future<int> get exitCode => _exit.future;
 
   @override
-  ProcessIdentity get identity => ProcessIdentity(
-    pid: pid,
-    startMarker: null,
-    executablePath: _executablePath,
-    commandLine: "$_executablePath serve",
-    ownerUser: null,
-    capturedAt: DateTime.utc(2026, 6, 1),
-  );
+  ProcessIdentity get identity =>
+      _shimIdentity ??
+      ProcessIdentity(
+        pid: pid,
+        startMarker: null,
+        executablePath: _executablePath,
+        commandLine: "$_executablePath serve",
+        ownerUser: null,
+        capturedAt: DateTime.utc(2026, 6, 1),
+      );
 
   @override
   IOSink get stdin => throw UnimplementedError();

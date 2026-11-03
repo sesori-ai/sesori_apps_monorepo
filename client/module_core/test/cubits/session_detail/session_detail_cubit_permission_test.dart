@@ -38,6 +38,7 @@ void main() {
 
   group("SessionDetailCubit permission handling", () {
     late MockSessionRepository mockSessionService;
+    late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -51,6 +52,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionRepository();
+      mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -70,7 +72,11 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
+      delegateSessionRepository(
+        repository: mockSessionRepository,
+        source: mockSessionService,
+        optionsSource: mockSessionApi,
+      );
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -94,7 +100,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -103,7 +109,7 @@ void main() {
       );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
     });
 
     tearDown(() async {
@@ -273,6 +279,7 @@ void main() {
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
+      clearInteractions(mockSessionApi);
 
       sessionEvents.add(
         const SesoriPermissionAsked(
@@ -310,13 +317,13 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
       ).called(1);
       verify(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: "plugin-1",
         ),
@@ -840,7 +847,11 @@ SessionDetailCubit _buildCubit({
   );
 }
 
-void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
+void _stubLoadApis(
+  MockSessionRepository service, {
+  required MockSessionApi optionsApi,
+  required String sessionId,
+}) {
   when(
     () => service.getMessages(
       sessionId: any(named: "sessionId"),
@@ -890,7 +901,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
     ),
   );
   when(
-    () => service.listAgents(
+    () => optionsApi.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -898,7 +909,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
   when(
-    () => service.listProviders(
+    () => optionsApi.listProviders(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),

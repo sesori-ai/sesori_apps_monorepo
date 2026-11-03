@@ -34,6 +34,7 @@ void main() {
 
   test("disconnected startup reaches loaded automatically once connection becomes available", () async {
     final mockSessionService = MockSessionRepository();
+    final mockSessionApi = MockSessionApi();
     final mockSessionRepository = MockSessionRepository();
     final mockConnectionService = MockConnectionService();
     final mockNotificationCanceller = MockNotificationCanceller();
@@ -68,9 +69,13 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
+    delegateSessionRepository(
+      repository: mockSessionRepository,
+      source: mockSessionService,
+      optionsSource: mockSessionApi,
+    );
     stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: _sessionId);
-    _stubLoadApis(mockSessionService);
+    _stubLoadApis(mockSessionService, optionsApi: mockSessionApi);
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
@@ -230,7 +235,7 @@ void main() {
   });
 }
 
-void _stubLoadApis(MockSessionRepository service) {
+void _stubLoadApis(MockSessionRepository service, {required MockSessionApi optionsApi}) {
   when(
     () => service.getMessages(
       sessionId: _sessionId,
@@ -262,7 +267,7 @@ void _stubLoadApis(MockSessionRepository service) {
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
   when(
-    () => service.listAgents(
+    () => optionsApi.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -276,7 +281,7 @@ void _stubLoadApis(MockSessionRepository service) {
     ),
   );
   when(
-    () => service.listProviders(
+    () => optionsApi.listProviders(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
@@ -285,7 +290,7 @@ void _stubLoadApis(MockSessionRepository service) {
       const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
     ),
   );
-  when(() => service.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
+  when(() => optionsApi.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
     (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
   );
 }

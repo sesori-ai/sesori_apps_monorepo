@@ -358,6 +358,15 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   its transport directly. Stdio transports close child stdin before graceful termination
   and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
+  On macOS and Linux, an owned Codex or OpenCode runtime is stopped on shutdown and
+  reclaimed by stale cleanup after a crash in every launch shape: a native binary, an
+  npm `#!/usr/bin/env node` shim (`ps` shows `node <shim> <args>`), and a launcher
+  that execs its native binary in the same pid (`ps` shows `<native> <args>`). A
+  record matches a live process by pid, start marker and the spawn arguments at the
+  end of its command line. A shim or exec'd child that an earlier bridge release
+  already leaked stays running: that bridge deleted the record when the match failed.
+  Windows has no start marker and launches the runtime through `cmd.exe`; its
+  matching uses the pid and executable path only and is not covered by this guarantee.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed

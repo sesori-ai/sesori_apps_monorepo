@@ -30,8 +30,7 @@ class const CodexRecordMapper() implements RuntimeRecordMapper<CodexOwnershipRec
   String? runtimeExecutablePathOf({required CodexOwnershipRecord record}) => record.codexExecutablePath;
 
   @override
-  String runtimeCommandLineOf({required CodexOwnershipRecord record}) =>
-      <String>[record.codexCommand, ...record.codexArgs].join(" ");
+  List<String> runtimeArgsOf({required CodexOwnershipRecord record}) => record.codexArgs;
 
   @override
   int bridgePidOf({required CodexOwnershipRecord record}) => record.bridgePid;

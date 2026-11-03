@@ -332,6 +332,94 @@ void main() {
       expect(ownershipRepository.records, isEmpty);
       expect(spawnedProcess.killSignals, isEmpty);
     });
+
+    group("launcher that execs its native binary in the same pid", () {
+      // The record was built from the identity adopted before the exec, when
+      // `ps` showed `node /opt/homebrew/bin/agent <args>`. The live process
+      // keeps the pid and start marker but now runs the native binary.
+      _TestRecord launcherRecord({required int bridgePid, required String bridgeStartMarker}) {
+        return _TestRecord(
+          ownerSessionId: "launcher-owner",
+          openCodePid: 801,
+          openCodeStartMarker: "launcher-start",
+          openCodeExecutablePath: "node",
+          openCodeCommand: "node",
+          openCodeArgs: const <String>["serve", "--port", "50140", "--hostname", "127.0.0.1"],
+          port: 50140,
+          bridgePid: bridgePid,
+          bridgeStartMarker: bridgeStartMarker,
+          startedAt: DateTime.utc(2026, 5, 15, 12),
+          status: _TestStatus.ready,
+        );
+      }
+
+      ProcessIdentity liveIdentity({required String commandLine}) {
+        return _identity(
+          pid: 801,
+          startMarker: "launcher-start",
+          executablePath: "/opt/homebrew/lib/node_modules/agent/vendor/agent",
+          commandLine: commandLine,
+        );
+      }
+
+      const nativeCommandLine = "/opt/homebrew/lib/node_modules/agent/vendor/agent serve --port 50140 --hostname 127.0.0.1";
+
+      test("stale cleanup reclaims it once its owner bridge is dead", () async {
+        final record = launcherRecord(bridgePid: 901, bridgeStartMarker: "dead-bridge-start");
+        ownershipRepository.records[record.ownerSessionId] = record;
+        processService.inspectResults[801] = <ProcessIdentity?>[
+          liveIdentity(commandLine: nativeCommandLine),
+          liveIdentity(commandLine: nativeCommandLine),
+          null,
+          null,
+        ];
+        bridge.liveBridgeResults[901] = <bool>[false];
+
+        await _service(
+          ownershipRepository: ownershipRepository,
+          processService: processService,
+          bridge: bridge,
+          clock: clock,
+        ).cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: const <ProcessIdentity>[]);
+
+        expect(processService.signalRequests, equals(<String>["graceful:801"]));
+        expect(ownershipRepository.records, isEmpty);
+      });
+
+      test("shutdown stops it by its live identity", () async {
+        final record = launcherRecord(bridgePid: 900, bridgeStartMarker: "bridge-start");
+        ownershipRepository.records[record.ownerSessionId] = record;
+        processService.inspectResults[801] = <ProcessIdentity?>[liveIdentity(commandLine: nativeCommandLine), null, null];
+
+        await _service(
+          ownershipRepository: ownershipRepository,
+          processService: processService,
+          bridge: bridge,
+          clock: clock,
+        ).stopOwnedRuntime(record: record);
+
+        expect(processService.signalRequests, equals(<String>["graceful:801"]));
+        expect(ownershipRepository.records, isEmpty);
+      });
+
+      test("stale cleanup spares a same-instance process whose command line lacks the recorded args", () async {
+        final record = launcherRecord(bridgePid: 901, bridgeStartMarker: "dead-bridge-start");
+        ownershipRepository.records[record.ownerSessionId] = record;
+        processService.inspectResults[801] = <ProcessIdentity?>[
+          liveIdentity(commandLine: "/opt/homebrew/lib/node_modules/agent/vendor/agent serve --port 50141"),
+        ];
+        bridge.liveBridgeResults[901] = <bool>[false];
+
+        await _service(
+          ownershipRepository: ownershipRepository,
+          processService: processService,
+          bridge: bridge,
+          clock: clock,
+        ).cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: const <ProcessIdentity>[]);
+
+        expect(processService.signalRequests, isEmpty);
+      });
+    });
   });
 }
 
@@ -454,9 +542,7 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   String? runtimeExecutablePathOf({required _TestRecord record}) => record.openCodeExecutablePath;
 
   @override
-  String runtimeCommandLineOf({required _TestRecord record}) {
-    return <String>[record.openCodeCommand, ...record.openCodeArgs].join(" ");
-  }
+  List<String> runtimeArgsOf({required _TestRecord record}) => record.openCodeArgs;
 
   @override
   int bridgePidOf({required _TestRecord record}) => record.bridgePid;

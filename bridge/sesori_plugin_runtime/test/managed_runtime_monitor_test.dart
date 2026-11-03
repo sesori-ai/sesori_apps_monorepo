@@ -409,7 +409,7 @@ _TestRecord _record({required int pid, required int port}) {
     openCodePid: pid,
     openCodeStartMarker: "open-start-$pid",
     openCodeExecutablePath: "/usr/local/bin/opencode",
-    commandLine: "/usr/local/bin/opencode serve --port $port --hostname 127.0.0.1",
+    args: <String>["serve", "--port", "$port", "--hostname", "127.0.0.1"],
     port: port,
     bridgePid: 900,
     bridgeStartMarker: "bridge-start",
@@ -519,7 +519,7 @@ class const _TestRecord({
     required final int openCodePid,
     required final String? openCodeStartMarker,
     required final String openCodeExecutablePath,
-    required final String commandLine,
+    required final List<String> args,
     required final int port,
     required final int bridgePid,
     required final String? bridgeStartMarker,
@@ -531,7 +531,7 @@ class const _TestRecord({
       openCodePid: openCodePid,
       openCodeStartMarker: openCodeStartMarker,
       openCodeExecutablePath: openCodeExecutablePath,
-      commandLine: commandLine,
+      args: args,
       port: port,
       bridgePid: bridgePid,
       bridgeStartMarker: bridgeStartMarker,
@@ -560,7 +560,7 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   String? runtimeExecutablePathOf({required _TestRecord record}) => record.openCodeExecutablePath;
 
   @override
-  String runtimeCommandLineOf({required _TestRecord record}) => record.commandLine;
+  List<String> runtimeArgsOf({required _TestRecord record}) => record.args;
 
   @override
   int bridgePidOf({required _TestRecord record}) => record.bridgePid;

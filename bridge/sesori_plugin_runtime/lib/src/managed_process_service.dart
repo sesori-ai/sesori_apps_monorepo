@@ -532,7 +532,7 @@ class ManagedProcessService<R>({
           actual: process.identity.executablePath,
           expected: _runtimeExecutablePathOf(record: record),
         ) &&
-        _matchesRuntimeCommandLine(identity: process.identity, record: record);
+        _endsWithRuntimeArgs(identity: process.identity, record: record);
   }
 
   Future<bool> _isCurrentOwnedProcessRunning({required _CurrentOwnedRuntimeProcess process}) async {
@@ -578,12 +578,11 @@ class ManagedProcessService<R>({
       return false;
     }
     if (_runtimeStartMarkerOf(record: record) != null || identity.startMarker != null) {
+      // The pid and start marker pin the exact process instance. The
+      // executable is not compared because an interpreter shim or a launcher
+      // that execs its native binary changes it after spawn.
       return identity.startMarker == _runtimeStartMarkerOf(record: record) &&
-          _samePath(
-            actual: identity.executablePath,
-            expected: _runtimeExecutablePathOf(record: record),
-          ) &&
-          _matchesRuntimeCommandLine(identity: identity, record: record);
+          _endsWithRuntimeArgs(identity: identity, record: record);
     }
     return _samePath(
       actual: identity.executablePath,
@@ -632,8 +631,8 @@ class ManagedProcessService<R>({
     return segments.isEmpty ? path : segments.last;
   }
 
-  bool _matchesRuntimeCommandLine({required ProcessIdentity identity, required R record}) {
-    return identity.commandLine == _mapper.runtimeCommandLineOf(record: record);
+  bool _endsWithRuntimeArgs({required ProcessIdentity identity, required R record}) {
+    return identity.commandLine.endsWith(" ${_mapper.runtimeArgsOf(record: record).join(" ")}");
   }
 
   String _ownerSessionIdOf({required R record}) => _mapper.ownerSessionIdOf(record: record);
