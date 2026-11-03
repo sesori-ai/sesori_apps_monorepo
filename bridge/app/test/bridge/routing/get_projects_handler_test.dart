@@ -64,14 +64,14 @@ void main() {
 
     test("returns typed projects response", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
       expect(response, isA<Projects>());
     });
 
     test("returns empty list when plugin has no projects", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
       expect(response.data, isEmpty);
       expect(plugin.getProjectsCallCount, 0);
@@ -89,7 +89,7 @@ void main() {
       await projectsDao.setDisplayName(projectId: "p1", displayName: "My Project", updatedAt: 2);
 
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
 
       final project = response.data[0];
@@ -103,7 +103,7 @@ void main() {
       await projectsDao.setActivity(projectId: "gone", createdAt: 1, updatedAt: 2);
       await projectsDao.setActivity(projectId: "present", createdAt: 1, updatedAt: 1);
 
-      final response = await handler.handle(makeRequest("GET", "/projects"));
+      final response = await handler.handle(request: makeRequest("GET", "/projects"));
 
       expect(
         [
@@ -125,7 +125,7 @@ void main() {
       await projectsDao.setActivity(projectId: "p1", createdAt: 1000, updatedAt: 2000);
 
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
 
       final time = response.data[0].time;
@@ -140,7 +140,7 @@ void main() {
       await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
 
       final row = await projectsDao.getProject(projectId: "p1");
@@ -158,7 +158,7 @@ void main() {
       }
 
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
 
       expect(response.data.length, equals(3));
@@ -177,7 +177,7 @@ void main() {
       await projectsDao.hideProject(projectId: "hidden-1");
 
       final response = await handler.handle(
-        makeRequest("GET", "/projects"),
+        request: makeRequest("GET", "/projects"),
       );
 
       final ids = response.data.map((item) => item.id).toList();

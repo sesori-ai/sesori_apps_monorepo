@@ -112,7 +112,7 @@ void main() {
 
       Future<void> delete({required bool deleteSessionFolder}) async {
         await handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: DeleteSessionRequest(
             sessionId: "s1",
             deleteWorktree: false,
@@ -160,7 +160,7 @@ void main() {
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "",
             deleteWorktree: false,
@@ -181,7 +181,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
+        request: makeRequest("DELETE", "/session/delete"),
         body: const DeleteSessionRequest(
           sessionId: "s1",
           deleteWorktree: false,
@@ -230,7 +230,7 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
+        request: makeRequest("DELETE", "/session/delete"),
         body: const DeleteSessionRequest(
           sessionId: "s2",
           deleteWorktree: true,
@@ -267,7 +267,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "s2-failed",
             deleteWorktree: true,
@@ -293,7 +293,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "s3",
             deleteWorktree: false,
@@ -322,7 +322,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "s4",
             deleteWorktree: true,
@@ -355,7 +355,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "s5",
             deleteWorktree: true,
@@ -383,7 +383,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
+        request: makeRequest("DELETE", "/session/delete"),
         body: const DeleteSessionRequest(
           sessionId: "s6",
           deleteWorktree: true,
@@ -410,7 +410,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
+        request: makeRequest("DELETE", "/session/delete"),
         body: const DeleteSessionRequest(
           sessionId: "s7",
           deleteWorktree: true,
@@ -474,7 +474,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "s10",
             deleteWorktree: true,
@@ -502,7 +502,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("DELETE", "/session/delete"),
+          request: makeRequest("DELETE", "/session/delete"),
           body: const DeleteSessionRequest(
             sessionId: "s10-unavailable",
             deleteWorktree: false,
@@ -526,7 +526,7 @@ void main() {
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s11", 404);
 
       final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
+        request: makeRequest("DELETE", "/session/delete"),
         body: const DeleteSessionRequest(
           sessionId: "s11",
           deleteWorktree: false,
@@ -549,7 +549,7 @@ void main() {
       plugin.throwOnDeleteSessionError = const PluginOperationException.notFound("deleteSession");
 
       final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
+        request: makeRequest("DELETE", "/session/delete"),
         body: const DeleteSessionRequest(
           sessionId: "s12",
           deleteWorktree: false,

@@ -9,14 +9,14 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
     extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.delete,
-        "/session/delete",
+        method: HttpMethod.delete,
+        path: "/session/delete",
         fromJson: DeleteSessionRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required DeleteSessionRequest body,
   }) async {
     final sessionId = body.sessionId;
@@ -26,7 +26,7 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
     // deletion. Reject it explicitly so they do not report unperformed cleanup
     // as success; remove the field when v1.7.1 clients are unsupported.
     if (body.deleteBranch) {
-      throw buildErrorResponse(request, 422, "branch cleanup is no longer supported");
+      throw buildErrorResponse(request: request, status: 422, message: "branch cleanup is no longer supported");
     }
     final cleanupResult = await _sessionDeletionService.deleteSession(
       sessionId: sessionId,

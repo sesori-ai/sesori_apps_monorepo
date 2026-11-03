@@ -11,14 +11,14 @@ class GetSessionHandler({
 }) extends BodyRequestHandler<SessionIdRequest, Session> {
   this
     : super(
-        HttpMethod.post,
-        "/session/detail",
+        method: HttpMethod.post,
+        path: "/session/detail",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<Session> handle(
-    RelayRequest request, {
+  Future<Session> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;
@@ -26,7 +26,7 @@ class GetSessionHandler({
 
     final catalogSession = await _sessionRepository.getCatalogSession(sessionId: sessionId);
     if (catalogSession == null) {
-      throw buildErrorResponse(request, 404, "session not found");
+      throw buildErrorResponse(request: request, status: 404, message: "session not found");
     }
     return await _sessionViews.enrich(session: catalogSession);
   }

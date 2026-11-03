@@ -7,24 +7,24 @@ class PatchPluginIdleTimeoutHandler({required final PluginLifecycleService _life
     extends BodyRequestHandler<PluginIdleTimeoutUpdateRequest, PluginManagementResponse> {
   this
     : super(
-        HttpMethod.patch,
-        "/plugin/idle-timeout",
+        method: HttpMethod.patch,
+        path: "/plugin/idle-timeout",
         fromJson: PluginIdleTimeoutUpdateRequest.fromJson,
       );
 
   @override
-  Future<PluginManagementResponse> handle(
-    RelayRequest request, {
+  Future<PluginManagementResponse> handle({
+    required RelayRequest request,
     required PluginIdleTimeoutUpdateRequest body,
   }) async {
     try {
       return await _lifecycleService.updateIdleTimeout(request: body);
     } on PluginManagementPluginNotFoundException {
-      throw buildErrorResponse(request, 404, "plugin not found");
+      throw buildErrorResponse(request: request, status: 404, message: "plugin not found");
     } on PluginManagementConflictException catch (error) {
       throw buildJsonErrorResponse(request: request, status: 409, body: error.conflict.toJson());
     } on PluginManagementMutationOutcomeUncertainException {
-      throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
+      throw buildErrorResponse(request: request, status: 503, message: "plugin mutation outcome is uncertain");
     }
   }
 }

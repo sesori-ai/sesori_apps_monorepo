@@ -12,14 +12,14 @@ class PatchBridgeSettingsHandler({
 }) extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
   this
     : super(
-        HttpMethod.patch,
-        "/settings",
+        method: HttpMethod.patch,
+        path: "/settings",
         fromJson: BridgeSettingUpdate.fromJson,
       );
 
   @override
-  Future<BridgeSettingUpdate> handle(
-    RelayRequest request, {
+  Future<BridgeSettingUpdate> handle({
+    required RelayRequest request,
     required BridgeSettingUpdate body,
   }) async {
     switch (body) {

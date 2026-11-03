@@ -91,7 +91,7 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("PATCH", "/session/title"),
+        request: makeRequest("PATCH", "/session/title"),
         body: const RenameSessionRequest(sessionId: "s1", title: "New Title"),
       );
       await sessionMutationDispatcher.dispose();
@@ -128,7 +128,7 @@ void main() {
       );
 
       final result = await handler.handle(
-        makeRequest("PATCH", "/session/title"),
+        request: makeRequest("PATCH", "/session/title"),
         body: const RenameSessionRequest(sessionId: "s1", title: "Renamed Session"),
       );
 
@@ -147,7 +147,7 @@ void main() {
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(
-          makeRequest("PATCH", "/session/title"),
+          request: makeRequest("PATCH", "/session/title"),
           body: const RenameSessionRequest(sessionId: "", title: "New Title"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),

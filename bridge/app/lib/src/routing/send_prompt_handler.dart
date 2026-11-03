@@ -8,14 +8,14 @@ class SendPromptHandler({required final SessionPromptService _sessionPromptServi
     extends BodyRequestHandler<SendPromptRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/prompt_async",
+        method: HttpMethod.post,
+        path: "/session/prompt_async",
         fromJson: SendPromptRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required SendPromptRequest body,
   }) async {
     final sessionId = body.sessionId;

@@ -43,7 +43,7 @@ void main() {
       for (final limit in const [0, -1]) {
         await expectLater(
           () => handler.handle(
-            makeRequest("POST", "/session/messages"),
+            request: makeRequest("POST", "/session/messages"),
             body: SessionMessagesRequest(sessionId: "session-1", limit: limit, before: null),
           ),
           throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
@@ -54,7 +54,7 @@ void main() {
     test("returns 400 when session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/messages"),
+          request: makeRequest("POST", "/session/messages"),
           body: const SessionMessagesRequest(sessionId: "", limit: null, before: null),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -63,7 +63,7 @@ void main() {
 
     test("uses request body sessionId as the session ID passed to plugin", () async {
       await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "session-xyz", limit: null, before: null),
       );
       expect(plugin.lastGetMessagesSessionId, equals("session-xyz"));
@@ -71,7 +71,7 @@ void main() {
 
     test("returns typed response", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
       expect(response, isA<MessageWithPartsResponse>());
@@ -79,7 +79,7 @@ void main() {
 
     test("returns empty list when plugin has no messages", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
       expect(response.messages, isEmpty);
@@ -113,7 +113,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
 
@@ -137,7 +137,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: 1, before: null),
       );
 
@@ -169,7 +169,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
 
@@ -211,7 +211,7 @@ void main() {
       ];
 
       final inlineResponse = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
       expect(
@@ -220,7 +220,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
+        request: makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(
           sessionId: "s1",
           limit: null,

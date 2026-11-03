@@ -44,7 +44,7 @@ void main() {
     test("returns 400 when session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/questions"),
+          request: makeRequest("POST", "/session/questions"),
           body: const SessionIdRequest(sessionId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -53,7 +53,7 @@ void main() {
 
     test("returns typed response", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/session/questions"),
+        request: makeRequest("POST", "/session/questions"),
         body: const SessionIdRequest(sessionId: "s-1"),
       );
 
@@ -83,7 +83,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/questions"),
+        request: makeRequest("POST", "/session/questions"),
         body: const SessionIdRequest(sessionId: "s-1"),
       );
 

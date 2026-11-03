@@ -49,7 +49,7 @@ void main() {
     test("returns typed directories for valid prefix", () async {
       Directory("${tempDir.path}/project1").createSync();
       final result = await handler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
       );
       expect(result.data, hasLength(1));
@@ -62,7 +62,7 @@ void main() {
     test("throws 404 for non-existent prefix path", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/filesystem/suggestions"),
+          request: makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(
             maxResults: 20,
             prefix: "/nonexistent/path/that/does/not/exist",
@@ -76,7 +76,7 @@ void main() {
 
     test("returns home directory children when prefix is missing", () async {
       final result = await handler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: null),
       );
       expect(result.data, isNotEmpty);
@@ -96,11 +96,11 @@ void main() {
       );
 
       final opening = await windowsHandler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: null),
       );
       final browsing = await windowsHandler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
       );
 
@@ -114,11 +114,11 @@ void main() {
       final delegatingHandler = FilesystemSuggestionsHandler(filesystemRepository: repository);
 
       final opening = await delegatingHandler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: const FilesystemSuggestionsRequest(maxResults: 7, prefix: null),
       );
       await delegatingHandler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 9, prefix: tempDir.path),
       );
 
@@ -129,7 +129,7 @@ void main() {
     test("throws 400 for path traversal attempt with ../", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/filesystem/suggestions"),
+          request: makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: "/some/../etc/passwd"),
         ),
         throwsA(
@@ -141,7 +141,7 @@ void main() {
     test("throws 400 for relative path", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/filesystem/suggestions"),
+          request: makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: "relative/path"),
         ),
         throwsA(
@@ -153,7 +153,7 @@ void main() {
     test("throws 400 for empty prefix", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/filesystem/suggestions"),
+          request: makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: ""),
         ),
         throwsA(
@@ -167,7 +167,7 @@ void main() {
         Directory("${tempDir.path}/project_${i.toString().padLeft(2, "0")}").createSync();
       }
       final result = await handler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
       );
       expect(result.data.length, lessThanOrEqualTo(20));
@@ -177,7 +177,7 @@ void main() {
       Directory("${tempDir.path}/subdir").createSync();
       File("${tempDir.path}/file.txt").writeAsStringSync("content");
       final result = await handler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
       );
       expect(result.data, hasLength(1));
@@ -188,7 +188,7 @@ void main() {
       final projectDir = Directory("${tempDir.path}/my_repo")..createSync();
       Directory("${projectDir.path}/.git").createSync();
       final result = await handler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
       );
       expect(result.data, hasLength(1));
@@ -199,7 +199,7 @@ void main() {
       Directory("${tempDir.path}/visible").createSync();
       Directory("${tempDir.path}/.hidden").createSync();
       final result = await handler.handle(
-        makeRequest("POST", "/filesystem/suggestions"),
+        request: makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
       );
       expect(result.data, hasLength(1));

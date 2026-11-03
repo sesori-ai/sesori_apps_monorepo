@@ -11,14 +11,14 @@ class SetBaseBranchHandler({required final ProjectRepository _projectRepository}
     extends BodyRequestHandler<SetBaseBranchRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.put,
-        "/project/base-branch",
+        method: HttpMethod.put,
+        path: "/project/base-branch",
         fromJson: SetBaseBranchRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required SetBaseBranchRequest body,
   }) async {
     final projectId = body.projectId;

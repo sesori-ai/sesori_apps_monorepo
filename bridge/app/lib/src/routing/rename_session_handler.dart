@@ -9,11 +9,11 @@ class RenameSessionHandler({
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final SessionViewService _sessionViews,
 }) extends BodyRequestHandler<RenameSessionRequest, Session> {
-  this : super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
+  this : super(method: HttpMethod.patch, path: "/session/title", fromJson: RenameSessionRequest.fromJson);
 
   @override
-  Future<Session> handle(
-    RelayRequest request, {
+  Future<Session> handle({
+    required RelayRequest request,
     required RenameSessionRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");

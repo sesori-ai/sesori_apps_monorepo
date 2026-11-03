@@ -22,35 +22,35 @@ class CreateDirectoryHandler({required final FilesystemRepository _filesystemRep
     extends BodyRequestHandler<FilesystemCreateDirectoryRequest, FilesystemSuggestion> {
   this
     : super(
-        HttpMethod.post,
-        "/filesystem/directory",
+        method: HttpMethod.post,
+        path: "/filesystem/directory",
         fromJson: FilesystemCreateDirectoryRequest.fromJson,
       );
 
   @override
-  Future<FilesystemSuggestion> handle(
-    RelayRequest request, {
+  Future<FilesystemSuggestion> handle({
+    required RelayRequest request,
     required FilesystemCreateDirectoryRequest body,
   }) async {
     final parentPath = body.parentPath;
     final name = body.name.trim();
 
     if (parentPath.isEmpty) {
-      throw buildErrorResponse(request, 400, "parentPath must not be empty");
+      throw buildErrorResponse(request: request, status: 400, message: "parentPath must not be empty");
     }
     if (!p.isAbsolute(parentPath)) {
-      throw buildErrorResponse(request, 400, "parentPath must be absolute");
+      throw buildErrorResponse(request: request, status: 400, message: "parentPath must be absolute");
     }
     if (name.isEmpty) {
-      throw buildErrorResponse(request, 400, "name must not be empty");
+      throw buildErrorResponse(request: request, status: 400, message: "name must not be empty");
     }
     // The name is one path segment, never a route: anything that separates,
     // reroots, or walks up would place the directory outside [parentPath].
     if (name.contains("/") || name.contains(r"\") || name == "." || name == "..") {
-      throw buildErrorResponse(request, 400, "name must be a single path segment");
+      throw buildErrorResponse(request: request, status: 400, message: "name must be a single path segment");
     }
     if (p.split(parentPath).contains("..")) {
-      throw buildErrorResponse(request, 400, "path traversal not allowed");
+      throw buildErrorResponse(request: request, status: 400, message: "path traversal not allowed");
     }
 
     final path = p.join(parentPath, name);
@@ -58,17 +58,21 @@ class CreateDirectoryHandler({required final FilesystemRepository _filesystemRep
     try {
       switch (_filesystemRepository.checkCreatableDirectory(path: path)) {
         case CreatableDirectoryStatus.parentMissing:
-          throw buildErrorResponse(request, 400, "parent directory does not exist");
+          throw buildErrorResponse(request: request, status: 400, message: "parent directory does not exist");
         case CreatableDirectoryStatus.alreadyExists:
-          throw buildErrorResponse(request, 409, "a file or directory with that name already exists");
+          throw buildErrorResponse(
+            request: request,
+            status: 409,
+            message: "a file or directory with that name already exists",
+          );
         case CreatableDirectoryStatus.creatable:
           _filesystemRepository.createDirectory(path: path);
       }
     } on FilesystemPermissionDeniedException {
-      throw buildErrorResponse(request, 403, "permission denied: $path");
+      throw buildErrorResponse(request: request, status: 403, message: "permission denied: $path");
     } on FileSystemException catch (error, stackTrace) {
       Log.w("CreateDirectoryHandler: failed to create $path", error, stackTrace);
-      throw buildErrorResponse(request, 500, "failed to create directory");
+      throw buildErrorResponse(request: request, status: 500, message: "failed to create directory");
     }
 
     // Freshly created, so it holds no repository yet.

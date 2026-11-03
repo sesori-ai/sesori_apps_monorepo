@@ -11,14 +11,14 @@ class GetSessionToolOutputHandler({required final ChatHistoryService _chatHistor
     extends BodyRequestHandler<SessionToolOutputRequest, SessionToolOutputResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/tool-output",
+        method: HttpMethod.post,
+        path: "/session/tool-output",
         fromJson: SessionToolOutputRequest.fromJson,
       );
 
   @override
-  Future<SessionToolOutputResponse> handle(
-    RelayRequest request, {
+  Future<SessionToolOutputResponse> handle({
+    required RelayRequest request,
     required SessionToolOutputRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
@@ -31,7 +31,7 @@ class GetSessionToolOutputHandler({required final ChatHistoryService _chatHistor
     );
     return switch (lookup) {
       ToolOutputFound(:final output, :final error) => SessionToolOutputResponse(output: output, error: error),
-      ToolOutputMissing() => throw buildErrorResponse(request, 404, "tool part not found"),
+      ToolOutputMissing() => throw buildErrorResponse(request: request, status: 404, message: "tool part not found"),
     };
   }
 }

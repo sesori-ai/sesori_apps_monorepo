@@ -11,40 +11,40 @@ class CreateProjectHandler({required final ProjectMutationService _projectMutati
     extends BodyRequestHandler<ProjectPathRequest, Project> {
   this
     : super(
-        HttpMethod.post,
+        method: HttpMethod.post,
         // COMPATIBILITY 2026-11-03 (v1.12.0): Apps older than v1.6.0 create projects here; current apps no longer
         // call it. Remove once public apps older than v1.6.0 are unsupported.
-        "/project/create",
+        path: "/project/create",
         fromJson: ProjectPathRequest.fromJson,
       );
 
   @override
-  Future<Project> handle(
-    RelayRequest request, {
+  Future<Project> handle({
+    required RelayRequest request,
     required ProjectPathRequest body,
   }) async {
     final path = body.path;
 
     if (path.isEmpty) {
-      throw buildErrorResponse(request, 400, "path must not be empty");
+      throw buildErrorResponse(request: request, status: 400, message: "path must not be empty");
     }
     if (!p.isAbsolute(path)) {
-      throw buildErrorResponse(request, 400, "path must be absolute");
+      throw buildErrorResponse(request: request, status: 400, message: "path must be absolute");
     }
     if (p.split(path).contains("..")) {
-      throw buildErrorResponse(request, 400, "path traversal not allowed");
+      throw buildErrorResponse(request: request, status: 400, message: "path traversal not allowed");
     }
 
     try {
       return await _projectMutationService.createProject(path: path);
     } on FilesystemPermissionDeniedException {
-      throw buildErrorResponse(request, 403, "permission denied: $path");
+      throw buildErrorResponse(request: request, status: 403, message: "permission denied: $path");
     } on ProjectParentMissingException {
-      throw buildErrorResponse(request, 400, "parent directory does not exist");
+      throw buildErrorResponse(request: request, status: 400, message: "parent directory does not exist");
     } on ProjectDirectoryExistsException {
-      throw buildErrorResponse(request, 409, "directory already exists");
+      throw buildErrorResponse(request: request, status: 409, message: "directory already exists");
     } on ProjectGitSetupException {
-      throw buildErrorResponse(request, 500, "Git setup failed");
+      throw buildErrorResponse(request: request, status: 500, message: "Git setup failed");
     }
   }
 }

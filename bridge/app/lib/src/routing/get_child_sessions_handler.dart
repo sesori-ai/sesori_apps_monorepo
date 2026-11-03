@@ -11,14 +11,14 @@ class GetChildSessionsHandler({
 }) extends BodyRequestHandler<SessionIdRequest, SessionListResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/children",
+        method: HttpMethod.post,
+        path: "/session/children",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<SessionListResponse> handle(
-    RelayRequest request, {
+  Future<SessionListResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;

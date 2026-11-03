@@ -18,29 +18,30 @@ class GetSessionPageHandler({
 
   this
     : super(
-        HttpMethod.post,
-        "/sessions/page",
+        method: HttpMethod.post,
+        path: "/sessions/page",
         fromJson: SessionPageRequest.fromJson,
       );
 
   @override
-  Future<SessionPageResponse> handle(
-    RelayRequest request, {
+  Future<SessionPageResponse> handle({
+    required RelayRequest request,
     required SessionPageRequest body,
   }) async {
     if (body.limit < 0 || body.limit > maxLimit) {
-      throw buildErrorResponse(request, 400, "limit must be between 0 and $maxLimit");
+      throw buildErrorResponse(request: request, status: 400, message: "limit must be between 0 and $maxLimit");
     }
     if (body.projectId case final projectId?) {
       requireNonEmpty(request: request, value: projectId, label: "project id");
     }
     if (body.query case final query? when searchWords(query: query).isEmpty) {
-      throw buildErrorResponse(request, 400, "blank query");
+      throw buildErrorResponse(request: request, status: 400, message: "blank query");
     }
     final cursor = switch (body.cursor) {
       null => null,
       final encoded =>
-        SessionPageCursor.tryParse(encoded: encoded) ?? (throw buildErrorResponse(request, 400, "invalid cursor")),
+        SessionPageCursor.tryParse(encoded: encoded) ??
+            (throw buildErrorResponse(request: request, status: 400, message: "invalid cursor")),
     };
 
     final page = await _sessionRepository.getSessionPage(

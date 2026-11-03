@@ -5,10 +5,10 @@ import "request_handler.dart";
 
 class DeclineFormHandler({required final PendingInteractionService _service})
     extends BodyRequestHandler<DeclineFormRequest, FormReplyResult> {
-  this : super(HttpMethod.post, "/form/decline", fromJson: DeclineFormRequest.fromJson);
+  this : super(method: HttpMethod.post, path: "/form/decline", fromJson: DeclineFormRequest.fromJson);
 
   @override
-  Future<FormReplyResult> handle(RelayRequest request, {required DeclineFormRequest body}) {
+  Future<FormReplyResult> handle({required RelayRequest request, required DeclineFormRequest body}) {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
     requireNonEmpty(request: request, value: body.requestId, label: "request id");
     return _service.declineForm(request: body);

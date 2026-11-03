@@ -5,12 +5,12 @@ import "request_handler.dart";
 
 class GetCatalogImportStatusesHandler({required final CatalogImportService _service})
     extends GetRequestHandler<CatalogImportStatusesResponse> {
-  this : super("/plugin/import");
+  this : super(path: "/plugin/import");
 
   @override
-  Future<CatalogImportStatusesResponse> handle(
-    RelayRequest request,
-  ) async {
+  Future<CatalogImportStatusesResponse> handle({
+    required RelayRequest request,
+  }) async {
     return CatalogImportStatusesResponse(statuses: _service.latestStatuses);
   }
 }

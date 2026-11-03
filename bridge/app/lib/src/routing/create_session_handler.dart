@@ -12,14 +12,14 @@ class CreateSessionHandler({
 }) extends BodyRequestHandler<CreateSessionRequest, Session> {
   this
     : super(
-        HttpMethod.post,
-        "/session/create",
+        method: HttpMethod.post,
+        path: "/session/create",
         fromJson: CreateSessionRequest.fromJson,
       );
 
   @override
-  Future<Session> handle(
-    RelayRequest request, {
+  Future<Session> handle({
+    required RelayRequest request,
     required CreateSessionRequest body,
   }) async {
     final session = await _sessionCreationService.createSession(request: body);

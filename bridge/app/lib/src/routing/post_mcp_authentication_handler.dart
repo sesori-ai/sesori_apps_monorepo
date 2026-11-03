@@ -5,10 +5,13 @@ import "request_handler.dart";
 
 class PostMcpAuthenticationHandler({required final McpAuthenticationService _service})
     extends BodyRequestHandler<McpAuthenticationStartRequest, McpAuthenticationResult> {
-  this : super(HttpMethod.post, "/mcp/authentication", fromJson: McpAuthenticationStartRequest.fromJson);
+  this : super(method: HttpMethod.post, path: "/mcp/authentication", fromJson: McpAuthenticationStartRequest.fromJson);
 
   @override
-  Future<McpAuthenticationResult> handle(RelayRequest request, {required McpAuthenticationStartRequest body}) async {
+  Future<McpAuthenticationResult> handle({
+    required RelayRequest request,
+    required McpAuthenticationStartRequest body,
+  }) async {
     requireNonEmpty(request: request, value: body.pluginId, label: "plugin id");
     requireNonEmpty(request: request, value: body.target.serverKey, label: "server key");
     switch (body.target.scope) {

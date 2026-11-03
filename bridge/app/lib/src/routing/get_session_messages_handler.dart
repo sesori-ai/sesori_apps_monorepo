@@ -10,14 +10,14 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
     extends BodyRequestHandler<SessionMessagesRequest, MessageWithPartsResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/messages",
+        method: HttpMethod.post,
+        path: "/session/messages",
         fromJson: SessionMessagesRequest.fromJson,
       );
 
   @override
-  Future<MessageWithPartsResponse> handle(
-    RelayRequest request, {
+  Future<MessageWithPartsResponse> handle({
+    required RelayRequest request,
     required SessionMessagesRequest body,
   }) async {
     final sessionId = body.sessionId;
@@ -26,7 +26,7 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
     // transcript" (null) nor a page anyone can page onward from, so refuse it
     // rather than returning an empty page that never terminates.
     if (body.limit case final limit? when limit <= 0) {
-      throw buildErrorResponse(request, 400, "limit must be greater than zero");
+      throw buildErrorResponse(request: request, status: 400, message: "limit must be greater than zero");
     }
 
     final page = await _chatHistoryService.getSessionMessages(

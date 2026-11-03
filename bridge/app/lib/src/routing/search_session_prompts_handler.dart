@@ -13,14 +13,14 @@ class SearchSessionPromptsHandler({required final ChatHistoryService _chatHistor
     extends BodyRequestHandler<SessionPromptSearchRequest, SessionPromptSearchResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/prompts/search",
+        method: HttpMethod.post,
+        path: "/session/prompts/search",
         fromJson: SessionPromptSearchRequest.fromJson,
       );
 
   @override
-  Future<SessionPromptSearchResponse> handle(
-    RelayRequest request, {
+  Future<SessionPromptSearchResponse> handle({
+    required RelayRequest request,
     required SessionPromptSearchRequest body,
   }) async {
     final sessionId = body.sessionId;

@@ -6,10 +6,10 @@ import "package:test/test.dart";
 import "routing_test_helpers.dart";
 
 // Minimal concrete subclass used to exercise base-class behaviour.
-class _StubHandler(super.method, super.path) extends RequestHandlerBase {
+class _StubHandler({required super.method, required super.path}) extends RequestHandlerBase {
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) async => RelayResponse(
     id: request.id,
@@ -21,12 +21,12 @@ class _StubHandler(super.method, super.path) extends RequestHandlerBase {
 
 // Throws the configured error from handle() to exercise error mapping.
 class _ThrowingGetHandler(final Object _error) extends GetRequestHandler<Object> {
-  this : super("/throw");
+  this : super(path: "/throw");
 
   @override
-  Future<Object> handle(
-    RelayRequest request,
-  ) async => throw _error;
+  Future<Object> handle({
+    required RelayRequest request,
+  }) async => throw _error;
 }
 
 void main() {
@@ -58,43 +58,43 @@ void main() {
 
   group("RequestHandler.canHandle", () {
     test("returns false on method mismatch", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
+      final h = _StubHandler(method: HttpMethod.get, path: "/project");
       expect(h.canHandle(makeRequest("POST", "/project")), isFalse);
     });
 
     test("returns false on path mismatch (different segment)", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
+      final h = _StubHandler(method: HttpMethod.get, path: "/project");
       expect(h.canHandle(makeRequest("GET", "/session")), isFalse);
     });
 
     test("returns false when segment count differs", () {
-      final h = _StubHandler(HttpMethod.get, "/session/:id/message");
+      final h = _StubHandler(method: HttpMethod.get, path: "/session/:id/message");
       expect(h.canHandle(makeRequest("GET", "/session/abc")), isFalse);
       expect(h.canHandle(makeRequest("GET", "/session/abc/message/extra")), isFalse);
     });
 
     test("returns true on exact path match", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
+      final h = _StubHandler(method: HttpMethod.get, path: "/project");
       expect(h.canHandle(makeRequest("GET", "/project")), isTrue);
     });
 
     test("returns true when path contains a :param placeholder", () {
-      final h = _StubHandler(HttpMethod.get, "/session/:id/message");
+      final h = _StubHandler(method: HttpMethod.get, path: "/session/:id/message");
       expect(h.canHandle(makeRequest("GET", "/session/abc123/message")), isTrue);
     });
 
     test("ignores query string when matching path", () {
-      final h = _StubHandler(HttpMethod.get, "/session");
+      final h = _StubHandler(method: HttpMethod.get, path: "/session");
       expect(h.canHandle(makeRequest("GET", "/session?start=0&limit=10")), isTrue);
     });
 
     test("ignores fragment when matching path", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
+      final h = _StubHandler(method: HttpMethod.get, path: "/project");
       expect(h.canHandle(makeRequest("GET", "/project#section")), isTrue);
     });
 
     test("HttpMethod.any + '*' path matches anything", () {
-      final h = _StubHandler(HttpMethod.any, "*");
+      final h = _StubHandler(method: HttpMethod.any, path: "*");
       expect(h.canHandle(makeRequest("GET", "/anything")), isTrue);
       expect(h.canHandle(makeRequest("POST", "/other/path")), isTrue);
       expect(h.canHandle(makeRequest("DELETE", "/")), isTrue);
@@ -103,37 +103,37 @@ void main() {
 
   group("RequestHandler.extractParams", () {
     test("extracts a single path param", () {
-      final h = _StubHandler(HttpMethod.get, "/session/:id/message");
+      final h = _StubHandler(method: HttpMethod.get, path: "/session/:id/message");
       final p = h.extractParams(makeRequest("GET", "/session/abc123/message"));
       expect(p.pathParams, equals({"id": "abc123"}));
     });
 
     test("extracts multiple path params", () {
-      final h = _StubHandler(HttpMethod.get, "/org/:orgId/repo/:repoId");
+      final h = _StubHandler(method: HttpMethod.get, path: "/org/:orgId/repo/:repoId");
       final p = h.extractParams(makeRequest("GET", "/org/my-org/repo/my-repo"));
       expect(p.pathParams, equals({"orgId": "my-org", "repoId": "my-repo"}));
     });
 
     test("pathParams is empty when path has no placeholders", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
+      final h = _StubHandler(method: HttpMethod.get, path: "/project");
       final p = h.extractParams(makeRequest("GET", "/project"));
       expect(p.pathParams, isEmpty);
     });
 
     test("extracts query params", () {
-      final h = _StubHandler(HttpMethod.get, "/session");
+      final h = _StubHandler(method: HttpMethod.get, path: "/session");
       final p = h.extractParams(makeRequest("GET", "/session?start=5&limit=20"));
       expect(p.queryParams, equals({"start": "5", "limit": "20"}));
     });
 
     test("queryParams is empty when no query string", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
+      final h = _StubHandler(method: HttpMethod.get, path: "/project");
       final p = h.extractParams(makeRequest("GET", "/project"));
       expect(p.queryParams, isEmpty);
     });
 
     test("extracts path params alongside query params", () {
-      final h = _StubHandler(HttpMethod.get, "/session/:id/message");
+      final h = _StubHandler(method: HttpMethod.get, path: "/session/:id/message");
       final p = h.extractParams(
         makeRequest("GET", "/session/s42/message?limit=5#anchor"),
       );
@@ -142,7 +142,7 @@ void main() {
     });
 
     test("catch-all (*) path yields empty pathParams", () {
-      final h = _StubHandler(HttpMethod.any, "*");
+      final h = _StubHandler(method: HttpMethod.any, path: "*");
       final p = h.extractParams(makeRequest("GET", "/anything/at/all?q=1"));
       expect(p.pathParams, isEmpty);
       expect(p.queryParams, equals({"q": "1"}));

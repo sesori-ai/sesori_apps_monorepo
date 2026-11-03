@@ -87,19 +87,19 @@ void main() {
 
       final roots = await sessionsHandler
           .handle(
-            makeRequest("POST", "/sessions"),
+            request: makeRequest("POST", "/sessions"),
             body: const SessionListRequest(projectId: "project", start: null, limit: null),
           )
           .timeout(const Duration(seconds: 1));
       final detail = await detailHandler
           .handle(
-            makeRequest("POST", "/session/detail"),
+            request: makeRequest("POST", "/session/detail"),
             body: const SessionIdRequest(sessionId: "root"),
           )
           .timeout(const Duration(seconds: 1));
       final children = await childrenHandler
           .handle(
-            makeRequest("POST", "/session/children"),
+            request: makeRequest("POST", "/session/children"),
             body: const SessionIdRequest(sessionId: "root"),
           )
           .timeout(const Duration(seconds: 1));

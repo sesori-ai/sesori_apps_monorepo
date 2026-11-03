@@ -68,7 +68,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/command"),
+        request: makeRequest("POST", "/command"),
         body: const PluginProjectIdRequest(projectId: "/repo"),
       );
 
@@ -97,7 +97,7 @@ void main() {
 
     test("accepts the active plugin selection", () async {
       await handler.handle(
-        makeRequest("POST", "/command"),
+        request: makeRequest("POST", "/command"),
         body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "opencode"),
       );
 

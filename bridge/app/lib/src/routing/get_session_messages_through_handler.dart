@@ -11,20 +11,20 @@ class GetSessionMessagesThroughHandler({required final ChatHistoryService _chatH
     extends BodyRequestHandler<SessionMessagesThroughRequest, MessageWithPartsResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/messages/through",
+        method: HttpMethod.post,
+        path: "/session/messages/through",
         fromJson: SessionMessagesThroughRequest.fromJson,
       );
 
   @override
-  Future<MessageWithPartsResponse> handle(
-    RelayRequest request, {
+  Future<MessageWithPartsResponse> handle({
+    required RelayRequest request,
     required SessionMessagesThroughRequest body,
   }) async {
     final sessionId = body.sessionId;
     requireNonEmpty(request: request, value: sessionId, label: "session id");
     if (body.throughSeq >= body.before) {
-      throw buildErrorResponse(request, 400, "throughSeq must be lower than before");
+      throw buildErrorResponse(request: request, status: 400, message: "throughSeq must be lower than before");
     }
 
     final page = await _chatHistoryService.getSessionMessages(

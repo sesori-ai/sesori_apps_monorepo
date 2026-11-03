@@ -57,7 +57,7 @@ void main() {
     test("returns 400 when session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/permissions"),
+          request: makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -67,7 +67,7 @@ void main() {
     test("preserves not-found for an unknown session", () async {
       await expectLater(
         handler.handle(
-          makeRequest("POST", "/session/permissions"),
+          request: makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: "unknown"),
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
@@ -88,7 +88,7 @@ void main() {
       autoApprovalService.resolvedSnapshot = const [];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/permissions"),
+        request: makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "root"),
       );
 
@@ -109,7 +109,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/permissions"),
+        request: makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "root"),
       );
 
@@ -141,7 +141,7 @@ void main() {
 
       await expectLater(
         derivedHandler.handle(
-          makeRequest("POST", "/session/permissions"),
+          request: makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: "gone"),
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
@@ -218,7 +218,7 @@ void main() {
       );
 
       final response = await derivedHandler.handle(
-        makeRequest("POST", "/session/permissions"),
+        request: makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "stable-root"),
       );
 

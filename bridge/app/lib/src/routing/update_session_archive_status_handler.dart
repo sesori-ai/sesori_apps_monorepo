@@ -15,14 +15,14 @@ class UpdateSessionArchiveStatusHandler({
 }) extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
   this
     : super(
-        HttpMethod.patch,
-        "/session/update/archive",
+        method: HttpMethod.patch,
+        path: "/session/update/archive",
         fromJson: UpdateSessionArchiveRequest.fromJson,
       );
 
   @override
-  Future<Session> handle(
-    RelayRequest request, {
+  Future<Session> handle({
+    required RelayRequest request,
     required UpdateSessionArchiveRequest body,
   }) async {
     final sessionId = body.sessionId;
@@ -31,7 +31,7 @@ class UpdateSessionArchiveStatusHandler({
     // deletion. Reject it explicitly so they do not report unperformed cleanup
     // as success; remove the field when v1.7.1 clients are unsupported.
     if (body.deleteBranch) {
-      throw buildErrorResponse(request, 422, "branch cleanup is no longer supported");
+      throw buildErrorResponse(request: request, status: 422, message: "branch cleanup is no longer supported");
     }
     try {
       final update = await _sessionLifecycleService.updateArchiveStatus(
@@ -59,7 +59,7 @@ class UpdateSessionArchiveStatusHandler({
     } on SessionArchiveConflictException catch (e) {
       throw buildJsonErrorResponse(request: request, status: 409, body: e.rejection.toJson());
     } on SessionNotFoundException {
-      throw buildErrorResponse(request, 404, "session not found");
+      throw buildErrorResponse(request: request, status: 404, message: "session not found");
     }
   }
 }

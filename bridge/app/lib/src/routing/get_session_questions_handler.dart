@@ -10,14 +10,14 @@ class GetSessionQuestionsHandler({required final QuestionRepository _questionRep
     extends BodyRequestHandler<SessionIdRequest, PendingQuestionResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/questions",
+        method: HttpMethod.post,
+        path: "/session/questions",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<PendingQuestionResponse> handle(
-    RelayRequest request, {
+  Future<PendingQuestionResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;

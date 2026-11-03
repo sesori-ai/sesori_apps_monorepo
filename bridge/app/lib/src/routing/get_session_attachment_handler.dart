@@ -10,14 +10,14 @@ class GetSessionAttachmentHandler({required final ChatHistoryService _chatHistor
     extends BodyRequestHandler<SessionAttachmentRequest, SessionAttachmentResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/attachment",
+        method: HttpMethod.post,
+        path: "/session/attachment",
         fromJson: SessionAttachmentRequest.fromJson,
       );
 
   @override
-  Future<SessionAttachmentResponse> handle(
-    RelayRequest request, {
+  Future<SessionAttachmentResponse> handle({
+    required RelayRequest request,
     required SessionAttachmentRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
@@ -32,7 +32,7 @@ class GetSessionAttachmentHandler({required final ChatHistoryService _chatHistor
       );
     } on Object catch (error, stackTrace) {
       Log.w("Failed to read session attachment rendition", error, stackTrace);
-      throw buildErrorResponse(request, 500, "attachment rendition unavailable");
+      throw buildErrorResponse(request: request, status: 500, message: "attachment rendition unavailable");
     }
     return switch (result) {
       SessionAttachmentFound(:final bytes, :final mime) => SessionAttachmentResponse(
@@ -40,9 +40,21 @@ class GetSessionAttachmentHandler({required final ChatHistoryService _chatHistor
         base64: base64Encode(bytes),
         byteLength: bytes.length,
       ),
-      SessionAttachmentMissing() => throw buildErrorResponse(request, 404, "attachment not found"),
-      SessionAttachmentUnsupported() => throw buildErrorResponse(request, 422, "attachment rendition unsupported"),
-      SessionAttachmentTooLarge() => throw buildErrorResponse(request, 413, "attachment too large"),
+      SessionAttachmentMissing() => throw buildErrorResponse(
+        request: request,
+        status: 404,
+        message: "attachment not found",
+      ),
+      SessionAttachmentUnsupported() => throw buildErrorResponse(
+        request: request,
+        status: 422,
+        message: "attachment rendition unsupported",
+      ),
+      SessionAttachmentTooLarge() => throw buildErrorResponse(
+        request: request,
+        status: 413,
+        message: "attachment too large",
+      ),
     };
   }
 }

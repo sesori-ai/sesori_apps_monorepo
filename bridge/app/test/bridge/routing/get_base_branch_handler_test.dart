@@ -49,7 +49,7 @@ void main() {
 
     test("returns baseBranch null for unknown project", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/base-branch"),
+        request: makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "unknown-project"),
       );
 
@@ -60,7 +60,7 @@ void main() {
       await db.projectsDao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
 
       final response = await handler.handle(
-        makeRequest("POST", "/project/base-branch"),
+        request: makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
       );
 
@@ -71,7 +71,7 @@ void main() {
       await db.projectsDao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
 
       final response = await handler.handle(
-        makeRequest("POST", "/project/base-branch"),
+        request: makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "proj-1"),
       );
 
@@ -80,7 +80,7 @@ void main() {
 
     test("returns repoSlug and repoHost null for a project without a stored path or remote", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/base-branch"),
+        request: makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "unknown-project"),
       );
 
@@ -108,7 +108,7 @@ void main() {
       );
 
       final response = await slugHandler.handle(
-        makeRequest("POST", "/project/base-branch"),
+        request: makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
       );
 

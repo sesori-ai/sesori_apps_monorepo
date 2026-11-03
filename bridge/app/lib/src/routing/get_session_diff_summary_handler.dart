@@ -10,14 +10,14 @@ class GetSessionDiffSummaryHandler({
 }) extends BodyRequestHandler<SessionIdRequest, SessionDiffSummaryResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/diff-summary",
+        method: HttpMethod.post,
+        path: "/session/diff-summary",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<SessionDiffSummaryResponse> handle(
-    RelayRequest request, {
+  Future<SessionDiffSummaryResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     try {
@@ -32,9 +32,9 @@ class GetSessionDiffSummaryHandler({
         body: const SessionDiffSummaryErrorResponse(code: SessionDiffSummaryErrorCode.sessionNotFound).toJson(),
       );
     } on BaseBranchUnreachableException catch (error) {
-      throw buildErrorResponse(request, 422, error.message);
+      throw buildErrorResponse(request: request, status: 422, message: error.message);
     } on GitDiffQueryException catch (error) {
-      throw buildErrorResponse(request, 500, error.message);
+      throw buildErrorResponse(request: request, status: 500, message: error.message);
     }
   }
 }

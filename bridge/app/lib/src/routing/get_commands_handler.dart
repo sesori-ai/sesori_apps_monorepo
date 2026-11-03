@@ -8,14 +8,14 @@ class GetCommandsHandler({required final SessionRepository _sessionRepository})
     extends BodyRequestHandler<PluginProjectIdRequest, CommandListResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/command",
+        method: HttpMethod.post,
+        path: "/command",
         fromJson: PluginProjectIdRequest.fromJson,
       );
 
   @override
-  Future<CommandListResponse> handle(
-    RelayRequest request, {
+  Future<CommandListResponse> handle({
+    required RelayRequest request,
     required PluginProjectIdRequest body,
   }) async {
     return await _sessionRepository.getCommands(

@@ -51,7 +51,7 @@ void main() {
 
     test("persists the typed bridge-owned project rename without a plugin", () async {
       await handler.handle(
-        makeRequest("PATCH", "/project/name"),
+        request: makeRequest("PATCH", "/project/name"),
         body: const RenameProjectRequest(projectId: "p1", name: "New Name"),
       );
 
@@ -62,7 +62,7 @@ void main() {
       for (final name in ["", "   "]) {
         await expectLater(
           () => handler.handle(
-            makeRequest("PATCH", "/project/name"),
+            request: makeRequest("PATCH", "/project/name"),
             body: RenameProjectRequest(projectId: "p1", name: name),
           ),
           throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
@@ -73,7 +73,7 @@ void main() {
 
     test("returns mapped Project", () async {
       final result = await handler.handle(
-        makeRequest("PATCH", "/project/name"),
+        request: makeRequest("PATCH", "/project/name"),
         body: const RenameProjectRequest(projectId: "p1", name: "Renamed Project"),
       );
 

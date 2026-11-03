@@ -17,14 +17,14 @@ class GetSessionPermissionsHandler({
 }) extends BodyRequestHandler<SessionIdRequest, PendingPermissionResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/permissions",
+        method: HttpMethod.post,
+        path: "/session/permissions",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<PendingPermissionResponse> handle(
-    RelayRequest request, {
+  Future<PendingPermissionResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;

@@ -5,10 +5,10 @@ import "request_handler.dart";
 
 class PostMcpInventoryHandler({required final McpRepository _mcpRepository})
     extends BodyRequestHandler<McpInventoryRequest, McpInventoryResult> {
-  this : super(HttpMethod.post, "/mcp/inventory", fromJson: McpInventoryRequest.fromJson);
+  this : super(method: HttpMethod.post, path: "/mcp/inventory", fromJson: McpInventoryRequest.fromJson);
 
   @override
-  Future<McpInventoryResult> handle(RelayRequest request, {required McpInventoryRequest body}) async {
+  Future<McpInventoryResult> handle({required RelayRequest request, required McpInventoryRequest body}) async {
     requireNonEmpty(request: request, value: body.pluginId, label: "plugin id");
     switch (body.scope) {
       case McpHarnessScope():

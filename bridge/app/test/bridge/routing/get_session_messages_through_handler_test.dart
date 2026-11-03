@@ -33,7 +33,7 @@ void main() {
       for (final throughSeq in const [5, 6]) {
         await expectLater(
           () => handler.handle(
-            makeRequest("POST", "/session/messages/through"),
+            request: makeRequest("POST", "/session/messages/through"),
             body: request(sessionId: "s1", throughSeq: throughSeq, before: 5),
           ),
           throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
@@ -44,7 +44,7 @@ void main() {
     test("returns 400 when the session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/messages/through"),
+          request: makeRequest("POST", "/session/messages/through"),
           body: request(sessionId: "", throughSeq: 1, before: 5),
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),

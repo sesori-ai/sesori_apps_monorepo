@@ -33,7 +33,7 @@ void main() {
 
     test("extracts sessionId from body", () async {
       await handler.handle(
-        makeRequest("POST", "/session/children"),
+        request: makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "s1"),
       );
 
@@ -43,7 +43,7 @@ void main() {
     test("returns 400 when session id is empty", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/children"),
+          request: makeRequest("POST", "/session/children"),
           body: const SessionIdRequest(sessionId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -63,7 +63,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/children"),
+        request: makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "s1"),
       );
 
@@ -83,7 +83,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/children"),
+        request: makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "parent-1"),
       );
 

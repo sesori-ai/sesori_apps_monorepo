@@ -5,10 +5,10 @@ import "request_handler.dart";
 
 class GetPluginManagementHandler({required final PluginLifecycleService _lifecycleService})
     extends GetRequestHandler<PluginManagementResponse> {
-  this : super("/plugin/management");
+  this : super(path: "/plugin/management");
 
   @override
-  Future<PluginManagementResponse> handle(
-    RelayRequest request,
-  ) async => _lifecycleService.managementSnapshot;
+  Future<PluginManagementResponse> handle({
+    required RelayRequest request,
+  }) async => _lifecycleService.managementSnapshot;
 }

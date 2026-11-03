@@ -60,7 +60,7 @@ void main() {
     test("rejects empty project id", () async {
       expect(
         () => handler.handle(
-          makeRequest("POST", "/project/current"),
+          request: makeRequest("POST", "/project/current"),
           body: const ProjectIdRequest(projectId: ""),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
@@ -69,7 +69,7 @@ void main() {
 
     test("returns typed project", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/current"),
+        request: makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
       );
 
@@ -90,7 +90,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/project/current"),
+        request: makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
       );
 

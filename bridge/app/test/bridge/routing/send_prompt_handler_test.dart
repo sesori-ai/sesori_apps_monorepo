@@ -73,7 +73,7 @@ void main() {
 
     test("extracts session id", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s1",
@@ -90,7 +90,7 @@ void main() {
 
     test("parses parts", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s1",
@@ -114,7 +114,7 @@ void main() {
 
     test("parses agent + model", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s1",
@@ -146,7 +146,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s-defaults-prompt",
@@ -170,7 +170,7 @@ void main() {
 
     test("records correct args", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s42",
@@ -195,7 +195,7 @@ void main() {
 
     test("returns 200", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s1",
@@ -212,7 +212,7 @@ void main() {
 
     test("does not call sendCommand when command is null", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s1",
@@ -231,7 +231,7 @@ void main() {
 
     test("calls sendCommand without sending prompt when command is present", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s7",
@@ -254,7 +254,7 @@ void main() {
 
     test("passes no user-visible arguments when no text part is present", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s8",
@@ -276,7 +276,7 @@ void main() {
 
     test("treats whitespace-only user-visible arguments as absent", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s8",
@@ -293,7 +293,7 @@ void main() {
 
     test("passes agent and model when command is present", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s10",
@@ -326,7 +326,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s-defaults-command",
@@ -374,7 +374,7 @@ void main() {
 
       await expectLater(
         () => localHandler.handle(
-          makeRequest("POST", "/session/prompt_async"),
+          request: makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
             promptId: null,
             sessionId: "s-failing-prompt",
@@ -423,7 +423,7 @@ void main() {
 
       await expectLater(
         () => localHandler.handle(
-          makeRequest("POST", "/session/prompt_async"),
+          request: makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
             promptId: null,
             sessionId: "s-failing-command",
@@ -461,7 +461,7 @@ void main() {
       );
 
       final response = await localHandler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s-update-fails",
@@ -481,7 +481,7 @@ void main() {
 
     test("treats blank command as no command", () async {
       await handler.handle(
-        makeRequest("POST", "/session/prompt_async"),
+        request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
           promptId: null,
           sessionId: "s9",
@@ -503,7 +503,7 @@ void main() {
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(
-          makeRequest("POST", "/session/prompt_async"),
+          request: makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
             promptId: null,
             sessionId: "",

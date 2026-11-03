@@ -183,19 +183,17 @@ void main() {
 }
 
 class _TestHandler({
-  required HttpMethod method,
-  required String path,
+  required super.method,
+  required super.path,
   required final Future<RelayResponse> Function({
     required RelayRequest request,
     required RequestTargetParams targetParams,
   })
   _handle,
 }) extends RequestHandlerBase {
-  this : super(method, path);
-
   @override
-  Future<RelayResponse> handleInternal(
-    RelayRequest request, {
+  Future<RelayResponse> handleInternal({
+    required RelayRequest request,
     required RequestTargetParams targetParams,
   }) {
     return _handle(request: request, targetParams: targetParams);

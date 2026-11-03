@@ -8,16 +8,16 @@ class PostAgentsHandler({required final AgentRepository _repository})
     extends BodyRequestHandler<PluginProjectIdRequest, Agents> {
   this
     : super(
-        HttpMethod.post,
+        method: HttpMethod.post,
         // COMPATIBILITY 2026-11-03 (v1.12.0): Apps older than v1.7.1 load agents here; later apps call it only on
         // bridges without /session/options. Remove once public apps older than v1.7.1 are unsupported.
-        "/agent",
+        path: "/agent",
         fromJson: PluginProjectIdRequest.fromJson,
       );
 
   @override
-  Future<Agents> handle(
-    RelayRequest request, {
+  Future<Agents> handle({
+    required RelayRequest request,
     required PluginProjectIdRequest body,
   }) {
     return _repository.getAgents(

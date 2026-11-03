@@ -69,7 +69,7 @@ void main() {
       ]) {
         await expectLater(
           () => handler.handle(
-            makeRequest("POST", "/session/prompt/cancel"),
+            request: makeRequest("POST", "/session/prompt/cancel"),
             body: body,
           ),
           throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
@@ -90,7 +90,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/session/prompt/cancel"),
+        request: makeRequest("POST", "/session/prompt/cancel"),
         body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_1"),
       );
 
@@ -114,7 +114,7 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/prompt/cancel"),
+          request: makeRequest("POST", "/session/prompt/cancel"),
           body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_1"),
         ),
         throwsA(isA<SessionArchivedReadOnlyException>()),
@@ -126,7 +126,7 @@ void main() {
     test("returns 404 when the entry no longer exists", () async {
       await expectLater(
         () => handler.handle(
-          makeRequest("POST", "/session/prompt/cancel"),
+          request: makeRequest("POST", "/session/prompt/cancel"),
           body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_gone"),
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(404))),

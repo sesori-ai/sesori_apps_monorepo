@@ -31,7 +31,7 @@ void main() {
 
     test("returns healthy response with version", () async {
       final response = await buildHandler().handle(
-        makeRequest("GET", "/global/health"),
+        request: makeRequest("GET", "/global/health"),
       );
       expect(response.healthy, isTrue);
       expect(response.version, equals("9.9.9"));
@@ -41,14 +41,14 @@ void main() {
 
     test("reports a desktop bridge when Sesori Desktop supervises it", () async {
       final response = await buildHandler(bridgeKind: BridgeKind.desktop).handle(
-        makeRequest("GET", "/global/health"),
+        request: makeRequest("GET", "/global/health"),
       );
       expect(response.bridgeKind, BridgeKind.desktop);
     });
 
     test("reports filesystemAccessDegraded when access is not ok", () async {
       final response = await buildHandler(filesystemAccessOk: false).handle(
-        makeRequest("GET", "/global/health"),
+        request: makeRequest("GET", "/global/health"),
       );
       expect(response.filesystemAccessDegraded, isTrue);
     });

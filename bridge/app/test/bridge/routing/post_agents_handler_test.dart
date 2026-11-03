@@ -43,7 +43,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("POST", "/agent"),
+        request: makeRequest("POST", "/agent"),
         body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "fake"),
       );
 

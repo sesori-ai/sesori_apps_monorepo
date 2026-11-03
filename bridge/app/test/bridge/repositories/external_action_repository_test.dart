@@ -66,7 +66,7 @@ void main() {
   test("snapshot maps original owner and display parent; reply cannot use the display session", () async {
     final handler = GetSessionExternalActionsHandler(service: service);
     final snapshot = await handler.handle(
-      makeRequest("POST", "/session/external-actions"),
+      request: makeRequest("POST", "/session/external-actions"),
       body: const SessionIdRequest(sessionId: "root"),
     );
     expect(snapshot.data.single.sessionID, "child");

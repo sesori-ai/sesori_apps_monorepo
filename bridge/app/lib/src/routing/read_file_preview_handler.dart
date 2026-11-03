@@ -14,29 +14,29 @@ class ReadFilePreviewHandler({required final FilesystemRepository _filesystemRep
     extends BodyRequestHandler<FilePreviewRequest, FilePreviewResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/filesystem/file",
+        method: HttpMethod.post,
+        path: "/filesystem/file",
         fromJson: FilePreviewRequest.fromJson,
       );
 
   @override
-  Future<FilePreviewResponse> handle(
-    RelayRequest request, {
+  Future<FilePreviewResponse> handle({
+    required RelayRequest request,
     required FilePreviewRequest body,
   }) async {
     final path = body.path;
     if (!p.isAbsolute(path)) {
-      throw buildErrorResponse(request, 400, "path must be absolute");
+      throw buildErrorResponse(request: request, status: 400, message: "path must be absolute");
     }
     if (p.split(path).contains("..")) {
-      throw buildErrorResponse(request, 400, "path traversal not allowed");
+      throw buildErrorResponse(request: request, status: 400, message: "path traversal not allowed");
     }
 
     try {
       return _filesystemRepository.readPreviewFile(absolutePath: path);
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ReadFilePreviewHandler: failed to read $path", error, stackTrace);
-      throw buildErrorResponse(request, 500, "failed to read file");
+      throw buildErrorResponse(request: request, status: 500, message: "failed to read file");
     }
   }
 }

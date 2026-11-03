@@ -10,14 +10,14 @@ class ReplyToPermissionHandler({required final PendingInteractionService _pendin
     extends BodyRequestHandler<ReplyToPermissionRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/permission/reply",
+        method: HttpMethod.post,
+        path: "/permission/reply",
         fromJson: ReplyToPermissionRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required ReplyToPermissionRequest body,
   }) async {
     final requestId = body.requestId;

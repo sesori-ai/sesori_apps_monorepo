@@ -5,8 +5,8 @@ import "request_handler.dart";
 
 class GetMcpAuthenticationHandler({required final McpAuthenticationService _service})
     extends GetRequestHandler<McpAuthenticationResult> {
-  this : super("/mcp/authentication");
+  this : super(path: "/mcp/authentication");
 
   @override
-  Future<McpAuthenticationResult> handle(RelayRequest request) async => _service.current;
+  Future<McpAuthenticationResult> handle({required RelayRequest request}) async => _service.current;
 }

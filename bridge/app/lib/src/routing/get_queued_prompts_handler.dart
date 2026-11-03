@@ -9,14 +9,14 @@ class GetQueuedPromptsHandler({required final SessionRepository _sessionReposito
     extends BodyRequestHandler<SessionIdRequest, QueuedPromptResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/queued_prompts",
+        method: HttpMethod.post,
+        path: "/session/queued_prompts",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<QueuedPromptResponse> handle(
-    RelayRequest request, {
+  Future<QueuedPromptResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;

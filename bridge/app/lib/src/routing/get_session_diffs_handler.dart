@@ -9,14 +9,14 @@ class GetSessionDiffsHandler({
 }) extends BodyRequestHandler<SessionIdRequest, SessionDiffsResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/diffs",
+        method: HttpMethod.post,
+        path: "/session/diffs",
         fromJson: SessionIdRequest.fromJson,
       );
 
   @override
-  Future<SessionDiffsResponse> handle(
-    RelayRequest request, {
+  Future<SessionDiffsResponse> handle({
+    required RelayRequest request,
     required SessionIdRequest body,
   }) async {
     try {
@@ -24,11 +24,11 @@ class GetSessionDiffsHandler({
         diffs: await _sessionDiffService.getDiffs(sessionId: body.sessionId),
       );
     } on SessionDiffSessionNotFoundException {
-      throw buildErrorResponse(request, 404, "session not found: ${body.sessionId}");
+      throw buildErrorResponse(request: request, status: 404, message: "session not found: ${body.sessionId}");
     } on BaseBranchUnreachableException catch (error) {
-      throw buildErrorResponse(request, 422, error.message);
+      throw buildErrorResponse(request: request, status: 422, message: error.message);
     } on GitDiffQueryException catch (error) {
-      throw buildErrorResponse(request, 500, error.message);
+      throw buildErrorResponse(request: request, status: 500, message: error.message);
     }
   }
 }

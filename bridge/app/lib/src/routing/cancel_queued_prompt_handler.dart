@@ -9,14 +9,14 @@ class CancelQueuedPromptHandler({required final SessionPromptService _sessionPro
     extends BodyRequestHandler<CancelQueuedPromptRequest, SuccessEmptyResponse> {
   this
     : super(
-        HttpMethod.post,
-        "/session/prompt/cancel",
+        method: HttpMethod.post,
+        path: "/session/prompt/cancel",
         fromJson: CancelQueuedPromptRequest.fromJson,
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
-    RelayRequest request, {
+  Future<SuccessEmptyResponse> handle({
+    required RelayRequest request,
     required CancelQueuedPromptRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session or prompt id");
@@ -29,7 +29,7 @@ class CancelQueuedPromptHandler({required final SessionPromptService _sessionPro
     // A refusal is not successful cancellation: dispatch may already have
     // transferred ownership, or another client may have removed the prompt.
     if (!removed) {
-      throw buildErrorResponse(request, 404, "queued prompt not found");
+      throw buildErrorResponse(request: request, status: 404, message: "queued prompt not found");
     }
     return const SuccessEmptyResponse();
   }
