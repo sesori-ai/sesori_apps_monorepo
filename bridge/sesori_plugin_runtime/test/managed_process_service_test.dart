@@ -58,6 +58,37 @@ void main() {
       expect(clock.delays, equals(<Duration>[_gracefulShutdownWait]));
     });
 
+    test("stale cleanup force stops without a grace wait when the graceful signal fails", () async {
+      final staleRecord = _record(
+        ownerSessionId: "stale-owner",
+        openCodePid: 403,
+        openCodeStartMarker: "open-start",
+        bridgePid: 901,
+        bridgeStartMarker: "dead-bridge-start",
+      );
+      ownershipRepository.records[staleRecord.ownerSessionId] = staleRecord;
+      processService.inspectResults[403] = <ProcessIdentity?>[
+        _opencodeIdentity(pid: 403, startMarker: "open-start"),
+        _opencodeIdentity(pid: 403, startMarker: "open-start"),
+        _opencodeIdentity(pid: 403, startMarker: "open-start"),
+        null,
+      ];
+      bridge.liveBridgeResults[901] = <bool>[false];
+      // Windows refuses a non-forced taskkill for a windowless console process.
+      processService.gracefulHooks[403] = () => throw const ProcessException("taskkill", <String>["/PID", "403", "/T"]);
+
+      await _service(
+        ownershipRepository: ownershipRepository,
+        processService: processService,
+        bridge: bridge,
+        clock: clock,
+      ).cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: const <ProcessIdentity>[]);
+
+      expect(processService.signalRequests, equals(<String>["graceful:403", "force:403"]));
+      expect(clock.delays, isEmpty);
+      expect(ownershipRepository.records, isEmpty);
+    });
+
     test("stale cleanup does not signal when pre-signal identity no longer matches", () async {
       final staleRecord = _record(
         ownerSessionId: "stale-owner",
@@ -232,6 +263,36 @@ void main() {
 
       expect(processService.signalRequests, equals(<String>["graceful:704", "force:704"]));
       // The graceful request never reached the process, so there is no grace wait.
+      expect(clock.delays, isEmpty);
+      expect(ownershipRepository.records, isEmpty);
+    });
+
+    test("shutdown skips the grace wait when the graceful signal was not requested", () async {
+      final record = _record(
+        ownerSessionId: "current-owner",
+        openCodePid: 705,
+        openCodeStartMarker: "open-current",
+        bridgePid: 900,
+        bridgeStartMarker: "bridge-start",
+      );
+      ownershipRepository.records[record.ownerSessionId] = record;
+      // The runtime exits between the identity check and the graceful signal.
+      processService.inspectResults[705] = <ProcessIdentity?>[
+        _opencodeIdentity(pid: 705, startMarker: "open-current"),
+        null,
+        null,
+      ];
+      processService.gracefulNotRequestedPids.add(705);
+
+      await _service(
+        ownershipRepository: ownershipRepository,
+        processService: processService,
+        bridge: bridge,
+        clock: clock,
+      ).stopOwnedRuntime(record: record);
+
+      // The force gate still applies: a runtime that is gone is not force stopped.
+      expect(processService.signalRequests, equals(<String>["graceful:705"]));
       expect(clock.delays, isEmpty);
       expect(ownershipRepository.records, isEmpty);
     });
@@ -638,6 +699,7 @@ class _FakeHostProcessService() implements HostProcessService {
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
   final Map<int, void Function()> gracefulHooks = <int, void Function()>{};
   final Map<int, void Function()> forceHooks = <int, void Function()>{};
+  final Set<int> gracefulNotRequestedPids = <int>{};
   final List<String> signalRequests = <String>[];
 
   @override
@@ -653,14 +715,18 @@ class _FakeHostProcessService() implements HostProcessService {
   Future<SignalResult> signalForce({required int pid}) async {
     signalRequests.add("force:$pid");
     forceHooks[pid]?.call();
-    return _shutdown(pid: pid, signal: ShutdownSignal.force);
+    return _shutdown(pid: pid, signal: ShutdownSignal.force, wasRequested: true);
   }
 
   @override
   Future<SignalResult> signalGraceful({required int pid}) async {
     signalRequests.add("graceful:$pid");
     gracefulHooks[pid]?.call();
-    return _shutdown(pid: pid, signal: ShutdownSignal.graceful);
+    return _shutdown(
+      pid: pid,
+      signal: ShutdownSignal.graceful,
+      wasRequested: !gracefulNotRequestedPids.contains(pid),
+    );
   }
 
   @override
@@ -675,12 +741,12 @@ class _FakeHostProcessService() implements HostProcessService {
     throw UnimplementedError();
   }
 
-  SignalResult _shutdown({required int pid, required ShutdownSignal signal}) {
+  SignalResult _shutdown({required int pid, required ShutdownSignal signal, required bool wasRequested}) {
     return SignalResult(
       pid: pid,
       requestedSignal: signal,
       deliveredSignal: signal == ShutdownSignal.graceful ? ProcessSignal.sigterm : ProcessSignal.sigkill,
-      wasRequested: true,
+      wasRequested: wasRequested,
       attemptedAt: DateTime.utc(2026, 5, 15, 12),
     );
   }
