@@ -2,6 +2,8 @@
 
 Thin UI shell for the Sesori mobile client. All business logic, state management, and services live in `sesori_dart_core` — this package provides screens, widgets, routing, and platform-specific implementations.
 
+The app targets iOS and Android only. `client/desktop` is the desktop product, so this package has no macOS, Linux, Windows, or web runner and no branches for those platforms.
+
 See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering, DI, testing, error handling).
 
 ## Error Handling

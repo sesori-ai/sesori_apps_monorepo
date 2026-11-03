@@ -48,18 +48,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
        _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
        _delay = delay ?? Future<void>.delayed;
 
-  static bool _defaultIsApplePlatform() => Platform.isIOS || Platform.isMacOS;
+  static bool _defaultIsApplePlatform() => Platform.isIOS;
 
   @override
-  DevicePlatform get devicePlatform {
-    if (Platform.isIOS) {
-      return DevicePlatform.ios;
-    }
-    if (Platform.isMacOS) {
-      return DevicePlatform.macos;
-    }
-    return DevicePlatform.android;
-  }
+  DevicePlatform get devicePlatform => Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android;
 
   @override
   Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;

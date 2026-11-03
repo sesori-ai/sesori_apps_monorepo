@@ -16,7 +16,10 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -24,9 +27,15 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -38,16 +47,6 @@ class DefaultFirebaseOptions {
         );
     }
   }
-
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBHPMJoI7bDGaLBQy9svR3ZAxrZ5uyTmUk',
-    appId: '1:1068630921159:web:7e1ca402c07abd839713e2',
-    messagingSenderId: '1068630921159',
-    projectId: 'sesori-ai',
-    authDomain: 'sesori-ai.firebaseapp.com',
-    storageBucket: 'sesori-ai.firebasestorage.app',
-    measurementId: 'G-983V8YK5ZN',
-  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyD74UArBB7wMT586r2LC1tYuh9F0SigovM',
@@ -64,24 +63,5 @@ class DefaultFirebaseOptions {
     projectId: 'sesori-ai',
     storageBucket: 'sesori-ai.firebasestorage.app',
     iosBundleId: 'com.sesori.app',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBo3Xr3367r8QWh7A_swXdFMO0FMoS9eAE',
-    appId: '1:1068630921159:ios:14f05dc19d66cba89713e2',
-    messagingSenderId: '1068630921159',
-    projectId: 'sesori-ai',
-    storageBucket: 'sesori-ai.firebasestorage.app',
-    iosBundleId: 'com.sesori.app',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBHPMJoI7bDGaLBQy9svR3ZAxrZ5uyTmUk',
-    appId: '1:1068630921159:web:66825b03e205bc0d9713e2',
-    messagingSenderId: '1068630921159',
-    projectId: 'sesori-ai',
-    authDomain: 'sesori-ai.firebaseapp.com',
-    storageBucket: 'sesori-ai.firebasestorage.app',
-    measurementId: 'G-4XM8JKECNM',
   );
 }

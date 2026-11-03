@@ -38,16 +38,6 @@ class FlutterOAuthDeviceDescriptorProvider(final DeviceInfoPlugin _deviceInfo)
   };
 
   Future<DeviceInfo> _device({required AuthClientType clientType, required String? appVersion}) async {
-    // Web has no native device-info channel and the mobile getters throw an
-    // UnsupportedError there; skip them to avoid noisy stack traces.
-    if (kIsWeb) {
-      return _deviceInfoBuilder.build(
-        clientType: clientType,
-        detectedName: null,
-        osVersion: null,
-        appVersion: appVersion,
-      );
-    }
     try {
       switch (defaultTargetPlatform) {
         case TargetPlatform.iOS:
