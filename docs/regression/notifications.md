@@ -181,12 +181,11 @@ provider because current payload content leaves the encrypted channel.
 
 `bridge/app/test/push/`, `shared/sesori_shared/test/notifications/`,
 `shared/sesori_shared/test/models/notification_data_test.dart`, `client/module_core/test/services/`,
-`client/module_core/test/routing/`, `client/app/test/core/platform/`, `client/module_desktop_core/test/services/`, and
-`client/desktop/test/core/platform/`, and `client/module_app_ui/test/platform/`; production code under `bridge/app/lib/src/push/`,
-`client/module_core/lib/src/services/`, `client/module_core/lib/src/routing/`,
-`client/module_desktop_core/lib/src/services/`, and
-`client/desktop/lib/core/platform/`, and the shared notification-route dispatcher in
-`client/module_app_ui/lib/src/platform/`. macOS notification policy: `bridge/app/native/macos_power_observer.c`,
+`client/module_core/test/routing/`, `client/app/test/core/platform/`, `client/module_desktop_core/test/services/`,
+`client/desktop/test/core/platform/`, and `client/module_app_ui/test/platform/`; production code under
+`bridge/app/lib/src/push/`, `client/module_core/lib/src/services/`, `client/module_core/lib/src/routing/`,
+`client/module_desktop_core/lib/src/services/`, `client/desktop/lib/core/platform/`, and the shared
+notification-route dispatcher in `client/module_app_ui/lib/src/platform/`. macOS notification policy: `bridge/app/native/macos_power_observer.c`,
 `bridge/app/lib/src/repositories/system_power_event_repository.dart`,
 `bridge/app/lib/src/api/macos_system_power_observer_api.dart`,
 `bridge/app/lib/src/services/connection_notification_policy_service.dart`, `bridge/app/test/repositories/`,

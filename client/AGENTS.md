@@ -164,7 +164,9 @@ streams exposed by `ConnectionService`. Desktop control cubits may subscribe to
 Root `AGENTS.md` has the full suffix vocabulary. Concrete client examples:
 
 - **Platform abstractions** (in `module_core/lib/src/platform/` and `module_core/lib/src/foundation/platform/`) are interfaces named by capability: `UrlLauncher`, `LifecycleSource`, `RouteSource`, `NotificationCanceller`
-- **Platform implementations** (in each shell's `lib/core/platform/`, or once in `module_app_ui/lib/src/platform/` when both shells use them unchanged) use `Adapter` or `Flutter*` prefix for the concrete Flutter version: `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`, shared `PathProviderTemporaryDirectoryProvider`
+- **Platform implementations** (in each shell's `lib/core/platform/`, or once in `module_app_ui/lib/src/platform/`
+  when both shells use them unchanged) use `Adapter` or `Flutter*` prefix for the concrete Flutter version:
+  `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`, shared `FlutterImageClipboard`
 - **Transport Layer 0** uses `Client` / `Service`: `RelayClient` (raw WebSocket), `ConnectionService` (lifecycle + reconnect), `RelayHttpApiClient` (HTTP-over-relay)
 - **Layer 1 APIs** use `Api`: `SessionApi`, `ProjectApi`, `VoiceApi`, `NotificationApi`
 - **Layer 2 Repositories** use `Repository`: `SessionRepository`, `ProjectRepository`, `NotificationPreferencesRepository`
