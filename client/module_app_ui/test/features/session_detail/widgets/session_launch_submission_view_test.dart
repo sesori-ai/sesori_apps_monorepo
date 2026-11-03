@@ -48,7 +48,8 @@ Future<AppLocalizations> _pump(
       ),
     ),
   );
-  return AppLocalizations.of(tester.element(find.byType(SessionLaunchSubmissionView)))!;
+  return AppLocalizations.of(tester.element(find.byType(SessionLaunchSubmissionView))) ??
+      fail("AppLocalizations is not in scope.");
 }
 
 ComposerAttachment _attachment(String filename) =>

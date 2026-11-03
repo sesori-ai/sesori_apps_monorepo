@@ -244,7 +244,10 @@ void main() {
     expect(original, isNotNull);
     await persister.writeString(key: StringPreferenceKey.appearanceMode, value: "light");
     expect(await persister.readString(key: StringPreferenceKey.appearanceMode), "light");
-    await persister.writeString(key: StringPreferenceKey.appearanceMode, value: original!);
+    await persister.writeString(
+      key: StringPreferenceKey.appearanceMode,
+      value: original ?? fail("no imported appearance mode"),
+    );
     await _expectImportedValues(source: source, fingerprintFile: fingerprintFile);
   });
 }
@@ -265,7 +268,7 @@ Future<void> _expectImportedValues({required LegacyNativeStorage source, require
   for (final row in await database.select(database.encryptedValues).get()) {
     final value = await getIt<SecureStorageRepository>().read(key: _FixtureSecretKey(storageKey: row.key));
     expect(value != null, isTrue, reason: row.key);
-    imported[row.key] = value!;
+    imported[row.key] = value ?? fail("no imported secure value for ${row.key}");
   }
   expect(imported.keys.toSet().intersection(remaining.keys.toSet()), isEmpty, reason: "No copied native item remains");
   for (final key in _legacyValues.keys.where((key) => key != _unknownKey)) {

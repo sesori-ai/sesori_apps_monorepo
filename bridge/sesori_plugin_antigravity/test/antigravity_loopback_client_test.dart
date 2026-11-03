@@ -73,7 +73,7 @@ void main() {
   test("sends exact GET directly without proxy, redirects, or response logging", () async {
     final http = _Http()..request.status = 302;
     final client = AntigravityLoopbackClient(client: http);
-    expect(http.findProxy!(callback), "DIRECT");
+    expect(http.findProxy?.call(callback), "DIRECT");
     final status = await client.forward(
       callbackUri: callback,
       budget: AntigravityAuthenticationBudget(timeout: const Duration(seconds: 2), abortSignal: StartAbortSignal.never),
@@ -107,7 +107,8 @@ void main() {
   });
 
   test("selected timeout fences a late connection even while the budget remains positive", () async {
-    final http = _Http()..gate = Completer<void>();
+    final gate = Completer<void>();
+    final http = _Http()..gate = gate;
     final client = AntigravityLoopbackClient(client: http);
     final budget = _EarlyTimeoutBudget();
     final forwarding = client.forward(callbackUri: callback, budget: budget);
@@ -116,7 +117,7 @@ void main() {
     await http.closeStarted.future;
     expect(budget.remaining, greaterThan(Duration.zero));
     expect(settled, isFalse);
-    http.gate!.complete();
+    gate.complete();
     await assertion;
     expect(http.request.sent, isFalse);
   });
@@ -124,7 +125,8 @@ void main() {
   test("timeout or abort closes stalled connection and rejects late request before send", () async {
     for (final aborting in [false, true]) {
       final abort = StartAbortController();
-      final http = _Http()..gate = Completer<void>();
+      final gate = Completer<void>();
+      final http = _Http()..gate = gate;
       final client = AntigravityLoopbackClient(client: http);
       final forwarding = client.forward(
         callbackUri: callback,
@@ -143,7 +145,7 @@ void main() {
       await http.closeStarted.future;
       expect(settled, isFalse);
       expect(http.closed, isTrue);
-      http.gate!.complete();
+      gate.complete();
       await assertion;
       expect(http.request.sent, isFalse);
     }

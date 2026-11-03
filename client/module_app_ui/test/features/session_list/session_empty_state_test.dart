@@ -24,7 +24,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-          child: child!,
+          child: child ?? fail("The app built no child."),
         ),
         home: Scaffold(
           body: CustomScrollView(
@@ -41,8 +41,7 @@ void main() {
     await tester.pump();
   }
 
-  String emptyTitle(WidgetTester tester) =>
-      AppLocalizations.of(tester.element(find.byType(SessionEmptyState)))!.sessionListEmptyTitle;
+  String emptyTitle(WidgetTester tester) => tester.element(find.byType(SessionEmptyState)).loc.sessionListEmptyTitle;
 
   testWidgets("renders the terminal glyph, headline, and project chip", (tester) async {
     await pumpEmptyState(tester, projectName: "Sesori_app_monorepo");

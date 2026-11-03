@@ -66,6 +66,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
         .post(
           path: "/mcp/${Uri.encodeComponent(name)}/auth",
           headers: {_directoryOpenCodeHeader: _encodedDirectory(directory: directory)},
+          body: null,
         )
         .onError<OpenCodeApiException>((error, stackTrace) {
           if (error.statusCode < 400 || error.statusCode >= 500) Error.throwWithStackTrace(error, stackTrace);
@@ -101,6 +102,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<void> forgetMcpAuthentication({required String directory, required String name}) async {
     await _client.delete(
       path: "/mcp/${Uri.encodeComponent(name)}/auth",
+      body: null,
       headers: {_directoryOpenCodeHeader: _encodedDirectory(directory: directory)},
     );
   }
@@ -123,7 +125,10 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       headers: {_directoryOpenCodeHeader: _encodedDirectory(directory: directory)},
     );
     try {
-      return jsonDecodeMap(response.body).map((name, value) => MapEntry(name, MCPStatus.fromJson(value as Object)));
+      return jsonDecodeMap(response.body).map((name, value) {
+        if (value is! Map<String, dynamic>) throw FormatException("MCP status of $name is not an object", value);
+        return MapEntry(name, MCPStatus.fromJson(value));
+      });
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(OpenCodeMcpDecodeException(operation: "MCP status", innerError: error), stackTrace);
     }
@@ -132,6 +137,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<void> connectMcpServer({required String directory, required String name}) async {
     await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/connect",
+      body: null,
       headers: {_directoryOpenCodeHeader: _encodedDirectory(directory: directory)},
     );
   }
@@ -139,6 +145,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<void> disconnectMcpServer({required String directory, required String name}) async {
     await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/disconnect",
+      body: null,
       headers: {_directoryOpenCodeHeader: _encodedDirectory(directory: directory)},
     );
   }
@@ -199,7 +206,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
 
   Future<Session> createSession({
     required String directory,
-    String? parentSessionId,
+    required String? parentSessionId,
   }) async {
     // Supported body:
     //  {
@@ -258,6 +265,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   }) async {
     await _client.delete(
       path: "/session/$sessionId",
+      body: null,
       headers: {
         _directoryOpenCodeHeader: ?_directoryHeaderValue(directory: directory),
       },
@@ -358,6 +366,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   }) async {
     await _client.delete(
       path: "/session/$sessionId/message/$messageId",
+      body: null,
       headers: {
         _directoryOpenCodeHeader: ?_directoryHeaderValue(directory: directory),
       },
@@ -373,14 +382,11 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   /// Callers that must not block on the run (see [OpenCodeService]) are
   /// responsible for detaching; this Layer 1 method stays a dumb HTTP call.
   ///
-  /// Passed `timeout: null` explicitly. Writes already default to no timeout
-  /// (`Future.timeout` cannot abort the underlying request, so a client-side
-  /// deadline on this synchronous, minutes-long run would only surface a
-  /// spurious post-dispatch failure), but stating it at the call site keeps
-  /// that intent obvious for an endpoint where an accidental timeout would be
-  /// especially harmful. [OpenCodeService] already detaches after a fast-fail
-  /// window, and the orchestrator abandons in-flight routes on shutdown, so an
-  /// unbounded command never blocks teardown.
+  /// Like every write it has no timeout: a client-side deadline on this
+  /// synchronous, minutes-long run would only surface a spurious
+  /// post-dispatch failure. [OpenCodeService] already detaches after a
+  /// fast-fail window, and the orchestrator abandons in-flight routes on
+  /// shutdown, so an unbounded command never blocks teardown.
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,
@@ -393,7 +399,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
         _directoryOpenCodeHeader: ?_directoryHeaderValue(directory: directory),
       },
       body: jsonEncode(body.toJson()),
-      timeout: null,
     );
   }
 
@@ -591,8 +596,9 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     );
 
     final decoded = jsonDecodeMap(response.body);
-    return decoded.map(
-      (key, value) => MapEntry(key, SessionStatus.fromJson(value as Map<String, dynamic>)),
-    );
+    return decoded.map((key, value) {
+      if (value is! Map<String, dynamic>) throw FormatException("Session status of $key is not an object", value);
+      return MapEntry(key, SessionStatus.fromJson(value));
+    });
   }
 }

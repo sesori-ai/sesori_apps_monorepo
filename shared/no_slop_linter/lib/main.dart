@@ -59,7 +59,7 @@ class _NoSlopLinterPlugin extends Plugin {
   void register(PluginRegistry registry) {
     // Warning rules (enabled by default)
     registry.registerWarningRule(AvoidAsCastRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: false));
     registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidFlutterSpinnersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));

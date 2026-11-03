@@ -156,7 +156,7 @@ void main() {
     });
     expect(repository.persistedDirectoryForSession(sessionId: _root), _cwd);
     expect(repository.persistedDirectoryForSession(sessionId: "missing"), isNull);
-    final time = repository.childSessions(cwd: _cwd, rootId: _root).first.time!;
+    final time = repository.childSessions(cwd: _cwd, rootId: _root).first.time ?? fail("child session has no time");
     expect(time.created, DateTime.parse("2026-09-02T13:46:25.056022Z").millisecondsSinceEpoch);
     expect(time.updated, time.created);
   });

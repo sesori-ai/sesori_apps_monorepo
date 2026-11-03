@@ -53,7 +53,7 @@ void main() {
         final decoration = tester.widget<DecoratedBox>(surface()).decoration as BoxDecoration;
         expect(decoration.borderRadius, BorderRadius.circular(PregoRadius.x2l));
         expect(decoration.border, Border.all(color: design.colors.borderPrimary));
-        final gradient = decoration.gradient! as RadialGradient;
+        final gradient = (decoration.gradient ?? fail("the alert surface has no gradient")) as RadialGradient;
         expect(gradient.colors.first, design.colors.bgSurface5);
         expect(gradient.colors.every((color) => color.a == 1), isTrue);
         final title = tester.widget<Text>(find.text("Bridge disconnected"));
@@ -86,7 +86,7 @@ void main() {
       // the gradient inside Material reintroduces clipped-edge artifacts.
       expect(find.descendant(of: card(), matching: surface()), findsNothing);
       expect(tester.getRect(surface()), bounds);
-      final gradient = decoration.gradient! as RadialGradient;
+      final gradient = (decoration.gradient ?? fail("the alert surface has no gradient")) as RadialGradient;
       expect(gradient.colors, [
         design.colors.bgSurface5,
         Color.alphaBlend(design.colors.bgWarningSecondary.withValues(alpha: 0.2), design.colors.bgSurface5),

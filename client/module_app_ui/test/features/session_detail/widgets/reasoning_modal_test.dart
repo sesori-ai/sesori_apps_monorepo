@@ -171,7 +171,8 @@ const _reasoningListViewKey = Key("reasoning-modal-list-view");
 const _followOutputKey = Key("reasoning-modal-follow-output");
 
 ScrollPosition _position(WidgetTester tester) {
-  return tester.widget<ListView>(find.byKey(_reasoningListViewKey)).controller!.position;
+  final controller = tester.widget<ListView>(find.byKey(_reasoningListViewKey)).controller;
+  return (controller ?? fail("The reasoning list has no scroll controller.")).position;
 }
 
 Future<void> _sendPointerScroll({required WidgetTester tester, required Finder target, required Offset delta}) async {
@@ -247,14 +248,15 @@ void main() {
           final node = tester.getSemantics(find.byType(MergeSemantics));
           expect(node.getSemanticsData().label, contains("Thinking..."), reason: node.toStringDeep());
           expect(node.getSemanticsData().hasAction(ui.SemanticsAction.tap), isTrue);
-          tester.renderObject(row).owner!.semanticsOwner!.performAction(node.id, ui.SemanticsAction.tap);
+          final semanticsOwner = tester.renderObject(row).owner?.semanticsOwner;
+          (semanticsOwner ?? fail("The row has no semantics owner.")).performAction(node.id, ui.SemanticsAction.tap);
       }
       await tester.pumpAndSettle();
       expect(find.byType(ReasoningModal), findsOneWidget);
       final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
       expect(body.data, text);
-      expect(body.styleSheet!.p!.fontSize, 14);
-      expect(body.styleSheet!.p!.height, closeTo(20 / 14, 0.001));
+      expect(body.styleSheet?.p?.fontSize, 14);
+      expect(body.styleSheet?.p?.height, closeTo(20 / 14, 0.001));
     });
   }
 
@@ -446,7 +448,8 @@ void main() {
 
     // The inset rides inside the scrollable as trailing padding, so the last
     // line can still scroll clear of the indicator.
-    final padding = tester.widget<ListView>(find.byKey(_reasoningListViewKey)).padding! as EdgeInsetsDirectional;
+    final padding = tester.widget<ListView>(find.byKey(_reasoningListViewKey)).padding;
+    if (padding is! EdgeInsetsDirectional) fail("The reasoning list has no directional padding.");
     expect(padding.bottom, 16 + homeIndicatorInset);
 
     // The capped sheet still tops out exactly at the status bar: if the body

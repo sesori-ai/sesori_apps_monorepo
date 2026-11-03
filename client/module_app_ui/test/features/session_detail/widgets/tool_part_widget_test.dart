@@ -88,7 +88,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      final decoration = tester.widget<Container>(_panel).decoration! as BoxDecoration;
+      final decoration = tester.widget<Container>(_panel).decoration;
+      if (decoration is! BoxDecoration) fail("The panel has no box decoration.");
       // The same raised inset as code blocks and other tool output.
       expect(decoration.color, prego.colors.bgSurface4);
       expect(decoration.borderRadius, BorderRadius.circular(PregoRadius.xs));
@@ -172,8 +173,12 @@ void main() {
     final scrolls = tester.widgetList<SingleChildScrollView>(
       find.descendant(of: viewport, matching: find.byType(SingleChildScrollView)),
     );
-    final horizontal = scrolls.singleWhere((scroll) => scroll.scrollDirection == Axis.horizontal).controller!;
-    final vertical = scrolls.singleWhere((scroll) => scroll.scrollDirection == Axis.vertical).controller!;
+    final horizontal =
+        scrolls.singleWhere((scroll) => scroll.scrollDirection == Axis.horizontal).controller ??
+        fail("The horizontal scroll has no controller.");
+    final vertical =
+        scrolls.singleWhere((scroll) => scroll.scrollDirection == Axis.vertical).controller ??
+        fail("The vertical scroll has no controller.");
     expect(horizontal.position.maxScrollExtent, greaterThan(0));
     expect(vertical.position.maxScrollExtent, greaterThan(0));
     for (final scrollbar in find.byType(RawScrollbar).evaluate()) {

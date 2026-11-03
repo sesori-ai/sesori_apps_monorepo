@@ -427,7 +427,7 @@ class OpenCodeV2Service({
     final event = envelope.data;
     final sessionId = switch (event) {
       final V2SessionEventData scoped => _sessionId(event: scoped),
-      _ => null,
+      V2ServerConnected() || V2ProjectUpdated() => null,
     };
     final deleted = event is V2SessionDeleted ? _tracker.session(sessionId: event.sessionID) : null;
     var changed = _tracker.apply(event: event);
@@ -559,7 +559,32 @@ class OpenCodeV2Service({
           directory: directory,
         );
         return message == null ? const [] : _mapper.mapMessageSnapshot(message: message);
-      default:
+      case V2ServerConnected() ||
+          V2SessionCreated() ||
+          V2SessionRenamed() ||
+          V2SessionDeleted() ||
+          V2SessionExecutionStarted() ||
+          V2SessionInboxEnqueued() ||
+          V2SessionInboxCancelled() ||
+          V2SessionInboxDeliveryChanged() ||
+          V2SessionSynthetic() ||
+          V2SessionTextStarted() ||
+          V2SessionTextDelta() ||
+          V2SessionTextEnded() ||
+          V2SessionReasoningStarted() ||
+          V2SessionReasoningDelta() ||
+          V2SessionReasoningEnded() ||
+          V2SessionToolInputStarted() ||
+          V2SessionToolInputDelta() ||
+          V2SessionToolInputEnded() ||
+          V2SessionRetryScheduled() ||
+          V2SessionCompactionDelta() ||
+          V2PermissionAsked() ||
+          V2PermissionReplied() ||
+          V2FormCreated() ||
+          V2FormReplied() ||
+          V2FormCancelled() ||
+          V2ProjectUpdated():
         return const [];
     }
   }

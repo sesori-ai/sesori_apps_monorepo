@@ -63,7 +63,8 @@ void main() {
 
     final attachment = await attachmentDispatcher.pickImage();
 
-    expect(attachment!.mime, "image/png");
+    if (attachment == null) fail("no image was picked");
+    expect(attachment.mime, "image/png");
     expect(attachment.filename, "shot.png");
     expect(attachment.bytes, png);
     verify(
@@ -82,7 +83,7 @@ void main() {
 
     final attachment = await attachmentDispatcher.pickImage();
 
-    expect(attachment!.mime, "image/jpeg");
+    expect(attachment?.mime, "image/jpeg");
   });
 
   test("unsupported selected content is rejected by shared validation", () async {

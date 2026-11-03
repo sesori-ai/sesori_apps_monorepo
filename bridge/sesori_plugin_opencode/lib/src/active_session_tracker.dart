@@ -1,3 +1,4 @@
+import "package:collection/collection.dart" show MapEquality, SetEquality;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkState;
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 
@@ -165,13 +166,13 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
-  bool handleEvent(SseEventData event, String? directory) {
+  bool handleEvent(SseEventData event, {required String? directory}) {
     var forceReemit = false;
 
     switch (event) {
       case SseSessionCreated():
         _sessionDirectories[event.info.id] = event.info.directory;
-        _updateSessionWorktree(event.info.id, event.info.directory);
+        _updateSessionWorktree(event.info.id, directory: event.info.directory);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
         // Parent metadata changed for an active session — grouping may differ
@@ -181,7 +182,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
         }
       case SseSessionUpdated():
         _sessionDirectories[event.info.id] = event.info.directory;
-        _updateSessionWorktree(event.info.id, event.info.directory);
+        _updateSessionWorktree(event.info.id, directory: event.info.directory);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
         if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
@@ -200,7 +201,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
         if (!_sessionWorktrees.containsKey(event.sessionID)) {
           final resolvedDirectory = directory ?? _sessionDirectories[event.sessionID];
           if (resolvedDirectory != null) {
-            _updateSessionWorktree(event.sessionID, resolvedDirectory);
+            _updateSessionWorktree(event.sessionID, directory: resolvedDirectory);
           }
         }
         switch (event.status) {
@@ -235,7 +236,39 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
         _pendingPermissions.putIfAbsent(event.sessionID, () => <String>{}).add(event.id);
       case SsePermissionReplied():
         _removePendingPermission(sessionId: event.sessionID, requestId: event.requestID);
-      default:
+      case SseServerConnected() ||
+          SseServerHeartbeat() ||
+          SseServerInstanceDisposed() ||
+          SseGlobalDisposed() ||
+          SseSessionDiff() ||
+          SseSessionCompacted() ||
+          SseCommandExecuted() ||
+          SseMessageUpdated() ||
+          SseMessageRemoved() ||
+          SseMessagePartUpdated() ||
+          SseMessagePartDelta() ||
+          SseMessagePartRemoved() ||
+          SsePtyCreated() ||
+          SsePtyUpdated() ||
+          SsePtyExited() ||
+          SsePtyDeleted() ||
+          SsePermissionUpdated() ||
+          SseTodoUpdated() ||
+          SseProjectUpdated() ||
+          SseVcsBranchUpdated() ||
+          SseFileEdited() ||
+          SseFileWatcherUpdated() ||
+          SseLspUpdated() ||
+          SseLspClientDiagnostics() ||
+          SseMcpToolsChanged() ||
+          SseMcpBrowserOpenFailed() ||
+          SseInstallationUpdated() ||
+          SseInstallationUpdateAvailable() ||
+          SseWorkspaceReady() ||
+          SseWorkspaceFailed() ||
+          SseTuiToastShow() ||
+          SseWorktreeReady() ||
+          SseWorktreeFailed():
         return false;
     }
 
@@ -253,7 +286,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
 
   ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingQuestion({
     required String questionId,
-    String? sessionId,
+    required String? sessionId,
   }) {
     bool found;
     var resolvedSessionId = sessionId;
@@ -288,9 +321,9 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
     final nextRetry = _retryingSessionIds;
     final nextPendingInputSessions = _pendingInputSessions;
     if (!forceReemit &&
-        _mapsEqual(_lastEmittedActiveSessions, next) &&
-        _setsEqual(_lastEmittedRetrySessions, nextRetry) &&
-        _setsEqual(_lastEmittedPendingInputSessions, nextPendingInputSessions)) {
+        const MapEquality<String, int>().equals(_lastEmittedActiveSessions, next) &&
+        const SetEquality<String>().equals(_lastEmittedRetrySessions, nextRetry) &&
+        const SetEquality<String>().equals(_lastEmittedPendingInputSessions, nextPendingInputSessions)) {
       return false;
     }
     _lastEmittedActiveSessions = next;
@@ -453,9 +486,9 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
     final nextRetry = _retryingSessionIds;
     final nextPending = _pendingInputSessions;
 
-    if (_mapsEqual(_lastEmittedActiveSessions, nextActive) &&
-        _setsEqual(_lastEmittedRetrySessions, nextRetry) &&
-        _setsEqual(_lastEmittedPendingInputSessions, nextPending)) {
+    if (const MapEquality<String, int>().equals(_lastEmittedActiveSessions, nextActive) &&
+        const SetEquality<String>().equals(_lastEmittedRetrySessions, nextRetry) &&
+        const SetEquality<String>().equals(_lastEmittedPendingInputSessions, nextPending)) {
       return false;
     }
 
@@ -490,7 +523,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
     // _activeSessionCounts key off _sessionWorktrees, so without this the
     // recovered root would still have no worktree and produce no summary row.
     final previousWorktree = _sessionWorktrees[sessionId];
-    _updateSessionWorktree(sessionId, directory);
+    _updateSessionWorktree(sessionId, directory: directory);
     final worktreeChanged = _sessionWorktrees[sessionId] != previousWorktree;
 
     final previousParent = _sessionParentIds[sessionId];
@@ -622,7 +655,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
             ActiveSession(
               id: rootId,
               mainAgentRunning: activeRoots.contains(rootId),
-              awaitingInput: _rootHasPendingInput(rootId, children),
+              awaitingInput: _rootHasPendingInput(rootId, childIds: children),
               isRetrying: isRetrying,
               childSessionIds: children,
               lastUserActivityAt: null,
@@ -693,7 +726,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
   ///
   /// Child sessions are included so that sub-agent questions/permissions
   /// surface on the root session row in the session list.
-  bool _rootHasPendingInput(String rootId, List<String> childIds) {
+  bool _rootHasPendingInput(String rootId, {required List<String> childIds}) {
     if (_hasPendingInput(rootId)) return true;
     return childIds.any(_hasPendingInput);
   }
@@ -736,7 +769,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
 
   String _normalizePath(String path) => path.replaceAll(r"\", "/");
 
-  void _updateSessionWorktree(String sessionID, String directory) {
+  void _updateSessionWorktree(String sessionID, {required String directory}) {
     final worktree = _resolveWorktree(directory);
     if (worktree == null) {
       _sessionWorktrees.remove(sessionID);
@@ -776,19 +809,5 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
   void _clearPendingInputForSession(String sessionId) {
     _pendingQuestions.remove(sessionId);
     _pendingPermissions.remove(sessionId);
-  }
-
-  bool _mapsEqual(Map<String, int> a, Map<String, int> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (final entry in a.entries) {
-      if (b[entry.key] != entry.value) return false;
-    }
-    return true;
-  }
-
-  bool _setsEqual(Set<String> a, Set<String> b) {
-    if (identical(a, b)) return true;
-    return a.length == b.length && a.containsAll(b);
   }
 }

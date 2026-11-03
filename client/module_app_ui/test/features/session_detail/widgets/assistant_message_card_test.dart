@@ -363,7 +363,10 @@ void main() {
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data, "draft text");
 
-    harnessKey.currentState!.updateStreamingText(partId: partId, text: "updated draft text");
+    (harnessKey.currentState ?? fail("The harness is not mounted.")).updateStreamingText(
+      partId: partId,
+      text: "updated draft text",
+    );
     await tester.pump();
 
     expect(tester.takeException(), isNull);
@@ -411,7 +414,7 @@ void main() {
       isTrue,
     );
 
-    tapTarget.onTap!();
+    (tapTarget.onTap ?? fail("The image has no tap handler."))();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
 

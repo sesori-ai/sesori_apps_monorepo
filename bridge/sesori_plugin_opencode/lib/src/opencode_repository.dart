@@ -491,7 +491,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     // All root sessions grouped by directory — used to derive each project's
     // activity so that "last updated" reflects real session work, not the
     // upstream project metadata timestamp.
-    final allSessionsByDirectory = _groupSessionsByDirectory(allSessions);
+    final allSessionsByDirectory = _groupSessionsByDirectory(allSessions, projectID: null);
 
     // Only "global" project sessions grouped by directory — used to detect
     // directories that have orphaned sessions but no real project entry, so we
@@ -504,7 +504,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     final mappedRealProjects = realProjects.map((project) {
       final sessions = _sessionsUnderWorktrees(
         allSessionsByDirectory,
-        [project.worktree, ...project.sandboxes],
+        worktrees: [project.worktree, ...project.sandboxes],
       );
       return (
         project: _pluginModelMapper.mapProject(
@@ -701,7 +701,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
 
     final filtered = merged.where((session) {
       if (session.parentID != null) return false;
-      return _isDirectoryUnderWorktree(session.directory, worktree);
+      return _isDirectoryUnderWorktree(session.directory, worktree: worktree);
     }).toList();
 
     filtered.sort((a, b) {
@@ -750,13 +750,13 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   /// (`/repo`). A simple exact-key lookup would miss those subdirectory
   /// sessions.
   List<GlobalSession> _sessionsUnderWorktrees(
-    Map<String, List<GlobalSession>> sessionsByDirectory,
-    Iterable<String> worktrees,
-  ) {
+    Map<String, List<GlobalSession>> sessionsByDirectory, {
+    required Iterable<String> worktrees,
+  }) {
     final nonEmptyWorktrees = worktrees.where((worktree) => worktree.isNotEmpty);
     final result = <GlobalSession>[];
     for (final entry in sessionsByDirectory.entries) {
-      if (nonEmptyWorktrees.any((worktree) => _isDirectoryUnderWorktree(entry.key, worktree))) {
+      if (nonEmptyWorktrees.any((worktree) => _isDirectoryUnderWorktree(entry.key, worktree: worktree))) {
         result.addAll(entry.value);
       }
     }
@@ -770,7 +770,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   /// are included regardless of their project ID.
   Map<String, List<GlobalSession>> _groupSessionsByDirectory(
     List<GlobalSession> sessions, {
-    String? projectID,
+    required String? projectID,
   }) {
     final grouped = <String, List<GlobalSession>>{};
     for (final session in sessions) {
@@ -810,7 +810,8 @@ class OpenCodeRepository(final OpenCodeApi _api) {
         (project) => <String>[project.worktree, ...project.sandboxes].any(
           (worktree) =>
               worktree.isNotEmpty &&
-              (_isDirectoryUnderWorktree(directory, worktree) || _isDirectoryUnderWorktree(worktree, directory)),
+              (_isDirectoryUnderWorktree(directory, worktree: worktree) ||
+                  _isDirectoryUnderWorktree(worktree, worktree: directory)),
         ),
       );
       if (coveredByRealProject) continue;
@@ -905,7 +906,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   }
 }
 
-bool _isDirectoryUnderWorktree(String directory, String worktree) {
+bool _isDirectoryUnderWorktree(String directory, {required String worktree}) {
   if (worktree == "/") return true;
   final normalizedDir = directory.replaceAll(r"\", "/");
   final normalizedTree = worktree.replaceAll(r"\", "/");

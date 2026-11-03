@@ -433,7 +433,17 @@ class const V2MessageMapper() {
           ...switch (part) {
             PluginMessagePartFile(:final attachment) => [attachment],
             PluginMessagePartTool(:final state) => state.attachments,
-            _ => const <PluginMessageAttachment>[],
+            PluginMessagePartText() ||
+            PluginMessagePartReasoning() ||
+            PluginMessagePartSubtask() ||
+            PluginMessagePartStepStart() ||
+            PluginMessagePartStepFinish() ||
+            PluginMessagePartSnapshot() ||
+            PluginMessagePartPatch() ||
+            PluginMessagePartAgent() ||
+            PluginMessagePartRetry() ||
+            PluginMessagePartCompaction() ||
+            PluginMessagePartUnknown() => const <PluginMessageAttachment>[],
           },
       ],
     ).iterator;
@@ -451,7 +461,17 @@ class const V2MessageMapper() {
               attachments: [for (var i = 0; i < state.attachments.length; i++) next()],
             ),
           ),
-          _ => part,
+          PluginMessagePartText() ||
+          PluginMessagePartReasoning() ||
+          PluginMessagePartSubtask() ||
+          PluginMessagePartStepStart() ||
+          PluginMessagePartStepFinish() ||
+          PluginMessagePartSnapshot() ||
+          PluginMessagePartPatch() ||
+          PluginMessagePartAgent() ||
+          PluginMessagePartRetry() ||
+          PluginMessagePartCompaction() ||
+          PluginMessagePartUnknown() => part,
         },
     ];
   }

@@ -238,7 +238,7 @@ void main() {
       fromNewSession: false,
     );
 
-    final agentModel = (await fixture.service.listAgents()).single.model!;
+    final agentModel = (await fixture.service.listAgents()).single.model ?? fail("agent has no model");
     expect((agentModel.modelID, agentModel.variant), ("replacement", "low"));
     expect(fixture.service.reasoningEffortForSession(sessionId: "loaded"), "high");
   });
@@ -295,7 +295,7 @@ void main() {
       failure = error;
     }
     expect(failure, isA<PluginOperationException>());
-    expect((failure! as PluginOperationException).cause, isA<StateError>());
+    expect((failure as PluginOperationException?)?.cause, isA<StateError>());
     final retained = fixture.configurationTracker.snapshotForSession(sessionId: "s1");
     expect((retained.modelId, retained.variantId), ("synthetic:model-alpha", "high"));
   });
@@ -334,7 +334,7 @@ AcpInitializeResult _initializeResult() => AcpInitializeResult.fromJson(
 
 Map<String, dynamic> _jsonFixture({required String name}) {
   final decoded = jsonDecode(File("test/fixtures/protocol/v1/$name").readAsStringSync());
-  return (decoded! as Map<dynamic, dynamic>).cast<String, dynamic>();
+  return (decoded as Map<dynamic, dynamic>).cast<String, dynamic>();
 }
 
 class _FakeGrokAcpApi() implements GrokAcpApi {

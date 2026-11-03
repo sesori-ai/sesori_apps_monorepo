@@ -99,7 +99,7 @@ Widget _harness({
     theme: ThemeData(platform: platform, extensions: [PregoDesignSystem.light]),
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(systemGestureInsets: systemGestureInsets),
-      child: child!,
+      child: child ?? fail("MaterialApp gave the builder no child"),
     ),
     home: Directionality(
       textDirection: textDirection,

@@ -67,7 +67,7 @@ void main() {
         final text = tester.widget<Text>(find.descendant(of: button, matching: find.byType(Text)));
         final icons = tester.widgetList<Icon>(find.descendant(of: button, matching: find.byType(Icon))).toList();
         expect((decoration.decoration as BoxDecoration).color, expectedTokens[index].background);
-        expect(text.style!.color, expectedTokens[index].foreground);
+        expect(text.style?.color, expectedTokens[index].foreground);
         expect(icons[0].color, expectedTokens[index].leadingIcon);
         expect(icons[1].color, expectedTokens[index].foreground);
         expect(tester.getSize(button).height, 44);
@@ -107,7 +107,7 @@ void main() {
           ),
         ),
       );
-      expect(tester.widget<Text>(find.text("Disabled")).style!.color, prego.colors.textDisabled);
+      expect(tester.widget<Text>(find.text("Disabled")).style?.color, prego.colors.textDisabled);
       expect(
         tester.widgetList<Icon>(find.byType(Icon)).map((icon) => icon.color),
         everyElement(prego.colors.textDisabled),

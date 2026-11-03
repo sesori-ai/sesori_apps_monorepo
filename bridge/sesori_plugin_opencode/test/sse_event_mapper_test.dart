@@ -67,6 +67,8 @@ void main() {
               ),
             ),
             summary: null,
+            displaySessionId: null,
+            promptId: null,
           )
           .single;
 
@@ -82,7 +84,12 @@ void main() {
 
     test("maps a live non-errored assistant message.updated to the assistant role", () {
       final result = mapper
-          .map(SseEventData.messageUpdated(info: _assistantMessage(error: null)), summary: null)
+          .map(
+            SseEventData.messageUpdated(info: _assistantMessage(error: null)),
+            summary: null,
+            displaySessionId: null,
+            promptId: null,
+          )
           .single;
 
       expect(result, isA<BridgeSseMessageUpdated>());
@@ -97,7 +104,9 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionCreated(info: session), summary: null).single;
+      final result = mapper
+          .map(SseEventData.sessionCreated(info: session), summary: null, displaySessionId: null, promptId: null)
+          .single;
 
       expect(result, isNotNull);
       final event = result as BridgeSseSessionCreated;
@@ -113,7 +122,9 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionUpdated(info: session), summary: null).single;
+      final result = mapper
+          .map(SseEventData.sessionUpdated(info: session), summary: null, displaySessionId: null, promptId: null)
+          .single;
 
       expect(result, isNotNull);
       final event = result as BridgeSseSessionUpdated;
@@ -128,7 +139,9 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionDeleted(info: session), summary: null).single;
+      final result = mapper
+          .map(SseEventData.sessionDeleted(info: session), summary: null, displaySessionId: null, promptId: null)
+          .single;
 
       expect(result, isNotNull);
       final event = result as BridgeSseSessionDeleted;
@@ -142,6 +155,7 @@ void main() {
             SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")),
             promptId: "prm_1",
             summary: null,
+            displaySessionId: null,
           )
           .single;
 
@@ -153,6 +167,8 @@ void main() {
           .map(
             SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")),
             summary: null,
+            displaySessionId: null,
+            promptId: null,
           )
           .single;
 
@@ -176,7 +192,7 @@ void main() {
         final tracker = SummaryMessageTracker();
         List<BridgeSseEvent> handle(SseEventData event) {
           tracker.observe(event);
-          return mapper.map(event, summary: tracker.summaryFor(event));
+          return mapper.map(event, summary: tracker.summaryFor(event), displaySessionId: null, promptId: null);
         }
 
         handle(SseEventData.messageUpdated(info: _assistantMessage(error: null, summary: true)));

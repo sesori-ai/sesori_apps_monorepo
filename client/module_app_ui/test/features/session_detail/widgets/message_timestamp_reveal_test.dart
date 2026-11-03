@@ -61,7 +61,7 @@ void main() {
   }
 
   double gutterRight(WidgetTester tester) {
-    return tester.widget<Positioned>(find.byType(Positioned)).right!;
+    return tester.widget<Positioned>(find.byType(Positioned)).right ?? fail("The gutter has no right offset.");
   }
 
   testWidgets("keeps content in place and paints no gutter while closed", (tester) async {

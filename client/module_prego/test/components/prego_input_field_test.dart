@@ -51,7 +51,7 @@ void main() {
 
       expect(find.text("Email is required"), findsNothing);
 
-      formKey.currentState!.validate();
+      (formKey.currentState ?? fail("the form is not mounted")).validate();
       await tester.pump();
 
       expect(find.text("Email is required"), findsOneWidget);
@@ -77,7 +77,7 @@ void main() {
       expect(find.text("Invalid email"), findsNothing);
 
       // The submit-time validate() raises the error.
-      formKey.currentState!.validate();
+      (formKey.currentState ?? fail("the form is not mounted")).validate();
       await tester.pump();
       expect(find.text("Invalid email"), findsOneWidget);
 

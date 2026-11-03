@@ -83,7 +83,8 @@ void main() {
           '"operationId":"123e4567-e89b-42d3-a456-426614174000"}',
       "unrelated-item": "retained",
     });
-    legacy.readGate = Completer<void>();
+    final readGate = Completer<void>();
+    legacy.readGate = readGate;
     getIt.registerSingleton<LegacyNativeStorage>(legacy);
     var analyticsCalls = 0;
     final configured = configureDependencies(
@@ -107,7 +108,7 @@ void main() {
     await legacy.readStarted.future;
     expect(analyticsCalls, 0);
     expect(getIt.checkLazySingletonInstanceExists<AuthSession>(), isFalse);
-    legacy.readGate!.complete();
+    readGate.complete();
     await configured;
     expect(analyticsCalls, 1);
     expect(master.reads, 1);

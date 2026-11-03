@@ -24,8 +24,8 @@ enum _StaleSessionOption() {
 String formatDroppedSseFrameLog({
   required String category,
   required String message,
-  String? directory,
-  String? eventType,
+  required String? directory,
+  required String? eventType,
 }) {
   final context = <String>[];
   if (directory != null) {
@@ -99,7 +99,7 @@ class OpenCodePlugin._({
   /// lifecycle reporting.
   factory({
     required String serverUrl,
-    String? password,
+    required String? password,
     void Function()? onConnected,
     void Function()? onDisconnected,
   }) {
@@ -405,8 +405,10 @@ class OpenCodePlugin._({
     }
     return sessions
         .map(
-          (session) =>
-              _pluginModelMapper.mapSession(session, projectID: _resolveCanonicalProjectID(session, projectId)),
+          (session) => _pluginModelMapper.mapSession(
+            session,
+            projectID: _resolveCanonicalProjectID(session, fallbackProjectID: projectId),
+          ),
         )
         .toList();
   }
@@ -481,7 +483,10 @@ class OpenCodePlugin._({
         body: {"title": title},
       ),
     );
-    return _pluginModelMapper.mapSession(session, projectID: _resolveCanonicalProjectID(session, session.projectID));
+    return _pluginModelMapper.mapSession(
+      session,
+      projectID: _resolveCanonicalProjectID(session, fallbackProjectID: session.projectID),
+    );
   }
 
   @override
@@ -497,7 +502,7 @@ class OpenCodePlugin._({
         .map(
           (session) => _pluginModelMapper.mapSession(
             session,
-            projectID: _resolveCanonicalProjectID(session, session.projectID),
+            projectID: _resolveCanonicalProjectID(session, fallbackProjectID: session.projectID),
           ),
         )
         .toList();
@@ -838,7 +843,7 @@ class OpenCodePlugin._({
             return;
           }
 
-          final changed = _service.handleSseEvent(event, parseResult.directory);
+          final changed = _service.handleSseEvent(event, directory: parseResult.directory);
           _syncWorkState();
           if (changed) {
             _emitProjectsSummary();
@@ -890,8 +895,8 @@ class OpenCodePlugin._({
   void _logDroppedSseFrame({
     required String category,
     required String message,
-    String? directory,
-    String? eventType,
+    required String? directory,
+    required String? eventType,
   }) {
     Log.w(
       formatDroppedSseFrameLog(
@@ -912,36 +917,74 @@ class OpenCodePlugin._({
     _workState.set(_service.tracker.workState);
   }
 
-  Session _canonicalizeSession(Session session, String fallbackProjectID) {
-    return session.copyWith(projectID: _resolveCanonicalProjectID(session, fallbackProjectID));
+  Session _canonicalizeSession(Session session, {required String fallbackProjectID}) {
+    return session.copyWith(projectID: _resolveCanonicalProjectID(session, fallbackProjectID: fallbackProjectID));
   }
 
-  String _resolveCanonicalProjectID(Session session, String fallbackProjectID) {
+  String _resolveCanonicalProjectID(Session session, {required String fallbackProjectID}) {
     return _service.tracker.resolveProjectWorktree(directory: session.directory) ?? fallbackProjectID;
   }
 
   SseEventData _canonicalizeEvent(SseEventData event) {
     return switch (event) {
       SseSessionCreated(:final info) => SseEventData.sessionCreated(
-        info: _canonicalizeSession(info, info.projectID),
+        info: _canonicalizeSession(info, fallbackProjectID: info.projectID),
       ),
       SseSessionUpdated(:final info) => SseEventData.sessionUpdated(
-        info: _canonicalizeSession(info, info.projectID),
+        info: _canonicalizeSession(info, fallbackProjectID: info.projectID),
       ),
       SseSessionDeleted(:final info) => SseEventData.sessionDeleted(
-        info: _canonicalizeSession(info, info.projectID),
+        info: _canonicalizeSession(info, fallbackProjectID: info.projectID),
       ),
-      _ => event,
+      SseServerConnected() ||
+      SseServerHeartbeat() ||
+      SseServerInstanceDisposed() ||
+      SseGlobalDisposed() ||
+      SseSessionDiff() ||
+      SseSessionError() ||
+      SseSessionCompacted() ||
+      SseSessionStatus() ||
+      SseSessionIdle() ||
+      SseCommandExecuted() ||
+      SseMessageUpdated() ||
+      SseMessageRemoved() ||
+      SseMessagePartUpdated() ||
+      SseMessagePartDelta() ||
+      SseMessagePartRemoved() ||
+      SsePtyCreated() ||
+      SsePtyUpdated() ||
+      SsePtyExited() ||
+      SsePtyDeleted() ||
+      SsePermissionAsked() ||
+      SsePermissionReplied() ||
+      SsePermissionUpdated() ||
+      SseQuestionAsked() ||
+      SseQuestionReplied() ||
+      SseQuestionRejected() ||
+      SseTodoUpdated() ||
+      SseProjectUpdated() ||
+      SseVcsBranchUpdated() ||
+      SseFileEdited() ||
+      SseFileWatcherUpdated() ||
+      SseLspUpdated() ||
+      SseLspClientDiagnostics() ||
+      SseMcpToolsChanged() ||
+      SseMcpBrowserOpenFailed() ||
+      SseInstallationUpdated() ||
+      SseInstallationUpdateAvailable() ||
+      SseWorkspaceReady() ||
+      SseWorkspaceFailed() ||
+      SseTuiToastShow() ||
+      SseWorktreeReady() ||
+      SseWorktreeFailed() => event,
     };
   }
 
   /// Prompt id for the user message one of this plugin's own sends created, or
   /// null for any other event or a message authored outside this bridge.
   String? _promptIdForEvent(SseEventData event) {
-    return switch (event) {
-      SseMessageUpdated(info: UserMessage(:final id)) => _promptMessages.promptIdFor(messageId: id),
-      _ => null,
-    };
+    if (event case SseMessageUpdated(info: UserMessage(:final id))) return _promptMessages.promptIdFor(messageId: id);
+    return null;
   }
 
   /// Resolves the root display session for the permission/question events that
@@ -954,7 +997,45 @@ class OpenCodePlugin._({
       SseQuestionAsked(:final sessionID) => sessionID,
       SseQuestionReplied(:final sessionID) => sessionID,
       SseQuestionRejected(:final sessionID) => sessionID,
-      _ => null,
+      SseServerConnected() ||
+      SseServerHeartbeat() ||
+      SseServerInstanceDisposed() ||
+      SseGlobalDisposed() ||
+      SseSessionCreated() ||
+      SseSessionUpdated() ||
+      SseSessionDeleted() ||
+      SseSessionDiff() ||
+      SseSessionError() ||
+      SseSessionCompacted() ||
+      SseSessionStatus() ||
+      SseSessionIdle() ||
+      SseCommandExecuted() ||
+      SseMessageUpdated() ||
+      SseMessageRemoved() ||
+      SseMessagePartUpdated() ||
+      SseMessagePartDelta() ||
+      SseMessagePartRemoved() ||
+      SsePtyCreated() ||
+      SsePtyUpdated() ||
+      SsePtyExited() ||
+      SsePtyDeleted() ||
+      SsePermissionUpdated() ||
+      SseTodoUpdated() ||
+      SseProjectUpdated() ||
+      SseVcsBranchUpdated() ||
+      SseFileEdited() ||
+      SseFileWatcherUpdated() ||
+      SseLspUpdated() ||
+      SseLspClientDiagnostics() ||
+      SseMcpToolsChanged() ||
+      SseMcpBrowserOpenFailed() ||
+      SseInstallationUpdated() ||
+      SseInstallationUpdateAvailable() ||
+      SseWorkspaceReady() ||
+      SseWorkspaceFailed() ||
+      SseTuiToastShow() ||
+      SseWorktreeReady() ||
+      SseWorktreeFailed() => null,
     };
     return ownerSessionId == null ? null : _service.resolveDisplaySessionId(ownerSessionId);
   }

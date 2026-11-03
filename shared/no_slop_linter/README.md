@@ -12,7 +12,7 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `avoid_bang_operator` | Prevents the null assertion operator (`!`) |
 | `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions |
 | `avoid_flutter_spinners` | Prevents direct Flutter spinner widgets; use `PregoActivityIndicator` |
-| `avoid_implicit_tostring` | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) |
+| `avoid_implicit_tostring` | Prevents implicit `toString()` in string interpolation. Exempt: `String`, `int`, `double`, `bool` and `dynamic` values, explicit `.toString()` calls, and interpolations inside `logt`/`logd` calls |
 | `avoid_legacy_flutter_design_imports` | Prevents SDK Material and Cupertino imports; use the standalone UI packages |
 | `avoid_material_icons` | Prevents Material `Icons` glyphs; use `TablerRegular` or `TablerSolid` |
 | `avoid_mutable_class_fields` | Prevents non-final public instance fields |
@@ -23,10 +23,10 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `prefer_edge_insets_directional` | Enforces `EdgeInsetsDirectional` for RTL support |
 | `prefer_exhaustive_switch` | Prevents `default` cases in switches over enums and sealed classes |
 | `prefer_required_named_parameters` | Enforces required named parameters for multi-argument functions |
-| `prefer_specific_type` | Prevents `Object` and `dynamic` outside JSON maps, JSON decode callbacks and error values |
+| `prefer_specific_type` | Prevents `Object` and `dynamic`. Exempt: `Map<String, dynamic>`/`Map<String, Object?>` JSON maps; `dynamic`/`Object?` parameters named `json`; `Object`/`Object?` declarations whose names all contain `error` or `cause` (`dynamic error` is still reported); `on Object catch`; generic bounds; overrides, `external` declarations and inline callback parameters |
 | `prefer_text_align_directional` | Enforces `TextAlign.start`/`end` instead of `left`/`right` for RTL support |
 
-`avoid_legacy_flutter_design_imports` also checks test files. The other rules skip files under `test/` and files ending in `_test.dart`.
+`avoid_bang_operator` and `avoid_legacy_flutter_design_imports` also check test files. The other rules skip files under `test/` and files ending in `_test.dart`.
 
 ## Setup
 
@@ -139,9 +139,12 @@ Future<void> baz() async {} // explicit Future<void>
 
 When a non-String value is used in string interpolation, Dart implicitly calls `toString()` on it.
 
-**Allowed types** (predictable `toString()`):
+**Not flagged:**
 
-- `String`, `int`, `double`, `bool`
+- `String`, `int`, `double` and `bool` values (predictable `toString()`)
+- `dynamic` values
+- explicit `.toString()` calls
+- interpolations inside `logt`/`logd` calls
 
 **The real problem:** When a dependency update changes a type from `String` to a class, code using that value in string interpolation (e.g., as a map key) will still compile but silently break at runtime.
 

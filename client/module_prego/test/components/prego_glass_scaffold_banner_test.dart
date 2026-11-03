@@ -240,8 +240,10 @@ void main() {
 
     await tester.pumpWidget(_harness(banner: _banner()));
     await tester.pumpAndSettle();
-    final gradient =
-        (tester.widget<Container>(gradientFinder).decoration! as BoxDecoration).gradient! as LinearGradient;
+    final gradient = switch (tester.widget<Container>(gradientFinder).decoration) {
+      BoxDecoration(:final LinearGradient gradient) => gradient,
+      final decoration => fail("expected a linear-gradient BoxDecoration, got $decoration"),
+    };
     final surface = PregoDesignSystem.light.colors.bgSurface1;
     expect(gradient.colors[0], surface.withValues(alpha: surface.a * 0.98));
     expect(gradient.colors[1], surface.withValues(alpha: surface.a * 0.88));
