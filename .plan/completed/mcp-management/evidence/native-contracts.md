@@ -20,7 +20,8 @@ Packages: `@anthropic-ai/claude-code-darwin-arm64@<version>` and
 `@openai/codex@<version>-darwin-arm64`. Probe entry points:
 [native runner](../../../../tool/mcp-contracts/probe.mjs),
 [fixture servers](../../../../tool/mcp-contracts/fixture.mjs),
-[released-peer runner](../../../../tool/mcp-contracts/released-peer.mjs).
+released-peer runner `tool/mcp-contracts/released-peer.mjs` (runner deleted
+2026-11-02 in #2314; it stopped matching the shared question files after v1.9.0).
 
 ## Native capability matrix
 
@@ -218,8 +219,9 @@ elicitation and exact typed replies are exercised through stdio. None of these
 checks establish HTTP elicitation support or real external provider behavior.
 Every captured exchange now asserts its expected success/error outcome; target
 Claude must forward URL requests, and untrusted login must fail without a URL.
-Shallow/partial checkouts must fetch the fixed public baseline before running
-the released-peer tools; the README and failure diagnostic give that command.
+The released-peer runner and its test were deleted 2026-11-02 in #2314; it
+stopped matching the shared question files after v1.9.0. The commands above
+record the measured run.
 
 ## Session OAuth context isolation correction (2026-10-15)
 
