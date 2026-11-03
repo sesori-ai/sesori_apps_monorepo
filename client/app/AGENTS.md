@@ -32,11 +32,12 @@ lib/
 ├── capabilities/     Native recorder prewarm channel (the shared voice capture lives in module_app_ui)
 ├── core/
 │   ├── di/           Flutter DI — registers platform adapters, then calls core init
-│   ├── extensions/   Mobile-only Flutter mappings
 │   ├── platform/     FlutterMasterKeyStore, FlutterUrlLauncher, AppLifecycleObserver
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
-│   └── widgets/      Connection overlay, modal bottom sheets
-├── features/         Screen widgets (login, home, new_session, session_detail, session_diffs, settings, splash)
+│   ├── widgets/      Connection overlay, modal bottom sheets
+│   └── external_link.dart  Shell-wide entry point for opening outbound links
+├── features/         Shell-owned screens and feature widgets (login, home, new_session, session_detail, session_diffs,
+│                     session_list artwork, settings, splash); shared screens live in module_app_ui
 └── main.dart         Entry point
 ```
 

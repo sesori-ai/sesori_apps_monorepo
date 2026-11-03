@@ -71,7 +71,7 @@ existing rules or decisions:
 | Item | Decision |
 | --- | --- |
 | MC-2 | Session rename shows the new title immediately in the All Sessions rows (Option B). The `SessionListCubit` list state that nothing renders goes. |
-| PN-22 | Keep the OpenCode v1 adapter. Live checks cover v2 only (earlier user decision). |
+| PN-22 | Keep the OpenCode v1 adapter. Live checks cover v2 only (earlier user decision), except the OpenCode 1.18.32 PATH row that Q6 folds into step 28 from the retired opencode-v2 matrix. |
 | PN-16, PI-7 (overrides the "retire" half of XC-2) | Keep the "Plan advertised as an agent" aliases, and reword their markers. Stored new-session defaults never expire, and older apps still send `plan`. Removing the Codex alias would turn a plan request into an editing turn. |
 | PN-17 | Shared managed-runtime setup-status helper for Pi and OMP, with exhaustive switches instead of casts. |
 | BS-1 | Push maintenance telemetry shrinks to one summary line. |
@@ -101,6 +101,8 @@ User decisions (review page, 2026-11-02):
 | Q3 | UI-7 phone app macOS/Linux/Windows/web runners | Delete them. The phone app is iOS and Android only. | 26 |
 | Q4 | UI-8 "temporary" voice-engine picker in v1.11.0 | Remove the picker, its route, cubit and stored preference. The automatic device-then-server fallback stays. | 16 |
 | Q5 | XC-DOC-1 eight finished or stalled plans | Retire all eight. The user accepts these unexecuted checks: quota-auto-continuation macOS QA; mcp-management step 37 L4 and external checks; desktop-sign-in full Apple sign-in on a macOS build; user-analytics Looker report and 3-day reconciliation. | 23 |
+| Q6 | Round 2: the retired plans skipped more checks than Q5 listed (opencode-v2 and step-timers never ran their final live matrices; desktop-sign-in and quota-auto-continuation skipped more rows) | Fold the opencode-v2 and step-timers live rows into step 28's matrix and step-timers' reconciliation into step 27. Every other gap stays accepted as recorded in each retired tracker. | 27, 28 |
+| Q7 | Round 2: ROADMAP's same-machine loopback transport for the desktop cockpit | Keep it as an unscheduled idea with a concrete trigger: users needing the desktop app offline, or relay latency hurting same-machine use. | 23 |
 
 ## Phase 1 steps
 
@@ -176,7 +178,7 @@ Only what the findings do not already make obvious.
   - Test fakes shipped under `lib/*_testing.dart` move under `test/` (PN-12).
   - The Claude transcript stops copying the `raw` map per line (PN-8).
   - Re-run each plugin's code generator after DTO removals (PN-3, PN-4). Never hand-edit generated files.
-  - The Pi flake fix (PR in flight, `pi_extension_ui_service_test.dart`) lands first.
+  - The Pi flake fix (`pi_extension_ui_service_test.dart`) merged first as #2311.
 - **8.** Change the generator root in `bridge/sesori_plugin_opencode/tool/generate_opencode_client.dart` so unreferenced v1 models are not emitted, then regenerate. The v1 adapter itself stays (PN-22).
 - **10.**
   - Keep one summary line of push maintenance telemetry.
@@ -284,6 +286,8 @@ changes, not a fresh pass of whole feature documents.
 | Bridge services (steps 9–12, 24) | Owning suites, including `supervised_e2e_test`. A headless bridge start, relay connect, reconnect and clean shutdown. A desktop-supervised stop/start keeps the same data directory, now that restart is gone. |
 | Client (steps 13–17) | Owning cubit, widget and golden suites. Headless iOS simulator (`xcrun simctl boot`, never Simulator.app) on the device the local testing setup assigns: project list, session list, rename showing the new title at once without a jump, session detail, settings without the voice-engine row, dictation still working, sign-out and in. |
 | Desktop-specific (step 19) | Owning `module_desktop_core` suites (`dart test`). Notification-open routing on a macOS desktop build if a display is available. Otherwise record it as not run; it is not a pass. |
+| Retired opencode-v2 live rows (Q6) | The cases of the retired plan's [Verification Matrix](../../completed/opencode-v2/PLAN.md#verification-matrix), headless on macOS arm64 with a real provider: managed OpenCode 2.0.x fresh install and upgrade from 1.18.32, OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach. |
+| Retired step-timers live rows (Q6) | The harness rows of the retired plan's [Regression Coverage](../../completed/step-timers/PLAN.md#regression-coverage) matrix (Claude Code, Codex, OpenCode, Pi, DeepSeek, Grok and another ACP harness where installed), on a headless live bridge plus the iOS simulator. Device, Android and macOS desktop rows are not run, per the testing rule. |
 | Shared, linter, CI, docs (steps 18, 20–23, 26) | Owning suites, analyzers, generator dry runs, the CI workflow run itself, link checks over the moved plans. |
 
 Affected regression documents:
@@ -298,7 +302,7 @@ Affected regression documents:
 - `bridge-installation-and-updates.md`: updater, `--import-plugin`.
 - `account-and-onboarding.md`: the login control prompt.
 
-Step 27 reconciles them. Step 28 records Pass, Partial, Fail, Blocked or Not
+Step 27 reconciles them, and also runs the retired step-timers plan's step-6 reconciliation over `tools-and-file-changes.md`, `session-turns.md`, `transcript-turn-navigation.md` and the `docs/HARNESS_CAPABILITIES.md` "Live timers" section (Q6). Step 28 records Pass, Partial, Fail, Blocked or Not
 run per row, and moves the plan to `.plan/completed/periodic-cleanup-2026-11/`
 only when the rows pass. Reducing this matrix needs explicit user acceptance,
 recorded here.

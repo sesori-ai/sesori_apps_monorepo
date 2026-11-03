@@ -9,12 +9,11 @@ individual preview builds do not need a source edit or website redeployment.
 
 **Stable and internal macOS installers and Linux DEB/RPM/AppImage packages are public for both CPUs.**
 Both platforms' website downloads are live, independently selected by completion marker.
-Stable macOS `v1.9.1` ships build `1017` from source
-`8bfeda9416c96ea5de70ffc701a36b738f24eff7`, packaging run `38537594836`.
+Stable macOS `v1.9.1` ships build `1017`.
 Both stable DMG links appeared on the live website and returned HTTP 200 on 2026-10-14;
 this is publication evidence, not new native/account upgrade qualification.
-Stable Linux `v1.10.1` (build `1082`, packaging run `40582445355`) was the first stable
-Linux release; the same run published the stable APT/RPM repositories and AppImage feed.
+Stable Linux `v1.10.1` (build `1082`) was the first stable
+Linux release; the same packaging run published the stable APT/RPM repositories and AppImage feed.
 Windows is not published yet. Linux internal build `1.9.1+1013`
 passed independent anonymous package/signature verification on 2026-10-13.
 The website selects each platform's newest completed preview rather than pinning
@@ -136,8 +135,8 @@ separately.
 Opt-in internal DEB/RPM previews use `desktop-linux-release.json` as their independent
 completion marker, with native x64/arm64 packages named
 `Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. The website must not infer them from
-CLI tarballs, private artifacts or macOS completion. Public native producer `38438783418`
-and publisher `38443588001` established shared internal build `1.9.1+1013`, with both
+CLI tarballs, private artifacts or macOS completion. The public native producer and
+publisher established shared internal build `1.9.1+1013`, with both
 signatures and all package hashes independently verified. Existing core/macOS asset identities,
 release content/channel, tag and Latest remained unchanged. Website PR `sesori-ai/landingpage#112`
 deployed normally. Live verification at 2026-10-13T19:20:22.227Z confirmed all four
@@ -160,7 +159,7 @@ fixed path; it [updates itself](#updates) in place there. Its app destination is
 `<channel>-linux-<x64|arm64>-appimage`, on the website. Native qualification runs on Arch
 Linux (x64) and the community Arch Linux ARM port (ARM64); it is not a universal-distro claim.
 
-Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to the
+Linux anchors are `<stable|internal>-linux-<x64|arm64>-<deb|rpm|appimage>`, in addition to the
 unchanged `linux-package-managers` app destination. Linux builds are not labelled
 experimental; the downloads page lists their tested environments.
 

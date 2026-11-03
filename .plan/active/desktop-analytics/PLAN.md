@@ -365,7 +365,7 @@ assertion restricts that column's values, and `app_distribution` already groups 
 
 - **Mongo:** `ProductAnalyticsDeletionService.suppressAndHandoff` calls `deleteMany({ userKey })` after the source
   tombstone and before the handoff. It's idempotent, and a failure leaves suppression observable and the command safe to
-  retry. The owner's 2026-08-08 decision (`.plan/active/user-analytics/TRACKER.md`) makes this an operator command run
+  retry. The owner's 2026-08-08 decision (`.plan/completed/user-analytics/TRACKER.md`) makes this an operator command run
   from the auth repo root under the app's production environment, whose Mongo credential writes the auth database. So the
   delete is permitted. The auth README and runbook still describe a separate suppression identity. Step 3 notes the delete
   there, and the drill before step 7 proves it. Operators must use a checkout containing step 3. An older one skips the

@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS stable/internal packages and website live | done |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Linux previews/repositories live; native and stable qualification underway | in-progress |
+| 9 | 11 | Linux packages, repositories and stable publication; stable wired in #2042, first stable `v1.10.1` | done |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -60,19 +60,20 @@ ARM64 with signed first-run registration; x64 first failed on a stale QA bridge 
 accepted. 11.i.d.a (#2039) adds signed portable AppImages to every producer. 11.i.d.b is
 accepted: fresh producers 40159666182 → 40160283183 passed Arch and every existing row on
 both CPUs in `linux-session` run `40161934369`. 11.j (landingpage #113, `7ff65d9`) is live: on 2026-10-25
-sesori.com/desktop/ served all four AppImage anchors and the internal APT/DNF setup. 11.k adds production stable Linux build/attachment plus
-per-channel repositories; stable stays closed until its first live release and repository acceptance.
+sesori.com/desktop/ served all four AppImage anchors and the internal APT/DNF setup. 11.k (#2042) adds production stable Linux build/attachment plus
+per-channel repositories. Its first live release, `v1.10.1`, and the stable website rows
+(landingpage #115) are recorded in [step 9](steps/step-09.md#stable-linux-publication--11k14); step 9 is done.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
 Cloud Run source storage and Firebase federation remain outside the publisher's authority.
 APT metadata expires after 30 days; refresh preserves accepted package bytes and never
 dispatches stores or creates releases.
 
-Continue original step 9/ordinal 11: metadata and real-tool fixtures (11.g), preview
+The approved order for original step 9/ordinal 11, now complete: metadata and real-tool fixtures (11.g), preview
 hosting/publication (11.h), native desktop and genuine app upgrades (11.i), truthful
 signed x64/ARM64 AppImages with Arch behavior qualification (11.i.d, approved
 2026-10-18; retain DEB/RPM and defer pacman/AUR), website repository/stable discovery
-support (11.j), then qualified shared stable publication (11.k). Keep one series PR open and at most one successor local. Neither
+support (11.j), then qualified shared stable publication (11.k). Neither
 inert package upgrades nor earlier preview waivers establish native desktop readiness.
 
 macOS step 6 is delivered: public `v1.9.1` release `412515090`, build `1017`, product
@@ -556,10 +557,11 @@ no embedded updater. The user explicitly accepts installer-only emulation on
 Windows ARM64 and has no Windows ARM QA device. Installed application binaries
 remain native; unavailable interactive QA is not passing evidence.
 
-The parent [desktop-app tracker](../desktop-app/TRACKER.md) still records Gate C
-and steps 21–22 as pending. This plan starts early at the user's request; those
-statuses remain unchanged. Parent closeout is a first-public-release prerequisite
-unless the user explicitly accepts a changed prerequisite. The merged
+This plan started early at the user's request, while the parent
+[desktop-app tracker](../../completed/desktop-app/TRACKER.md) still had Gate C and
+steps 21–22 pending. The user retired Gate C on 2026-09-26, and desktop-app retired on
+2026-11-02 with steps 21–22 (regression reconciliation and coverage run) accepted as
+unexecuted. The merged
 [desktop-ux plan](../../completed/desktop-ux/PLAN.md) redirects Gate C's shell/navigation checks
 to its step-12 checklist; retain that incoming handoff and its separate ownership of
 UI, autostart defaults and app logs. Distribution remains parallel, not a duplicate
@@ -651,16 +653,16 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update | On/Off to stable build 981 accepted on both CPUs; 82 shutdown tests passed | Evidence predates shared-store cutover; accepted QA gaps remain limitations, not renewed prerequisites. |
-| Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing/hosting | macOS and Linux previews public | Windows signing and signed Linux repositories pending. |
+| macOS update | Sparkle in-app updates implemented (U1); arm64 Check for Updates → Restart Now passed on internal 1079 | macOS x64, the Quit install path and bundled-bridge version unverified ([desktop-auto-update verification](../../completed/desktop-auto-update/VERIFICATION.md)). Manual On/Off replacement at build 981 and the 82 shutdown tests predate Sparkle and the shared-store cutover; accepted QA gaps remain limitations. |
+| Windows update path | Velopack Setup and in-app updater implemented (U1); private unsigned packaging only, no Windows feed published | Signing, public assets and feed, and a signed N→N+1 update on Quit and Restart on Windows x64 before the first public Windows release. Windows arm64 has no interactive host and stays blocked. |
+| Signing/hosting | macOS and Linux public on both channels; signed Linux repositories live | Windows signing pending. |
 | macOS public gate | Admitted; internal assets and deployed website verified | Ordinary stable submission retains `store-production`; no reopening of retired QA. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
-| Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |
+| Linux public gate | Stable and internal public on both CPUs (step 9) | Native session, account, keyring, tray and login gates passed in 11.i. Open checks below. |
 | Retirement | Blocked | Steps 10/11 closeout and the complete recorded matrix remain required. |
 
-Linux public coverage still requires signed repository install/N→N+1 update/remove,
-desktop-environment coverage, real account/keyring/tray/login behavior and declared
+Linux public coverage still requires repository-owned N→N+1 updates (unattended-upgrades,
+dnf-automatic), a real APT/DNF client check against the stable repository and declared
 minimum OS. Retirement requires completed step 10 and the public portion of step 11,
 then the complete recorded matrix. Partial, blocked or missing targets keep the plan active.
 
