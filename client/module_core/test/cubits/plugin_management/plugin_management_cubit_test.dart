@@ -23,6 +23,15 @@ Future<void> _settle() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+T _harnessAction<T extends PluginManagementActionState>({
+  required PluginManagementCubit cubit,
+  required String pluginId,
+}) {
+  final action = (cubit.state as PluginManagementReady).harnessActions[pluginId];
+  if (action is! T) fail("expected a ${T.toString()} for $pluginId, got ${action.runtimeType.toString()}");
+  return action;
+}
+
 void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
@@ -1050,9 +1059,7 @@ void main() {
       );
 
       await cubit.confirmForce(
-        confirmation:
-            (cubit.state as PluginManagementReady).harnessActions["one"]!
-                as PluginManagementActionForceConfirmationRequired,
+        confirmation: _harnessAction<PluginManagementActionForceConfirmationRequired>(cubit: cubit, pluginId: "one"),
       );
 
       verify(
@@ -1087,9 +1094,7 @@ void main() {
       await cubit.disable(pluginId: "one");
 
       cubit.dismissForceConfirmation(
-        confirmation:
-            (cubit.state as PluginManagementReady).harnessActions["one"]!
-                as PluginManagementActionForceConfirmationRequired,
+        confirmation: _harnessAction<PluginManagementActionForceConfirmationRequired>(cubit: cubit, pluginId: "one"),
       );
       await cubit.enable(pluginId: "two");
 
@@ -1152,7 +1157,7 @@ void main() {
       );
 
       cubit.dismissActionError(
-        failure: (cubit.state as PluginManagementReady).harnessActions["one"]! as PluginManagementActionFailed,
+        failure: _harnessAction<PluginManagementActionFailed>(cubit: cubit, pluginId: "one"),
       );
       expect(
         (cubit.state as PluginManagementReady).actionFor(
@@ -1321,7 +1326,7 @@ void main() {
         }
         final ready = cubit.state as PluginManagementReady;
         expect(ready.harnessActions.keys, ["two"]);
-        final failure = ready.harnessActions["two"]! as PluginManagementActionFailed;
+        final failure = _harnessAction<PluginManagementActionFailed>(cubit: cubit, pluginId: "two");
         expect((failure.error as PluginManagementActionRequestError).error, same(error));
         cubit.dismissActionError(failure: failure);
         expect((cubit.state as PluginManagementReady).harnessActions, isEmpty);
@@ -1385,20 +1390,17 @@ void main() {
       when(() => service.planApplyAllIdleTimeout(input: input))
           .thenReturn(const PluginManagementCommandPlan.invalidInput());
       await cubit.disable(pluginId: "one");
-      final first =
-          (cubit.state as PluginManagementReady).harnessActions["one"]!
-              as PluginManagementActionForceConfirmationRequired;
+      final first = _harnessAction<PluginManagementActionForceConfirmationRequired>(cubit: cubit, pluginId: "one");
       await cubit.disable(pluginId: "two");
-      final second =
-          (cubit.state as PluginManagementReady).harnessActions["two"]!
-              as PluginManagementActionForceConfirmationRequired;
+      final second = _harnessAction<PluginManagementActionForceConfirmationRequired>(cubit: cubit, pluginId: "two");
       await cubit.applyIdleTimeoutToAll(input: input);
       expect((cubit.state as PluginManagementReady).globalAction, isA<PluginManagementActionIdle>());
       await cubit.enable(pluginId: "one");
       verifyNever(() => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable()));
       cubit.dismissForceConfirmation(confirmation: first);
       await cubit.disable(pluginId: "one");
-      final replacement = (cubit.state as PluginManagementReady).harnessActions["one"]!;
+      final replacement =
+          (cubit.state as PluginManagementReady).harnessActions["one"] ?? fail("no action for plugin one");
       await cubit.confirmForce(confirmation: first);
       cubit.dismissForceConfirmation(confirmation: first);
       expect((cubit.state as PluginManagementReady).harnessActions["one"], same(replacement));

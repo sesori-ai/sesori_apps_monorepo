@@ -65,13 +65,19 @@ void main() {
       expect(restored?.revision, record.revision);
       expect(restored?.userKey, record.userKey);
       if (record case StoredProductAnalyticsSynced(:final preference)) {
-        expect((restored! as StoredProductAnalyticsSynced).preference, preference);
+        expect(restored, isA<StoredProductAnalyticsSynced>().having((r) => r.preference, "preference", preference));
       }
       if (record case StoredProductAnalyticsPendingDisable(:final operationId)) {
-        expect((restored! as StoredProductAnalyticsPendingDisable).operationId, operationId);
+        expect(
+          restored,
+          isA<StoredProductAnalyticsPendingDisable>().having((r) => r.operationId, "operationId", operationId),
+        );
       }
       if (record case StoredProductAnalyticsPendingEnable(:final operationId)) {
-        expect((restored! as StoredProductAnalyticsPendingEnable).operationId, operationId);
+        expect(
+          restored,
+          isA<StoredProductAnalyticsPendingEnable>().having((r) => r.operationId, "operationId", operationId),
+        );
       }
     }
 

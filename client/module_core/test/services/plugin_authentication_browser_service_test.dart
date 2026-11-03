@@ -93,7 +93,7 @@ _BrowserAction _completeCallback({required Uri callbackUri}) =>
               ..followRedirects = false;
         final response = await request.close();
         final location = response.headers.value(HttpHeaders.locationHeader);
-        return PluginAuthenticationBrowserReturned(callbackUri: Uri.parse(location!));
+        return PluginAuthenticationBrowserReturned(callbackUri: Uri.parse(location ?? fail("no redirect location")));
       } finally {
         client.close();
       }
@@ -651,7 +651,14 @@ void main() {
       async.elapse(const Duration(minutes: 5));
       async.flushMicrotasks();
       expect(result, isA<PluginAuthenticationBrowserFlowFailed>());
-      expect((result! as PluginAuthenticationBrowserFlowFailed).retryableWithActiveListener, isFalse);
+      expect(
+        result,
+        isA<PluginAuthenticationBrowserFlowFailed>().having(
+          (failed) => failed.retryableWithActiveListener,
+          "retryableWithActiveListener",
+          isFalse,
+        ),
+      );
       expect(session.closes, 1);
     });
   });
@@ -689,7 +696,14 @@ void main() {
           .then((value) => first = value);
       async.flushMicrotasks();
       expect(first, isA<PluginAuthenticationBrowserFlowFailed>());
-      expect((first! as PluginAuthenticationBrowserFlowFailed).retryableWithActiveListener, isTrue);
+      expect(
+        first,
+        isA<PluginAuthenticationBrowserFlowFailed>().having(
+          (failed) => failed.retryableWithActiveListener,
+          "retryableWithActiveListener",
+          isTrue,
+        ),
+      );
       expect(session.closes, isZero);
 
       async.elapse(const Duration(minutes: 5));

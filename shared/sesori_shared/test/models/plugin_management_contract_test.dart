@@ -33,8 +33,10 @@ void main() {
     );
 
     final json = response.toJson();
-    final plugins = json["plugins"] as List<Object?>?;
-    final pluginJson = plugins!.single! as Map<String, dynamic>;
+    final pluginJson = switch (json["plugins"]) {
+      [final Map<String, dynamic> plugin] => plugin,
+      final plugins => fail("expected one plugin object, got $plugins"),
+    };
 
     expect(PluginManagementResponse.fromJson(json), response);
     expect(

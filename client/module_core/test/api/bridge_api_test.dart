@@ -47,7 +47,7 @@ void main() {
       ).thenAnswer((invocation) async {
         // Run the payload through the API's own fromJson so the parse path
         // is exercised, mirroring what the real client does.
-        final fromJson = invocation.namedArguments[#fromJson]! as BridgesListResponse Function(dynamic);
+        final fromJson = invocation.namedArguments[#fromJson] as BridgesListResponse Function(dynamic);
         return ApiResponse.success(fromJson(_bridgesPayload));
       });
 
@@ -99,7 +99,7 @@ void main() {
           logBody: any(named: "logBody"),
         ),
       ).thenAnswer((invocation) async {
-        final fromJson = invocation.namedArguments[#fromJson]! as BridgeSummary Function(dynamic);
+        final fromJson = invocation.namedArguments[#fromJson] as BridgeSummary Function(dynamic);
         return ApiResponse.success(
           fromJson({
             "id": "br weird/id",

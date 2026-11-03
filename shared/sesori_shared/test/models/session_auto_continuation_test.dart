@@ -18,7 +18,7 @@ void main() {
     );
     final session = Session.fromJson({...legacy, "autoContinuation": view.toJson()});
     expect(Session.fromJson(session.toJson()).autoContinuation, view);
-    expect(session.autoContinuation!.enabled, isFalse);
+    expect((session.autoContinuation ?? fail("autoContinuation was not decoded")).enabled, isFalse);
   });
 
   test("future statuses and enum values degrade to explicit unknown values", () {

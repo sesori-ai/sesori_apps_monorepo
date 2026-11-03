@@ -42,7 +42,7 @@ void main() {
   });
 
   group("SessionDetailCubit stale reconnect", () {
-    late MockSessionRepository mockSessionService;
+    late MockSessionRepository mockSourceRepository;
     late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
@@ -55,7 +55,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionRepository();
+      mockSourceRepository = MockSessionRepository();
       mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
@@ -77,7 +77,7 @@ void main() {
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       delegateSessionRepository(
         repository: mockSessionRepository,
-        source: mockSessionService,
+        source: mockSourceRepository,
         optionsSource: mockSessionApi,
       );
       when(
@@ -102,7 +102,7 @@ void main() {
       );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
-      _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+      _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
     });
 
     /// Builds the cubit under test with the collaborators every case shares.
@@ -152,14 +152,14 @@ void main() {
         addTearDown(cubit.close);
 
         await _awaitLoaded(cubit);
-        clearInteractions(mockSessionService);
+        clearInteractions(mockSourceRepository);
         clearInteractions(mockSessionApi);
 
         connectionStatus.add(connectionLostStatus);
         await pumpEventQueue();
 
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -185,16 +185,16 @@ void main() {
         await pumpEventQueue();
 
         verifyNever(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
             storedOnly: any(named: "storedOnly"),
           ),
         );
-        verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
-        verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
-        verifyNever(() => mockSessionService.getSessionStatuses());
+        verifyNever(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId));
+        verifyNever(() => mockSourceRepository.getChildren(sessionId: sessionId));
+        verifyNever(() => mockSourceRepository.getSessionStatuses());
         verifyNever(
           () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
@@ -227,11 +227,11 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      clearInteractions(mockSessionService);
+      clearInteractions(mockSourceRepository);
       clearInteractions(mockSessionApi);
 
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -257,16 +257,16 @@ void main() {
       await pumpEventQueue();
 
       verify(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
           storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getSessionStatuses()).called(1);
+      verify(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getChildren(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getSessionStatuses()).called(1);
       verify(
         () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
@@ -292,7 +292,7 @@ void main() {
     test("carries a can't-continue message and clears it once a refresh succeeds", () async {
       void stubMessages({required String? cannotContinueMessage}) {
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -463,7 +463,7 @@ void main() {
 
     test("resume forwards the transcript model when the provider cache is stale", () async {
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -544,12 +544,12 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      clearInteractions(mockSessionService);
+      clearInteractions(mockSourceRepository);
       clearInteractions(mockSessionApi);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -557,13 +557,13 @@ void main() {
         ),
       ).thenAnswer((_) => messagesCompleter.future);
       when(
-        () => mockSessionService.getPendingQuestions(sessionId: sessionId),
+        () => mockSourceRepository.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => mockSessionService.getChildren(sessionId: sessionId),
+        () => mockSourceRepository.getChildren(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
-        () => mockSessionService.getSessionStatuses(),
+        () => mockSourceRepository.getSessionStatuses(),
       ).thenAnswer(
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
@@ -627,7 +627,7 @@ void main() {
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -667,7 +667,7 @@ void main() {
       await _awaitLoaded(cubit);
 
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -703,7 +703,7 @@ void main() {
     test("stale signal is ignored when state is SessionDetailLoading", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -717,17 +717,17 @@ void main() {
       await pumpEventQueue();
 
       verify(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
           storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
-      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getSessionStatuses()).called(1);
+      verify(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
+      verify(() => mockSourceRepository.getChildren(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getSessionStatuses()).called(1);
       verify(
         () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
@@ -758,7 +758,7 @@ void main() {
 
     test("stale signal is ignored when state is SessionDetailFailed", () async {
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -774,7 +774,7 @@ void main() {
       await pumpEventQueue();
 
       verify(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -804,7 +804,7 @@ void main() {
         final error = StateError("silent refresh sentinel");
 
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -849,9 +849,9 @@ void main() {
         final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -862,7 +862,7 @@ void main() {
         );
         var messageLoads = 0;
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -947,9 +947,9 @@ void main() {
         cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -962,7 +962,7 @@ void main() {
         final firstMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
         var messageLoads = 0;
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1013,12 +1013,12 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      reset(mockSessionService);
+      reset(mockSourceRepository);
       reset(mockSessionApi);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -1026,16 +1026,16 @@ void main() {
         ),
       ).thenAnswer((_) => messagesCompleter.future);
       when(
-        () => mockSessionService.getPendingQuestions(sessionId: sessionId),
+        () => mockSourceRepository.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId")),
+        () => mockSourceRepository.getPendingPermissions(sessionId: any(named: "sessionId")),
       ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
       when(
-        () => mockSessionService.getChildren(sessionId: sessionId),
+        () => mockSourceRepository.getChildren(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
-        () => mockSessionService.getSessionStatuses(),
+        () => mockSourceRepository.getSessionStatuses(),
       ).thenAnswer(
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
@@ -1078,17 +1078,17 @@ void main() {
       await pumpEventQueue();
 
       verify(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
           storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
-      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getSessionStatuses()).called(1);
+      verify(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
+      verify(() => mockSourceRepository.getChildren(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getSessionStatuses()).called(1);
       verify(
         () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
@@ -1108,9 +1108,9 @@ void main() {
         final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -1127,7 +1127,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1139,7 +1139,7 @@ void main() {
         // one trailing refresh...
         async.elapse(_cooldown);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1150,7 +1150,7 @@ void main() {
         // ...and a drained queue schedules nothing further.
         async.elapse(_cooldown * 2);
         verifyNever(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1167,9 +1167,9 @@ void main() {
         final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -1183,7 +1183,7 @@ void main() {
         // the entire cooldown window.
         final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1195,7 +1195,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1208,7 +1208,7 @@ void main() {
         // stale in-flight run.
         async.elapse(_cooldown);
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1241,7 +1241,7 @@ void main() {
         // trailing refresh against fresh data.
         async.elapse(_cooldown * 2);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1258,9 +1258,9 @@ void main() {
         final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -1272,7 +1272,7 @@ void main() {
 
         final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1286,7 +1286,7 @@ void main() {
         // flight.
         async.elapse(_cooldown);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1298,7 +1298,7 @@ void main() {
         // must start right away rather than waiting out another full cooldown
         // window.
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1328,7 +1328,7 @@ void main() {
         );
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1346,9 +1346,9 @@ void main() {
         final cubit = buildCubit(lifecycleSource: lifecycle, eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -1362,7 +1362,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1375,7 +1375,7 @@ void main() {
         lifecycle.emitState(LifecycleState.paused);
         async.elapse(_cooldown * 3);
         verifyNever(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1387,7 +1387,7 @@ void main() {
         lifecycle.emitState(LifecycleState.resumed);
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1398,7 +1398,7 @@ void main() {
         // ...so nothing further fires afterwards.
         async.elapse(_cooldown * 3);
         verifyNever(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1416,9 +1416,9 @@ void main() {
         final cubit = buildCubit(lifecycleSource: lifecycle, eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -1429,7 +1429,7 @@ void main() {
         );
         var messageLoads = 0;
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1478,9 +1478,9 @@ void main() {
         final cubit = buildCubit(lifecycleSource: lifecycle, eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
-        reset(mockSessionService);
+        reset(mockSourceRepository);
         reset(mockSessionApi);
-        _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+        _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
         when(
           () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
@@ -1492,7 +1492,7 @@ void main() {
 
         final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1505,7 +1505,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1522,7 +1522,7 @@ void main() {
         // When A finally completes, the queued signal must still produce the
         // trailing refresh instead of being stranded.
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1552,7 +1552,7 @@ void main() {
         );
         async.elapse(Duration.zero);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1567,12 +1567,12 @@ void main() {
 }
 
 void _stubLoadApis(
-  MockSessionRepository service, {
+  MockSessionRepository sourceRepository, {
   required MockSessionApi optionsApi,
   required String sessionId,
 }) {
   when(
-    () => service.getMessages(
+    () => sourceRepository.getMessages(
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
@@ -1592,28 +1592,28 @@ void _stubLoadApis(
     ),
   );
   when(
-    () => service.getPendingQuestions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     ),
   );
   when(
-    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
       ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
     ),
   );
   when(
-    () => service.getChildren(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
       ApiResponse.success(const SessionListResponse(items: <Session>[])),
     ),
   );
   when(
-    () => service.getSessionStatuses(),
+    () => sourceRepository.getSessionStatuses(),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionStatusResponse>>.value(
       ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),

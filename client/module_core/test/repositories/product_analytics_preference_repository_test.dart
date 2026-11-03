@@ -86,6 +86,11 @@ class _RecordingPreferenceStorage({required final List<String> operations})
     if (error != null) throw error;
     stored = null;
   }
+
+  StoredProductAnalyticsSynced get storedSynced => switch (stored) {
+    final StoredProductAnalyticsSynced synced => synced,
+    final other => fail("expected a synced record, got ${other.runtimeType}"),
+  };
 }
 
 void main() {
@@ -235,7 +240,7 @@ void main() {
       revision: 7,
       operationId: _operationId,
     ));
-    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
+    expect(storage.storedSynced.preference, ProductAnalyticsPreference.enabled);
   });
 
   test("pending enable yields to a newer disabled revision", () async {
@@ -254,8 +259,8 @@ void main() {
 
     expect(result, isA<ProductAnalyticsPreferenceSynchronized>());
     expect(api.updates, isEmpty);
-    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.disabled);
-    expect((storage.stored! as StoredProductAnalyticsSynced).revision, 9);
+    expect(storage.storedSynced.preference, ProductAnalyticsPreference.disabled);
+    expect(storage.storedSynced.revision, 9);
   });
 
   test("a pending disable survives restart and reuses its stable operation id", () async {
@@ -278,7 +283,7 @@ void main() {
     expect(result, isA<ProductAnalyticsPreferenceSynchronized>());
     expect(api.updates.single.operationId, _operationId);
     expect(api.updates.single.revision, 4);
-    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.disabled);
+    expect(storage.storedSynced.preference, ProductAnalyticsPreference.disabled);
   });
 
   test("a pending enable restart stays inactive until GET and local finalization succeed", () async {
@@ -299,7 +304,7 @@ void main() {
 
     expect(restored, isA<LocalProductAnalyticsPendingEnable>());
     expect(result, isA<ProductAnalyticsPreferenceSynchronized>());
-    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.enabled);
+    expect(storage.storedSynced.preference, ProductAnalyticsPreference.enabled);
   });
 
   test("server success cannot activate enable until synchronized storage finalizes", () async {
@@ -362,6 +367,6 @@ void main() {
     expect(result, isA<ProductAnalyticsPreferenceRefreshRequired>());
     expect(api.updates, hasLength(1));
     expect(storage.stored, isA<StoredProductAnalyticsSynced>());
-    expect((storage.stored! as StoredProductAnalyticsSynced).preference, ProductAnalyticsPreference.disabled);
+    expect(storage.storedSynced.preference, ProductAnalyticsPreference.disabled);
   });
 }

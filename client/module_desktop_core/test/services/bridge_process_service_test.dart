@@ -146,7 +146,8 @@ void main() {
     test("logout joins an ordinary stop already in flight without sending unregister", () async {
       authSession.state = _authenticatedState;
       await service.start();
-      repository.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      repository.stopGate = stopGate;
 
       final Future<void> ordinaryStop = service.stop();
       await pumpEventQueue();
@@ -155,7 +156,7 @@ void main() {
       expect(logoutStop.mode, BridgeProcessStopMode.ordinary);
       expect(logoutStop.shouldSendUnregister, isFalse);
 
-      repository.stopGate!.complete();
+      stopGate.complete();
       await ordinaryStop;
       await logoutStop.completion;
       expect(repository.stopCalls, 1);
@@ -165,14 +166,15 @@ void main() {
     test("delivery failure upgrades an unregister stop to the ordinary fallback", () async {
       authSession.state = _authenticatedState;
       await service.start();
-      repository.stopAfterCommandGate = Completer<void>();
+      final Completer<void> stopAfterCommandGate = Completer<void>();
+      repository.stopAfterCommandGate = stopAfterCommandGate;
 
       final BridgeProcessStopRequest logoutStop = service.requestStopForLogout();
       await pumpEventQueue();
       final Future<void> fallbackStop = service.fallbackStopAfterUnregisterFailure();
 
       expect(repository.expectedShutdownRequests, 1);
-      repository.stopAfterCommandGate!.complete();
+      stopAfterCommandGate.complete();
       await fallbackStop;
       await logoutStop.completion;
       expect(repository.stopAfterCommandCalls, 1);
@@ -498,7 +500,8 @@ void main() {
     test("an authentication completed during exit-87 cleanup still restarts desired On", () async {
       authSession.state = _authenticatedState;
       await service.start();
-      controlServer.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      controlServer.stopGate = stopGate;
       final Future<BridgeProcessState> restarted = service.states
           .skip(1)
           .firstWhere(
@@ -510,7 +513,7 @@ void main() {
       authSession.state = const AuthState.unauthenticated();
       authSession.state = _authenticatedState;
       await pumpEventQueue(times: 2);
-      controlServer.stopGate!.complete();
+      stopGate.complete();
       await restarted;
 
       expect(repository.spawnCalls, 2);
@@ -766,8 +769,9 @@ void main() {
 
     final Object? encodedResponse = await response;
     expect(encodedResponse, isA<String>());
+    if (encodedResponse is! String) fail("the token response was not a text frame");
     final ControlMessage message = ControlMessage.fromJson(
-      jsonDecodeMap(encodedResponse! as String),
+      jsonDecodeMap(encodedResponse),
     );
     expect(
       message,

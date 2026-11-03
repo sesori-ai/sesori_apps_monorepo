@@ -69,7 +69,7 @@ void main() {
 
     await repository.write(key: first, value: "fixture credential");
     expect(await repository.read(key: first), "fixture credential");
-    expect(base64Decode(native.storedValue!), hasLength(32));
+    expect(base64Decode(native.storedValue ?? fail("no master key was stored")), hasLength(32));
     expect(native.reads, 1);
     expect(native.writes, 1);
     expect(await primitive.readString(key: "theme"), "dark");
@@ -317,7 +317,7 @@ void main() {
   test("deleting corrupt secret rows needs neither decryption nor native access", () async {
     await repository.write(key: first, value: "first");
     await repository.write(key: second, value: "second");
-    final corrupt = (await api.readCiphertext(key: first.storageKey))!;
+    final corrupt = await api.readCiphertext(key: first.storageKey) ?? fail("no ciphertext was stored");
     corrupt[0] = 9;
     await api.writeCiphertext(key: first.storageKey, ciphertext: corrupt);
     final denied = FixtureMasterKeyStore(value: null)..readFailure = StateError("fixture denied");
@@ -351,7 +351,7 @@ void main() {
   test("encryption failure leaves the previously committed value intact", () async {
     await repository.write(key: first, value: "before");
     final failingCipher = _MockCipher();
-    final encoded = native.storedValue!;
+    final encoded = native.storedValue ?? fail("no master key was stored");
     final key = cipher.decodeMasterKey(encoded: encoded);
     final cause = StateError("fixture encryption failed");
     when(() => failingCipher.decodeMasterKey(encoded: encoded)).thenReturn(key);
@@ -373,7 +373,7 @@ void main() {
 
   test("SQLite rollback discards only the failed transaction's ciphertext changes", () async {
     await repository.write(key: first, value: "before");
-    final ciphertext = (await api.readCiphertext(key: first.storageKey))!;
+    final ciphertext = await api.readCiphertext(key: first.storageKey) ?? fail("no ciphertext was stored");
     final failure = StateError("fixture rollback");
     await expectLater(
       database.transaction(() async {

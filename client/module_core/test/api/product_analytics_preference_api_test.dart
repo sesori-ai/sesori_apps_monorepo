@@ -98,7 +98,7 @@ void main() {
     );
 
     expect(client.lastUrl?.path, "/product-analytics/preference");
-    expect(jsonDecode(client.lastBody!), {
+    expect(jsonDecode(client.lastBody ?? fail("no request body")), {
       "preference": "disabled",
       "expectedRevision": 2,
       "operationId": "123e4567-e89b-42d3-a456-426614174000",

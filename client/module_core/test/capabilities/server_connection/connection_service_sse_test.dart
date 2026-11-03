@@ -141,7 +141,7 @@ void main() {
       final deviceId = Completer<String>();
       when(storage.getOrCreate).thenAnswer((_) => deviceId.future);
       final repository = ConnectionNotificationObservationRepository(api: api, deviceIdStorage: storage);
-      final firstToken = api.captureCurrentConnection()!;
+      final firstToken = api.captureCurrentConnection() ?? fail("no ready connection to capture");
       expect(api.captureCurrentConnection(), firstToken);
 
       final firstReport = repository.reportCurrentConnectionObserved();

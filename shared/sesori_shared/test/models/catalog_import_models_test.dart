@@ -48,13 +48,13 @@ void main() {
     });
 
     test("completed serializes its epoch-millisecond timestamp", () {
-      final json = variants["completed"]!.toJson();
+      final json = (variants["completed"] ?? fail("missing completed variant")).toJson();
 
       expect(json["completedAt"], 1_752_750_600_000);
     });
 
     test("completed carries the new-item delta as one nested group", () {
-      final json = variants["completed"]!.toJson();
+      final json = (variants["completed"] ?? fail("missing completed variant")).toJson();
 
       expect(json["newItems"], {"projects": 1, "sessions": 4});
     });
@@ -104,7 +104,9 @@ void main() {
     });
 
     test("SSE event round-trips progress as a global event", () {
-      final original = SesoriSseEvent.catalogImportProgress(progress: variants["completed"]!);
+      final original = SesoriSseEvent.catalogImportProgress(
+        progress: variants["completed"] ?? fail("missing completed variant"),
+      );
 
       final json = original.toJson();
 

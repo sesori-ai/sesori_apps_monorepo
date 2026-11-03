@@ -38,7 +38,7 @@ import "new_session_state_matchers.dart";
 
 void main() {
   group("NewSessionCubit", () {
-    late MockSessionRepository mockSessionService;
+    late MockSessionRepository mockLaunchSessionRepository;
     late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
@@ -63,7 +63,7 @@ void main() {
 
     setUp(() {
       lastProjectTracker = FakeLastNewSessionProjectTracker();
-      mockSessionService = MockSessionRepository();
+      mockLaunchSessionRepository = MockSessionRepository();
       mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
@@ -169,7 +169,7 @@ void main() {
       composerDraftRepository: composerDraftRepository ?? inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
       sessionLaunchService: SessionLaunchService(
-        sessionRepository: mockSessionService,
+        sessionRepository: mockLaunchSessionRepository,
         launchRepository: launchRepository ?? inMemorySessionLaunchRepository(),
         feedbackPromptService: feedbackPromptService,
         productAnalyticsService: mockProductAnalyticsService,
@@ -250,7 +250,7 @@ void main() {
         command: null,
       );
       verifyNever(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -274,7 +274,7 @@ void main() {
 
     test("Send remembers the dedicated worktree choice", () async {
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -391,7 +391,7 @@ void main() {
       expect: () => [composingWith<NewSessionPhaseIdle>()],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -430,7 +430,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -461,7 +461,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             projectId: "project-1",
             pluginId: "codex",
             text: "look at this",
@@ -495,7 +495,7 @@ void main() {
       expect: () => [composingWith<NewSessionPhaseIdle>()],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
@@ -516,7 +516,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
@@ -547,7 +547,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
@@ -577,7 +577,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
@@ -604,7 +604,7 @@ void main() {
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: stubbedProductAnalyticsService(),
           sessionLaunchService: SessionLaunchService(
-            sessionRepository: mockSessionService,
+            sessionRepository: mockLaunchSessionRepository,
             launchRepository: inMemorySessionLaunchRepository(),
             feedbackPromptService: FakeFeedbackPromptService(),
             productAnalyticsService: stubbedProductAnalyticsService(),
@@ -632,7 +632,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
@@ -650,7 +650,7 @@ void main() {
 
     test("successful creation reports the workspace returned by the bridge", () async {
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -692,7 +692,7 @@ void main() {
 
     test("failed creation reports only a bounded failure outcome", () async {
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -771,7 +771,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -845,7 +845,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -915,7 +915,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -976,7 +976,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1024,7 +1024,7 @@ void main() {
         );
       });
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1140,7 +1140,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1200,7 +1200,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1214,7 +1214,7 @@ void main() {
         ),
       ).called(1);
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1245,7 +1245,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1274,7 +1274,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: "project-1",
           pluginId: "plugin-1",
@@ -1319,7 +1319,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["high", "xhigh"])));
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
@@ -1364,7 +1364,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
@@ -1404,7 +1404,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1438,7 +1438,7 @@ void main() {
         command: null,
       );
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: "project-1",
           pluginId: "plugin-1",
@@ -2339,7 +2339,7 @@ void main() {
         // A pick the session starts with; one it could not apply would stay.
         selectionTracker.recordFastMode(pluginId: "plugin-1", fastMode: false);
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
@@ -2376,7 +2376,7 @@ void main() {
         launchRepository = inMemorySessionLaunchRepository();
         response = Completer<ApiResponse<Session>>();
         when(
-          () => mockSessionService.createSessionWithMessage(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
             attachments: const [],
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
@@ -2627,7 +2627,7 @@ void main() {
       selectionTracker.recordFastMode(pluginId: "plugin-1", fastMode: false);
       final completer = Completer<ApiResponse<Session>>();
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -2662,7 +2662,7 @@ void main() {
     test("a late background success only clears the snapshot it was sent with, not a newer one", () async {
       final completer = Completer<ApiResponse<Session>>();
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -2721,7 +2721,7 @@ void main() {
     test("a late background success preserves an equal selection from a newer write", () async {
       final completer = Completer<ApiResponse<Session>>();
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -2776,7 +2776,7 @@ void main() {
         ),
       ).thenAnswer((_) => agentsCompleter.future);
       when(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
@@ -2808,7 +2808,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: "project-1",
           pluginId: "plugin-1",
           text: "hello",
@@ -2856,7 +2856,7 @@ void main() {
         command: null,
       );
       verifyNever(
-        () => mockSessionService.createSessionWithMessage(
+        () => mockLaunchSessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
