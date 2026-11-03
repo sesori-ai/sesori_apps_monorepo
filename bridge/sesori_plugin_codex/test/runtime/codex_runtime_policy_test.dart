@@ -31,7 +31,7 @@ void main() {
 
   group("codexDynamicCandidates", () {
     test("draws maxAttempts distinct in-range ephemeral ports", () {
-      final ports = codexDynamicCandidates(random: Random(7)).toList();
+      final ports = codexDynamicCandidates(candidates: null, random: Random(7)).toList();
       expect(ports, hasLength(dynamicCodexMaxAttempts));
       expect(ports.toSet(), hasLength(dynamicCodexMaxAttempts));
       for (final port in ports) {
@@ -42,6 +42,7 @@ void main() {
     test("filters supplied candidates to the in-range rule, preserving order", () {
       final ports = codexDynamicCandidates(
         candidates: <int>[80, 49152, 70000, 49153],
+        random: null,
       ).toList();
       expect(ports, equals(<int>[49152, 49153]));
     });
@@ -53,12 +54,13 @@ void main() {
         }
       }
 
-      expect(codexDynamicCandidates(candidates: infiniteInvalid()).toList(), isEmpty);
+      expect(codexDynamicCandidates(candidates: infiniteInvalid(), random: null).toList(), isEmpty);
     });
 
     test("caps the supplied candidates examined at dynamicCodexMaxAttempts", () {
       final ports = codexDynamicCandidates(
         candidates: <int>[49152, 49153, 49154, 49155, 49156, 49157, 49158],
+        random: null,
       ).toList();
       expect(ports, equals(<int>[49152, 49153, 49154, 49155, 49156]));
     });

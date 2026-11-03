@@ -8,6 +8,8 @@ import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/memory_host_json_store.dart";
+
 void main() {
   test("decode failures retain their cause and stack trace", () {
     const cause = FormatException("unsupported schema 2");
@@ -23,7 +25,7 @@ void main() {
   });
 
   test("persists idempotent errors across repository instances", () async {
-    final store = _MemoryHostJsonStore();
+    final store = MemoryHostJsonStore();
     final repository = _repository(store: store);
 
     await repository.recordError(sessionId: "session-2", callId: "call-2");
@@ -39,7 +41,7 @@ void main() {
   });
 
   test("persists only completed structured command failures", () async {
-    final repository = _repository(store: _MemoryHostJsonStore());
+    final repository = _repository(store: MemoryHostJsonStore());
 
     await repository.recordCommandOutcome(
       command: const CodexCommandExecutionEventDto(
@@ -88,7 +90,7 @@ void main() {
   });
 
   test("deleting a session preserves other sessions", () async {
-    final store = _MemoryHostJsonStore();
+    final store = MemoryHostJsonStore();
     final repository = _repository(store: store);
     await repository.recordError(sessionId: "session-1", callId: "call-1");
     await repository.recordError(sessionId: "session-2", callId: "call-2");
@@ -103,7 +105,7 @@ void main() {
   });
 
   test("quarantines corrupt storage and continues empty", () async {
-    final store = _MemoryHostJsonStore()..files[CodexToolOutcomeStorage.fileName] = "not-json";
+    final store = MemoryHostJsonStore()..files[CodexToolOutcomeStorage.fileName] = "not-json";
 
     expect(
       await _repository(store: store).readStatuses(sessionId: "session-1"),
@@ -117,7 +119,7 @@ void main() {
   });
 
   test("quarantines an empty storage file instead of treating it as absent", () async {
-    final store = _MemoryHostJsonStore()..files[CodexToolOutcomeStorage.fileName] = " \n";
+    final store = MemoryHostJsonStore()..files[CodexToolOutcomeStorage.fileName] = " \n";
 
     expect(
       await _repository(store: store).readStatuses(sessionId: "session-1"),
@@ -132,7 +134,7 @@ void main() {
 
   test("does not overwrite an earlier quarantine with the same timestamp", () async {
     const quarantineName = "${CodexToolOutcomeStorage.fileName}.corrupt-1785758400000000";
-    final store = _MemoryHostJsonStore()
+    final store = MemoryHostJsonStore()
       ..files[quarantineName] = "first-corrupt-file"
       ..files[CodexToolOutcomeStorage.fileName] = "second-corrupt-file";
 
@@ -168,50 +170,7 @@ class const _FixedClock() extends ServerClock {
   DateTime now() => DateTime.utc(2026, 8, 3, 12);
 }
 
-class _MemoryHostJsonStore() implements HostJsonStore {
-  @override
-  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
-
-  final Map<String, String> files = {};
-
-  @override
-  Future<String?> read({required String name}) async => files[name];
-
-  @override
-  Future<void> write({required String name, required String contents}) async {
-    files[name] = contents;
-  }
-
-  @override
-  Future<void> delete({required String name}) async {
-    files.remove(name);
-  }
-
-  @override
-  Future<void> quarantine({
-    required String name,
-    required String quarantinedName,
-  }) async {
-    final contents = files.remove(name);
-    if (contents != null) files[quarantinedName] = contents;
-  }
-
-  @override
-  Future<String?> update({
-    required String name,
-    required FutureOr<String?> Function(String? current) transform,
-  }) async {
-    final contents = await transform(files[name]);
-    if (contents == null) {
-      files.remove(name);
-    } else {
-      files[name] = contents;
-    }
-    return contents;
-  }
-}
-
-class _ReadFailingHostJsonStore() extends _MemoryHostJsonStore {
+class _ReadFailingHostJsonStore() extends MemoryHostJsonStore {
   @override
   Future<String?> read({required String name}) {
     throw const FileSystemException("denied");

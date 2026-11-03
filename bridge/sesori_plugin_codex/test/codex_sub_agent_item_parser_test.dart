@@ -7,15 +7,8 @@ import "package:test/test.dart";
 
 // Fixtures mirror the codex-cli 0.148.0 app-server frames captured in
 // .plan/completed/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
-CodexCollabItem collabOf(CodexSubAgentItemEventDto? event) => switch (event) {
-  CodexCollabItem() => event,
-  _ => fail("expected CodexCollabItem, got $event"),
-};
-
-CodexSubAgentActivity activityOf(CodexSubAgentItemEventDto? event) => switch (event) {
-  CodexSubAgentActivity() => event,
-  _ => fail("expected CodexSubAgentActivity, got $event"),
-};
+CodexSubAgentActivity activityOf(CodexSubAgentActivity? event) =>
+    event ?? fail("expected CodexSubAgentActivity, got null");
 
 void main() {
   const parser = CodexSubAgentItemParser();
@@ -86,9 +79,9 @@ void main() {
     });
   });
 
-  group("collabAgentToolCall", () {
-    test("parses the wait item emitted while the parent blocks on a child", () {
-      final event = parser.parse(
+  test("ignores collabAgentToolCall items, which have no consumer", () {
+    expect(
+      parser.parse(
         notification: const CodexServerNotification(
           method: "item/started",
           params: {
@@ -99,89 +92,15 @@ void main() {
               "status": "inProgress",
               "senderThreadId": "parent-1",
               "receiverThreadIds": <String>[],
-              "prompt": null,
-              "model": null,
-              "reasoningEffort": null,
               "agentsStates": <String, Object?>{},
             },
             "threadId": "parent-1",
             "turnId": "turn-1",
-            "startedAtMs": 1788356394684,
           },
         ),
-      );
-
-      final collab = collabOf(event);
-      expect(collab.lifecycle, CodexCorrelatableItemLifecycle.started);
-      expect(collab.itemId, "call_wait");
-      expect(collab.tool, CodexCollabTool.wait);
-      expect(collab.status, CodexCollabItemStatus.inProgress);
-      expect(collab.senderThreadId, "parent-1");
-      expect(collab.receiverThreadIds, isEmpty);
-      expect(collab.prompt, isNull);
-      expect(collab.agentsStates, isEmpty);
-    });
-
-    test("parses a completed spawn with receiver ids, prompt, and agent states", () {
-      final event = parser.parse(
-        notification: const CodexServerNotification(
-          method: "item/completed",
-          params: {
-            "threadId": "parent-1",
-            "turnId": "turn-1",
-            "item": {
-              "type": "collabAgentToolCall",
-              "id": "call_spawn",
-              "tool": "spawnAgent",
-              "status": "completed",
-              "senderThreadId": "parent-1",
-              "receiverThreadIds": ["child-1"],
-              "prompt": "reply with the word done",
-              "agentsStates": {
-                "child-1": {"status": "running", "message": null},
-                "child-2": {"status": "notFound", "message": "agent not found"},
-                "child-3": {"status": "hibernating", "message": null},
-              },
-            },
-          },
-        ),
-      );
-
-      final collab = collabOf(event);
-      expect(collab.tool, CodexCollabTool.spawnAgent);
-      expect(collab.status, CodexCollabItemStatus.completed);
-      expect(collab.receiverThreadIds, ["child-1"]);
-      expect(collab.prompt, "reply with the word done");
-      expect(collab.agentsStates, {
-        "child-1": CodexCollabAgentStatus.running,
-        "child-2": CodexCollabAgentStatus.notFound,
-        "child-3": CodexCollabAgentStatus.unknown,
-      });
-    });
-
-    test("falls back to unknown tool and status without dropping the item", () {
-      final event = parser.parse(
-        notification: const CodexServerNotification(
-          method: "item/completed",
-          params: {
-            "threadId": "parent-1",
-            "item": {
-              "type": "collabAgentToolCall",
-              "id": "call_x",
-              "tool": "mergeAgents",
-              "status": "paused",
-              "receiverThreadIds": ["child-1", 7, " "],
-            },
-          },
-        ),
-      );
-
-      final collab = collabOf(event);
-      expect(collab.tool, CodexCollabTool.unknown);
-      expect(collab.status, CodexCollabItemStatus.unknown);
-      expect(collab.senderThreadId, isNull);
-      expect(collab.receiverThreadIds, ["child-1"]);
-    });
+      ),
+      isNull,
+    );
   });
 
   test("ignores other methods, other item types, and missing identities", () {

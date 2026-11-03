@@ -1,8 +1,8 @@
-// Tests for the Phase 1/2 codex plugin. Each helper that fires-and-forgets a
+// Tests for the codex plugin. Each helper that fires-and-forgets a
 // response to the client's first request is intentionally not awaited — the
 // pattern of "subscribe to the next outgoing frame, then push a reply" is
 // what gives the test its determinism, and awaiting it would deadlock.
-// ignore_for_file: unawaited_futures, cast_nullable_to_non_nullable, prefer_foreach
+// ignore_for_file: unawaited_futures, cast_nullable_to_non_nullable
 
 import "dart:async";
 import "dart:convert";
@@ -15,6 +15,7 @@ import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/stub_web_socket_channel.dart";
 
 void main() {
   group("CodexPlugin", () {
@@ -623,9 +624,9 @@ class _FakeWebSocket() {
   this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
-    channel = _StubChannel(
+    channel = StubWebSocketChannel(
       stream: _serverToClient.stream,
-      sink: _SinkAdapter(_clientToServer),
+      sink: ControllerWebSocketSink(controller: _clientToServer),
     );
   }
 
@@ -634,49 +635,5 @@ class _FakeWebSocket() {
   late final WebSocketChannel channel;
 
   Stream<Object?> get outgoing => _clientToServer.stream;
-  Sink<Object?> get serverSink => _SinkAdapter(_serverToClient);
-}
-
-class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
-    implements WebSocketChannel {
-  @override
-  int? get closeCode => null;
-
-  @override
-  String? get closeReason => null;
-
-  @override
-  String? get protocol => null;
-
-  @override
-  Future<void> get ready => Future.value();
-
-  // The class implements WebSocketChannel which mixes in StreamChannelMixin;
-  // none of those helper methods are exercised by our tests so we satisfy
-  // the analyzer by routing them through noSuchMethod.
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
-  @override
-  void add(Object? data) => _controller.add(data);
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
-
-  @override
-  Future<void> addStream(Stream<Object?> stream) async {
-    await for (final item in stream) {
-      _controller.add(item);
-    }
-  }
-
-  @override
-  Future<void> close([int? closeCode, String? closeReason]) async {
-    if (!_controller.isClosed) await _controller.close();
-  }
-
-  @override
-  Future<void> get done => _controller.done;
+  Sink<Object?> get serverSink => ControllerWebSocketSink(controller: _serverToClient);
 }

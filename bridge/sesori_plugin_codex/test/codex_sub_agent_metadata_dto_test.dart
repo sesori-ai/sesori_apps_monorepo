@@ -25,7 +25,6 @@ void main() {
 
       expect(thread.parentThreadId, "parent-1");
       expect(thread.agentNickname, "Raman");
-      expect(thread.agentRole, isNull);
       expect(thread.threadSource, isNull);
     });
 

@@ -2,6 +2,8 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "api/models/codex_correlatable_item_event_dto.dart";
+import "api/models/codex_file_change_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
 import "codex_app_server_client.dart";
@@ -171,7 +173,13 @@ class CodexEventMapper({
   }
 
   /// Maps a non-thread-start notification to zero or more bridge events.
-  List<BridgeSseEvent> map(CodexServerNotification notification) {
+  ///
+  /// [correlatableItem] is the notification's command or file-change item,
+  /// already parsed by the caller; those items render only from it.
+  List<BridgeSseEvent> map({
+    required CodexServerNotification notification,
+    required CodexCorrelatableItemEventDto? correlatableItem,
+  }) {
     final method = notification.method;
     final params = notification.params;
 
@@ -245,6 +253,7 @@ class CodexEventMapper({
         );
         final events = _itemToEvents(
           item: item,
+          correlatableItem: correlatableItem,
           threadId: threadId,
           completed: method == "item/completed",
         );
@@ -374,12 +383,43 @@ class CodexEventMapper({
   /// status for tool items that don't carry one (e.g. `webSearch`).
   List<BridgeSseEvent> _itemToEvents({
     required Map<String, dynamic> item,
+    required CodexCorrelatableItemEventDto? correlatableItem,
     required String threadId,
     required bool completed,
   }) {
     final itemId = item["id"] as String?;
     if (itemId == null || itemId.isEmpty) return const [];
     final time = _itemTimes[(threadId: threadId, itemId: itemId)];
+
+    switch (correlatableItem) {
+      case CodexCommandExecutionEventDto(:final command, :final aggregatedOutput):
+        final commandTitle = _rolloutToolMapper.logicalCommandTitle(command);
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool: "shell",
+          shellCommand: commandTitle,
+          title: commandTitle,
+          status: _rolloutToolMapper.appServerItemStatus(event: correlatableItem),
+          time: time,
+          output: _rolloutToolMapper.clipOutput(aggregatedOutput),
+          attachments: const [],
+        );
+      case CodexFileChangeEventDto(:final changes):
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool: "edit",
+          shellCommand: null,
+          title: _fileChangeTitle(changes: changes),
+          status: _rolloutToolMapper.appServerItemStatus(event: correlatableItem),
+          time: time,
+          output: _fileChangeOutput(changes: changes),
+          attachments: const [],
+        );
+      case null:
+        break;
+    }
 
     final imageBearingItem = _imageBearingItemParser.parse(item: item);
     switch (imageBearingItem) {
@@ -512,38 +552,6 @@ class CodexEventMapper({
           partSuffix: "reasoning",
           text: _extractReasoningText(item),
         );
-      case "commandExecution":
-        final exitCode = item["exitCode"];
-        final appServerStatus = exitCode is num && exitCode.toInt() != 0
-            ? PluginToolStatus.error
-            : _toolStatus(item["status"], completed: completed);
-        return _toolItemEvents(
-          threadId: threadId,
-          itemId: itemId,
-          tool: "shell",
-          shellCommand: _rolloutToolMapper.logicalCommandTitle(item["command"] as String?),
-          title: _rolloutToolMapper.logicalCommandTitle(
-            item["command"] as String?,
-          ),
-          status: appServerStatus,
-          time: time,
-          output: _rolloutToolMapper.clipOutput(
-            item["aggregatedOutput"] as String?,
-          ),
-          attachments: const [],
-        );
-      case "fileChange":
-        return _toolItemEvents(
-          threadId: threadId,
-          itemId: itemId,
-          tool: "edit",
-          shellCommand: null,
-          title: _fileChangeTitle(item["changes"]),
-          status: _toolStatus(item["status"], completed: completed),
-          time: time,
-          output: _fileChangeOutput(item["changes"]),
-          attachments: const [],
-        );
       case "webSearch":
         return _toolItemEvents(
           threadId: threadId,
@@ -625,22 +633,6 @@ class CodexEventMapper({
     ];
   }
 
-  /// Maps a codex item status (`inProgress|completed|failed|declined`) onto the
-  /// mobile tool-state vocabulary ([PluginToolStatus]). Items without a
-  /// status field fall back to the notification phase ([completed]).
-  PluginToolStatus _toolStatus(Object? raw, {required bool completed}) {
-    switch (raw is String ? raw : null) {
-      case "inProgress":
-        return PluginToolStatus.running;
-      case "completed":
-        return PluginToolStatus.completed;
-      case "failed":
-      case "declined":
-        return PluginToolStatus.error;
-    }
-    return completed ? PluginToolStatus.completed : PluginToolStatus.running;
-  }
-
   PluginToolStatus _parsedToolStatus({
     required CodexToolCallStatus status,
     required bool completed,
@@ -667,25 +659,21 @@ class CodexEventMapper({
 
   /// A short title for a `fileChange` item: the touched paths (codex's
   /// `changes` are `{path, kind, diff}` entries).
-  String? _fileChangeTitle(Object? changes) {
-    if (changes is! List || changes.isEmpty) return null;
-    final paths = <String>[];
-    for (final change in changes) {
-      final Object? path = _asMap(change)?["path"];
-      if (path is String) paths.add(path);
-    }
+  String? _fileChangeTitle({required List<CodexFileChangeEntryDto> changes}) {
+    if (changes.isEmpty) return null;
+    final paths = [
+      for (final CodexFileChangeEntryDto(:path) in changes) ?path,
+    ];
     if (paths.isEmpty) return "${changes.length} file change(s)";
     final shown = paths.take(3).join(", ");
     return paths.length > 3 ? "$shown +${paths.length - 3} more" : shown;
   }
 
   /// The concatenated unified diffs of a `fileChange` item, if present.
-  String? _fileChangeOutput(Object? changes) {
-    if (changes is! List) return null;
+  String? _fileChangeOutput({required List<CodexFileChangeEntryDto> changes}) {
     final buffer = StringBuffer();
-    for (final c in changes) {
-      final diff = _asMap(c)?["diff"];
-      if (diff is String && diff.isNotEmpty) buffer.writeln(diff);
+    for (final CodexFileChangeEntryDto(:diff) in changes) {
+      if (diff != null && diff.isNotEmpty) buffer.writeln(diff);
     }
     final result = buffer.toString().trim();
     return result.isEmpty ? null : result;

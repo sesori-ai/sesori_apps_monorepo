@@ -30,4 +30,5 @@ final class const CodexFileChangeEventDto({
     required super.turnId,
     required super.itemId,
     required final CodexFileChangeStatus status,
+    required final List<CodexFileChangeEntryDto> changes,
   }) extends CodexCorrelatableItemEventDto;

@@ -27,7 +27,7 @@ CodexFileChangeStatus _fileChangeStatusFromJson(Object? value) {
   };
 }
 
-@freezed
+@Freezed(fromJson: true, toJson: false)
 sealed class CodexFileChangeParamsDto with _$CodexFileChangeParamsDto {
   const factory({
     required String? threadId,
@@ -38,7 +38,7 @@ sealed class CodexFileChangeParamsDto with _$CodexFileChangeParamsDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeParamsDtoFromJson(json);
 }
 
-@freezed
+@Freezed(fromJson: true, toJson: false)
 sealed class CodexFileChangeItemDto with _$CodexFileChangeItemDto {
   const factory({
     @JsonKey(
@@ -48,7 +48,34 @@ sealed class CodexFileChangeItemDto with _$CodexFileChangeItemDto {
     required CodexFileChangeItemType type,
     required String? id,
     @JsonKey(fromJson: _fileChangeStatusFromJson) required CodexFileChangeStatus status,
+    @JsonKey(fromJson: _fileChangeEntriesFromJson) required List<CodexFileChangeEntryDto> changes,
   }) = _CodexFileChangeItemDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeItemDtoFromJson(json);
+}
+
+/// One `{path, kind, diff}` entry of a `fileChange` item.
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexFileChangeEntryDto with _$CodexFileChangeEntryDto {
+  const factory({
+    @JsonKey(fromJson: _stringOrNull) required String? path,
+    @JsonKey(fromJson: _stringOrNull) required String? diff,
+  }) = _CodexFileChangeEntryDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeEntryDtoFromJson(json);
+}
+
+String? _stringOrNull(Object? value) => value is String ? value : null;
+
+/// An entry that is not an object still counts as a change, with neither a
+/// path nor a diff.
+List<CodexFileChangeEntryDto> _fileChangeEntriesFromJson(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final Object? entry in value)
+      if (entry case final Map<String, dynamic> json)
+        CodexFileChangeEntryDto.fromJson(json)
+      else
+        const CodexFileChangeEntryDto(path: null, diff: null),
+  ];
 }

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimeApi;
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
@@ -34,16 +35,14 @@ import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
-import "runtime/codex_managed_api.dart";
 import "services/codex_mcp_authentication_service.dart";
 import "services/codex_rollout_tailer.dart";
 import "services/codex_session_service.dart";
 
-/// Phase 4 of the Codex backend plugin.
+/// The Codex request surface over one `codex app-server` WebSocket.
 ///
-/// Phases 2/3 brought up the WebSocket client, the `initialize` handshake,
-/// and the read path via `~/.codex/session_index.jsonl` and rollout files.
-/// Phase 4 adds the live write path:
+/// Sessions are read from `~/.codex/session_index.jsonl` and rollout files.
+/// The live path uses the app-server:
 ///
 ///   - [createSession] → `thread/start` (+ first `turn/start` if parts are
 ///     supplied) so users can start a new codex conversation from mobile.
@@ -54,11 +53,10 @@ import "services/codex_session_service.dart";
 ///   - Live session status (running/idle) is tracked from `turn/started`
 ///     and `turn/completed` notifications so [getSessionStatuses] returns
 ///     non-empty data while sessions are alive.
-///
-/// Approval/permission flows still throw — those land in Phase 5.
+///   - Approvals, questions and MCP forms arrive as server requests and are
+///     answered through the [ApprovalRegistry].
 class CodexPlugin._({
   required final String _serverUrl,
-  required final String? _capabilityToken,
   required final CodexAppServerClient Function()? _clientFactory,
   required final CodexSessionService _sessionService,
   required final CodexMessageRepository _messageRepository,
@@ -84,7 +82,8 @@ class CodexPlugin._({
   required final void Function()? _onDisconnected,
   required final Duration _keepaliveInterval,
 }) implements
-    CodexManagedApi,
+    BridgeDerivedProjectsPluginApi,
+    ManagedRuntimeApi,
     McpManagementPluginApi,
     McpConnectorSetupPluginApi,
     McpAuthenticationPluginApi,
@@ -98,8 +97,6 @@ class CodexPlugin._({
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);
 
-  // Passed to the default client built in [_createClient]; retained for future
-  // non-loopback (`--ws-auth`) support.
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
   // Nullable: when the caller injects a factory (tests) we use it verbatim;
@@ -160,7 +157,6 @@ class CodexPlugin._({
 
   new composed({
     required String serverUrl,
-    required String? capabilityToken,
     required CodexAppServerClient Function()? clientFactory,
     required CodexSessionService sessionService,
     required CodexMessageRepository messageRepository,
@@ -178,7 +174,6 @@ class CodexPlugin._({
     required Duration keepaliveInterval,
   }) : this._(
          serverUrl: serverUrl,
-         capabilityToken: capabilityToken,
          clientFactory: clientFactory,
          sessionService: sessionService,
          messageRepository: messageRepository,
@@ -320,8 +315,9 @@ class CodexPlugin._({
         return await Future<bool>.error(error);
       }
     }();
-    _connectFuture = future.catchError((Object _) => false);
-    return _connectFuture!;
+    final connectFuture = future.catchError((Object _) => false);
+    _connectFuture = connectFuture;
+    return connectFuture;
   }
 
   /// Builds the app-server client: the injected factory verbatim (tests), or
@@ -332,7 +328,6 @@ class CodexPlugin._({
     if (injected != null) return injected();
     return CodexAppServerClient(
       serverUrl: _serverUrl,
-      capabilityToken: _capabilityToken,
       onDisconnected: _handleClientDisconnected,
     );
   }
@@ -537,9 +532,10 @@ class CodexPlugin._({
       }
     }
     final mappedThreadId = correlatableItem?.threadId ?? threadId;
-    final mappedEvents = projectedTool == null
-        ? _eventMapper.map(notification)
-        : _mapProjectedTool(threadId: mappedThreadId!, tool: projectedTool);
+    final mappedEvents = switch ((projectedTool, mappedThreadId)) {
+      (final tool?, final toolThreadId?) => _mapProjectedTool(threadId: toolThreadId, tool: tool),
+      _ => _eventMapper.map(notification: notification, correlatableItem: correlatableItem),
+    };
     _sessionService
         .coordinateSessionEvents(
           sessionId: mappedThreadId,
@@ -908,7 +904,6 @@ class CodexPlugin._({
   /// and starts pumping notifications. Idempotent — concurrent and repeat
   /// callers share the single in-flight connection. Throws when the cold-start
   /// fails so the descriptor can surface a degraded status.
-  @override
   Future<void> initialize() async {
     final connected = await _ensureConnected();
     if (!connected) {
@@ -1264,7 +1259,7 @@ class CodexPlugin._({
             sessionIsIdle: true,
             activityChanged: activityChanged,
             sessionClosed: false,
-            events: _eventMapper.map(terminal),
+            events: _eventMapper.map(notification: terminal, correlatableItem: null),
           )
           .forEach(_eventBuffer.add);
     });
@@ -1789,14 +1784,12 @@ class CodexPlugin._({
     _mcpAuthentication = null;
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    ({Object error, StackTrace stackTrace})? firstFailure;
     Future<void> capture(Future<void> Function() cleanup) async {
       try {
         await cleanup();
       } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
+        firstFailure ??= (error: error, stackTrace: stackTrace);
       }
     }
 
@@ -1817,8 +1810,9 @@ class CodexPlugin._({
     _toolLifecycleTracker.clear();
     await capture(_eventBuffer.close);
     await capture(_workState.close);
-    final error = firstError;
-    if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);
+    if (firstFailure case (:final error, :final stackTrace)?) {
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   void _syncWorkState() {

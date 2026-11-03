@@ -1,6 +1,5 @@
 import "dart:async";
 import "dart:io" as io;
-import "dart:math";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -15,6 +14,7 @@ import "../api/parsers/codex_command_execution_parser.dart";
 import "../api/parsers/codex_file_change_parser.dart";
 import "../api/parsers/codex_image_bearing_item_parser.dart";
 import "../api/parsers/codex_sub_agent_item_parser.dart";
+import "../codex_app_server_client.dart";
 import "../codex_config_reader.dart";
 import "../codex_event_mapper.dart";
 import "../codex_metadata_repository.dart";
@@ -34,7 +34,6 @@ import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
 import "../services/codex_session_service.dart";
 import "codex_desktop_app_locator.dart";
-import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
 import "codex_record_mapper.dart";
 import "codex_runtime_manifest.dart";
@@ -42,24 +41,22 @@ import "codex_runtime_policy.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
-/// Builds the [CodexManagedApi] for a resolved server. The production default
-/// constructs a [CodexPlugin] wired to the descriptor's status reporter; tests
-/// inject a fake.
-typedef CodexManagedApiFactory = CodexManagedApi Function({
+/// Composes the [CodexPlugin] for one `codex app-server` URL. The descriptor
+/// and the plugin tests share it, so tests exercise the production wiring.
+CodexPlugin buildCodexPlugin({
   required String serverUrl,
-  required void Function() onConnected,
-  required void Function() onDisconnected,
-});
-
-CodexManagedApi _defaultBuildApi({
-  required PluginHost host,
-  required String serverUrl,
-  required void Function() onConnected,
-  required void Function() onDisconnected,
+  required Map<String, String> environment,
+  required ServerClock clock,
+  required CodexToolOutcomeRepository toolOutcomeRepository,
+  required String launchDirectory,
+  required CodexAppServerClient Function()? clientFactory,
+  required void Function()? onConnected,
+  required void Function()? onDisconnected,
+  required Duration keepaliveInterval,
+  required Duration rolloutPollInterval,
 }) {
-  final launchDirectory = io.Directory.current.path;
-  final configReader = CodexConfigReader(environment: host.environment);
-  final rolloutApi = CodexRolloutApi(environment: host.environment);
+  final configReader = CodexConfigReader(environment: environment);
+  final rolloutApi = CodexRolloutApi(environment: environment);
   const imageAttachmentMapper = CodexImageAttachmentMapper();
   const rolloutToolMapper = CodexRolloutToolMapper(
     imageAttachmentMapper: imageAttachmentMapper,
@@ -67,12 +64,6 @@ CodexManagedApi _defaultBuildApi({
   const imageBearingItemParser = CodexImageBearingItemParser();
   const userContentMapper = CodexUserContentMapper();
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
-  final toolOutcomeRepository = CodexToolOutcomeRepository(
-    storage: CodexToolOutcomeStorage(
-      store: host.store,
-      clock: host.clock,
-    ),
-  );
   final messageRepository = CodexMessageRepository(
     rolloutApi: rolloutApi,
     rolloutToolMapper: rolloutToolMapper,
@@ -80,8 +71,7 @@ CodexManagedApi _defaultBuildApi({
   );
   return CodexPlugin.composed(
     serverUrl: serverUrl,
-    capabilityToken: null,
-    clientFactory: null,
+    clientFactory: clientFactory,
     sessionService: CodexSessionService(
       catalogRepository: catalogRepository,
       messageRepository: messageRepository,
@@ -101,13 +91,13 @@ CodexManagedApi _defaultBuildApi({
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
-      clock: host.clock,
+      clock: clock,
       config: configReader.readDefaults(),
     ),
     rolloutTailer: CodexRolloutTailer(
       rolloutApi: rolloutApi,
       catalogRepository: catalogRepository,
-      pollInterval: const Duration(milliseconds: 50),
+      pollInterval: rolloutPollInterval,
     ),
     toolLifecycleTracker: CodexToolLifecycleTracker(
       rolloutToolMapper: rolloutToolMapper,
@@ -120,7 +110,7 @@ CodexManagedApi _defaultBuildApi({
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
-    keepaliveInterval: const Duration(seconds: 30),
+    keepaliveInterval: keepaliveInterval,
   );
 }
 
@@ -130,31 +120,22 @@ CodexManagedApi _defaultBuildApi({
 /// `sesori_plugin_runtime` supervisor — mirroring the OpenCode descriptor,
 /// adapted for codex's loopback-WebSocket transport.
 ///
-/// Registered in `bin/bridge.dart` alongside the OpenCode descriptor; eligible
-/// unless its ID appears in the bridge plugin denylist.
+/// Registered in the bridge plugin registry; eligible unless its ID appears in
+/// the bridge plugin denylist.
 /// Unlike OpenCode there is no attach (`--no-auto-start`) mode and no crash
 /// restart: the codex WebSocket client does not auto-reconnect, so an
 /// unexpected child exit surfaces as `PluginFailed`, and a runtime that cannot
 /// be provisioned fails the start rather than degrading.
-///
-/// The optional constructor parameters are test seams; the registered
-/// descriptor is `const CodexPluginDescriptor()`.
 class const CodexPluginDescriptor({
-  final CodexManagedApiFactory? _buildApi,
-  final Iterable<int>? _candidatePorts,
-  final Random? _random,
-  final Duration _degradedDebounce = const Duration(seconds: 5),
-  final Duration _coldStartBudget = codexColdStartBudget,
-  final Duration _versionProbeTimeout = codexVersionProbeTimeout,
-
-  /// Test seam for existing-runtime resolution. Production builds a default in
-  /// [ensureRuntime] from the host's process service.
-  final ManagedRuntimeProvisionService? _provisionService,
-
-  /// Test seam for desktop-app CLI candidates. Production enumerates them with
-  /// [codexDesktopAppCliCandidates] for the current platform.
-  final List<String>? _desktopAppCliCandidates,
+  /// Test seam for desktop-app CLI candidates. Production passes null and
+  /// enumerates them with [codexDesktopAppCliCandidates] for the current
+  /// platform.
+  required final List<String>? _desktopAppCliCandidates,
 }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
+  static CodexPluginDescriptor production() {
+    return const CodexPluginDescriptor(desktopAppCliCandidates: null);
+  }
+
   @override
   bool get supportsPromptAttachments => true;
 
@@ -232,7 +213,7 @@ class const CodexPluginDescriptor({
           maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
         ),
         manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
+        probeTimeout: codexVersionProbeTimeout,
         executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ),
       inventory: const ManagedRuntimeInventory(manifest: manifest),
@@ -301,7 +282,7 @@ class const CodexPluginDescriptor({
           versionValidator: RuntimeVersionValidator(
             commandExecutor: executor,
             manifest: manifest,
-            probeTimeout: _versionProbeTimeout,
+            probeTimeout: codexVersionProbeTimeout,
             executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
         )
@@ -332,7 +313,7 @@ class const CodexPluginDescriptor({
         maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
       ),
       manifest: manifest,
-      probeTimeout: _versionProbeTimeout,
+      probeTimeout: codexVersionProbeTimeout,
       executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
     final httpClient = http.Client();
@@ -344,7 +325,7 @@ class const CodexPluginDescriptor({
         candidateValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
+          probeTimeout: codexVersionProbeTimeout,
           executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
         ),
         pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
@@ -446,7 +427,7 @@ class const CodexPluginDescriptor({
         executable,
         const ["login", "status"],
         environment: environment,
-        timeout: _versionProbeTimeout,
+        timeout: codexVersionProbeTimeout,
       );
     } on Object {
       return PluginSetupUnknown.versioned(
@@ -482,12 +463,6 @@ class const CodexPluginDescriptor({
       return;
     }
 
-    final injected = _provisionService;
-    if (injected != null) {
-      yield* injected.provision(host: host, explicitExecutablePath: null);
-      return;
-    }
-
     const manifest = CodexRuntimeManifest();
     yield* const ManagedRuntimeComposition()
         .createProvisioner(
@@ -500,7 +475,7 @@ class const CodexPluginDescriptor({
               maxCapturedOutputCharactersPerStream: null,
             ),
             manifest: manifest,
-            probeTimeout: _versionProbeTimeout,
+            probeTimeout: codexVersionProbeTimeout,
             executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
           fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
@@ -562,10 +537,10 @@ class const CodexPluginDescriptor({
       client: client,
       repository: CodexAuthenticationRepository(
         appServerApi: api,
-        requestTimeout: _versionProbeTimeout,
+        requestTimeout: codexVersionProbeTimeout,
       ),
       aborted: aborted,
-      requestTimeout: _versionProbeTimeout,
+      requestTimeout: codexVersionProbeTimeout,
     ).authenticate();
   }
 
@@ -575,7 +550,7 @@ class const CodexPluginDescriptor({
   }
 
   @override
-  Future<ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexManagedApi>> start(PluginHost host) async {
+  Future<ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexPlugin>> start(PluginHost host) async {
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }
@@ -626,7 +601,7 @@ class const CodexPluginDescriptor({
     } else {
       Log.d("[codex] starting on a dynamic port");
       portPolicy = DynamicPortPolicy(
-        candidates: codexDynamicCandidates(candidates: _candidatePorts, random: _random),
+        candidates: codexDynamicCandidates(candidates: null, random: null),
       );
     }
 
@@ -658,7 +633,7 @@ class const CodexPluginDescriptor({
     final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
-      degradedDebounce: _degradedDebounce,
+      degradedDebounce: const Duration(seconds: 5),
       disconnectOutcome: ManagedRuntimeDisconnectOutcome.degrade,
     );
 
@@ -674,20 +649,22 @@ class const CodexPluginDescriptor({
     );
     monitor.arm(handle);
 
-    final api = _buildApi == null
-        ? _defaultBuildApi(
-            host: host,
-            serverUrl: serverUrl,
-            onConnected: reporter.markConnected,
-            onDisconnected: reporter.markDisconnected,
-          )
-        : _buildApi(
-            serverUrl: serverUrl,
-            onConnected: reporter.markConnected,
-            onDisconnected: reporter.markDisconnected,
-          );
+    final api = buildCodexPlugin(
+      serverUrl: serverUrl,
+      environment: host.environment,
+      clock: host.clock,
+      toolOutcomeRepository: CodexToolOutcomeRepository(
+        storage: CodexToolOutcomeStorage(store: host.store, clock: host.clock),
+      ),
+      launchDirectory: io.Directory.current.path,
+      clientFactory: null,
+      onConnected: reporter.markConnected,
+      onDisconnected: reporter.markDisconnected,
+      keepaliveInterval: const Duration(seconds: 30),
+      rolloutPollInterval: const Duration(milliseconds: 50),
+    );
 
-    final plugin = ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexManagedApi>(
+    final plugin = ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexPlugin>(
       api: api,
       managedApi: api,
       reporter: reporter,
@@ -709,12 +686,12 @@ class const CodexPluginDescriptor({
     // failure leaves the plugin started but degraded rather than failing the
     // whole bridge — the listener accepted a TCP probe, so it is addressable.
     //
-    // The await is bounded by [_coldStartBudget]: a server that passed the
+    // The await is bounded by [codexColdStartBudget]: a server that passed the
     // readiness probe but stalls the handshake must not hang start() under the
     // bridge's cross-instance startup mutex. Past the budget the cold-start
     // keeps running in the background and the plugin starts degraded.
-    await ManagedRuntimeColdStartService(
-      budget: _coldStartBudget,
+    await const ManagedRuntimeColdStartService(
+      budget: codexColdStartBudget,
       logTag: "codex",
     ).run(coldStart: api.initialize(), reporter: reporter);
 

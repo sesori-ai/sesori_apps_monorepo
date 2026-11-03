@@ -691,7 +691,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-1",
         status: CodexImageGenerationStatus.completed,
-        revisedPrompt: null,
         result: "AA==",
         savedPath: null,
       ),
@@ -736,7 +735,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-running",
         status: CodexImageGenerationStatus.inProgress,
-        revisedPrompt: null,
         result: "",
         savedPath: null,
       ),
@@ -773,7 +771,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-old",
         status: CodexImageGenerationStatus.inProgress,
-        revisedPrompt: null,
         result: "",
         savedPath: null,
       ),
@@ -793,7 +790,6 @@ void main() {
       imageGeneration: const CodexImageGenerationItemDto(
         id: "image-new",
         status: CodexImageGenerationStatus.inProgress,
-        revisedPrompt: null,
         result: "",
         savedPath: null,
       ),

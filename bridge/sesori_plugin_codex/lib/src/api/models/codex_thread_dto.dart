@@ -38,7 +38,6 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required String? modelProvider,
     required String? parentThreadId,
     required String? agentNickname,
-    required String? agentRole,
     @JsonKey(unknownEnumValue: CodexThreadSource.unknown) required CodexThreadSource? threadSource,
   }) = _CodexThreadDto;
 
