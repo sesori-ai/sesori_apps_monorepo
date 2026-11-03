@@ -1,8 +1,8 @@
 import "dart:typed_data";
 
 import "package:flutter_test/flutter_test.dart";
-import "package:sesori_mobile/core/platform/flutter_image_clipboard.dart";
-import "package:sesori_mobile/core/platform/pasteboard_client.dart";
+import "package:sesori_app_ui/src/platform/flutter_image_clipboard.dart";
+import "package:sesori_app_ui/src/platform/pasteboard_client.dart";
 
 class _FakePasteboardClient() implements PasteboardClient {
   Uint8List? bytes;

@@ -2,12 +2,12 @@ import "package:flutter/foundation.dart" show kReleaseMode;
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:injectable/injectable.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart" show GoRouterRouteDispatcher;
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 
-import "../platform/desktop_route_dispatcher.dart";
 import "injection.config.dart";
 import "register_module.dart";
 
@@ -28,7 +28,11 @@ final GetIt getIt = GetIt.instance;
 void configureDesktopDependencies({required GoRouter router, required Future<void> routerReady}) {
   getIt.registerSingleton<PersistenceScope>(clientPersistenceScope);
   getIt.registerLazySingleton<RouteDispatcher>(
-    () => DesktopRouteDispatcher(router: router, routerReady: routerReady),
+    () => GoRouterRouteDispatcher(
+      router: router,
+      routerReady: routerReady,
+      popupNavigatorKeys: [router.routerDelegate.navigatorKey],
+    ),
   );
   getIt.registerSingleton<AnalyticsRuntimeCapability>(
     !kReleaseMode

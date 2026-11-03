@@ -5,7 +5,6 @@ import "../database.dart";
 
 part "projects_table.freezed.dart";
 
-@TableIndex(name: "idx_projects_path", columns: {#path})
 @TableIndex(
   name: "idx_projects_updated",
   columns: {
