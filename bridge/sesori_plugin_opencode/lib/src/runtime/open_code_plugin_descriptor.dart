@@ -88,11 +88,10 @@ OpenCodeManagedApi _defaultBuildApi({
 /// exit monitoring, bounded crash-restart) over the [PluginHost] and the
 /// `sesori_plugin_runtime` supervisor.
 ///
-/// Registered in `bin/bridge.dart` since the flip (PR 12 of the
-/// plugin-lifecycle migration), with the hardened policy knobs active:
-/// deadline-paced health confirmation, pre-probed explicit ports, early child
-/// exits treated as authoritative failure, and bounded restart pinned to the
-/// original port.
+/// Registered in the bridge plugin registry, with the hardened policy knobs
+/// active: deadline-paced health confirmation, pre-probed explicit ports, early
+/// child exits treated as authoritative failure, and bounded restart pinned to
+/// the original port.
 ///
 /// Optional constructor parameters are test seams (and random/candidate sources
 /// the supervisor needs). Production registration uses [production].
@@ -178,7 +177,7 @@ class const OpenCodePluginDescriptor({
     PluginValueOption(
       name: _OpenCodeConfigKey.password,
       help: "Override server password (auto-generated if not set)",
-      defaultsTo: "",
+      defaultsTo: null,
       allowedValues: null,
       valueHelp: null,
       validate: null,
@@ -207,21 +206,24 @@ class const OpenCodePluginDescriptor({
     ),
   ];
 
+  static const _attachWithoutPort = PluginConfigException(
+    "The --opencode-no-auto-start flag requires --opencode-port to be set.",
+  );
+
   /// Static counterpart of [validateConfig] for argument-parse-time callers.
   static void validateConfigValues(PluginConfig config) {
     if (config.flag(_OpenCodeConfigKey.noAutoStart) && config.intValue(_OpenCodeConfigKey.port) == null) {
-      throw const PluginConfigException("The --opencode-no-auto-start flag requires --opencode-port to be set.");
+      throw _attachWithoutPort;
     }
-    if (config.flag(_OpenCodeConfigKey.noPassword) &&
-        (config.value(_OpenCodeConfigKey.password)?.isNotEmpty ?? false)) {
+    if (config.flag(_OpenCodeConfigKey.noPassword) && config.value(_OpenCodeConfigKey.password) != null) {
       throw const PluginConfigException("The --opencode-no-password flag cannot be used with --opencode-password.");
     }
     // The host is used in both modes (bind target when managed, connect target
     // when attaching), so validate it up front — a malformed value would
     // otherwise only fail deep in start(), after the startup mutex has run and
     // the single-live-bridge replacement may have stopped a healthy resident.
-    final host = (config.value(_OpenCodeConfigKey.host) ?? "").trim();
-    if (host.isEmpty) {
+    final host = config.value(_OpenCodeConfigKey.host)?.trim();
+    if (host == null || host.isEmpty) {
       throw const PluginConfigException("The --opencode-host option cannot be empty.");
     }
     // Reject anything that isn't a bare host or IP literal: the value is built
@@ -511,10 +513,13 @@ class const OpenCodePluginDescriptor({
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
         );
-    if (selection case ManagedRuntimeSelected(:final version)) {
-      return PluginSetupReady.versioned(runtimeVersion: version.raw);
+    final ManagedRuntimeRejection rejection;
+    switch (selection) {
+      case ManagedRuntimeSelected(:final version):
+        return PluginSetupReady.versioned(runtimeVersion: version.raw);
+      case ManagedRuntimeNotSelected(:final primaryRejection):
+        rejection = primaryRejection;
     }
-    final rejection = (selection as ManagedRuntimeNotSelected).primaryRejection;
     if (selection is ManagedRuntimePathNotSelected) {
       return switch (rejection) {
         ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
@@ -631,17 +636,15 @@ class const OpenCodePluginDescriptor({
     final config = host.config;
     final requestedPort = config.intValue(_OpenCodeConfigKey.port);
     final noPassword = config.flag(_OpenCodeConfigKey.noPassword);
-    // Mirror the legacy flow's `password.normalize()`: trim, and map a blank
-    // value to "no password supplied" — otherwise the same CLI input would
-    // select a different password (or demand auth the user never set) after
-    // the flip.
+    // Trim, and treat a blank value as "no password supplied" so it is
+    // auto-generated rather than demanded.
     final providedPassword = config.value(_OpenCodeConfigKey.password)?.normalize();
 
     // The host OpenCode binds to (managed mode) or is reached at (attach mode);
     // defaults to 127.0.0.1. The connect host is what the bridge dials for
     // HTTP/SSE/health — loopback when the bind host is a non-connectable
     // wildcard (0.0.0.0 / ::), otherwise the bind host itself.
-    final bindHost = config.value(_OpenCodeConfigKey.host)!.trim();
+    final bindHost = (config.value(_OpenCodeConfigKey.host) ?? openCodeLoopbackHost).trim();
     final connectHost = resolveOpenCodeConnectHost(bindHost: bindHost);
 
     final probeClientFactory = _probeClientFactory ?? http.Client.new;
@@ -681,14 +684,14 @@ class const OpenCodePluginDescriptor({
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       mode = _OpenCodeServerMode.attached;
       // Attach mode: probe an existing server, never own or kill it.
-      final attachPort = requestedPort!;
+      final attachPort = requestedPort ?? (throw _attachWithoutPort);
       port = attachPort;
       // Structured Uri so an IPv6 literal connect host is bracketed correctly.
       serverUrl = Uri(scheme: "http", host: connectHost, port: attachPort).toString();
       apiPassword = noPassword ? null : providedPassword;
       spec = buildOpenCodeManagedRuntimeSpec(
         host: host,
-        executablePath: "",
+        executablePath: null,
         password: noPassword ? null : providedPassword,
         portPolicy: ExplicitPortPolicy(port: attachPort),
         probeClientFactory: probeClientFactory,
@@ -718,7 +721,7 @@ class const OpenCodePluginDescriptor({
       apiPassword = sharedEndpoint.password;
       spec = buildOpenCodeManagedRuntimeSpec(
         host: host,
-        executablePath: "",
+        executablePath: null,
         password: sharedEndpoint.password,
         portPolicy: ExplicitPortPolicy(port: port),
         probeClientFactory: probeClientFactory,
@@ -765,7 +768,7 @@ class const OpenCodePluginDescriptor({
         serverUrl = Uri(scheme: "http", host: connectHost, port: port).toString();
         spec = buildOpenCodeManagedRuntimeSpec(
           host: host,
-          executablePath: "",
+          executablePath: null,
           password: serverPassword,
           portPolicy: ExplicitPortPolicy(port: port),
           probeClientFactory: probeClientFactory,

@@ -30,46 +30,6 @@ final class PiHistoryMapper({
   final PiPersistedUserTextCodec _persistedUserTextCodec = const PiPersistedUserTextCodec();
   final String _pluginId = pluginId;
 
-  PiAssistantMessageDto? decodeAssistantMessage({required Map<String, Object?> raw}) {
-    if (raw["role"] != "assistant") return null;
-    return _decodeMessage(raw: raw) as PiAssistantMessageDto?;
-  }
-
-  PiUserMessageDto? decodeUserMessage({required Map<String, Object?> raw}) {
-    if (raw["role"] != "user") return null;
-    return _decodeMessage(raw: raw) as PiUserMessageDto?;
-  }
-
-  PiBashExecutionMessageDto? decodeBashExecutionMessage({required Map<String, Object?> raw}) {
-    if (raw["role"] != "bashExecution") return null;
-    return _decodeMessage(raw: raw) as PiBashExecutionMessageDto?;
-  }
-
-  PiCustomMessageDto? decodeCustomMessage({required Map<String, Object?> raw}) {
-    if (raw["role"] != "custom") return null;
-    return _decodeMessage(raw: raw) as PiCustomMessageDto?;
-  }
-
-  PiCustomMessageEntryDto? decodeCustomMessageEntry({required Map<String, Object?> raw}) {
-    if (raw["type"] != "custom_message") return null;
-    try {
-      final entry = PiSessionEntryDto.fromJson(Map<String, dynamic>.from(raw));
-      return entry is PiCustomMessageEntryDto ? entry : null;
-    } on Object catch (error, stack) {
-      Log.w("[pi] appended entry could not be decoded; omitting it", error, stack);
-      return null;
-    }
-  }
-
-  PiAgentMessageDto? _decodeMessage({required Map<String, Object?> raw}) {
-    try {
-      return PiAgentMessageDto.fromJson(Map<String, dynamic>.from(raw));
-    } on Object catch (error, stack) {
-      Log.w("[pi] event message could not be decoded; omitting it", error, stack);
-      return null;
-    }
-  }
-
   PiToolCallContentDto? decodeToolCall({required Map<String, Object?> raw}) {
     try {
       final content = PiContentDto.fromJson({...raw, "type": "toolCall"});
@@ -253,8 +213,8 @@ final class PiHistoryMapper({
         "content": result["content"] ?? const [],
         "isError": isError,
         "timestamp": null,
-      }) as PiToolResultMessageDto;
-      return mapToolResult(message: message, status: status, title: title);
+      });
+      return message is PiToolResultMessageDto ? mapToolResult(message: message, status: status, title: title) : null;
     } on Object catch (error, stack) {
       Log.w("[pi] tool-result event could not be decoded; omitting the update", error, stack);
       return null;
@@ -428,8 +388,9 @@ final class PiHistoryMapper({
             ):
               final location = toolLocations[toolCallId];
               if (location == null) continue;
+              final oldPart = location.draft.parts[location.partIndex];
+              if (oldPart is! PluginMessagePartTool) continue;
               final mapped = _mapToolResult(content: content, warnings: warnings);
-              final oldPart = location.draft.parts[location.partIndex] as PluginMessagePartTool;
               location.draft.parts[location.partIndex] = oldPart.copyWith(
                 state: PluginToolState(
                   status: isError ? PluginToolStatus.error : PluginToolStatus.completed,

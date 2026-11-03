@@ -2,9 +2,10 @@ import "dart:async";
 
 import "package:path/path.dart" as path;
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+import "support/fake_pi_process.dart";
 
 void main() {
   test("maps providers, deduped exact IDs, reasoning levels, and command sources", () async {

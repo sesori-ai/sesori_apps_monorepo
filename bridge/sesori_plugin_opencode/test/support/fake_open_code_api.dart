@@ -55,7 +55,7 @@ class FakeOpenCodeApi({
 
   Future<List<Project>> listProjects() async => projects;
   Future<List<Session>> listRootSessions() async => sessions;
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async =>
+  Future<List<Session>> listSessions({required String? directory, required bool roots}) async =>
       roots && filterRootSessions ? sessions.where((session) => session.parentID == null).toList() : sessions;
   Future<List<Command>> listCommands({required String? directory}) async => commands;
   Future<Session> createSession({required String directory, String? parentSessionId}) async {
@@ -170,8 +170,6 @@ class FakeOpenCodeApi({
       const ProviderListResponse(all: [], defaultValue: {}, connected: []);
   Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
       const ConfigProvidersResponse(providers: [], defaultValue: {});
-  Future<Session> forkSession({required String sessionId, required String directory}) async =>
-      throw UnimplementedError();
 }
 
 const _defaultCreatedSession = Session(

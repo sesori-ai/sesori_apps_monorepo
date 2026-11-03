@@ -67,23 +67,11 @@ class FakePiSessionStorageApi({
 
 String fakeSessionPath(String sessionId) => "/sessions/$sessionId.jsonl";
 
-final class FakePiCatalogSessionStorageApi({
-  super.initialSessions,
-  super.listGate,
-  super.listError,
-}) extends FakePiSessionStorageApi {
-  @override
-  Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
-}
-
 final class FakePiExtensionSessionStorageApi({
   super.initialSessions,
   super.listGate,
   super.listError,
 }) extends FakePiSessionStorageApi {
-  @override
-  Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
-
   @override
   Future<PiPendingNewSession?> readPendingNewSession({
     required String sessionId,

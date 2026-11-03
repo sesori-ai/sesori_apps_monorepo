@@ -11,7 +11,6 @@ _PiCatalogModelDto _$PiCatalogModelDtoFromJson(Map json) => _PiCatalogModelDto(
   id: _stringOrNull(json['id']),
   name: _stringOrNull(json['name']),
   reasoning: _boolOrFalse(json['reasoning']),
-  input: _stringList(json['input']),
 );
 
 _PiStateCatalogDto _$PiStateCatalogDtoFromJson(Map json) =>

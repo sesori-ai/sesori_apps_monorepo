@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
-import "../api/pi_process_factory.dart";
+import "package:pi_plugin/pi_plugin.dart";
 
 /// In-memory [PiProcessHandle] for Pi transport and plugin tests.
 class FakePiProcess({bool stdinCloseCompletes = true, bool stdinWritesFail = false}) implements PiProcessHandle {

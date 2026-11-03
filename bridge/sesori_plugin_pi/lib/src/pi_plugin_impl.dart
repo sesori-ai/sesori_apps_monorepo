@@ -80,7 +80,7 @@ final class PiPlugin._({
       editorTimeout: editorTimeout,
     );
     final sessionService = PiSessionService(
-      quotaMapper: PiQuotaInterruptionMapper(historyMapper: history),
+      quotaMapper: const PiQuotaInterruptionMapper(),
       processRepository: processRepository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(
@@ -492,14 +492,12 @@ final class PiPlugin._({
       _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
 
   Future<void> _dispose({required Duration? shutdownBudget}) async {
-    Object? firstError;
-    StackTrace? firstStack;
+    ({Object error, StackTrace stack})? firstFailure;
     Future<void> capture(Future<void> Function() cleanup) async {
       try {
         await cleanup();
       } on Object catch (error, stack) {
-        firstError ??= error;
-        firstStack ??= stack;
+        firstFailure ??= (error: error, stack: stack);
       }
     }
 
@@ -508,8 +506,7 @@ final class PiPlugin._({
       await capture(subscription.cancel);
     }
     await capture(_eventBuffer.close);
-    final error = firstError;
-    if (error != null) Error.throwWithStackTrace(error, firstStack!);
+    if (firstFailure case (:final error, :final stack)?) Error.throwWithStackTrace(error, stack);
   }
 
   PluginOperationException _unsupportedSelection({
@@ -528,7 +525,7 @@ final class PiPlugin._({
     required String operation,
     required bool staleOptions,
   }) async {
-    if (agent != null && agent != "pi") {
+    if (agent != null && agent != PiPluginIdentity.agentName) {
       throw _unsupportedSelection(operation: operation, message: "Unsupported Pi agent.", staleOptions: staleOptions);
     }
     if (variant != null && PiThinkingLevel.tryParse(value: variant.id) == null) {

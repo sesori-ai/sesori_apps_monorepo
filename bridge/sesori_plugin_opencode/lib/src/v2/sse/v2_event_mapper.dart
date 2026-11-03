@@ -241,13 +241,12 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
       _ => null,
     };
     if (notice == null) return const [];
-    return mapMessageSnapshot(
-      message: _messageMapper.mapMessage(
-        sessionId: notice.sessionId,
-        message: notice.message,
-        agentNames: agentNames,
-      )!,
+    final message = _messageMapper.mapMessage(
+      sessionId: notice.sessionId,
+      message: notice.message,
+      agentNames: agentNames,
     );
+    return message == null ? const [] : mapMessageSnapshot(message: message);
   }
 
   List<BridgeSseEvent> mapInput({required V2EventData event, required String? displaySessionId}) {

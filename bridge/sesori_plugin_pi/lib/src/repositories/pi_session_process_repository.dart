@@ -153,7 +153,6 @@ final class PiSessionProcessRepository({
 
   Stream<PiSessionProcessFrame> get frames => _frames.stream;
   Stream<PiSessionProcessExit> get exits => _exits.stream;
-  Set<String> get residentSessionIds => Set.unmodifiable(_residents.keys);
 
   String generateSessionId() {
     final random = Random.secure();
@@ -250,13 +249,6 @@ final class PiSessionProcessRepository({
             knownDirectories: knownDirectories,
           )
         : null;
-    if (resolved == null && pending == null) {
-      throw PluginOperationException.notFound(
-        "connect Pi session",
-        message: "Pi session was not found.",
-        cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
-      );
-    }
     if (resolved != null) {
       try {
         await _storageApi.clearPendingNewSession(
@@ -267,12 +259,19 @@ final class PiSessionProcessRepository({
         Log.w("[pi] failed to clear stale pending marker for resolved session id=$sessionId; continuing", error, stack);
       }
     }
-    final launch = resolved == null
-        ? pending!.parentSessionPath == null
-              ? PiNewSession(sessionId: sessionId)
-              : PiForkedSession(sessionId: sessionId, parentSessionPath: pending.parentSessionPath!)
-        : PiResumedSession(sessionPath: resolved.path);
-    final cwd = resolved?.metadata.cwd ?? pending!.cwd;
+    final (PiSessionLaunch launch, String cwd) = switch ((resolved, pending)) {
+      (final resolved?, _) => (PiResumedSession(sessionPath: resolved.path), resolved.metadata.cwd),
+      (null, PiPendingNewSession(:final cwd, parentSessionPath: null)) => (PiNewSession(sessionId: sessionId), cwd),
+      (null, PiPendingNewSession(:final cwd, parentSessionPath: final parentSessionPath?)) => (
+        PiForkedSession(sessionId: sessionId, parentSessionPath: parentSessionPath),
+        cwd,
+      ),
+      (null, null) => throw PluginOperationException.notFound(
+        "connect Pi session",
+        message: "Pi session was not found.",
+        cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
+      ),
+    };
     final client = PiRpcClient(
       launchSpec: PiLaunchSpec(
         binaryPath: _binaryPath,

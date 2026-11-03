@@ -1,12 +1,13 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/pi_event.dart";
+import "../../api/models/pi_session_history_dto.dart";
 import "../../models/pi_assistant_stop_reason.dart";
-import "pi_history_mapper.dart";
 
 /// Pi's openai-codex adapter formats a provider reset as approximate minutes.
 /// Keep that duration anchored to the original assistant error, never a replay.
-final class const PiQuotaInterruptionMapper({required final PiHistoryMapper historyMapper}) {
+final class const PiQuotaInterruptionMapper() {
+  static const _openAiCodexProvider = "openai-codex";
   // Dart DateTime's representable Unix-millisecond range.
   static const _maxMilliseconds = 8640000000000000;
   static final _usageLimit = RegExp(
@@ -19,10 +20,10 @@ final class const PiQuotaInterruptionMapper({required final PiHistoryMapper hist
     required PluginMessage? mappedMessage,
     required DateTime observedAt,
   }) {
-    final message = historyMapper.decodeAssistantMessage(raw: event.message);
-    if (message == null ||
+    final message = event.message;
+    if (message is! PiAssistantMessageDto ||
         message.stopReason != PiAssistantStopReason.error ||
-        message.provider != "openai-codex" ||
+        message.provider != _openAiCodexProvider ||
         mappedMessage is! PluginMessageError) {
       return null;
     }

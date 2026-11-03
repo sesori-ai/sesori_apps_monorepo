@@ -79,27 +79,27 @@ void main() {
       projectSettings.writeAsStringSync(jsonEncode({"sessionDir": "project-store"}));
       globalSettings.writeAsStringSync(jsonEncode({"sessionDir": "global-store"}));
 
-      expect(
-        await fixture
-            .api(
-              environment: {"PI_CODING_AGENT_SESSION_DIR": "environment-store"},
-            )
-            .resolveEffectiveSessionDirectory(directory: project),
-        p.join(project, "environment-store"),
+      await _expectEffectiveSessionDirectory(
+        api: fixture.api(environment: {"PI_CODING_AGENT_SESSION_DIR": "environment-store"}),
+        directory: project,
+        expected: p.join(project, "environment-store"),
       );
-      expect(
-        await fixture.api().resolveEffectiveSessionDirectory(directory: project),
-        p.join(project, "project-store"),
+      await _expectEffectiveSessionDirectory(
+        api: fixture.api(),
+        directory: project,
+        expected: p.join(project, "project-store"),
       );
       projectSettings.deleteSync();
-      expect(
-        await fixture.api().resolveEffectiveSessionDirectory(directory: project),
-        p.join(project, "global-store"),
+      await _expectEffectiveSessionDirectory(
+        api: fixture.api(),
+        directory: project,
+        expected: p.join(project, "global-store"),
       );
       projectSettings.writeAsStringSync(jsonEncode({"sessionDir": null}));
-      expect(
-        await fixture.api().resolveEffectiveSessionDirectory(directory: project),
-        _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project),
+      await _expectEffectiveSessionDirectory(
+        api: fixture.api(),
+        directory: project,
+        expected: _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project),
       );
     });
 
@@ -124,7 +124,10 @@ void main() {
       final api = PiSessionStorageApi(environment: const {});
 
       expect(await api.listSessionMetadata(knownDirectories: const {}), isEmpty);
-      expect(await api.resolveEffectiveSessionDirectory(directory: p.current), isNull);
+      await expectLater(
+        api.writePendingNewSession(sessionId: "secure-id", cwd: p.current, parentSessionPath: null),
+        throwsStateError,
+      );
     });
 
     test("uses project-configured storage when no user home resolves", () async {
@@ -142,7 +145,7 @@ void main() {
       final sessions = await api.listSessionMetadata(knownDirectories: {project});
 
       expect(sessions.map((session) => session.id), ["project-only"]);
-      expect(await api.resolveEffectiveSessionDirectory(directory: project), root);
+      await _expectEffectiveSessionDirectory(api: api, directory: project, expected: root);
     });
 
     test("invalid project session directory falls back to global settings", () async {
@@ -162,7 +165,7 @@ void main() {
       final sessions = await fixture.api().listSessionMetadata(knownDirectories: {project});
 
       expect(sessions.map((session) => session.id), ["global-fallback"]);
-      expect(await fixture.api().resolveEffectiveSessionDirectory(directory: project), globalRoot);
+      await _expectEffectiveSessionDirectory(api: fixture.api(), directory: project, expected: globalRoot);
     });
   });
 
@@ -451,9 +454,10 @@ void main() {
       File(globalSettings).writeAsStringSync("x" * (PiSessionStorageApi.settingsByteLimit + 1));
 
       final warnings = await _captureWarnings(() async {
-        expect(
-          await fixture.api().resolveEffectiveSessionDirectory(directory: project),
-          _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project),
+        await _expectEffectiveSessionDirectory(
+          api: fixture.api(),
+          directory: project,
+          expected: _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project),
         );
       });
 
@@ -1107,6 +1111,19 @@ String _defaultSessionDirectory({required String agentDirectory, required String
   final resolved = p.normalize(p.absolute(cwd));
   final stripped = resolved.startsWith(p.separator) ? resolved.substring(1) : resolved;
   return p.join(agentDirectory, "sessions", "--${stripped.replaceAll(RegExp(r"[/\\:]"), "-")}--");
+}
+
+/// Expects Pi's effective session directory for [directory] to be [expected],
+/// observed through where the pending-session marker lands.
+Future<void> _expectEffectiveSessionDirectory({
+  required PiSessionStorageApi api,
+  required String directory,
+  required String expected,
+}) async {
+  await api.writePendingNewSession(sessionId: "effective-root", cwd: directory, parentSessionPath: null);
+  final marker = File(p.join(expected, ".sesori-pending", "effective-root.pending"));
+  expect(marker.existsSync(), isTrue, reason: "the pending marker belongs under $expected");
+  marker.deleteSync();
 }
 
 Future<String> _captureWarnings(Future<void> Function() action) async {

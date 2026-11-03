@@ -4,9 +4,10 @@ import "dart:io";
 import "dart:math";
 
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
 import "package:test/test.dart";
 
+import "support/fake_pi_process.dart";
+import "support/pi_protocol_fixtures.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {

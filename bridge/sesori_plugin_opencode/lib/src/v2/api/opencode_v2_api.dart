@@ -84,7 +84,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       queryParameters: _location(directory: directory),
     ),
     operation: "/api/mcp",
-    fromJson: (value) => (value! as List<Object?>).map((item) => McpServer.fromJson(jsonCastMap(item))).toList(),
+    fromJson: (value) => _decodeList(value: value, fromJson: McpServer.fromJson),
   );
 
   Future<void> connectMcpServer({required String directory, required String name}) async {
@@ -150,9 +150,9 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
             queryParameters: _location(directory: directory),
           )
           .onError<OpenCodeApiException>((error, stackTrace) {
-            if (error.statusCode == HttpStatus.notFound && error.responseBody != null) {
+            if ((error.statusCode, error.responseBody) case (HttpStatus.notFound, final body?)) {
               try {
-                final missing = IntegrationAttemptNotFoundErrorEncoded.fromJson(jsonDecodeMap(error.responseBody!));
+                final missing = IntegrationAttemptNotFoundErrorEncoded.fromJson(jsonDecodeMap(body));
                 if (missing.tag == "IntegrationAttemptNotFoundError" &&
                     missing.integrationID == integrationId &&
                     missing.attemptID == attemptId) {
@@ -471,8 +471,14 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   }) => _getData(
     path: path,
     directory: directory,
-    fromJson: (value) => (value! as List<Object?>).map((item) => fromJson(jsonCastMap(item))).toList(),
+    fromJson: (value) => _decodeList(value: value, fromJson: fromJson),
   );
+
+  static List<T> _decodeList<T>({required Object? value, required T Function(Map<String, dynamic>) fromJson}) =>
+      switch (value) {
+        final List<Object?> items => [for (final item in items) fromJson(jsonCastMap(item))],
+        _ => throw const FormatException("Invalid JSON Array (not a List)"),
+      };
 
   Future<T> _getData<T>({
     required String path,

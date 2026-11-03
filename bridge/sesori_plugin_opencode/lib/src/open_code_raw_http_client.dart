@@ -217,7 +217,10 @@ class OpenCodeApiException(final String endpoint, final int statusCode, {String?
 
   @override
   String toString() {
-    final bodySuffix = responseBody == null || responseBody!.isEmpty ? "" : " body=$responseBody";
+    final bodySuffix = switch (responseBody) {
+      final body? when body.isNotEmpty => " body=$body",
+      _ => "",
+    };
     return "OpenCodeApiException: $endpoint failed with status $statusCode$bodySuffix";
   }
 }
