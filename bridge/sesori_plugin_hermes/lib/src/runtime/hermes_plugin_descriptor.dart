@@ -73,22 +73,6 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   @override
   List<PluginOption> get options => cliOptions;
 
-  @override
-  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
-    ...super.managementCapabilities(config: config),
-    if (_explicitBin(config: config) == null) PluginControlCapability.runtimeUpdate,
-  };
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_explicitBin(config: config) != null) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: "hermes",
-      arguments: ["update", "--yes"],
-      timeout: Duration(minutes: 10),
-    );
-  }
-
   /// The explicit `--hermes-bin` override, or null when unset, empty, or left
   /// at the bare default (which means "resolve on PATH").
   String? _explicitBin({required PluginConfig config}) {

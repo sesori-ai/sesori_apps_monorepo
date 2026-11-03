@@ -36,6 +36,7 @@ void main() {
           displaySessionId: sessionId,
           sourceSessionIds: [sessionId],
         ),
+        idGenerator: null,
       );
       registry.attach(stream: requests.stream.map((request) => CodexPendingRequest(request: request)));
     });

@@ -8,7 +8,7 @@ class DeepSeekApprovalRegistry({
   required AcpStdioClient client,
   required super.emit,
   required final DeepSeekAcpApi api,
-  super.idGenerator,
+  required super.idGenerator,
   required super.activeSessionResolver,
 }) extends AcpApprovalRegistry {
   this

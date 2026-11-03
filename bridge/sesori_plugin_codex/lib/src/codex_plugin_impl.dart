@@ -709,6 +709,7 @@ class CodexPlugin._({
       resolvePendingInputScope: _sessionService.pendingInputScope,
       questionParser: const CodexQuestionParser(),
       questionMapper: const CodexQuestionMapper(),
+      idGenerator: null,
       sendAsyncAnswer: ({required sessionId, required text}) => _startTurn(
         threadId: sessionId,
         promptId: null,

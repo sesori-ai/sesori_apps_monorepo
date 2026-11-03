@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/version.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show bridgeVersion;
 import 'package:test/test.dart';
 
 Future<Map<String, dynamic>> _readJson({required String path}) async {
@@ -12,25 +12,25 @@ Future<Map<String, dynamic>> _readJson({required String path}) async {
 
 void main() {
   group('version', () {
-    test('appVersion is not empty', () {
-      expect(appVersion, isNotEmpty);
+    test('bridgeVersion is not empty', () {
+      expect(bridgeVersion, isNotEmpty);
     });
 
-    test('appVersion matches semver pattern', () {
+    test('bridgeVersion matches semver pattern', () {
       final semverRegex = RegExp(r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$');
-      expect(appVersion, matches(semverRegex));
+      expect(bridgeVersion, matches(semverRegex));
     });
 
-    test('appVersion matches pubspec and npm package versions', () async {
+    test('bridgeVersion matches pubspec and npm package versions', () async {
       final pubspec = await File('pubspec.yaml').readAsString();
       final pubspecVersion = RegExp(r'^version:\s+(.+)$', multiLine: true).firstMatch(pubspec)!.group(1)!;
 
-      expect(appVersion, equals(pubspecVersion));
+      expect(bridgeVersion, equals(pubspecVersion));
 
       final wrapperPackage = await _readJson(
         path: p.join('npm', 'sesori-bridge', 'package.json'),
       );
-      expect(wrapperPackage['version'], equals(appVersion));
+      expect(wrapperPackage['version'], equals(bridgeVersion));
       expect(
         wrapperPackage['description'],
         equals('Bootstrap launcher for the managed Sesori Bridge runtime'),
@@ -40,7 +40,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
-          'releaseTag': 'v$appVersion',
+          'releaseTag': 'v$bridgeVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );
@@ -58,10 +58,10 @@ void main() {
       expect(optionalDependencies.keys, equals(packageDirs.keys));
 
       for (final entry in packageDirs.entries) {
-        expect(optionalDependencies[entry.key], equals(appVersion));
+        expect(optionalDependencies[entry.key], equals(bridgeVersion));
         final package = await _readJson(path: p.join('npm', entry.value, 'package.json'));
         expect(package['name'], equals(entry.key));
-        expect(package['version'], equals(appVersion));
+        expect(package['version'], equals(bridgeVersion));
         expect(package['description'], contains('Bootstrap payload for the managed Sesori Bridge runtime'));
         expect(package['files'], equals(['lib/runtime/']));
         expect(
@@ -69,7 +69,7 @@ void main() {
           equals({
             'bootstrapOnly': true,
             'managedRuntimeOwner': false,
-            'releaseTag': 'v$appVersion',
+            'releaseTag': 'v$bridgeVersion',
             'releaseArtifact': {
               '@sesori/bridge-darwin-arm64': 'sesori-bridge-macos-arm64.tar.gz',
               '@sesori/bridge-darwin-x64': 'sesori-bridge-macos-x64.tar.gz',

@@ -16,12 +16,13 @@ Future<void> _writeJsonFile({
   await File(path).writeAsString('$formatted\n');
 }
 
-class _FixtureApp({required final String rootPath, required final String oldVersion}) {
+class _FixtureApp({required final String workspacePath, required final String oldVersion}) {
+  String get rootPath => p.join(workspacePath, 'app');
   String get newVersion => '9.8.7';
 
   String get wrapperPackagePath => p.join(rootPath, 'npm', 'sesori-bridge', 'package.json');
   String get pubspecPath => p.join(rootPath, 'pubspec.yaml');
-  String get versionDartPath => p.join(rootPath, 'lib', 'src', 'version.dart');
+  String get versionDartPath => p.join(workspacePath, 'sesori_bridge_foundation', 'lib', 'src', 'bridge_version.dart');
 
   static const platformPackages = <String>[
     'sesori-bridge-darwin-arm64',
@@ -36,10 +37,11 @@ class _FixtureApp({required final String rootPath, required final String oldVers
 Future<_FixtureApp> _createFixtureApp() async {
   final tempDir = await Directory.systemTemp.createTemp('bump-version-fixture-');
   const oldVersion = '1.2.3';
-  final rootPath = tempDir.path;
+  final workspacePath = tempDir.path;
+  final rootPath = p.join(workspacePath, 'app');
 
   await Directory(p.join(rootPath, 'tool')).create(recursive: true);
-  await Directory(p.join(rootPath, 'lib', 'src')).create(recursive: true);
+  await Directory(p.join(workspacePath, 'sesori_bridge_foundation', 'lib', 'src')).create(recursive: true);
   await Directory(p.join(rootPath, 'npm')).create(recursive: true);
 
   for (final package in _FixtureApp.platformPackages) {
@@ -58,8 +60,8 @@ dependencies:
 
   final toolSource = await File(_toolSourcePath()).readAsString();
   await File(p.join(rootPath, 'tool', 'bump_version.dart')).writeAsString(toolSource);
-  await File(p.join(rootPath, 'lib', 'src', 'version.dart')).writeAsString(
-    "const String appVersion = '$oldVersion';\n",
+  await File(p.join(workspacePath, 'sesori_bridge_foundation', 'lib', 'src', 'bridge_version.dart')).writeAsString(
+    "const String bridgeVersion = '$oldVersion';\n",
   );
 
   await _writeJsonFile(
@@ -117,7 +119,7 @@ dependencies:
     fail('dart pub get failed: ${pubGet.stderr}');
   }
 
-  return _FixtureApp(rootPath: rootPath, oldVersion: oldVersion);
+  return _FixtureApp(workspacePath: workspacePath, oldVersion: oldVersion);
 }
 
 Future<ProcessResult> _runTool({
@@ -145,7 +147,7 @@ void main() {
     });
 
     tearDown(() async {
-      await Directory(fixture.rootPath).delete(recursive: true);
+      await Directory(fixture.workspacePath).delete(recursive: true);
     });
 
     test('updates the real fixture app end to end', () async {
@@ -161,7 +163,7 @@ void main() {
 
       expect(pubspec, contains('version: ${fixture.newVersion}'));
       expect(pubspec, isNot(contains('version: ${fixture.oldVersion}')));
-      expect(versionDart, equals("const String appVersion = '${fixture.newVersion}';\n"));
+      expect(versionDart, equals("const String bridgeVersion = '${fixture.newVersion}';\n"));
       expect(wrapperPackage['version'], equals(fixture.newVersion));
       expect(
         (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
@@ -200,7 +202,7 @@ void main() {
       final wrapperPackage = await _readJson(path: fixture.wrapperPackagePath);
 
       expect(pubspec, contains('version: $internalVersion'));
-      expect(versionDart, equals("const String appVersion = '$internalVersion';\n"));
+      expect(versionDart, equals("const String bridgeVersion = '$internalVersion';\n"));
       expect(wrapperPackage['version'], equals(internalVersion));
       expect(
         (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
@@ -236,6 +238,23 @@ void main() {
       expect(result.stderr, contains('Error: Invalid version format "1.2"'));
       expect(await File(fixture.pubspecPath).readAsString(), equals(beforePubspec));
       expect(await File(fixture.versionDartPath).readAsString(), equals(beforeVersionDart));
+      expect(await File(fixture.wrapperPackagePath).readAsString(), equals(beforeWrapperPackage));
+    });
+
+    test('fails without writing when bridge_version.dart lacks the old constant', () async {
+      await File(fixture.versionDartPath).writeAsString("const String bridgeVersion = '0.0.1';\n");
+      final beforePubspec = await File(fixture.pubspecPath).readAsString();
+      final beforeWrapperPackage = await File(fixture.wrapperPackagePath).readAsString();
+
+      final result = await _runTool(fixture: fixture, args: [fixture.newVersion]);
+
+      expect(result.exitCode, equals(1));
+      expect(result.stderr, contains("Could not find \"const String bridgeVersion = '${fixture.oldVersion}';\""));
+      expect(
+        await File(fixture.versionDartPath).readAsString(),
+        equals("const String bridgeVersion = '0.0.1';\n"),
+      );
+      expect(await File(fixture.pubspecPath).readAsString(), equals(beforePubspec));
       expect(await File(fixture.wrapperPackagePath).readAsString(), equals(beforeWrapperPackage));
     });
   });

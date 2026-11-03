@@ -118,18 +118,7 @@ final class const ClaudePluginDescriptor({
     ...super.managementCapabilities(config: config),
     // Login is a CLI action, so an explicit binary supports it too.
     PluginControlCapability.authentication,
-    if (_binary(config) == defaultBinary) PluginControlCapability.runtimeUpdate,
   };
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_binary(config) != defaultBinary) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: defaultBinary,
-      arguments: ["update"],
-      timeout: Duration(minutes: 10),
-    );
-  }
 
   @override
   Future<PluginSetupStatus> inspectSetup({

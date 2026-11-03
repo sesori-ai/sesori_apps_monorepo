@@ -16,11 +16,7 @@ class CodexAuthenticationService({
   Stream<PluginAuthenticationDeviceCodeEvent> authenticate() async* {
     try {
       await _abortable(
-        _client.connect(
-          clientName: "sesori-bridge",
-          clientVersion: "0.0.0",
-          timeout: _requestTimeout,
-        ),
+        _client.connect(timeout: _requestTimeout),
       );
       final challenge = await _abortable(_repository.start());
       yield PluginAuthenticationDeviceCodeChallenge(

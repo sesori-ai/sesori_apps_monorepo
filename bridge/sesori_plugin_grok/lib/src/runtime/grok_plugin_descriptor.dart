@@ -14,9 +14,9 @@ const int _setupProbeOutputLimit = 64 * 1024;
 
 /// Direct-CLI descriptor for the user-installed Grok Build runtime.
 ///
-/// Sesori never installs Grok. Setup runs a bounded `--version` probe and may
-/// advertise Grok's own non-interactive updater for an outdated PATH runtime,
-/// while authentication remains authoritative at the ACP initialize handshake.
+/// Sesori never installs Grok. Setup runs bounded `--version` and `grok models`
+/// probes; the ACP initialize handshake remains the authoritative
+/// authentication check.
 class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
@@ -61,22 +61,6 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => cliOptions;
-
-  @override
-  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
-    ...super.managementCapabilities(config: config),
-    if (_explicitBin(config: config) == null) PluginControlCapability.runtimeUpdate,
-  };
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_explicitBin(config: config) != null) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: "grok",
-      arguments: ["update"],
-      timeout: Duration(minutes: 10),
-    );
-  }
 
   String? _explicitBin({required PluginConfig config}) {
     final value = config.value(binOption)?.trim();

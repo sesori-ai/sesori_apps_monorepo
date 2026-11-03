@@ -50,6 +50,7 @@ void main() {
       ),
       questionParser: const CodexQuestionParser(),
       questionMapper: const CodexQuestionMapper(),
+      idGenerator: null,
     );
   });
   tearDown(() => registry.dispose());

@@ -21,6 +21,8 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responds.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
+        idGenerator: null,
+        activeSessionResolver: null,
       );
       registry.attach(stream: requests.stream);
     });

@@ -119,11 +119,11 @@ class AcpApprovalRegistry({
   required super.emit,
   required final AcpResponder _respond,
   required final AcpErrorResponder _respondError,
-  super.idGenerator,
+  required super.idGenerator,
 
   /// Resolves the session a server request belongs to when the request itself
   /// omits one. Some agents send blocking requests with no `sessionId`.
-  final String? Function()? _activeSessionResolver,
+  required final String? Function()? _activeSessionResolver,
 }) extends AcpPendingRegistry<_AcpPendingPayload> {
   this
     : super(
@@ -138,8 +138,8 @@ class AcpApprovalRegistry({
   factory forClient({
     required AcpStdioClient client,
     required void Function(BridgeSseEvent event) emit,
-    String Function()? idGenerator,
-    String? Function()? activeSessionResolver,
+    required String Function()? idGenerator,
+    required String? Function()? activeSessionResolver,
   }) {
     return AcpApprovalRegistry(
       emit: emit,

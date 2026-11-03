@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show bridgeVersion;
 
 /// Stable Sesori and upstream identities for Google Antigravity.
 abstract final class AntigravityIdentity() {
@@ -11,6 +12,6 @@ abstract final class AntigravityIdentity() {
   static const acpClientIdentity = AcpClientIdentity(
     name: "zed",
     title: "Sesori Bridge (Zed compatibility)",
-    version: acpClientVersion,
+    version: bridgeVersion,
   );
 }

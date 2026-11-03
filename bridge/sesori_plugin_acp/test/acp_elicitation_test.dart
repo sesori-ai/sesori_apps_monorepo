@@ -22,6 +22,8 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
+        idGenerator: null,
+        activeSessionResolver: null,
       );
       registry.attach(stream: requests.stream);
     });
@@ -429,6 +431,7 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
+        idGenerator: null,
         activeSessionResolver: () => "active-session",
       );
       registry.attach(stream: requests.stream);
@@ -461,6 +464,7 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
+        idGenerator: null,
         activeSessionResolver: () => "active-session",
       );
       registry.attach(stream: requests.stream);

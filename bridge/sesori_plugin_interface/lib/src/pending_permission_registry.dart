@@ -44,7 +44,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   required PendingQuestionResolver<TPayload> resolveQuestion,
   required PendingQuestionRejecter<TPayload> rejectQuestion,
   required PendingInputCanceller<TPayload> cancelPending,
-  String Function()? idGenerator,
+  required String Function()? idGenerator,
 }) {
   final void Function(BridgeSseEvent event) _emit = emit;
   final String _logContext = logContext;

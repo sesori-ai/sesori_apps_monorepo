@@ -223,7 +223,7 @@ void main() {
     expect((initialize["params"] as Map)["clientInfo"], {
       "name": "zed",
       "title": "Sesori Bridge (Zed compatibility)",
-      "version": "0.0.0",
+      "version": bridgeVersion,
     });
     process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": initializeResult()});
 
@@ -248,7 +248,7 @@ void main() {
     expect((initialize["params"] as Map)["clientInfo"], {
       "name": "zed",
       "title": "Sesori Bridge (Zed compatibility)",
-      "version": "0.0.0",
+      "version": bridgeVersion,
     });
     process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": initializeResult()});
     final authenticate = await waitForRequest(method: "authenticate");
