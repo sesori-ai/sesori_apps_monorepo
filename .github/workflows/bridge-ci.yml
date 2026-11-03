@@ -132,12 +132,19 @@ jobs:
   windows-job-object:
     needs: toolchain
     runs-on: windows-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
     steps:
       - uses: actions/checkout@v6
 
       - uses: dart-lang/setup-dart@v1
         with:
           sdk: ${{ needs.toolchain.outputs.dart-version }}
+
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
 
       - name: Get dependencies (workspace)
         run: dart pub get
