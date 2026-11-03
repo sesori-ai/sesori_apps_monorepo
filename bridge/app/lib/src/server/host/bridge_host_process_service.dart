@@ -42,21 +42,23 @@ class BridgeHostProcessService({
     required bool includeParentEnvironment,
     required ProcessLifetime lifetime,
   }) async {
-    final process = await _processStarter(
-      executable,
-      arguments,
-      environment: environment,
-      workingDirectory: workingDirectory,
-      runInShell: runInShell,
-      includeParentEnvironment: includeParentEnvironment,
-    );
-    if (_isWindows && lifetime == ProcessLifetime.endsWithBridge) {
-      // ponytail: the child already runs when it is bound, so with runInShell
-      // cmd.exe can start the real runtime before the bind lands and that
-      // runtime escapes the job, which is today's behaviour. If that is ever
-      // seen, launch suspended through CreateProcess over FFI, bind, resume.
-      _processRepository.bindToBridgeLifetime(pid: process.pid);
-    }
+    final process = _isWindows && lifetime == ProcessLifetime.endsWithBridge
+        ? await _startEndingWithBridge(
+            executable: executable,
+            arguments: arguments,
+            environment: environment,
+            workingDirectory: workingDirectory,
+            runInShell: runInShell,
+            includeParentEnvironment: includeParentEnvironment,
+          )
+        : await _processStarter(
+            executable,
+            arguments,
+            environment: environment,
+            workingDirectory: workingDirectory,
+            runInShell: runInShell,
+            includeParentEnvironment: includeParentEnvironment,
+          );
 
     final spawnIdentity = ProcessIdentity(
       pid: process.pid,
@@ -75,6 +77,48 @@ class BridgeHostProcessService({
         arguments: arguments,
       ),
     );
+  }
+
+  /// Windows only. Starts the process inside the bridge's job object, so it
+  /// and anything it starts end with the bridge. When that fails the process
+  /// still runs: it starts normally and is bound right after, and a runtime
+  /// the shell launched in between stays outside the job.
+  Future<io.Process> _startEndingWithBridge({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) async {
+    try {
+      return _processRepository.startBoundToBridgeLifetime(
+        executable: executable,
+        arguments: arguments,
+        environment: environment,
+        workingDirectory: workingDirectory,
+        runInShell: runInShell,
+        includeParentEnvironment: includeParentEnvironment,
+      );
+    } on Object catch (error, stackTrace) {
+      // Like the bind, starting inside the job is best effort and must not
+      // fail a spawn that a normal start can still serve.
+      Log.w(
+        "Could not start $executable inside the bridge's job object; binding it after a normal start",
+        error,
+        stackTrace,
+      );
+    }
+    final process = await _processStarter(
+      executable,
+      arguments,
+      environment: environment,
+      workingDirectory: workingDirectory,
+      runInShell: runInShell,
+      includeParentEnvironment: includeParentEnvironment,
+    );
+    _processRepository.bindToBridgeLifetime(pid: process.pid);
+    return process;
   }
 
   @override

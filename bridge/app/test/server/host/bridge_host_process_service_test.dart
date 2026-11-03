@@ -77,11 +77,34 @@ void main() {
       expect(starter.environment, {'PATH': '/runtime'});
     });
 
-    test('spawn binds a Windows runtime that ends with the bridge to the job object', () async {
+    test('spawn starts a Windows runtime that ends with the bridge inside the job object', () async {
+      processRepository.jobProcess = _FakeProcess(pidValue: 7001);
+
+      final spawned = await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
+
+      expect(spawned.pid, 7001);
+      expect(processRepository.jobStarts, [
+        (
+          executable: '/usr/local/bin/agent',
+          arguments: const ['--stdio'],
+          environment: const {'AGENT_MODE': 'acp'},
+          workingDirectory: '/tmp/workdir',
+          runInShell: false,
+          includeParentEnvironment: true,
+        ),
+      ]);
+      expect(starter.executable, isNull);
+      expect(processRepository.boundPids, isEmpty);
+    });
+
+    test('spawn falls back to a normal start and a bind when starting inside the job fails', () async {
+      processRepository.jobStartError = const OSError('CreateProcess', 2);
       starter.process = _FakeProcess(pidValue: 7001);
 
-      await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
+      final spawned = await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
 
+      expect(spawned.pid, 7001);
+      expect(starter.executable, '/usr/local/bin/agent');
       expect(processRepository.boundPids, [7001]);
     });
 
@@ -90,6 +113,7 @@ void main() {
 
       await spawnAgent(isWindows: true, lifetime: ProcessLifetime.mayOutliveBridge);
 
+      expect(processRepository.jobStarts, isEmpty);
       expect(processRepository.boundPids, isEmpty);
     });
 
@@ -98,6 +122,7 @@ void main() {
 
       await spawnAgent(lifetime: ProcessLifetime.endsWithBridge);
 
+      expect(processRepository.jobStarts, isEmpty);
       expect(processRepository.boundPids, isEmpty);
     });
 
@@ -125,6 +150,7 @@ void main() {
       );
 
       expect(starter.executable, 'opencode');
+      expect(processRepository.jobStarts, isEmpty);
       expect(processRepository.boundPids, isEmpty);
     });
 
@@ -229,7 +255,7 @@ void main() {
     });
 
     test('spawn matches Windows image-name-only command lines by executable path', () async {
-      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.jobProcess = _FakeProcess(pidValue: 7001);
       final inspected = _identity(
         pid: 7001,
         startMarker: null,
@@ -244,7 +270,7 @@ void main() {
     });
 
     test('spawn matches a bare Windows image name against the resolved path by basename', () async {
-      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.jobProcess = _FakeProcess(pidValue: 7001);
       final inspected = _identity(
         pid: 7001,
         startMarker: null,
@@ -259,7 +285,7 @@ void main() {
     });
 
     test('spawn rejects Windows image-name-only matches with a different executable', () async {
-      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.jobProcess = _FakeProcess(pidValue: 7001);
       processRepository.inspectResults[7001] = <ProcessIdentity?>[
         _identity(
           pid: 7001,
@@ -490,6 +516,43 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   SignalResult? forceResult;
   final List<String> signalRequests = <String>[];
   final List<int> boundPids = <int>[];
+  final List<
+    ({
+      String executable,
+      List<String> arguments,
+      Map<String, String>? environment,
+      String? workingDirectory,
+      bool runInShell,
+      bool includeParentEnvironment,
+    })
+  >
+  jobStarts = [];
+  Process? jobProcess;
+  Object? jobStartError;
+
+  @override
+  Process startBoundToBridgeLifetime({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) {
+    jobStarts.add((
+      executable: executable,
+      arguments: arguments,
+      environment: environment,
+      workingDirectory: workingDirectory,
+      runInShell: runInShell,
+      includeParentEnvironment: includeParentEnvironment,
+    ));
+    final error = jobStartError;
+    if (error != null) {
+      throw error;
+    }
+    return jobProcess ?? fail('no job process configured');
+  }
 
   @override
   void bindToBridgeLifetime({required int pid}) => boundPids.add(pid);
