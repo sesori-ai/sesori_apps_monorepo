@@ -35,7 +35,6 @@ sealed class CodexImageBearingItemDto with _$CodexImageBearingItemDto {
       defaultValue: CodexImageGenerationStatus.unknown,
     )
     required CodexImageGenerationStatus status,
-    required String? revisedPrompt,
     required String result,
     required String? savedPath,
   }) = CodexImageGenerationItemDto;
@@ -101,11 +100,6 @@ sealed class CodexImageBearingContentDto with _$CodexImageBearingContentDto {
   const factory dynamicImage({
     required String imageUrl,
   }) = CodexDynamicImageContentDto;
-
-  @FreezedUnionValue("inputAudio")
-  const factory dynamicAudio({
-    required String audioUrl,
-  }) = CodexDynamicAudioContentDto;
 
   const factory unknown() = CodexUnknownImageBearingContentDto;
 

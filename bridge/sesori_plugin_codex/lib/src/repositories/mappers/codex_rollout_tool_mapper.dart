@@ -3,6 +3,9 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../../api/models/codex_command_execution_dto.dart";
+import "../../api/models/codex_correlatable_item_event_dto.dart";
+import "../../api/models/codex_file_change_dto.dart";
 import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
 import "../models/codex_projected_tool.dart";
@@ -203,6 +206,30 @@ class const CodexRolloutToolMapper({
             )
           : const [],
     );
+  }
+
+  /// Maps a typed app-server command or file-change item onto the tool status
+  /// vocabulary. A non-zero exit code is authoritative over a reported
+  /// `completed`; an item without a known status follows its lifecycle.
+  PluginToolStatus appServerItemStatus({
+    required CodexCorrelatableItemEventDto event,
+  }) {
+    final completed = event.lifecycle == CodexCorrelatableItemLifecycle.completed;
+    return switch (event) {
+      CodexCommandExecutionEventDto(exitCode: final exitCode?) when exitCode != 0 => PluginToolStatus.error,
+      CodexCommandExecutionEventDto(:final status) => switch (status) {
+        CodexCommandExecutionStatus.failed || CodexCommandExecutionStatus.declined => PluginToolStatus.error,
+        CodexCommandExecutionStatus.completed => PluginToolStatus.completed,
+        CodexCommandExecutionStatus.inProgress => PluginToolStatus.running,
+        CodexCommandExecutionStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+      },
+      CodexFileChangeEventDto(:final status) => switch (status) {
+        CodexFileChangeStatus.failed || CodexFileChangeStatus.declined => PluginToolStatus.error,
+        CodexFileChangeStatus.completed => PluginToolStatus.completed,
+        CodexFileChangeStatus.inProgress => PluginToolStatus.running,
+        CodexFileChangeStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
+      },
+    };
   }
 
   List<PluginMessageAttachment> boundAttachments({

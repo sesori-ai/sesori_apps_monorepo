@@ -278,7 +278,6 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         // session index, so its modification time counts as activity too.
         [metadata?.timestamp, _tryParseDate(indexEntry?.updatedAt), rollout?.modified],
       ),
-      cliVersion: metadata?.cliVersion,
       modelProvider: metadata?.modelProvider,
       model: metadata?.model,
       agentNickname: metadata?.agentNickname,
@@ -448,7 +447,6 @@ class const _CodexSessionMetadata({
   required final DateTime? timestamp,
   required final String? modelProvider,
   required final String? model,
-  required final String? cliVersion,
   required final String? agentNickname,
   required final String? agentPath,
   required final String? parentId,
@@ -480,7 +478,6 @@ _ParsedRollout? _parseRollout({
   String? cwd;
   DateTime? timestamp;
   String? modelProvider;
-  String? cliVersion;
   String? model;
   String? agentNickname;
   String? agentPath;
@@ -498,7 +495,6 @@ _ParsedRollout? _parseRollout({
         cwd = payload.cwd;
         timestamp = _tryParseDate(payload.timestamp);
         modelProvider = payload.modelProvider;
-        cliVersion = payload.cliVersion;
         if (payload.threadSource == CodexRolloutThreadSource.subagent) {
           parentId = payload.parentThreadId;
           agentNickname = payload.agentNickname;
@@ -524,7 +520,6 @@ _ParsedRollout? _parseRollout({
             timestamp: timestamp,
             modelProvider: modelProvider,
             model: model,
-            cliVersion: cliVersion,
             agentNickname: agentNickname,
             agentPath: agentPath,
             parentId: parentId,

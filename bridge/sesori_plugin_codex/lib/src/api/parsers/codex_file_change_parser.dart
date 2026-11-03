@@ -28,6 +28,7 @@ class const CodexFileChangeParser() {
         turnId: _usefulText(value: params.turnId),
         itemId: itemId,
         status: item.status,
+        changes: item.changes,
       );
     } on Object catch (error, stackTrace) {
       Log.w(
