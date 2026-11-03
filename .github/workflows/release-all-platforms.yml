@@ -15,9 +15,9 @@ run-name: "release · build ${{ github.sha }}"
 #
 # The bridge auto-updater ignores pre-releases, so the rolling internal
 # pre-release never reaches end users — it serves internal testers and the
-# future pre-release update channel. Native macOS desktop packages use the same
-# source/build number, without changing mobile/bridge finalization. Desktop stays
-# in Actions artifacts until its separate platform-publication admission is enabled.
+# future pre-release update channel. Native macOS and Linux desktop packages use
+# the same source/build number and attach to the internal pre-release after
+# finalization, without changing mobile/bridge finalization.
 
 on:
   workflow_dispatch:
@@ -202,7 +202,6 @@ jobs:
 
   publish-desktop:
     name: Attach admitted desktop packages to the internal release
-    if: vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
     needs: [preflight, next-build-number, desktop-macos, finalize]
     permissions:
       contents: write
@@ -231,7 +230,6 @@ jobs:
 
   update-feed-macos:
     name: Publish macOS update appcasts (internal)
-    if: vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
     needs: [preflight, next-build-number, publish-desktop]
     permissions:
       contents: read

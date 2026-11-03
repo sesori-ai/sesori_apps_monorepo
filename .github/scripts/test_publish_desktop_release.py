@@ -151,7 +151,6 @@ class DesktopReleaseWorkflowTest(unittest.TestCase):
                 self.assertEqual(scopes, {"contents": "read", "actions": "read",
                                           "pull-requests": "read", "id-token": "write"})
                 publish = text.split("  publish-desktop:\n", 1)[1].split("\n  #", 1)[0]
-                self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", publish)
                 self.assertIn(build_job, publish)
                 self.assertIn(dependency, publish)
                 self.assertIn(f"channel: {channel}", publish)
@@ -175,7 +174,6 @@ class DesktopReleaseWorkflowTest(unittest.TestCase):
     def test_publisher_cannot_create_or_promote_releases_or_expose_private_evidence(self):
         root = Path(__file__).resolve().parents[1]
         workflow = (root / "workflows/_reusable-desktop-publish.yml").read_text()
-        self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", workflow)
         self.assertIn('"$GITHUB_REF" == refs/heads/main', workflow)
         for forbidden in ("secrets.", "environment:", "workflow_dispatch:", "gh release create", "gh release edit"):
             self.assertNotIn(forbidden, workflow)
