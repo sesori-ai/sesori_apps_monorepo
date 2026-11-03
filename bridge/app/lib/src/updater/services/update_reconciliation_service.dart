@@ -32,9 +32,6 @@ class UpdateReconciliationService({
   @visibleForTesting
   void Function(RenderedLine line) emitLine = writeRenderedLine;
 
-  @visibleForTesting
-  void Function(String message) logWarning = Log.w;
-
   /// Reconciliation is best-effort startup maintenance. It runs entirely under
   /// the cross-process update lock because it executes BEFORE single-live-bridge
   /// enforcement: another bridge may start an apply (writing a new attempt
@@ -52,24 +49,23 @@ class UpdateReconciliationService({
         onLockRejected: (LockAcquireResult result) async {
           switch (result) {
             case LockAcquireResult.alreadyLocked:
-              logWarning('Skipping update reconciliation — the update lock is held by another process.');
+              Log.w('Skipping update reconciliation — the update lock is held by another process.');
             case LockAcquireResult.permissionDenied:
               // A stale/root-owned `.update.lock` the user cannot access is not
               // benign contention — it blocks every future update. Log it
               // distinctly so reconciliation does not mask it as "held by another
               // process"; the apply path surfaces full guidance when an update is
               // actually attempted.
-              logWarning(
+              Log.w(
                 'Skipping update reconciliation — the update lock is not accessible (check ownership of .update.lock).',
               );
             case LockAcquireResult.acquired:
               break; // never delivered to onLockRejected
           }
         },
-        shouldReleaseLock: (_) => true,
       );
-    } on Object catch (error) {
-      logWarning('Update reconciliation failed: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Update reconciliation failed', error, stackTrace);
     }
   }
 
@@ -79,29 +75,29 @@ class UpdateReconciliationService({
     UpdateAttempt? attempt;
     try {
       attempt = await _attemptRepository.readAttempt();
-    } on Object catch (error) {
-      logWarning('Failed to read the update attempt record: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to read the update attempt record', error, stackTrace);
     }
 
     if (attempt != null) {
       try {
         await _reconcileAttempt(attempt: attempt);
-      } on Object catch (error) {
-        logWarning('Failed to reconcile the update attempt: $error');
+      } on Object catch (error, stackTrace) {
+        Log.w('Failed to reconcile the update attempt', error, stackTrace);
       }
     }
 
     try {
       await _installationRepository.sweepResidue(installRoot: _installRoot);
-    } on Object catch (error) {
-      logWarning('Failed to sweep update residue: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to sweep update residue', error, stackTrace);
     }
 
     if (attempt != null) {
       try {
         await _attemptRepository.clearAttempt();
-      } on Object catch (error) {
-        logWarning('Failed to clear the update attempt record: $error');
+      } on Object catch (error, stackTrace) {
+        Log.w('Failed to clear the update attempt record', error, stackTrace);
       }
     }
   }
@@ -144,8 +140,8 @@ class UpdateReconciliationService({
           installRoot: _installRoot,
           version: attempt.toVersion,
         );
-      } on Object catch (error) {
-        logWarning('Failed to bump the managed runtime manifest on activation confirm: $error');
+      } on Object catch (error, stackTrace) {
+        Log.w('Failed to bump the managed runtime manifest on activation confirm', error, stackTrace);
       }
       await _logBestEffort('Activation confirmed: now running ${attempt.toVersion}.');
       _emitLines(_messageFormatter.activated(toVersion: attempt.toVersion));
@@ -184,8 +180,8 @@ class UpdateReconciliationService({
   Future<void> _logBestEffort(String message) async {
     try {
       await _logRepository.log(message: message);
-    } on Object catch (error) {
-      logWarning('Failed to write the update log: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to write the update log', error, stackTrace);
     }
   }
 

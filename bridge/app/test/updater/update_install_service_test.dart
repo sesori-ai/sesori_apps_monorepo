@@ -36,11 +36,10 @@ class _FakeArtifactRepository() implements UpdateArtifactRepository {
   }
 }
 
-ReleaseInfo _release() => ReleaseInfo(
+ReleaseInfo _release() => const ReleaseInfo(
   version: '2.0.0',
   assetUrl: 'https://example.com/bridge.tar.gz',
   checksumsUrl: 'https://example.com/checksums.txt',
-  publishedAt: DateTime.utc(2026),
 );
 
 void main() {

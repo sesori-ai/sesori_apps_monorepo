@@ -10,51 +10,34 @@ import '../foundation/update_policy.dart';
 import '../models/github_release_dto.dart';
 
 const _kGithubApiBaseUrl = 'https://api.github.com/repos/sesori-ai/sesori_apps_monorepo/releases';
-const _kGithubReleasesPerPage = 100;
-const _kGithubReleasesMaxPages = 1;
 
 class GitHubReleasesApi({required final http.Client _httpClient, required final String? _authToken}) {
+  /// Fetches the newest 100 releases, the only page the updater reads.
   Future<List<GitHubReleaseDto>> fetchReleases() async {
-    final releases = <GitHubReleaseDto>[];
+    final Uri uri = Uri.parse(_kGithubApiBaseUrl).replace(queryParameters: {'per_page': '100'});
+    final (:http.Response response, :bool authenticated) = await _getWithOpportunisticAuth(uri);
 
-    for (var page = 1; page <= _kGithubReleasesMaxPages; page++) {
-      final Uri uri = Uri.parse(_kGithubApiBaseUrl).replace(
-        queryParameters: <String, String>{
-          'per_page': '$_kGithubReleasesPerPage',
-          'page': '$page',
-        },
+    if (_isRateLimited(response)) {
+      throw GitHubRateLimitException(
+        resetAt: _parseResetAt(response),
+        authenticated: authenticated,
       );
-      final (:http.Response response, :bool authenticated) = await _getWithOpportunisticAuth(uri);
-
-      if (_isRateLimited(response)) {
-        throw GitHubRateLimitException(
-          resetAt: _parseResetAt(response),
-          authenticated: authenticated,
-        );
-      }
-      if (response.statusCode == 404) {
-        throw StateError('GitHub releases endpoint not found');
-      }
-      if (isRetryableHttpStatus(response.statusCode)) {
-        // A transient server-side/throttling outage is retryable, not a genuine
-        // update failure. Surface it as an HttpException so the caller treats it
-        // like the other quiet network errors and retries on the next cycle,
-        // instead of persisting a failure and emitting reinstall guidance.
-        throw HttpException('GitHub releases request failed with status ${response.statusCode}');
-      }
-      if (response.statusCode != 200) {
-        throw StateError('GitHub releases request failed with status ${response.statusCode}');
-      }
-
-      final pageReleases = jsonDecodeListMap(response.body).map(GitHubReleaseDto.fromJson).toList();
-      releases.addAll(pageReleases);
-
-      if (pageReleases.length < _kGithubReleasesPerPage) {
-        return releases;
-      }
+    }
+    if (response.statusCode == 404) {
+      throw StateError('GitHub releases endpoint not found');
+    }
+    if (isRetryableHttpStatus(response.statusCode)) {
+      // A transient server-side/throttling outage is retryable, not a genuine
+      // update failure. Surface it as an HttpException so the caller treats it
+      // like the other quiet network errors and retries on the next cycle,
+      // instead of persisting a failure and emitting reinstall guidance.
+      throw HttpException('GitHub releases request failed with status ${response.statusCode}');
+    }
+    if (response.statusCode != 200) {
+      throw StateError('GitHub releases request failed with status ${response.statusCode}');
     }
 
-    return releases;
+    return jsonDecodeListMap(response.body).map(GitHubReleaseDto.fromJson).toList();
   }
 
   /// Fetches [uri], sending the auth token when present. Authentication is

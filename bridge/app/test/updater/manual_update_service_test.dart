@@ -20,16 +20,13 @@ ReleaseInfo _release(String version) => ReleaseInfo(
   version: version,
   assetUrl: 'https://example.com/bridge.tar.gz',
   checksumsUrl: 'https://example.com/checksums.txt',
-  publishedAt: DateTime.utc(2026),
 );
 
 UpdateResolution _resolution({
   required String current,
-  required bool currentEligible,
   String? latest,
 }) => UpdateResolution(
   currentVersion: SemanticVersion.parse(value: current),
-  currentEligible: currentEligible,
   latest: latest == null ? null : (release: _release(latest), version: SemanticVersion.parse(value: latest)),
 );
 
@@ -71,9 +68,6 @@ class _FakeApplyService() implements UpdateApplyService {
   bool get supportsInSessionChaining => throw UnimplementedError();
 
   @override
-  void Function(String message) logWarning = (_) {};
-
-  @override
   Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     applyCount++;
     return onApply?.call(release) ?? UpdateApplied(version: release.version, durablyRecorded: true);
@@ -106,7 +100,7 @@ void main() {
 
   group('plain update', () {
     test('installs a strictly-newer release as an upgrade', () async {
-      release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '1.0.0', latest: '2.0.0');
 
       final outcome = await buildService().runUpdate(force: false);
 
@@ -122,7 +116,7 @@ void main() {
     });
 
     test('reports already-latest without staging when nothing newer exists', () async {
-      release.onResolve = () => _resolution(current: '2.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '2.0.0', latest: '2.0.0');
 
       final outcome = await buildService().runUpdate(force: false);
 
@@ -136,7 +130,7 @@ void main() {
 
     test('reports a track mismatch when the running build is off-track', () async {
       // Running an internal build while track=stable; latest stable is older.
-      release.onResolve = () => _resolution(current: '2.0.0-internal.3', currentEligible: false, latest: '1.5.0');
+      release.onResolve = () => _resolution(current: '2.0.0-internal.3', latest: '1.5.0');
 
       final outcome = await buildService().runUpdate(force: false);
 
@@ -155,7 +149,7 @@ void main() {
       // a copied dev/QA build, or a release that was yanked. This must NOT
       // report "already latest"; --force is the only path back to the latest
       // published build.
-      release.onResolve = () => _resolution(current: '9.9.9', currentEligible: true, latest: '1.5.0');
+      release.onResolve = () => _resolution(current: '9.9.9', latest: '1.5.0');
 
       final outcome = await buildService().runUpdate(force: false);
 
@@ -169,7 +163,7 @@ void main() {
     });
 
     test('reports no eligible release when none is found', () async {
-      release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: null);
+      release.onResolve = () => _resolution(current: '1.0.0', latest: null);
 
       final outcome = await buildService().runUpdate(force: false);
 
@@ -180,7 +174,7 @@ void main() {
 
   group('force update', () {
     test('reinstalls the same version', () async {
-      release.onResolve = () => _resolution(current: '2.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '2.0.0', latest: '2.0.0');
 
       final outcome = await buildService().runUpdate(force: true);
 
@@ -192,7 +186,7 @@ void main() {
     });
 
     test('downgrades from an internal build to the latest stable', () async {
-      release.onResolve = () => _resolution(current: '2.0.0-internal.3', currentEligible: false, latest: '1.5.0');
+      release.onResolve = () => _resolution(current: '2.0.0-internal.3', latest: '1.5.0');
 
       final outcome = await buildService().runUpdate(force: true);
 
@@ -206,7 +200,7 @@ void main() {
     });
 
     test('upgrades when a newer release exists', () async {
-      release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '1.0.0', latest: '2.0.0');
 
       final outcome = await buildService().runUpdate(force: true);
 
@@ -245,7 +239,7 @@ void main() {
     });
 
     test('a stage failure is surfaced with a reason', () async {
-      release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '1.0.0', latest: '2.0.0');
       install.result = const UpdateInstallStageFailed(result: UpdateResult.checksumFailed);
 
       final outcome = await buildService().runUpdate(force: false);
@@ -255,7 +249,7 @@ void main() {
     });
 
     test('an apply failure carries the reason and log path', () async {
-      release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '1.0.0', latest: '2.0.0');
       apply.onApply = (_) => const UpdateApplyFailed(reason: 'disk full', logPath: '/tmp/update.log');
 
       final outcome = await buildService().runUpdate(force: false);
@@ -269,7 +263,7 @@ void main() {
     });
 
     test('apply lock contention maps to a lock-busy outcome', () async {
-      release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: '2.0.0');
+      release.onResolve = () => _resolution(current: '1.0.0', latest: '2.0.0');
       apply.onApply = (_) => const UpdateApplyLockBusy();
 
       final outcome = await buildService().runUpdate(force: false);

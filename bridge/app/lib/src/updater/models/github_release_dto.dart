@@ -7,7 +7,6 @@ part 'github_release_dto.g.dart';
 sealed class GitHubReleaseDto with _$GitHubReleaseDto {
   const factory({
     @JsonKey(name: 'tag_name') required String tagName,
-    @JsonKey(name: 'published_at') required String? publishedAt,
     required bool draft,
     required bool prerelease,
     required List<GitHubAssetDto> assets,

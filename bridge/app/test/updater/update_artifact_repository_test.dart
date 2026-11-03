@@ -82,11 +82,10 @@ void main() {
     late ReleaseInfo release;
 
     setUp(() {
-      release = ReleaseInfo(
+      release = const ReleaseInfo(
         version: '1.2.3',
         assetUrl: 'https://example.com/download/sesori-bridge-macos-arm64.tar.gz',
         checksumsUrl: 'https://example.com/checksums.txt',
-        publishedAt: DateTime(2024),
       );
     });
 
@@ -179,11 +178,10 @@ void main() {
 
   group('UpdateArtifactRepository.downloadArchive', () {
     test('forwards download byte-progress to the injected sink', () async {
-      final release = ReleaseInfo(
+      const release = ReleaseInfo(
         version: '1.2.3',
         assetUrl: 'https://example.com/download/sesori-bridge-macos-arm64.tar.gz',
         checksumsUrl: 'https://example.com/checksums.txt',
-        publishedAt: DateTime(2024),
       );
       final List<int> payload = List<int>.filled(16, 7);
       final progress = <DownloadProgress>[];

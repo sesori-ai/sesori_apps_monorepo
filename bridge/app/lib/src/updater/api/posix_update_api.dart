@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../../foundation/filesystem_cleaner.dart';
 import '../../foundation/process_runner.dart';
@@ -100,8 +101,8 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
     for (final String attr in attrs) {
       try {
         await _processRunner.run('xattr', ['-dr', attr, path]);
-      } on Object catch (error) {
-        stderr.writeln('Warning: failed to strip $attr from $path: $error');
+      } on Object catch (error, stackTrace) {
+        Log.w('Failed to strip $attr from $path', error, stackTrace);
       }
     }
   }
@@ -125,8 +126,9 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       if (movedTargetLib && backupLibDir.existsSync()) {
         backupLibDir.renameSync(targetLibDir.path);
       }
-    } on Object {
-      // Best-effort rollback.
+    } on Object catch (error, stackTrace) {
+      // Best-effort: still try to restore the binary below.
+      Log.w('Failed to roll back the lib directory ${targetLibDir.path}', error, stackTrace);
     }
 
     try {
@@ -136,8 +138,8 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       if (movedTargetBinary && backupBinary.existsSync()) {
         backupBinary.renameSync(targetBinary.path);
       }
-    } on Object {
-      // Best-effort rollback.
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to roll back the binary ${targetBinary.path}', error, stackTrace);
     }
   }
 }
