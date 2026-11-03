@@ -1258,8 +1258,14 @@ void main() {
         threadId: "t-image",
         line: line,
       );
-      final appServer = mapper.mapParsed(
-        notification: const CodexServerNotification(
+      // A separate tracker, so the app-server half projects on its own
+      // instead of merging into the rollout half's part.
+      final appServerLifecycle = _ToolLifecycleHarness(
+        eventMapper: mapper,
+        toolTracker: CodexToolLifecycleTracker(rolloutToolMapper: rolloutToolMapper),
+      );
+      final appServer = appServerLifecycle.map(
+        const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-image",
@@ -1459,13 +1465,23 @@ void main() {
     });
 
     test("imageGeneration upserts one stable tool part across its lifecycle", () {
+      _ToolLifecycleHarness freshLifecycle() => _ToolLifecycleHarness(
+        eventMapper: mapper,
+        toolTracker: CodexToolLifecycleTracker(rolloutToolMapper: rolloutToolMapper),
+      );
+      final lifecycle = freshLifecycle();
+      // A failure is a separate item's lifecycle, not a later update of a
+      // completed one, which keeps its terminal state.
+      final failingLifecycle = freshLifecycle();
+
       List<BridgeSseEvent> mapImage({
+        required _ToolLifecycleHarness harness,
         required String method,
         required String status,
         required String result,
       }) {
-        return mapper.mapParsed(
-          notification: CodexServerNotification(
+        return harness.map(
+          CodexServerNotification(
             method: method,
             params: {
               "threadId": "t-1",
@@ -1482,9 +1498,9 @@ void main() {
         );
       }
 
-      final started = mapImage(method: "item/started", status: "in_progress", result: "");
-      final completed = mapImage(method: "item/completed", status: "completed", result: "AA==");
-      final failed = mapImage(method: "item/completed", status: "failed", result: "AA==");
+      final started = mapImage(harness: lifecycle, method: "item/started", status: "in_progress", result: "");
+      final completed = mapImage(harness: lifecycle, method: "item/completed", status: "completed", result: "AA==");
+      final failed = mapImage(harness: failingLifecycle, method: "item/completed", status: "failed", result: "AA==");
 
       final runningPart = (started[1] as BridgeSseMessagePartUpdated).part;
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
