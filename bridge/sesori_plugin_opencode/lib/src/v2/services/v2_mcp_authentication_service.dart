@@ -135,8 +135,8 @@ final class _V2McpLogin({
         }),
       );
     }
-    while (_state is _Active) {
-      final attempt = (_state as _Active).attempt;
+    for (var state = _state; state is _Active; state = _state) {
+      final attempt = state.attempt;
       try {
         final observation = await _repository.getMcpAuthenticationStatus(target: _target, attemptId: attempt.attemptId);
         if (_state is _Retired) return;
@@ -226,7 +226,7 @@ final class _V2McpLogin({
               error: cause,
               stackTrace: stackTrace,
             ),
-            _ => null,
+            V2McpAuthenticationReady() => null,
           },
         );
       }
@@ -251,7 +251,7 @@ final class _V2McpLogin({
       await (() async {
         final attempt = switch (previous) {
           _Active(:final attempt) => attempt,
-          _ => await _started.future,
+          _Unactivated() || _Preparing() || _Uncertain() || _Retired() => await _started.future,
         };
         if (attempt == null) throw StateError("Native start has no acknowledged attempt handle");
         await _retireNative(attempt: attempt);

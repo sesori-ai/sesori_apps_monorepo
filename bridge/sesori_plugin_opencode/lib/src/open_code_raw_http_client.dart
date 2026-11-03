@@ -38,9 +38,9 @@ enum _HttpMethod() {
 ///
 /// Centralizes the cross-cutting concerns every OpenCode call needs so
 /// individual endpoint methods (in [OpenCodeApi]) cannot bypass them:
-///   1. applies a request [timeout] — idempotent reads ([get]) default to
+///   1. applies a request timeout to idempotent reads ([get]), defaulting to
 ///      [_defaultTimeout]; non-idempotent writes ([post]/[patch]/[delete])
-///      default to no timeout (see below),
+///      have no timeout (see below),
 ///   2. enforces a 2xx response (throws [OpenCodeApiException] otherwise),
 ///   3. computes a debug endpoint label ("METHOD /path") for error messages.
 ///
@@ -53,11 +53,10 @@ enum _HttpMethod() {
 /// surface a false 504 while the write still commits server-side, leaving the
 /// caller free to retry or run cleanup against state that actually changed. A
 /// *longer* write timeout only widens the window before that same race; it
-/// does not remove it. Writes therefore impose no timeout by default. They
-/// never block shutdown anyway: the orchestrator abandons in-flight routes on
-/// teardown, and the genuinely long-running synchronous command endpoint is
-/// detached by `OpenCodeService`. A caller may still pass an explicit [timeout]
-/// to a write if it has a concrete reason to bound it.
+/// does not remove it. Writes therefore impose no timeout. They never block
+/// shutdown anyway: the orchestrator abandons in-flight routes on teardown,
+/// and the genuinely long-running synchronous command endpoint is detached by
+/// `OpenCodeService`.
 ///
 /// It also owns Basic-auth header computation and URI construction. It performs
 /// no JSON decoding or model mapping — that stays in [OpenCodeApi].
@@ -89,8 +88,8 @@ class OpenCodeRawHttpClient({
 
   Future<http.Response> get({
     required String path,
-    Map<String, String>? queryParameters,
-    Map<String, String>? headers,
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
     Duration? timeout = _defaultTimeout,
   }) {
     return _send(
@@ -98,16 +97,16 @@ class OpenCodeRawHttpClient({
       path: path,
       queryParameters: queryParameters,
       headers: headers,
+      body: null,
       timeout: timeout,
     );
   }
 
   Future<http.Response> post({
     required String path,
-    Map<String, String>? queryParameters,
-    Map<String, String>? headers,
-    String? body,
-    Duration? timeout, // unbounded by default — non-idempotent; see class docs
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+    required String? body,
   }) {
     return _send(
       method: _HttpMethod.post,
@@ -115,16 +114,15 @@ class OpenCodeRawHttpClient({
       queryParameters: queryParameters,
       headers: headers,
       body: body,
-      timeout: timeout,
+      timeout: null,
     );
   }
 
   Future<http.Response> patch({
     required String path,
-    Map<String, String>? queryParameters,
-    Map<String, String>? headers,
-    String? body,
-    Duration? timeout, // unbounded by default — non-idempotent; see class docs
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+    required String? body,
   }) {
     return _send(
       method: _HttpMethod.patch,
@@ -132,16 +130,15 @@ class OpenCodeRawHttpClient({
       queryParameters: queryParameters,
       headers: headers,
       body: body,
-      timeout: timeout,
+      timeout: null,
     );
   }
 
   Future<http.Response> delete({
     required String path,
-    Map<String, String>? queryParameters,
-    Map<String, String>? headers,
-    String? body,
-    Duration? timeout, // unbounded by default — non-idempotent; see class docs
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+    required String? body,
   }) {
     return _send(
       method: _HttpMethod.delete,
@@ -149,7 +146,7 @@ class OpenCodeRawHttpClient({
       queryParameters: queryParameters,
       headers: headers,
       body: body,
-      timeout: timeout,
+      timeout: null,
     );
   }
 
@@ -159,17 +156,16 @@ class OpenCodeRawHttpClient({
   Future<http.Response> _send({
     required _HttpMethod method,
     required String path,
-    Map<String, String>? queryParameters,
-    Map<String, String>? headers,
-    String? body,
+    required Map<String, String> queryParameters,
+    required Map<String, String> headers,
+    required String? body,
     required Duration? timeout,
   }) async {
-    final hasQuery = queryParameters != null && queryParameters.isNotEmpty;
     final uri = Uri.parse(
       "$_serverURL$path",
-    ).replace(queryParameters: hasQuery ? queryParameters : null);
+    ).replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
     final endpoint = "${method.name.toUpperCase()} $path";
-    final mergedHeaders = {..._authHeaders, ...?headers};
+    final mergedHeaders = {..._authHeaders, ...headers};
 
     // Aborting a timed-out request frees its connection; with a capped pool a
     // stalled server would otherwise hold every slot and queue all later calls.

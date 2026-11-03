@@ -849,7 +849,7 @@ void main() {
             sessionID: "ses-1",
             status: SessionStatusBusy(),
           ),
-          "/repo",
+          directory: "/repo",
         );
         expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
 
@@ -928,7 +928,7 @@ void main() {
             revert: null,
           ),
         ),
-        null,
+        directory: null,
       );
 
       final changed = service.handleSseEvent(
@@ -936,7 +936,7 @@ void main() {
           sessionID: "s1",
           status: SessionStatusBusy(),
         ),
-        null,
+        directory: null,
       );
 
       expect(changed, isTrue);
@@ -967,14 +967,14 @@ void main() {
             revert: null,
           ),
         ),
-        null,
+        directory: null,
       );
       service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
           status: SessionStatusBusy(),
         ),
-        null,
+        directory: null,
       );
 
       final changed = service.handleSseEvent(
@@ -982,7 +982,7 @@ void main() {
           sessionID: "s1",
           status: SessionStatusBusy(),
         ),
-        null,
+        directory: null,
       );
 
       expect(changed, isFalse);
@@ -991,7 +991,7 @@ void main() {
     test("unknown event type returns changed=false", () {
       final changed = service.handleSseEvent(
         const SseEventData.serverHeartbeat(),
-        null,
+        directory: null,
       );
       expect(changed, isFalse);
     });
@@ -1021,7 +1021,7 @@ void main() {
             revert: null,
           ),
         ),
-        null,
+        directory: null,
       );
       expect(created, isFalse);
 
@@ -1049,7 +1049,7 @@ void main() {
             revert: null,
           ),
         ),
-        null,
+        directory: null,
       );
       expect(updated, isFalse);
 
@@ -1058,7 +1058,7 @@ void main() {
           sessionID: "s1",
           status: SessionStatusBusy(),
         ),
-        null,
+        directory: null,
       );
       final deleted = service.handleSseEvent(
         const SseEventData.sessionDeleted(
@@ -1084,7 +1084,7 @@ void main() {
             revert: null,
           ),
         ),
-        null,
+        directory: null,
       );
 
       expect(deleted, isTrue);
@@ -1149,7 +1149,7 @@ void main() {
 
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       await pump();
 
@@ -1197,7 +1197,7 @@ void main() {
 
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        null,
+        directory: null,
       );
       await pump();
 
@@ -1245,7 +1245,7 @@ void main() {
 
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatusBusy()),
-        null,
+        directory: null,
       );
       await pump();
 
@@ -1290,11 +1290,11 @@ void main() {
       // settles, so the in-flight dedupe must collapse them to one call.
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       await pump();
 
@@ -1328,11 +1328,11 @@ void main() {
             revert: null,
           ),
         ),
-        "/repo",
+        directory: "/repo",
       );
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       await pump();
 
@@ -1366,11 +1366,11 @@ void main() {
             revert: null,
           ),
         ),
-        "/repo",
+        directory: "/repo",
       );
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       await pump();
 
@@ -1383,7 +1383,7 @@ void main() {
 
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       await pump();
 
@@ -1393,7 +1393,7 @@ void main() {
       // Parent still unknown, so the next status event is allowed to retry.
       service.handleSseEvent(
         const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
-        "/repo",
+        directory: "/repo",
       );
       await pump();
 
@@ -1540,10 +1540,13 @@ void main() {
             revert: null,
           ),
         ),
-        null,
+        directory: null,
       );
-      tracker.handleEvent(const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatusBusy()), null);
-      tracker.handleEvent(_questionAsked("q1", "ses-1"), null);
+      tracker.handleEvent(
+        const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatusBusy()),
+        directory: null,
+      );
+      tracker.handleEvent(_questionAsked("q1", "ses-1"), directory: null);
       final service = OpenCodeService(repository, tracker);
 
       expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
@@ -2301,7 +2304,7 @@ class FakeActiveSessionTracker({
   @override
   ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingQuestion({
     required String questionId,
-    String? sessionId,
+    required String? sessionId,
   }) {
     lastClearedQuestionId = questionId;
     lastClearedQuestionSessionId = sessionId;

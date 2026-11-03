@@ -87,7 +87,7 @@ class SseConnection({
         shouldRecoverOnFirstConnect = false;
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
-        await _readStream(response, generation);
+        await _readStream(response, generation: generation);
       } catch (e, st) {
         if (!_active || _generation != generation) return;
         Log.e("[sse-conn] stream loop error", e, st);
@@ -112,7 +112,7 @@ class SseConnection({
     }
   }
 
-  Future<void> _readStream(http.StreamedResponse response, int generation) async {
+  Future<void> _readStream(http.StreamedResponse response, {required int generation}) async {
     final dataLines = <String>[];
     final lineBuf = StringBuffer();
 

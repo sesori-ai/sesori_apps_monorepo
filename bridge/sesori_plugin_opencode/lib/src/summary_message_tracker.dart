@@ -35,7 +35,50 @@ class SummaryMessageTracker() {
     final messageId = switch (event) {
       SseMessageUpdated(info: AssistantMessage(:final id)) => id,
       SseMessagePartUpdated(part: TextPart(:final messageID)) => messageID,
-      _ => null,
+      SseServerConnected() ||
+      SseServerHeartbeat() ||
+      SseServerInstanceDisposed() ||
+      SseGlobalDisposed() ||
+      SseSessionCreated() ||
+      SseSessionUpdated() ||
+      SseSessionDeleted() ||
+      SseSessionDiff() ||
+      SseSessionError() ||
+      SseSessionCompacted() ||
+      SseSessionStatus() ||
+      SseSessionIdle() ||
+      SseCommandExecuted() ||
+      SseMessageUpdated() ||
+      SseMessageRemoved() ||
+      SseMessagePartUpdated() ||
+      SseMessagePartDelta() ||
+      SseMessagePartRemoved() ||
+      SsePtyCreated() ||
+      SsePtyUpdated() ||
+      SsePtyExited() ||
+      SsePtyDeleted() ||
+      SsePermissionAsked() ||
+      SsePermissionReplied() ||
+      SsePermissionUpdated() ||
+      SseQuestionAsked() ||
+      SseQuestionReplied() ||
+      SseQuestionRejected() ||
+      SseTodoUpdated() ||
+      SseProjectUpdated() ||
+      SseVcsBranchUpdated() ||
+      SseFileEdited() ||
+      SseFileWatcherUpdated() ||
+      SseLspUpdated() ||
+      SseLspClientDiagnostics() ||
+      SseMcpToolsChanged() ||
+      SseMcpBrowserOpenFailed() ||
+      SseInstallationUpdated() ||
+      SseInstallationUpdateAvailable() ||
+      SseWorkspaceReady() ||
+      SseWorkspaceFailed() ||
+      SseTuiToastShow() ||
+      SseWorktreeReady() ||
+      SseWorktreeFailed() => null,
     };
     return switch (_summaries[messageId]) {
       (:final message, :final textParts) => (

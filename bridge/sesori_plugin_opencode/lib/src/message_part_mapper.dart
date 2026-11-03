@@ -85,7 +85,18 @@ class const MessagePartMapper() {
         ),
       },
     ),
-    _ => part,
+    PluginMessagePartReasoning() ||
+    PluginMessagePartTool() ||
+    PluginMessagePartSubtask() ||
+    PluginMessagePartStepStart() ||
+    PluginMessagePartStepFinish() ||
+    PluginMessagePartFile() ||
+    PluginMessagePartSnapshot() ||
+    PluginMessagePartPatch() ||
+    PluginMessagePartAgent() ||
+    PluginMessagePartRetry() ||
+    PluginMessagePartCompaction() ||
+    PluginMessagePartUnknown() => part,
   };
 
   /// The row shows only a recognized reason, so the raw [error] is logged on
@@ -193,7 +204,17 @@ class const MessagePartMapper() {
           attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(growable: false),
         ),
       ),
-      _ => part,
+      PluginMessagePartText() ||
+      PluginMessagePartReasoning() ||
+      PluginMessagePartSubtask() ||
+      PluginMessagePartStepStart() ||
+      PluginMessagePartStepFinish() ||
+      PluginMessagePartSnapshot() ||
+      PluginMessagePartPatch() ||
+      PluginMessagePartAgent() ||
+      PluginMessagePartRetry() ||
+      PluginMessagePartCompaction() ||
+      PluginMessagePartUnknown() => part,
     };
 
     return parts.map((part) => boundPart(part: part)).toList(growable: false);
@@ -298,15 +319,13 @@ class const MessagePartMapper() {
   /// An unrecognized part shape. Every OpenCode part carries `id`,
   /// `sessionID` and `messageID` on the base schema, so they are read back
   /// from the round-tripped JSON; a part missing them is malformed and
-  /// surfaces loudly via the cast rather than being silently defaulted.
+  /// surfaces loudly rather than being silently defaulted.
   PluginMessagePart _unknownPart(Part raw) {
-    final json = raw.toJson();
-    final map = json is Map<String, dynamic> ? json : const <String, dynamic>{};
-    return PluginMessagePart.unknown(
-      id: map["id"] as String,
-      sessionID: map["sessionID"] as String,
-      messageID: map["messageID"] as String,
-    );
+    return switch (raw.toJson()) {
+      {"id": final String id, "sessionID": final String sessionID, "messageID": final String messageID} =>
+        PluginMessagePart.unknown(id: id, sessionID: sessionID, messageID: messageID),
+      final json => throw FormatException("OpenCode part is missing id, sessionID or messageID", json),
+    };
   }
 
   PluginToolState _mapToolState({required String tool, required ToolState state}) {

@@ -49,7 +49,13 @@ class SseEventParser() {
 
     try {
       final json = jsonDecodeMap(rawData);
-      final directory = json["directory"] as String?;
+      final directory = json["directory"];
+      if (directory is! String?) {
+        return SseParseResult(
+          outcome: SseParseOutcome.malformedEnvelope,
+          rawData: rawData,
+        );
+      }
       final payload = json["payload"];
 
       if (payload is! Map<String, dynamic>) {
@@ -62,7 +68,7 @@ class SseEventParser() {
 
       final type = payload["type"];
       final eventType = type is String ? type : null;
-      final properties = payload["properties"];
+      final properties = payload["properties"] ?? const <String, dynamic>{};
 
       if (type is! String) {
         return SseParseResult(
@@ -81,7 +87,7 @@ class SseEventParser() {
         );
       }
 
-      if (properties != null && properties is! Map<String, dynamic>) {
+      if (properties is! Map<String, dynamic>) {
         return SseParseResult(
           outcome: SseParseOutcome.malformedEnvelope,
           eventType: eventType,
@@ -102,7 +108,7 @@ class SseEventParser() {
       try {
         final event = _parseKnownEvent(
           type: type,
-          properties: (properties as Map<String, dynamic>?) ?? const <String, dynamic>{},
+          properties: properties,
         );
         return SseParseResult(
           outcome: SseParseOutcome.validKnownEvent,

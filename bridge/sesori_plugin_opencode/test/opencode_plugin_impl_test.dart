@@ -45,13 +45,14 @@ void main() {
     });
 
     test("id returns opencode", () {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       expect(plugin.id, equals("opencode"));
     });
 
     test("dispose during an in-flight initialize never starts the SSE stream", () async {
-      server.holdProjects = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final holdProjects = Completer<void>();
+      server.holdProjects = holdProjects;
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
 
       // Hold the cold-start at the gated GET /project, then dispose while it
       // is still in flight — the late _sseConnection.start() must not revive
@@ -62,7 +63,7 @@ void main() {
       }
 
       await plugin.dispose();
-      server.holdProjects!.complete();
+      holdProjects.complete();
       await initialize;
 
       // Give a revived SSE loop time to surface if the guard were missing.
@@ -71,8 +72,9 @@ void main() {
     });
 
     test("initialize waits until the SSE listener is connected", () async {
-      server.holdSseResponse = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final holdSseResponse = Completer<void>();
+      server.holdSseResponse = holdSseResponse;
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       addTearDown(plugin.dispose);
       var completed = false;
       final initialize = plugin.initialize().whenComplete(() => completed = true);
@@ -83,14 +85,14 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(completed, isFalse);
 
-      server.holdSseResponse!.complete();
+      holdSseResponse.complete();
       await initialize.timeout(const Duration(seconds: 1));
       expect(completed, isTrue);
     });
 
     test("dispose unblocks initialize while the SSE listener is connecting", () async {
       server.holdSseResponse = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       final initialize = plugin.initialize();
       while (!server.requestLog.contains("GET /global/event")) {
         await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -102,7 +104,7 @@ void main() {
 
     test("first SSE connection retries a failed cold start", () async {
       server.projectFailuresRemaining = 1;
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       addTearDown(plugin.dispose);
       final recovered = plugin.events.firstWhere((event) => event is BridgeSseProjectUpdated);
 
@@ -113,7 +115,7 @@ void main() {
     });
 
     test("getProjects maps internal projects to plugin projects", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final projects = await plugin.getProjects();
@@ -132,7 +134,7 @@ void main() {
     });
 
     test("getSessions maps internal sessions to plugin sessions", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final sessions = await plugin.getSessions(projectId: "/repo");
@@ -153,7 +155,7 @@ void main() {
     });
 
     test("getProjects seeds sandbox aliases so moved-location sessions canonicalize without a lookup", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       // A restarted plugin serving a previously-moved project: the backend's
       // project list already records the live location as a sandbox, and no
@@ -176,7 +178,7 @@ void main() {
     });
 
     test("getProject at a moved live directory registers an alias that canonicalizes session mapping", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       // The folder moved: /repo is still the project's root worktree, and the
       // backend records the live location as a sandbox.
@@ -206,7 +208,7 @@ void main() {
     });
 
     test("getCommands delegates through service and includes the synthetic compact command", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final commands = await plugin.getCommands(projectId: "/repo");
@@ -218,7 +220,7 @@ void main() {
     });
 
     test("getSessionOptions delegates the complete coherent aggregate", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final result = await plugin.getSessionOptions(
@@ -239,7 +241,7 @@ void main() {
     });
 
     test("createSession creates the session then sends the first prompt", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
@@ -269,7 +271,7 @@ void main() {
     });
 
     test("sendPrompt resolves tracked directory before sending", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
@@ -299,7 +301,7 @@ void main() {
     });
 
     test("stamps the prompt id on the echo of the message it named", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       final events = <BridgeSseEvent>[];
@@ -347,7 +349,7 @@ void main() {
     });
 
     test("streams a compaction summary as a running row that settles when its message finishes", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       final events = <BridgeSseEvent>[];
@@ -432,6 +434,7 @@ void main() {
       final connected = Completer<void>();
       final plugin = OpenCodePlugin(
         serverUrl: server.baseUrl,
+        password: null,
         onConnected: () {
           if (!connected.isCompleted) connected.complete();
         },
@@ -460,6 +463,7 @@ void main() {
       final disconnected = Completer<void>();
       final plugin = OpenCodePlugin(
         serverUrl: server.baseUrl,
+        password: null,
         onConnected: () {
           if (!connected.isCompleted) connected.complete();
         },
@@ -491,6 +495,7 @@ void main() {
       final disconnected = Completer<void>();
       final plugin = OpenCodePlugin(
         serverUrl: server.baseUrl,
+        password: null,
         onConnected: () {
           if (!connected.isCompleted) connected.complete();
         },
@@ -512,6 +517,7 @@ void main() {
       final connected = Completer<void>();
       final plugin = OpenCodePlugin(
         serverUrl: server.baseUrl,
+        password: null,
         onConnected: () {
           if (!connected.isCompleted) connected.complete();
         },
@@ -565,7 +571,7 @@ void main() {
 
     for (final operation in ["sendPrompt", "sendCommand"]) {
       test("$operation rejects a removed agent before dispatch", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
         await plugin.initialize();
         addTearDown(plugin.dispose);
         await server.waitForSseConnection();
@@ -606,7 +612,7 @@ void main() {
     }
 
     test("sendPrompt dispatches with an offered agent", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
@@ -628,7 +634,7 @@ void main() {
 
     for (final testCase in staleSelectionCases) {
       test("classifies a removed ${testCase.name} after a generic command failure", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
         await plugin.initialize();
         addTearDown(plugin.dispose);
         await server.waitForSseConnection();
@@ -669,7 +675,7 @@ void main() {
     }
 
     test("preserves a generic command failure when the selected agent remains available", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
@@ -709,12 +715,13 @@ void main() {
     });
 
     test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.requestLog.clear();
-      server.holdCommand = Completer<void>();
+      final holdCommand = Completer<void>();
+      server.holdCommand = holdCommand;
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
@@ -773,11 +780,11 @@ void main() {
         events.whereType<BridgeSseMessageUpdated>().map((event) => (event.info as PluginMessageUser).promptId),
         equals(["prompt-1", "prompt-1"]),
       );
-      server.holdCommand!.complete();
+      holdCommand.complete();
     });
 
     test("an ambiguous prompt failure still stamps a late echo", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       server.promptStatusCode = HttpStatus.badGateway;
@@ -825,7 +832,7 @@ void main() {
     });
 
     test("bare compact reuses a correlated server message and native compaction part", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
@@ -898,7 +905,7 @@ void main() {
     });
 
     test("compact guidance is persisted before reserving the marker", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
@@ -933,7 +940,7 @@ void main() {
     });
 
     test("compact removes guidance when marker reservation is rejected", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
@@ -959,7 +966,7 @@ void main() {
     });
 
     test("compact removes guidance and marker when conversion is rejected", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
@@ -985,7 +992,7 @@ void main() {
     });
 
     test("detached sendCommand failure revokes provisional plugin busy", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
@@ -1013,7 +1020,7 @@ void main() {
     });
 
     test("getSessionMessages maps raw messages to plugin messages", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-1");
@@ -1032,7 +1039,7 @@ void main() {
     });
 
     test("getSessionMessages exposes normalized file parts and filters snapshots", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-filter");
@@ -1061,7 +1068,7 @@ void main() {
     });
 
     test("getSessionMessages shows automatic compaction user messages", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-new-parts-filter");
@@ -1075,7 +1082,7 @@ void main() {
     });
 
     test("getSessionMessages agent part carries agentName", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-agent-part");
@@ -1087,7 +1094,7 @@ void main() {
     });
 
     test("getSessionMessages retry part carries attempt and retryError", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-retry-part");
@@ -1100,7 +1107,7 @@ void main() {
     });
 
     test("getSessionMessages truncates tool output to 500 chars", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-tool-long");
@@ -1113,7 +1120,7 @@ void main() {
     });
 
     test("getSessionMessages keeps short tool output unchanged", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-tool-short");
@@ -1123,7 +1130,7 @@ void main() {
     });
 
     test("getProviders with connectedOnly false returns config providers with variants", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
@@ -1158,7 +1165,7 @@ void main() {
     });
 
     test("getProviders with connectedOnly true still returns config providers", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
@@ -1168,7 +1175,7 @@ void main() {
     });
 
     test("getProviders maps known provider IDs to correct union variants", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
@@ -1181,7 +1188,7 @@ void main() {
     });
 
     test("events stream emits bridge events", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
 
       // Wait for the actual event instead of a blind delay.
@@ -1193,7 +1200,7 @@ void main() {
     });
 
     test("forced interruption includes an accepted prompt before busy SSE arrives", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
@@ -1252,7 +1259,7 @@ void main() {
     });
 
     test("unknown and malformed SSE frames are ignored without emitting bridge events", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
 
@@ -1293,7 +1300,7 @@ void main() {
     });
 
     test("sync SSE frames are swallowed without emitting bridge events", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
       await plugin.initialize();
       await server.waitForSseConnection();
 
@@ -1358,7 +1365,7 @@ void main() {
         "child-1": {"type": "busy"},
       };
 
-      final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl, password: null);
       await plugin.initialize();
       await dynamicServer.waitForSseConnection();
 
@@ -1387,7 +1394,7 @@ void main() {
         "s-root": {"type": "busy"},
       };
 
-      final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl, password: null);
       await plugin.initialize();
       await dynamicServer.waitForSseConnection();
 
@@ -1404,7 +1411,7 @@ void main() {
 
     group("renameSession", () {
       test("sends PATCH with title body and returns updated session", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
         await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
@@ -1419,7 +1426,7 @@ void main() {
 
     group("archiveSession", () {
       test("sends PATCH with time.archived body", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
         await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();

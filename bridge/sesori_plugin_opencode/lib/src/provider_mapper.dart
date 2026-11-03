@@ -37,7 +37,7 @@ PluginProvidersResult mapProviderResponse({
         ),
         releaseDate: _parseReleaseDate(m.releaseDate),
       );
-    }).toList()..sort(_newestFirst);
+    }).toList()..sort((left, right) => _newestFirst(left: left, right: right));
 
     return _mapProvider(
       id: providerInfo.id,
@@ -49,13 +49,13 @@ PluginProvidersResult mapProviderResponse({
   return PluginProvidersResult(providers: providers);
 }
 
-int _newestFirst(PluginModel a, PluginModel b) {
-  final aDate = a.releaseDate;
-  final bDate = b.releaseDate;
-  if (aDate == null && bDate != null) return 1;
-  if (bDate == null && aDate != null) return -1;
-  final byDate = aDate == null || bDate == null ? 0 : bDate.compareTo(aDate);
-  return byDate != 0 ? byDate : a.name.compareTo(b.name);
+int _newestFirst({required PluginModel left, required PluginModel right}) {
+  final leftDate = left.releaseDate;
+  final rightDate = right.releaseDate;
+  if (leftDate == null && rightDate != null) return 1;
+  if (rightDate == null && leftDate != null) return -1;
+  final byDate = leftDate == null || rightDate == null ? 0 : rightDate.compareTo(leftDate);
+  return byDate != 0 ? byDate : left.name.compareTo(right.name);
 }
 
 _ProviderModelStatus _parseProviderModelStatus({
