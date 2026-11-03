@@ -138,8 +138,7 @@ The default `stable` bridge updater ignores
 prereleases; `sesori-bridge config track internal` selects the newest `-internal.<N>` core release.
 
 Native macOS desktop builds use the same source and aligned build number, with their own signing/qualification.
-They remain Actions artifacts while `DESKTOP_MACOS_PUBLICATION_ENABLED` is absent/false. Once the owner admits
-macOS publication, desktop attaches its installers and separate `desktop-checksums.txt`/`desktop-release.json`
+Desktop attaches its installers and separate `desktop-checksums.txt`/`desktop-release.json`
 after both its native jobs and the existing shared finalizer pass. Desktop never changes bridge assets, checksums,
 tags, prerelease status or Latest. Desktop failure remains visible without changing core finalization.
 
@@ -167,9 +166,9 @@ Run the `Submit Release` workflow (`submit-release.yml`) with the build number t
 - `publish_bridge` ticked (default): the release is published immediately — bridge auto-update goes live for all users right away.
 - `publish_bridge` unticked: the release is created as a pre-release, invisible to the auto-updater until you promote it in the GitHub UI.
 
-Admitted macOS desktop packages rebuild that same source with the stable channel and attach after the approved
+macOS desktop packages rebuild that same source with the stable channel and attach after the approved
 shared release job; no additional production approval is required. Beta and `bridge-only` do not publish desktop.
-Private `macos-packaging` qualification can pin `source_sha` and `build_number` before enabling publication.
+Private `macos-packaging` qualification can pin `source_sha` and `build_number` without publishing.
 
 ### 4. npm publish (automatic)
 

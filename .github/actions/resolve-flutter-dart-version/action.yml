@@ -1,10 +1,16 @@
 name: 'Resolve Flutter Dart Version'
-description: 'Resolve the exact Dart SDK bundled with the Flutter pin in .tool-versions'
+description: 'Read the Flutter pin in .tool-versions and resolve the exact Dart SDK it bundles'
 
 outputs:
   version:
     description: 'Bundled Dart SDK version'
     value: ${{ steps.resolve.outputs.version }}
+  flutter-version:
+    description: 'Pinned Flutter version'
+    value: ${{ steps.resolve.outputs.flutter-version }}
+  flutter-channel:
+    description: 'Pinned Flutter channel (stable unless the pin has a -<channel> suffix)'
+    value: ${{ steps.resolve.outputs.flutter-channel }}
 
 runs:
   using: 'composite'
@@ -38,4 +44,8 @@ runs:
           exit 1
         fi
         echo "Flutter ${TOOL_SPEC} bundles Dart ${DART_VERSION}"
-        echo "version=${DART_VERSION}" >> "$GITHUB_OUTPUT"
+        {
+          echo "version=${DART_VERSION}"
+          echo "flutter-version=${FLUTTER_VERSION}"
+          echo "flutter-channel=${CHANNEL}"
+        } >> "$GITHUB_OUTPUT"

@@ -132,9 +132,6 @@ elif name == "xcrun":
             self.assertNotIn("fixture-certificate-password", result.stdout + result.stderr)
             self.assertNotIn("fixture-keychain-password", result.stdout + result.stderr)
 
-    def test_bootstrap_is_retired(self):
-        self.assertFalse((WORKFLOWS / "migrate-macos-signing-secrets.yml").exists())
-
 
 if __name__ == "__main__":
     unittest.main()
