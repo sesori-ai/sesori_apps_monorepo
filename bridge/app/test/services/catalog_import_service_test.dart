@@ -308,7 +308,8 @@ class _FakeCatalogImportRepository({
   @override
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async {
     hydrationReads++;
-    return await (hydrationGate == null ? completion : hydrationGate!.future);
+    if (hydrationGate case final gate?) return await gate.future;
+    return completion;
   }
 
   @override
@@ -326,7 +327,7 @@ class _FakeCatalogImportRepository({
     );
     await releaseImport?.future;
     if (importError case final error?) throw error;
-    if (control.cancellationRequested) {
+    if (control.isCancelled) {
       yield const CatalogImportProgress.cancelled(pluginId: "selected");
       return;
     }

@@ -231,7 +231,6 @@ final class _OnDeviceVoiceConnection({required final OnDeviceSpeechSession _sess
     return needsSpace ? " $trimmed" : trimmed;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, causes can be any object
   void _fail({required Object cause}) {
     if (_ended) return;
     unawaited(_session.cancel());

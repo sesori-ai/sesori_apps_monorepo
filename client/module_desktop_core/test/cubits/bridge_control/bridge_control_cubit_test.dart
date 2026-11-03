@@ -564,7 +564,8 @@ void main() {
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
-      processService.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      processService.stopGate = stopGate;
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.toggleBridge);
@@ -574,7 +575,7 @@ void main() {
 
       expect(cubit.state.activity, BridgeControlActivity.toggling);
       expect(windowHost.hideCalls, 1);
-      processService.stopGate!.complete();
+      stopGate.complete();
       await pumpEventQueue(times: 2);
     });
 
@@ -584,7 +585,8 @@ void main() {
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
-      processService.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      processService.stopGate = stopGate;
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.toggleBridge);
@@ -593,7 +595,7 @@ void main() {
       await pumpEventQueue();
       expect(applicationTerminator.terminations, 0);
 
-      processService.stopGate!.complete();
+      stopGate.complete();
       await pumpEventQueue(times: 3);
       expect(processService.stopCalls, 2);
       expect(applicationTerminator.terminations, 1);
@@ -615,7 +617,8 @@ void main() {
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
-      processService.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      processService.stopGate = stopGate;
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.toggleBridge);
@@ -625,7 +628,7 @@ void main() {
       await pumpEventQueue();
       expect(applicationTerminator.terminations, 0);
 
-      processService.stopGate!.complete();
+      stopGate.complete();
       await pumpEventQueue(times: 3);
       expect(windowHost.hideCalls, 0);
       expect(applicationTerminator.terminations, 1);
@@ -837,7 +840,8 @@ void main() {
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
-      processService.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      processService.stopGate = stopGate;
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.quit);
@@ -848,7 +852,7 @@ void main() {
       expect(applicationTerminator.terminations, 0);
       expect(systemTray.disposeCalls, 0);
 
-      processService.stopGate!.complete();
+      stopGate.complete();
       await pumpEventQueue(times: 2);
 
       expect(systemTray.disposeCalls, 1);
@@ -968,7 +972,8 @@ void main() {
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
-      processService.stopGate = Completer<void>();
+      final Completer<void> stopGate = Completer<void>();
+      processService.stopGate = stopGate;
       bundleSource.installed = _installedUpdate;
       await updateService.check();
       await cubit.initialize();
@@ -979,7 +984,7 @@ void main() {
       expect(processService.stopCalls, 1);
       expect(applicationTerminator.terminations, 0);
 
-      processService.stopGate!.complete();
+      stopGate.complete();
       await pumpEventQueue(times: 3);
 
       expect(relaunchApi.relaunches, 1);

@@ -131,7 +131,7 @@ void main() {
       expect(native.writes, 0);
       await repository.write(key: key, value: secret);
       await getIt<PersisterRepository>().writeString(key: _StringKey.theme, value: "fixture-plaintext-theme");
-      final encodedMasterKey = native.storedValue!;
+      final encodedMasterKey = native.storedValue ?? fail("no master key was stored");
       final files = directory.listSync().whereType<File>().toList();
       expect(files.any((file) => file.path.endsWith("-wal")), isTrue);
       final contents = files.map((file) => latin1.decode(file.readAsBytesSync())).toList();

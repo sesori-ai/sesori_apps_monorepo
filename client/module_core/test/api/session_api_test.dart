@@ -51,7 +51,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((invocation) async {
-        final parser = invocation.namedArguments[#fromJson]! as SessionOptionsResponse Function(Map<String, dynamic>);
+        final parser = invocation.namedArguments[#fromJson] as SessionOptionsResponse Function(Map<String, dynamic>);
         return ApiResponse.success(parser(options.toJson()));
       });
 
@@ -478,7 +478,7 @@ void main() {
         ),
       ).thenAnswer((invocation) async {
         final parser =
-            invocation.namedArguments[#fromJson]!
+            invocation.namedArguments[#fromJson]
                 as SessionAttachmentResponse Function(
                   Map<String, dynamic>,
                 );

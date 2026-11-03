@@ -154,7 +154,8 @@ void main() {
 
           final retained = queue.bridgePromptAttachments;
           expect(retained[submission.promptId], orderedEquals(submission.attachments));
-          expect(retained[submission.promptId]!.first.bytes, same(submission.attachments.first.bytes));
+          final retainedAttachments = retained[submission.promptId] ?? fail("no retained attachments");
+          expect(retainedAttachments.first.bytes, same(submission.attachments.first.bytes));
           expect(queue.items, isEmpty);
           expect(queue.awaitingBridge, isEmpty);
           if (!accepted) {
@@ -162,7 +163,7 @@ void main() {
             expect(queue.failSend(), isFalse);
           }
           expect(retained.clear, throwsUnsupportedError);
-          expect(() => retained[submission.promptId]!.clear(), throwsUnsupportedError);
+          expect(retainedAttachments.clear, throwsUnsupportedError);
           queue.removeByPromptId(submission.promptId);
           expect(queue.bridgePromptAttachments, isEmpty);
           expect(retained, hasLength(1), reason: "previous state snapshots must stay immutable");

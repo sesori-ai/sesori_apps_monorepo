@@ -44,7 +44,7 @@ void main() {
       final settings = await repository.loadSettings();
 
       expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
-      expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
+      expect((jsonDecode(api.writtenConfig) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
     });
 
     test('repairs a missing or malformed session-open warm-up setting', () async {
@@ -58,7 +58,7 @@ void main() {
         final settings = await repository.loadSettings();
 
         expect(settings.warmUpPluginsOnSessionOpen, isTrue);
-        expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['warmUpPluginsOnSessionOpen'], isTrue);
+        expect((jsonDecode(api.writtenConfig) as Map<String, dynamic>)['warmUpPluginsOnSessionOpen'], isTrue);
       }
     });
 
@@ -72,7 +72,7 @@ void main() {
         final settings = await repository.loadSettings();
 
         expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
-        expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
+        expect((jsonDecode(api.writtenConfig) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
       }
     });
 
@@ -120,7 +120,7 @@ void main() {
 
       expect(settings.plugins.disabledPluginIds, {'cursor'});
       expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), defaultPluginIdleTimeoutMins);
-      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final written = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       final plugins = written['plugins'] as Map<String, dynamic>;
       expect(plugins['disabled'], ['cursor']);
       expect(plugins['opencode'], {'futureOption': true});
@@ -137,7 +137,7 @@ void main() {
 
       expect(settings.plugins.disabledPluginIds, {'cursor'});
       expect(settings.plugins.settingsByPluginId, isNot(contains('opencode')));
-      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final written = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       expect((written['plugins'] as Map)['disabled'], ['cursor']);
       expect(written['plugins'] as Map, isNot(contains('opencode')));
     });
@@ -180,7 +180,8 @@ void main() {
       );
       final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
-      api.writeGate = Completer<void>();
+      final writeGate = Completer<void>();
+      api.writeGate = writeGate;
 
       final pluginMutation = repository.mutateSettings(
         mutation: ({required current}) => current.copyWith(
@@ -192,12 +193,12 @@ void main() {
         mutation: ({required current}) => current.copyWith(pullRequestRefreshIntervalSeconds: 45),
       );
 
-      api.writeGate!.complete();
+      writeGate.complete();
       await Future.wait([pluginMutation, intervalMutation]);
 
       expect(repository.currentSettings.plugins.disabledPluginIds, {'cursor'});
       expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 45);
-      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final written = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       expect((written['plugins'] as Map)['disabled'], ['cursor']);
       expect(written['pullRequestRefreshIntervalSeconds'], 45);
       await repository.dispose();
@@ -258,7 +259,7 @@ void main() {
       final updated = await repository.updatePluginDisabled(pluginId: 'cursor', disabled: true);
 
       expect(updated.plugins.disabledPluginIds, {'cursor'});
-      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final written = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       expect(written, isNot(contains('enabledPlugins')));
       expect((written['plugins'] as Map)['future-plugin'], {'futureOption': 'kept'});
     });
@@ -270,17 +271,17 @@ void main() {
       final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       await repository.updateReleaseTrack(track: ReleaseTrack.internal);
-      final afterTrack = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final afterTrack = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       expect(afterTrack['releaseTrack'], 'internal');
       expect((afterTrack['plugins'] as Map)['disabled'], ['cursor']);
 
       await repository.updateYolo(enabled: true);
-      final afterYolo = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final afterYolo = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       expect(afterYolo['yolo'], isTrue);
       expect((afterYolo['plugins'] as Map)['disabled'], ['cursor']);
 
       await repository.updateWarmUpPluginsOnSessionOpen(enabled: false);
-      final afterWarmup = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final afterWarmup = jsonDecode(api.writtenConfig) as Map<String, dynamic>;
       expect(afterWarmup['warmUpPluginsOnSessionOpen'], isFalse);
       expect((afterWarmup['plugins'] as Map)['disabled'], ['cursor']);
     });
@@ -313,6 +314,7 @@ class FakeBridgeSettingsApi({
   @override final String configFilePath = '/tmp/config.json',
 }) implements BridgeSettingsApi {
   String? lastWrittenConfig;
+  String get writtenConfig => lastWrittenConfig ?? fail('no config was written');
   int writeCount = 0;
   Completer<void>? writeGate;
   final Completer<void> writeStarted = Completer<void>();

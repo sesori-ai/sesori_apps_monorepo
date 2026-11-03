@@ -8,11 +8,9 @@ part "api_error.g.dart";
 sealed class ApiError._() extends Error with _$ApiError {
   factory jsonParsing({
     required String jsonString,
-    // ignore: no_slop_linter/prefer_specific_type, Dart permits arbitrary thrown objects; decoded failures may have no local cause
     required Object? innerError,
   }) = JsonParsingError;
 
-  // ignore: no_slop_linter/prefer_specific_type
   factory dartHttpClient(Object innerError) = DartHttpClientError;
 
   factory generic() = GenericError;
@@ -40,7 +38,6 @@ sealed class ApiError._() extends Error with _$ApiError {
   };
 }
 
-// ignore: no_slop_linter/prefer_specific_type, presentation of the original arbitrary thrown object
 String _parsingDiagnostic({required Object error}) => switch (error) {
   FormatException(:final offset) => "FormatException; offset=${offset?.toString() ?? 'unknown'}",
   CheckedFromJsonException(:final className, :final key, :final innerError) =>

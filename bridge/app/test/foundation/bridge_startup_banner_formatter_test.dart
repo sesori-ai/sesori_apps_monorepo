@@ -47,7 +47,7 @@ void main() {
       expect(output, isNot(contains("███████╗")));
       expect(output, contains("BRIDGE v1.8.0"));
       expect(output, isNot(contains("AI coding sessions on your phone")));
-      expect(output!.split("\n").every((line) => line.length <= 40), isTrue);
+      expect(output?.split("\n").every((line) => line.length <= 40), isTrue);
     });
 
     test("does not render into redirected output", () {

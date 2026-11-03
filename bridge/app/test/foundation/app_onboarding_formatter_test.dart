@@ -126,8 +126,8 @@ class _FakeStdout({
 }) implements Stdout {
   @override
   int get terminalColumns {
-    if (terminalColumnsError != null) throw terminalColumnsError!;
-    return _terminalColumns!;
+    if (terminalColumnsError case final error?) throw error;
+    return _terminalColumns ?? fail("_FakeStdout needs terminalColumns or terminalColumnsError");
   }
 
   @override

@@ -132,8 +132,8 @@ void main() {
     test('runtime selects newest valid stable bridge release', () async {
       final release = await repository.checkForNewerRelease();
 
-      expect(release, isNotNull);
-      expect(release!.version, equals('0.3.1'));
+      if (release == null) fail('expected a newer release');
+      expect(release.version, equals('0.3.1'));
       expect(
         release.assetUrl,
         equals(

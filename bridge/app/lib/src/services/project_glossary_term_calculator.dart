@@ -140,6 +140,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
       value: source.projectName,
       origin: _GlossaryTermOrigin.project,
       includeCompound: true,
+      distinctTerms: null,
     );
     if (source.repositoryName case final repositoryName?) {
       _recordIdentifier(
@@ -147,6 +148,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
         value: repositoryName,
         origin: _GlossaryTermOrigin.project,
         includeCompound: true,
+        distinctTerms: null,
       );
     }
 
@@ -208,7 +210,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
     required String value,
     required _GlossaryTermOrigin origin,
     required bool includeCompound,
-    Set<String>? distinctTerms,
+    required Set<String>? distinctTerms,
   }) {
     final filtered = _filterCredentialSpans(value).trim();
     if (filtered.isEmpty) return;
@@ -376,7 +378,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
     required String term,
     required _GlossaryTermOrigin origin,
     required bool isCompound,
-    Set<String>? distinctTerms,
+    required Set<String>? distinctTerms,
   }) {
     if (!_isEligible(term)) return;
 

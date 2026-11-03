@@ -43,7 +43,17 @@ class const AttachmentThumbnailBuilder() {
     image.ImageFormat.jpg => "image/jpeg",
     image.ImageFormat.png => "image/png",
     image.ImageFormat.webp => "image/webp",
-    _ => null,
+    image.ImageFormat.cur ||
+    image.ImageFormat.exr ||
+    image.ImageFormat.ico ||
+    image.ImageFormat.pnm ||
+    image.ImageFormat.psd ||
+    image.ImageFormat.pvr ||
+    image.ImageFormat.tga ||
+    image.ImageFormat.tiff ||
+    image.ImageFormat.custom ||
+    image.ImageFormat.invalid ||
+    null => null,
   };
 
   Future<AttachmentThumbnailBuildResult> build({required Uint8List bytes}) {

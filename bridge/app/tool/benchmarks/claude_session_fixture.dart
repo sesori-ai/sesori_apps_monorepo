@@ -146,7 +146,7 @@ class _ClaudeSessionFixture({
     final id = _uuid();
     final projectDirectory = p.join(root, "projects", cwd.replaceAll(RegExp("[^A-Za-z0-9]"), "-"));
     final createdAt = now.subtract(_year * random.nextDouble() + _recordSpan);
-    final updatedAt = _between(createdAt.add(_recordSpan), now);
+    final updatedAt = _between(from: createdAt.add(_recordSpan), to: now);
     final titleSource = _TitleSource.values[random.nextInt(_TitleSource.values.length)];
     _titles.update(titleSource, (count) => count + 1);
 
@@ -184,7 +184,7 @@ class _ClaudeSessionFixture({
       _children++;
       final agentId = _hex(16);
       final base = p.join(projectDirectory, id, "subagents", "agent-$agentId");
-      final childAt = _between(createdAt, updatedAt);
+      final childAt = _between(from: createdAt, to: updatedAt);
       File("$base.meta.json")
         ..createSync(recursive: true)
         ..writeAsStringSync(
@@ -200,7 +200,7 @@ class _ClaudeSessionFixture({
             "agentId": agentId,
           },
         ],
-        modified: _between(childAt, updatedAt),
+        modified: _between(from: childAt, to: updatedAt),
       );
     }
   }
@@ -255,7 +255,7 @@ class _ClaudeSessionFixture({
     _bytes += content.length;
   }
 
-  DateTime _between(DateTime from, DateTime to) =>
+  DateTime _between({required DateTime from, required DateTime to}) =>
       from.add(Duration(microseconds: (to.difference(from).inMicroseconds * random.nextDouble()).round()));
 
   String _hex(int length) => List.generate(length, (_) => random.nextInt(16).toRadixString(16)).join();

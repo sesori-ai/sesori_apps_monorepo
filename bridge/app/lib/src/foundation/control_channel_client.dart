@@ -133,7 +133,7 @@ class ControlChannelClient({
     } catch (_) {
       // Clean up the half-open channel so a failed/timed-out attempt never
       // leaves a zombie connection lingering.
-      await _closeChannelQuietly(channel, "after a failed connect");
+      await _closeChannelQuietly(channel: channel, context: "after a failed connect");
       rethrow;
     }
 
@@ -141,7 +141,7 @@ class ControlChannelClient({
     // we awaited the handshake. Never install a socket on a disposed/superseded
     // client — that would leak a live WebSocket past dispose.
     if (!_active || generation != _generation) {
-      await _closeChannelQuietly(channel, "on a superseded connect");
+      await _closeChannelQuietly(channel: channel, context: "on a superseded connect");
       return;
     }
 
@@ -158,7 +158,7 @@ class ControlChannelClient({
     );
   }
 
-  Future<void> _closeChannelQuietly(IOWebSocketChannel channel, String context) async {
+  Future<void> _closeChannelQuietly({required IOWebSocketChannel channel, required String context}) async {
     try {
       await channel.sink.close().timeout(const Duration(seconds: 1));
     } catch (error, stackTrace) {
@@ -197,10 +197,10 @@ class ControlChannelClient({
       );
     }
     _emitConnectionState(ControlChannelConnectionState.disconnected);
-    _scheduleReconnect(_initialReconnectDelay, _generation);
+    _scheduleReconnect(delay: _initialReconnectDelay, generation: _generation);
   }
 
-  void _scheduleReconnect(Duration delay, int generation) {
+  void _scheduleReconnect({required Duration delay, required int generation}) {
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () async {
       if (!_active || generation != _generation) return;
@@ -209,7 +209,7 @@ class ControlChannelClient({
       } catch (error, stackTrace) {
         if (!_active || generation != _generation) return;
         Log.w("[control][ws] reconnect attempt failed; backing off", error, stackTrace);
-        _scheduleReconnect(_nextBackoff(delay), generation);
+        _scheduleReconnect(delay: _nextBackoff(delay), generation: generation);
       }
     });
   }

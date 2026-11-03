@@ -106,15 +106,18 @@ void main() {
 
       final activity = await completer.future;
       expect(activity.keys, equals({"/foo"}));
-      expect(activity["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
-      expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
-      expect(activity["/foo"]!["s1"]!.isRunning, isTrue);
-      expect(activity["/foo"]!["s2"]!.isRunning, isFalse);
-      expect(activity["/foo"]!["s1"]!.lastUserActivityAt, 20);
-      expect(activity["/foo"]!["s1"]!.updatedAt, 10);
-      expect(activity["/foo"]!["s2"]!.mainAgentRunning, isFalse);
-      expect(activity["/foo"]!["s2"]!.lastUserActivityAt, isNull);
-      expect(activity["/foo"]!["s2"]!.updatedAt, isNull);
+      final fooActivity = activity["/foo"] ?? fail("no activity for /foo");
+      expect(fooActivity.keys, unorderedEquals({"s1", "s2"}));
+      final s1 = fooActivity["s1"] ?? fail("no activity for s1");
+      final s2 = fooActivity["s2"] ?? fail("no activity for s2");
+      expect(s1.mainAgentRunning, isTrue);
+      expect(s1.isRunning, isTrue);
+      expect(s2.isRunning, isFalse);
+      expect(s1.lastUserActivityAt, 20);
+      expect(s1.updatedAt, 10);
+      expect(s2.mainAgentRunning, isFalse);
+      expect(s2.lastUserActivityAt, isNull);
+      expect(s2.updatedAt, isNull);
 
       await subscription.cancel();
       await tracker.onDispose();
@@ -210,8 +213,8 @@ void main() {
 
       final activity = await completer.future;
       expect(activity.keys, unorderedEquals({"/foo", "/bar"}));
-      expect(activity["/foo"]!.keys, equals({"s1"}));
-      expect(activity["/bar"]!.keys, unorderedEquals({"s2", "s3"}));
+      expect(activity["/foo"]?.keys, equals({"s1"}));
+      expect(activity["/bar"]?.keys, unorderedEquals({"s2", "s3"}));
 
       await subscription.cancel();
       await tracker.onDispose();
@@ -290,9 +293,9 @@ void main() {
 
       expect(activities.length, 2);
       expect(activities[0].keys, equals({"/foo"}));
-      expect(activities[0]["/foo"]!.keys, equals({"s1"}));
+      expect(activities[0]["/foo"]?.keys, equals({"s1"}));
       expect(activities[1].keys, equals({"/foo"}));
-      expect(activities[1]["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
+      expect(activities[1]["/foo"]?.keys, unorderedEquals({"s1", "s2"}));
 
       await subscription.cancel();
       await tracker.onDispose();
@@ -482,8 +485,8 @@ void main() {
       eventController.add(event);
 
       final activity = await completer.future;
-      expect(activity["/foo"]!["s1"]!.awaitingInput, isTrue);
-      expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+      expect(activity["/foo"]?["s1"]?.awaitingInput, isTrue);
+      expect(activity["/foo"]?["s1"]?.mainAgentRunning, isTrue);
 
       await subscription.cancel();
       await tracker.onDispose();
@@ -524,8 +527,8 @@ void main() {
       eventController.add(event);
 
       final activity = await completer.future;
-      expect(activity["/foo"]!["s1"]!.awaitingInput, isFalse);
-      expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+      expect(activity["/foo"]?["s1"]?.awaitingInput, isFalse);
+      expect(activity["/foo"]?["s1"]?.mainAgentRunning, isTrue);
 
       await subscription.cancel();
       await tracker.onDispose();

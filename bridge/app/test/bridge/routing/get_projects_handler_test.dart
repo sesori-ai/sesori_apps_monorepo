@@ -107,7 +107,7 @@ void main() {
 
       expect(
         [
-          for (final project in (response.toJson()["data"]! as List<Object?>).cast<Map<String, Object?>>())
+          for (final project in (response.toJson()["data"] as List<Object?>).cast<Map<String, Object?>>())
             (project["path"], project["directoryMissing"]),
         ],
         [("gone", true), ("present", false)],
@@ -143,8 +143,8 @@ void main() {
         request: makeRequest("GET", "/projects"),
       );
 
-      final row = await projectsDao.getProject(projectId: "p1");
-      expect(response.data[0].time, ProjectTime(created: row!.createdAt, updated: row.updatedAt));
+      final row = await projectsDao.getProject(projectId: "p1") ?? fail("project p1 is not stored");
+      expect(response.data[0].time, ProjectTime(created: row.createdAt, updated: row.updatedAt));
     });
 
     test("returns all stored projects", () async {

@@ -27,7 +27,7 @@ void main() {
           directoryMissing: true,
         ),
       );
-      final summaryJson = (projects.toJson()["data"]! as List<Object?>).single;
+      final summaryJson = (projects.toJson()["data"] as List<Object?>).single;
       expect(summaryJson, isNot(contains("supportsDedicatedWorktrees")));
       expect(summaryJson, containsPair("directoryMissing", true));
     });

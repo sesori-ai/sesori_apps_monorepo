@@ -89,7 +89,6 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
 
     try {
       final decoded = jsonDecode(rawError);
-      // ignore: no_slop_linter/prefer_specific_type, JSON object boundary before typed Freezed parsing
       if (decoded is! Map<String, dynamic>) {
         throw const FormatException("Transcription failure body is not a JSON object");
       }
@@ -100,9 +99,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, JSON parser callback signature requires dynamic input
   static String _parseTranscript(dynamic json) {
-    // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires an untyped map value
     if (json is Map<String, Object?>) {
       final textValue = json["text"];
       if (textValue case final String text when text.isNotEmpty) {

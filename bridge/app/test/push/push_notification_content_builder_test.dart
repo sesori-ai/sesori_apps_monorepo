@@ -51,7 +51,7 @@ void main() {
         questions: [QuestionInfo(question: "Ship it?", header: "Prompt")],
       );
 
-      final data = contentBuilder.extractNotificationData(event: event)!;
+      final data = contentBuilder.extractNotificationData(event: event) ?? fail("expected notification data");
       final sessionId = data.session?.displaySessionId;
       final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
@@ -76,7 +76,7 @@ void main() {
     test("omits session data for non-session events", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "2.0.0");
 
-      final data = contentBuilder.extractNotificationData(event: event)!;
+      final data = contentBuilder.extractNotificationData(event: event) ?? fail("expected notification data");
       final sessionId = data.session?.displaySessionId;
       final payload = contentBuilder.buildNotificationPayload(
         category: data.category,

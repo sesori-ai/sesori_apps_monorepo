@@ -374,7 +374,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         stderr.writeln("git ${arguments.join(" ")} failed with exit code ${result.exitCode}: ${result.stderr}");
         return null;
       }
-      return (result.stdout as String).trim();
+      return result.stdout.toString().trim();
     } on ProcessException catch (error, stackTrace) {
       stderr.writeln("git ${arguments.join(" ")} failed: $error");
       stderr.writeln(stackTrace);
@@ -386,7 +386,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
     if (Platform.isMacOS) {
       try {
         final result = Process.runSync("sysctl", const ["-n", "machdep.cpu.brand_string"]);
-        if (result.exitCode == 0) return (result.stdout as String).trim();
+        if (result.exitCode == 0) return result.stdout.toString().trim();
         stderr.writeln("sysctl CPU query failed with exit code ${result.exitCode}: ${result.stderr}");
       } on ProcessException catch (error, stackTrace) {
         stderr.writeln("sysctl CPU query failed: $error");
@@ -422,7 +422,7 @@ class _BenchmarkPlugin() implements NativeProjectsPluginApi {
   }) => throw UnimplementedError();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _BenchmarkFailureReporter() implements FailureReporter {
@@ -448,6 +448,6 @@ class _BenchmarkFailureReporter() implements FailureReporter {
 /// The benchmark plugins report no prompt defaults, so nothing reaches this.
 final class const _UnusedSessionPromptService() implements SessionPromptService {
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
+  Object? noSuchMethod(Invocation invocation) =>
       throw UnsupportedError("benchmark does not publish prompt defaults: ${invocation.memberName}");
 }

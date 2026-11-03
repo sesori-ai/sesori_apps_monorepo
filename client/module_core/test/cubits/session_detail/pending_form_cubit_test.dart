@@ -74,7 +74,7 @@ void main() {
     );
     await cubit.refresh();
     final state = cubit.state as FormReady;
-    expect((state.drafts["integer"]! as FormInputDraft).text, "1.");
+    expect(state.drafts["integer"], isA<FormInputDraft>().having((draft) => draft.text, "text", "1."));
     expect(state.drafts.clear, throwsUnsupportedError);
     expect(cubit.canSubmit, isTrue);
     verify(() => repository.getPendingForms(sessionId: "owner")).called(1);
@@ -91,7 +91,7 @@ void main() {
     );
     await cubit.submit();
     final state = cubit.state as FormReady;
-    expect((state.drafts["integer"]! as FormInputDraft).text, "-");
+    expect(state.drafts["integer"], isA<FormInputDraft>().having((draft) => draft.text, "text", "-"));
     expect((state.submission as FormSubmissionInvalid).fieldErrors, {"integer": FormValidationIssue.invalidType});
     verifyNever(() => repository.replyToForm(request: any(named: "request")));
   });
@@ -116,7 +116,7 @@ void main() {
     );
     await cubit.submit();
     final rejected = cubit.state as FormReady;
-    expect((rejected.drafts["text"]! as FormInputDraft).text, "private draft");
+    expect(rejected.drafts["text"], isA<FormInputDraft>().having((draft) => draft.text, "text", "private draft"));
     expect(rejected.toString(), isNot(contains("private draft")));
     cubit.edit(
       fieldId: "integer",
@@ -153,7 +153,7 @@ void main() {
     await cubit.submit();
     final failed = cubit.state as FormReady;
     expect((failed.submission as FormSubmissionFailed).cause, same(error));
-    expect((failed.drafts["optional"]! as FormInputDraft).text, "");
+    expect(failed.drafts["optional"], isA<FormInputDraft>().having((draft) => draft.text, "text", ""));
     cubit.edit(fieldId: "optional", draft: null);
     expect((cubit.state as FormReady).drafts.containsKey("optional"), isFalse);
   });

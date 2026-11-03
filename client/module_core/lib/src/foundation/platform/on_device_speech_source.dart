@@ -45,5 +45,4 @@ final class const OnDeviceSpeechWords({
 final class const OnDeviceSpeechCompleted() extends OnDeviceSpeechEvent;
 
 /// [cause] is the original failure, kept for the logs.
-// ignore: no_slop_linter/prefer_specific_type, causes can be any object
 final class const OnDeviceSpeechFailed({required final Object cause}) extends OnDeviceSpeechEvent;

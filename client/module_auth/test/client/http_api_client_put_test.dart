@@ -63,7 +63,7 @@ void main() {
         transport.request?.headers[HttpHeaders.contentTypeHeader],
         ContentType.json.toString(),
       );
-      expect(jsonDecode(transport.requestBody!), {"enabled": true});
+      expect(jsonDecode(transport.requestBody ?? fail("no request body")), {"enabled": true});
       expect(response, isA<SuccessResponse<String>>());
       expect((response as SuccessResponse<String>).data, "updated");
     });

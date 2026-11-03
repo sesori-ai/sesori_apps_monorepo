@@ -37,7 +37,7 @@ void main() {
   });
 
   group("SessionDetailCubit permission handling", () {
-    late MockSessionRepository mockSessionService;
+    late MockSessionRepository mockSourceRepository;
     late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
@@ -51,7 +51,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionRepository();
+      mockSourceRepository = MockSessionRepository();
       mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
@@ -74,7 +74,7 @@ void main() {
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       delegateSessionRepository(
         repository: mockSessionRepository,
-        source: mockSessionService,
+        source: mockSourceRepository,
         optionsSource: mockSessionApi,
       );
       when(
@@ -109,7 +109,7 @@ void main() {
       );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
-      _stubLoadApis(mockSessionService, optionsApi: mockSessionApi, sessionId: sessionId);
+      _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi, sessionId: sessionId);
     });
 
     tearDown(() async {
@@ -278,7 +278,7 @@ void main() {
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
-      clearInteractions(mockSessionService);
+      clearInteractions(mockSourceRepository);
       clearInteractions(mockSessionApi);
 
       sessionEvents.add(
@@ -306,16 +306,16 @@ void main() {
       expect(feedbackPromptService.failures, 1);
       expect(feedbackPromptService.positiveInteractions, 0);
       verify(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
           storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getSessionStatuses()).called(1);
+      verify(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getChildren(sessionId: sessionId)).called(1);
+      verify(() => mockSourceRepository.getSessionStatuses()).called(1);
       verify(
         () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
@@ -420,20 +420,20 @@ void main() {
 
     test("successful question controls and abort report content-free outcomes", () async {
       when(
-        () => mockSessionService.replyToQuestion(
+        () => mockSourceRepository.replyToQuestion(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
           answers: any(named: "answers"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       when(
-        () => mockSessionService.rejectQuestion(
+        () => mockSourceRepository.rejectQuestion(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       when(
-        () => mockSessionService.abortSession(
+        () => mockSourceRepository.abortSession(
           sessionId: any(named: "sessionId"),
           subAgents: any(named: "subAgents"),
         ),
@@ -484,7 +484,7 @@ void main() {
     test("non-loaded state buffers permission events and replays after loaded", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -534,7 +534,7 @@ void main() {
     });
 
     test("child-session permission from initial load surfaces on the root", () async {
-      when(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).thenAnswer(
+      when(() => mockSourceRepository.getPendingPermissions(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const PendingPermissionResponse(
             data: [
@@ -675,7 +675,7 @@ void main() {
 
     test("cold-loaded external request retains its marker and cancellation owner", () async {
       final analytics = stubbedProductAnalyticsService();
-      when(() => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
+      when(() => mockSourceRepository.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const PendingQuestionResponse(
             data: [
@@ -691,7 +691,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.rejectQuestion(
+        () => mockSourceRepository.rejectQuestion(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
         ),
@@ -722,7 +722,7 @@ void main() {
 
       expect(ok, isTrue);
       // Reject targets the owning child session, not the open root.
-      verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
+      verify(() => mockSourceRepository.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
       verifyNever(
         () => analytics.logEvent(
           event: const ProductAnalyticsEvent.sessionQuestionRejected(),
@@ -791,14 +791,14 @@ void main() {
         ),
       );
       verifyNever(
-        () => mockSessionService.replyToQuestion(
+        () => mockSourceRepository.replyToQuestion(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
           answers: any(named: "answers"),
         ),
       );
       verifyNever(
-        () => mockSessionService.rejectQuestion(
+        () => mockSourceRepository.rejectQuestion(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
         ),
@@ -848,12 +848,12 @@ SessionDetailCubit _buildCubit({
 }
 
 void _stubLoadApis(
-  MockSessionRepository service, {
+  MockSessionRepository sourceRepository, {
   required MockSessionApi optionsApi,
   required String sessionId,
 }) {
   when(
-    () => service.getMessages(
+    () => sourceRepository.getMessages(
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
@@ -873,28 +873,28 @@ void _stubLoadApis(
     ),
   );
   when(
-    () => service.getPendingQuestions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     ),
   );
   when(
-    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
       ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
     ),
   );
   when(
-    () => service.getChildren(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
       ApiResponse.success(const SessionListResponse(items: <Session>[])),
     ),
   );
   when(
-    () => service.getSessionStatuses(),
+    () => sourceRepository.getSessionStatuses(),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionStatusResponse>>.value(
       ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),

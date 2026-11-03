@@ -61,7 +61,7 @@ final class _MacosSystemPowerEventRepository({required final MacosSystemPowerObs
     }
   }
 
-  void _handleNativeEvent(int event, int errorCode) {
+  void _handleNativeEvent({required int event, required int errorCode}) {
     if (_disposed) return;
     switch (event) {
       case 0:

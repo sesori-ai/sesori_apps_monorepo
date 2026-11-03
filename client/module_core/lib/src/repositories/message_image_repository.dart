@@ -62,7 +62,6 @@ final class const MessageImageLoadUnsupported() extends MessageImageLoadResult;
 final class const MessageImageLoadRejected() extends MessageImageLoadResult;
 
 final class const MessageImageLoadFailure({
-  // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends MessageImageLoadResult;
@@ -81,7 +80,6 @@ enum MessageImageRequestFailureKind() {
 }
 
 final class const MessageImageRequestException({
-  // ignore: no_slop_linter/prefer_specific_type, preserves transport exception type
   required final MessageImageRequestFailureKind kind,
   required final int? statusCode,
   required final Object? innerError,

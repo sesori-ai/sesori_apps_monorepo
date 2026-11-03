@@ -65,7 +65,7 @@ void main() {
   });
 
   group("SessionDetailCubit", () {
-    late MockSessionRepository mockSessionService;
+    late MockSessionRepository mockSourceRepository;
     late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
@@ -82,7 +82,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionRepository();
+      mockSourceRepository = MockSessionRepository();
       mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
@@ -129,14 +129,14 @@ void main() {
 
       delegateSessionRepository(
         repository: mockSessionRepository,
-        source: mockSessionService,
+        source: mockSourceRepository,
         optionsSource: mockSessionApi,
       );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
       _stubAllDefaults(
-        mockSessionService,
-        mockSessionService,
+        mockSourceRepository,
+        mockSourceRepository,
         mockConnectionService,
         optionsApi: mockSessionApi,
         sessionId: sessionId,
@@ -478,13 +478,13 @@ void main() {
         final cubit = await loadedCubit();
         final saving = cubit.setAutoContinuation(enabled: true);
         expect(cubit.state.autoContinuationUpdatePending, isTrue);
-        expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+        expect(cubit.state.hydratedSession?.autoContinuation, disabled);
         await cubit.setAutoContinuation(enabled: true);
         verify(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true)).called(1);
 
         response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
         await saving;
-        expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+        expect(cubit.state.hydratedSession?.autoContinuation, enabled);
         expect(cubit.state.autoContinuationUpdatePending, isFalse);
       });
 
@@ -495,7 +495,7 @@ void main() {
         final notice = cubit.noticeStream.first;
         await cubit.setAutoContinuation(enabled: true);
         expect(await notice, isA<SessionDetailAutoContinuationUpdateFailed>());
-        expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+        expect(cubit.state.hydratedSession?.autoContinuation, disabled);
         expect(cubit.state.autoContinuationUpdatePending, isFalse);
       });
 
@@ -518,7 +518,7 @@ void main() {
                 : ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: disabled)),
           );
           await reloading;
-          expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+          expect(cubit.state.hydratedSession?.autoContinuation, enabled);
           expect(cubit.state.autoContinuationUpdatePending, isFalse);
         });
       }
@@ -539,7 +539,7 @@ void main() {
           when(() => management.snapshots).thenAnswer((_) => snapshots);
           when(management.refresh).thenAnswer((_) async {});
           when(
-            () => mockSessionService.getMessages(
+            () => mockSourceRepository.getMessages(
               sessionId: any(named: "sessionId"),
               limit: any(named: "limit"),
               before: any(named: "before"),
@@ -578,7 +578,7 @@ void main() {
           metadata.complete(ApiResponse.success(session));
           await reloading;
           expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
-          expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+          expect(cubit.state.hydratedSession?.autoContinuation, disabled);
           expect(cubit.state.autoContinuationUpdatePending, isFalse);
         });
       }
@@ -630,7 +630,7 @@ void main() {
         );
         final notice = cubit.noticeStream.first;
         await cubit.setAutoContinuation(enabled: false);
-        expect(cubit.state.hydratedSession!.autoContinuation!.enabled, isFalse);
+        expect(cubit.state.hydratedSession?.autoContinuation?.enabled, isFalse);
         expect(await notice, isA<SessionDetailAutoContinuationAlreadySubmitted>());
       });
 
@@ -690,7 +690,7 @@ void main() {
 
         await cubit.sendMessage(text: "go", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             sessionId: sessionId,
             text: "go",
@@ -746,7 +746,7 @@ void main() {
 
         await cubit.sendMessage(text: "go", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             sessionId: sessionId,
             text: "go",
@@ -806,7 +806,7 @@ void main() {
           // History comes from the bridge database, so a blocked harness still
           // shows the transcript; only interaction is refused.
           verify(
-            () => mockSessionService.getMessages(
+            () => mockSourceRepository.getMessages(
               sessionId: any(named: "sessionId"),
               limit: any(named: "limit"),
               before: any(named: "before"),
@@ -815,7 +815,7 @@ void main() {
           ).called(greaterThanOrEqualTo(1));
         } else {
           when(
-            () => mockSessionService.sendMessage(
+            () => mockSourceRepository.sendMessage(
               promptId: any(named: "promptId"),
               attachments: const [],
               sessionId: sessionId,
@@ -917,14 +917,14 @@ void main() {
         expect(cubit.state, same(blockedState));
         if (cubit.state case SessionDetailLoaded(:final queuedMessages)) expect(queuedMessages, isEmpty);
         if (!initialBlocked) {
-          final saved = await mockSessionService.getMessages(
+          final saved = await mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: SessionDetailLoadService.initialPageSize,
             before: null,
             storedOnly: false,
           );
           when(
-            () => mockSessionService.getMessages(
+            () => mockSourceRepository.getMessages(
               sessionId: sessionId,
               limit: SessionDetailLoadService.initialPageSize,
               before: null,
@@ -943,7 +943,7 @@ void main() {
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
           when(
-            () => mockSessionService.getMessages(
+            () => mockSourceRepository.getMessages(
               sessionId: sessionId,
               limit: SessionDetailLoadService.initialPageSize,
               before: null,
@@ -1075,7 +1075,7 @@ void main() {
         predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
         description: "blocked transcript",
       );
-      final saved = await mockSessionService.getMessages(
+      final saved = await mockSourceRepository.getMessages(
         sessionId: sessionId,
         limit: SessionDetailLoadService.initialPageSize,
         before: null,
@@ -1086,7 +1086,7 @@ void main() {
       final firstLoad = Completer<ApiResponse<MessageWithPartsResponse>>();
       var loads = 0;
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: SessionDetailLoadService.initialPageSize,
           before: null,
@@ -1156,7 +1156,7 @@ void main() {
         final answer = Completer<ApiResponse<MessageWithPartsResponse>>();
         var reads = 0;
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1233,7 +1233,7 @@ void main() {
       when(service.refresh).thenAnswer((_) async {});
       var reads = 0;
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -1293,7 +1293,7 @@ void main() {
       when(() => service.snapshots).thenAnswer((_) => snapshots);
       when(service.refresh).thenAnswer((_) async {});
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -1333,14 +1333,14 @@ void main() {
       final service = MockPluginManagementService();
       when(() => service.snapshots).thenAnswer((_) => snapshots);
       when(service.refresh).thenAnswer((_) async {});
-      final stored = await mockSessionService.getMessages(
+      final stored = await mockSourceRepository.getMessages(
         sessionId: sessionId,
         limit: SessionDetailLoadService.initialPageSize,
         before: null,
         storedOnly: false,
       );
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -1381,7 +1381,7 @@ void main() {
       when(() => service.snapshots).thenAnswer((_) => snapshots);
       when(service.refresh).thenAnswer((_) async {});
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -1436,7 +1436,7 @@ void main() {
       final saved = await mockSessionRepository.getSession(sessionId: sessionId);
       when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -1522,7 +1522,7 @@ void main() {
       // The bridge drops SSE events it handed to a dying socket, so only this
       // refresh brings back the replies and tool states missed during the drop.
       final connected = mockConnectionService.currentStatus;
-      Future<ApiResponse<MessageWithPartsResponse>> fetchTranscript() => mockSessionService.getMessages(
+      Future<ApiResponse<MessageWithPartsResponse>> fetchTranscript() => mockSourceRepository.getMessages(
         sessionId: sessionId,
         limit: any(named: "limit"),
         before: any(named: "before"),
@@ -1580,16 +1580,16 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
             storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
-        verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-        verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
-        verify(() => mockSessionService.getSessionStatuses()).called(1);
+        verify(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).called(1);
+        verify(() => mockSourceRepository.getChildren(sessionId: sessionId)).called(1);
+        verify(() => mockSourceRepository.getSessionStatuses()).called(1);
         verify(
           () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
@@ -1626,7 +1626,7 @@ void main() {
       "initial load failure emits SessionDetailFailed",
       build: () {
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -1655,16 +1655,16 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
             storedOnly: any(named: "storedOnly"),
           ),
         ).called(2);
-        verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
-        verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
-        verify(() => mockSessionService.getSessionStatuses()).called(2);
+        verify(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).called(2);
+        verify(() => mockSourceRepository.getChildren(sessionId: sessionId)).called(2);
+        verify(() => mockSourceRepository.getSessionStatuses()).called(2);
         verify(
           () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
@@ -1703,7 +1703,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
@@ -1747,7 +1747,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
@@ -1794,7 +1794,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             sessionId: sessionId,
             text: "look at this",
@@ -1840,7 +1840,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -1875,7 +1875,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -1910,7 +1910,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
@@ -1992,7 +1992,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
@@ -2187,7 +2187,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.abortSession(
+          () => mockSourceRepository.abortSession(
             sessionId: sessionId,
             subAgents: any(named: "subAgents"),
           ),
@@ -2243,20 +2243,20 @@ void main() {
 
     test("abort skips legacy descendant fanout after bridge acknowledgment", () async {
       const childId = "child-1";
-      when(() => mockSessionService.getChildren(sessionId: sessionId)).thenAnswer(
+      when(() => mockSourceRepository.getChildren(sessionId: sessionId)).thenAnswer(
         (_) async => ApiResponse.success(
           SessionListResponse(
             items: [testSession(id: childId, parentID: sessionId)],
           ),
         ),
       );
-      when(() => mockSessionService.getSessionStatuses()).thenAnswer(
+      when(() => mockSourceRepository.getSessionStatuses()).thenAnswer(
         (_) async => ApiResponse.success(
           const SessionStatusResponse(statuses: {childId: SessionStatus.busy(since: null)}),
         ),
       );
       when(
-        () => mockSessionService.abortSession(
+        () => mockSourceRepository.abortSession(
           sessionId: sessionId,
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
@@ -2268,7 +2268,7 @@ void main() {
 
       expect(outcome, isA<SessionAbortAccepted>());
       verifyNever(
-        () => mockSessionService.abortSession(
+        () => mockSourceRepository.abortSession(
           sessionId: childId,
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
@@ -2278,21 +2278,21 @@ void main() {
 
     test("fallback reads fresh repository state while detail reloads", () async {
       const childId = "child-1";
-      when(() => mockSessionService.getChildren(sessionId: sessionId)).thenAnswer(
+      when(() => mockSourceRepository.getChildren(sessionId: sessionId)).thenAnswer(
         (_) async => ApiResponse.success(
           SessionListResponse(
             items: [testSession(id: childId, parentID: sessionId)],
           ),
         ),
       );
-      when(() => mockSessionService.getSessionStatuses()).thenAnswer(
+      when(() => mockSourceRepository.getSessionStatuses()).thenAnswer(
         (_) async => ApiResponse.success(
           const SessionStatusResponse(statuses: {childId: SessionStatus.busy(since: null)}),
         ),
       );
       final rootAbort = Completer<ApiResponse<bool>>();
       when(
-        () => mockSessionService.abortSession(
+        () => mockSourceRepository.abortSession(
           sessionId: sessionId,
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
@@ -2304,7 +2304,7 @@ void main() {
 
       final reloadMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(
+        () => mockSourceRepository.getMessages(
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
@@ -2318,7 +2318,7 @@ void main() {
       rootAbort.complete(ApiResponse.success(false));
       expect(await aborting, isA<SessionAbortAccepted>());
       verify(
-        () => mockSessionService.abortSession(
+        () => mockSourceRepository.abortSession(
           sessionId: childId,
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
@@ -2342,7 +2342,7 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).thenAnswer(
+        when(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).thenAnswer(
           (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
@@ -2364,7 +2364,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.replyToQuestion(
+          () => mockSourceRepository.replyToQuestion(
             requestId: "question-1",
             sessionId: sessionId,
             answers: const [
@@ -2381,7 +2381,7 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "rejectQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).thenAnswer(
+        when(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).thenAnswer(
           (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
@@ -2396,7 +2396,7 @@ void main() {
         isA<SessionDetailLoaded>().having((state) => state.pendingQuestions, "pendingQuestions", isEmpty),
       ],
       verify: (_) {
-        verify(() => mockSessionService.rejectQuestion(requestId: "question-1", sessionId: sessionId)).called(1);
+        verify(() => mockSourceRepository.rejectQuestion(requestId: "question-1", sessionId: sessionId)).called(1);
         verify(
           () => mockNotificationCanceller.cancelForSession(sessionId: sessionId),
         ).called(1);
@@ -2469,7 +2469,7 @@ void main() {
       "SSE message.updated adds message to state",
       build: () {
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -2548,7 +2548,7 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE question.resolved removes pending question",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).thenAnswer(
+        when(() => mockSourceRepository.getPendingQuestions(sessionId: sessionId)).thenAnswer(
           (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
@@ -2647,7 +2647,7 @@ void main() {
 
         // Service returns children in ASC order (oldest first).
         when(
-          () => mockSessionService.getChildren(sessionId: sessionId),
+          () => mockSourceRepository.getChildren(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [oldChild, midChild, newChild])));
 
         return buildCubit();
@@ -2667,7 +2667,7 @@ void main() {
         final existingChild = testSession(id: "child-1", parentID: sessionId, updatedAt: 1000);
 
         when(
-          () => mockSessionService.getChildren(sessionId: sessionId),
+          () => mockSourceRepository.getChildren(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [existingChild])));
 
         return buildCubit();
@@ -2708,7 +2708,7 @@ void main() {
 
         // Initial load returns sorted newest-first.
         when(
-          () => mockSessionService.getChildren(sessionId: sessionId),
+          () => mockSourceRepository.getChildren(sessionId: sessionId),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [newChild, oldChild])),
         );
@@ -2722,7 +2722,7 @@ void main() {
         final oldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 1000);
         final newChild = testSession(id: "child-new", parentID: sessionId, updatedAt: 3000);
         when(
-          () => mockSessionService.getChildren(sessionId: sessionId),
+          () => mockSourceRepository.getChildren(sessionId: sessionId),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [oldChild, newChild])),
         );
@@ -2854,7 +2854,7 @@ void main() {
         final newChild = testSession(id: "child-new", parentID: sessionId, updatedAt: 3000);
 
         when(
-          () => mockSessionService.getChildren(sessionId: sessionId),
+          () => mockSourceRepository.getChildren(sessionId: sessionId),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [newChild, oldChild])),
         );
@@ -2934,7 +2934,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
@@ -2977,7 +2977,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
@@ -2998,7 +2998,7 @@ void main() {
     ]) {
       test("$label marks the failed send ${failure.name}", () async {
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
@@ -3032,7 +3032,7 @@ void main() {
       final sentPromptIds = <String>[];
       final sentTexts = <String>[];
       when(
-        () => mockSessionService.sendMessage(
+        () => mockSourceRepository.sendMessage(
           promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
@@ -3076,7 +3076,7 @@ void main() {
       "sendMessage holds a failed send for Retry",
       build: () {
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
@@ -3109,7 +3109,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
@@ -3137,7 +3137,7 @@ void main() {
         // transition (idle vs busy), allowing the test to verify the queue is
         // NOT drained even when the session becomes idle while disconnected.
         when(
-          () => mockSessionService.getSessionStatuses(),
+          () => mockSourceRepository.getSessionStatuses(),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             const SessionStatusResponse(statuses: {sessionId: SessionStatus.busy(since: null)}),
@@ -3193,7 +3193,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
@@ -3258,7 +3258,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
@@ -3319,7 +3319,7 @@ void main() {
       await _awaitQueuedMessages(cubit, isEmpty);
 
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSourceRepository.sendMessage(
           promptId: "prompt-1",
           attachments: const [],
           sessionId: sessionId,
@@ -3421,7 +3421,7 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSourceRepository.sendMessage(
           promptId: "prompt-1",
           attachments: const [],
           sessionId: sessionId,
@@ -3441,7 +3441,7 @@ void main() {
       final sentTexts = <String>[];
 
       when(
-        () => mockSessionService.sendMessage(
+        () => mockSourceRepository.sendMessage(
           promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
@@ -3535,7 +3535,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.sendMessage(
+        () => mockSourceRepository.sendMessage(
           promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
@@ -3579,7 +3579,7 @@ void main() {
       await _awaitQueuedMessages(cubit, isEmpty);
 
       verify(
-        () => mockSessionService.sendMessage(
+        () => mockSourceRepository.sendMessage(
           promptId: "prompt-1",
           attachments: const [],
           sessionId: sessionId,
@@ -3639,7 +3639,7 @@ void main() {
       },
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: sessionId,
@@ -3652,7 +3652,7 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: sessionId,
@@ -3673,7 +3673,7 @@ void main() {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
         when(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
@@ -3743,7 +3743,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
+          () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: sessionId,
@@ -3772,7 +3772,7 @@ void main() {
 
       test("a failed load never declares the view", () async {
         when(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -3910,7 +3910,7 @@ void main() {
         // The post-resume silent refresh completed and re-declared the view.
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
         verify(
-          () => mockSessionService.getMessages(
+          () => mockSourceRepository.getMessages(
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
@@ -4028,8 +4028,8 @@ ProviderListResponse _fastModeProviders({required FastModeSupport fastMode}) => 
 );
 
 void _stubAllDefaults(
-  MockSessionRepository service,
-  MockSessionRepository sessionService,
+  MockSessionRepository sourceRepository,
+  MockSessionRepository promptSourceRepository,
   MockConnectionService connectionService, {
   required MockSessionApi optionsApi,
   required String sessionId,
@@ -4039,7 +4039,7 @@ void _stubAllDefaults(
   required BehaviorSubject<ConnectionStatus> connectionStatus,
 }) {
   when(
-    () => service.getMessages(
+    () => sourceRepository.getMessages(
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
@@ -4059,28 +4059,28 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.getPendingQuestions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     ),
   );
   when(
-    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
       ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
     ),
   );
   when(
-    () => service.getChildren(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
       ApiResponse.success(const SessionListResponse(items: <Session>[])),
     ),
   );
   when(
-    () => service.getSessionStatuses(),
+    () => sourceRepository.getSessionStatuses(),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionStatusResponse>>.value(
       ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
@@ -4142,7 +4142,7 @@ void _stubAllDefaults(
   ).thenAnswer((_) async {});
 
   when(
-    () => sessionService.sendMessage(
+    () => promptSourceRepository.sendMessage(
       promptId: any(named: "promptId"),
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
@@ -4155,20 +4155,20 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.abortSession(
+    () => sourceRepository.abortSession(
       sessionId: any(named: "sessionId"),
       subAgents: any(named: "subAgents"),
     ),
   ).thenAnswer((_) async => ApiResponse.success(false));
   when(
-    () => service.replyToQuestion(
+    () => sourceRepository.replyToQuestion(
       requestId: any(named: "requestId"),
       sessionId: any(named: "sessionId"),
       answers: any(named: "answers"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.rejectQuestion(
+    () => sourceRepository.rejectQuestion(
       requestId: any(named: "requestId"),
       sessionId: any(named: "sessionId"),
     ),

@@ -78,7 +78,7 @@ ToolStateFull _parity({required AcpEventMapper mapper, required List<Map<String,
             as MessagePartTool;
     expect(recorded.state, live.state);
   }
-  return live!.state as ToolStateFull;
+  return (live ?? fail("no live tool part was projected")).state as ToolStateFull;
 }
 
 void main() {

@@ -6,11 +6,16 @@ import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_protocol.
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 import "package:test/test.dart";
 
+Map<String, Object?> _jsonObject({required Object? value}) => switch (value) {
+  final Map<String, Object?> object => object,
+  _ => fail("expected a JSON object, got ${value.runtimeType.toString()}"),
+};
+
 void main() {
   final fixture =
       jsonDecode(File("test/fixtures/voice_realtime_protocol_v1.json").readAsStringSync()) as Map<String, Object?>;
-  final valid = fixture["valid"]! as Map<String, Object?>;
-  final invalid = fixture["invalid"]! as Map<String, Object?>;
+  final valid = _jsonObject(value: fixture["valid"]);
+  final invalid = _jsonObject(value: fixture["invalid"]);
 
   RealtimeVoiceServerEvent parseValid(String name) => parseRealtimeVoiceEvent(frame: jsonEncode(valid[name]));
 
@@ -39,8 +44,11 @@ void main() {
     });
 
     test("the fixture's invalid project key cannot be built", () {
-      final badStart = invalid["badProjectKey"]! as Map<String, Object?>;
-      expect(ProjectGlossaryKey.tryParse(value: badStart["projectKey"]! as String), isNull);
+      final badStart = _jsonObject(value: invalid["badProjectKey"]);
+      expect(
+        ProjectGlossaryKey.tryParse(value: badStart["projectKey"] as String? ?? fail("no bad project key")),
+        isNull,
+      );
     });
   });
 
@@ -93,7 +101,7 @@ void main() {
       final parsed = <RealtimeVoiceErrorCode>[];
 
       for (final MapEntry(key: name, :value) in errorCases) {
-        final frame = value! as Map<String, Object?>;
+        final frame = _jsonObject(value: value);
         final event = parseRealtimeVoiceEvent(frame: jsonEncode(frame)) as RealtimeVoiceErrorEvent;
         parsed.add(event.code);
         expect(event.code.wireName, frame["code"], reason: name);
@@ -115,7 +123,7 @@ void main() {
     test("every server event the fixture calls invalid is rejected", () {
       const clientTypes = {"start", "finish", "cancel", "pause"};
       final serverCases = invalid.entries.where(
-        (entry) => !clientTypes.contains((entry.value! as Map<String, Object?>)["type"]),
+        (entry) => !clientTypes.contains(_jsonObject(value: entry.value)["type"]),
       );
       expect(serverCases.length, greaterThanOrEqualTo(12));
 

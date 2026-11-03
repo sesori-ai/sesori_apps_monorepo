@@ -48,13 +48,17 @@ void main() {
     final read = await service.read(requestId: "request", sessionId: "owner");
     expect(read?.authorizationUrl, action.authorizationUrl);
     expect(
-      await service.reply(action: read!, choice: ExternalActionChoice.decline),
+      await service.reply(action: read ?? fail("no pending external action"), choice: ExternalActionChoice.decline),
       isA<ExternalActionReplyAccepted>(),
     );
     expect(requests.map((r) => r.path), ["/session/external-actions", "/external-action/reply"]);
     expect(requests.map((r) => r.method), everyElement("POST"));
-    expect(jsonDecode(requests.first.body!), {"sessionId": "owner"});
-    expect(jsonDecode(requests.last.body!), {"requestId": "request", "sessionId": "owner", "choice": "decline"});
+    expect(jsonDecode(requests.first.body ?? fail("no request body")), {"sessionId": "owner"});
+    expect(jsonDecode(requests.last.body ?? fail("no request body")), {
+      "requestId": "request",
+      "sessionId": "owner",
+      "choice": "decline",
+    });
   });
 
   for (final status in [200, 503]) {

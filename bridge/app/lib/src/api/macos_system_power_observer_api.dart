@@ -2,7 +2,7 @@ import "dart:ffi";
 
 const _assetId = "package:sesori_bridge/macos_power_observer.dylib";
 
-typedef MacosPowerObserverCallback = void Function(int event, int errorCode);
+typedef MacosPowerObserverCallback = void Function({required int event, required int errorCode});
 typedef _NativePowerCallback = Void Function(Int32 event, Int32 errorCode);
 
 @Native<Pointer<Void> Function(Pointer<NativeFunction<_NativePowerCallback>>)>(
@@ -20,7 +20,9 @@ class MacosSystemPowerObserverApi() {
 
   void start({required MacosPowerObserverCallback callback}) {
     if (_handle != null) throw StateError("macOS power observer already started");
-    final nativeCallback = NativeCallable<_NativePowerCallback>.listener(callback);
+    final nativeCallback = NativeCallable<_NativePowerCallback>.listener(
+      (int event, int errorCode) => callback(event: event, errorCode: errorCode),
+    );
     try {
       final handle = _start(nativeCallback.nativeFunction);
       if (handle == nullptr) {

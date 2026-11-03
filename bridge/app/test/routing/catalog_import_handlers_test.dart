@@ -46,7 +46,7 @@ void main() {
       final getResponse = await GetCatalogImportStatusesHandler(service: service).routeForTest(
         makeRequest("GET", "/plugin/import"),
       );
-      final decoded = CatalogImportStatusesResponse.fromJson(jsonDecodeMap(getResponse.body!));
+      final decoded = CatalogImportStatusesResponse.fromJson(jsonDecodeMap(getResponse.body ?? fail("missing body")));
       expect(decoded.statuses.single, isA<CatalogImportCompleted>());
       expect(repository.importCalls, 1);
       expect(repository.control?.rescanRequested, isTrue);
@@ -89,7 +89,7 @@ void main() {
 
       expect(response.status, 200);
       await cancelled;
-      expect(repository.control?.cancellationRequested, isTrue);
+      expect(repository.control?.isCancelled, isTrue);
     });
   });
 }
@@ -132,7 +132,7 @@ class _HandlerCatalogImportRepository({final Completer<void>? release}) implemen
       sessionsSeen: 0,
     );
     await release?.future;
-    if (control.cancellationRequested) {
+    if (control.isCancelled) {
       yield const CatalogImportProgress.cancelled(pluginId: "selected");
     } else {
       yield const CatalogImportProgress.completed(

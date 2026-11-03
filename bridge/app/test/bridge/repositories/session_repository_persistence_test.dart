@@ -169,9 +169,13 @@ void main() {
       );
 
       await repository.setSessionTitleIfStored(sessionId: "stable-id", title: "Local title");
-      final titledAt = (await database.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      final titledAt =
+          (await database.sessionDao.getSession(sessionId: "stable-id") ?? fail("the stored session is missing"))
+              .projectionUpdatedAt;
       await repository.archiveStoredSession(sessionId: "stable-id", archivedAt: 300);
-      final archivedAt = (await database.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      final archivedAt =
+          (await database.sessionDao.getSession(sessionId: "stable-id") ?? fail("the stored session is missing"))
+              .projectionUpdatedAt;
       expect(archivedAt, greaterThan(titledAt));
 
       await database.sessionDao.updateObservedSessionProjection(

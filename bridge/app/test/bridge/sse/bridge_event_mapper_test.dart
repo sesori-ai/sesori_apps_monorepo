@@ -142,8 +142,8 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriSessionCreated>());
-      final event = result! as SesoriSessionCreated;
+      final event = result;
+      if (event is! SesoriSessionCreated) fail("expected SesoriSessionCreated, got $event");
       expect(event.info.hasWorktree, isTrue);
     });
 
@@ -163,16 +163,15 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriSessionUpdated>());
-      final event = result! as SesoriSessionUpdated;
+      final event = result;
+      if (event is! SesoriSessionUpdated) fail("expected SesoriSessionUpdated, got $event");
       expect(event.info.title, equals("replacement session"));
     });
 
     test("maps session.diff without diff payload", () async {
       final result = mapEvent(const BridgeSseSessionDiff(sessionID: "s1"));
 
-      expect(result, isA<SesoriSessionDiff>());
-      expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
+      expect(result, isA<SesoriSessionDiff>().having((event) => event.sessionID, "sessionID", equals("s1")));
     });
 
     test("maps prompt settlement events", () {
@@ -193,8 +192,8 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriCommandExecuted>());
-      final event = result! as SesoriCommandExecuted;
+      final event = result;
+      if (event is! SesoriCommandExecuted) fail("expected SesoriCommandExecuted, got $event");
       expect(event.name, equals("review"));
       expect(event.sessionID, equals("s1"));
       expect(event.arguments, equals("lib/main.dart"));
@@ -213,8 +212,8 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result! as SesoriMessagePartUpdated;
+      final event = result;
+      if (event is! SesoriMessagePartUpdated) fail("expected SesoriMessagePartUpdated, got $event");
       expect(
         (event.part as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "notes.txt")),
@@ -339,8 +338,8 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result! as SesoriMessagePartUpdated;
+      final event = result;
+      if (event is! SesoriMessagePartUpdated) fail("expected SesoriMessagePartUpdated, got $event");
       final state = (event.part as MessagePartTool).state as ToolStateFull;
       expect(state.output?.length, lessThanOrEqualTo(500));
       expect(state.output?.length, equals(500));
@@ -353,8 +352,8 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result! as SesoriMessagePartUpdated;
+      final event = result;
+      if (event is! SesoriMessagePartUpdated) fail("expected SesoriMessagePartUpdated, got $event");
       expect(event.part, isA<MessagePartText>());
       expect((event.part as MessagePartText).text, equals("hello"));
     });
@@ -379,8 +378,8 @@ void main() {
         ),
       );
 
-      expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result! as SesoriMessagePartUpdated;
+      final event = result;
+      if (event is! SesoriMessagePartUpdated) fail("expected SesoriMessagePartUpdated, got $event");
       expect(((event.part as MessagePartTool).state as ToolStateFull).output, equals("short"));
     });
 

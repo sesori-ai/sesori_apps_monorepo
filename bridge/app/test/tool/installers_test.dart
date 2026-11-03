@@ -722,7 +722,7 @@ function Invoke-RestMethod {
 Write-Output \$release.TagName
 ''';
         final result = await Process.run(
-          powerShell!,
+          powerShell ?? fail('PowerShell is not installed on this host'),
           ['-NoProfile', '-NonInteractive', '-Command', script],
           environment: {
             ...Platform.environment,
@@ -751,7 +751,7 @@ Write-Output \$release.ChecksumsUrl
 Write-Output \$ReleasesApiUrl
 ''';
         final result = await Process.run(
-          powerShell!,
+          powerShell ?? fail('PowerShell is not installed on this host'),
           ['-NoProfile', '-NonInteractive', '-Command', script],
           environment: {
             ...Platform.environment,

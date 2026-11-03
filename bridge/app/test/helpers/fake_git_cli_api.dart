@@ -28,8 +28,8 @@ class _FailingProcessRunner() implements ProcessRunner {
   Future<ProcessResult> run({
     required String executable,
     required List<String> arguments,
-    String? workingDirectory,
-    Map<String, String>? environment,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     return ProcessResult(0, 1, "", "FakeGitCliApi: git is unavailable in this test");

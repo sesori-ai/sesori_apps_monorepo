@@ -22,7 +22,6 @@ class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpA
   String? lastBody;
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
   Future<ApiResponse<T>> getForUser<T>({
     required Uri url,
     required String userId,
@@ -37,7 +36,6 @@ class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpA
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
   Future<ApiResponse<T>> putForUser<T>({
     required Uri url,
     required String userId,
@@ -100,7 +98,7 @@ void main() {
     );
 
     expect(client.lastUrl?.path, "/product-analytics/preference");
-    expect(jsonDecode(client.lastBody!), {
+    expect(jsonDecode(client.lastBody ?? fail("no request body")), {
       "preference": "disabled",
       "expectedRevision": 2,
       "operationId": "123e4567-e89b-42d3-a456-426614174000",

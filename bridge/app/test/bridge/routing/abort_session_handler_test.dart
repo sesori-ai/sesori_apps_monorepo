@@ -63,7 +63,7 @@ void main() {
         } on RelayResponse catch (response) {
           expect(response.status, 409);
           expect(
-            SessionAbortRefusal.fromJson(jsonDecodeMap(response.body!)),
+            SessionAbortRefusal.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
             SessionAbortNotPerformedRefusal(reason: sharedReason),
           );
         }

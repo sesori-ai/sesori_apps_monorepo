@@ -11,7 +11,7 @@ void main() {
     final startup = Completer<({int event, int errorCode})>();
     addTearDown(api.stop);
     api.start(
-      callback: (event, errorCode) {
+      callback: ({required event, required errorCode}) {
         if ((event == 0 || event == 3) && !startup.isCompleted) {
           startup.complete((event: event, errorCode: errorCode));
         }

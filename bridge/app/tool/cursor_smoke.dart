@@ -51,7 +51,7 @@ Future<void> main(List<String> args) async {
   stdout.writeln("session: ${session.id}");
 
   // Wait for the turn to finish (status flips back to idle).
-  final statuses = await _waitIdle(plugin, session.id, const Duration(seconds: 90));
+  final statuses = await _waitIdle(plugin, sessionId: session.id, timeout: const Duration(seconds: 90));
   stdout.writeln("status: $statuses");
   stdout.writeln("assistant: ${assistant.toString().trim()}");
 
@@ -67,7 +67,7 @@ Future<void> main(List<String> args) async {
   exit(0);
 }
 
-Future<String> _waitIdle(BridgePluginApi plugin, String sessionId, Duration timeout) async {
+Future<String> _waitIdle(BridgePluginApi plugin, {required String sessionId, required Duration timeout}) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     final statuses = await plugin.getSessionStatuses();
