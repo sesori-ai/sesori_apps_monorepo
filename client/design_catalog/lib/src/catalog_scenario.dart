@@ -4,7 +4,7 @@ enum CatalogButtonSize() {
   sm,
   md,
   lg,
-  xl;
+  xl,
 }
 
 /// Supported visual hierarchy values exposed by the catalog manifest.
@@ -13,7 +13,7 @@ enum CatalogButtonHierarchy() {
   primaryAlt,
   secondary,
   tertiary,
-  link;
+  link,
 }
 
 /// Supported semantic tones exposed by the catalog manifest.
@@ -21,21 +21,21 @@ enum CatalogButtonTone() {
   regular,
   destructive,
   warning,
-  success;
+  success,
 }
 
 /// Interaction states that can be represented without pointer automation.
 enum CatalogButtonState() {
   enabled,
   disabled,
-  loading;
+  loading,
 }
 
 /// Icons used by curated scenarios. The catalog renderer owns their Flutter mapping.
 enum CatalogButtonIcon() {
   add,
   arrowRight,
-  trash;
+  trash,
 }
 
 /// Content layouts supported by the production button.

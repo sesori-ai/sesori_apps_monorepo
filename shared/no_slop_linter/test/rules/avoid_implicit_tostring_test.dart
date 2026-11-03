@@ -17,7 +17,8 @@ class AvoidImplicitTostringTest extends AnalysisRuleTest {
   }
 
   void test_reportForObjectInInterpolation() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class User {
   final String name;
   User(this.name);
@@ -28,11 +29,14 @@ void main() {
   final msg = 'User: $user';
   print(msg);
 }
-''', [lint(121, 4)]);
+''',
+      [lint(121, 4)],
+    );
   }
 
   void test_reportForObjectInInterpolationWithBraces() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Widget {}
 
 void main() {
@@ -40,7 +44,9 @@ void main() {
   final msg = 'Widget: ${widget}';
   print(msg);
 }
-''', [lint(83, 6)]);
+''',
+      [lint(83, 6)],
+    );
   }
 
   void test_noErrorForStringType() async {
@@ -226,7 +232,8 @@ void main() {
   }
 
   void test_reportInNonLoggingFunction() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class User {
   final String name;
   User(this.name);
@@ -239,6 +246,8 @@ void main() {
   logt('User: $user');
   print('User: $user');
 }
-''', [lint(168, 4)]);
+''',
+      [lint(168, 4)],
+    );
   }
 }

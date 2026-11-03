@@ -9,7 +9,7 @@ enum _FirebaseAnalyticsStartupState() {
   disabled,
   waitingForCrawlGate,
   suspendedForStoreCrawl,
-  active
+  active,
 }
 
 @firebaseEnabledEnvironment

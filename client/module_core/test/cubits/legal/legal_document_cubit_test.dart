@@ -40,9 +40,7 @@ void main() {
     var attempt = 0;
     when(() => repository.getMarkdown(document: any(named: "document"))).thenAnswer((_) async {
       attempt++;
-      return attempt == 1
-          ? ApiResponse.error(ApiError.generic())
-          : ApiResponse.success("# Privacy Policy");
+      return attempt == 1 ? ApiResponse.error(ApiError.generic()) : ApiResponse.success("# Privacy Policy");
     });
 
     final cubit = LegalDocumentCubit(repository: repository, document: LegalDocument.privacy);

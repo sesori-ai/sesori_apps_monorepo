@@ -74,7 +74,8 @@ class VelopackUpdateApi({
 
   Future<_VelopackCall> _call() async {
     final Directory supportDirectory = await _applicationSupportDirectory.resolve();
-    final Directory directory = await Directory(path.join(supportDirectory.path, _directoryName)).create(recursive: true);
+    final Directory directory = await Directory(path.join(supportDirectory.path, _directoryName))
+        .create(recursive: true);
     return _VelopackCall(libraryPath: _bundleSource.velopackLibraryPath, feedDirectory: directory.path);
   }
 }

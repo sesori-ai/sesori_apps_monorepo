@@ -18,8 +18,10 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     // that answer every real HttpClient request with a 400, which breaks
     // suites exercising a local HTTP server.
     if (BindingBase.debugBindingType() == null) return;
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform_views, (call) async => null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform_views,
+      (call) async => null,
+    );
   });
   await testMain();
 }

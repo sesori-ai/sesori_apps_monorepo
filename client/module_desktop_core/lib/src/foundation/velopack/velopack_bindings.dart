@@ -28,7 +28,8 @@ final class VelopackUpdateInfo() extends Struct {
 }
 
 /// A Velopack call failed; [message] is the library's last error.
-final class const VelopackException({required final String operation, required final String message}) implements Exception {
+final class const VelopackException({required final String operation, required final String message})
+    implements Exception {
   @override
   String toString() => "Velopack could not $operation: $message";
 }

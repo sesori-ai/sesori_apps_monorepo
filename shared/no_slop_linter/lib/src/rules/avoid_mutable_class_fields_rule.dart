@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
@@ -26,7 +27,8 @@ import 'package:analyzer/error/error.dart';
 /// - `external String name;` - external fields (JS interop) are allowed
 /// - Fields in private classes (`class _Foo { String bar; }`) are allowed
 class AvoidMutableClassFieldsRule extends NoSlopRule {
-  AvoidMutableClassFieldsRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids non-final public instance fields.');
+  AvoidMutableClassFieldsRule({required super.ignoreTestFiles})
+    : super(name: code.lowerCaseName, description: 'Forbids non-final public instance fields.');
 
   static const code = LintCode(
     'avoid_mutable_class_fields',

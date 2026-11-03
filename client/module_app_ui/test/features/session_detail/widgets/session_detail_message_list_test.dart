@@ -1191,7 +1191,9 @@ void main() {
       expect(heights.skip(15), everyElement(moreOrLessEquals(heights[15], epsilon: 0.01)));
     });
 
-    testWidgets("a Cancel fading out as its prompt is dispatched cancels nothing and is gone for a screen reader", (tester) async {
+    testWidgets("a Cancel fading out as its prompt is dispatched cancels nothing and is gone for a screen reader", (
+      tester,
+    ) async {
       final harness = await sendAndList(tester);
       final semantics = tester.ensureSemantics();
       await tester.pump(const Duration(seconds: 2));
@@ -4722,13 +4724,21 @@ void main() {
           tester,
           messages: [
             _message(messageId: "u0", role: "user", text: "First"),
-            _message(messageId: "a0", role: "assistant", text: _multilineText(label: "Older", lines: 60)),
+            _message(
+              messageId: "a0",
+              role: "assistant",
+              text: _multilineText(label: "Older", lines: 60),
+            ),
             _message(
               messageId: "u4",
               role: "user",
               text: _multilineText(label: "Long", lines: 24),
             ),
-            _message(messageId: "a4", role: "assistant", text: _multilineText(label: "Answer", lines: 7)),
+            _message(
+              messageId: "a4",
+              role: "assistant",
+              text: _multilineText(label: "Answer", lines: 7),
+            ),
           ],
         );
         final own = ownBubble(tester, "u4");

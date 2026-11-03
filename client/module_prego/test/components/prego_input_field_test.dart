@@ -4,7 +4,9 @@ import "package:theme_prego/module_prego.dart";
 
 Widget _harness(Widget child) => MaterialApp(
   theme: ThemeData(extensions: [PregoDesignSystem.light]),
-  home: Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: child)),
+  home: Scaffold(
+    body: Padding(padding: const EdgeInsets.all(16), child: child),
+  ),
 );
 
 void main() {
@@ -59,8 +61,7 @@ void main() {
 
     testWidgets("does not flag an invalid first pass mid-typing, then revalidates after submit", (tester) async {
       final formKey = GlobalKey<FormState>();
-      String? validate(String? value) =>
-          (value == null || !value.contains("@")) ? "Invalid email" : null;
+      String? validate(String? value) => (value == null || !value.contains("@")) ? "Invalid email" : null;
 
       await tester.pumpWidget(
         _harness(

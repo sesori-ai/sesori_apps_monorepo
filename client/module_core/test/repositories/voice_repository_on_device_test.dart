@@ -14,7 +14,6 @@ class _MockRealtimeVoiceClient() extends Mock implements RealtimeVoiceClient;
 
 class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
 
-
 final class _FakeSession() implements OnDeviceSpeechSession {
   final StreamController<OnDeviceSpeechEvent> controller = StreamController<OnDeviceSpeechEvent>();
   final List<Uint8List> sent = [];

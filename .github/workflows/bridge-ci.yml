@@ -133,6 +133,10 @@ jobs:
             echo "::endgroup::"
           done
 
+      - name: Check shared formatting
+        if: matrix.task == 'shared'
+        run: tool/dart_format.sh --check shared
+
   # Kill-on-close of the backend runtime job object exists only on Windows.
   windows-job-object:
     needs: toolchain

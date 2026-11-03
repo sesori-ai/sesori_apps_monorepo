@@ -118,8 +118,10 @@ class const _YoloSettingsRow() extends StatelessWidget {
         ready.pluginWarmupMutation is! PluginWarmupMutationInProgress;
     final bridgeOutdated = switch (state) {
       BridgeSettingsReady(yoloMutation: YoloMutationUnsupported()) || BridgeSettingsUnsupported() => true,
-      BridgeSettingsReady() || BridgeSettingsLoading() || BridgeSettingsDisconnected() || BridgeSettingsFailure() =>
-        false,
+      BridgeSettingsReady() ||
+      BridgeSettingsLoading() ||
+      BridgeSettingsDisconnected() ||
+      BridgeSettingsFailure() => false,
     };
 
     void toggle({required bool enabled}) {
@@ -176,10 +178,12 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
     };
     final interactive = ready != null && enabled != null && ready.yoloMutation is! YoloMutationInProgress;
     final bridgeOutdated = switch (state) {
-      BridgeSettingsReady(pluginWarmupMutation: PluginWarmupMutationUnsupported()) || BridgeSettingsUnsupported() =>
-        true,
-      BridgeSettingsReady() || BridgeSettingsLoading() || BridgeSettingsDisconnected() || BridgeSettingsFailure() =>
-        false,
+      BridgeSettingsReady(pluginWarmupMutation: PluginWarmupMutationUnsupported()) ||
+      BridgeSettingsUnsupported() => true,
+      BridgeSettingsReady() ||
+      BridgeSettingsLoading() ||
+      BridgeSettingsDisconnected() ||
+      BridgeSettingsFailure() => false,
     };
 
     void toggle({required bool enabled}) {

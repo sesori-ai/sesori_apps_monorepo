@@ -17,7 +17,8 @@ class AvoidNavigatorOfTest extends AnalysisRuleTest {
   }
 
   void test_reportForNavigatorOf() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Navigator {
   static dynamic of(dynamic context, {bool rootNavigator = false}) => null;
 }
@@ -25,11 +26,14 @@ class Navigator {
 void navigate(dynamic context) {
   Navigator.of(context);
 }
-''', [lint(132, 21)]);
+''',
+      [lint(132, 21)],
+    );
   }
 
   void test_reportForNavigatorOfWithRootNavigator() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Navigator {
   static dynamic of(dynamic context, {bool rootNavigator = false}) => null;
 }
@@ -37,7 +41,9 @@ class Navigator {
 void navigate(dynamic context) {
   Navigator.of(context, rootNavigator: true);
 }
-''', [lint(132, 42)]);
+''',
+      [lint(132, 42)],
+    );
   }
 
   void test_noErrorForOtherNavigatorMembers() async {

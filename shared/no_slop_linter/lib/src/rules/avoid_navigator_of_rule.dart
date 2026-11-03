@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
@@ -22,7 +23,8 @@ import 'package:analyzer/error/error.dart';
 /// - `context.goRoute(AppRoute.xxx())` - GoRouter custom extension
 /// - `context.pop()` - GoRouter pop (works for dialogs/sheets too)
 class AvoidNavigatorOfRule extends NoSlopRule {
-  AvoidNavigatorOfRule({required super.ignoreTestFiles}) : super(
+  AvoidNavigatorOfRule({required super.ignoreTestFiles})
+    : super(
         name: code.lowerCaseName,
         description: 'Forbids direct Navigator usage.',
       );
@@ -30,8 +32,7 @@ class AvoidNavigatorOfRule extends NoSlopRule {
   static const code = LintCode(
     'avoid_navigator_of',
     'Avoid direct Navigator usage. Use GoRouter instead.',
-    correctionMessage:
-        'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
+    correctionMessage: 'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
   );
 
   @override

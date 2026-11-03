@@ -17,17 +17,23 @@ class PreferTextAlignDirectionalTest extends AnalysisRuleTest {
   }
 
   void test_reportForTextAlignLeft() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 enum TextAlign { left, right, start, end, center, justify }
 final align = TextAlign.left;
-''', [lint(74, 14)]);
+''',
+      [lint(74, 14)],
+    );
   }
 
   void test_reportForTextAlignRight() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 enum TextAlign { left, right, start, end, center, justify }
 final align = TextAlign.right;
-''', [lint(74, 15)]);
+''',
+      [lint(74, 15)],
+    );
   }
 
   void test_noErrorForTextAlignStart() async {

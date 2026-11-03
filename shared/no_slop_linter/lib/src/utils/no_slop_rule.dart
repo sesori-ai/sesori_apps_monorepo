@@ -23,8 +23,7 @@ abstract class NoSlopRule extends AnalysisRule {
     if (ignoreTestFiles && _isTestFile(currentPath)) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
-    final isAnalyzed = libraryElement.session.analysisContext.contextRoot
-        .isAnalyzed(currentPath);
+    final isAnalyzed = libraryElement.session.analysisContext.contextRoot.isAnalyzed(currentPath);
     return isAnalyzed == false;
   }
 
@@ -65,8 +64,7 @@ abstract class NoSlopMultiRule extends MultiAnalysisRule {
     if (ignoreTestFiles && _isTestFile(currentPath)) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
-    final isAnalyzed = libraryElement.session.analysisContext.contextRoot
-        .isAnalyzed(currentPath);
+    final isAnalyzed = libraryElement.session.analysisContext.contextRoot.isAnalyzed(currentPath);
     return isAnalyzed == false;
   }
 

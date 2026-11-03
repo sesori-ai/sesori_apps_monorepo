@@ -14,5 +14,4 @@ import "package:flutter/foundation.dart";
 ///
 /// Pass [platform] only to override the resolved platform (e.g. in tests);
 /// callers normally invoke it with no arguments.
-bool glassEffectsEnabled({TargetPlatform? platform}) =>
-    (platform ?? defaultTargetPlatform) != TargetPlatform.android;
+bool glassEffectsEnabled({TargetPlatform? platform}) => (platform ?? defaultTargetPlatform) != TargetPlatform.android;

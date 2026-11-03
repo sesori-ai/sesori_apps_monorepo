@@ -8,7 +8,11 @@ part "message.g.dart";
 ///
 /// [unknown] is forward-compatible and must be presented as non-agent output.
 @JsonEnum()
-enum MessageSender() { agent, system, unknown }
+enum MessageSender() {
+  agent,
+  system,
+  unknown,
+}
 
 /// Sealed class representing a message in a session.
 ///
@@ -54,9 +58,7 @@ sealed class const Message._() with _$Message {
     // COMPATIBILITY 2026-08-27 (v1.8.2): Older bridges omit sender because assistant envelopes did not
     // distinguish automation. Default to agent until the minimum supported bridge always sends sender, then remove
     // @Default.
-    @JsonKey(unknownEnumValue: MessageSender.unknown)
-    @Default(MessageSender.agent)
-    MessageSender sender,
+    @JsonKey(unknownEnumValue: MessageSender.unknown) @Default(MessageSender.agent) MessageSender sender,
     required MessageTime? time,
   }) = MessageAssistant;
 

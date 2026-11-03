@@ -18,6 +18,5 @@ sealed class ProductAnalyticsPreferenceUpdateRequest with _$ProductAnalyticsPref
     required String operationId,
   }) = _ProductAnalyticsPreferenceUpdateRequest;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$ProductAnalyticsPreferenceUpdateRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$ProductAnalyticsPreferenceUpdateRequestFromJson(json);
 }

@@ -22,11 +22,11 @@ sealed class NotificationData with _$NotificationData {
 }
 
 enum NotificationCategory({
-    required final String id,
-    required final String displayName,
-    required final String description,
-    required final NotificationImportance importance,
-  }) {
+  required final String id,
+  required final String displayName,
+  required final String description,
+  required final NotificationImportance importance,
+}) {
   @JsonValue("ai_interaction")
   aiInteraction(
     id: "ai_interaction",
@@ -63,8 +63,6 @@ enum NotificationCategory({
     description: "Notifications from the Sesori app",
     importance: .defaultImportance,
   ),
-  ;
-
 }
 
 enum NotificationEventType() {

@@ -432,8 +432,7 @@ void _runGenerate() {
   print("Generated $_colorsPath");
 
   // Generate FLOAT token files
-  final spacingPrimitives =
-      (processed["spacingPrimitives"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+  final spacingPrimitives = (processed["spacingPrimitives"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
   final spacingTokens = (processed["spacingTokens"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
   final radiusTokens = (processed["radiusTokens"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
   final widthTokens = (processed["widthTokens"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
@@ -903,10 +902,7 @@ String _figmaNameToDart(String figmaName) {
 /// - `Base`, `white` → `baseWhite`
 String _primitiveToDartName(String group, String shade) {
   // Normalize group: remove parentheses, split on spaces, camelCase
-  final normalized = group
-      .replaceAll("(", "")
-      .replaceAll(")", "")
-      .trim();
+  final normalized = group.replaceAll("(", "").replaceAll(")", "").trim();
 
   final words = normalized.split(RegExp(r"\s+"));
   final groupCamel = StringBuffer();

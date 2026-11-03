@@ -77,9 +77,7 @@ extension BuildContextLocalization on BuildContext {
     if (diff.inDays < 1) return loc.timestampCompactHours(diff.inHours);
     if (diff.inDays < 30) return loc.timestampCompactDays(diff.inDays);
 
-    final pattern = date.year == now.year
-        ? _dateFormat("Md")
-        : _dateFormat("yMd");
+    final pattern = date.year == now.year ? _dateFormat("Md") : _dateFormat("yMd");
     return pattern.format(date);
   }
 

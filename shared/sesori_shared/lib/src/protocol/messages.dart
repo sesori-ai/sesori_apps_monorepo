@@ -5,7 +5,11 @@ import "../models/sesori/message_part.dart";
 part "messages.freezed.dart";
 part "messages.g.dart";
 
-enum BridgeConnectionNotificationPolicy() { normal, suppress, conservative }
+enum BridgeConnectionNotificationPolicy() {
+  normal,
+  suppress,
+  conservative,
+}
 
 @Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake)
 sealed class RelayMessage with _$RelayMessage {

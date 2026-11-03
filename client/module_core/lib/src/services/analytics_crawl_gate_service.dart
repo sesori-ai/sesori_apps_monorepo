@@ -7,12 +7,12 @@ import "../repositories/installed_app_build_repository.dart";
 
 enum AnalyticsCrawlGateEligibility() {
   eligibleRelease,
-  ineligible
+  ineligible,
 }
 
 enum AnalyticsStoreCrawlGate() {
   allow,
-  suspend
+  suspend,
 }
 
 @lazySingleton

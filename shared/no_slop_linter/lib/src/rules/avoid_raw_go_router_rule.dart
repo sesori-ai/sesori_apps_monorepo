@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/type.dart';
@@ -27,17 +28,16 @@ import 'package:analyzer/error/error.dart';
 /// - `context.pop()` - No path involved, always safe
 /// - `uri.replace(...)`, `delete(table).go()` - Not a navigation receiver
 class AvoidRawGoRouterRule extends NoSlopRule {
-  AvoidRawGoRouterRule({required super.ignoreTestFiles}) : super(
+  AvoidRawGoRouterRule({required super.ignoreTestFiles})
+    : super(
         name: code.lowerCaseName,
-        description:
-            'Forbids raw GoRouter navigation and direct GoRouter access.',
+        description: 'Forbids raw GoRouter navigation and direct GoRouter access.',
       );
 
   static const code = LintCode(
     'avoid_raw_go_router',
     'Avoid raw GoRouter navigation. Use typed extensions instead.',
-    correctionMessage:
-        'Use context.goRoute(AppRoute.xxx()) or context.pushRoute(AppRoute.xxx()).',
+    correctionMessage: 'Use context.goRoute(AppRoute.xxx()) or context.pushRoute(AppRoute.xxx()).',
   );
 
   @override

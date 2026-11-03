@@ -17,27 +17,36 @@ class AvoidAsCastTest extends AnalysisRuleTest {
   }
 
   void test_reportForForceCast() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(Object obj) {
   final str = obj as String;
 }
-''', [lint(37, 13)]);
+''',
+      [lint(37, 13)],
+    );
   }
 
   void test_reportForForceCastInExpression() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(List<Object> list) {
   final length = (list[0] as String).length;
 }
-''', [lint(48, 17)]);
+''',
+      [lint(48, 17)],
+    );
   }
 
   void test_reportForNullableTypeCast() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(Object obj) {
   final str = obj as String?;
 }
-''', [lint(37, 14)]);
+''',
+      [lint(37, 14)],
+    );
   }
 
   void test_noErrorForIsCheck() async {

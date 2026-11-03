@@ -297,7 +297,8 @@ eagerly "just in case."
 - For localized production changes, run directly relevant tests and analyze the
   owning package or module. CI runs the full test and analyzer matrix; investigate
   failures reported by the PR monitor rather than duplicating that matrix locally.
-- CI checks `dart format` on every tracked, non-generated Dart file in `bridge/`.
+- CI checks `dart format` on every tracked, non-generated Dart file in `bridge/`,
+  `client/` and `shared/`.
   After `dart pub get`, run `tool/dart_format.sh <directory>...` from the
   repository root to format, or add `--check` to check as CI does. The script
   owns the generated-file exclusions.

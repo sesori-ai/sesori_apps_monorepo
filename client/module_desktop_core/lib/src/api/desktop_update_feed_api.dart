@@ -26,8 +26,12 @@ class DesktopUpdateFeedApi({
 
   Future<DesktopUpdateFeed> fetchFeed({required DesktopBundleIdentity identity}) async {
     final String feedName = "releases.${_bundleSource.channel.name}.json";
-    final Uint8List bytes = await _get(uri: _feedUri(identity: identity, fileName: feedName));
-    final Uint8List signature = await _get(uri: _feedUri(identity: identity, fileName: "$feedName.sig"));
+    final Uint8List bytes = await _get(
+      uri: _feedUri(identity: identity, fileName: feedName),
+    );
+    final Uint8List signature = await _get(
+      uri: _feedUri(identity: identity, fileName: "$feedName.sig"),
+    );
     return DesktopUpdateFeed(bytes: bytes, signature: String.fromCharCodes(signature).trim());
   }
 

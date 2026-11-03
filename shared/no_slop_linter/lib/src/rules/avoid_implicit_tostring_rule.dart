@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/type.dart';
@@ -22,7 +23,7 @@ import 'package:analyzer/error/error.dart';
 /// - `"value: ${obj.toStringShort()}"` - custom formatting method
 class AvoidImplicitTostringRule extends NoSlopRule {
   AvoidImplicitTostringRule({required super.ignoreTestFiles})
-      : super(name: code.lowerCaseName, description: 'Detects implicit toString() calls in string interpolation.');
+    : super(name: code.lowerCaseName, description: 'Detects implicit toString() calls in string interpolation.');
 
   static const code = LintCode(
     'avoid_implicit_tostring',

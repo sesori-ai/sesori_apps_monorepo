@@ -4,12 +4,17 @@ import "../repositories/models/product_analytics_preference_models.dart";
 import "models/product_analytics_preference_snapshot.dart";
 import "models/product_analytics_state.dart";
 
-enum _ProductAnalyticsActivationPolicy() { inactive, authoritativeSynchronization }
+enum _ProductAnalyticsActivationPolicy() {
+  inactive,
+  authoritativeSynchronization,
+}
 
-final class const ProductAnalyticsPreferenceTransition({required final ProductAnalyticsPreferenceSnapshot snapshot, required final ProductAnalyticsState state});
+final class const ProductAnalyticsPreferenceTransition({
+  required final ProductAnalyticsPreferenceSnapshot snapshot,
+  required final ProductAnalyticsState state,
+});
 
 final class const ProductAnalyticsPreferenceStateMapper({required final AnalyticsRuntimeCapability _capability}) {
-
   ProductAnalyticsState fromLocal({
     required ProductAnalyticsPreferenceSnapshot snapshot,
     required bool postSplashReady,

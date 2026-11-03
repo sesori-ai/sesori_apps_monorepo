@@ -1,7 +1,10 @@
 import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 
-enum ComposerInputMode() { typed, voiceAssisted }
+enum ComposerInputMode() {
+  typed,
+  voiceAssisted,
+}
 
 @immutable
 final class const VoiceOriginSpan._({required final int start, required final int end}) {

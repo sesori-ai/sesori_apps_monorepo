@@ -1,1 +1,5 @@
-enum AnalyticsDeliveryResult() { acceptedBySdk, deferredUntilPreference, failed }
+enum AnalyticsDeliveryResult() {
+  acceptedBySdk,
+  deferredUntilPreference,
+  failed,
+}

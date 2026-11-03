@@ -17,33 +17,42 @@ class AvoidBangOperatorTest extends AnalysisRuleTest {
   }
 
   void test_reportForBangOnVariable() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void main() {
   String? nullableString;
   final value = nullableString!;
   print(value);
 }
-''', [lint(70, 1)]);
+''',
+      [lint(70, 1)],
+    );
   }
 
   void test_reportForBangInMethodChain() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void main() {
   String? nullableString;
   print(nullableString!.length);
 }
-''', [lint(62, 1)]);
+''',
+      [lint(62, 1)],
+    );
   }
 
   void test_reportForMultipleBangOperators() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void main() {
   String? a;
   String? b;
   print(a!);
   print(b!);
 }
-''', [lint(49, 1), lint(62, 1)]);
+''',
+      [lint(49, 1), lint(62, 1)],
+    );
   }
 
   void test_noErrorForNullCheck() async {

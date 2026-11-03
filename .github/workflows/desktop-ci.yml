@@ -74,6 +74,7 @@ jobs:
               - 'client/analysis_options.yaml'
               - 'client/Makefile'
               - 'client/app/all_lint_rules.yaml'
+              - 'tool/dart_format.sh'
               - '.github/workflows/desktop-ci.yml'
               - '.github/actions/setup-xcode/**'
               - '.github/actions/resolve-flutter-dart-version/**'
@@ -168,6 +169,10 @@ jobs:
       - name: ${{ matrix.command }}
         run: ${{ matrix.command }}
         working-directory: client/${{ matrix.package }}
+
+      - name: Check formatting
+        if: matrix.command == 'dart analyze --fatal-infos'
+        run: tool/dart_format.sh --check client/${{ matrix.package }}
 
   supervised_e2e:
     needs: changes

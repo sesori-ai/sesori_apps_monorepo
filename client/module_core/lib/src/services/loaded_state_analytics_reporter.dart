@@ -5,9 +5,16 @@ import "../logging/logging.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "product_analytics_service.dart";
 
-enum LoadedStateAnalyticsClassification() { empty, nonEmpty }
+enum LoadedStateAnalyticsClassification() {
+  empty,
+  nonEmpty,
+}
 
-enum _LoadedStateAnalyticsGuard() { ready, inFlight, consumed }
+enum _LoadedStateAnalyticsGuard() {
+  ready,
+  inFlight,
+  consumed,
+}
 
 final class _LoadedStateOccurrence({
   required final LoadedStateAnalyticsClassification classification,

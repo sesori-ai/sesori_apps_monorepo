@@ -32,18 +32,15 @@ final class const CatalogImportMutationUnavailable() extends CatalogImportMutati
 /// The request may or may not have reached the bridge: a timed-out or lost
 /// relay response fires after delivery as readily as before it. A caller must
 /// not write the harness off.
-final class const CatalogImportMutationUncertain({required final ApiError error})
-    extends CatalogImportMutationResult;
+final class const CatalogImportMutationUncertain({required final ApiError error}) extends CatalogImportMutationResult;
 
 /// Any error not classified as a `404`, a `503`, or an uncertain outcome.
 /// [error] is retained so the caller can log it.
-final class const CatalogImportMutationFailure({required final ApiError error})
-    extends CatalogImportMutationResult;
+final class const CatalogImportMutationFailure({required final ApiError error}) extends CatalogImportMutationResult;
 
 /// Outcome of reading the bridge's latest per-plugin import statuses.
 sealed class const CatalogImportStatusesResult() {
-  const factory supported({required List<CatalogImportProgress> statuses}) =
-      CatalogImportStatusesSupported;
+  const factory supported({required List<CatalogImportProgress> statuses}) = CatalogImportStatusesSupported;
 
   const factory unsupported() = CatalogImportStatusesUnsupported;
 
@@ -57,5 +54,4 @@ final class const CatalogImportStatusesSupported({
 /// The bridge has no catalog import route.
 final class const CatalogImportStatusesUnsupported() extends CatalogImportStatusesResult;
 
-final class const CatalogImportStatusesFailure({required final ApiError error})
-    extends CatalogImportStatusesResult;
+final class const CatalogImportStatusesFailure({required final ApiError error}) extends CatalogImportStatusesResult;

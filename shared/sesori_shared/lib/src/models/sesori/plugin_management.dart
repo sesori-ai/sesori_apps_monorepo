@@ -41,19 +41,53 @@ enum PluginRuntimeState() {
   };
 }
 
-enum PluginManagementWorkState() { idle, busy, unknown }
+enum PluginManagementWorkState() {
+  idle,
+  busy,
+  unknown,
+}
 
-enum PluginManagementCapability() { lifecycle, setupRefresh, idleTimeout, install, authentication, unknown }
+enum PluginManagementCapability() {
+  lifecycle,
+  setupRefresh,
+  idleTimeout,
+  install,
+  authentication,
+  unknown,
+}
 
-enum PluginAuthenticationState() { idle, inProgress, unknown }
+enum PluginAuthenticationState() {
+  idle,
+  inProgress,
+  unknown,
+}
 
-enum PluginStopMode() { safe, force }
+enum PluginStopMode() {
+  safe,
+  force,
+}
 
 /// Phase of a phone-triggered managed runtime install, streamed via the
 /// `plugin.install.progress` SSE event. `completed` and `failed` are terminal.
-enum PluginInstallPhase() { downloading, verifying, extracting, finalizing, completed, failed, unknown }
+enum PluginInstallPhase() {
+  downloading,
+  verifying,
+  extracting,
+  finalizing,
+  completed,
+  failed,
+  unknown,
+}
 
-enum PluginLifecycleConflictReason() { inFlight, busy, workStateUnknown, transitioning, notEnabled, unsupported, unknown }
+enum PluginLifecycleConflictReason() {
+  inFlight,
+  busy,
+  workStateUnknown,
+  transitioning,
+  notEnabled,
+  unsupported,
+  unknown,
+}
 
 enum PluginAuthenticationConflictReason() {
   inFlight,
@@ -177,8 +211,7 @@ sealed class PluginAuthenticationProgress with _$PluginAuthenticationProgress {
 
   const factory unknown() = PluginAuthenticationUnknownProgress;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$PluginAuthenticationProgressFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginAuthenticationProgressFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)
@@ -220,8 +253,7 @@ sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest 
   @FreezedUnionValue("install")
   const factory install() = PluginLifecycleInstallRequest;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$PluginLifecycleCommandRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginLifecycleCommandRequestFromJson(json);
 }
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
@@ -242,10 +274,8 @@ sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateReques
     required String pluginId,
   }) = PluginIdleTimeoutClearOverrideRequest;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$PluginIdleTimeoutUpdateRequestFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutUpdateRequestFromJson(json);
 }
-
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginLifecycleConflict with _$PluginLifecycleConflict {
@@ -268,6 +298,5 @@ sealed class PluginAuthenticationConflict with _$PluginAuthenticationConflict {
     required PluginManagementMetadata current,
   }) = _PluginAuthenticationConflict;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$PluginAuthenticationConflictFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$PluginAuthenticationConflictFromJson(json);
 }

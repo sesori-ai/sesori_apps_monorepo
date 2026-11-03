@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
@@ -47,7 +48,8 @@ import 'package:analyzer/error/error.dart';
 /// - switch (enumValue) { case A: ...; case B: ...; } - exhaustive enum
 /// - switch (stringValue) { case 'a': ...; default: ... } - default OK for String
 class PreferExhaustiveSwitchRule extends NoSlopRule {
-  PreferExhaustiveSwitchRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids catch-all cases in switches on enums and sealed classes.');
+  PreferExhaustiveSwitchRule({required super.ignoreTestFiles})
+    : super(name: code.lowerCaseName, description: 'Forbids catch-all cases in switches on enums and sealed classes.');
 
   static const code = LintCode(
     'prefer_exhaustive_switch',

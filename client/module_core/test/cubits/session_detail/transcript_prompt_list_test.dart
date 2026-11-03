@@ -390,14 +390,42 @@ void main() {
             ?.messageId;
 
     test("pins the last prompt before the loaded range while it starts inside that prompt's turn", () {
-      expect(pinOf(messages: [_working(id: "a3"), _answer(id: "a4"), _user(id: "u4")], hasOlderMessages: true), "u3");
+      expect(
+        pinOf(
+          messages: [
+            _working(id: "a3"),
+            _answer(id: "a4"),
+            _user(id: "u4"),
+          ],
+          hasOlderMessages: true,
+        ),
+        "u3",
+      );
       // A loaded range without a prompt is all inside the latest one's turn.
       expect(pinOf(messages: [_answer(id: "a4")], hasOlderMessages: true), "u4");
     });
 
     test("pins nothing when the loaded range starts with a prompt or at the start of the history", () {
-      expect(pinOf(messages: [_user(id: "u4"), _answer(id: "a4")], hasOlderMessages: true), isNull);
-      expect(pinOf(messages: [_answer(id: "a0"), _user(id: "u1")], hasOlderMessages: false), isNull);
+      expect(
+        pinOf(
+          messages: [
+            _user(id: "u4"),
+            _answer(id: "a4"),
+          ],
+          hasOlderMessages: true,
+        ),
+        isNull,
+      );
+      expect(
+        pinOf(
+          messages: [
+            _answer(id: "a0"),
+            _user(id: "u1"),
+          ],
+          hasOlderMessages: false,
+        ),
+        isNull,
+      );
     });
 
     test("pins nothing without an index", () {

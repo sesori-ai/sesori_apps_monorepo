@@ -70,7 +70,7 @@ sealed class const ProductAnalyticsPreferenceConflictResponse._() with _$Product
 
 @JsonEnum(valueField: "wireValue")
 enum ProductAnalyticsPreferenceConflictError({required final String wireValue}) {
-  conflict(wireValue: "conflict");
+  conflict(wireValue: "conflict"),
 }
 
 @lazySingleton

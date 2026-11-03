@@ -712,7 +712,10 @@ class SessionWindowService({
       final time = session.time;
       if (activityAt == null || time == null || activityAt <= time.updated) continue;
       final _SessionChange change = (
-        session: session.copyWith(time: time.copyWith(updated: activityAt), lastUserActivityAt: activityAt),
+        session: session.copyWith(
+          time: time.copyWith(updated: activityAt),
+          lastUserActivityAt: activityAt,
+        ),
         removed: false,
       );
       _replay?.add(change);
@@ -918,9 +921,7 @@ class SessionWindowService({
             sessions: loaded.sessions,
             counts: loaded.counts,
             nextCursor: loaded.nextCursor,
-            loadMore: loaded.loadMore == SessionWindowLoadMore.loading
-                ? SessionWindowLoadMore.failed
-                : loaded.loadMore,
+            loadMore: loaded.loadMore == SessionWindowLoadMore.loading ? SessionWindowLoadMore.failed : loaded.loadMore,
             awaitingAnswer: false,
           ),
         );
