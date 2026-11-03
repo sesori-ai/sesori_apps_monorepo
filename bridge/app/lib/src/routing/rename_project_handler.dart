@@ -7,7 +7,7 @@ import "request_handler.dart";
 ///
 /// Routes through [ProjectRepository], which owns the aggregate display name
 /// and stamps unseen state on the returned project without calling a plugin.
-class RenameProjectHandler(final ProjectRepository _projectRepository)
+class RenameProjectHandler({required final ProjectRepository _projectRepository})
     extends BodyRequestHandler<RenameProjectRequest, Project> {
   this
     : super(

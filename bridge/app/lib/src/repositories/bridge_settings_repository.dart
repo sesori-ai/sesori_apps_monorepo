@@ -55,21 +55,21 @@ class BridgeSettingsRepository({
 
   Future<void> ensureConfigExists() async {
     if (await _api.readConfig() == null) {
-      await _api.writeConfig(_jsonEncoder.convert(const BridgeSettings().toJson()));
+      await _api.writeConfig(jsonContent: _jsonEncoder.convert(const BridgeSettings().toJson()));
     }
   }
 
   Future<void> openInDefaultEditor() {
     final defaultEditorApi = _defaultEditorApi;
     if (defaultEditorApi == null) throw StateError('Default editor is unavailable.');
-    return defaultEditorApi.openFile(configFilePath);
+    return defaultEditorApi.openFile(filePath: configFilePath);
   }
 
   Future<BridgeSettings> loadSettings() async {
     final storedConfig = await _api.readConfig();
     if (storedConfig == null) {
       const defaults = BridgeSettings();
-      await _api.writeConfig(_jsonEncoder.convert(defaults.toJson()));
+      await _api.writeConfig(jsonContent: _jsonEncoder.convert(defaults.toJson()));
       _currentSettings = defaults;
       return defaults;
     }
@@ -88,7 +88,7 @@ class BridgeSettingsRepository({
         );
       }
       try {
-        await _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
+        await _api.writeConfig(jsonContent: _jsonEncoder.convert(settings.toJson()));
       } on Object catch (error, stackTrace) {
         Log.w('[bridge-settings] failed to repair config at $configFilePath', error, stackTrace);
       }
@@ -111,7 +111,7 @@ class BridgeSettingsRepository({
             updated.pullRequestRefreshIntervalSeconds > maximumPullRequestRefreshIntervalSeconds) {
           throw const PullRequestRefreshIntervalFormatException();
         }
-        await _api.writeConfig(_jsonEncoder.convert(updated.toJson()));
+        await _api.writeConfig(jsonContent: _jsonEncoder.convert(updated.toJson()));
         _currentSettings = updated;
         _settingsChanges.add(BridgeSettingsChange(previous: current, current: updated));
         return updated;

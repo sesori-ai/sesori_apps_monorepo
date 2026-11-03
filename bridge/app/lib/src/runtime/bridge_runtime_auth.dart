@@ -127,7 +127,7 @@ class const BridgeRuntimeAuthService({
     final String? oAuthSessionToken;
     switch (provider) {
       case OAuthProvider():
-        final result = await _loginOAuthService.performOAuthLogin(provider);
+        final result = await _loginOAuthService.performOAuthLogin(provider: provider);
         tokens = result.tokens;
         oAuthSessionToken = result.sessionToken;
       case EmailAuthProvider():

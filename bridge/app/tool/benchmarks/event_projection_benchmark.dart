@@ -192,7 +192,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         connection: relay.connection,
         attachmentDelivery: MessageAttachmentDelivery.inline,
       );
-      sseManager.unsubscribe(1);
+      sseManager.unsubscribe(connID: 1);
     } finally {
       await relay.dispose();
     }
@@ -305,7 +305,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
     }
     final mapped = bridgeEventMapper.map(event: output.single, pluginId: _pluginId);
     if (mapped == null) throw StateError("projected session update did not map to a shared event");
-    sseManager.enqueueEvent(SseEventDelivery.uniform(event: mapped));
+    sseManager.enqueueEvent(delivery: SseEventDelivery.uniform(event: mapped));
   }
 
   Future<void> _seed({required AppDatabase database}) async {

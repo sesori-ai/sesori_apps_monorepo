@@ -70,7 +70,7 @@ class ScratchRepository({
       Log.d("Kept the folder of a deleted session because another session still uses it: $folder");
       return;
     }
-    final type = _filesystemApi.entityType(folder);
+    final type = _filesystemApi.entityType(path: folder);
     if (type == FileSystemEntityType.notFound) {
       Log.d("The folder of a deleted session was already gone: $folder");
       return;

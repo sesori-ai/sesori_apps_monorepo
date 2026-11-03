@@ -179,7 +179,7 @@ class _SourceFilesystemApi({
   }
 
   @override
-  FileSystemEntityType entityType(String path) =>
+  FileSystemEntityType entityType({required String path}) =>
       files.containsKey(path) ? FileSystemEntityType.file : FileSystemEntityType.notFound;
 
   @override

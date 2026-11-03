@@ -57,7 +57,7 @@ class WorktreeRepository({
   }
 
   bool worktreePathExists({required String worktreePath}) =>
-      _filesystemApi.entityType(worktreePath) != FileSystemEntityType.notFound;
+      _filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.notFound;
 
   /// The live directory for [projectId] — where git operations for the
   /// project must run. Unknown ids are rejected: an id is not a directory.

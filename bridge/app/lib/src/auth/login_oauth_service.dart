@@ -22,7 +22,7 @@ const Duration _defaultPerRequestTimeout = Duration(seconds: _perRequestTimeoutS
 /// - macOS: `open`
 /// - Linux: `xdg-open`
 /// - Windows: `rundll32 url.dll,FileProtocolHandler`
-Future<void> openOAuthBrowser(String url) async {
+Future<void> openOAuthBrowser({required String url}) async {
   late final ProcessResult result;
   if (Platform.isMacOS) {
     result = await Process.run("open", [url]);
@@ -136,7 +136,7 @@ class LoginOAuthService({
     required final AuthApi _api,
     required final AuthClientType _clientType,
     required final DeviceInfo _device,
-    required final Future<void> Function(String url) _browserLauncher,
+    required final Future<void> Function({required String url}) _browserLauncher,
     required final BrowserOpenability Function() _browserOpenability,
     @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
     @visibleForTesting final Duration _pollTimeout = _defaultPollTimeout,
@@ -149,7 +149,7 @@ class LoginOAuthService({
   ///
   /// The temporary session token is generated in memory, sent only through the
   /// `X-Sesori-Session-Token` header, and never persisted or placed in URLs.
-  Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
+  Future<({TokenData tokens, String sessionToken})> performOAuthLogin({required OAuthProvider provider}) async {
     final sessionToken = _generateSessionToken();
     final initResp = await _api.initOAuthSession(
       provider: provider,
@@ -180,7 +180,7 @@ class LoginOAuthService({
     Console.message(initResp.authUrl);
     if (openability != BrowserOpenability.no) {
       try {
-        await _browserLauncher(initResp.authUrl);
+        await _browserLauncher(url: initResp.authUrl);
       } catch (e) {
         Console.message("Could not open a browser automatically; open the URL above manually: $e");
       }

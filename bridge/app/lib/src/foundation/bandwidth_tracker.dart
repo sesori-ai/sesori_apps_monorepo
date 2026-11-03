@@ -35,9 +35,9 @@ class BandwidthTracker({required Stream<int> bytesSent}) {
     final last1h = _sumSince(now.subtract(const Duration(hours: 1)));
 
     Log.d(
-      "last 1m: ${formatBytes(last1m)} "
-      "| last 10m: ${formatBytes(last10m)} "
-      "| last 1h: ${formatBytes(last1h)}",
+      "last 1m: ${formatBytes(bytes: last1m)} "
+      "| last 10m: ${formatBytes(bytes: last10m)} "
+      "| last 1h: ${formatBytes(bytes: last1h)}",
     );
   }
 
@@ -54,7 +54,7 @@ class BandwidthTracker({required Stream<int> bytesSent}) {
   }
 
   /// Format a byte count as a human-readable string (B / KB / MB).
-  static String formatBytes(int bytes) {
+  static String formatBytes({required int bytes}) {
     if (bytes < 1024) return "$bytes B";
     if (bytes < 1024 * 1024) {
       return "${(bytes / 1024).toStringAsFixed(2)} KB";

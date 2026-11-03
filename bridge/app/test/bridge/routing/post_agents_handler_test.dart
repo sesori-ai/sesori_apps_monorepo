@@ -21,7 +21,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       addTearDown(db.close);
       repository = singlePluginAgentRepository(plugin: plugin, projectsDao: db.projectsDao);
-      handler = PostAgentsHandler(repository);
+      handler = PostAgentsHandler(repository: repository);
     });
 
     tearDown(() => plugin.close());

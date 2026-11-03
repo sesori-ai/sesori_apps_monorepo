@@ -198,7 +198,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           connection: relay.connection,
           attachmentDelivery: MessageAttachmentDelivery.inline,
         );
-        sseManager.unsubscribe(1);
+        sseManager.unsubscribe(connID: 1);
       } finally {
         await relay.dispose();
       }
@@ -596,7 +596,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
     if (encoded.contains(fixture.sessions.first.id)) {
       throw StateError("shared event leaked backend session id ${fixture.sessions.first.id}");
     }
-    sseManager.enqueueEvent(SseEventDelivery.uniform(event: shared));
+    sseManager.enqueueEvent(delivery: SseEventDelivery.uniform(event: shared));
     return 1;
   }
 
@@ -890,18 +890,18 @@ class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
   int enqueueCount = 0;
 
   @override
-  void enqueueEvent(SseEventDelivery delivery) {
+  void enqueueEvent({required SseEventDelivery delivery}) {
     enqueueCount++;
-    super.enqueueEvent(delivery);
+    super.enqueueEvent(delivery: delivery);
   }
 }
 
 class _ExistingFilesystemApi() implements FilesystemApi {
   @override
-  bool directoryExists(String path) => true;
+  bool directoryExists({required String path}) => true;
 
   @override
-  Future<bool> directoryExistsAsync(String path) async => true;
+  Future<bool> directoryExistsAsync({required String path}) async => true;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

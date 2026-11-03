@@ -95,7 +95,7 @@ class SSEManager({
   /// queue for replay during [replayWindow]. If the phone reconnects within
   /// that window, [subscribePath] re-attaches the orphan and all buffered
   /// events are delivered.
-  void unsubscribe(int connID) {
+  void unsubscribe({required int connID}) {
     _subscriptionOwners.remove(connID);
     final subscriber = _subscribers.remove(connID);
     _subscriptions.remove(connID)?.cancel();
@@ -146,7 +146,7 @@ class SSEManager({
 
   /// Enqueues [delivery] into all active and non-expired orphan queues, giving
   /// each queue the shape its own subscription asked for.
-  void enqueueEvent(SseEventDelivery delivery) {
+  void enqueueEvent({required SseEventDelivery delivery}) {
     for (final subscriber in _subscribers.values) {
       subscriber.queue.enqueue(delivery.eventFor(delivery: subscriber.attachmentDelivery));
     }
@@ -240,7 +240,7 @@ class SSEManager({
 
   void _unsubscribeIfOwned({required int connID, required Object subscriptionOwner}) {
     if (!identical(_subscriptionOwners[connID], subscriptionOwner)) return;
-    unsubscribe(connID);
+    unsubscribe(connID: connID);
   }
 
   /// Converts a [SesoriSseEvent] to the OpenCode wire format expected by the

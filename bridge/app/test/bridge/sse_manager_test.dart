@@ -133,7 +133,7 @@ void main() {
 
       manager.subscribeForTest(1, relayClient);
       manager.subscribeForTest(2, relayClient);
-      manager.unsubscribe(1);
+      manager.unsubscribe(connID: 1);
 
       expect(manager.subscriberCount, equals(1));
       expect(manager.pendingReplayCount, equals(1));
@@ -154,7 +154,7 @@ void main() {
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, relayClient);
-      manager.unsubscribe(1);
+      manager.unsubscribe(connID: 1);
 
       expect(manager.subscriberCount, equals(0));
       expect(manager.pendingReplayCount, equals(1));
@@ -178,7 +178,7 @@ void main() {
       expect(client.sentConnIDs, [1]);
 
       // Phone disconnects — only subscriber, queue should become orphan.
-      manager.unsubscribe(1);
+      manager.unsubscribe(connID: 1);
       expect(manager.pendingReplayCount, equals(1));
 
       // Events arriving while phone is away are buffered in the orphan queue.
@@ -212,7 +212,7 @@ void main() {
       manager.enqueueUniform(_event("event-a"));
       await _waitForSendCount(client, 2);
 
-      manager.unsubscribe(1);
+      manager.unsubscribe(connID: 1);
       manager.enqueueUniform(_event("event-b"));
       await _waitForSendCount(client, 3);
 
@@ -241,7 +241,7 @@ void main() {
         manager.subscribeForTest(1, client);
         manager.subscribeForTest(2, client);
 
-        manager.unsubscribe(1);
+        manager.unsubscribe(connID: 1);
         manager.enqueueUniform(_event("queued-for-orphan"));
         await _waitForSendCount(client, 1);
 
@@ -364,7 +364,7 @@ void main() {
       manager.subscribeForTest(1, client);
       manager.subscribeForTest(2, client, attachmentDelivery: MessageAttachmentDelivery.storedReference);
 
-      manager.enqueueEvent(_attachmentShapedDelivery());
+      manager.enqueueEvent(delivery: _attachmentShapedDelivery());
       await _waitForSendCount(client, 2);
 
       final legacy = await _decryptEventData(client.sentPayloads[0], roomKey);
@@ -387,9 +387,9 @@ void main() {
 
       manager.subscribeForTest(1, client);
       manager.subscribeForTest(2, client, attachmentDelivery: MessageAttachmentDelivery.storedReference);
-      manager.unsubscribe(1);
-      manager.unsubscribe(2);
-      manager.enqueueEvent(_attachmentShapedDelivery());
+      manager.unsubscribe(connID: 1);
+      manager.unsubscribe(connID: 2);
+      manager.enqueueEvent(delivery: _attachmentShapedDelivery());
 
       // The capable phone reconnects first; the inline orphan must stay behind
       // for the old app it belongs to.
@@ -419,7 +419,7 @@ void main() {
 
       manager.subscribeForTest(1, relayClient);
       manager.subscribeForTest(2, relayClient);
-      manager.unsubscribe(1);
+      manager.unsubscribe(connID: 1);
 
       manager.stop();
 
@@ -644,7 +644,7 @@ extension on SSEManager {
     );
   }
 
-  void enqueueUniform(SesoriSseEvent event) => enqueueEvent(SseEventDelivery.uniform(event: event));
+  void enqueueUniform(SesoriSseEvent event) => enqueueEvent(delivery: SseEventDelivery.uniform(event: event));
 }
 
 late RelayConnection _testRelayConnection;
