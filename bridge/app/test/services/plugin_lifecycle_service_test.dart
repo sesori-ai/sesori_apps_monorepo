@@ -2842,6 +2842,54 @@ void main() {
     expect(service.metadataSnapshot.single.actionHint, isNotNull);
   });
 
+  test("a degraded plugin's own hint replaces the generic one in its metadata and management row", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    const genericHint = "Check the bridge console if this plugin needs attention.";
+    const pluginHint = "Verify the configured One binary and retry.";
+
+    repository.publish(state: PluginRuntimeState.degraded, workState: PluginWorkState.idle, leaseCount: 0);
+    expect(service.metadataSnapshot.single.actionHint, genericHint);
+    expect(service.managementSnapshot.plugins.single.actionHint, genericHint);
+
+    repository.publish(
+      state: PluginRuntimeState.degraded,
+      degradedActionHint: pluginHint,
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+    );
+    expect(service.metadataSnapshot.single.state, PluginLifecycleState.degraded);
+    expect(service.metadataSnapshot.single.actionHint, pluginHint);
+    expect(service.managementSnapshot.plugins.single.actionHint, pluginHint);
+
+    repository.publish(state: PluginRuntimeState.active, workState: PluginWorkState.idle, leaseCount: 0);
+    expect(service.metadataSnapshot.single.actionHint, isNull);
+    expect(service.managementSnapshot.plugins.single.actionHint, isNull);
+  });
+
   test("idle suspension requires every safe-stop gate and a full timeout", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
@@ -3137,6 +3185,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
 
   void publish({
     PluginRuntimeState state = PluginRuntimeState.active,
+    String? degradedActionHint,
     required PluginWorkState workState,
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
@@ -3145,6 +3194,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
     _current = [
       _snapshot(
         state: state,
+        degradedActionHint: degradedActionHint,
         workState: workState,
         leaseCount: leaseCount,
         transition: transition,
@@ -3170,6 +3220,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
         startAllowed: true,
         generation: 1,
         state: PluginRuntimeState.dormant,
+        degradedActionHint: null,
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
@@ -3185,6 +3236,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
 
   static PluginRuntimeSnapshot _snapshot({
     PluginRuntimeState state = PluginRuntimeState.active,
+    String? degradedActionHint,
     required PluginWorkState workState,
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
@@ -3200,6 +3252,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
       startAllowed: startAllowed,
       generation: 1,
       state: state,
+      degradedActionHint: degradedActionHint,
       workState: workState,
       leaseCount: leaseCount,
       transition: transition,
@@ -3223,6 +3276,7 @@ class _ConflictingDisableLifecycleRepository() extends _IdleLifecycleRepository 
         startAllowed: true,
         generation: 1,
         state: PluginRuntimeState.active,
+        degradedActionHint: null,
         workState: PluginWorkState.busy,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
@@ -3250,6 +3304,7 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
         startAllowed: true,
         generation: 1,
         state: PluginRuntimeState.stopping,
+        degradedActionHint: null,
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.stopping,
@@ -3293,6 +3348,7 @@ class _CommandLifecycleRepository({
     startAllowed: false,
     generation: null,
     state: PluginRuntimeState.disabled,
+    degradedActionHint: null,
     workState: PluginWorkState.unknown,
     leaseCount: 0,
     transition: PluginRuntimeTransition.none,
@@ -3495,6 +3551,7 @@ class _CommandLifecycleRepository({
       startAllowed: startAllowed,
       generation: _current.generation,
       state: state,
+      degradedActionHint: null,
       workState: PluginWorkState.unknown,
       leaseCount: 0,
       transition: transition,
@@ -3510,6 +3567,7 @@ class _CommandLifecycleRepository({
     startAllowed: _current.startAllowed,
     generation: 1,
     state: _current.state,
+    degradedActionHint: _current.degradedActionHint,
     workState: _current.workState,
     leaseCount: _current.leaseCount,
     transition: _current.transition,

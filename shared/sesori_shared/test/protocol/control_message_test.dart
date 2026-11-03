@@ -11,8 +11,12 @@ void main() {
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         unhealthyPlugins: [
-          ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the configured Pi binary and retry."),
-          ControlUnhealthyPlugin(displayName: "Codex", actionHint: null),
+          ControlUnhealthyPlugin(
+            displayName: "Pi",
+            state: ControlUnhealthyPluginState.degraded,
+            actionHint: "Verify the configured Pi binary and retry.",
+          ),
+          ControlUnhealthyPlugin(displayName: "Codex", state: ControlUnhealthyPluginState.failed, actionHint: null),
         ],
         activeSessionCount: 3,
       ),

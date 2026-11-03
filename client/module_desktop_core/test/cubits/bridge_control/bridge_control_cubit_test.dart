@@ -154,7 +154,13 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
-          unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary.")],
+          unhealthyPlugins: [
+            ControlUnhealthyPlugin(
+              displayName: "Pi",
+              state: ControlUnhealthyPluginState.degraded,
+              actionHint: "Verify the Pi binary.",
+            ),
+          ],
           activeSessionCount: 3,
         ),
       );
@@ -179,7 +185,13 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
-          unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary.")],
+          unhealthyPlugins: [
+            ControlUnhealthyPlugin(
+              displayName: "Pi",
+              state: ControlUnhealthyPluginState.degraded,
+              actionHint: "Verify the Pi binary.",
+            ),
+          ],
         ),
       );
       await pumpEventQueue();
@@ -191,21 +203,53 @@ void main() {
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
           unhealthyPlugins: [
-            ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary."),
-            ControlUnhealthyPlugin(displayName: "Codex", actionHint: null),
-            ControlUnhealthyPlugin(displayName: "Cursor", actionHint: "Sign in again."),
+            ControlUnhealthyPlugin(
+              displayName: "Pi",
+              state: ControlUnhealthyPluginState.degraded,
+              actionHint: "Verify the Pi binary.",
+            ),
+            ControlUnhealthyPlugin(displayName: "Codex", state: ControlUnhealthyPluginState.failed, actionHint: null),
+            ControlUnhealthyPlugin(
+              displayName: "Cursor",
+              state: ControlUnhealthyPluginState.degraded,
+              actionHint: "Sign in again.",
+            ),
           ],
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Degraded · Pi, Codex, Cursor");
+      // Mixed states lead with the worst and keep each name under its own state.
+      expect(cubit.state.statusLabel, "Failed · Codex; Degraded · Pi, Cursor");
       expect(cubit.state.statusDetail, "Pi: Verify the Pi binary.\nCursor: Sign in again.");
 
       statusTracker.applyStatus(
         status: const ControlStatus(
           startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          unhealthyPlugins: [
+            ControlUnhealthyPlugin(
+              displayName: "Codex",
+              state: ControlUnhealthyPluginState.failed,
+              actionHint: "Restart the bridge to retry.",
+            ),
+          ],
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Failed · Codex");
+      expect(cubit.state.statusDetail, "Restart the bridge to retry.");
+
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.disconnected,
-          unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary.")],
+          unhealthyPlugins: [
+            ControlUnhealthyPlugin(
+              displayName: "Pi",
+              state: ControlUnhealthyPluginState.degraded,
+              actionHint: "Verify the Pi binary.",
+            ),
+          ],
         ),
       );
       await pumpEventQueue();

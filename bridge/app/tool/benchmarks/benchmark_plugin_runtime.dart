@@ -47,6 +47,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
         startAllowed: true,
         generation: 1,
         state: PluginRuntimeState.active,
+        degradedActionHint: null,
         workState: PluginWorkState.idle,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,

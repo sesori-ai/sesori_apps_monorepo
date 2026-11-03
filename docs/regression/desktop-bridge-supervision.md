@@ -19,11 +19,16 @@ and keep native close/quit behavior safe.
   existing login-required path; an offline token refresh must not be treated as
   a logout.
 - While the bridge is otherwise connected, a degraded or failed harness names
-  itself in the status ("Degraded · Pi", several joined in harness order) in the
-  bridge popover, tray menu and sidebar tooltip, and the popover shows each
-  harness's action hint under the status, name-prefixed when several need
-  attention. The hint grows and fades in and out without snapping the actions
-  below it. A harness that is merely stopping (idle suspension, restart,
+  itself in the status ("Degraded · Pi", "Failed · Codex") in the bridge
+  popover, tray menu and sidebar tooltip, and the popover shows each harness's
+  action hint under the status, name-prefixed when several need attention.
+  Several harnesses are grouped by state, failed before degraded, and keep
+  harness order within each group ("Failed · Codex; Degraded · Pi, Claude").
+  The hint is the harness's own when it reported one with a degradation that
+  needs the user (Pi: "Verify the configured Pi binary and retry."), otherwise
+  the bridge's generic hint. The status dot stays amber for an unhealthy
+  harness; red stays reserved for the bridge itself failing to run. The hint
+  grows and fades in and out without snapping the actions below it. A harness that is merely stopping (idle suspension, restart,
   disable) is not reported. The control channel carries the unhealthy harness
   names and hints; the GUI only talks to the helper it bundles, so that contract
   has no cross-version fallback.
@@ -231,7 +236,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for tray status-dot derivation and icon variant swaps, Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for unhealthy-harness status labels, grouping and hints, tray status-dot derivation and icon variant swaps, Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash diagnostics, and default folder-handler availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -264,9 +269,10 @@ verify the actual relocated helper, not merely the presence of its binary.
   the crash budget, or loses the waiting status after control-channel reconnect.
   A disconnected helper claims ready, or a temporary desktop token refresh is
   treated as logout/login-required instead of waiting for authentication.
-- The status shows a bare "Degraded" without the unhealthy harness, drops its
-  action hint, flashes degraded while a harness is only stopping, or snaps the
-  popover's actions when the hint appears or clears.
+- The status shows a bare "Degraded" without the unhealthy harness, calls a
+  failed harness degraded, shows the generic hint when the harness reported its
+  own, drops its action hint, flashes degraded while a harness is only stopping,
+  or snaps the popover's actions when the hint appears or clears.
 
 - No tray or command subscriptions until a signed-in screen reads the cubit.
 - A second process creates another tray/helper, fails to focus the owner, or a

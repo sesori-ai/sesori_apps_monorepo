@@ -107,12 +107,24 @@ enum ControlRelayConnectionState() {
 sealed class ControlUnhealthyPlugin with _$ControlUnhealthyPlugin {
   const factory({
     required String displayName,
+    required ControlUnhealthyPluginState state,
 
     /// What the user can do about it, when the bridge has a hint.
     required String? actionHint,
   }) = _ControlUnhealthyPlugin;
 
   factory fromJson(Map<String, dynamic> json) => _$ControlUnhealthyPluginFromJson(json);
+}
+
+/// How a [ControlUnhealthyPlugin] is impaired. The GUI only talks to the
+/// helper it bundles, so this closed set needs no unknown fallback.
+enum ControlUnhealthyPluginState() {
+  /// Running but impaired; it may recover or need the user to act.
+  degraded,
+
+  /// Stopped after a terminal failure; the bridge and other plugins keep
+  /// running without it.
+  failed,
 }
 
 /// The kind of prompt a [ControlPromptRequest] surfaces. [unknown] is the

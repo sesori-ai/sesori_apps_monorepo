@@ -201,7 +201,9 @@ void main() {
       _state(
         process: const BridgeProcessRunning(pid: 42),
         status: connected.copyWith(
-          unhealthyPlugins: const [ControlUnhealthyPlugin(displayName: "Pi", actionHint: hint)],
+          unhealthyPlugins: const [
+            ControlUnhealthyPlugin(displayName: "Pi", state: ControlUnhealthyPluginState.degraded, actionHint: hint),
+          ],
         ),
         label: "Degraded · Pi",
         detail: hint,

@@ -83,6 +83,48 @@ void main() {
     expect(RegExp('Plugin "one" recovered: PluginReady').allMatches(logs.text), hasLength(1));
   });
 
+  test("snapshots carry the plugin's latest degraded hint only while degraded", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final statuses = factory.plugins.single.statuses;
+    expect(runtime.snapshot.single.degradedActionHint, isNull);
+
+    for (final hint in ["Retry once.", "Retry twice."]) {
+      statuses.add(
+        PluginDegraded(
+          since: DateTime.utc(2026, 11, 2),
+          recoverable: true,
+          requiresUserAction: true,
+          userActionHint: hint,
+        ),
+      );
+      await pumpEventQueue();
+      expect(runtime.snapshot.single.degradedActionHint, hint);
+    }
+
+    statuses.add(
+      PluginDegraded(
+        since: DateTime.utc(2026, 11, 2),
+        recoverable: true,
+        requiresUserAction: false,
+        userActionHint: "Not an instruction.",
+      ),
+    );
+    await pumpEventQueue();
+    expect(runtime.snapshot.single.degradedActionHint, isNull);
+
+    statuses.add(const PluginRestarting(attempt: 1, reason: null));
+    await pumpEventQueue();
+    expect(runtime.snapshot.single.state, PluginRuntimeState.degraded);
+    expect(runtime.snapshot.single.degradedActionHint, isNull);
+
+    statuses.add(const PluginReady());
+    await pumpEventQueue();
+    expect(runtime.snapshot.single.degradedActionHint, isNull);
+  });
+
   test("a warm-up that fails or hangs neither fails nor delays the start", () async {
     final warmUpGate = Completer<void>();
     final factory = _FakeGenerationFactory(

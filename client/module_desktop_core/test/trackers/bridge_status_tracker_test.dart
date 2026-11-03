@@ -27,14 +27,18 @@ void main() {
       status: const ControlStatus(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Retry.")],
+        unhealthyPlugins: [
+          ControlUnhealthyPlugin(displayName: "Pi", state: ControlUnhealthyPluginState.degraded, actionHint: "Retry."),
+        ],
         activeSessionCount: 3,
       ),
     );
 
     expect(tracker.status.helperOnline, isTrue);
     expect(tracker.status.relay, ControlRelayConnectionState.connected);
-    expect(tracker.status.unhealthyPlugins, const [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Retry.")]);
+    expect(tracker.status.unhealthyPlugins, const [
+      ControlUnhealthyPlugin(displayName: "Pi", state: ControlUnhealthyPluginState.degraded, actionHint: "Retry."),
+    ]);
     expect(tracker.status.activeSessionCount, 3);
   });
 
@@ -46,7 +50,9 @@ void main() {
       status: const ControlStatus(
         startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
-        unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: null)],
+        unhealthyPlugins: [
+          ControlUnhealthyPlugin(displayName: "Pi", state: ControlUnhealthyPluginState.degraded, actionHint: null),
+        ],
         activeSessionCount: 2,
       ),
     );

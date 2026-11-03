@@ -1150,7 +1150,10 @@ class PluginLifecycleService({
         runtimeState: snapshot.state,
         unavailableState: PluginLifecycleState.unavailable,
       );
-      _metadataById[snapshot.pluginId] = current.copyWith(state: state, actionHint: _actionHint(state));
+      _metadataById[snapshot.pluginId] = current.copyWith(
+        state: state,
+        actionHint: snapshot.degradedActionHint ?? _actionHint(state),
+      );
     }
     final subject = _metadataSubject;
     if (subject != null && !subject.isClosed) subject.add(_orderedMetadata());
@@ -1166,7 +1169,8 @@ class PluginLifecycleService({
       for (final plugin in _registeredPlugins)
         if (_requireEligiblePluginIds().contains(plugin.id))
           plugin.id: () {
-            final runtimeState = snapshots[plugin.id]?.state;
+            final snapshot = snapshots[plugin.id];
+            final runtimeState = snapshot?.state;
             final state = _lifecycleState(
               runtimeState: runtimeState,
               unavailableState: setupById[plugin.id] is PluginSetupReady
@@ -1178,7 +1182,7 @@ class PluginLifecycleService({
               displayName: plugin.displayName,
               isDefault: false,
               state: state,
-              actionHint: _actionHint(state),
+              actionHint: snapshot?.degradedActionHint ?? _actionHint(state),
               supportsPromptAttachments: plugin.supportsPromptAttachments,
             );
           }(),
@@ -1293,7 +1297,7 @@ class PluginLifecycleService({
           if (_isManagementCapabilityAvailable(pluginId: plugin.id, capability: capability))
             ?_mapManagementCapability(capability: capability),
       },
-      actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
+      actionHint: setup.actionHint ?? snapshot.degradedActionHint ?? _managementActionHint(snapshot.state),
     );
   }
 
