@@ -425,7 +425,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       null when isLoading => const SizedBox.expand(key: Key("desktop-home-waiting")),
       null => _prompt(
         onProjectSelected: ({required projectId, required projectName}) {
-          getIt<LastNewSessionProjectTracker>().record(projectId: projectId);
+          context.read<AllSessionsCubit>().rememberNewSessionProject(projectId: projectId);
           setState(() => _projectId = projectId);
         },
       ),

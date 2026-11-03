@@ -843,7 +843,6 @@ void main() {
     late List<String> selected;
     late List<({String projectId, String sessionId})> opened;
     late _MockChatInputModeCubit inputMode;
-    late FakeLastNewSessionProjectTracker lastProject;
 
     setUpAll(() => registerFallbackValue(const NewSessionProject(id: "fallback", name: null, kind: ProjectKind.folder)));
 
@@ -884,8 +883,6 @@ void main() {
       opened = [];
       inputMode = _MockChatInputModeCubit();
       whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
-      lastProject = FakeLastNewSessionProjectTracker();
-      getIt.registerSingleton<LastNewSessionProjectTracker>(lastProject);
     });
 
     Future<void> pumpStart({
@@ -1044,7 +1041,7 @@ void main() {
 
       expect(createdFor, ["two"]);
       expect(shownProject(tester), "two");
-      expect(lastProject.records, ["two"]);
+      verify(() => sessions.rememberNewSessionProject(projectId: "two")).called(1);
     });
 
     testWidgets("picking another project moves the same composer there", (tester) async {

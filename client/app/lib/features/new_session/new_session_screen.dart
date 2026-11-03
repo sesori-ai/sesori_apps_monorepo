@@ -25,7 +25,7 @@ class const NewSessionScreen({
     if (projectId == null) {
       return NewSessionProjectPrompt(
         onProjectSelected: ({required projectId, required projectName}) {
-          getIt<LastNewSessionProjectTracker>().record(projectId: projectId);
+          context.read<AllSessionsCubit>().rememberNewSessionProject(projectId: projectId);
           context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry));
         },
         onBack: context.pop,

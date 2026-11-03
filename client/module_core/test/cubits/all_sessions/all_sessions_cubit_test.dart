@@ -310,6 +310,12 @@ void main() {
       lastProject.record(projectId: "scratch");
       async.elapse(Duration.zero);
       expect(cubit.state.defaultProjectId, "scratch");
+
+      // So does a project chosen before any composer exists.
+      cubit.rememberNewSessionProject(projectId: "two");
+      async.elapse(Duration.zero);
+      expect(lastProject.records, ["scratch", "two"]);
+      expect(cubit.state.defaultProjectId, "two");
     });
   });
 

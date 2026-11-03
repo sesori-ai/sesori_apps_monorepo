@@ -104,7 +104,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       if (isLoading) return _empty();
       return _prompt(
         onProjectSelected: ({required projectId, required projectName}) {
-          getIt<LastNewSessionProjectTracker>().record(projectId: projectId);
+          context.read<AllSessionsCubit>().rememberNewSessionProject(projectId: projectId);
           setState(() => _projectId = projectId);
         },
       );

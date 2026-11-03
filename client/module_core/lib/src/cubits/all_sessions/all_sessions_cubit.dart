@@ -84,6 +84,11 @@ class AllSessionsCubit({
     _update();
   }
 
+  /// Remembers [projectId], chosen for a new session before any composer
+  /// exists, as where the next new session opens on the computer being viewed.
+  /// A composer's own picks are remembered by its cubit.
+  void rememberNewSessionProject({required String projectId}) => _lastProjectTracker.record(projectId: projectId);
+
   /// The loaded rows narrow at once; the window asks the bridge once typing
   /// pauses.
   void setQuery({required String query}) => _emit(query: query, quickFilter: state.quickFilter);
