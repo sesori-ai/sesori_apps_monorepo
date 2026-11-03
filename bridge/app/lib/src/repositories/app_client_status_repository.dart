@@ -14,12 +14,6 @@ class AppClientStatusRepository({required final SesoriServerApi _api}) {
     try {
       final response = await _api.getAppClientStatus(accessToken: accessToken);
       return response.registered ? const AppClientRegistered() : const AppClientAbsent();
-    } on SesoriServerApiException catch (error, stackTrace) {
-      if (error.statusCode == 404 || error.statusCode == 405) {
-        // COMPATIBILITY 2026-07-18 (v1.5.1): Auth servers predating app-client status return 404/405, so onboarding must fail open for older/custom deployments. Remove this fallback and its endpoint-omission tests after every supported auth server exposes GET /auth/app-clients/status.
-        return AppClientStatusUnavailable(error: error, stackTrace: stackTrace);
-      }
-      return AppClientStatusUnavailable(error: error, stackTrace: stackTrace);
     } on Object catch (error, stackTrace) {
       return AppClientStatusUnavailable(error: error, stackTrace: stackTrace);
     }

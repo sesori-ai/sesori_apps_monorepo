@@ -22,21 +22,22 @@ sealed class ProjectSummary with _$ProjectSummary {
     required String id,
     required String? name,
     required String path,
-    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks once
+    // public bridges older than v1.5.1 are unsupported.
     required ProjectTime? time,
-    // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once public bridges older than v1.3.0 are unsupported.
     @Default(false) bool hasUnseenChanges,
     // Whether the project's folder no longer exists at [path]; see [Project.directoryMissing].
-    // COMPATIBILITY 2026-09-24 (v1.9.1): Old bridges omit directory-missing state on project lists, so their projects read as present. Require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-09-24 (v1.9.1): Old bridges omit directory-missing state on project lists, so their projects read as present. Require the field once public bridges older than v1.9.1 are unsupported.
     @Default(false) bool directoryMissing,
-    // COMPATIBILITY 2026-10-25 (v1.9.2): Older bridges omit kind, and every project they list is a folder. Require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-10-25 (v1.9.2): Older bridges omit kind, and every project they list is a folder. Require the field once public bridges older than v1.10.1 are unsupported.
     @JsonKey(unknownEnumValue: ProjectKind.folder) @Default(ProjectKind.folder) ProjectKind kind,
     // Top-level, non-archived sessions: what opening the project lists.
-    // COMPATIBILITY 2026-10-31 (v1.11.0): Older bridges omit the count, so their projects show none and sort by recency alone. Require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-10-31 (v1.11.0): Older bridges omit the count, so their projects show none and sort by recency alone. Require the field once public bridges older than v1.11.0 are unsupported.
     @Default(0) int sessionCount,
   }) = _ProjectSummary;
 
-  // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Pass the payload directly once those bridges are unsupported.
+  // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Pass the payload directly once public bridges older than v1.4.1 are unsupported.
   factory fromJson(Map<String, dynamic> json) => _$ProjectSummaryFromJson({
     ...json,
     "path": json["path"] ?? json["id"],
@@ -54,29 +55,30 @@ sealed class Project with _$Project {
     // pinned at first open). Defaults to "" so payloads from older bridges
     // (which don't send a path) still decode; clients fall back to [id] when
     // empty.
-    // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
+    // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once public bridges older than v1.4.1 are unsupported.
     @Default("") String path,
-    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks once
+    // public bridges older than v1.5.1 are unsupported.
     required ProjectTime? time,
     // Whether this project has at least one non-archived session with unseen
     // activity. Backend-derived from its sessions. Defaults to false so older
     // payloads (and the baseline) deserialize as "seen".
-    // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once public bridges older than v1.3.0 are unsupported.
     @Default(false) bool hasUnseenChanges,
     // Whether the project's directory no longer exists on disk at its recorded
     // location (the folder was moved or deleted). The bridge stamps this from a
     // filesystem check; the client renders such projects as "folder not found"
     // instead of driving into a dead path. Defaults to false so older payloads
     // deserialize as "present".
-    // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once public bridges older than v1.4.0 are unsupported.
     @Default(false) bool directoryMissing,
     // Whether this project can create dedicated Git worktrees. This is a
     // capability rather than a raw Git-state field so clients render the
     // behavior the bridge can actually provide.
-    // COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
+    // COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once public bridges older than v1.5.2 are unsupported.
     @Default(true) bool supportsDedicatedWorktrees,
     // COMPATIBILITY 2026-08-28 (v1.8.2): Published older bridges omit the nullable glossary key.
-    // Remove omission-specific coverage when every supported bridge sends this field.
+    // Remove omission-specific coverage once public bridges older than v1.8.2 are unsupported.
     @ProjectGlossaryKeyJsonConverter() required ProjectGlossaryKey? voiceGlossaryKey,
   }) = _Project;
 
@@ -130,7 +132,7 @@ enum OpenProjectGitAction() {
 sealed class OpenProjectRequest with _$OpenProjectRequest {
   const factory({
     required String path,
-    // COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
+    // COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until public apps older than v1.5.2 are unsupported.
     @Default(OpenProjectGitAction.openWithoutGit) OpenProjectGitAction gitAction,
   }) = _OpenProjectRequest;
 

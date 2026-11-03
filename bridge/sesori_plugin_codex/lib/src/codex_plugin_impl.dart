@@ -1401,9 +1401,11 @@ class CodexPlugin._({
     if (_deletedThreadIds.contains(threadId) || (_turnEvidenceRevisionByThread[threadId] ?? 0) != evidenceRevision) {
       return;
     }
-    // COMPATIBILITY 2026-08-20 (Codex app-server <=0.147): a steered input can
-    // return a fresh submission id instead of the existing active turn id.
-    // Preserve authoritative lifecycle evidence until its terminal event.
+    // COMPATIBILITY 2026-11-03 (v1.12.0): With Codex app-server 0.147 and older,
+    // a steered input can return a fresh submission id instead of the existing
+    // active turn id. Preserve authoritative lifecycle evidence until its
+    // terminal event. Remove once the minimum supported Codex is newer than
+    // 0.147 and returns the active turn id.
     if (!_activeTurnByThread.containsKey(threadId)) {
       _activeTurnByThread[threadId] = turnId;
       _provisionalAcceptedTurnThreadIds.add(threadId);
