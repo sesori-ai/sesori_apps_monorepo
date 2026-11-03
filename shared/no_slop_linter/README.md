@@ -139,9 +139,12 @@ Future<void> baz() async {} // explicit Future<void>
 
 When a non-String value is used in string interpolation, Dart implicitly calls `toString()` on it.
 
-**Allowed types** (predictable `toString()`):
+**Not flagged:**
 
-- `String`, `int`, `double`, `bool`
+- `String`, `int`, `double` and `bool` values (predictable `toString()`)
+- `dynamic` values
+- explicit `.toString()` calls
+- interpolations inside `logt`/`logd` calls
 
 **The real problem:** When a dependency update changes a type from `String` to a class, code using that value in string interpolation (e.g., as a map key) will still compile but silently break at runtime.
 
