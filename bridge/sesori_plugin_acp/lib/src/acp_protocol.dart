@@ -75,13 +75,14 @@ class const AcpAuthMethod({
     return AcpAuthMethod(
       id: id,
       type: json["type"] == "terminal" ? AcpAuthMethodType.terminal : AcpAuthMethodType.other,
+      // Display-only fields: a malformed value is dropped, not fatal.
       name: switch (json["name"]) {
-        final String? name => name,
-        final other => throw FormatException("ACP auth method name is not a string: ${other.runtimeType}"),
+        final String name => name,
+        _ => null,
       },
       description: switch (json["description"]) {
-        final String? description => description,
-        final other => throw FormatException("ACP auth method description is not a string: ${other.runtimeType}"),
+        final String description => description,
+        _ => null,
       },
     );
   }
