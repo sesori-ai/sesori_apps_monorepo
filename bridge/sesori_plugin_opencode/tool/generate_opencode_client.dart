@@ -1,4 +1,4 @@
-// GENERATED FILE - DO NOT EDIT BY HAND
+// Hand-written generator for the OpenCode OpenAPI model files under models/openapi/.
 //
 // Usage:
 //   # Fetch the spec from anomalyco/opencode and record the source in every

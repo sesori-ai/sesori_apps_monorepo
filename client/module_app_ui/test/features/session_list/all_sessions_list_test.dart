@@ -147,6 +147,7 @@ void main() {
                       ),
                       createActions: ({required window}) => throw StateError("no row to act on"),
                       selectedSessionId: null,
+                      showsLoadFailure: true,
                       disconnectedBuilder: disconnectedBuilder,
                       emptyState: const Text("Nothing here"),
                       header: header,

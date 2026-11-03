@@ -91,18 +91,19 @@ void main() {
       expect(record.status, equals(CodexOwnershipStatus.starting));
     });
 
-    test("falls back to codex when the runtime executable path is unknown", () {
-      final record = buildCodexOwnershipRecord(
-        draft: RuntimeRecordDraft(
-          ownerSessionId: "owner-2",
-          runtimeIdentity: _identity(pid: 7, executablePath: null, startMarker: null),
-          port: 49152,
-          bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: null),
-          startedAt: DateTime.utc(2026, 6, 1),
+    test("throws when the runtime executable path is unknown", () {
+      expect(
+        () => buildCodexOwnershipRecord(
+          draft: RuntimeRecordDraft(
+            ownerSessionId: "owner-2",
+            runtimeIdentity: _identity(pid: 7, executablePath: null, startMarker: null),
+            port: 49152,
+            bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: null),
+            startedAt: DateTime.utc(2026, 6, 1),
+          ),
         ),
+        throwsStateError,
       );
-      expect(record.codexExecutablePath, equals(""));
-      expect(record.codexCommand, equals("codex"));
     });
   });
 
