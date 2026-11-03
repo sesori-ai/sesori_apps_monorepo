@@ -51,6 +51,7 @@ class const ArchivedSessionsView({
         createActions: createActions,
         selectedSessionId: null,
         disconnectedBuilder: disconnectedBuilder,
+        showsLoadFailure: true,
         emptyState: emptyState,
         header: null,
         endClearance: 0,

@@ -60,6 +60,11 @@ class const AllSessionsList({
   required final String? selectedSessionId,
   required final AllSessionsDisconnectedBuilder disconnectedBuilder,
 
+  /// Whether a failed project load shows its failure page here. False where a
+  /// pane beside the list shows it already, as the desktop home does, so the
+  /// list is left blank rather than repeating it.
+  required final bool showsLoadFailure,
+
   /// Shown once the projects have loaded, when there are no sessions.
   required final Widget emptyState,
 
@@ -78,6 +83,7 @@ class const AllSessionsList({
   );
 
   Widget _content({required BuildContext context}) => switch (context.watch<ProjectListCubit>().state) {
+    ProjectListFailed() when !showsLoadFailure => const SliverToBoxAdapter(),
     ProjectListFailed(:final reason) => SliverFillRemaining(
       hasScrollBody: false,
       child: RemoteFailureView(
