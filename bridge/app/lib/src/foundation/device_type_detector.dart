@@ -2,50 +2,27 @@ import "dart:async";
 import "dart:io";
 
 import "package:meta/meta.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "process_runner.dart";
-
-/// Abstracts platform checks so they can be mocked in tests.
-abstract class PlatformChecker() {
-  bool get isMacOS;
-  bool get isWindows;
-  bool get isLinux;
-}
-
-class DefaultPlatformChecker() implements PlatformChecker {
-  @override
-  bool get isMacOS => Platform.isMacOS;
-
-  @override
-  bool get isWindows => Platform.isWindows;
-
-  @override
-  bool get isLinux => Platform.isLinux;
-}
 
 /// Detects whether the current device is a laptop (as opposed to a desktop
 /// or server). Used to show platform-specific wake-lock limitations.
 class DeviceTypeDetector({
   required final ProcessRunner _processRunner,
-  required final PlatformChecker _platformChecker,
+  required final PlatformOs _platform,
   @visibleForTesting final String _linuxPowerSupplyPath = "/sys/class/power_supply/",
 }) {
   Future<bool>? _isLaptop;
 
   Future<bool> isLaptop() async => await (_isLaptop ??= _computeIsLaptop());
 
-  Future<bool> _computeIsLaptop() {
-    if (_platformChecker.isMacOS) {
-      return _isMacOSLaptop();
-    } else if (_platformChecker.isWindows) {
-      return _isWindowsLaptop();
-    } else if (_platformChecker.isLinux) {
-      return _isLinuxLaptop();
-    } else {
-      return Future.value(false);
-    }
-  }
+  Future<bool> _computeIsLaptop() => switch (_platform) {
+    PlatformOs.macos => _isMacOSLaptop(),
+    PlatformOs.windows => _isWindowsLaptop(),
+    PlatformOs.linux => _isLinuxLaptop(),
+  };
 
   Future<bool> _isMacOSLaptop() async {
     try {
