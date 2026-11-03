@@ -13,8 +13,8 @@ class const LoopbackPortApi() {
       return true;
     } on SocketException {
       return false;
-    } catch (err) {
-      Log.w("Unexpected error when trying to bind port $port\n${err.toString()}");
+    } on Object catch (error, stackTrace) {
+      Log.w("Unexpected error when trying to bind port $port", error, stackTrace);
       return false;
     } finally {
       await socket?.close();

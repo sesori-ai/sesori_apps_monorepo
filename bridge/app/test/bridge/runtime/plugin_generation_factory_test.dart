@@ -62,7 +62,6 @@ void main() {
       final managedRuntimePaths = ManagedRuntimePaths(
         installRoot: directory,
         binaryPath: "$directory/bin/sesori-bridge",
-        cacheDirectory: directory,
       );
       final pluginStateDirectory = pluginStateDirectoryPath(
         paths: managedRuntimePaths,
@@ -113,7 +112,6 @@ void main() {
       return ManagedRuntimePaths(
         installRoot: runtimeDirectory.path,
         binaryPath: "${runtimeDirectory.path}/bin/sesori-bridge",
-        cacheDirectory: runtimeDirectory.path,
       );
     }
 
@@ -405,7 +403,6 @@ void main() {
         managedRuntimePaths: ManagedRuntimePaths(
           installRoot: runtimeDirectory.path,
           binaryPath: "${runtimeDirectory.path}/bin/sesori-bridge",
-          cacheDirectory: runtimeDirectory.path,
         ),
         currentBridgeIdentity: currentBridgeIdentity,
         ownerSessionId: "owner-session",

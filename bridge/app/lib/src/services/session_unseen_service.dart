@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
@@ -35,10 +36,8 @@ class SessionUnseenService({
   required final SessionUnseenRepository _unseenRepository,
   required final ProjectRepository _projectRepository,
   required final SessionViewTracker _viewTracker,
-  int Function()? now,
+  required final int Function() _now,
 }) {
-  final int Function() _wallClock = now ?? (() => DateTime.now().millisecondsSinceEpoch);
-
   /// Last timestamp this service issued. Used to keep [_nextTimestamp]
   /// strictly monotonic so two events processed within the same millisecond
   /// (e.g. a user `message.updated` immediately followed by the assistant's)
@@ -68,7 +67,7 @@ class SessionUnseenService({
   /// Strictly-increasing timestamp source. Returns the wall clock, but never a
   /// value <= the previous one, so ordered writes always get ordered timestamps.
   int _nextTimestamp() {
-    final wall = _wallClock();
+    final wall = _now();
     return _lastIssued = wall > _lastIssued ? wall : _lastIssued + 1;
   }
 
@@ -234,8 +233,7 @@ class SessionUnseenService({
     return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
-      final now = _nextTimestamp();
-      final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
+      final seenAt = max(row.activityAt ?? 0, _nextTimestamp());
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
       // The row mutation has committed, so the request has succeeded. The
       // follow-up SSE emit is a best-effort notification (_emit swallows+logs):
@@ -281,8 +279,7 @@ class SessionUnseenService({
       if (row == null) return;
       // Write at least the persisted activity timestamp so a clock skew or
       // restart can't leave seen below activity (which would keep it bold).
-      final now = _nextTimestamp();
-      final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
+      final seenAt = max(row.activityAt ?? 0, _nextTimestamp());
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });

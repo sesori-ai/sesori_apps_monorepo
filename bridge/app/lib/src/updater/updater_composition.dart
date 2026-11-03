@@ -79,7 +79,7 @@ composeUpdater({
   return (
     releaseRepository: ReleaseRepository(
       api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
-      cache: UpdateCacheApi(cacheDirectory: managedRuntimePaths.cacheDirectory, clock: clock),
+      cache: UpdateCacheApi(cacheDirectory: managedRuntimePaths.installRoot, clock: clock),
       currentVersion: bridgeVersion,
       target: distributionTarget,
       track: releaseTrack,

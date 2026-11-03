@@ -59,15 +59,13 @@ class BridgeRuntime({
   Future<void> close() => _closeFuture ??= _close();
 
   Future<void> _close() async {
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    (Object, StackTrace)? firstFailure;
 
     Future<void> step(Future<void> Function() dispose) async {
       try {
         await dispose();
       } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
+        firstFailure ??= (error, stackTrace);
       }
     }
 
@@ -80,8 +78,8 @@ class BridgeRuntime({
     await step(_database.close);
     await step(_chatHistoryDatabase.close);
 
-    if (firstError != null) {
-      Error.throwWithStackTrace(firstError!, firstStackTrace!);
+    if (firstFailure case (final error, final stackTrace)) {
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 }

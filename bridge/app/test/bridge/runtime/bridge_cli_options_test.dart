@@ -172,9 +172,9 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
   // (ADR A8), never on the command line.
   final parser = ArgParser()
     ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
-    ..addOption("auth-backend", defaultsTo: "")
+    ..addOption("auth-backend")
     ..addOption("data-dir")
-    ..addOption("debug-port", defaultsTo: "")
+    ..addOption("debug-port")
     ..addOption(
       "log-level",
       defaultsTo: "info",

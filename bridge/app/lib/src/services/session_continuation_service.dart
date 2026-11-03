@@ -161,6 +161,7 @@ class const SessionContinuationService({
     );
     final defaults = snapshot.promptDefaults;
     final model = defaults?.model;
+    final variant = model?.variant;
     try {
       await _prompts.sendPromptAlreadyReserved(
         sessionId: sessionId,
@@ -168,7 +169,7 @@ class const SessionContinuationService({
         parts: const [PromptPart.text(text: "Continue.")],
         agent: defaults?.agent,
         model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
-        variant: model?.variant == null ? null : SessionVariant(id: model!.variant!),
+        variant: variant == null ? null : SessionVariant(id: variant),
         fastMode: defaults?.fastMode ?? false,
       );
     } on Object catch (error, stackTrace) {

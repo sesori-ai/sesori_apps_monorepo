@@ -35,9 +35,7 @@ class BridgeInstanceRepository({
       return false;
     }
 
-    final executableBasename = process.executablePath == null
-        ? null
-        : path.basename(process.executablePath!).toLowerCase();
-    return executableBasename != null && _bridgeExecutableBasenames.contains(executableBasename);
+    final executablePath = process.executablePath;
+    return executablePath != null && _bridgeExecutableBasenames.contains(path.basename(executablePath).toLowerCase());
   }
 }

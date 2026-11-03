@@ -8,11 +8,8 @@ void main() {
     const api = LoopbackPortApi();
 
     test("returns true when a loopback port can be bound", () async {
-      final reservedSocket = await ServerSocket.bind("127.0.0.1", 0);
-      final port = reservedSocket.port;
-      await reservedSocket.close();
-
-      final isBindable = await api.isBindable(host: "127.0.0.1", port: port);
+      // Port 0 lets the OS pick a free port, so no concurrent test can take it first.
+      final isBindable = await api.isBindable(host: "127.0.0.1", port: 0);
 
       expect(isBindable, isTrue);
     });

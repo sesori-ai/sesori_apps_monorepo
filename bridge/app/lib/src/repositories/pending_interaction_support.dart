@@ -80,13 +80,8 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     return [
       for (final question in questions)
         if (bindings[question.sessionID] case final session?)
-          if (question.displaySessionId == null || bindings.containsKey(question.displaySessionId))
-            question.toSharedPendingQuestion(
-              sessionId: session.sessionId,
-              displaySessionId: question.displaySessionId == null
-                  ? null
-                  : bindings[question.displaySessionId]!.sessionId,
-            ),
+          if (_displayBinding(bindings: bindings, displaySessionId: question.displaySessionId) case final display?)
+            question.toSharedPendingQuestion(sessionId: session.sessionId, displaySessionId: display.sessionId),
     ];
   }
 
@@ -103,11 +98,8 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     return [
       for (final action in actions)
         if (bindings[action.sessionID] case final session? when session.archivedAt == null)
-          if (action.displaySessionId == null || bindings.containsKey(action.displaySessionId))
-            action.toShared(
-              sessionId: session.sessionId,
-              displaySessionId: action.displaySessionId == null ? null : bindings[action.displaySessionId]!.sessionId,
-            ),
+          if (_displayBinding(bindings: bindings, displaySessionId: action.displaySessionId) case final display?)
+            action.toShared(sessionId: session.sessionId, displaySessionId: display.sessionId),
     ];
   }
 
@@ -121,11 +113,8 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     return [
       for (final form in forms)
         if (bindings[form.sessionID] case final session? when session.archivedAt == null)
-          if (form.displaySessionId == null || bindings.containsKey(form.displaySessionId))
-            form.toShared(
-              sessionId: session.sessionId,
-              displaySessionId: form.displaySessionId == null ? null : bindings[form.displaySessionId]!.sessionId,
-            ),
+          if (_displayBinding(bindings: bindings, displaySessionId: form.displaySessionId) case final display?)
+            form.toShared(sessionId: session.sessionId, displaySessionId: display.sessionId),
     ];
   }
 
@@ -143,13 +132,8 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     return [
       for (final permission in permissions)
         if (bindings[permission.sessionID] case final session?)
-          if (permission.displaySessionId == null || bindings.containsKey(permission.displaySessionId))
-            permission.toSharedPendingPermission(
-              sessionId: session.sessionId,
-              displaySessionId: permission.displaySessionId == null
-                  ? null
-                  : bindings[permission.displaySessionId]!.sessionId,
-            ),
+          if (_displayBinding(bindings: bindings, displaySessionId: permission.displaySessionId) case final display?)
+            permission.toSharedPendingPermission(sessionId: session.sessionId, displaySessionId: display.sessionId),
     ];
   }
 
@@ -167,5 +151,18 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
       pluginId: pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
+  }
+
+  /// Resolves an interaction's optional display session to its bound session
+  /// ID. Returns `null` when the display session has no binding, so the caller
+  /// drops the interaction; an absent display session resolves to no ID.
+  ({String? sessionId})? _displayBinding({
+    required Map<String, SessionDto> bindings,
+    required String? displaySessionId,
+  }) {
+    if (displaySessionId == null) return (sessionId: null);
+    final session = bindings[displaySessionId];
+    if (session == null) return null;
+    return (sessionId: session.sessionId);
   }
 }

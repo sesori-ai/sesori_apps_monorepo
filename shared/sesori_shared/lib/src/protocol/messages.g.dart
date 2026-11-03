@@ -233,3 +233,30 @@ UnknownRelayNoticeMessage _$UnknownRelayNoticeMessageFromJson(Map json) =>
 Map<String, dynamic> _$UnknownRelayNoticeMessageToJson(
   UnknownRelayNoticeMessage instance,
 ) => <String, dynamic>{'type': instance.$type};
+
+PhoneConnectedMessage _$PhoneConnectedMessageFromJson(Map json) =>
+    PhoneConnectedMessage(
+      connId: (json['connId'] as num).toInt(),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PhoneConnectedMessageToJson(
+  PhoneConnectedMessage instance,
+) => <String, dynamic>{'connId': instance.connId, 'type': instance.$type};
+
+PhoneDisconnectedMessage _$PhoneDisconnectedMessageFromJson(Map json) =>
+    PhoneDisconnectedMessage(
+      connId: (json['connId'] as num).toInt(),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PhoneDisconnectedMessageToJson(
+  PhoneDisconnectedMessage instance,
+) => <String, dynamic>{'connId': instance.connId, 'type': instance.$type};
+
+UnknownRelayControlMessage _$UnknownRelayControlMessageFromJson(Map json) =>
+    UnknownRelayControlMessage($type: json['type'] as String?);
+
+Map<String, dynamic> _$UnknownRelayControlMessageToJson(
+  UnknownRelayControlMessage instance,
+) => <String, dynamic>{'type': instance.$type};

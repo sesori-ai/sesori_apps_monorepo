@@ -25,6 +25,7 @@ import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
+import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
@@ -53,7 +54,7 @@ import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
 import 'package:sesori_bridge/src/updater/updater_composition.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
-    show Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+    show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 import 'package:sesori_shared/sesori_shared.dart' show BridgeKind;
 import 'package:win32/win32.dart' show SetThreadExecutionState;
 
@@ -69,27 +70,24 @@ class RunCommand() extends cli.Command<void> {
 
   /// Maps every registered plugin's options to/from the CLI parser, namespaced
   /// under its id (e.g. `--opencode-host`).
-  final Map<String, PluginCliOptionsMapper> _pluginCliMappers;
+  final List<({BridgePluginDescriptor plugin, PluginCliOptionsMapper mapper})> _pluginCliMappers;
 
   this
-    : _pluginCliMappers = {
-        for (final plugin in knownPlugins) plugin.id: PluginCliOptionsMapper(pluginId: plugin.id),
-      } {
+    : _pluginCliMappers = [
+        for (final plugin in knownPlugins) (plugin: plugin, mapper: PluginCliOptionsMapper(pluginId: plugin.id)),
+      ] {
     argParser
       ..addFlag(
         'version',
         negatable: false,
         help: 'Show version and exit',
       )
-      ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
-      // Keep accepting the retired option so existing invocations receive the
-      // actionable warning in [run] instead of an unknown-option error.
-      ..addMultiOption('import-plugin', hide: true);
-    for (final plugin in knownPlugins) {
-      _pluginCliMappers[plugin.id]!.register(parser: argParser, options: plugin.options);
+      ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL');
+    for (final (:plugin, :mapper) in _pluginCliMappers) {
+      mapper.register(parser: argParser, options: plugin.options);
     }
     argParser
-      ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
+      ..addOption('auth-backend', help: 'Auth backend URL')
       ..addOption(
         'data-dir',
         valueHelp: 'path',
@@ -97,7 +95,6 @@ class RunCommand() extends cli.Command<void> {
       )
       ..addOption(
         'debug-port',
-        defaultsTo: '',
         help: 'Start a debug HTTP server on this port (for Postman/curl testing)',
       )
       ..addOption(
@@ -115,14 +112,9 @@ class RunCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final results = argResults!;
-
-    if (results.wasParsed('import-plugin')) {
-      Console.warning(
-        'The --import-plugin option is deprecated and no longer does anything. '
-        'Re-import harnesses from the Sesori app by pulling to refresh or opening Settings > Harnesses.',
-      );
-    }
+    final results = argResults;
+    final allResults = globalResults;
+    if (results == null || allResults == null) usageException('Unable to read command arguments.');
 
     if (results['version'] as bool) {
       stdout.writeln(bridgeVersion);
@@ -130,20 +122,20 @@ class RunCommand() extends cli.Command<void> {
     }
 
     final BridgeCliOptions options;
-    final Map<String, PluginConfig> pluginConfigs;
+    final Map<BridgePluginDescriptor, PluginConfig> pluginConfigs;
     try {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
-      pluginConfigs = <String, PluginConfig>{};
-      for (final plugin in knownPlugins) {
-        pluginConfigs[plugin.id] = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
-      }
-      for (final plugin in knownPlugins) {
-        plugin.validateConfig(pluginConfigs[plugin.id]!);
+      pluginConfigs = {
+        for (final (:plugin, :mapper) in _pluginCliMappers)
+          plugin: mapper.parse(results: results, options: plugin.options),
+      };
+      for (final MapEntry(key: plugin, value: config) in pluginConfigs.entries) {
+        plugin.validateConfig(config);
       }
       options = BridgeCliOptions.fromArgResults(
-        cliArgs: globalResults!.arguments,
+        cliArgs: allResults.arguments,
         results: results,
         environment: Platform.environment,
         defaultAuthUrl: _defaultAuthURL,
@@ -191,8 +183,8 @@ class RunCommand() extends cli.Command<void> {
     try {
       final mode = await sleepPreventionService.applyConfiguredMode();
       Log.i('Sleep prevention mode: ${mode.name}');
-    } on Object catch (error) {
-      Log.w('Sleep prevention failed: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Sleep prevention failed', error, stackTrace);
     }
 
     final exitCode = await BridgeRuntimeRunner.run(
@@ -213,7 +205,7 @@ class LogoutCommand() extends cli.Command<void> {
 
   this {
     argParser
-      ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
+      ..addOption('auth-backend', help: 'Auth backend URL')
       ..addOption(
         'data-dir',
         valueHelp: 'path',
@@ -223,7 +215,8 @@ class LogoutCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final dataDirectoryFlag = argResults!['data-dir'] as String?;
+    final results = argResults ?? usageException('Unable to read command arguments.');
+    final dataDirectoryFlag = results['data-dir'] as String?;
     final defaultDataDirectory = sesoriDataDirectory();
     final String dataDirectory;
     try {
@@ -246,7 +239,7 @@ class LogoutCommand() extends cli.Command<void> {
       );
     }
     final authBackendUrl = BridgeCliOptions.resolveAuthBackendUrl(
-      authBackendFlag: argResults!['auth-backend'] as String,
+      authBackendFlag: results['auth-backend'] as String?,
       environment: Platform.environment,
       defaultAuthUrl: _defaultAuthURL,
     );
@@ -414,8 +407,26 @@ class ConfigCommand() extends cli.Command<void> {
 
   this {
     addSubcommand(ConfigTrackCommand());
-    addSubcommand(ConfigYoloCommand());
-    addSubcommand(ConfigWarmupCommand());
+    addSubcommand(
+      ConfigSwitchCommand(
+        name: 'yolo',
+        description: 'Show or set automatic permission approval (on|off)',
+        label: 'YOLO mode',
+        read: (settings) => settings.yolo,
+        write: (repository, {required enabled}) => repository.updateYolo(enabled: enabled),
+        enabledWarning: 'Warning: permission requests will be auto-approved without being sent to clients.',
+      ),
+    );
+    addSubcommand(
+      ConfigSwitchCommand(
+        name: 'warmup',
+        description: 'Show or set session-open plugin warm-up (on|off)',
+        label: 'Session-open plugin warm-up',
+        read: (settings) => settings.warmUpPluginsOnSessionOpen,
+        write: (repository, {required enabled}) => repository.updateWarmUpPluginsOnSessionOpen(enabled: enabled),
+        enabledWarning: null,
+      ),
+    );
     addSubcommand(ConfigPluginsCommand());
     addSubcommand(ConfigEditCommand());
   }
@@ -453,8 +464,7 @@ class ConfigPluginsCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final results = argResults;
-    if (results == null) usageException('Unable to read command arguments.');
+    final results = argResults ?? usageException('Unable to read command arguments.');
     final rest = results.rest;
     final descriptors = [...knownPlugins]
       ..sort((left, right) {
@@ -470,10 +480,13 @@ class ConfigPluginsCommand() extends cli.Command<void> {
       final snapshot = await configService.listPlugins(
         knownPluginIds: [for (final descriptor in descriptors) descriptor.id],
       );
-      final entriesById = {for (final entry in snapshot.plugins) entry.pluginId: entry};
+      final enabledIds = {
+        for (final entry in snapshot.plugins)
+          if (entry.enabled) entry.pluginId,
+      };
       for (final descriptor in descriptors) {
-        final entry = entriesById[descriptor.id]!;
-        stdout.writeln('${descriptor.displayName} (${descriptor.id}): ${entry.enabled ? 'enabled' : 'disabled'}');
+        final enabled = enabledIds.contains(descriptor.id);
+        stdout.writeln('${descriptor.displayName} (${descriptor.id}): ${enabled ? 'enabled' : 'disabled'}');
       }
       if (snapshot.unknownDisabledPluginIds.isNotEmpty) {
         stdout.writeln('Unknown disabled plugin IDs: ${snapshot.unknownDisabledPluginIds.join(', ')}');
@@ -509,10 +522,7 @@ class ConfigTrackCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final results = argResults;
-    if (results == null) {
-      usageException('Unable to read command arguments.');
-    }
+    final results = argResults ?? usageException('Unable to read command arguments.');
     final rest = results.rest;
     final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
 
@@ -550,98 +560,38 @@ class ConfigTrackCommand() extends cli.Command<void> {
   }
 }
 
-class ConfigYoloCommand() extends cli.Command<void> {
-  @override
-  final name = 'yolo';
-
-  @override
-  final description = 'Show or set automatic permission approval (on|off)';
-
+/// A `config` subcommand that shows or sets one on/off bridge setting.
+class ConfigSwitchCommand({
+  @override required final String name,
+  @override required final String description,
+  required final String _label,
+  required final bool Function(BridgeSettings settings) _read,
+  required final Future<void> Function(BridgeSettingsRepository repository, {required bool enabled}) _write,
+  required final String? _enabledWarning,
+}) extends cli.Command<void> {
   @override
   Future<void> run() async {
-    final results = argResults;
-    if (results == null) {
-      usageException('Unable to read command arguments.');
-    }
+    final results = argResults ?? usageException('Unable to read command arguments.');
     final rest = results.rest;
     final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
 
     if (rest.isEmpty) {
       final settings = await repository.loadSettings();
-      stdout.writeln('YOLO mode: ${settings.yolo ? 'on' : 'off'}');
+      stdout.writeln('$_label: ${_read(settings) ? 'on' : 'off'}');
       return;
     }
 
-    if (rest.length > 1) {
-      usageException('Expected a single YOLO mode: on or off.');
-    }
-
-    final enabled = _parseYoloArgument(rest.single);
-    await repository.updateYolo(enabled: enabled);
-    stdout.writeln('YOLO mode set to ${enabled ? 'on' : 'off'}.');
-    if (enabled) {
-      stdout.writeln(
-        'Warning: permission requests will be auto-approved without being sent to clients.',
-      );
+    final bool enabled = switch (rest) {
+      ['on'] => true,
+      ['off'] => false,
+      _ => usageException('Expected a single $_label value: on or off.'),
+    };
+    await _write(repository, enabled: enabled);
+    stdout.writeln('$_label set to ${enabled ? 'on' : 'off'}.');
+    if (_enabledWarning case final warning? when enabled) {
+      stdout.writeln(warning);
     }
     stdout.writeln('Restart sesori-bridge to apply.');
-  }
-
-  bool _parseYoloArgument(String value) {
-    switch (value) {
-      case 'on':
-        return true;
-      case 'off':
-        return false;
-      default:
-        usageException('YOLO mode must be "on" or "off".');
-    }
-  }
-}
-
-class ConfigWarmupCommand() extends cli.Command<void> {
-  @override
-  final name = 'warmup';
-
-  @override
-  final description = 'Show or set session-open plugin warm-up (on|off)';
-
-  @override
-  Future<void> run() async {
-    final results = argResults;
-    if (results == null) {
-      usageException('Unable to read command arguments.');
-    }
-    final rest = results.rest;
-    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
-
-    if (rest.isEmpty) {
-      final settings = await repository.loadSettings();
-      stdout.writeln(
-        'Session-open plugin warm-up: ${settings.warmUpPluginsOnSessionOpen ? 'on' : 'off'}',
-      );
-      return;
-    }
-
-    if (rest.length > 1) {
-      usageException('Expected a single session-open warm-up mode: on or off.');
-    }
-
-    final enabled = _parseWarmupArgument(rest.single);
-    await repository.updateWarmUpPluginsOnSessionOpen(enabled: enabled);
-    stdout.writeln('Session-open plugin warm-up set to ${enabled ? 'on' : 'off'}.');
-    stdout.writeln('Restart sesori-bridge to apply.');
-  }
-
-  bool _parseWarmupArgument(String value) {
-    switch (value) {
-      case 'on':
-        return true;
-      case 'off':
-        return false;
-      default:
-        usageException('Session-open warm-up mode must be "on" or "off".');
-    }
   }
 }
 
@@ -665,7 +615,8 @@ class UpdateCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final bool force = argResults!['force'] as bool;
+    final results = argResults ?? usageException('Unable to read command arguments.');
+    final bool force = results['force'] as bool;
     final environment = Platform.environment;
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(environment: environment);
     final releaseTrack = await _resolveReleaseTrack();
@@ -733,8 +684,8 @@ class UpdateCommand() extends cli.Command<void> {
     try {
       final settings = await BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi()).loadSettings();
       return settings.releaseTrack;
-    } on Object catch (error) {
-      Log.w('Failed to resolve release track; defaulting to stable: $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to resolve release track; defaulting to stable', error, stackTrace);
       return ReleaseTrack.stable;
     }
   }

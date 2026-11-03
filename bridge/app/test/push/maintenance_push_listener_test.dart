@@ -65,7 +65,7 @@ void main() {
   });
 }
 
-class _CountingRateLimiter() extends PushRateLimiter {
+class _CountingRateLimiter({required super.now}) extends PushRateLimiter {
   int pruneCount = 0;
 
   @override
@@ -79,7 +79,7 @@ class _CountingRateLimiter() extends PushRateLimiter {
   Duration maintenanceInterval = const Duration(minutes: 10),
 }) {
   final tracker = PushSessionStateTracker(now: DateTime.now);
-  final rateLimiter = _CountingRateLimiter();
+  final rateLimiter = _CountingRateLimiter(now: DateTime.now);
   final listener = MaintenancePushListener(
     tracker: tracker,
     completionNotifier: CompletionNotifier(tracker: tracker),

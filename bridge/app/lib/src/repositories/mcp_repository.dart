@@ -51,7 +51,10 @@ class McpRepository({
     Future<void>? termination;
     McpAuthenticationDestinationException? invalidDestination;
 
-    Future<void> finish({required bool cancelNative, required Object? error, required StackTrace? stackTrace}) {
+    Future<void> finish({
+      required bool cancelNative,
+      required ({Object error, StackTrace stackTrace})? terminalError,
+    }) {
       return termination ??= () async {
         // A synchronous native stream can finish before its subscription is added.
         await Future<void>.value();
@@ -78,21 +81,26 @@ class McpRepository({
           );
         }
         if (cleanup case (error: final cleanupError, stackTrace: final cleanupStack)) {
-          final failure = error == null
-              ? cleanupError
-              : McpAuthenticationCleanupException(
-                  innerError: error,
-                  innerStackTrace: stackTrace!,
-                  cleanupError: cleanupError,
-                  cleanupStackTrace: cleanupStack,
-                );
-          final failureStack = stackTrace ?? cleanupStack;
+          final (failure, failureStack) = switch (terminalError) {
+            (:final error, :final stackTrace) => (
+              McpAuthenticationCleanupException(
+                innerError: error,
+                innerStackTrace: stackTrace,
+                cleanupError: cleanupError,
+                cleanupStackTrace: cleanupStack,
+              ),
+              stackTrace,
+            ),
+            null => (cleanupError, cleanupStack),
+          };
           if (cancelled) Error.throwWithStackTrace(failure, failureStack);
           controller.addError(failure, failureStack);
           unawaited(controller.close());
           return;
         }
-        if (error != null && !cancelled) controller.addError(error, stackTrace);
+        if (terminalError case (:final error, :final stackTrace) when !cancelled) {
+          controller.addError(error, stackTrace);
+        }
         if (!cancelled) unawaited(controller.close());
       }();
     }
@@ -122,10 +130,14 @@ class McpRepository({
                       if (authorizationUri.scheme != "https" ||
                           authorizationUri.host.isEmpty ||
                           authorizationUri.userInfo.isNotEmpty) {
-                        invalidDestination = const McpAuthenticationDestinationException();
+                        const destinationError = McpAuthenticationDestinationException();
+                        invalidDestination = destinationError;
                         if (operation is PluginMcpCancelableAuthentication) {
                           unawaited(
-                            finish(cancelNative: true, error: invalidDestination, stackTrace: StackTrace.current),
+                            finish(
+                              cancelNative: true,
+                              terminalError: (error: destinationError, stackTrace: StackTrace.current),
+                            ),
                           );
                         }
                         return;
@@ -136,18 +148,20 @@ class McpRepository({
                     }
                   },
                   onError: (Object error, StackTrace stackTrace) =>
-                      unawaited(finish(cancelNative: true, error: error, stackTrace: stackTrace)),
+                      unawaited(finish(cancelNative: true, terminalError: (error: error, stackTrace: stackTrace))),
                   onDone: () => unawaited(
                     finish(
                       cancelNative: false,
-                      error: invalidDestination,
-                      stackTrace: invalidDestination == null ? null : StackTrace.current,
+                      terminalError: switch (invalidDestination) {
+                        final destinationError? => (error: destinationError, stackTrace: StackTrace.current),
+                        null => null,
+                      },
                     ),
                   ),
                 )
                 .addTo(native.subscriptions);
           } on Object catch (error, stackTrace) {
-            unawaited(finish(cancelNative: true, error: error, stackTrace: stackTrace));
+            unawaited(finish(cancelNative: true, terminalError: (error: error, stackTrace: stackTrace)));
           }
         }
 
@@ -160,7 +174,7 @@ class McpRepository({
             stackTrace,
           );
         } else {
-          await finish(cancelNative: true, error: error, stackTrace: stackTrace);
+          await finish(cancelNative: true, terminalError: (error: error, stackTrace: stackTrace));
         }
       }
     }
@@ -170,7 +184,7 @@ class McpRepository({
       onCancel: () {
         cancelled = true;
         // Do not wait for a read-only native status request that cannot be aborted.
-        return prepared == null ? Future<void>.value() : finish(cancelNative: true, error: null, stackTrace: null);
+        return prepared == null ? Future<void>.value() : finish(cancelNative: true, terminalError: null);
       },
     );
     return controller.stream;

@@ -327,6 +327,7 @@ class Orchestrator({
       ),
       projectRepository: projectRepository,
       viewTracker: sessionViewTracker,
+      now: () => clock.now().millisecondsSinceEpoch,
     );
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
@@ -433,7 +434,7 @@ class Orchestrator({
         projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
         aggregateSourceDeadline: aggregateSourceDeadline,
       ),
-      now: () => DateTime.now().millisecondsSinceEpoch,
+      now: () => clock.now().millisecondsSinceEpoch,
     );
     final mcpRepository = McpRepository(
       runtime: _pluginRuntime,
@@ -1223,21 +1224,18 @@ class OrchestratorSession._({
     _sessionCreationService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
-    Object? firstTeardownError;
-    StackTrace? firstTeardownStackTrace;
+    (Object, StackTrace)? firstTeardownFailure;
 
     Future<void> attempt(FutureOr<void> Function() action) async {
       try {
         await action();
       } on Object catch (error, stackTrace) {
-        firstTeardownError ??= error;
-        firstTeardownStackTrace ??= stackTrace;
+        firstTeardownFailure ??= (error, stackTrace);
       }
     }
 
-    final sinceCancelMs = _cancelRequestedAt == null
-        ? null
-        : DateTime.now().difference(_cancelRequestedAt!).inMilliseconds;
+    final cancelRequestedAt = _cancelRequestedAt;
+    final sinceCancelMs = cancelRequestedAt == null ? null : clock.now().difference(cancelRequestedAt).inMilliseconds;
     Log.i("Disconnecting...");
     Log.d(
       "[shutdown] session teardown begin "
@@ -1313,13 +1311,12 @@ class OrchestratorSession._({
     ]);
     await attempt(() async {
       Log.v("closing relay client...");
-      _shutdownRelayCloseFuture ??= _closeRelayConnection();
-      await _shutdownRelayCloseFuture!;
+      await (_shutdownRelayCloseFuture ??= _closeRelayConnection());
       Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
     });
     Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
-    if (firstTeardownError != null) {
-      Error.throwWithStackTrace(firstTeardownError!, firstTeardownStackTrace!);
+    if (firstTeardownFailure case (final error, final stackTrace)) {
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -1449,7 +1446,7 @@ class OrchestratorSession._({
     _sessionCreationService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     if (_cancelRequestedAt == null) {
-      _cancelRequestedAt = DateTime.now();
+      _cancelRequestedAt = clock.now();
       Log.d(
         "[shutdown] cancel() requested"
         "${_inFlightRelayWorkDiagnostic(separator: " — ")}",
@@ -1511,11 +1508,11 @@ class OrchestratorSession._({
               await completion;
             } finally {
               if (routeLabel != null) {
-                final remaining = _inFlightRouteCounts[routeLabel]! - 1;
-                if (remaining == 0) {
-                  _inFlightRouteCounts.remove(routeLabel);
+                // Counted up above before this completion was tracked.
+                if (_inFlightRouteCounts[routeLabel] case final count? when count > 1) {
+                  _inFlightRouteCounts[routeLabel] = count - 1;
                 } else {
-                  _inFlightRouteCounts[routeLabel] = remaining;
+                  _inFlightRouteCounts.remove(routeLabel);
                 }
               }
             }
@@ -2080,8 +2077,8 @@ class OrchestratorSession._({
       await _tokenRefresher.getAccessToken(forceRefresh: true);
       Log.i("Access token refreshed successfully");
       return true;
-    } on ControlTokenUnavailableException catch (e) {
-      Log.w("No access token available for reconnect: $e");
+    } on ControlTokenUnavailableException catch (error, stackTrace) {
+      Log.w("No access token available for reconnect", error, stackTrace);
       return false;
     } catch (e, st) {
       // The refresh failed for some other reason. Only reconnect if a usable
@@ -2184,30 +2181,28 @@ class OrchestratorSession._({
         Log.v("relay msg: isText=${msg.isText} len=${msg.data.length}");
 
         if (msg.isText) {
-          Map<String, dynamic> control;
+          final Map<String, dynamic> controlJson;
+          final RelayControlMessage control;
           try {
-            control = jsonDecodeMap(utf8.decode(msg.data));
+            controlJson = jsonDecodeMap(utf8.decode(msg.data));
+            control = RelayControlMessage.fromJson(controlJson);
           } on Object catch (error, stackTrace) {
             Log.w("failed to parse relay control message", error, stackTrace);
             break processMessage;
           }
 
-          final type = control["type"] as String?;
-          final connID = control["connId"] as int?;
-          Log.v("control: type=$type connID=$connID");
-          if (type == null || connID == null) {
-            Log.v("dropping relay control message with missing fields");
-            break processMessage;
-          }
-
-          switch (type) {
-            case "phone_connected":
-              Log.v("phone_connected connID=$connID");
-            case "phone_disconnected":
-              Log.v("phone_disconnected connID=$connID");
-              activePhoneIncarnations.remove(connID);
-              _sseManager.unsubscribe(connID);
-              _sessionViewTracker.releaseConnection(connID: connID);
+          switch (control) {
+            case PhoneConnectedMessage(:final connId):
+              Log.v("phone_connected connID=$connId");
+            case PhoneDisconnectedMessage(:final connId):
+              Log.v("phone_disconnected connID=$connId");
+              activePhoneIncarnations.remove(connId);
+              _sseManager.unsubscribe(connId);
+              _sessionViewTracker.releaseConnection(connID: connId);
+            case UnknownRelayControlMessage():
+              // The relay deploys on its own schedule, so a newer relay can
+              // send control types this bridge does not know yet.
+              Log.d("ignoring relay control message of unknown type ${controlJson["type"]}");
           }
           break processMessage;
         }
@@ -2233,8 +2228,8 @@ class OrchestratorSession._({
             relayMessage = RelayMessage.fromJson(
               jsonDecodeMap(utf8.decode(payload)),
             );
-          } catch (e) {
-            Log.v("failed to parse relay JSON: $e");
+          } on Object catch (error, stackTrace) {
+            Log.w("failed to parse plaintext relay JSON from connID=$connID", error, stackTrace);
             break processMessage;
           }
 
@@ -2264,11 +2259,14 @@ class OrchestratorSession._({
               throw StateError("relay connection changed before key exchange completed");
             }
             Log.i("phone connID=$connID activated (key exchange)");
-          } catch (e) {
+          } on Object catch (error, stackTrace) {
             if (_cancelled) {
               throw StateError("cancelled");
             }
-            throw Exception("send ready for connId $connID: $e");
+            Error.throwWithStackTrace(
+              _HandshakeReplySendException(reply: "ready", connID: connID, cause: error),
+              stackTrace,
+            );
           }
 
           _markPhoneConnected(connID: connID, activePhoneIncarnations: activePhoneIncarnations);
@@ -2280,19 +2278,17 @@ class OrchestratorSession._({
         );
         if (payload[0] == protocolVersion) {
           List<int>? decrypted;
-          Object? decryptError;
+          (Object, StackTrace)? decryptFailure;
           try {
             decrypted = await unframe(payload, encryptor: _sessionEncryptor);
-          } catch (e) {
-            decryptError = e;
+          } on Object catch (error, stackTrace) {
+            decryptFailure = (error, stackTrace);
           }
 
           final phoneIncarnation = activePhoneIncarnations[connID];
           if (phoneIncarnation != null) {
-            if (decryptError != null || decrypted == null) {
-              Log.v(
-                "failed to decrypt from connId $connID: $decryptError",
-              );
+            if (decrypted == null) {
+              Log.w("failed to decrypt from connId $connID", decryptFailure?.$1, decryptFailure?.$2);
               break processMessage;
             }
             Log.v("decrypted OK from connID=$connID, handling...");
@@ -2307,8 +2303,10 @@ class OrchestratorSession._({
             break processMessage;
           }
 
-          if (decryptError != null || decrypted == null) {
-            Log.v("not active, decrypt failed for connID=$connID: $decryptError — sending rekeyRequired");
+          if (decrypted == null) {
+            // Expected after a bridge restart: the room key is per run, so a
+            // phone still holding the previous key must re-run key exchange.
+            Log.d("not active, decrypt failed for connID=$connID — sending rekeyRequired");
             final rekeyRequired = jsonEncode(
               const RelayMessage.rekeyRequired().toJson(),
             );
@@ -2318,10 +2316,11 @@ class OrchestratorSession._({
                 connID: connID,
                 payload: Uint8List.fromList(utf8.encode(rekeyRequired)),
               );
-            } catch (_) {
+            } on Object catch (error, stackTrace) {
               if (_cancelled) {
                 throw StateError("cancelled");
               }
+              Log.w("failed to send rekeyRequired to connID=$connID", error, stackTrace);
             }
             break processMessage;
           }
@@ -2331,7 +2330,8 @@ class OrchestratorSession._({
             parsedMessage = RelayMessage.fromJson(
               jsonDecodeMap(utf8.decode(decrypted)),
             );
-          } catch (_) {
+          } on Object catch (error, stackTrace) {
+            Log.w("failed to parse decrypted relay message from inactive connID=$connID", error, stackTrace);
             break processMessage;
           }
 
@@ -2345,7 +2345,8 @@ class OrchestratorSession._({
           Uint8List encryptedAck;
           try {
             encryptedAck = await frame(ackJSON, encryptor: _sessionEncryptor);
-          } catch (_) {
+          } on Object catch (error, stackTrace) {
+            Log.w("failed to encrypt resume ack for connID=$connID", error, stackTrace);
             break processMessage;
           }
 
@@ -2358,11 +2359,14 @@ class OrchestratorSession._({
             if (outcome == RelaySendOutcome.stale) {
               throw StateError("relay connection changed before resume completed");
             }
-          } catch (e) {
+          } on Object catch (error, stackTrace) {
             if (_cancelled) {
               throw StateError("cancelled");
             }
-            throw Exception("send resume ack for connId $connID: $e");
+            Error.throwWithStackTrace(
+              _HandshakeReplySendException(reply: "resume ack", connID: connID, cause: error),
+              stackTrace,
+            );
           }
 
           Log.i("phone connID=$connID activated (resume)");
@@ -2730,4 +2734,16 @@ class const ReconnectBackoffPolicy({
     takeoverInitial: Duration(minutes: 2),
     takeoverMax: Duration(minutes: 5),
   );
+}
+
+/// The bridge could not send a key-exchange or resume reply to phone [connID].
+/// It ends the relay read loop, which then reconnects; [cause] keeps the
+/// original send failure.
+final class const _HandshakeReplySendException({
+  required final String reply,
+  required final int connID,
+  required final Object cause,
+}) implements Exception {
+  @override
+  String toString() => "send $reply for connId $connID: $cause";
 }

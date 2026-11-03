@@ -50,7 +50,7 @@ bridge/ workspace modules (siblings of app/):
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags; every registered plugin contributes namespaced options; the retired import flag is a hidden warning-only no-op |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags; every registered plugin contributes namespaced options |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/foundation/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/foundation/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
@@ -84,7 +84,7 @@ bridge/ workspace modules (siblings of app/):
   directly.
 - **User-facing output vs logging** — use `Console` (from `sesori_plugin_interface`) for anything the user must see to operate the bridge: prompts, requests, the login URL/code, essential startup status, and deprecation nudges. `Console.message` writes to stdout; `Console.warning` (yellow) and `Console.error` (red) write to stderr; none are gated by `--log-level`. Coloring is applied only when stderr is an interactive terminal, so redirected/piped output stays clean. Use `Log` only for diagnostics that can be safely ignored; all `Log` levels write to stderr and are suppressible via `--log-level`. `Log` warning/error lines are colorized (yellow/red) on a terminal, and the `[CallerClass]` tag is shown only at `debug`/`verbose` levels to keep normal output clean. The bridge must stay fully operable with logging silenced (`--log-level error` or `2>/dev/null`), so never put an essential prompt or actionable status behind `Log`.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
-- **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
+- **Linting**: `analysis_options.yaml` includes the local `all_lint_rules.yaml`
 - **Binary distribution**: npm wrapper package with platform-specific optional deps (darwin/linux/windows × arm64/x64)
 - **Proper architecture** — network calls go in dedicated API classes (e.g. `OpenCodeApi`), not inlined in business logic. Classes receive dependencies via constructor injection.
 - **BridgePlugin is API-layer in app/** — request handlers must not access `BridgePlugin` directly for session lifecycle flows. Put thin plugin-backed session operations in `SessionRepository`, and put multi-step session workflows like create/archive/unarchive in services.
