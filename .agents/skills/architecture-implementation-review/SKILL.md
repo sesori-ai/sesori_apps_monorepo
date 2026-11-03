@@ -540,7 +540,7 @@ Layer 0 — Platform Implementations
 └─ One implementation per interface per product/platform — no alternatives or
    factories inside a single shell. Mobile and desktop may each provide their
    own adapter for shared module_core interfaces.
-└─ Examples: FlutterUrlLauncher, AppLifecycleObserver, AppLinksDeepLinkSource,
+└─ Examples: FlutterUrlLauncher, AppLifecycleObserver,
    GoRouterRouteSource, CrashlyticsFailureReporter
 └─ No cross-dependency between implementations
 └─ Location: lib/core/platform/
@@ -593,7 +593,7 @@ Mobile initialization order: platform adapters → persistence → auth → core
 
 **B-C8. Platform Abstraction**
 
-- Shared/mobile platform interfaces are defined in `module_core/lib/src/platform/` or `module_core/lib/src/foundation/platform/`; concrete mobile implementations live mostly in `app/lib/core/platform/`, with deep-link and route sources in `app/lib/core/routing/`.
+- Shared/mobile platform interfaces are defined in `module_core/lib/src/platform/` or `module_core/lib/src/foundation/platform/`; concrete mobile implementations live mostly in `app/lib/core/platform/`.
 - Desktop-only platform interfaces are defined in `module_desktop_core/lib/src/foundation/platform/`; concrete desktop implementations live in `desktop/lib/core/platform/`.
 - New platform capabilities must define the interface in the owning pure Dart module and implement it in the product shell, except for an implementation both shells use unchanged, which may live in `module_app_ui/lib/src/platform/` (see B-C1).
 

@@ -16,7 +16,7 @@ See the [root README](../README.md) for the full monorepo overview.
 
 **Routing**
 
-`AppRouter` (`app_router.dart`) — `go_router`-based router built from `AppRoute` enum values defined in `module_core`. Handles session restore on startup and suppresses deep link URIs that `app_links` processes separately.
+`AppRouter` (`app_router.dart`) — `go_router`-based router built from `AppRoute` enum values defined in `module_core`. Handles session restore on startup and ignores incoming deep links.
 
 **Dependency Injection**
 
@@ -42,7 +42,6 @@ blocking migration screen prevents access to the normal login flow.
 | `FlutterLegacyNativeStorageAdapter` (temporary) | `LegacyNativeStorage` |
 | `FlutterUrlLauncher` | `UrlLauncher` |
 | `AppLifecycleObserver` | `LifecycleSource` |
-| `DeepLinkSource` (app_links) | `DeepLinkSource` |
 
 **Widgets**
 
@@ -116,7 +115,6 @@ flutter test
 | Navigation | `go_router` |
 | Typed preferences and encrypted secrets | `sesori_persistence` (Drift/crypto) |
 | Native master key | `flutter_secure_storage` |
-| Deep links | `app_links` |
 | URL launching | `url_launcher` |
 | Audio recording and wake lock | `record`, `wakelock_plus` (via `module_app_ui`) |
 | Markdown rendering | `flutter_markdown_plus` |

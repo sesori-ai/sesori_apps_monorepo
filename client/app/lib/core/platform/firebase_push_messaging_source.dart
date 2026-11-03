@@ -95,7 +95,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       _onNotificationOpened,
     );
 
-    _initialNotificationOpen = notificationOpenFromMessageForTesting(
+    _initialNotificationOpen = notificationOpenFromMessage(
       message: await _messaging.getInitialMessage(),
     );
   }
@@ -133,7 +133,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }
 
   @visibleForTesting
-  NotificationOpenRequest? notificationOpenFromMessageForTesting({
+  NotificationOpenRequest? notificationOpenFromMessage({
     required RemoteMessage? message,
   }) {
     if (message == null) {
@@ -164,7 +164,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }
 
   @visibleForTesting
-  PushNotificationMessage pushNotificationMessageFromRemoteMessageForTesting({
+  PushNotificationMessage pushNotificationMessageFromRemoteMessage({
     required RemoteMessage message,
   }) {
     return PushNotificationMessage(
@@ -176,12 +176,12 @@ class FirebasePushMessagingSource implements PushMessagingSource {
 
   void _onForegroundMessage(RemoteMessage message) {
     _foregroundMessageController.add(
-      pushNotificationMessageFromRemoteMessageForTesting(message: message),
+      pushNotificationMessageFromRemoteMessage(message: message),
     );
   }
 
   void _onNotificationOpened(RemoteMessage message) {
-    final openRequest = notificationOpenFromMessageForTesting(message: message);
+    final openRequest = notificationOpenFromMessage(message: message);
     if (openRequest != null) {
       _notificationOpenedController.add(openRequest);
     }

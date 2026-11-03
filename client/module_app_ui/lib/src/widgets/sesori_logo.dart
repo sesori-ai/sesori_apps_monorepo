@@ -23,10 +23,6 @@ class const SesoriLogo({
   /// (splash → login) during route transitions.
   static const String heroTag = "sesori-logo";
 
-  /// Rendered frame height for this [squareSize], including the shadow
-  /// space the SVG frame reserves below the squircle.
-  double get frameHeight => _svgHeight * (squareSize / _svgSquare);
-
   static const double _svgSquare = 120;
   static const double _svgWidth = 151;
   static const double _svgHeight = 177;

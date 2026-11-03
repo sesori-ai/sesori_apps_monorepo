@@ -42,12 +42,6 @@ void main() {
       expect(AnalyticsScreen.settingsDefaultInput.wireValue, "settings_default_input");
     });
 
-    test("voice engine has its own route", () {
-      const route = AppRoute.settingsVoiceEngine();
-      expect(route.buildPath(), "/settings/voice-engine");
-      expect(route.def, AppRouteDef.settingsVoiceEngine);
-    });
-
     test("settings Harnesses route round-trips its presentation", () {
       for (final presentation in HarnessSettingsPresentation.values) {
         final route = AppRoute.settingsHarnesses(presentation: presentation);

@@ -37,7 +37,6 @@ mostly under `app/lib/core/platform/`:
 | Interface | Flutter Adapter |
 |-----------|----------------|
 | `UrlLauncher` | `FlutterUrlLauncher` |
-| `DeepLinkSource` | `AppLinksDeepLinkSource` (app_links) |
 | `LifecycleSource` | `AppLifecycleObserver` |
 
 **Routing**

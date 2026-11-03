@@ -42,7 +42,6 @@ class const SettingsView({
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenDefaultInput,
-  required final VoidCallback onOpenVoiceEngine,
   required final VoidCallback onOpenRateSesori,
 
   /// Switches to a computer picked from the Bridge section's computer entry.
@@ -165,12 +164,6 @@ class const SettingsView({
                           ],
                         ),
                         onTap: onOpenDefaultInput,
-                      ),
-                      PregoGroupedRow(
-                        icon: TablerRegular.microphone,
-                        title: Text(loc.settingsVoiceEngineTitle),
-                        trailing: const Icon(TablerRegular.chevron_right),
-                        onTap: onOpenVoiceEngine,
                       ),
                     ],
                   ),

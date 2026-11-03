@@ -11,7 +11,6 @@ enum StringPreferenceKey({@override required final String storageKey}) implement
   founderCall(storageKey: "founder_call_v1"),
   notificationPreferencesDeviceId(storageKey: "notification_preferences_device_id_v1"),
   targetBridgeId(storageKey: "target_bridge_id_v1"),
-  voiceEngine(storageKey: "voice_engine"),
 }
 
 enum BoolPreferenceKey({@override required final String storageKey}) implements BoolPersistenceKey {

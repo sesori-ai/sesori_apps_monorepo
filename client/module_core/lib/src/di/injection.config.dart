@@ -44,7 +44,7 @@ import 'package:sesori_dart_core/src/api/product_analytics_event_api.dart'
     as _i221;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
-import 'package:sesori_dart_core/src/api/project_api.dart' as _i735;
+import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
@@ -58,8 +58,6 @@ import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_st
     as _i197;
 import 'package:sesori_dart_core/src/api/storage/session_launch_storage.dart'
     as _i384;
-import 'package:sesori_dart_core/src/api/storage/voice_engine_preference_storage.dart'
-    as _i733;
 import 'package:sesori_dart_core/src/api/view_declaration_api.dart' as _i37;
 import 'package:sesori_dart_core/src/api/voice_mode_config_api.dart' as _i276;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
@@ -152,7 +150,7 @@ import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
 import 'package:sesori_dart_core/src/repositories/file_preview_repository.dart'
     as _i704;
 import 'package:sesori_dart_core/src/repositories/founder_call_repository.dart'
-    as _i734;
+    as _i733;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/last_new_session_project_store.dart'
@@ -404,6 +402,10 @@ extension GetItInjectableX on _i174.GetIt {
         source: gh<_i957.InstalledAppBuildSource>(),
       ),
     );
+    gh.lazySingleton<_i509.VoiceModeRepository>(
+      () =>
+          _i509.VoiceModeRepository(configApi: gh<_i276.VoiceModeConfigApi>()),
+    );
     gh.lazySingleton<_i556.AttributionApi>(
       () => _i556.AttributionApi(client: gh<_i14.AttributionClient>()),
     );
@@ -446,11 +448,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i197.ProductAnalyticsPreferenceStorage>(
       () => _i197.ProductAnalyticsPreferenceStorage(
-        persister: gh<_i903.PersisterRepository>(),
-      ),
-    );
-    gh.lazySingleton<_i733.VoiceEnginePreferenceStorage>(
-      () => _i733.VoiceEnginePreferenceStorage(
         persister: gh<_i903.PersisterRepository>(),
       ),
     );
@@ -612,12 +609,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i509.VoiceModeRepository>(
-      () => _i509.VoiceModeRepository(
-        configApi: gh<_i276.VoiceModeConfigApi>(),
-        engineStorage: gh<_i733.VoiceEnginePreferenceStorage>(),
-      ),
-    );
     gh.lazySingleton<_i672.AnalyticsReleaseCutoffRepository>(
       () => _i672.AnalyticsReleaseCutoffRepository(
         api: gh<_i649.AnalyticsReleaseCutoffApi>(),
@@ -632,8 +623,8 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i734.FounderCallRepository>(
-      () => _i734.FounderCallRepository(
+    gh.lazySingleton<_i733.FounderCallRepository>(
+      () => _i733.FounderCallRepository(
         configApi: gh<_i298.FounderCallConfigApi>(),
         storage: gh<_i964.FounderCallStorage>(),
       ),
@@ -688,8 +679,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i546.PluginApi>(
       () => _i546.PluginApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i735.ProjectApi>(
-      () => _i735.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
+    gh.lazySingleton<_i734.ProjectApi>(
+      () => _i734.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
@@ -699,7 +690,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(
-        api: gh<_i735.ProjectApi>(),
+        api: gh<_i734.ProjectApi>(),
         filesystemApi: gh<_i1068.FilesystemApi>(),
       ),
     );
@@ -778,7 +769,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1013.FounderCallService>(
       () => _i1013.FounderCallService(
         connectionService: gh<_i369.ConnectionService>(),
-        repository: gh<_i734.FounderCallRepository>(),
+        repository: gh<_i733.FounderCallRepository>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
       dispose: (i) => i.dispose(),

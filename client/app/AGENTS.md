@@ -33,7 +33,7 @@ lib/
 ├── core/
 │   ├── di/           Flutter DI — registers platform adapters, then calls core init
 │   ├── platform/     FlutterMasterKeyStore, FlutterUrlLauncher, AppLifecycleObserver
-│   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
+│   ├── routing/      GoRouter routes
 │   ├── widgets/      Connection overlay, modal bottom sheets
 │   └── external_link.dart  Shell-wide entry point for opening outbound links
 ├── features/         Shell-owned screens and feature widgets (login, home, new_session, session_detail, session_diffs,
@@ -112,7 +112,6 @@ so the dependency is explicit and the adapter can be tested in isolation.
 | `PersistenceDirectory` | `FlutterPersistenceDirectory` | Existing app-support resolver; ready `persistence/` subtree |
 | `LegacyNativeStorage` | `FlutterLegacyNativeStorageAdapter` | Temporary old-keyspace enumeration/named deletion |
 | `UrlLauncher` | `FlutterUrlLauncher` | `url_launcher` |
-| `DeepLinkSource` | `AppLinksDeepLinkSource` | `app_links` |
 
 The persistence contracts come from lower-level `sesori_persistence`. Scope is
 selected by `main` (release → production; debug/profile → development), then

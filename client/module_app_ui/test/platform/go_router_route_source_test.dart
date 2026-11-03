@@ -197,7 +197,6 @@ void main() {
       AppRouteDef.home: "/sessions",
       AppRouteDef.settings: "/settings",
       AppRouteDef.settingsDefaultInput: "/settings/default-input",
-      AppRouteDef.settingsVoiceEngine: "/settings/voice-engine",
       AppRouteDef.settingsNotifications: "/settings/notifications",
       AppRouteDef.settingsHarnesses: "/settings/harnesses",
       AppRouteDef.settingsHarnessDetail: "/settings/harnesses/codex",

@@ -4,7 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../../di/firebase_register_module.dart";
 
 /// The [AnalyticsClient] for builds with no Firebase SDK (web, Linux, Windows,
-/// Android profile). Mirrors `client/desktop`'s no-op of the same name.
+/// Android profile).
 @firebaseDisabledEnvironment
 @LazySingleton(as: AnalyticsClient)
 class NoOpAnalyticsClient() implements AnalyticsClient {

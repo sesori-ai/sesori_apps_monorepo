@@ -110,9 +110,9 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(loc.noProjects),
+                  const Text("No projects"),
                   const SizedBox(height: 8),
-                  Text(loc.addProjectPrompt),
+                  const Text("Add a project to get started"),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => _showAddProjectDialog(context),

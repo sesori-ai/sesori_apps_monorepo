@@ -680,10 +680,6 @@ class _IosTappableState()
       ),
     );
   }
-
-  // TODO(V2): Pop-out dimming — dim surrounding content by overlaying a semi-transparent
-  // layer on the parent, leaving only this tappable un-dimmed. Could be implemented via
-  // an Overlay entry or a shared InheritedWidget that coordinates dimming across siblings.
 }
 
 // ---------------------------------------------------------------------------

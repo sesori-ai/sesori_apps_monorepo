@@ -7,15 +7,6 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "session_scheduled_resume.dart";
 
-/// Builds the long-press actions for a session row. It is a builder rather than
-/// a ready-made list because the entries are owned by the screen's action
-/// dispatcher, while the list supplies the session and the context they act
-/// against. The context must be the list's, not the row's: archive and delete
-/// hide the row optimistically, unmounting it before their cubit calls resolve,
-/// which would silently skip the follow-up the actions run afterwards (undo
-/// snackbar, closing a deleted session's detail route).
-typedef SessionOpenedCallback = void Function({required Session session});
-
 /// A single session row: the harness logo, the title with its status mark and
 /// when the session last changed, over one tertiary meta line with the project.
 ///
@@ -36,12 +27,12 @@ typedef SessionOpenedCallback = void Function({required Session session});
 ///
 /// The frequent actions are also behind swipes ([PregoSwipeActions]): toward
 /// the start edge an unarchived row opens on a delete pill and an archive
-/// pill, with a full swipe committing the archive — which is confirmed by a
-/// sheet, so the quick path never finalizes anything on its own. An archived
-/// row has no archive action left and opens on delete alone. Toward the end
-/// edge the row opens on the mail-style read toggle, committed by a full swipe
-/// likewise. The swipes are the quick paths; the menu stays the discoverable
-/// and assistive one.
+/// pill, with a full swipe committing the archive. Archiving happens at once
+/// behind an Undo window; only a running session asks for confirmation first.
+/// An archived row has no archive action left and opens on delete alone.
+/// Toward the end edge the row opens on the mail-style read toggle, committed
+/// by a full swipe likewise. The swipes are the quick paths; the menu stays the
+/// discoverable and assistive one.
 ///
 /// Under a [PregoInteractionMode.pointer] scope the row keeps the touch row's
 /// type and line boxes in less vertical padding, and hovering or focusing it
@@ -64,9 +55,8 @@ class const SessionTile({
   final bool isRetrying = false,
   final int backgroundTaskCount = 0,
 
-  /// Opens the session when the product shell provides a detail destination.
-  /// Desktop leaves this null until the transcript slice lands.
-  required final VoidCallback? onTap,
+  /// Opens the session.
+  required final VoidCallback onTap,
 
   /// Builds this row's long-press actions; the session — and the stable
   /// context the actions run against — are already closed over by the list,
@@ -130,20 +120,18 @@ class const SessionTile({
       leadingPrimaryActionBuilder: (context, close) => _markUnreadAction(context: context, close: close),
       onLeadingFullSwipe: onToggleUnread,
       // Right-click is the mouse counterpart of long-press. The row merges its
-      // two lines into one semantics node and announces a button only when the
-      // shell provides a detail action.
+      // two lines into one semantics node and announces it as a button.
       child: GestureDetector(
         onSecondaryTap: openMenu,
         child: MergeSemantics(
           child: Semantics(
-            button: onTap != null,
+            button: true,
             // Ink rather than a plain colour so the tap ripple stays visible
             // over the selected tint (a widget's own colour would cover it).
             child: Ink(
               color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
               child: InkWell(
-                // Long-press keeps the ink enabled, so the arrow must be chosen when a click does nothing.
-                mouseCursor: onTap == null ? SystemMouseCursors.basic : WidgetStateMouseCursor.clickable,
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: onTap,
                 onLongPress: openMenu,
                 hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
