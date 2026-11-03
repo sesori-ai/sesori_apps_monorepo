@@ -171,6 +171,8 @@ Widget _buildApp({
   bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
   GoRouterWidgetBuilder? sessionDetailBuilder,
+  String? projectName = "Project One",
+  ({ProjectListState initial, Stream<ProjectListState> updates})? projectListStates,
 }) {
   final router = GoRouter(
     initialLocation: "/sessions/new?project=project-1",
@@ -183,7 +185,7 @@ Widget _buildApp({
             path: "sessions/new",
             builder: (context, state) => NewSessionScreen(
               projectId: state.uri.queryParameters["project"],
-              projectName: "Project One",
+              projectName: projectName,
               entry: const NewSessionEntry.platform(),
             ),
           ),
@@ -222,8 +224,10 @@ Widget _buildApp({
   ];
   whenListen(
     projectList,
-    const Stream<ProjectListState>.empty(),
-    initialState: ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null),
+    projectListStates?.updates ?? const Stream<ProjectListState>.empty(),
+    initialState:
+        projectListStates?.initial ??
+        ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null),
   );
   return MultiBlocProvider(
     providers: [
@@ -521,19 +525,52 @@ void main() {
     expect(SentBubbleLanding.of(context: tester.element(find.byType(PromptInput))), isNotNull);
   });
 
-  testWidgets("the header names the project and switches to another one", (tester) async {
+  testWidgets("the header names the project and moves the composer to another one, keeping its text", (
+    tester,
+  ) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     expect(find.text("What should we work on?"), findsOneWidget);
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "half-written idea");
+    await tester.pump();
+    final cubit = tester.element(find.byType(NewSessionView)).read<NewSessionCubit>();
     await tester.tap(find.byKey(const Key("new_session_project")));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Project Two"));
     await tester.pumpAndSettle();
 
+    // The page and its composer stay; only the project moves.
     final router = GoRouter.of(tester.element(find.byType(NewSessionScreen)));
-    expect(router.state.uri.toString(), "/sessions/new?project=project-2&name=Project+Two");
-    // The replaced route keeps its page; the new project still gets its own cubit.
+    expect(router.state.uri.toString(), "/sessions/new?project=project-1");
+    expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>(), same(cubit));
+    expect(cubit.state.project.id, "project-2");
+    expect(
+      find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Project Two")),
+      findsOneWidget,
+    );
+    expect(find.text("half-written idea"), findsOneWidget);
     verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
+  });
+
+  testWidgets("a project the list names only later gives the composer its name", (tester) async {
+    final listed = StreamController<ProjectListState>();
+    addTearDown(listed.close);
+    await tester.pumpWidget(
+      _buildApp(
+        projectName: null,
+        projectListStates: (initial: const ProjectListState.loading(), updates: listed.stream),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final cubit = tester.element(find.byType(NewSessionView)).read<NewSessionCubit>();
+    expect(cubit.state.project.name, isNull);
+
+    final projects = [testProjectSummary(id: "project-1", name: "Project One")];
+    listed.add(ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null));
+    await tester.pumpAndSettle();
+
+    expect(cubit.state.project.name, "Project One");
   });
 
   testWidgets("the header stays where it is while the composer holds the keyboard", (tester) async {
@@ -3273,7 +3310,7 @@ void main() {
     expect(find.text("retry message"), findsOneWidget);
   });
 
-  testWidgets("persists and restores the per-project new-session draft", (tester) async {
+  testWidgets("persists and restores the new-session draft", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
@@ -3286,11 +3323,11 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
     expect(
-      composerDraftRepository.readForNewSession(projectId: "project-1"),
+      composerDraftRepository.readForNewSession(),
       ComposerDraft.typed(text: "half-written idea"),
     );
 
-    // Re-open the new-session screen — the per-project draft is restored.
+    // Re-open the new-session screen — the draft is restored.
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     expect(find.text("half-written idea"), findsOneWidget);

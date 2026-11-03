@@ -15,14 +15,16 @@ import "../../core/widgets/mobile_composer_presentation_scope.dart";
 ///
 /// The project holds once a default lands, so a session elsewhere turning
 /// newest never moves a draft; choosing another filter, or another project in
-/// the header, moves it.
+/// the header, moves the composer there with what it holds.
 class const HomeComposerPane({super.key}) extends StatefulWidget {
   @override
   State<HomeComposerPane> createState() => _HomeComposerPaneState();
 }
 
 class _HomeComposerPaneState() extends State<HomeComposerPane> {
-  /// The draft's project, or null until a default lands or one is chosen.
+  /// The project the next composer starts in, or null until a default lands
+  /// or one is chosen. It follows the composer's project, so one built again,
+  /// after the list reloads, starts where the last one was.
   String? _projectId;
 
   /// Counts the sessions this pane started. The page stays under the session
@@ -47,18 +49,23 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       ProjectListLoading() || ProjectListLoaded() || ProjectListFailed() || ProjectListBridgeDisconnected() => _empty(),
     };
     return BlocListener<AllSessionsCubit, AllSessionsState>(
-      // Another filter moves the draft to its default; until the draft has a
-      // project, the first default to land is taken up.
+      // Another filter's default is where the next composer starts, even while
+      // none is up; until there is a project, so is the first default to land.
       listenWhen: (previous, current) =>
           previous.projectId != current.projectId ||
           (_projectId == null && previous.defaultProjectId != current.defaultProjectId),
-      listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
+      listener: (_, state) {
+        final projectId = state.defaultProjectId;
+        if (projectId != null) setState(() => _projectId = projectId);
+      },
       child: AnimatedSwitcher(
-        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+        duration: _motionDuration,
         child: pane,
       ),
     );
   }
+
+  Duration get _motionDuration => context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220);
 
   Widget _empty() => PregoGlassScaffold(
     key: const Key("home-composer-pane-empty"),
@@ -68,49 +75,101 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
     slivers: const [],
   );
 
+  Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
+    key: const Key("home-composer-pane-prompt"),
+    onProjectSelected: onProjectSelected,
+    onBack: null,
+    banner: ConnectionBanner.maybeFor(context),
+    // Nobody asked for it yet: the pane shows on rotation, a filter
+    // change or under an opened session, so the picker waits for a tap.
+    opensPicker: false,
+    topBar: null,
+  );
+
+  /// [projectId] as the composer names it.
+  NewSessionProject _project({required List<ProjectSummary> projects, required String projectId}) {
+    final project = projects.where((project) => project.id == projectId).firstOrNull;
+    return NewSessionProject(
+      id: projectId,
+      name: project == null ? null : projectDisplayName(loc: context.loc, project: project),
+      kind: project?.kind ?? ProjectKind.folder,
+    );
+  }
+
   /// The draft's composer, or the prompt for its project.
   Widget _composer({required List<ProjectSummary> projects, required bool isLoading}) {
-    final project = projects.where((project) => project.id == _projectId).firstOrNull;
-    if (project == null) {
+    final projectId = _projectId;
+    if (projectId == null) {
       // A list still loading may yet name a default, so the prompt waits.
       if (isLoading) return _empty();
-      return NewSessionProjectPrompt(
-        key: const Key("home-composer-pane-prompt"),
+      return _prompt(
         onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
-        onBack: null,
-        banner: ConnectionBanner.maybeFor(context),
-        // Nobody asked for it yet: the pane shows on rotation, a filter
-        // change or under an opened session, so the picker waits for a tap.
-        opensPicker: false,
-        topBar: null,
       );
     }
-    final projectId = project.id;
-    final projectName = projectDisplayName(loc: context.loc, project: project);
     return BlocProvider(
-      // A different project, or a session started, is a fresh draft.
-      key: ValueKey(("home-composer-pane", projectId, _launches)),
+      // A session started is a fresh draft; another project moves this one.
+      key: ValueKey(("home-composer-pane", _launches)),
       create: (_) => createNewSessionCubit(
         locator: getIt,
-        projectId: projectId,
-        projectName: projectName,
-        projectKind: project.kind,
+        project: _project(projects: projects, projectId: projectId),
       ),
-      child: BlocListener<NewSessionCubit, NewSessionState>(
-        listenWhen: (_, current) => current is NewSessionCreated,
-        listener: (_, _) => setState(() => _launches++),
-        child: NewSessionView(
-          projectId: projectId,
-          projectName: projectName,
-          onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<NewSessionCubit, NewSessionState>(
+            listenWhen: (previous, current) =>
+                current is NewSessionCreated || previous.project.id != current.project.id,
+            // The next composer starts where this one is, or where its session did.
+            listener: (_, state) => setState(() {
+              if (state is NewSessionCreated) _launches++;
+              _projectId = state.project.id;
+            }),
+          ),
+          BlocListener<AllSessionsCubit, AllSessionsState>(
+            // Another filter moves the composer to its default.
+            listenWhen: (previous, current) => previous.projectId != current.projectId,
+            listener: (context, state) {
+              final projectId = state.defaultProjectId;
+              if (projectId == null) return;
+              context.read<NewSessionCubit>().selectProject(
+                project: _project(projects: projects, projectId: projectId),
+              );
+            },
+          ),
+        ],
+        child: Builder(
+          builder: (context) => _listedComposer(context: context, projects: projects, isLoading: isLoading),
+        ),
+      ),
+    );
+  }
+
+  /// The composer while its project is listed, and otherwise the prompt,
+  /// which moves the same composer to the project chosen.
+  Widget _listedComposer({
+    required BuildContext context,
+    required List<ProjectSummary> projects,
+    required bool isLoading,
+  }) {
+    final projectId = context.select((NewSessionCubit cubit) => cubit.state.project.id);
+    final listed = projects.any((project) => project.id == projectId);
+    void select({required String projectId, required String projectName}) =>
+        context.read<NewSessionCubit>().selectProject(
+          project: _project(projects: projects, projectId: projectId),
+        );
+    return AnimatedSwitcher(
+      duration: _motionDuration,
+      child: switch (listed) {
+        true => NewSessionView(
+          key: const Key("home-composer-pane-composer"),
+          onProjectSelected: select,
           onBack: null,
           onOpenHarnessSettings: () => context.pushRoute(
             const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
           ),
-          onSessionCreated: ({required session}) => context.goRoute(
+          onSessionCreated: ({required session, required project}) => context.goRoute(
             AppRoute.sessionDetail(
-              projectId: projectId,
-              projectName: projectName,
+              projectId: project.id,
+              projectName: project.name,
               sessionId: session.id,
               sessionTitle: session.title,
               readOnly: false,
@@ -118,7 +177,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
               fromLaunch: true,
             ),
           ),
-          composerScopeBuilder: ({required child}) => BlocProvider(
+          composerScopeBuilder: ({required projectId, required child}) => BlocProvider(
             create: (_) {
               final service = getIt<VoiceTranscriptionService>();
               return VoiceInputCubit(
@@ -131,7 +190,10 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
           banner: ConnectionBanner.maybeFor(context),
           pageChrome: null,
         ),
-      ),
+        // A list still loading may yet name it.
+        false when isLoading => _empty(),
+        false => _prompt(onProjectSelected: select),
+      },
     );
   }
 }

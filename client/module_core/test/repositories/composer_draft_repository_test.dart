@@ -23,16 +23,13 @@ void main() {
 
   test("isolates existing-session and new-session keys", () {
     repository.saveForSession(
-      sessionId: "project",
+      sessionId: "session",
       draft: ComposerDraft.typed(text: "existing"),
     );
-    repository.saveForNewSession(
-      projectId: "project",
-      draft: ComposerDraft.typed(text: "new"),
-    );
+    repository.saveForNewSession(draft: ComposerDraft.typed(text: "new"));
 
-    expect(repository.readForSession(sessionId: "project").text, "existing");
-    expect(repository.readForNewSession(projectId: "project").text, "new");
+    expect(repository.readForSession(sessionId: "session").text, "existing");
+    expect(repository.readForNewSession().text, "new");
   });
 
   test("whitespace-only save clears the stored draft and attribution", () {

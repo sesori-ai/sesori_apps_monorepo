@@ -166,7 +166,7 @@ The main pane hosts one full-width routed page.
   centred column no wider than the session page's composer: the shared heading and project selector (see
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
-  Choosing another project builds a fresh cubit for it.
+  Choosing another project moves the same composer there, keeping what it holds.
 - The session page uses the same toolbar anatomy above the transcript, never over it. A subtask's "Main
   session" crumb and the title share one 16 pt line and baseline, the crumb medium and secondary, a slash
   between them, the title bold; the crumb returns to the session that started it (back to the kept parent
@@ -189,7 +189,7 @@ The main pane hosts one full-width routed page.
   floating glass bar and one full-width transcript and composer.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project", else the
   newest session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
-  filter or a header pick moves it with its own draft, a still-loading list keeps the loader up until it names the
+  filter or a header pick moves it there with what it holds, a still-loading list keeps the loader up until it names the
   project or finishes loading, and with no default the shared "Choose a project" prompt shows instead, offering only
   "Open folder…" when there are no projects; a bridge whose only project is "No project" still shows the composer, in
   "No project". After the bridge connects, the composer appears at its final layout at once, with the parts still
@@ -457,7 +457,7 @@ Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
 
 On home, watch for a session starting in a project other than the one picked, a draft following a project
-reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
+reorder or lost on a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
 the prompt while the list loads on launch, the composer building up part by part or its heading shifting
 after the bridge connects, a Start button
 offered for another computer, the computer row saying This computer while another computer is viewed, its name
