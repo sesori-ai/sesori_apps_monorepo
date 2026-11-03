@@ -118,7 +118,9 @@ void main() {
   });
 
   test("CodexThreadRepository keeps ordinary live forks as roots", () {
-    final api = CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"));
+    final api = CodexAppServerApi(
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+    );
     final repository = CodexThreadRepository(appServerApi: api);
 
     final fork = repository.decodeStartedNotificationParams(
@@ -765,7 +767,9 @@ CodexSessionService _newService({
     sessionMapper: const CodexSessionMapper(),
     launchDirectory: "/repo/launch",
   );
-  final api = CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"));
+  final api = CodexAppServerApi(
+    client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+  );
   service.attachAppServerRepositories(
     threadRepository: threadRepository,
     modelRepository: CodexModelRepository(appServerApi: api),
@@ -778,7 +782,9 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
     extends CodexThreadRepository {
   this
     : super(
-        appServerApi: CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0")),
+        appServerApi: CodexAppServerApi(
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+        ),
       );
 
   final List<String> readThreadIds = [];
@@ -797,7 +803,9 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
 class _GatedThreadRepository() extends CodexThreadRepository {
   this
     : super(
-        appServerApi: CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0")),
+        appServerApi: CodexAppServerApi(
+          client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
+        ),
       );
 
   final Completer<void> readStarted = Completer<void>();

@@ -86,8 +86,8 @@ class CodexStdioAppServerClient({
   @override
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     final id = _nextId++;
     final frame = <String, dynamic>{"id": id, "method": method};

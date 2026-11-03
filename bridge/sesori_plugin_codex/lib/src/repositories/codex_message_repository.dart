@@ -332,7 +332,7 @@ class CodexMessageRepository({
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     required Map<String, CodexSubAgentReplayData> childReplayDataById,
-    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+    required CodexConfigDefaults config,
   }) {
     final lines = read._lines;
 

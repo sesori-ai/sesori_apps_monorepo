@@ -39,6 +39,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: toolOutcomeRepository,
@@ -1073,8 +1074,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => resolvedFake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(resolvedPlugin.dispose);
       resolvedFake.respondInOrder([
@@ -3064,8 +3067,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => kaFake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(milliseconds: 20),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       kaFake.respondInOrder([
         const _Response(result: _initOk),
@@ -3245,8 +3250,10 @@ void main() {
         clientFactory: () => CodexAppServerClient(
           serverUrl: serverUrl,
           channelFactory: (_) => scopedFake.channel,
+          onDisconnected: null,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
       addTearDown(scopedPlugin.dispose);
       scopedFake.respondInOrder([

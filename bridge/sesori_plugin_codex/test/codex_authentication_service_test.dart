@@ -245,8 +245,8 @@ class _FakeStdioClient({final Object? connectError}) implements CodexStdioAppSer
   @override
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) => throw UnimplementedError();
 
   @override

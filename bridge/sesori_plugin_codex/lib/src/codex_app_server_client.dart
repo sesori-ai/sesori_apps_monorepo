@@ -46,14 +46,17 @@ class const CodexServerRequest({
   required final Map<String, dynamic> params,
 });
 
+/// Deadline for one app-server request when the caller needs no other.
+const codexRequestTimeout = Duration(seconds: 30);
+
 /// Request and notification surface shared by Codex App Server transports.
 abstract interface class CodexAppServerTransport() {
   Stream<CodexServerNotification> get notifications;
 
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   });
 }
 
@@ -77,13 +80,13 @@ WebSocketChannel _defaultConnect(Uri uri) => WebSocketChannel.connect(uri);
 ///   5. Call [dispose] to close the socket and fail any in-flight requests.
 class CodexAppServerClient({
   required final String _serverUrl,
-  CodexWebSocketChannelFactory? channelFactory,
+  required CodexWebSocketChannelFactory? channelFactory,
 
   /// Fired at most once when the socket drops unexpectedly (error or close)
   /// while the client is still live — never during a deliberate [dispose].
   /// The runtime descriptor wires this to its status reporter so a transport
   /// drop surfaces as a debounced degraded status.
-  final void Function()? _onDisconnected,
+  required final void Function()? _onDisconnected,
 }) implements CodexAppServerTransport {
   final CodexWebSocketChannelFactory _channelFactory = channelFactory ?? _defaultConnect;
 
@@ -110,11 +113,7 @@ class CodexAppServerClient({
   /// Idempotent only in the failure path — once `connect` succeeds, calling
   /// it again throws [StateError]. Re-connecting after a drop is a job for
   /// the caller (mirrors how the opencode SSE client externalises retry).
-  Future<CodexInitializeResult> connect({
-    String clientName = "sesori-bridge",
-    String clientVersion = "0.0.0",
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
+  Future<CodexInitializeResult> connect() async {
     if (_channel != null) {
       throw StateError("CodexAppServerClient already connected");
     }
@@ -142,9 +141,9 @@ class CodexAppServerClient({
         method: "initialize",
         params: {
           "clientInfo": {
-            "name": clientName,
+            "name": "sesori-bridge",
             "title": null,
-            "version": clientVersion,
+            "version": "0.0.0",
           },
           "capabilities": {
             // Codex gates turn/start.collaborationMode behind this capability.
@@ -157,7 +156,7 @@ class CodexAppServerClient({
             "optOutNotificationMethods": null,
           },
         },
-        timeout: timeout,
+        timeout: codexRequestTimeout,
       );
 
       if (raw is! Map) {
@@ -208,8 +207,8 @@ class CodexAppServerClient({
   @override
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     final channel = _channel;
     if (channel == null) {

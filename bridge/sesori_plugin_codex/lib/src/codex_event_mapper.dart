@@ -48,7 +48,7 @@ class CodexEventMapper({
   /// `item`/`turn` notifications do not carry the model, so streaming
   /// assistant messages are stamped with this until the session is re-fetched
   /// from its rollout (the authoritative per-session source).
-  final CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  required final CodexConfigDefaults config,
 }) {
   /// Per-thread provider captured from `thread/started.modelProvider`, used to
   /// stamp streaming assistant messages.

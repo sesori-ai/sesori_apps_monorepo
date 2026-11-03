@@ -328,7 +328,7 @@ void main() {
 }
 
 class _StubClient({required final Object? response}) extends CodexAppServerClient {
-  this : super(serverUrl: "ws://127.0.0.1:0");
+  this : super(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null);
 
   String? method;
   Object? params;
@@ -336,8 +336,8 @@ class _StubClient({required final Object? response}) extends CodexAppServerClien
   @override
   Future<dynamic> request({
     required String method,
-    Object? params,
-    Duration timeout = const Duration(seconds: 30),
+    required Object? params,
+    required Duration timeout,
   }) async {
     this.method = method;
     this.params = params;
@@ -348,7 +348,7 @@ class _StubClient({required final Object? response}) extends CodexAppServerClien
 class _StubAppServerApi({required final CodexModelListResponseDto response}) extends CodexAppServerApi {
   this
     : super(
-        client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+        client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
       );
 
   @override

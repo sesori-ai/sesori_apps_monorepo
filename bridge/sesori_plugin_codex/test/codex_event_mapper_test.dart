@@ -38,6 +38,7 @@ void main() {
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
       clock: const ServerClock(),
+      config: const CodexConfigDefaults.empty(),
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -46,7 +47,7 @@ void main() {
       ),
     );
     final appServerApi = CodexAppServerApi(
-      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
     );
     final threadRepository = CodexThreadRepository(
       appServerApi: appServerApi,
@@ -232,6 +233,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       )..setThreadDirectory(threadId: "t-9", directory: "/repo/app/packages/ui");
 
       final events = scopedMapper.mapParsed(
@@ -254,6 +256,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       );
       mapThreadStarted(
         activityMapper,
@@ -303,6 +306,7 @@ void main() {
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
         clock: const ServerClock(),
+        config: const CodexConfigDefaults.empty(),
       );
       mapThreadStarted(
         activityMapper,

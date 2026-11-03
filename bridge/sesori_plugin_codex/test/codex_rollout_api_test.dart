@@ -151,6 +151,7 @@ void main() {
         replayToolDisposition: replayToolDisposition,
         structuredToolStatusByCallId: structuredToolStatusByCallId,
         childReplayDataById: const {},
+        config: const CodexConfigDefaults.empty(),
       );
     }
 
@@ -1278,6 +1279,7 @@ void main() {
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
         childReplayDataById: const {},
+        config: const CodexConfigDefaults.empty(),
       );
 
       expect(messages.map((message) => message.info.id), [
@@ -1337,6 +1339,7 @@ void main() {
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
         childReplayDataById: const {},
+        config: const CodexConfigDefaults.empty(),
       );
 
       expect(messages.map((message) => message.info.id), [
@@ -2628,8 +2631,9 @@ void main() {
         serverUrl: serverUrl,
         environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
-        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
@@ -2664,8 +2668,9 @@ void main() {
         serverUrl: serverUrl,
         environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
-        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       final sessions = await plugin.getSessions(projectId: "/work/sample-app");
@@ -2714,8 +2719,9 @@ void main() {
         serverUrl: serverUrl,
         environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
-        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       final messages = await plugin.getSessionMessages(
@@ -2752,8 +2758,9 @@ void main() {
         serverUrl: serverUrl,
         environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
-        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       );
 
       final messages = await plugin.getSessionMessages(sessionId);
@@ -2846,6 +2853,7 @@ void main() {
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
         childReplayDataById: const {},
+        config: const CodexConfigDefaults.empty(),
       );
       expect(messages, hasLength(2));
       final first = messages[0].info as PluginMessageAssistant;

@@ -212,6 +212,7 @@ class CodexSessionService({
     final tile = _subAgentTracker.observeStarted(
       child: child,
       callId: callId,
+      status: PluginToolStatus.running,
     );
     return CodexSubAgentThreadAnnouncement(
       child: child,
@@ -255,7 +256,7 @@ class CodexSessionService({
     return task == null ? const [] : [_sessionMapper.mapSubAgentTile(task: task)];
   }
 
-  List<BridgeSseEvent> cancelOpenSubAgents({Set<String>? sessionIds}) => [
+  List<BridgeSseEvent> cancelOpenSubAgents({required Set<String>? sessionIds}) => [
     for (final task in _subAgentTracker.cancelOpen(sessionIds: sessionIds)) _sessionMapper.mapSubAgentTile(task: task),
   ];
 

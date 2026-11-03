@@ -329,6 +329,7 @@ class CodexPlugin._({
     return CodexAppServerClient(
       serverUrl: _serverUrl,
       onDisconnected: _handleClientDisconnected,
+      channelFactory: null,
     );
   }
 
@@ -348,7 +349,7 @@ class CodexPlugin._({
       ..._sessionService.deferredRootIds,
     };
     final hadVisibleActivity = activeSessionIds.isNotEmpty || (registry?.hasAnyPendingInput ?? false);
-    _sessionService.cancelOpenSubAgents().forEach(_eventBuffer.add);
+    _sessionService.cancelOpenSubAgents(sessionIds: null).forEach(_eventBuffer.add);
     _connectFuture = null;
     _client = null;
     _mcpRepository = null;
@@ -811,6 +812,7 @@ class CodexPlugin._({
       await client.request(
         method: "turn/interrupt",
         params: {"threadId": threadId, "turnId": turnId},
+        timeout: codexRequestTimeout,
       );
     } on CodexRpcException catch (error, stackTrace) {
       final backendAlreadyIdle =
@@ -1181,6 +1183,7 @@ class CodexPlugin._({
       await client.request(
         method: "turn/interrupt",
         params: {"threadId": sessionId, "turnId": turnId},
+        timeout: codexRequestTimeout,
       );
     } on CodexRpcException catch (error) {
       // If the turn already completed before our interrupt arrived,
