@@ -39,7 +39,7 @@ final class const ManagedRuntimeSetupStatusMapper() {
         actionHint: "$name setup could not be determined. Verify the configured CLI and retry.",
       ),
       ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection)
-          when _isUnknown(primaryRejection) || _isUnknown(managedRejection) =>
+          when _isUnknown(rejection: primaryRejection) || _isUnknown(rejection: managedRejection) =>
         PluginSetupUnknown(actionHint: "$name setup could not be determined. Verify the local CLI and retry."),
       ManagedRuntimeAutomaticNotSelected() => PluginSetupRuntimeMissing(
         actionHint: supportsManagedInstall
@@ -49,7 +49,7 @@ final class const ManagedRuntimeSetupStatusMapper() {
     };
   }
 
-  bool _isUnknown(ManagedRuntimeRejection rejection) => switch (rejection) {
+  bool _isUnknown({required ManagedRuntimeRejection rejection}) => switch (rejection) {
     ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
     ManagedRuntimeProbeRejected() => true,
   };

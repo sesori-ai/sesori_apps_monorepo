@@ -24,12 +24,18 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
       "agent_settled" => PiAgentSettledEvent(raw: json),
       "turn_start" => PiTurnStartEvent(raw: json),
       "turn_end" => PiTurnEndEvent(raw: json),
-      "message_start" => PiMessageStartEvent(message: _message(json["message"]), raw: json),
+      "message_start" => PiMessageStartEvent(
+        message: _message(value: json["message"]),
+        raw: json,
+      ),
       "message_update" => PiMessageUpdateEvent(
         delta: PiAssistantDelta.parse(json: mapOrEmpty(json["assistantMessageEvent"])),
         raw: json,
       ),
-      "message_end" => PiMessageEndEvent(message: _message(json["message"]), raw: json),
+      "message_end" => PiMessageEndEvent(
+        message: _message(value: json["message"]),
+        raw: json,
+      ),
       "tool_execution_start" => PiToolExecutionStartEvent(
         toolCallId: stringOrNull(json["toolCallId"]),
         toolName: stringOrNull(json["toolName"]),
@@ -75,7 +81,10 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
         },
         raw: json,
       ),
-      "entry_appended" => PiEntryAppendedEvent(entry: _entry(json["entry"]), raw: json),
+      "entry_appended" => PiEntryAppendedEvent(
+        entry: _entry(value: json["entry"]),
+        raw: json,
+      ),
       // An absent or cleared name is `undefined` upstream; both mean "no
       // explicit name", so null models it honestly.
       "session_info_changed" => PiSessionInfoChangedEvent(name: stringOrNull(json["name"]), raw: json),
@@ -116,7 +125,7 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
   }
 }
 
-PiAgentMessageDto? _message(Object? value) {
+PiAgentMessageDto? _message({required Object? value}) {
   try {
     return PiAgentMessageDto.fromJson(mapOrEmpty(value));
   } on Object catch (error, stack) {
@@ -125,7 +134,7 @@ PiAgentMessageDto? _message(Object? value) {
   }
 }
 
-PiSessionEntryDto? _entry(Object? value) {
+PiSessionEntryDto? _entry({required Object? value}) {
   try {
     return PiSessionEntryDto.fromJson(mapOrEmpty(value));
   } on Object catch (error, stack) {
