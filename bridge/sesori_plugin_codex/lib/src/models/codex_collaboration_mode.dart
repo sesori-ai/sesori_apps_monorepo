@@ -23,7 +23,9 @@ enum CodexCollaborationMode({
       null => defaultMode,
       "agent" => defaultMode,
       // COMPATIBILITY 2026-08-19 (v1.7.0): This mode was named "Default" until
-      // it was renamed to "Agent". Remove once no supported app can send it.
+      // it was renamed to "Agent". Remove once public apps older than v1.8.3,
+      // which send a stored agent without checking the catalog, are
+      // unsupported.
       "default" => defaultMode,
       // COMPATIBILITY 2026-09-21 (v1.9.0): Plan is no longer advertised as an
       // agent, but stored session and new-session defaults can still name it,
