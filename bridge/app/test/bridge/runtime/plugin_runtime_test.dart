@@ -73,7 +73,7 @@ void main() {
         );
         await pumpEventQueue();
       }
-      expect(runtime.snapshot.single.state, PluginRuntimeState.degraded);
+      expect(runtime.snapshot.single.state, isA<PluginRuntimeDegraded>());
       statuses.add(const PluginReady());
       await pumpEventQueue();
     }, stderr: () => logs);
@@ -89,7 +89,7 @@ void main() {
     addTearDown(runtime.dispose);
     await runtime.startEager(pluginIds: const ["one"]);
     final statuses = factory.plugins.single.statuses;
-    expect(runtime.snapshot.single.degradedActionHint, isNull);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
 
     for (final hint in ["Retry once.", "Retry twice."]) {
       statuses.add(
@@ -101,7 +101,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(runtime.snapshot.single.degradedActionHint, hint);
+      expect(runtime.snapshot.single.state, PluginRuntimeDegraded(actionHint: hint));
     }
 
     statuses.add(
@@ -113,16 +113,15 @@ void main() {
       ),
     );
     await pumpEventQueue();
-    expect(runtime.snapshot.single.degradedActionHint, isNull);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDegraded(actionHint: null));
 
     statuses.add(const PluginRestarting(attempt: 1, reason: null));
     await pumpEventQueue();
-    expect(runtime.snapshot.single.state, PluginRuntimeState.degraded);
-    expect(runtime.snapshot.single.degradedActionHint, isNull);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDegraded(actionHint: null));
 
     statuses.add(const PluginReady());
     await pumpEventQueue();
-    expect(runtime.snapshot.single.degradedActionHint, isNull);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
   });
 
   test("a warm-up that fails or hangs neither fails nor delays the start", () async {
@@ -141,10 +140,10 @@ void main() {
     await runtime.startEager(pluginIds: const ["one"]);
     await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
 
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
     warmUpGate.complete();
     await Future<void>.delayed(Duration.zero);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
   });
 
   test("dispose aborts and awaits an active managed install", () async {
@@ -674,7 +673,7 @@ void main() {
       throwsA(isA<PluginAuthenticationRequiredException>()),
     );
     await _waitUntil(
-      () => runtime.snapshot.single.state == PluginRuntimeState.blocked && factory.plugins.single.shutdownCount == 1,
+      () => runtime.snapshot.single.state is PluginRuntimeBlocked && factory.plugins.single.shutdownCount == 1,
     );
 
     expect(runtime.snapshot.single.setup, isA<PluginSetupAuthenticationRequired>());
@@ -872,7 +871,7 @@ void main() {
     await subscription.cancel();
     startGate.complete();
     await _waitUntil(
-      () => runtime.snapshot.single.state == PluginRuntimeState.active && runtime.snapshot.single.leaseCount == 0,
+      () => runtime.snapshot.single.state is PluginRuntimeActive && runtime.snapshot.single.leaseCount == 0,
     );
 
     expect(bodyCalled, isFalse);
@@ -981,7 +980,7 @@ void main() {
 
     shutdownGate.complete();
     expect(await stopping, isA<PluginRuntimeCommandApplied>());
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
   });
 
   test("a safe stop refuses busy backend work", () async {
@@ -996,7 +995,7 @@ void main() {
 
     expect(result, isA<PluginRuntimeCommandConflict>());
     expect((result as PluginRuntimeCommandConflict).reasons, contains(PluginRuntimeConflictReason.busy));
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
   });
 
   test("shutdown interrupt asks every started plugin to quiesce active work within the budget", () async {
@@ -1419,7 +1418,7 @@ void main() {
 
     runtime.rollbackDisable(pluginId: "one");
 
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandApplied>());
   });
@@ -1435,7 +1434,7 @@ void main() {
     final result = await runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.safe);
 
     expect(result, isA<PluginRuntimeCommandConflict>());
-    expect(result.snapshot.state, PluginRuntimeState.active);
+    expect(result.snapshot.state, const PluginRuntimeActive());
     expect(result.snapshot.accessGate != PluginRuntimeAccessGate.disabled, isTrue);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(
@@ -1456,7 +1455,7 @@ void main() {
 
     runtime.commitDisable(pluginId: "one");
 
-    expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDisabled());
     expect(runtime.snapshot.single.accessGate != PluginRuntimeAccessGate.disabled, isFalse);
     expect(runtime.snapshot.single.startAllowed, isFalse);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
@@ -1537,7 +1536,7 @@ void main() {
       throwsA(isA<PluginAuthenticationRequiredException>()),
     );
     await _waitUntil(
-      () => runtime.snapshot.single.state == PluginRuntimeState.blocked && factory.plugins.single.shutdownCount == 1,
+      () => runtime.snapshot.single.state is PluginRuntimeBlocked && factory.plugins.single.shutdownCount == 1,
     );
 
     expect(runtime.snapshot.single.setup, isA<PluginSetupAuthenticationRequired>());
@@ -1595,7 +1594,7 @@ void main() {
       silentDone.future,
     ]).timeout(const Duration(seconds: 1));
     await _waitUntil(
-      () => runtime.snapshot.single.state == PluginRuntimeState.blocked && factory.plugins.single.shutdownCount == 1,
+      () => runtime.snapshot.single.state is PluginRuntimeBlocked && factory.plugins.single.shutdownCount == 1,
     );
     expect(errors, [isA<PluginAuthenticationRequiredException>()]);
     expect(runtime.snapshot.single.leaseCount, 0);
@@ -1629,7 +1628,7 @@ void main() {
     expect(await stopping, isA<PluginRuntimeCommandApplied>());
     expect(originalPlugin.shutdownInvocationCount, 1);
     expect(runtime.snapshot.single.generation, 1);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
@@ -1715,7 +1714,7 @@ void main() {
       ),
     );
     expect(await stopping, isA<PluginRuntimeCommandApplied>());
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
   });
 
   test("a force stop waits for a generation's durable commit", () async {
@@ -1819,7 +1818,7 @@ void main() {
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
     runtime.rollbackDisable(pluginId: "one");
     expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.blocked);
+    expect(runtime.snapshot.single.state, const PluginRuntimeBlocked());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
@@ -1853,7 +1852,7 @@ void main() {
     expect(await operation, "prepared");
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.failed &&
+          runtime.snapshot.single.state is PluginRuntimeFailed &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
     expect(plugin.shutdownInvocationCount, 1);
@@ -1870,7 +1869,7 @@ void main() {
     expect(result, isA<PluginRuntimeCommandApplied>());
     expect(factory.startCount, 2);
     expect(runtime.snapshot.single.generation, 2);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
@@ -1889,7 +1888,7 @@ void main() {
     expect(await restarting, isA<PluginRuntimeCommandApplied>());
     expect(factory.startCount, 2);
     expect(runtime.snapshot.single.generation, 2);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
   });
 
   test("a force restart recovers a generation stuck in PluginStopping", () async {
@@ -1913,7 +1912,7 @@ void main() {
     expect(stoppingPlugin.shutdownCount, 1);
     expect(factory.startCount, 2);
     expect(runtime.snapshot.single.generation, 2);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
@@ -1927,7 +1926,7 @@ void main() {
     failedPlugin.statuses.add(const PluginFailed(reason: "terminal", cause: null));
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.failed &&
+          runtime.snapshot.single.state is PluginRuntimeFailed &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
 
@@ -1961,13 +1960,13 @@ void main() {
       ..add(const PluginStopping())
       ..add(const PluginStopped());
     await _waitUntil(() => stoppedPlugin.shutdownCount == 1);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
 
     shutdownGate.complete();
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
+          runtime.snapshot.single.state is PluginRuntimeDormant &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
 
@@ -2011,7 +2010,7 @@ void main() {
 
     await runtime.startEager(pluginIds: const ["one"]);
 
-    expect(runtime.snapshot.single.state, PluginRuntimeState.failed);
+    expect(runtime.snapshot.single.state, const PluginRuntimeFailed());
     expect(runtime.activePluginIds, isEmpty);
   });
 
@@ -2026,7 +2025,7 @@ void main() {
     await runtime.startEager(pluginIds: const ["one"]);
 
     expect(runtime.activePluginIds, isEmpty);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.failed);
+    expect(runtime.snapshot.single.state, const PluginRuntimeFailed());
     expect(factory.plugins.single.shutdownCount, 1);
   });
 
@@ -2087,7 +2086,7 @@ void main() {
 
     runtime.beginShutdown();
     await expectLater(runtime.shutdownStartedPlugins(), throwsA(same(shutdownError)));
-    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.state, const PluginRuntimeActive());
 
     await expectLater(runtime.dispose(), throwsA(same(shutdownError)));
   });
@@ -2246,7 +2245,7 @@ void main() {
     expect(catalogPublished, isFalse);
     expect(hydrationPublished, isFalse);
     expect(factory.startCount, 0);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
     expect(runtime.snapshot.single.leaseCount, 0);
   });
 
@@ -2287,7 +2286,7 @@ void main() {
 
     expect(result, isA<PluginRuntimeCommandApplied>());
     expect(elapsed.elapsed, lessThan(const Duration(seconds: 1)));
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
     expect(factory.startCount, 0);
     expect(published, isFalse);
 
@@ -2327,12 +2326,12 @@ void main() {
 
     expect(result, isA<PluginRuntimeCommandConflict>());
     expect((result as PluginRuntimeCommandConflict).reasons, [PluginRuntimeConflictReason.inFlight]);
-    expect(result.snapshot.state, PluginRuntimeState.dormant);
+    expect(result.snapshot.state, const PluginRuntimeDormant());
     expect(result.snapshot.leaseCount, 1);
     expect(factory.startCount, 0);
     bodyGate.complete();
     await importDone;
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
   });
 
   test("snapshot failure logs and falls back to one live import start", () async {

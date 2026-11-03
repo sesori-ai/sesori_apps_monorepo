@@ -606,8 +606,8 @@ void main() {
       () => sessionOptionsScopeById["alpha"] = PluginSessionOptionsScope.plugin,
       throwsUnsupportedError,
     );
-    expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "beta").state, PluginRuntimeState.disabled);
-    expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, PluginRuntimeState.blocked);
+    expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "beta").state, const PluginRuntimeDisabled());
+    expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, const PluginRuntimeBlocked());
   });
 
   test("eager plugins activate only when eligible and setup-ready", () {
@@ -1124,7 +1124,7 @@ void main() {
 
     runtime.emitRuntimeState(
       pluginId: "alpha",
-      state: PluginRuntimeState.starting,
+      state: const PluginRuntimeStarting(),
       transition: PluginRuntimeTransition.starting,
     );
 
@@ -1132,13 +1132,13 @@ void main() {
     expect(snapshotTokens, hasLength(1));
     expect(service.managementSnapshot.snapshotToken, snapshotTokens.last);
 
-    runtime.emitRuntimeState(pluginId: "beta", state: PluginRuntimeState.degraded);
+    runtime.emitRuntimeState(pluginId: "beta", state: const PluginRuntimeDegraded(actionHint: null));
 
     expect(service.managementSnapshot.plugins.last.runtimeState, shared.PluginRuntimeState.degraded);
     expect(snapshotTokens, hasLength(2));
     expect(service.managementSnapshot.snapshotToken, snapshotTokens.last);
 
-    runtime.emitRuntimeState(pluginId: "alpha", state: PluginRuntimeState.active);
+    runtime.emitRuntimeState(pluginId: "alpha", state: const PluginRuntimeActive());
 
     expect(service.managementSnapshot.plugins.first.runtimeState, shared.PluginRuntimeState.active);
     expect(snapshotTokens, hasLength(3));
@@ -1602,7 +1602,7 @@ void main() {
     expect(repository.startCalls, isZero);
     expect(repository.restartCalls, isZero);
     expect(repository.prepareDisableCalls, isZero);
-    expect(repository.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(repository.snapshot.single.state, const PluginRuntimeDormant());
     expect(settingsRepository.loadCalls, isZero);
     expect(settingsRepository.settings, const BridgeSettings());
   });
@@ -1689,7 +1689,7 @@ void main() {
     expect(responses.last.defaultPluginId, isNull);
     expect(responses.last.plugins.single.runtimeState, shared.PluginRuntimeState.disabled);
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDisabled());
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(service.compositionView.eligiblePluginIds, isEmpty);
   });
@@ -1829,7 +1829,7 @@ void main() {
     );
 
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isFalse);
-    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.state, const PluginRuntimeDormant());
     expect(runtime.snapshot.single.accessGate != PluginRuntimeAccessGate.disabled, isTrue);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(service.compositionView.eligiblePluginIds, ["one"]);
@@ -2771,7 +2771,7 @@ void main() {
   });
 
   test("ready plugin ids replay setup-ready dormant plugins", () async {
-    final repository = _IdleLifecycleRepository(initialState: PluginRuntimeState.dormant);
+    final repository = _IdleLifecycleRepository(initialState: const PluginRuntimeDormant());
     addTearDown(repository.dispose);
     final service = PluginLifecycleService(
       lifecycleRepository: repository,
@@ -2829,7 +2829,7 @@ void main() {
     );
 
     repository.publish(
-      state: PluginRuntimeState.stopping,
+      state: const PluginRuntimeStopping(),
       workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: PluginRuntimeTransition.stopping,
@@ -2837,7 +2837,11 @@ void main() {
     expect(service.metadataSnapshot.single.state, PluginLifecycleState.ready);
     expect(service.metadataSnapshot.single.actionHint, isNull);
 
-    repository.publish(state: PluginRuntimeState.degraded, workState: PluginWorkState.idle, leaseCount: 0);
+    repository.publish(
+      state: const PluginRuntimeDegraded(actionHint: null),
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+    );
     expect(service.metadataSnapshot.single.state, PluginLifecycleState.degraded);
     expect(service.metadataSnapshot.single.actionHint, isNotNull);
   });
@@ -2871,13 +2875,16 @@ void main() {
     const genericHint = "Check the bridge console if this plugin needs attention.";
     const pluginHint = "Verify the configured One binary and retry.";
 
-    repository.publish(state: PluginRuntimeState.degraded, workState: PluginWorkState.idle, leaseCount: 0);
+    repository.publish(
+      state: const PluginRuntimeDegraded(actionHint: null),
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+    );
     expect(service.metadataSnapshot.single.actionHint, genericHint);
     expect(service.managementSnapshot.plugins.single.actionHint, genericHint);
 
     repository.publish(
-      state: PluginRuntimeState.degraded,
-      degradedActionHint: pluginHint,
+      state: const PluginRuntimeDegraded(actionHint: pluginHint),
       workState: PluginWorkState.idle,
       leaseCount: 0,
     );
@@ -2885,7 +2892,7 @@ void main() {
     expect(service.metadataSnapshot.single.actionHint, pluginHint);
     expect(service.managementSnapshot.plugins.single.actionHint, pluginHint);
 
-    repository.publish(state: PluginRuntimeState.active, workState: PluginWorkState.idle, leaseCount: 0);
+    repository.publish(state: const PluginRuntimeActive(), workState: PluginWorkState.idle, leaseCount: 0);
     expect(service.metadataSnapshot.single.actionHint, isNull);
     expect(service.managementSnapshot.plugins.single.actionHint, isNull);
   });
@@ -3166,7 +3173,7 @@ class _FakePluginApi({@override required final String id}) extends BridgeDerived
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeState.active})
+class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRuntimeActive()})
     implements PluginLifecycleRepository {
   final StreamController<List<PluginRuntimeSnapshot>> _snapshots = StreamController.broadcast(sync: true);
   List<PluginRuntimeSnapshot> _current = [
@@ -3184,8 +3191,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
   void applyAccess({required Set<String> eligiblePluginIds, required Set<String> startAllowedPluginIds}) {}
 
   void publish({
-    PluginRuntimeState state = PluginRuntimeState.active,
-    String? degradedActionHint,
+    PluginRuntimeState state = const PluginRuntimeActive(),
     required PluginWorkState workState,
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
@@ -3194,7 +3200,6 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
     _current = [
       _snapshot(
         state: state,
-        degradedActionHint: degradedActionHint,
         workState: workState,
         leaseCount: leaseCount,
         transition: transition,
@@ -3208,7 +3213,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
   Future<PluginRuntimeCommandResult> stopSafely({required String pluginId}) async {
     stopCalls++;
     _current = [
-      _snapshot(state: PluginRuntimeState.dormant, workState: PluginWorkState.unknown, leaseCount: 0),
+      _snapshot(state: const PluginRuntimeDormant(), workState: PluginWorkState.unknown, leaseCount: 0),
     ];
     _snapshots.add(snapshot);
     return PluginRuntimeCommandApplied(
@@ -3219,8 +3224,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
         accessGate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
         generation: 1,
-        state: PluginRuntimeState.dormant,
-        degradedActionHint: null,
+        state: const PluginRuntimeDormant(),
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
@@ -3235,8 +3239,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   static PluginRuntimeSnapshot _snapshot({
-    PluginRuntimeState state = PluginRuntimeState.active,
-    String? degradedActionHint,
+    PluginRuntimeState state = const PluginRuntimeActive(),
     required PluginWorkState workState,
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
@@ -3252,7 +3255,6 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
       startAllowed: startAllowed,
       generation: 1,
       state: state,
-      degradedActionHint: degradedActionHint,
       workState: workState,
       leaseCount: leaseCount,
       transition: transition,
@@ -3275,8 +3277,7 @@ class _ConflictingDisableLifecycleRepository() extends _IdleLifecycleRepository 
         accessGate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
         generation: 1,
-        state: PluginRuntimeState.active,
-        degradedActionHint: null,
+        state: const PluginRuntimeActive(),
         workState: PluginWorkState.busy,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
@@ -3303,8 +3304,7 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
         accessGate: PluginRuntimeAccessGate.draining,
         startAllowed: true,
         generation: 1,
-        state: PluginRuntimeState.stopping,
-        degradedActionHint: null,
+        state: const PluginRuntimeStopping(),
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.stopping,
@@ -3317,7 +3317,7 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
   void commitDisable({required String pluginId}) {
     _current = [
       _IdleLifecycleRepository._snapshot(
-        state: PluginRuntimeState.disabled,
+        state: const PluginRuntimeDisabled(),
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         accessGate: PluginRuntimeAccessGate.disabled,
@@ -3347,8 +3347,7 @@ class _CommandLifecycleRepository({
     accessGate: PluginRuntimeAccessGate.disabled,
     startAllowed: false,
     generation: null,
-    state: PluginRuntimeState.disabled,
-    degradedActionHint: null,
+    state: PluginRuntimeDisabled(),
     workState: PluginWorkState.unknown,
     leaseCount: 0,
     transition: PluginRuntimeTransition.none,
@@ -3440,12 +3439,12 @@ class _CommandLifecycleRepository({
       accessGate: enabled ? PluginRuntimeAccessGate.enabled : PluginRuntimeAccessGate.disabled,
       startAllowed: startAllowed,
       state: !enabled
-          ? PluginRuntimeState.disabled
+          ? const PluginRuntimeDisabled()
           : !startAllowed
-          ? PluginRuntimeState.blocked
-          : _current.state == PluginRuntimeState.active
-          ? PluginRuntimeState.active
-          : PluginRuntimeState.dormant,
+          ? const PluginRuntimeBlocked()
+          : _current.state is PluginRuntimeActive
+          ? const PluginRuntimeActive()
+          : const PluginRuntimeDormant(),
       transition: PluginRuntimeTransition.none,
       generationResidency: PluginGenerationResidency.normal,
     );
@@ -3484,7 +3483,7 @@ class _CommandLifecycleRepository({
       setup: _current.setup,
       accessGate: _current.accessGate,
       startAllowed: _current.startAllowed,
-      state: PluginRuntimeState.active,
+      state: const PluginRuntimeActive(),
       transition: PluginRuntimeTransition.none,
       generationResidency: PluginGenerationResidency.normal,
     );
@@ -3511,7 +3510,7 @@ class _CommandLifecycleRepository({
       setup: _current.setup,
       accessGate: PluginRuntimeAccessGate.draining,
       startAllowed: _current.startAllowed,
-      state: PluginRuntimeState.stopping,
+      state: const PluginRuntimeStopping(),
       transition: PluginRuntimeTransition.stopping,
       generationResidency: PluginGenerationResidency.normal,
     );
@@ -3525,7 +3524,7 @@ class _CommandLifecycleRepository({
       setup: _current.setup,
       accessGate: PluginRuntimeAccessGate.disabled,
       startAllowed: false,
-      state: PluginRuntimeState.disabled,
+      state: const PluginRuntimeDisabled(),
       transition: PluginRuntimeTransition.none,
       generationResidency: PluginGenerationResidency.normal,
     );
@@ -3551,7 +3550,6 @@ class _CommandLifecycleRepository({
       startAllowed: startAllowed,
       generation: _current.generation,
       state: state,
-      degradedActionHint: null,
       workState: PluginWorkState.unknown,
       leaseCount: 0,
       transition: transition,
@@ -3567,7 +3565,6 @@ class _CommandLifecycleRepository({
     startAllowed: _current.startAllowed,
     generation: 1,
     state: _current.state,
-    degradedActionHint: _current.degradedActionHint,
     workState: _current.workState,
     leaseCount: _current.leaseCount,
     transition: _current.transition,

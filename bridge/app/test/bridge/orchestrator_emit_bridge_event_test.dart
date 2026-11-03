@@ -16,7 +16,7 @@ import "package:sesori_bridge/src/repositories/mappers/session_continuation_mapp
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
-import "package:sesori_bridge/src/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart" as runtime show PluginRuntimeDegraded;
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -57,7 +57,7 @@ void main() {
         .first;
 
     final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
-    pluginRuntime.emitRuntimeState(pluginId: "one", state: runtime.PluginRuntimeState.degraded);
+    pluginRuntime.emitRuntimeState(pluginId: "one", state: const runtime.PluginRuntimeDegraded(actionHint: null));
 
     final event = await eventFuture.timeout(const Duration(seconds: 2));
     expect(event.snapshotToken, hasLength(22));
