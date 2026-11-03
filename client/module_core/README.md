@@ -32,7 +32,8 @@ See the [root README](../README.md) for the full monorepo overview.
 
 **Platform Interfaces**
 
-These abstract interfaces are defined here and implemented by Flutter adapters in the product shells, mostly under `app/lib/core/platform/`:
+Representative abstract interfaces defined here and implemented by Flutter adapters in the product shells,
+mostly under `app/lib/core/platform/`:
 
 | Interface | Flutter Adapter |
 |-----------|----------------|

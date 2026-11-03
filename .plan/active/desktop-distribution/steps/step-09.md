@@ -223,7 +223,7 @@ read the autostarted app's cgroup before gnome-session moved it into its scope. 
 login check now waits for that move.
 
 No host, signing-policy, publication or installed-Mac change is authorized by this
-tooling. Stable stays closed.
+tooling. Stable stayed closed until 11.k.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not
 historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
 recreated release or silent same-version substitution.

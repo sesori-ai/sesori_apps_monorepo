@@ -345,7 +345,7 @@ client/app, client/desktop ────┘
 - Dependencies NEVER flow upward. A lower layer must NEVER know about a higher layer.
 - `client/app` and `client/desktop` may have `module_auth` as a pubspec dependency solely for DI wiring (`configureAuthDependencies(getIt)`). Beyond that single DI call, product shells MUST NOT import or reference `module_auth` types in source code. All auth functionality is accessed through `module_core` interfaces.
 - `module_core` MUST NOT depend on `module_desktop_core`; mobile must not inherit desktop tray/process/bundled-helper concerns.
-- `module_persistence` is the shared storage foundation below auth and core and MUST NOT depend on `module_auth`, `module_core`, `module_desktop_core`, or Flutter. `module_auth` and `module_core` consume its typed repositories and keep their own domain keys and serialization; product shells use it only for DI wiring (`configurePersistenceDependencies`) and their native `MasterKeyStore`/`PersistenceDirectory` adapters.
+- `module_persistence` is the shared storage foundation below auth and core and MUST NOT depend on `module_auth`, `module_core`, `module_desktop_core`, or Flutter. `module_auth` and `module_core` consume its typed repositories and keep their own domain keys and serialization; product shells use it only for DI wiring (`configurePersistenceDependencies`), `PersistenceScope` selection and registration, and their native `MasterKeyStore`/`PersistenceDirectory` adapters.
 - Product shells may import `module_prego` directly for shell-owned presentation.
 - `module_app_ui` may depend on `module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It MUST NOT import `client/app`, `client/desktop`, or `module_desktop_core`.
 - A Flutter implementation of a `module_core` platform interface that both shells use unchanged may live in `module_app_ui/lib/src/platform/` with the platform plugins it needs, exported only as a composition entry point. Shells still own its DI registration and any shell-specific native code.
@@ -530,7 +530,7 @@ Mobile initialization order: platform adapters → persistence → auth → core
 
 **B-C8. Platform Abstraction**
 
-- Shared/mobile platform interfaces are defined in `module_core/lib/src/platform/` or `module_core/lib/src/foundation/platform/`; concrete mobile implementations live in `app/lib/core/platform/`.
+- Shared/mobile platform interfaces are defined in `module_core/lib/src/platform/` or `module_core/lib/src/foundation/platform/`; concrete mobile implementations live mostly in `app/lib/core/platform/`, with deep-link and route sources in `app/lib/core/routing/`.
 - Desktop-only platform interfaces are defined in `module_desktop_core/lib/src/foundation/platform/`; concrete desktop implementations live in `desktop/lib/core/platform/`.
 - If the plan needs a platform capability, it must define the interface in the owning pure Dart module and implement it in the product shell, except for an implementation both shells use unchanged, which may live in `module_app_ui/lib/src/platform/` (see B-C1).
 

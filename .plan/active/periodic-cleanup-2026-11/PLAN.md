@@ -71,7 +71,7 @@ existing rules or decisions:
 | Item | Decision |
 | --- | --- |
 | MC-2 | Session rename shows the new title immediately in the All Sessions rows (Option B). The `SessionListCubit` list state that nothing renders goes. |
-| PN-22 | Keep the OpenCode v1 adapter. Live checks cover v2 only (earlier user decision). |
+| PN-22 | Keep the OpenCode v1 adapter. Live checks cover v2 only (earlier user decision), except the OpenCode 1.18.32 PATH row that Q6 folds into step 28 from the retired opencode-v2 matrix. |
 | PN-16, PI-7 (overrides the "retire" half of XC-2) | Keep the "Plan advertised as an agent" aliases, and reword their markers. Stored new-session defaults never expire, and older apps still send `plan`. Removing the Codex alias would turn a plan request into an editing turn. |
 | PN-17 | Shared managed-runtime setup-status helper for Pi and OMP, with exhaustive switches instead of casts. |
 | BS-1 | Push maintenance telemetry shrinks to one summary line. |
@@ -178,7 +178,7 @@ Only what the findings do not already make obvious.
   - Test fakes shipped under `lib/*_testing.dart` move under `test/` (PN-12).
   - The Claude transcript stops copying the `raw` map per line (PN-8).
   - Re-run each plugin's code generator after DTO removals (PN-3, PN-4). Never hand-edit generated files.
-  - The Pi flake fix (PR in flight, `pi_extension_ui_service_test.dart`) lands first.
+  - The Pi flake fix (`pi_extension_ui_service_test.dart`) merged first as #2311.
 - **8.** Change the generator root in `bridge/sesori_plugin_opencode/tool/generate_opencode_client.dart` so unreferenced v1 models are not emitted, then regenerate. The v1 adapter itself stays (PN-22).
 - **10.**
   - Keep one summary line of push maintenance telemetry.
@@ -286,8 +286,8 @@ changes, not a fresh pass of whole feature documents.
 | Bridge services (steps 9–12, 24) | Owning suites, including `supervised_e2e_test`. A headless bridge start, relay connect, reconnect and clean shutdown. A desktop-supervised stop/start keeps the same data directory, now that restart is gone. |
 | Client (steps 13–17) | Owning cubit, widget and golden suites. Headless iOS simulator (`xcrun simctl boot`, never Simulator.app) on the device the local testing setup assigns: project list, session list, rename showing the new title at once without a jump, session detail, settings without the voice-engine row, dictation still working, sign-out and in. |
 | Desktop-specific (step 19) | Owning `module_desktop_core` suites (`dart test`). Notification-open routing on a macOS desktop build if a display is available. Otherwise record it as not run; it is not a pass. |
-| Retired opencode-v2 live rows (Q6) | Headless live bridge on macOS arm64 with a real provider: managed OpenCode 2.0.x fresh install and upgrade from 1.18.32, OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach, each with one completed turn. |
-| Retired step-timers live rows (Q6) | Headless live bridge plus the iOS simulator: running and finished step timers on a real turn for Claude Code, Codex and OpenCode v2, and Pi, DeepSeek, Grok or another ACP harness where installed. Device, Android and macOS desktop rows are not run, per the testing rule. |
+| Retired opencode-v2 live rows (Q6) | The cases of the retired plan's [Verification Matrix](../../completed/opencode-v2/PLAN.md#verification-matrix), headless on macOS arm64 with a real provider: managed OpenCode 2.0.x fresh install and upgrade from 1.18.32, OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach. |
+| Retired step-timers live rows (Q6) | The harness rows of the retired plan's [Regression Coverage](../../completed/step-timers/PLAN.md#regression-coverage) matrix (Claude Code, Codex, OpenCode, Pi, DeepSeek, Grok and another ACP harness where installed), on a headless live bridge plus the iOS simulator. Device, Android and macOS desktop rows are not run, per the testing rule. |
 | Shared, linter, CI, docs (steps 18, 20–23, 26) | Owning suites, analyzers, generator dry runs, the CI workflow run itself, link checks over the moved plans. |
 
 Affected regression documents:

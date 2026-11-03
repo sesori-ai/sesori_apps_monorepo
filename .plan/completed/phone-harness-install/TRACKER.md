@@ -7,7 +7,7 @@
 | 3/6 Bridge install command end to end | #779 | merged | |
 | 4/6 Phone install button and progress | #780 | merged | |
 | 5/6 Cursor managed runtime and install | #857 | merged | Recovered the unpublished local successor, reconciled current `origin/main`, and refreshed the official `2026.08.11-e8db854` pin. |
-| 6/6 Retire the plan | — | in review | Plan delivered and moved to `.plan/completed/phone-harness-install/`. |
+| 6/6 Retire the plan | #861 | merged | Plan delivered and moved to `.plan/completed/phone-harness-install/`. |
 
 ## Working Rules
 

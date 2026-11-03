@@ -4,12 +4,12 @@
 
 Steps 1–7 merged by 2026-09-26 (#1740, #1742, #1746, #1747, #1759, #1760,
 #1764, plus the plan fix #1745). The rebuilt desktop sign-in is public. Step 8
-never ran. The `periodic-cleanup-2026-11` plan (step 23, user decision Q5)
+never ran. The `periodic-cleanup-2026-11` plan (step 23, user decisions Q5 and Q6)
 retired this plan, and these checks were never executed:
 
 - a full Apple sign-in on a macOS desktop build; step 4 ran only the
   `/auth/apple/init` probe;
-- the rest of the step-8 L3 run of the PLAN.md "Regression Coverage" matrix:
+- the remaining step-8 run over the PLAN.md "Regression Coverage" matrix:
   the macOS desktop row, the Windows and Linux desktop rows, and the iOS and
   Android rows.
 

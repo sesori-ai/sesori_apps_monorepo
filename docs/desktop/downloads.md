@@ -159,7 +159,7 @@ fixed path; it [updates itself](#updates) in place there. Its app destination is
 `<channel>-linux-<x64|arm64>-appimage`, on the website. Native qualification runs on Arch
 Linux (x64) and the community Arch Linux ARM port (ARM64); it is not a universal-distro claim.
 
-Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to the
+Linux anchors are `<stable|internal>-linux-<x64|arm64>-<deb|rpm|appimage>`, in addition to the
 unchanged `linux-package-managers` app destination. Linux builds are not labelled
 experimental; the downloads page lists their tested environments.
 

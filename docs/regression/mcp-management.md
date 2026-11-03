@@ -236,8 +236,9 @@ native plugin boundary used by the headless attempt owner and shared client cont
   inventory and decode capability availability as unknown. Exact released
   v1.9.1 MCP codecs accept the added fields without losing existing inventory
   or server-control tags. Preserve both directions of this wire compatibility.
-- macOS arm64 was qualified on Claude 2.1.221 and 2.1.291 and Codex 0.139.0 and
-  0.160.1, not on later targets. Linux qualification, Windows terminal
+- Native fixture checks passed on macOS arm64 with Claude 2.1.221 and 2.1.291
+  and Codex 0.139.0 and 0.160.1, not on later targets; provider, packaged,
+  relay/client and full L4 qualification stay pending. Linux qualification, Windows terminal
   integration and SSE authentication remain pending; retain explicit unavailable
   results until those boundaries land and pass their native checks.
 

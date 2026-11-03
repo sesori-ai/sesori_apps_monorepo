@@ -3,7 +3,7 @@
 Status: steps 1–6 merged, including the shared chat controls in
 [#1656](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1656).
 Regression reconciliation landed in [#1659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1659).
-Retired 2026-11-02 with accepted gaps: the final L4 verification stayed partial
+Retired 2026-11-02 with accepted gaps (user decisions Q5 and Q6): the final L4 verification stayed partial
 (see [TRACKER.md](TRACKER.md)).
 Research: 2026-09-23. Current progress: [TRACKER.md](TRACKER.md).
 

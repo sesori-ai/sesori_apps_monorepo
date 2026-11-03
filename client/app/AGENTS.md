@@ -36,7 +36,8 @@ lib/
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
 │   ├── widgets/      Connection overlay, modal bottom sheets
 │   └── external_link.dart  Shell-wide entry point for opening outbound links
-├── features/         Screen widgets (login, home, new_session, session_detail, session_diffs, session_list, settings, splash)
+├── features/         Shell-owned screens and feature widgets (login, home, new_session, session_detail, session_diffs,
+│                     session_list artwork, settings, splash); shared screens live in module_app_ui
 └── main.dart         Entry point
 ```
 

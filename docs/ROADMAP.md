@@ -95,7 +95,8 @@
 ## Stage C — Multi-bridge addressing — *complete*
 
 - **Outcome:** a user can enumerate and choose among *their* bridges, and relay
-  and auth route to a specific bridge. See `.plan/completed/multi-computer/` and
+  and auth route to a specific bridge. See `.plan/completed/multi-computer/`
+  (retired with its live L4 cells accepted unexecuted) and
   `docs/regression/multi-computer.md`.
 - **Unlocks:** the cockpit across machines; **prerequisite for managed VMs** (a
   VM is "just another bridge").

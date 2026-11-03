@@ -12,7 +12,7 @@ support is public. Step 10 never ran. The `periodic-cleanup-2026-11` plan
 
 User decision Q6 (2026-11-02): these rows run in
 [periodic-cleanup-2026-11](../../active/periodic-cleanup-2026-11/PLAN.md#verification-and-retirement)
-step 28, so the gap closes there.
+step 28, where the rows are rerun and the gap closes only if they pass.
 
 Later v2 fixes landed outside this plan, for example #2309 (session idle at the
 end of v2 turns).

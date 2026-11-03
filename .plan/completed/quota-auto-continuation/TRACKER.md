@@ -5,7 +5,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 ## Retired with accepted gaps — 2026-11-02
 
 All 7 PRs merged on 2026-09-24. The `periodic-cleanup-2026-11` plan (step 23,
-user decision Q5) retired this plan, and these rows of the
+user decisions Q5 and Q6) retired this plan, and these rows of the
 [final verification matrix](VERIFICATION.md) were never executed:
 
 - macOS desktop QA (the native control and message-echo journey), blocked since
@@ -133,4 +133,5 @@ user decision Q5) retired this plan, and these rows of the
   `off`; thinking-discovery rejection and paired cache refresh/reuse pass. All
   41 affected Pi tests and package analysis pass at the recorded checkpoint.
   The clarified plugin-local architecture plan and implementation were approved.
-- Final L4 matrix: partial. See VERIFICATION.md; the plan cannot be retired yet.
+- Final L4 matrix: partial. See VERIFICATION.md; the plan retired 2026-11-02 with the
+  remaining rows accepted unexecuted (Q5, Q6).

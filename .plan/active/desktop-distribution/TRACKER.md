@@ -69,11 +69,11 @@ Cloud Run source storage and Firebase federation remain outside the publisher's 
 APT metadata expires after 30 days; refresh preserves accepted package bytes and never
 dispatches stores or creates releases.
 
-Continue original step 9/ordinal 11: metadata and real-tool fixtures (11.g), preview
+The approved order for original step 9/ordinal 11, now complete: metadata and real-tool fixtures (11.g), preview
 hosting/publication (11.h), native desktop and genuine app upgrades (11.i), truthful
 signed x64/ARM64 AppImages with Arch behavior qualification (11.i.d, approved
 2026-10-18; retain DEB/RPM and defer pacman/AUR), website repository/stable discovery
-support (11.j), then qualified shared stable publication (11.k). Keep one series PR open and at most one successor local. Neither
+support (11.j), then qualified shared stable publication (11.k). Neither
 inert package upgrades nor earlier preview waivers establish native desktop readiness.
 
 macOS step 6 is delivered: public `v1.9.1` release `412515090`, build `1017`, product

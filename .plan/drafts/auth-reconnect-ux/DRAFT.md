@@ -3,7 +3,8 @@
 ## Status
 
 Draft only. Tier 1 shipped: proactive reconnect on resume (#262), stale-socket
-teardown, an immediate first attempt (#265) and no `GET /health` after resume.
+teardown, an immediate first attempt (#265) and skipping `GET /health` on
+resumed reconnects that already hold the last health.
 
 ## Intent
 

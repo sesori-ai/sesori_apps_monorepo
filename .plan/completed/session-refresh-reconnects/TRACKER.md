@@ -16,7 +16,7 @@ never executed:
 
 - **Plan slug:** `session-refresh-reconnects`; original diagnostic baseline:
   `5aaf979dd25b645a69964d0211eda5cd92126037`.
-- **Series state:** Steps 1–2 merged; Step 3 live observation/assessment pending.
+- **Series state:** Steps 1–2 merged; step 3 never ran (retired 2026-11-02, see above).
   Logging PR [#734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734)
   merged 2026-08-04 as `6e24da2558b2b11eed2f0dbcddeaeebb49377d08`.
 - **Next action:** record representative ordinary sends and an intended
@@ -40,8 +40,8 @@ The [periodic-cleanup investigation](../periodic-cleanup/PLAN.md) reproduces two
 transcript failures through the intended stale-data refresh path against
 `480d82f090`: an already-loaded message loses a live part, and the next streamed
 delta loses its pre-refresh prefix. Diagnostic patches and results are
-[recorded there](../periodic-cleanup/evidence/README.md). Proposed cleanup steps
-2–3 own those fixes, pending implementation scope acceptance. They preserve
+[recorded there](../periodic-cleanup/evidence/README.md). Cleanup steps 2–3
+delivered those fixes as #1299 and #1303. They preserve
 active streaming text, reconcile text/reasoning snapshot catch-up and merge
 before/live/fetched transcript values without an event journal.
 
@@ -131,5 +131,5 @@ machines are not prerequisites for the handed-off fixes.
   command-refresh implementation was removed; logging-only work is not
   architecture-bearing
 - **Step 2 PR:** [#734](https://github.com/sesori-ai/sesori_apps_monorepo/pull/734) merged 2026-08-04
-- **Step 3 evidence assessment:** pending
-- **Final disposition:** pending
+- **Step 3 evidence assessment:** not run (accepted gap)
+- **Final disposition:** retired 2026-11-02 with accepted gaps

@@ -11,15 +11,15 @@
 The pipeline has run autonomously since 2026-08-08, and the last recorded work
 was #784. Only owner actions remained, and they were never done. The
 `periodic-cleanup-2026-11` plan (step 23, user decision Q5) retired this plan
-without them. These checks, from "Exact resume sequence" steps 8–9, were never
-executed:
+without them. The following remaining checks were never executed:
 
 - the three-page Looker report and its access verification;
 - confirmation of the first clean scheduled deletion sweep;
 - the reconciliation of three complete event days, the final evidence refs in
   SOPS, and the flip of `DEPLOYMENT_RECORD_STATUS`, which stays `unconfigured`.
 
-Everything below is the state as of 2026-08-08.
+The operational checkpoint and resume sequence below reflect the state as of
+2026-08-08; later plan-state history is retained.
 
 ## Current Operational Checkpoint — 2026-08-06
 

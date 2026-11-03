@@ -28,8 +28,8 @@ mapped by `repositories/mappers/acp_content_mapper.dart`). Session updates and
 history replay still read raw `Map`/`List`. Typing them would restore
 compile-time safety in a central bridge flow, but only once the undocumented
 ACP/Cursor wire shapes are pinned down by real traces; modeling drifting
-payloads now would be brittle. The remaining casts stay fail-soft through `_str`
-guards.
+payloads now would be brittle. Approval fields use fail-soft `_str` guards, but
+session-update and tool-call fields still use direct `as String?` casts.
 
 Affected surfaces in `bridge/sesori_plugin_acp/lib/src/`: `acp_event_mapper.dart`,
 `acp_session_loader.dart` and `acp_approval_registry.dart`, plus Cursor's

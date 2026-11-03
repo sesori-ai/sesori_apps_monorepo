@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `codex-mobile-login`
-- **Status:** Step 1/8 - plan ready for review
+- **Status:** Complete; all eight steps merged and the plan retired (#847)
 - **Plan date:** 2026-08-11
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at `3708d348`
