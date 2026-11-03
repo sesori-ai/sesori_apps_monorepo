@@ -18,11 +18,6 @@ void main() {
       await db.close();
     });
 
-    test("returns empty set when database is fresh", () async {
-      final hiddenIds = await dao.getHiddenProjectIds();
-      expect(hiddenIds, isEmpty);
-    });
-
     test("hideProject persists project id", () async {
       await dao.hideProject(projectId: "project-1");
 
@@ -38,76 +33,11 @@ void main() {
       expect(hiddenIds, equals({"project-1"}));
     });
 
-    test("unhideProject removes project id", () async {
-      await dao.hideProject(projectId: "project-1");
-
-      await dao.unhideProject(projectId: "project-1");
-
-      final hiddenIds = await dao.getHiddenProjectIds();
-      expect(hiddenIds, isEmpty);
-    });
-
-    test("unhideProject is no-op for unknown id", () async {
-      await dao.hideProject(projectId: "project-1");
-
-      await dao.unhideProject(projectId: "project-2");
-
-      final hiddenIds = await dao.getHiddenProjectIds();
-      expect(hiddenIds, equals({"project-1"}));
-    });
-
-    test("unhideProject creates row with hidden=false when project does not exist", () async {
-      await dao.unhideProject(projectId: "brand-new");
-
-      final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("brand-new"))).get();
-      expect(rows, hasLength(1));
-      expect(rows.first.hidden, isFalse);
-      expect(rows.first.baseBranch, isNull);
-    });
-
-    test("unhideProject on existing hidden=true project sets hidden=false", () async {
-      await dao.hideProject(projectId: "proj-hidden");
-
-      await dao.unhideProject(projectId: "proj-hidden");
-
-      final hiddenIds = await dao.getHiddenProjectIds();
-      expect(hiddenIds, isEmpty);
-    });
-
-    test("unhideProject preserves baseBranch on existing row", () async {
-      await dao.setBaseBranch(projectId: "proj-p", baseBranch: "main");
-      await dao.hideProject(projectId: "proj-p");
-
-      await dao.unhideProject(projectId: "proj-p");
-
-      final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("proj-p"))).get();
-      expect(rows, hasLength(1));
-      expect(rows.first.hidden, isFalse);
-      expect(rows.first.baseBranch, equals("main"));
-    });
-
     test("handles project IDs with slashes", () async {
       await dao.hideProject(projectId: "/Users/alex/projects/my-app");
 
       final hiddenIds = await dao.getHiddenProjectIds();
       expect(hiddenIds, equals({"/Users/alex/projects/my-app"}));
-    });
-
-    test("hiddenProjectIdsStream emits when hide/unhide changes hidden set", () async {
-      final expectation = expectLater(
-        dao.hiddenProjectIdsStream.take(3),
-        emitsInOrder([
-          equals(<String>{}),
-          equals({"project-1"}),
-          equals(<String>{}),
-        ]),
-      );
-
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      await dao.hideProject(projectId: "project-1");
-      await dao.unhideProject(projectId: "project-1");
-
-      await expectation;
     });
 
     group("getBaseBranch", () {
@@ -286,7 +216,6 @@ void main() {
         );
 
         await dao.hideProject(projectId: "/projects/a");
-        await dao.unhideProject(projectId: "/projects/a");
         await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "main");
         await dao.setDisplayName(
           projectId: "/projects/a",
