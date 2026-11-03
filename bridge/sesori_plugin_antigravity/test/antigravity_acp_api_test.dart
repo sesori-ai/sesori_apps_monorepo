@@ -266,7 +266,7 @@ void main() {
       "id": initialize["id"],
       "result": {...initializeResult(), "protocolVersion": "invalid"},
     });
-    await expectLater(probing, throwsA(isA<TypeError>()));
+    await expectLater(probing, throwsA(isA<FormatException>()));
     expect(await process.exitCode, -15);
   });
 
