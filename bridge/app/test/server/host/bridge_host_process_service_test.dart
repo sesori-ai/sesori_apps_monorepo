@@ -510,12 +510,12 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   @override
   Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add('graceful:$pid');
-    return gracefulResult ?? (throw StateError('No graceful result configured'));
+    return gracefulResult ?? fail('no graceful signal result configured');
   }
 
   @override
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add('force:$pid');
-    return forceResult ?? (throw StateError('No force result configured'));
+    return forceResult ?? fail('no force signal result configured');
   }
 }

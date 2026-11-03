@@ -105,10 +105,10 @@ void main() {
         ),
       );
 
-      expect(plugin.lastSendPromptParts, isNotNull);
-      expect(plugin.lastSendPromptParts, hasLength(2));
-      expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Hello")));
-      expect(plugin.lastSendPromptParts![1], equals(const PluginPromptPart.text(text: "World")));
+      final promptParts = plugin.lastSendPromptParts ?? fail("sendPrompt received no parts");
+      expect(promptParts, hasLength(2));
+      expect(promptParts[0], equals(const PluginPromptPart.text(text: "Hello")));
+      expect(promptParts[1], equals(const PluginPromptPart.text(text: "World")));
       expect(plugin.lastSendPromptVariant, equals("low"));
     });
 
@@ -160,9 +160,10 @@ void main() {
 
       expect(response, equals(const SuccessEmptyResponse()));
       expect(plugin.lastSendPromptSessionId, equals("backend-s-defaults-prompt"));
-      final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-prompt");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("planner"));
+      final dbSession =
+          await db.sessionDao.getSession(sessionId: "s-defaults-prompt") ??
+          fail("session s-defaults-prompt is not stored");
+      expect(dbSession.lastAgent, equals("planner"));
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
       expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
@@ -186,8 +187,9 @@ void main() {
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s42"));
-      expect(plugin.lastSendPromptParts, hasLength(1));
-      expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Ship it")));
+      final promptParts = plugin.lastSendPromptParts ?? fail("sendPrompt received no parts");
+      expect(promptParts, hasLength(1));
+      expect(promptParts[0], equals(const PluginPromptPart.text(text: "Ship it")));
       expect(plugin.lastSendPromptAgent, equals("coder"));
       expect(plugin.lastSendPromptModel?.providerID, equals("anthropic"));
       expect(plugin.lastSendPromptModel?.modelID, equals("claude-3-5-sonnet"));
@@ -340,9 +342,10 @@ void main() {
 
       expect(response, equals(const SuccessEmptyResponse()));
       expect(plugin.lastSendCommandSessionId, equals("backend-s-defaults-command"));
-      final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-command");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("reviewer"));
+      final dbSession =
+          await db.sessionDao.getSession(sessionId: "s-defaults-command") ??
+          fail("session s-defaults-command is not stored");
+      expect(dbSession.lastAgent, equals("reviewer"));
       expect(dbSession.lastAgentModel?.providerID, equals("anthropic"));
       expect(dbSession.lastAgentModel?.modelID, equals("claude-sonnet"));
       expect(dbSession.lastAgentModel?.variant, equals("high"));
@@ -388,9 +391,10 @@ void main() {
         throwsA(isA<StateError>()),
       );
 
-      final dbSession = await db.sessionDao.getSession(sessionId: "s-failing-prompt");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("old-agent"));
+      final dbSession =
+          await db.sessionDao.getSession(sessionId: "s-failing-prompt") ??
+          fail("session s-failing-prompt is not stored");
+      expect(dbSession.lastAgent, equals("old-agent"));
       expect(dbSession.lastAgentModel?.providerID, equals("old-provider"));
       expect(dbSession.lastAgentModel?.modelID, equals("old-model"));
       expect(dbSession.lastAgentModel?.variant, equals("old-variant"));
@@ -437,9 +441,10 @@ void main() {
         throwsA(isA<StateError>()),
       );
 
-      final dbSession = await db.sessionDao.getSession(sessionId: "s-failing-command");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("old-agent"));
+      final dbSession =
+          await db.sessionDao.getSession(sessionId: "s-failing-command") ??
+          fail("session s-failing-command is not stored");
+      expect(dbSession.lastAgent, equals("old-agent"));
       expect(dbSession.lastAgentModel?.providerID, equals("old-provider"));
       expect(dbSession.lastAgentModel?.modelID, equals("old-model"));
       expect(dbSession.lastAgentModel?.variant, equals("old-variant"));
@@ -598,7 +603,9 @@ void main() {
 
       expect(response.status, 409);
       expect(response.headers["content-type"], "application/json");
-      final parsed = SendPromptErrorResponse.fromJson(jsonDecode(response.body!) as Map<String, dynamic>);
+      final parsed = SendPromptErrorResponse.fromJson(
+        jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
+      );
       expect(parsed.code, SendPromptErrorCode.staleSessionOptions);
       expect(parsed.message, "unsupported Claude agent");
     });

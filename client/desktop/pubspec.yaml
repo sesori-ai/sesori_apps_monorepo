@@ -55,8 +55,6 @@ dependencies:
 
 dev_dependencies:
   args: ^2.7.0
-  no_slop_linter:
-    path: "../../shared/no_slop_linter"
   bloc_test: ^10.0.0
   build_runner: ^2.16.1
   flutter_test:

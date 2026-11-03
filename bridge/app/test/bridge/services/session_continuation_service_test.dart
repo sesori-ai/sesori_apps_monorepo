@@ -96,7 +96,7 @@ void main() {
 
   test("known reset remains visible while off; unsupported enable fails but disable succeeds", () async {
     await observe(resetAt: reset);
-    final view = (await views.get(sessionId: "session")).autoContinuation!;
+    final view = (await views.get(sessionId: "session")).autoContinuation ?? fail("missing auto-continuation");
     expect(view.enabled, isFalse);
     expect(
       view.status,
@@ -108,9 +108,9 @@ void main() {
     await service.setEnabled(sessionId: "session", enabled: true);
     sessions.availability = AutoContinuationAvailability.unavailable;
     final publications = mutations.sessions.length;
-    expect((await service.setEnabled(sessionId: "session", enabled: true)).autoContinuation!.enabled, isTrue);
+    expect((await service.setEnabled(sessionId: "session", enabled: true)).autoContinuation?.enabled, isTrue);
     expect(mutations.sessions.length, publications);
-    expect((await service.setEnabled(sessionId: "session", enabled: false)).autoContinuation!.enabled, isFalse);
+    expect((await service.setEnabled(sessionId: "session", enabled: false)).autoContinuation?.enabled, isFalse);
     await expectLater(
       service.setEnabled(sessionId: "session", enabled: true),
       throwsA(isA<SessionAutoContinuationUnavailableException>()),
@@ -125,14 +125,14 @@ void main() {
       request: request,
       body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: true),
     );
-    expect(enabled.autoContinuation!.enabled, isTrue);
+    expect(enabled.autoContinuation?.enabled, isTrue);
     expect((await records.read(sessionId: "session")).enabled, isTrue);
     sessions.availability = AutoContinuationAvailability.unavailable;
     final disabled = await handler.handle(
       request: request,
       body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: false),
     );
-    expect(disabled.autoContinuation!.enabled, isFalse);
+    expect(disabled.autoContinuation?.enabled, isFalse);
     expect((await records.read(sessionId: "session")).enabled, isFalse);
     await expectLater(
       handler.handle(
@@ -299,7 +299,7 @@ void main() {
     expect(prompts.sent, hasLength(1));
     expect((await records.read(sessionId: "session")).outcome, isA<SessionContinuationConsumed>());
     expect(
-      (await views.get(sessionId: "session")).autoContinuation!.status,
+      (await views.get(sessionId: "session")).autoContinuation?.status,
       const SessionAutoContinuationStatus.attemptUnconfirmed(),
     );
   });

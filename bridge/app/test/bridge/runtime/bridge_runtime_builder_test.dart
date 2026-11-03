@@ -81,7 +81,7 @@ void main() {
     expect(routed.status, 404);
     expect(routed.headers, containsPair("content-type", "application/json"));
     expect(
-      SessionOptionsErrorResponse.fromJson(jsonDecodeMap(routed.body!)).code,
+      SessionOptionsErrorResponse.fromJson(jsonDecodeMap(routed.body ?? fail("missing body"))).code,
       SessionOptionsErrorCode.projectNotFound,
     );
 

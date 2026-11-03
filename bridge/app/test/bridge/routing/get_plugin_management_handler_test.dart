@@ -24,7 +24,7 @@ void main() {
         );
 
     expect(response.status, 200);
-    expect(PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)), _response);
+    expect(PluginManagementResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))), _response);
   });
 }
 

@@ -135,8 +135,8 @@ class FakeSessionDao() {
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
     final result = <String, SessionDto>{};
     for (final id in sessionIds) {
-      if (_sessions.containsKey(id)) {
-        result[id] = _sessions[id]!;
+      if (_sessions[id] case final session?) {
+        result[id] = session;
       }
     }
     return result;
@@ -191,8 +191,7 @@ class FakeSessionDao() {
     required int updatedAt,
     required int projectionUpdatedAt,
   }) async {
-    if (_sessions.containsKey(sessionId)) {
-      final session = _sessions[sessionId]!;
+    if (_sessions[sessionId] case final session?) {
       _sessions[sessionId] = session.copyWith(archivedAt: archivedAt);
     }
   }

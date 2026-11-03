@@ -26,7 +26,8 @@ void main() {
       powerEventRepository: SystemPowerEventRepository.forPlatform(operatingSystem: "macos", macosApi: api),
     );
     service.start();
-    api.callback!(1, 0);
+    final callback = api.callback ?? fail("observer was not started");
+    callback(1, 0);
     await Future<void>.delayed(Duration.zero);
 
     expect(await service.policies.first, BridgeConnectionNotificationPolicy.suppress);
@@ -42,10 +43,11 @@ void main() {
     final subscription = service.policies.listen(policies.add);
 
     service.start();
-    api.callback!(1, 0);
-    api.callback!(1, 0);
-    api.callback!(2, 0);
-    api.callback!(3, -1);
+    final callback = api.callback ?? fail("observer was not started");
+    callback(1, 0);
+    callback(1, 0);
+    callback(2, 0);
+    callback(3, -1);
     await Future<void>.delayed(Duration.zero);
 
     expect(policies, [

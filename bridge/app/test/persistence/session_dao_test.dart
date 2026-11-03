@@ -46,10 +46,9 @@ void main() {
         lastAgentModel: null,
       );
 
-      final result = await dao.getSession(sessionId: "ses-1");
+      final result = await dao.getSession(sessionId: "ses-1") ?? fail("session ses-1 is not stored");
 
-      expect(result, isNotNull);
-      expect(result!.sessionId, equals("ses-1"));
+      expect(result.sessionId, equals("ses-1"));
       expect(result.projectId, equals("proj-1"));
       expect(result.isDedicated, isTrue);
       expect(result.createdAt, equals(createdAt));
@@ -78,10 +77,9 @@ void main() {
         lastAgentModel: null,
       );
 
-      final result = await dao.getSession(sessionId: "ses-simple");
+      final result = await dao.getSession(sessionId: "ses-simple") ?? fail("session ses-simple is not stored");
 
-      expect(result, isNotNull);
-      expect(result!.isDedicated, isFalse);
+      expect(result.isDedicated, isFalse);
       expect(result.worktreePath, isNull);
       expect(result.branchName, isNull);
       expect(result.baseBranch, isNull);
@@ -114,10 +112,9 @@ void main() {
             ),
           );
 
-      final result = await dao.getSession(sessionId: "ses-defaults");
+      final result = await dao.getSession(sessionId: "ses-defaults") ?? fail("session ses-defaults is not stored");
 
-      expect(result, isNotNull);
-      expect(result!.lastAgent, equals("opencode"));
+      expect(result.lastAgent, equals("opencode"));
       expect(result.lastAgentModel?.providerID, equals("anthropic"));
       expect(result.lastAgentModel?.modelID, equals("claude-sonnet-4"));
       expect(result.lastAgentModel?.variant, equals("standard"));
@@ -143,10 +140,10 @@ void main() {
         ),
       );
 
-      final result = await dao.getSession(sessionId: "ses-insert-defaults");
+      final result =
+          await dao.getSession(sessionId: "ses-insert-defaults") ?? fail("session ses-insert-defaults is not stored");
 
-      expect(result, isNotNull);
-      expect(result!.lastAgent, equals("opencode"));
+      expect(result.lastAgent, equals("opencode"));
       expect(result.lastAgentModel?.providerID, equals("anthropic"));
       expect(result.lastAgentModel?.modelID, equals("claude-sonnet-4"));
       expect(result.lastAgentModel?.variant, equals("standard"));
@@ -182,10 +179,10 @@ void main() {
         ),
       );
 
-      final result = await dao.getSession(sessionId: "ses-update-defaults");
+      final result =
+          await dao.getSession(sessionId: "ses-update-defaults") ?? fail("session ses-update-defaults is not stored");
 
-      expect(result, isNotNull);
-      expect(result!.lastAgent, isNull);
+      expect(result.lastAgent, isNull);
       expect(result.lastAgentModel?.providerID, equals("new-provider"));
       expect(result.lastAgentModel?.modelID, equals("new-model"));
       expect(result.lastAgentModel?.variant, isNull);
@@ -356,8 +353,8 @@ void main() {
         updatedAt: 1234567890,
         projectionUpdatedAt: 1234567890,
       );
-      final result = await dao.getSession(sessionId: "ses-4");
-      expect(result!.archivedAt, equals(1234567890));
+      final result = await dao.getSession(sessionId: "ses-4") ?? fail("session ses-4 is not stored");
+      expect(result.archivedAt, equals(1234567890));
     });
 
     test("getSessionsByIds returns expected sessions", () async {
@@ -411,8 +408,8 @@ void main() {
       expect(byIds.keys, containsAll(<String>["ses-a", "ses-c"]));
       expect(byIds.containsKey("missing"), isFalse);
       expect(byIds.containsKey("ses-b"), isFalse);
-      expect(byIds["ses-a"]!.projectId, equals("proj-x"));
-      expect(byIds["ses-c"]!.projectId, equals("proj-y"));
+      expect(byIds["ses-a"]?.projectId, equals("proj-x"));
+      expect(byIds["ses-c"]?.projectId, equals("proj-y"));
     });
 
     group("getOtherActiveSessionsSharing", () {

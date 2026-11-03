@@ -66,7 +66,7 @@ void main() {
         );
         expect(initRequest.contentType, startsWith('application/json'));
         expect(initRequest.sessionToken, matches(RegExp(r'^[0-9a-f]{64}$')));
-        expect(initRequest.body!.values, isNot(contains(initRequest.sessionToken)));
+        expect((initRequest.body ?? fail('missing body')).values, isNot(contains(initRequest.sessionToken)));
         expect(authServer.authUrl, isNot(contains(initRequest.sessionToken)));
 
         for (final statusRequest in authServer.statusRequests) {
@@ -420,9 +420,9 @@ void main() {
         password: 'correct-password',
       );
 
-      expect(authServer.lastLoginRequest, isNotNull);
-      expect(authServer.lastLoginRequest!['email'], equals('test@example.com'));
-      expect(authServer.lastLoginRequest!['password'], equals('correct-password'));
+      final loginRequest = authServer.lastLoginRequest ?? fail('expected a login request');
+      expect(loginRequest['email'], equals('test@example.com'));
+      expect(loginRequest['password'], equals('correct-password'));
       expect(authResponse.accessToken, equals('test-access-token'));
       expect(authResponse.refreshToken, equals('test-refresh-token'));
       expect(authResponse.user.providerUsername, equals('testuser'));
@@ -774,12 +774,13 @@ class _PasswordLoginTestServer._(final HttpServer _server) {
             (prev, element) => prev..addAll(element as List<int>),
           );
           final body = utf8.decode(Uint8List.fromList(content));
-          _lastLoginRequest = jsonDecodeMap(body);
+          final loginRequest = jsonDecodeMap(body);
+          _lastLoginRequest = loginRequest;
 
           final result =
               await (onLoginRequest?.call(
-                    _lastLoginRequest!['email'] as String,
-                    _lastLoginRequest!['password'] as String,
+                    loginRequest['email'] as String,
+                    loginRequest['password'] as String,
                   ) ??
                   Future.value(_PasswordLoginResult.failure(500)));
 

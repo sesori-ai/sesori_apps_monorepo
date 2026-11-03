@@ -150,8 +150,8 @@ void main() {
     });
 
     test('dry-run computes patch, minor, and major targets without mutations', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
       final beforeBridgePubspec = await File(currentFixture.bridgePubspecPath).readAsString();
       final beforeClientPubspec = await File(currentFixture.clientPubspecPath).readAsString();
       final beforeDesktopPubspec = await File(currentFixture.desktopPubspecPath).readAsString();
@@ -183,8 +183,8 @@ void main() {
     });
 
     test('release-type sync preserves the client build suffix exactly', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
 
       final cases = <({String type, String bridgeVersion, String clientVersion})>[
         (type: 'patch', bridgeVersion: '1.0.7', clientVersion: '1.0.7+8'),
@@ -280,8 +280,8 @@ environment:
     });
 
     test('rejects diverged bridge and client versions', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8', bridgeVersion: '1.0.5');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8', bridgeVersion: '1.0.5');
+      fixture = currentFixture;
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
 
@@ -290,8 +290,8 @@ environment:
     });
 
     test('allows explicit --version to realign diverged versions', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8', bridgeVersion: '1.0.5');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8', bridgeVersion: '1.0.5');
+      fixture = currentFixture;
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--version', '1.0.7']);
 
@@ -301,8 +301,8 @@ environment:
     });
 
     test('rejects desktop divergence and explicit version realigns it without changing its build number', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
       await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\nversion: 0.1.0+13\n');
       final rejected = await _runTool(fixture: currentFixture, args: ['--type', 'patch']);
       expect(rejected.exitCode, isNot(0));
@@ -315,8 +315,8 @@ environment:
     });
 
     test('identifies the desktop pubspec when its version is missing or malformed', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
       for (final content in ['name: desktop\n', 'version: malformed\n']) {
         await File(currentFixture.desktopPubspecPath).writeAsString(content);
         final result = await _runTool(fixture: currentFixture, args: ['--type', 'patch']);
@@ -326,8 +326,8 @@ environment:
     });
 
     test('works without client build number', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6');
+      fixture = currentFixture;
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
 
@@ -364,8 +364,8 @@ environment:
     });
 
     test('rejects invalid inputs and malformed client versions', () async {
-      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
-      final currentFixture = fixture!;
+      final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      fixture = currentFixture;
 
       final cases = <({List<String> args, String stderr})>[
         (args: <String>[], stderr: 'Error: Provide exactly one of --type or --version'),
@@ -384,8 +384,12 @@ environment:
       }
 
       for (final malformedVersion in <String>['1.2+8', '1.2.3+abc']) {
-        fixture = await _createFixtureApp(clientVersion: malformedVersion);
-        final malformedResult = await _runTool(fixture: fixture!, args: <String>['--dry-run', '--type', 'patch']);
+        final malformedFixture = await _createFixtureApp(clientVersion: malformedVersion);
+        fixture = malformedFixture;
+        final malformedResult = await _runTool(
+          fixture: malformedFixture,
+          args: <String>['--dry-run', '--type', 'patch'],
+        );
         expect(malformedResult.exitCode, isNot(0));
         expect(malformedResult.stderr, contains('Error: Invalid client version "$malformedVersion"'));
       }

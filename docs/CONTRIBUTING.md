@@ -58,7 +58,7 @@ make generate-tokens      # sync Figma design tokens into module_prego
 
 ## Shared packages
 
-`shared/sesori_shared` holds the crypto and protocol types shared by both workspaces. `shared/no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency. If you change shared models, regenerate and test both workspaces.
+`shared/sesori_shared` holds the crypto and protocol types shared by both workspaces. `shared/no_slop_linter` is a custom analyzer plugin that `analysis_options.yaml` files load by path. If you change shared models, regenerate and test both workspaces.
 
 ## Root Makefile
 

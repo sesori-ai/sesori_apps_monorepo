@@ -163,8 +163,12 @@ void main() {
         // The shorter secondary cooldown (retry-after) wins over the hourly
         // primary window.
         expect(
-          (caught! as GitHubRateLimitException).resetAt,
-          equals(now.add(const Duration(seconds: 60))),
+          caught,
+          isA<GitHubRateLimitException>().having(
+            (exception) => exception.resetAt,
+            'resetAt',
+            equals(now.add(const Duration(seconds: 60))),
+          ),
         );
       });
 
@@ -183,10 +187,13 @@ void main() {
           }
         });
 
-        expect(caught, isA<GitHubRateLimitException>());
         expect(
-          (caught! as GitHubRateLimitException).resetAt,
-          equals(now.add(const Duration(seconds: 120))),
+          caught,
+          isA<GitHubRateLimitException>().having(
+            (exception) => exception.resetAt,
+            'resetAt',
+            equals(now.add(const Duration(seconds: 120))),
+          ),
         );
       });
 

@@ -167,7 +167,7 @@ void main() {
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
     expect(outcome.status, 409);
-    final rejection = SessionArchivedRejection.fromJson(jsonDecodeMap(outcome.body!));
+    final rejection = SessionArchivedRejection.fromJson(jsonDecodeMap(outcome.body ?? fail("missing body")));
     expect(rejection.sessionId, "child");
     expect(rejection.reason, SessionArchivedReason.archivedReadOnly);
     expect(plugin.reads, isZero);

@@ -182,7 +182,8 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     }
     return _StartupSample(
       totalMicros: totalMicros,
-      firstOperationalMicros: probe.firstOperationalMicros!,
+      firstOperationalMicros:
+          probe.firstOperationalMicros ?? (throw StateError("no plugin reported its first operational moment")),
       startMicros: probe.startMicros,
       maximumConcurrentStarts: probe.maximumConcurrentStarts,
       mutexAcquisitionCount: startupMutexRepository.acquisitionCount,

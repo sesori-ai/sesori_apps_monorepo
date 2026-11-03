@@ -158,9 +158,8 @@ void main() {
         ),
       );
 
-      final state = await history.repository.getSyncState(sessionId: "ses_a");
-      expect(state, isNotNull);
-      expect(state!.syncedAt, isNull, reason: "only a completed backfill may claim a complete transcript");
+      final state = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
+      expect(state.syncedAt, isNull, reason: "only a completed backfill may claim a complete transcript");
       expect(state.watermark, greaterThan(0));
       expect(state.backendActivityAt, greaterThan(0));
     });
@@ -398,7 +397,10 @@ void main() {
       // A synced session makes the cleared marker observable rather than
       // merely absent.
       await history.service.backfillSession(sessionId: "ses_a");
-      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNotNull);
+      expect(
+        (await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state")).syncedAt,
+        isNotNull,
+      );
       final service = ChatHistoryService(
         chatHistoryRepository: _FailingWriteRepository(
           chatHistoryDao: history.database.chatHistoryDao,
@@ -424,7 +426,10 @@ void main() {
       );
 
       expect(captured, isA<CapturedPartUnavailable>());
-      expect((await history.repository.getSyncState(sessionId: "ses_a"))!.syncedAt, isNull);
+      expect(
+        (await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state")).syncedAt,
+        isNull,
+      );
       expect(
         (await history.database.chatHistoryDao.getParts(sessionId: "ses_a")).map((row) => row.partId),
         isNot(contains("p1")),

@@ -30,8 +30,6 @@ dependencies:
   web_socket_channel: ^3.0.3
 
 dev_dependencies:
-  no_slop_linter:
-    path: "../../shared/no_slop_linter"
   bloc_test: ^10.0.0
   build_runner: ^2.16.1
   freezed: ^4.0.1

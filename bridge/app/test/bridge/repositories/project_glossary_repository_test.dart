@@ -185,6 +185,7 @@ class _SourceFilesystemApi({
   @override
   List<int> readFilePrefix({required String path, required int maxBytes}) {
     requestedMaximumBytes.add(maxBytes);
-    return files[path]!.codeUnits.take(maxBytes + 1).toList(growable: false);
+    final content = files[path] ?? fail("no fixture file at $path");
+    return content.codeUnits.take(maxBytes + 1).toList(growable: false);
   }
 }

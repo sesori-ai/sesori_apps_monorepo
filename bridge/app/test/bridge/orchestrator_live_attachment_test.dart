@@ -307,7 +307,7 @@ PluginMessagePart _pluginPart({
           id: id,
           sessionID: _backendSessionId,
           messageID: messageId,
-          text: text!,
+          text: text ?? fail("a text part needs text"),
         ),
         PluginMessagePartType.snapshot => PluginMessagePart.snapshot(
           id: id,

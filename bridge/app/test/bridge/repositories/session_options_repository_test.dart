@@ -219,16 +219,16 @@ void main() {
         scope: PluginSessionOptionsScope.project,
         ownerId: "project-1",
       );
-      expect(raw, isNotNull);
-      expect(raw!.projectId, "project-1");
+      if (raw == null) fail("the project cache row is missing");
+      expect(raw.projectId, "project-1");
       expect(raw.capturedProjectPath, "/projects/one");
       expect(jsonDecodeMap(raw.agentsJson), candidate.response.agents.toJson());
       expect(jsonDecodeMap(raw.providersJson), candidate.response.providers.toJson());
       expect(jsonDecodeMap(raw.commandsJson), candidate.response.commands.toJson());
 
       final decoded = await repository.read(key: key);
-      expect(decoded, isNotNull);
-      expect(decoded!.key, key);
+      if (decoded == null) fail("the cache entry did not decode");
+      expect(decoded.key, key);
       expect(decoded.revision, 1);
       expect(decoded.capturedAt, capturedAt);
       expect(decoded.response, SessionOptionsResponse.fromJson(candidate.response.toJson()));
@@ -250,8 +250,8 @@ void main() {
         scope: PluginSessionOptionsScope.plugin,
         ownerId: "plugin-1",
       );
-      expect(raw, isNotNull);
-      expect(raw!.ownerId, "plugin-1");
+      if (raw == null) fail("the plugin cache row is missing");
+      expect(raw.ownerId, "plugin-1");
       expect(raw.projectId, isNull);
       expect(raw.capturedProjectPath, isNull);
     });
