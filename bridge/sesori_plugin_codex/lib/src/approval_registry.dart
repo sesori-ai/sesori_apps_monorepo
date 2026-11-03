@@ -132,8 +132,8 @@ typedef PendingInputScopeResolver = ({String displaySessionId, List<String> sour
 });
 
 void _resolveCodexPermission({required _PendingCodexInput payload, required PluginPermissionReply reply}) {
-  final approval = payload as _PendingApproval;
-  approval.respond(approval.codexId, ApprovalRegistry._permissionResponse(entry: approval, reply: reply));
+  if (payload is! _PendingApproval) throw StateError("Only an approval payload takes a permission reply");
+  payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(entry: payload, reply: reply));
 }
 
 FutureOr<PendingQuestionReplyOutcome> _resolveCodexQuestion({
@@ -180,32 +180,27 @@ FutureOr<void> _rejectCodexQuestion({
 }
 
 void _cancelCodexPending({required _PendingCodexInput payload, required PendingCancellationReason reason}) {
-  // Async questions have no suspended server request. Teardown only retires
-  // their local card; it must not start a new turn to send a cancellation.
-  if (payload is _PendingAsyncQuestion) return;
-  if (payload is _PendingMcpRequest) {
-    payload.respond(payload.codexId, const {"action": "cancel"});
-    return;
-  }
-  if (payload is _PendingUserInput) {
-    payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
-    return;
-  }
-  payload as _PendingApproval;
-  if (_permissionMethods.contains(payload.method) ||
-      payload.method == _elicitationMethod && ApprovalRegistry._isMcpToolApproval(params: payload.params)) {
-    payload.respond(
-      payload.codexId,
-      ApprovalRegistry._permissionResponse(entry: payload, reply: PluginPermissionReply.reject),
-    );
-  } else if (payload.method == _elicitationMethod) {
-    payload.respond(payload.codexId, const {"action": "cancel"});
-  } else {
-    payload.respondError(
-      payload.codexId,
-      -32000,
-      _cancellationMessage(reason: reason),
-    );
+  switch (payload) {
+    case _PendingAsyncQuestion():
+      // Async questions have no suspended server request. Teardown only retires
+      // their local card; it must not start a new turn to send a cancellation.
+      return;
+    case _PendingMcpRequest():
+      payload.respond(payload.codexId, const {"action": "cancel"});
+    case _PendingUserInput():
+      payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
+    case _PendingApproval():
+      if (_permissionMethods.contains(payload.method) ||
+          payload.method == _elicitationMethod && ApprovalRegistry._isMcpToolApproval(params: payload.params)) {
+        payload.respond(
+          payload.codexId,
+          ApprovalRegistry._permissionResponse(entry: payload, reply: PluginPermissionReply.reject),
+        );
+      } else if (payload.method == _elicitationMethod) {
+        payload.respond(payload.codexId, const {"action": "cancel"});
+      } else {
+        payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
+      }
   }
 }
 
