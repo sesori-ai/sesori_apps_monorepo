@@ -51,6 +51,8 @@ void main() {
     ]);
   }
 
+  const unhealthyPlugin = [ControlUnhealthyPlugin(displayName: "Plugin", actionHint: null)];
+
   test("reports waiting before runtime attachment and resends it on reconnect", () async {
     await notifier.dispose();
     notifier = ControlStatusNotifier(client: client, startupState: startupState.stream)..start();
@@ -78,12 +80,12 @@ void main() {
 
       expect(client.sentMessages, hasLength(1));
       final status = client.sentMessages.single as ControlStatus;
-      expect(status.plugin, ControlPluginHealthState.healthy);
+      expect(status.unhealthyPlugins, isEmpty);
       expect(status.relay, ControlRelayConnectionState.disconnected);
       expect(status.activeSessionCount, 0);
     });
 
-    test("only degraded or failed eligible plugins map to degraded health", () async {
+    test("only degraded or failed eligible plugins are reported unhealthy", () async {
       emitPluginState(PluginLifecycleState.ready);
       emitPluginState(PluginLifecycleState.degraded);
       emitPluginState(PluginLifecycleState.ready);
@@ -92,28 +94,25 @@ void main() {
       await pump();
 
       expect(
-        client.sentMessages.whereType<ControlStatus>().map((s) => s.plugin).toList(),
+        client.sentMessages.whereType<ControlStatus>().map((s) => s.unhealthyPlugins).toList(),
         equals([
-          ControlPluginHealthState.healthy,
-          ControlPluginHealthState.degraded,
-          ControlPluginHealthState.healthy,
-          ControlPluginHealthState.degraded,
-          ControlPluginHealthState.healthy,
+          <ControlUnhealthyPlugin>[],
+          unhealthyPlugin,
+          <ControlUnhealthyPlugin>[],
+          unhealthyPlugin,
+          <ControlUnhealthyPlugin>[],
         ]),
       );
     });
 
-    test("zero eligible plugins is healthy", () async {
+    test("zero eligible plugins reports none unhealthy", () async {
       pluginMetadata.add(const <PluginMetadata>[]);
       await pump();
 
-      expect(
-        client.sentMessages.whereType<ControlStatus>().single.plugin,
-        ControlPluginHealthState.healthy,
-      );
+      expect(client.sentMessages.whereType<ControlStatus>().single.unhealthyPlugins, isEmpty);
     });
 
-    test("one degraded eligible plugin degrades an otherwise healthy set", () async {
+    test("names each unhealthy plugin in order with its action hint", () async {
       pluginMetadata.add([
         const PluginMetadata(
           id: "ready",
@@ -123,18 +122,31 @@ void main() {
           actionHint: null,
         ),
         const PluginMetadata(
-          id: "degraded",
-          displayName: "Degraded",
+          id: "pi",
+          displayName: "Pi",
           isDefault: false,
           state: PluginLifecycleState.degraded,
+          actionHint: "Check the bridge console if this plugin needs attention.",
+        ),
+        const PluginMetadata(
+          id: "codex",
+          displayName: "Codex",
+          isDefault: false,
+          state: PluginLifecycleState.failed,
           actionHint: null,
         ),
       ]);
       await pump();
 
       expect(
-        client.sentMessages.whereType<ControlStatus>().single.plugin,
-        ControlPluginHealthState.degraded,
+        client.sentMessages.whereType<ControlStatus>().single.unhealthyPlugins,
+        equals(const [
+          ControlUnhealthyPlugin(
+            displayName: "Pi",
+            actionHint: "Check the bridge console if this plugin needs attention.",
+          ),
+          ControlUnhealthyPlugin(displayName: "Codex", actionHint: null),
+        ]),
       );
     });
 
@@ -200,22 +212,21 @@ void main() {
 
       final last = client.sentMessages.last as ControlStatus;
       expect(last.relay, ControlRelayConnectionState.connected);
-      expect(last.plugin, ControlPluginHealthState.healthy);
+      expect(last.unhealthyPlugins, isEmpty);
       expect(last.activeSessionCount, 2);
     });
 
     test("identical consecutive states are deduped", () async {
       emitPluginState(PluginLifecycleState.ready);
       emitPluginState(PluginLifecycleState.ready);
-      // Restarting maps to degraded...
       emitPluginState(PluginLifecycleState.degraded);
-      // ...and Degraded maps to degraded too: no second frame.
+      // A fresh but equal list is no change: no second frame.
       emitPluginState(PluginLifecycleState.degraded);
       await pump();
 
       expect(
-        client.sentMessages.whereType<ControlStatus>().map((s) => s.plugin).toList(),
-        equals([ControlPluginHealthState.healthy, ControlPluginHealthState.degraded]),
+        client.sentMessages.whereType<ControlStatus>().map((s) => s.unhealthyPlugins).toList(),
+        equals([<ControlUnhealthyPlugin>[], unhealthyPlugin]),
       );
     });
 
@@ -295,7 +306,7 @@ void main() {
       final registered = client.sentMessages[0] as ControlRegistered;
       expect(registered.bridgeId, "br_test1234");
       final status = client.sentMessages[1] as ControlStatus;
-      expect(status.plugin, ControlPluginHealthState.healthy);
+      expect(status.unhealthyPlugins, isEmpty);
     });
 
     test("a reconnect before any registration re-sends only the status snapshot", () async {

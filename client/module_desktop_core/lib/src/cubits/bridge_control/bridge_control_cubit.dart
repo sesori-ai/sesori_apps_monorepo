@@ -24,6 +24,9 @@ import "../../trackers/bridge_status_tracker.dart";
 import "../../trackers/desktop_logout_tracker.dart";
 import "bridge_control_state.dart";
 
+/// The status line and its optional secondary text.
+typedef _StatusText = ({String label, String? detail});
+
 /// Layer-4 owner of desktop bridge tray/window controls and lifecycle commands.
 ///
 /// Platform adapters only render [SystemTrayMenu], emit typed events, and
@@ -92,7 +95,8 @@ class BridgeControlCubit._create({
           activity: _logoutTracker.status.locksBridgeControls
               ? BridgeControlActivity.signingOut
               : BridgeControlActivity.idle,
-          statusLabel: _statusLabel(processState: _processService.state, status: _statusTracker.status),
+          statusLabel: _statusText(processState: _processService.state, status: _statusTracker.status).label,
+          statusDetail: _statusText(processState: _processService.state, status: _statusTracker.status).detail,
           processState: _processService.state,
           desiredState: _processService.desiredState,
           toggleTarget: _toggleTarget(
@@ -472,10 +476,12 @@ class BridgeControlCubit._create({
     final BridgeProcessDesiredState desiredState = _processService.desiredState;
     final BridgeControlStatus controlStatus = _statusTracker.status;
     final BridgeControlActivity activity = _presentationActivity;
+    final statusText = _statusText(processState: processState, status: controlStatus);
     final BridgeControlState nextState = BridgeControlState(
       trayAvailability: _trayAvailability,
       activity: activity,
-      statusLabel: _statusLabel(processState: processState, status: controlStatus),
+      statusLabel: statusText.label,
+      statusDetail: statusText.detail,
       processState: processState,
       desiredState: desiredState,
       toggleTarget: _toggleTarget(processState: processState, desiredState: desiredState),
@@ -513,44 +519,59 @@ class BridgeControlCubit._create({
     return desiredState == BridgeProcessDesiredState.on ? BridgeProcessDesiredState.off : BridgeProcessDesiredState.on;
   }
 
-  static String _statusLabel({required BridgeProcessState processState, required BridgeControlStatus status}) {
+  static _StatusText _statusText({required BridgeProcessState processState, required BridgeControlStatus status}) {
     return switch (processState) {
-      BridgeProcessStopped() => "Off",
-      BridgeProcessLoginRequired() => "Login required",
-      BridgeProcessStarting() => "Starting",
-      BridgeProcessStartFailed() => "Repair required",
-      BridgeProcessRunning() => _runningStatusLabel(status: status),
-      BridgeProcessStopping() => "Stopping",
-      BridgeProcessContention() => "Another bridge is running",
-      BridgeProcessCrashRetryScheduled(:final delay) => "Restarting in ${delay.inSeconds}s",
-      BridgeProcessCrashGiveUp() => "Stopped after repeated crashes",
+      BridgeProcessStopped() => (label: "Off", detail: null),
+      BridgeProcessLoginRequired() => (label: "Login required", detail: null),
+      BridgeProcessStarting() => (label: "Starting", detail: null),
+      BridgeProcessStartFailed() => (label: "Repair required", detail: null),
+      BridgeProcessRunning() => _runningStatusText(status: status),
+      BridgeProcessStopping() => (label: "Stopping", detail: null),
+      BridgeProcessContention() => (label: "Another bridge is running", detail: null),
+      BridgeProcessCrashRetryScheduled(:final delay) => (label: "Restarting in ${delay.inSeconds}s", detail: null),
+      BridgeProcessCrashGiveUp() => (label: "Stopped after repeated crashes", detail: null),
     };
   }
 
-  static String _runningStatusLabel({required BridgeControlStatus status}) {
+  static _StatusText _runningStatusText({required BridgeControlStatus status}) {
     if (!status.helperOnline) {
-      return "Connecting";
+      return (label: "Connecting", detail: null);
     }
-    switch (status.startup) {
-      case ControlStartupState.unknown:
-        return "Status unknown";
-      case ControlStartupState.starting:
-        return "Starting";
-      case ControlStartupState.waitingForServer:
-        return "Starting — waiting for server (retrying every minute)";
-      case ControlStartupState.waitingForAuthentication:
-        return "Starting — waiting for desktop authentication (retrying every minute)";
-      case ControlStartupState.ready:
-        break;
-    }
-    return switch (status.relay) {
-      ControlRelayConnectionState.connected =>
-        status.plugin == ControlPluginHealthState.degraded ? "Degraded" : "Connected",
-      ControlRelayConnectionState.connecting => "Connecting",
-      ControlRelayConnectionState.disconnected => "Reconnecting",
-      ControlRelayConnectionState.takenOver => "Relay taken over",
-      ControlRelayConnectionState.unknown => "Status unknown",
+    return switch (status.startup) {
+      ControlStartupState.unknown => (label: "Status unknown", detail: null),
+      ControlStartupState.starting => (label: "Starting", detail: null),
+      ControlStartupState.waitingForServer => (
+        label: "Starting — waiting for server (retrying every minute)",
+        detail: null,
+      ),
+      ControlStartupState.waitingForAuthentication => (
+        label: "Starting — waiting for desktop authentication (retrying every minute)",
+        detail: null,
+      ),
+      ControlStartupState.ready => switch (status.relay) {
+        ControlRelayConnectionState.connected => _connectedStatusText(unhealthyPlugins: status.unhealthyPlugins),
+        ControlRelayConnectionState.connecting => (label: "Connecting", detail: null),
+        ControlRelayConnectionState.disconnected => (label: "Reconnecting", detail: null),
+        ControlRelayConnectionState.takenOver => (label: "Relay taken over", detail: null),
+        ControlRelayConnectionState.unknown => (label: "Status unknown", detail: null),
+      },
     };
+  }
+
+  /// Names the unhealthy plugins in the status and carries their hints as the
+  /// detail, each prefixed with its plugin's name once several need attention.
+  static _StatusText _connectedStatusText({required List<ControlUnhealthyPlugin> unhealthyPlugins}) {
+    if (unhealthyPlugins.isEmpty) {
+      return (label: "Connected", detail: null);
+    }
+    final hints = [
+      for (final plugin in unhealthyPlugins)
+        if (plugin.actionHint case final hint?) unhealthyPlugins.length == 1 ? hint : "${plugin.displayName}: $hint",
+    ];
+    return (
+      label: "Degraded · ${unhealthyPlugins.map((plugin) => plugin.displayName).join(", ")}",
+      detail: hints.isEmpty ? null : hints.join("\n"),
+    );
   }
 
   @override

@@ -15,7 +15,7 @@ sealed class BridgeControlStatus with _$BridgeControlStatus {
     required bool helperOnline,
     required ControlStartupState startup,
     required ControlRelayConnectionState relay,
-    required ControlPluginHealthState plugin,
+    required List<ControlUnhealthyPlugin> unhealthyPlugins,
     required int activeSessionCount,
 
     /// Readable copy of the helper's bridge id (from the `registered` event).
@@ -29,7 +29,7 @@ sealed class BridgeControlStatus with _$BridgeControlStatus {
     startup: ControlStartupState.unknown,
     helperOnline: false,
     relay: ControlRelayConnectionState.disconnected,
-    plugin: ControlPluginHealthState.unknown,
+    unhealthyPlugins: [],
     activeSessionCount: 0,
     bridgeId: null,
   );

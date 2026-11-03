@@ -98,7 +98,7 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
       this.status.copyWith(
         startup: status.startup,
         relay: status.relay,
-        plugin: status.plugin,
+        unhealthyPlugins: status.unhealthyPlugins,
         activeSessionCount: status.activeSessionCount,
       ),
     );

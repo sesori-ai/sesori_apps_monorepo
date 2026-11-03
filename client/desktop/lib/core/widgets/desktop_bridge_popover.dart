@@ -14,6 +14,9 @@ class const DesktopBridgePopover({
   required final VoidCallback close,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
+  static const double _statusDotSize = 8;
+  static const Duration _statusDetailTransition = Duration(milliseconds: 200);
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeControlCubit>().state;
@@ -63,35 +66,74 @@ class const DesktopBridgePopover({
           // In line with the rows' icons, here and in the menu around this.
           Padding(
             padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(loc.desktopLocalBridgeTitle, style: context.prego.textTheme.textSm.bold),
-                const SizedBox(height: PregoSpacing.xs),
-                Row(
-                  children: [
-                    // A status dot, not a glyph: no icon token applies.
-                    Icon(
-                      TablerSolid.circle,
-                      size: 8,
-                      color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
-                    ),
-                    const SizedBox(width: PregoSpacing.sm),
-                    Expanded(
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          state.statusLabel,
-                          style: context.prego.textTheme.textSm.regular.copyWith(
-                            color: context.prego.colors.textSecondary,
+            // A hint arriving or leaving grows or shrinks the panel smoothly
+            // instead of snapping the actions below it.
+            child: AnimatedSize(
+              duration: context.isReducedMotion ? Duration.zero : _statusDetailTransition,
+              curve: Curves.easeOut,
+              alignment: AlignmentDirectional.topStart,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(loc.desktopLocalBridgeTitle, style: context.prego.textTheme.textSm.bold),
+                  const SizedBox(height: PregoSpacing.xs),
+                  Row(
+                    children: [
+                      // A status dot, not a glyph: no icon token applies.
+                      Icon(
+                        TablerSolid.circle,
+                        size: _statusDotSize,
+                        color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
+                      ),
+                      const SizedBox(width: PregoSpacing.sm),
+                      Expanded(
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            state.statusLabel,
+                            style: context.prego.textTheme.textSm.regular.copyWith(
+                              color: context.prego.colors.textSecondary,
+                            ),
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                  AnimatedSwitcher(
+                    duration: _statusDetailTransition,
+                    // The outgoing hint fades in place without being re-read.
+                    layoutBuilder: (current, previous) => Stack(
+                      alignment: AlignmentDirectional.topStart,
+                      children: [
+                        for (final child in previous) ExcludeSemantics(child: child),
+                        ?current,
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                    child: switch (state.statusDetail) {
+                      final detail? => Padding(
+                        key: ValueKey(detail),
+                        // Under the status text, past the dot.
+                        padding: const EdgeInsetsDirectional.only(
+                          start: _statusDotSize + PregoSpacing.sm,
+                          top: PregoSpacing.xs,
+                        ),
+                        // Announced with the status, so the remediation is read too.
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            detail,
+                            style: context.prego.textTheme.textXs.regular.copyWith(
+                              color: context.prego.colors.textTertiary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      null => const SizedBox.shrink(),
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
           // Recovery actions stay a solid button; stopping a healthy bridge is
@@ -169,7 +211,7 @@ Color desktopBridgeStatusColor({required PregoColors colors, required BridgeCont
             when state.controlStatus.helperOnline &&
                 state.controlStatus.startup == ControlStartupState.ready &&
                 state.controlStatus.relay == ControlRelayConnectionState.connected &&
-                state.controlStatus.plugin != ControlPluginHealthState.degraded =>
+                state.controlStatus.unhealthyPlugins.isEmpty =>
           colors.textSuccessPrimary,
         BridgeProcessLoginRequired() ||
         BridgeProcessStarting() ||

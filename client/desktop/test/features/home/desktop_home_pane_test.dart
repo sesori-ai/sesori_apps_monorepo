@@ -1160,6 +1160,7 @@ const BridgeControlState _bridgeControlState = BridgeControlState(
   trayAvailability: SystemTrayAvailability.available,
   activity: BridgeControlActivity.idle,
   statusLabel: "Bridge: Off",
+  statusDetail: null,
   processState: BridgeProcessStopped(),
   desiredState: BridgeProcessDesiredState.off,
   toggleTarget: BridgeProcessDesiredState.on,

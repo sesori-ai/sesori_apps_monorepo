@@ -23,6 +23,10 @@ class const BridgeControlState({
 
   /// Status detail without an entity prefix; surfaces provide the heading.
   required final String statusLabel,
+
+  /// Secondary text under [statusLabel], such as what to do about an
+  /// unhealthy plugin; null when the status needs no explanation.
+  required final String? statusDetail,
   required final BridgeProcessState processState,
   required final BridgeProcessDesiredState desiredState,
   required final BridgeProcessDesiredState toggleTarget,

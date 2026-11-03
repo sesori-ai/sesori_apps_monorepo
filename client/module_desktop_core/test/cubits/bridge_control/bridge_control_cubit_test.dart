@@ -105,7 +105,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.waitingForServer,
           relay: ControlRelayConnectionState.disconnected,
-          plugin: ControlPluginHealthState.unknown,
+          unhealthyPlugins: [],
         ),
       );
       await pumpEventQueue();
@@ -114,7 +114,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
         ),
       );
       await pumpEventQueue();
@@ -129,7 +129,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.waitingForAuthentication,
           relay: ControlRelayConnectionState.disconnected,
-          plugin: ControlPluginHealthState.unknown,
+          unhealthyPlugins: [],
         ),
       );
       await pumpEventQueue();
@@ -154,7 +154,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
-          plugin: ControlPluginHealthState.degraded,
+          unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary.")],
           activeSessionCount: 3,
         ),
       );
@@ -166,9 +166,62 @@ void main() {
 
       expect(
         _textLabels(menu: systemTray.menus.last),
-        containsAll(<String>["Bridge: Degraded", "Active sessions: 3"]),
+        containsAll(<String>["Bridge: Degraded · Pi", "Active sessions: 3"]),
       );
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge Off");
+    });
+
+    test("names unhealthy plugins and carries their hints only while otherwise connected", () async {
+      await cubit.initialize();
+      statusTracker.markHelperConnected();
+      processService.emit(state: const BridgeProcessRunning(pid: 42), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary.")],
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Degraded · Pi");
+      expect(cubit.state.statusDetail, "Verify the Pi binary.");
+
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          unhealthyPlugins: [
+            ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary."),
+            ControlUnhealthyPlugin(displayName: "Codex", actionHint: null),
+            ControlUnhealthyPlugin(displayName: "Cursor", actionHint: "Sign in again."),
+          ],
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Degraded · Pi, Codex, Cursor");
+      expect(cubit.state.statusDetail, "Pi: Verify the Pi binary.\nCursor: Sign in again.");
+
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.disconnected,
+          unhealthyPlugins: [ControlUnhealthyPlugin(displayName: "Pi", actionHint: "Verify the Pi binary.")],
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Reconnecting");
+      expect(cubit.state.statusDetail, isNull);
+
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          unhealthyPlugins: [],
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Connected");
+      expect(cubit.state.statusDetail, isNull);
     });
 
     test("tray status follows the bridge from off through starting to connected and back off", () async {
@@ -188,7 +241,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
         ),
       );
       await pumpEventQueue();
@@ -198,7 +251,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.disconnected,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
         ),
       );
       await pumpEventQueue();
@@ -241,7 +294,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.takenOver,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
         ),
       );
       await pumpEventQueue();
@@ -269,7 +322,7 @@ void main() {
         status: const ControlStatus(
           startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.takenOver,
-          plugin: ControlPluginHealthState.healthy,
+          unhealthyPlugins: [],
           activeSessionCount: 0,
         ),
       );

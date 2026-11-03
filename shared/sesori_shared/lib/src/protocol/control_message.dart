@@ -9,8 +9,9 @@ part "control_message.g.dart";
 /// the relay protocol.)
 ///
 /// Pure wire types only — senders and handlers live in the bridge and the
-/// desktop GUI. New optional fields use `@Default` so older and newer peers stay
-/// wire-compatible.
+/// desktop GUI. The GUI only talks to the helper it spawned from its own bundle
+/// (authenticated by a per-spawn secret; release builds refuse a helper whose
+/// version/build identity differs), so both ends change in lockstep.
 @Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake, fromJson: true, toJson: true)
 sealed class ControlMessage with _$ControlMessage {
   /// helper → GUI: request a fresh access token. [id] correlates the
@@ -35,11 +36,13 @@ sealed class ControlMessage with _$ControlMessage {
   const factory tokenRetryLater({required String id}) = ControlTokenRetryLater;
 
   /// helper → GUI (push): startup, relay/plugin health and active sessions.
+  /// [unhealthyPlugins] lists the eligible plugins that are degraded or
+  /// failed, in the bridge's plugin order; empty when all are healthy.
   @FreezedUnionValue("status")
   const factory status({
     required ControlStartupState startup,
     @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required ControlRelayConnectionState relay,
-    @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required ControlPluginHealthState plugin,
+    required List<ControlUnhealthyPlugin> unhealthyPlugins,
     @Default(0) int activeSessionCount,
   }) = ControlStatus;
 
@@ -99,15 +102,17 @@ enum ControlRelayConnectionState() {
   unknown,
 }
 
-/// Plugin (backend) health reported in a [ControlStatus]. [unknown] is the
-/// forward-compat fallback.
-enum ControlPluginHealthState() {
-  @JsonValue("healthy")
-  healthy,
-  @JsonValue("degraded")
-  degraded,
-  @JsonValue("unknown")
-  unknown,
+/// A degraded or failed plugin (backend) reported in a [ControlStatus].
+@Freezed(fromJson: true, toJson: true)
+sealed class ControlUnhealthyPlugin with _$ControlUnhealthyPlugin {
+  const factory({
+    required String displayName,
+
+    /// What the user can do about it, when the bridge has a hint.
+    required String? actionHint,
+  }) = _ControlUnhealthyPlugin;
+
+  factory fromJson(Map<String, dynamic> json) => _$ControlUnhealthyPluginFromJson(json);
 }
 
 /// The kind of prompt a [ControlPromptRequest] surfaces. [unknown] is the
