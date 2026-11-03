@@ -18,7 +18,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
   OpenCodePluginDescriptor.production(),
   AntigravityPluginDescriptor.production(),
-  const CodexPluginDescriptor(),
+  CodexPluginDescriptor.production(),
   CopilotPluginDescriptor.production(),
   const CursorPluginDescriptor(),
   const ClaudePluginDescriptor(),

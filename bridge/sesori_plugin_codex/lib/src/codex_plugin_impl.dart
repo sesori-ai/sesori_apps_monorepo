@@ -3,6 +3,7 @@ import "dart:async";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimeApi;
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
@@ -34,7 +35,6 @@ import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
-import "runtime/codex_managed_api.dart";
 import "services/codex_mcp_authentication_service.dart";
 import "services/codex_rollout_tailer.dart";
 import "services/codex_session_service.dart";
@@ -57,7 +57,6 @@ import "services/codex_session_service.dart";
 ///     answered through the [ApprovalRegistry].
 class CodexPlugin._({
   required final String _serverUrl,
-  required final String? _capabilityToken,
   required final CodexAppServerClient Function()? _clientFactory,
   required final CodexSessionService _sessionService,
   required final CodexMessageRepository _messageRepository,
@@ -83,7 +82,8 @@ class CodexPlugin._({
   required final void Function()? _onDisconnected,
   required final Duration _keepaliveInterval,
 }) implements
-    CodexManagedApi,
+    BridgeDerivedProjectsPluginApi,
+    ManagedRuntimeApi,
     McpManagementPluginApi,
     McpConnectorSetupPluginApi,
     McpAuthenticationPluginApi,
@@ -97,8 +97,6 @@ class CodexPlugin._({
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);
 
-  // Passed to the default client built in [_createClient]; retained for future
-  // non-loopback (`--ws-auth`) support.
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
   // Nullable: when the caller injects a factory (tests) we use it verbatim;
@@ -159,7 +157,6 @@ class CodexPlugin._({
 
   new composed({
     required String serverUrl,
-    required String? capabilityToken,
     required CodexAppServerClient Function()? clientFactory,
     required CodexSessionService sessionService,
     required CodexMessageRepository messageRepository,
@@ -177,7 +174,6 @@ class CodexPlugin._({
     required Duration keepaliveInterval,
   }) : this._(
          serverUrl: serverUrl,
-         capabilityToken: capabilityToken,
          clientFactory: clientFactory,
          sessionService: sessionService,
          messageRepository: messageRepository,
@@ -332,7 +328,6 @@ class CodexPlugin._({
     if (injected != null) return injected();
     return CodexAppServerClient(
       serverUrl: _serverUrl,
-      capabilityToken: _capabilityToken,
       onDisconnected: _handleClientDisconnected,
     );
   }
@@ -909,7 +904,6 @@ class CodexPlugin._({
   /// and starts pumping notifications. Idempotent — concurrent and repeat
   /// callers share the single in-flight connection. Throws when the cold-start
   /// fails so the descriptor can surface a degraded status.
-  @override
   Future<void> initialize() async {
     final connected = await _ensureConnected();
     if (!connected) {

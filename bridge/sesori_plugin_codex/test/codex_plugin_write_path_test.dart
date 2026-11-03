@@ -1,7 +1,7 @@
-// Phase 4 write-path integration tests: createSession, sendPrompt,
+// Write-path integration tests: createSession, sendPrompt,
 // abortSession round-trip against an in-memory fake WS, plus the
 // notification → BridgeSseEvent pipeline.
-// ignore_for_file: cast_nullable_to_non_nullable, prefer_foreach, avoid_dynamic_calls
+// ignore_for_file: cast_nullable_to_non_nullable, avoid_dynamic_calls
 
 import "dart:async";
 import "dart:convert";
@@ -18,6 +18,7 @@ import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/stub_web_socket_channel.dart";
 
 void main() {
   group("CodexPlugin write path", () {
@@ -4284,9 +4285,9 @@ class _FakeAppServer() {
   this {
     _clientToServer = StreamController<Object?>.broadcast();
     _serverToClient = StreamController<Object?>.broadcast();
-    channel = _StubChannel(
+    channel = StubWebSocketChannel(
       stream: _serverToClient.stream,
-      sink: _SinkAdapter(_clientToServer),
+      sink: ControllerWebSocketSink(controller: _clientToServer),
     );
     _clientToServer.stream.listen(_onClientFrame);
   }
@@ -4403,41 +4404,3 @@ class _FakeAppServer() {
 }
 
 class _SentFrame({required final String method, required final Map<String, dynamic>? params});
-
-class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
-    implements WebSocketChannel {
-  @override
-  int? get closeCode => null;
-  @override
-  String? get closeReason => null;
-  @override
-  String? get protocol => null;
-  @override
-  Future<void> get ready => Future.value();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _SinkAdapter(final StreamController<Object?> _controller) implements WebSocketSink {
-  @override
-  void add(Object? data) => _controller.add(data);
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
-
-  @override
-  Future<void> addStream(Stream<Object?> stream) async {
-    await for (final item in stream) {
-      _controller.add(item);
-    }
-  }
-
-  @override
-  Future<void> close([int? closeCode, String? closeReason]) async {
-    if (!_controller.isClosed) await _controller.close();
-  }
-
-  @override
-  Future<void> get done => _controller.done;
-}

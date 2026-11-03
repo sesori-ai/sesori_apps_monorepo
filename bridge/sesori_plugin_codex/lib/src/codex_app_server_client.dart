@@ -46,9 +46,8 @@ class const CodexServerNotification({required final String method, required fina
 }
 
 /// A server-originated request that expects a response (approval prompts,
-/// elicitations, user-input requests). Phase 2 records and logs these but
-/// does not yet route them; later phases will turn them into
-/// [PluginPendingQuestion]s on the bridge stream.
+/// elicitations, user-input requests). The plugin routes them through its
+/// approval registry.
 class const CodexServerRequest({
   /// JSON-RPC `id` — caller must use this when sending a response.
   required final Object id,
@@ -87,10 +86,6 @@ WebSocketChannel _defaultConnect(Uri uri) => WebSocketChannel.connect(uri);
 ///   5. Call [dispose] to close the socket and fail any in-flight requests.
 class CodexAppServerClient({
   required final String _serverUrl,
-  // Currently unused — codex's `--ws-auth` is documented as required only
-  // for non-loopback listeners. Kept for non-loopback support.
-  // ignore: unused_field_from_primary_constructor
-  final String? _capabilityToken,
   CodexWebSocketChannelFactory? channelFactory,
 
   /// Fired at most once when the socket drops unexpectedly (error or close)
