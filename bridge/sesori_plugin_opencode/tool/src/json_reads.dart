@@ -4,8 +4,6 @@
 // inputs. A value of an unexpected shape means the input is malformed, so a
 // read fails loudly with the offending value instead of guessing.
 
-// ignore_for_file: no_slop_linter/prefer_specific_type, untyped decoded JSON is this file's boundary
-
 /// [value] as a JSON object.
 Map<String, dynamic> readObject(Object? value) => switch (value) {
   final Map<String, dynamic> object => object,
