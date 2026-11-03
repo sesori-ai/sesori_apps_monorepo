@@ -189,13 +189,17 @@ class ConnectionService(
         _retryFirstConnect(config: config);
         return false;
       }
-      final (:response, :closeCode) = await _connectViaRelay(
+      final result = await _connectViaRelay(
         config,
         isStale: () => _authSession.currentState is AuthUnauthenticated,
       );
-      if (response is SuccessResponse<HealthResponse>) return true;
-      if (RelayCloseCodes.shouldReconnect(closeCode)) _retryFirstConnect(config: config);
-      return false;
+      switch (result) {
+        case _RelayConnected():
+          return true;
+        case _RelayConnectFailed(:final closeCode):
+          if (RelayCloseCodes.shouldReconnect(closeCode)) _retryFirstConnect(config: config);
+          return false;
+      }
     } catch (error, stackTrace) {
       loge("Auto-connect after auth failed", error, stackTrace);
       return false;
@@ -301,22 +305,16 @@ class ConnectionService(
 
   /// Connects to the server. Health-checks first, then opens SSE stream
   /// for ongoing heartbeat monitoring.
-  Future<ApiResponse<HealthResponse>> connect(
-    ServerConnectionConfig config,
-  ) async => (await _connectViaRelay(config)).response;
-
-  Future<({ApiResponse<HealthResponse> response, int? closeCode})> _connectViaRelay(
+  Future<_RelayConnectResult> _connectViaRelay(
     ServerConnectionConfig config, {
-    bool Function()? isStale,
+    required bool Function() isStale,
   }) async {
     await _disconnectRelayClient();
 
     // If a newer reconnect attempt superseded us (or we were disconnected) while
     // the previous socket was tearing down, don't open a replacement — otherwise
     // two sockets briefly race for the same account (relay close code 4005).
-    if (isStale?.call() ?? false) {
-      return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
-    }
+    if (isStale()) return const _RelayConnectFailed(closeCode: null);
 
     final relayClient = _relayClientFactory.call(
       relayHost: config.relayHost,
@@ -327,10 +325,10 @@ class ConnectionService(
     );
     _connectingRelayClient = relayClient;
 
-    if (isStale?.call() ?? false) {
+    if (isStale()) {
       _clearConnectingRelayClient(relayClient);
       await relayClient.disconnect();
-      return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
+      return const _RelayConnectFailed(closeCode: null);
     }
 
     try {
@@ -338,10 +336,10 @@ class ConnectionService(
 
       // If this attempt was superseded while the websocket handshake awaited,
       // stop before sending health on a socket that a newer attempt now owns.
-      if (isStale?.call() ?? false) {
+      if (isStale()) {
         _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
-        return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
+        return const _RelayConnectFailed(closeCode: null);
       }
 
       // connect() returned but isConnected is false: the relay accepted and is
@@ -357,31 +355,23 @@ class ConnectionService(
       // state to connected with no session encryptor, whereas a disposed/early
       // return leaves it in `connecting` — only the former should park here.
       if (relayClient.connectionState == RelayClientConnectionState.connected && !relayClient.isConnected) {
-        const bridgeOfflineHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: false);
         final committedConfig = _adoptReportedTarget(config: config, relayClient: relayClient);
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
         _authRetryCount = 0;
         _relayReconnectBackoff = const Duration(seconds: 1);
         try {
-          _subscribeBridgeStatus(
-            relayClient: relayClient,
-            config: committedConfig,
-            health: bridgeOfflineHealth,
-          );
+          _subscribeBridgeStatus(relayClient: relayClient, config: committedConfig);
           _forwardBridgePresence(relayClient: relayClient);
           _watchSocketClosedWhileBridgeOffline(relayClient);
         } catch (error, stackTrace) {
           loge("Failed to set up watchers after bridge-absent relay connect", error, stackTrace);
           await _disconnectRelayClient();
-          return (
-            response: ApiResponse<HealthResponse>.error(ApiError.generic()),
-            closeCode: relayClient.lastCloseCode,
-          );
+          return _RelayConnectFailed(closeCode: relayClient.lastCloseCode);
         }
         _logRelayConnected(detail: "bridge offline");
-        _status.add(ConnectionStatus.bridgeOffline(config: committedConfig, health: bridgeOfflineHealth));
-        return (response: ApiResponse.success(bridgeOfflineHealth), closeCode: null);
+        _status.add(ConnectionStatus.bridgeOffline(config: committedConfig));
+        return const _RelayConnected();
       }
 
       // A resume_ack already proves the bridge is reachable, so a resumed
@@ -416,17 +406,10 @@ class ConnectionService(
         final responseBody = response.body;
 
         if (response.status < 200 || response.status >= 300 || responseBody == null) {
+          logw("Relay health check failed with status ${response.status}");
           _clearConnectingRelayClient(relayClient);
           await relayClient.disconnect();
-          return (
-            response: ApiResponse<HealthResponse>.error(
-              ApiError.nonSuccessCode(
-                errorCode: response.status,
-                rawErrorString: responseBody,
-              ),
-            ),
-            closeCode: relayClient.lastCloseCode,
-          );
+          return _RelayConnectFailed(closeCode: relayClient.lastCloseCode);
         }
 
         health = HealthResponse.fromJson(jsonDecodeMap(responseBody));
@@ -435,10 +418,10 @@ class ConnectionService(
       // The handshake spanned several awaits; if a newer attempt or a disconnect
       // landed meanwhile, tear down this socket instead of committing it as the
       // live connection.
-      if (isStale?.call() ?? false) {
+      if (isStale()) {
         _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
-        return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
+        return const _RelayConnectFailed(closeCode: null);
       }
 
       // Cache health only after the staleness gate, so a superseded attempt
@@ -452,23 +435,16 @@ class ConnectionService(
       _relayReconnectBackoff = const Duration(seconds: 1);
       try {
         _openRelaySseStream(relayClient);
-        _subscribeBridgeStatus(
-          relayClient: relayClient,
-          config: committedConfig,
-          health: health,
-        );
+        _subscribeBridgeStatus(relayClient: relayClient, config: committedConfig);
         _forwardBridgePresence(relayClient: relayClient);
       } catch (error, stackTrace) {
         loge("Failed to setup SSE streams after successful relay connect", error, stackTrace);
         await _disconnectRelayClient();
-        return (
-          response: ApiResponse<HealthResponse>.error(ApiError.generic()),
-          closeCode: relayClient.lastCloseCode,
-        );
+        return _RelayConnectFailed(closeCode: relayClient.lastCloseCode);
       }
       _logRelayConnected(detail: "resumed=${relayClient.didResume}");
       _status.add(ConnectionStatus.connected(config: committedConfig, health: health));
-      return (response: ApiResponse.success(health), closeCode: null);
+      return const _RelayConnected();
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
       final closeCode = relayClient.lastCloseCode;
@@ -479,7 +455,7 @@ class ConnectionService(
         logw("Best-effort relay disconnect failed after connect error: ${disconnectError.toString()}");
         loge("Relay disconnect cleanup failed", disconnectError, disconnectStackTrace);
       }
-      return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: closeCode);
+      return _RelayConnectFailed(closeCode: closeCode);
     }
   }
 
@@ -603,7 +579,6 @@ class ConnectionService(
   void _subscribeBridgeStatus({
     required RelayClient relayClient,
     required ServerConnectionConfig config,
-    required HealthResponse health,
   }) {
     _bridgeStatusSubscription = relayClient.bridgeStatus.listen(
       (status) {
@@ -630,7 +605,7 @@ class ConnectionService(
           case BridgeStatus.offline:
             if (_status.value is ConnectionConnected) {
               logd("Bridge went offline — entering bridge offline state");
-              _status.add(ConnectionStatus.bridgeOffline(config: config, health: health));
+              _status.add(ConnectionStatus.bridgeOffline(config: config));
             }
         }
       },
@@ -1023,8 +998,8 @@ class ConnectionService(
       }
       if (_status.value is ConnectionDisconnected) return;
 
-      if (connectResult.response is ErrorResponse<HealthResponse>) {
-        handleFailure(closeCode: connectResult.closeCode);
+      if (connectResult case _RelayConnectFailed(:final closeCode)) {
+        handleFailure(closeCode: closeCode);
       }
     } catch (error, stackTrace) {
       loge("Relay reconnect attempt failed unexpectedly", error, stackTrace);
@@ -1055,3 +1030,11 @@ class ConnectionService(
     _lastHealth.close();
   }
 }
+
+/// How one relay connect attempt ended. A success has already published its
+/// connected or bridge-offline status.
+sealed class const _RelayConnectResult();
+
+final class const _RelayConnected() extends _RelayConnectResult;
+
+final class const _RelayConnectFailed({required final int? closeCode}) extends _RelayConnectResult;

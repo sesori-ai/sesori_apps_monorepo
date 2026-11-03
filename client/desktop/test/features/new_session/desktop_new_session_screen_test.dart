@@ -125,7 +125,6 @@ void main() {
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
     when(newSessionCubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
     when(() => newSessionCubit.canSubmit).thenReturn(true);
-    when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);

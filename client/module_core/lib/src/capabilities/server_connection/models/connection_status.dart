@@ -33,9 +33,10 @@ sealed class ConnectionStatus with _$ConnectionStatus {
   /// Relay connection is active but the bridge (desktop process) is offline.
   /// Non-blocking — user can still view the app but cannot interact with sessions.
   /// Transitions back to [ConnectionConnected] when the bridge comes back online.
+  /// No bridge answers in this state, so it carries no health; the last
+  /// reported health stays on `ConnectionService.lastHealth`.
   const factory bridgeOffline({
     required ServerConnectionConfig config,
-    required HealthResponse health,
   }) = ConnectionBridgeOffline;
 }
 

@@ -9,7 +9,6 @@ import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/testing/test_helpers.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -44,9 +43,6 @@ class _RecordingRelayClientFactory(final List<RelayClient> _clients) extends Rel
 
 const _health = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: false);
 const _user = AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u");
-
-ServerConnectionConfig _config({required String? bridgeId}) =>
-    ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: bridgeId);
 
 _MockRelayClient _connectedClient({
   required Stream<RelaySseEvent> sse,
@@ -171,7 +167,7 @@ void main() {
     ]);
     final service = buildService(factory: factory);
 
-    await service.connect(_config(bridgeId: null));
+    await service.connectWithFreshAuthToken();
     await pumpEventQueue();
 
     expect(service.currentStatus, isA<ConnectionConnected>());
@@ -181,16 +177,20 @@ void main() {
   });
 
   test("adoption keeps a computer chosen while the unpinned connection was joining", () async {
-    final factory = _RecordingRelayClientFactory([
-      _connectedClient(sse: NeverStream(), reportedBridgeId: "a"),
-    ]);
+    final client = _connectedClient(sse: NeverStream(), reportedBridgeId: "a");
+    final socketJoined = Completer<void>();
+    when(client.connect).thenAnswer((_) => socketJoined.future);
+    final factory = _RecordingRelayClientFactory([client]);
     final service = buildService(factory: factory);
-    final joining = service.connect(_config(bridgeId: null));
+    final joining = service.connectWithFreshAuthToken();
+    await untilCalled(client.connect);
 
     await service.retarget(bridgeId: "b");
+    socketJoined.complete();
     await joining;
     await pumpEventQueue();
 
+    expect(factory.bridgeIds, [null]);
     expect(targetStorage.stored, "b");
   });
 
@@ -203,7 +203,8 @@ void main() {
       _connectedClient(sse: NeverStream(), reportedBridgeId: "b"),
     ]);
     final service = buildService(factory: factory);
-    await service.connect(_config(bridgeId: "a"));
+    await targetStorage.write(bridgeId: "a");
+    await service.connectWithFreshAuthToken();
     final events = <SseEvent>[];
     final subscription = service.events.listen(events.add);
     addTearDown(subscription.cancel);

@@ -2441,14 +2441,15 @@ void main() {
       expect(cubit.clearNotifications, returnsNormally);
     });
 
-    test("reassertViewingSession restores a loaded parent after child navigation", () async {
+    test("uncovering a loaded route restores it as the viewed session", () async {
       final sessionViewingService = stubbedSessionViewingService();
       final cubit = buildCubit(sessionViewingService: sessionViewingService);
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
+      cubit.setRouteVisible(isVisible: false);
       clearInteractions(sessionViewingService);
 
-      cubit.reassertViewingSession();
+      cubit.setRouteVisible(isVisible: true);
 
       verify(() => sessionViewingService.setViewingSession(sessionId)).called(1);
     });

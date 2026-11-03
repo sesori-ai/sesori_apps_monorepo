@@ -653,15 +653,6 @@ class NewSessionCubit({
   bool get hasNoHarnesses =>
       (state.agentModelData?.plugins?.isEmpty ?? false) && state.phase is! NewSessionPhaseDiscoveryError;
 
-  bool get canRefreshOptions {
-    final data = state.agentModelData;
-    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated || data == null) return false;
-    return needsHarnessDiscovery ||
-        !(data.plugin?.isRoutable ?? true) ||
-        data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
-        (data.backendScope.isVerified && !data.optionsState.isLoading && data.optionsState.source != null);
-  }
-
   /// Whether a session can start now. Options are not waited for: a session
   /// sent before they arrive runs on the harness' defaults. The project check
   /// is, since it decides whether the requested worktree can be honoured.

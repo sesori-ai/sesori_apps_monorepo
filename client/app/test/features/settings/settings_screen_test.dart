@@ -207,7 +207,6 @@ void main() {
       () => productAnalyticsService.setPreference(preference: any(named: "preference")),
     ).thenAnswer((_) async {});
     when(productAnalyticsService.refreshPreference).thenAnswer((_) async {});
-    when(productAnalyticsService.retryPendingDisable).thenAnswer((_) async {});
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);

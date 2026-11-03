@@ -29,11 +29,7 @@ const _connectionConfig = ServerConnectionConfig(
   authToken: "test-token",
   bridgeId: null,
 );
-const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
-const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
-  config: _connectionConfig,
-  health: _health,
-);
+const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(config: _connectionConfig);
 
 BridgeSummary _bridge({
   required String id,
