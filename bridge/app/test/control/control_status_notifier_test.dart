@@ -159,7 +159,7 @@ void main() {
     test("relay connection transitions push mapped statuses", () async {
       relayState.add(const RelayConnecting());
       relayState.add(const RelayConnected());
-      relayState.add(const RelayDisconnected(closeCode: 4006, closeReason: null));
+      relayState.add(const RelayDisconnected(closeCode: 4006));
       await pump();
 
       expect(
@@ -174,9 +174,7 @@ void main() {
 
     test("a bridge-replaced close (4007) maps to takenOver", () async {
       relayState.add(const RelayConnected());
-      relayState.add(
-        const RelayDisconnected(closeCode: RelayCloseCodes.bridgeReplaced, closeReason: null),
-      );
+      relayState.add(const RelayDisconnected(closeCode: RelayCloseCodes.bridgeReplaced));
       await pump();
 
       expect(
@@ -188,20 +186,9 @@ void main() {
       );
     });
 
-    test("the 1000/replaced rollout fallback also maps to takenOver", () async {
+    test("a normal 1000 close stays disconnected", () async {
       relayState.add(const RelayConnected());
-      relayState.add(const RelayDisconnected(closeCode: 1000, closeReason: "replaced"));
-      await pump();
-
-      expect(
-        client.sentMessages.whereType<ControlStatus>().last.relay,
-        ControlRelayConnectionState.takenOver,
-      );
-    });
-
-    test("a plain 1000 close (no replaced reason) stays disconnected", () async {
-      relayState.add(const RelayConnected());
-      relayState.add(const RelayDisconnected(closeCode: 1000, closeReason: null));
+      relayState.add(const RelayDisconnected(closeCode: 1000));
       await pump();
 
       expect(

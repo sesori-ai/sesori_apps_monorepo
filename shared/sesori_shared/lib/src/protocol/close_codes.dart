@@ -27,13 +27,6 @@ abstract final class RelayCloseCodes() {
   /// in [noReconnectCodes]: the policy is long-backoff, not never-reconnect.
   static const bridgeReplaced = 4007;
 
-  /// The close reason the relay pairs with a `1000` normal close when it
-  /// displaces a bridge, used only as a rollout fallback before the relay
-  /// emits [bridgeReplaced]. Close reason strings are fragile (intermediaries
-  /// may strip/rewrite them), so [bridgeReplaced] is the authoritative signal;
-  /// this matches only during the relay-deploy window.
-  static const bridgeReplacedFallbackReason = "replaced";
-
   static const noReconnectCodes = {
     authFailure,
     authRequired,
@@ -49,19 +42,5 @@ abstract final class RelayCloseCodes() {
   static bool shouldReconnect(int? closeCode) {
     if (closeCode == null) return true;
     return !noReconnectCodes.contains(closeCode);
-  }
-
-  /// Whether a close indicates this bridge was displaced by another bridge on
-  /// the same account (see [bridgeReplaced]). The dedicated [bridgeReplaced]
-  /// code is authoritative and reason-independent; a `1000` normal close whose
-  /// reason is [bridgeReplacedFallbackReason] is only matched as a rollout
-  /// fallback for the relay-deploy window.
-  ///
-  /// This is the single detection rule shared by the reconnect-loop policy and
-  /// the supervised status push, so the two never diverge on what a takeover
-  /// looks like.
-  static bool isBridgeReplaced({required int? closeCode, required String? closeReason}) {
-    if (closeCode == bridgeReplaced) return true;
-    return closeCode == 1000 && closeReason == bridgeReplacedFallbackReason;
   }
 }

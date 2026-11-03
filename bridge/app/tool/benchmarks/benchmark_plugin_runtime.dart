@@ -126,16 +126,6 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
   }
 
   @override
-  Stream<T> useStream<T>({
-    required String pluginId,
-    required Enum operation,
-    required Stream<T> Function(BridgePluginApi api, int generation) body,
-  }) {
-    final plugin = _plugins[pluginId];
-    return plugin == null ? Stream.error(PluginOperationException(operation.name, statusCode: 503)) : body(plugin, 1);
-  }
-
-  @override
   Future<T?> useIfActive<T>({
     required String pluginId,
     required Enum operation,

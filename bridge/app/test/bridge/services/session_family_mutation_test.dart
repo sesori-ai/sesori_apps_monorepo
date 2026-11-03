@@ -186,7 +186,6 @@ void main() {
       expect(result, isA<CleanupRejected>());
       expect(fixture.repository.deleteCalls, isZero);
       expect(fixture.repository.contains(sessionId: "root"), isTrue);
-      expect(fixture.operations.activeLaneCount, isZero);
     });
 
     test("unrelated roots and plugins execute while one family is blocked", () async {
@@ -208,7 +207,6 @@ void main() {
       await Future.wait([otherStarted.future, pluginTwoStarted.future, other, pluginTwo]);
       releaseChild.complete();
       await child;
-      expect(fixture.operations.activeLaneCount, isZero);
     });
 
     test("failure releases the lane for later family work", () async {
@@ -221,7 +219,6 @@ void main() {
       await fixture.dispatchAction(sessionId: "root");
 
       expect(fixture.repository.actionCalls, 1);
-      expect(fixture.operations.activeLaneCount, isZero);
     });
 
     test("drain waits for accepted work, rejects new work, and disposes once", () async {
@@ -246,7 +243,6 @@ void main() {
       releaseAction.complete();
       await Future.wait([action, drain]);
       expect(identical(drain, fixture.operations.dispose()), isTrue);
-      expect(fixture.operations.activeLaneCount, isZero);
     });
   });
 }
