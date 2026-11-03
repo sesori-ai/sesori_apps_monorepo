@@ -356,8 +356,9 @@ mixin _$AllSessionsState {
  SessionWindowLoadMore? get loadMore;/// Whether [rows] are the previous search, filter or chip narrowed to
 /// this one until the bridge answers: rows it lacks may still come.
  bool get awaitingAnswer;/// Why the sessions could not be loaded, with none to show.
- RemoteFailureReason? get failure;/// Whether the project list or the sessions are still loading for the
-/// first time, or a retry after a failure has not answered yet.
+ RemoteFailureReason? get failure;/// Whether the project list, the sessions or the computer's last
+/// new-session project are still loading for the first time, or a retry
+/// after a failure has not answered yet.
  bool get isLoading;/// The bridge's "No project" project, or null on a bridge without one.
  String? get scratchProjectId;/// The new-session default: the filter, otherwise the listed project the
 /// user last picked in the composer or started a session in on this
@@ -476,8 +477,9 @@ class _AllSessionsState implements AllSessionsState {
 @override final  bool awaitingAnswer;
 /// Why the sessions could not be loaded, with none to show.
 @override final  RemoteFailureReason? failure;
-/// Whether the project list or the sessions are still loading for the
-/// first time, or a retry after a failure has not answered yet.
+/// Whether the project list, the sessions or the computer's last
+/// new-session project are still loading for the first time, or a retry
+/// after a failure has not answered yet.
 @override final  bool isLoading;
 /// The bridge's "No project" project, or null on a bridge without one.
 @override final  String? scratchProjectId;

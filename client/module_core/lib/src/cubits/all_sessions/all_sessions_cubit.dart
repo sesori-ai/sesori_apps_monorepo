@@ -188,7 +188,11 @@ class AllSessionsCubit({
           RemoteFailureReason.unknown,
         SessionWindowFailed() || SessionWindowLoading() || SessionWindowLoaded() => null,
       },
-      isLoading: _retrying || window is SessionWindowLoading || _projectInventory.state is ProjectListLoading,
+      isLoading:
+          _retrying ||
+          window is SessionWindowLoading ||
+          _projectInventory.state is ProjectListLoading ||
+          _lastProjectTracker.project.value is LastNewSessionProjectUnknown,
       scratchProjectId: scratchProjectId,
       defaultProjectId:
           projectId ??

@@ -173,9 +173,10 @@ Widget _buildApp({
   GoRouterWidgetBuilder? sessionDetailBuilder,
   String? projectName = "Project One",
   ({ProjectListState initial, Stream<ProjectListState> updates})? projectListStates,
+  String initialLocation = "/sessions/new?project=project-1",
 }) {
   final router = GoRouter(
-    initialLocation: "/sessions/new?project=project-1",
+    initialLocation: initialLocation,
     routes: [
       GoRoute(
         path: "/",
@@ -517,6 +518,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
+  testWidgets("a project chosen in the prompt opens its setup page and is where the next one opens", (tester) async {
+    await tester.pumpWidget(_buildApp(initialLocation: "/sessions/new", projectName: null));
+    await tester.pumpAndSettle();
+    expect(find.byType(NewSessionProjectPrompt), findsOneWidget);
+
+    tester
+        .widget<NewSessionProjectPrompt>(find.byType(NewSessionProjectPrompt))
+        .onProjectSelected(projectId: "project-2", projectName: "Project Two");
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewSessionProjectPrompt), findsNothing);
+    expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id, "project-2");
+    expect(
+      GetIt.instance<LastNewSessionProjectTracker>(),
+      isA<FakeLastNewSessionProjectTracker>().having((tracker) => tracker.records, "records", ["project-2"]),
+    );
   });
 
   testWidgets("a sent dictation has a landing over the composer", (tester) async {

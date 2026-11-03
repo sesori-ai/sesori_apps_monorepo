@@ -24,8 +24,10 @@ class const NewSessionScreen({
     final projectId = this.projectId;
     if (projectId == null) {
       return NewSessionProjectPrompt(
-        onProjectSelected: ({required projectId, required projectName}) =>
-            context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry)),
+        onProjectSelected: ({required projectId, required projectName}) {
+          getIt<LastNewSessionProjectTracker>().record(projectId: projectId);
+          context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry));
+        },
         onBack: context.pop,
         banner: ConnectionBanner.maybeFor(context),
         opensPicker: true,

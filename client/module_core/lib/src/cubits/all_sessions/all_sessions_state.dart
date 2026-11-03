@@ -69,8 +69,9 @@ sealed class AllSessionsState with _$AllSessionsState {
     /// Why the sessions could not be loaded, with none to show.
     required RemoteFailureReason? failure,
 
-    /// Whether the project list or the sessions are still loading for the
-    /// first time, or a retry after a failure has not answered yet.
+    /// Whether the project list, the sessions or the computer's last
+    /// new-session project are still loading for the first time, or a retry
+    /// after a failure has not answered yet.
     required bool isLoading,
 
     /// The bridge's "No project" project, or null on a bridge without one.

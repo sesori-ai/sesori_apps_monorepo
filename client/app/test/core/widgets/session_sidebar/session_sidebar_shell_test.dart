@@ -7,6 +7,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -118,6 +119,11 @@ void main() {
 
       expect(find.byType(NewSessionProjectPrompt), findsNothing);
       expect(tester.element(inContent(find.byType(NewSessionView))).read<NewSessionCubit>().state.project.id, "p1");
+      // The pick is where the next New session opens.
+      expect(
+        getIt<LastNewSessionProjectTracker>(),
+        isA<FakeLastNewSessionProjectTracker>().having((tracker) => tracker.records, "records", ["p1"]),
+      );
     });
 
     testWidgets("collapse slides the sidebar out and the pane's restore button brings it back", (tester) async {

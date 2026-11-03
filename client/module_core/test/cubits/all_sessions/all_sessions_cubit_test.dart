@@ -320,10 +320,10 @@ void main() {
     });
   });
 
-  test("until the last project is read only the filter is a default", () {
+  test("until the last project is read the list is loading and only the filter is a default", () {
     lastProject.emit(project: const LastNewSessionProjectUnknown());
     withCubit((cubit, async) {
-      expect(cubit.state.isLoading, isFalse);
+      expect(cubit.state.isLoading, isTrue);
       expect(cubit.state.defaultProjectId, isNull);
 
       cubit.selectProject(projectId: "two");
@@ -332,6 +332,7 @@ void main() {
 
       lastProject.emit(project: const LastNewSessionProjectKnown(projectId: null));
       async.elapse(Duration.zero);
+      expect(cubit.state.isLoading, isFalse);
       expect(cubit.state.defaultProjectId, "scratch");
     });
   });

@@ -50,9 +50,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
     return BlocListener<AllSessionsCubit, AllSessionsState>(
       // Until a composer is up, the first default to land, or another
       // filter's, is where it starts.
-      listenWhen: (previous, current) =>
-          _projectId == null &&
-          (previous.projectId != current.projectId || previous.defaultProjectId != current.defaultProjectId),
+      listenWhen: (previous, current) => _projectId == null && previous.defaultProjectId != current.defaultProjectId,
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
       child: AnimatedSwitcher(
         duration: _motionDuration,
@@ -99,7 +97,10 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       // A list still loading may yet name a default, so the prompt waits.
       if (isLoading) return _empty();
       return _prompt(
-        onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
+        onProjectSelected: ({required projectId, required projectName}) {
+          getIt<LastNewSessionProjectTracker>().record(projectId: projectId);
+          setState(() => _projectId = projectId);
+        },
       );
     }
     return BlocProvider(

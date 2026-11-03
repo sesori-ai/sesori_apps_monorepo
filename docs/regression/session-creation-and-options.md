@@ -13,9 +13,10 @@ variant, and worktree mode, and creating the session with its first input.
   new-session composer or started a session in on this computer, while it is still listed, else "No project" on
   a bridge that has it, else the project of the newest session. The last project is stored per computer on the
   device, so it survives leaving the composer, the desktop home rebuilding on return from a session, and an app
-  restart; another computer keeps its own. Any project pick in a composer counts, the move a filter change
-  makes on a home composer included; opening in the default does not. Until the computer's stored project is
-  read, only the filter is a default.
+  restart; another computer keeps its own. Any project pick in a composer or in the "What should we work on?"
+  prompt counts, the move a filter change makes on a home composer included; opening in the default does not.
+  Until the computer's stored project is read, only the filter is a default and the list counts as loading, so
+  the home panes wait rather than show the prompt.
 - The desktop sidebar's New session button and Cmd+N (Ctrl+N on Windows/Linux) open the typed setup route in
   that default, else the first listed project; with no project yet they open the Add project dialog, and the
   project it adds opens in setup.
@@ -25,7 +26,8 @@ variant, and worktree mode, and creating the session with its first input.
   every project's session read has settled (loaded or failed). With no default it opens a "New
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
   selected: its search first, the known projects below and "Open folder…" pinned under them; with no projects
-  it offers only that action. Choosing one replaces the page with that project's setup page.
+  it offers only that action. Choosing one swaps the prompt for that project's setup page; a project chosen
+  later in the setup page's own selector moves the same composer there, with its draft, on the same page.
 - The desktop home shows the setup composer in place, in the same default project. A bridge whose only project
   is "No project" still shows the composer, in "No project". The project holds once it lands, so a newer session
   elsewhere never moves a draft; another filter moves it. While the list is still loading the pane waits blank,

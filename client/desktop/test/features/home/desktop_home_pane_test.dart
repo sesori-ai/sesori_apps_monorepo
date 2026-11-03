@@ -843,6 +843,7 @@ void main() {
     late List<String> selected;
     late List<({String projectId, String sessionId})> opened;
     late _MockChatInputModeCubit inputMode;
+    late FakeLastNewSessionProjectTracker lastProject;
 
     setUpAll(() => registerFallbackValue(const NewSessionProject(id: "fallback", name: null, kind: ProjectKind.folder)));
 
@@ -883,6 +884,8 @@ void main() {
       opened = [];
       inputMode = _MockChatInputModeCubit();
       whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
+      lastProject = FakeLastNewSessionProjectTracker();
+      getIt.registerSingleton<LastNewSessionProjectTracker>(lastProject);
     });
 
     Future<void> pumpStart({
@@ -1025,7 +1028,9 @@ void main() {
       expect(shownProject(tester), "two");
     });
 
-    testWidgets("without a default, asks for a project and starts in the one picked", (tester) async {
+    testWidgets("without a default, asks for a project and starts in the one picked, remembering it", (
+      tester,
+    ) async {
       await pumpStart(tester: tester, list: _list(defaultProjectId: null));
       expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
       expect(find.text("Choose a project"), findsOneWidget);
@@ -1039,6 +1044,7 @@ void main() {
 
       expect(createdFor, ["two"]);
       expect(shownProject(tester), "two");
+      expect(lastProject.records, ["two"]);
     });
 
     testWidgets("picking another project moves the same composer there", (tester) async {

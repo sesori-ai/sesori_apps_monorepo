@@ -424,15 +424,16 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       // A list still loading may yet name a default, so the prompt waits.
       null when isLoading => const SizedBox.expand(key: Key("desktop-home-waiting")),
       null => _prompt(
-        onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
+        onProjectSelected: ({required projectId, required projectName}) {
+          getIt<LastNewSessionProjectTracker>().record(projectId: projectId);
+          setState(() => _projectId = projectId);
+        },
       ),
     };
     return BlocListener<AllSessionsCubit, AllSessionsState>(
       // Until the composer is up, the first default to land, or another
       // filter's, is where it starts.
-      listenWhen: (previous, current) =>
-          _projectId == null &&
-          (previous.projectId != current.projectId || previous.defaultProjectId != current.defaultProjectId),
+      listenWhen: (previous, current) => _projectId == null && previous.defaultProjectId != current.defaultProjectId,
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
       child: AnimatedSwitcher(
         duration: _homeMotionDuration,
