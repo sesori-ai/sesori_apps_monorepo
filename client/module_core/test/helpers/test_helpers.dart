@@ -38,6 +38,15 @@ void stubProductAnalyticsService({required MockProductAnalyticsService service})
   when(() => service.stateStream).thenAnswer((_) => states.stream);
 }
 
+class MockSessionWindowService() extends Mock implements SessionWindowService;
+
+/// A window no rename goes through, for a session page that follows its renames.
+MockSessionWindowService idleSessionWindow() {
+  final window = MockSessionWindowService();
+  when(() => window.renameTitles).thenAnswer((_) => const Stream.empty());
+  return window;
+}
+
 void registerAllFallbackValues() => registerCoreFallbackValues();
 
 Future<State> awaitState<State>({

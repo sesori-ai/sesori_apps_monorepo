@@ -54,6 +54,7 @@ import "../../services/session_interaction_calculator.dart";
 import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
+import "../../services/session_window_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
@@ -125,6 +126,10 @@ class SessionDetailCubit(
   required final SseEventTracker _sseEventTracker,
   required final SessionLaunchService _sessionLaunchService,
   required final FileReferenceOpenService _fileReferenceOpenService,
+
+  /// The window of the scope this page opened in, whose renames its title
+  /// follows the way the session's row does.
+  required final SessionWindowService _window,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -289,7 +294,12 @@ class SessionDetailCubit(
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged))
       ..add(_bridgeSettingsService.yoloSettings.listen(_onYoloSettings))
       ..add(_sseEventTracker.sessionActivity.listen(_onSessionActivity))
-      ..add(_sessionLaunchService.watchForSession(sessionId: _sessionId).listen(_onLaunchFollowUps));
+      ..add(_sessionLaunchService.watchForSession(sessionId: _sessionId).listen(_onLaunchFollowUps))
+      ..add(
+        _window.renameTitles
+            .where((rename) => rename.sessionId == _sessionId)
+            .listen((rename) => _onRenamed(title: rename.title)),
+      );
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
   }
@@ -480,7 +490,7 @@ class SessionDetailCubit(
     // load can never require them.
     var interactionAtLoad = _interaction;
     try {
-      metadataResult = await _loadService.loadMetadata(sessionId: _sessionId);
+      metadataResult = await _loadMetadata();
       if (metadataResult case SessionDetailMetadataFound(:final session)
           when !isClosed && connectionGeneration == _connectionGeneration) {
         _sessionMetadata = session;
@@ -1075,7 +1085,7 @@ class SessionDetailCubit(
 
     final parkEpochAtFetch = _parkEpoch;
     try {
-      final metadata = await _loadService.loadMetadata(sessionId: _sessionId);
+      final metadata = await _loadMetadata();
       if (isClosed) return _SessionRefreshResult.closed;
       if (connectionGeneration != _connectionGeneration) {
         _emitRefreshEnded();
@@ -1640,9 +1650,29 @@ class SessionDetailCubit(
     globalEvents.forEach(_processGlobalEvent);
   }
 
-  void _onSessionUpdated(Session session) {
+  void _onRenamed({required String? title}) {
+    if (_sessionMetadata case final session?) _onSessionUpdated(session.copyWith(title: title));
+  }
+
+  /// [session] as its row shows it: a rename the bridge has not answered keeps
+  /// its title over what a load or an update read.
+  Session _withPendingTitle({required Session session}) => switch (_window.pendingTitle(sessionId: _sessionId)) {
+    final title? => session.copyWith(title: title),
+    null => session,
+  };
+
+  Future<SessionDetailMetadataLoadResult> _loadMetadata() async =>
+      switch (await _loadService.loadMetadata(sessionId: _sessionId)) {
+        SessionDetailMetadataFound(:final session) => SessionDetailMetadataFound(
+          session: _withPendingTitle(session: session),
+        ),
+        final other => other,
+      };
+
+  void _onSessionUpdated(Session update) {
     final current = state;
     if (isClosed) return;
+    final session = _withPendingTitle(session: update);
     _sessionMetadata = session;
     // The unavailable shell still offers the session's actions, so a rename or
     // an archive has to reach it too.
