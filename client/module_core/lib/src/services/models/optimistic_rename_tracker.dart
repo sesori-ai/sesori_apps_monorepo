@@ -28,10 +28,6 @@ final class OptimisticRenameTracker({required String? confirmedValue}) {
   /// The newest value the bridge accepted, or the original when none has.
   String? get confirmedValue => _confirmedValue;
 
-  /// Whether the bridge accepted any rename, so [confirmedValue] is no longer
-  /// the original.
-  bool get hasConfirmed => _confirmedToken > 0;
-
   /// True once no rename is outstanding; the owner then drops this tracker.
   bool get isSettled => _pendingValues.isEmpty;
 

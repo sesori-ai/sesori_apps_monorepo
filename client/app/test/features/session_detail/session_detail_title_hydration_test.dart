@@ -8,6 +8,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -188,10 +189,14 @@ void _registerDependencies({
   getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
   // The page's own action service runs its menu actions.
-  final projectRepository = MockProjectRepository();
-  getIt.registerSingleton<ProjectRepository>(projectRepository);
-  getIt.registerSingleton<SessionCleanupService>(SessionCleanupService(repository: promptDispatcher));
-  getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
+  getIt.registerSingleton<SessionActionService>(
+    SessionActionService(
+      sessionRepository: promptDispatcher,
+      sessionCleanupService: SessionCleanupService(repository: promptDispatcher),
+      sessionUnseenTracker: FakeSessionUnseenTracker(),
+      failureReporter: failureReporter,
+    ),
+  );
 }
 
 void main() {

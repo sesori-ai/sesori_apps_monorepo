@@ -14,6 +14,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart"
     show AllSessionsList, AppLocalizations, SessionListActionDispatcher, SessionScope;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_dart_core/testing.dart";
 
 import "package:sesori_mobile/core/di/injection.dart";
@@ -121,6 +122,17 @@ void _registerListServices({
   }
   // Lazy: callers register their SessionRepository after the list services.
   getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: getIt<SessionRepository>()));
+  if (getIt.isRegistered<SessionActionService>()) {
+    getIt.unregister<SessionActionService>();
+  }
+  getIt.registerFactory<SessionActionService>(
+    () => SessionActionService(
+      sessionRepository: getIt<SessionRepository>(),
+      sessionCleanupService: getIt<SessionCleanupService>(),
+      sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+      failureReporter: getIt<FailureReporter>(),
+    ),
+  );
   // The session cubits count good interactions toward the rating sheet.
   if (getIt.isRegistered<FeedbackPromptService>()) {
     getIt.unregister<FeedbackPromptService>();
