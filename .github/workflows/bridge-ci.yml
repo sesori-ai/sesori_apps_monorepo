@@ -161,7 +161,7 @@ jobs:
         run: dart pub get
         working-directory: bridge
 
-      - name: Test that bound runtimes end with the bridge
+      - name: Test that runtimes start inside the job and end with the bridge
         run: dart test test/server/api/windows_job_object_api_test.dart
         working-directory: bridge/app
 
