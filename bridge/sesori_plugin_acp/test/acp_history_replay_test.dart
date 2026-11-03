@@ -333,7 +333,7 @@ void main() {
       );
     });
 
-    test("same-process replay reuses the synthesized initial prompt identity", () async {
+    test("same-process replay reuses the synthesized initial prompt identity and time", () async {
       final liveFake = FakeAcpProcess();
       final replayFake = FakeAcpProcess();
       final availableFakes = [liveFake, replayFake];
@@ -435,6 +435,8 @@ void main() {
 
       final replayed = (await loading).single;
       expect(replayed.info.id, liveMessage.info.id);
+      expect(replayed.info.time, isNotNull);
+      expect(replayed.info.time, liveMessage.info.time);
       expect(replayed.parts.single.id, livePart.id);
       expect(replayed.parts.single.messageID, replayed.info.id);
     });

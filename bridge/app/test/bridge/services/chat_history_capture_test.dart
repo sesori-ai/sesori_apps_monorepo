@@ -796,7 +796,7 @@ void main() {
         shellCommandResolver: null,
         sessionId: sessionId,
         agentId: "acp",
-        initialUserMessageId: null,
+        initialUserMessage: null,
         messageIdOverride: null,
         messageTimeResolver: null,
         haltClassifier: null,

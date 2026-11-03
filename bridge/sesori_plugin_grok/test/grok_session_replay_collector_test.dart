@@ -28,7 +28,7 @@ void main() {
       shellCommandResolver: null,
       sessionId: "root",
       agentId: "grok",
-      initialUserMessageId: null,
+      initialUserMessage: null,
       messageIdOverride: null,
       messageTimeResolver: null,
       haltClassifier: null,

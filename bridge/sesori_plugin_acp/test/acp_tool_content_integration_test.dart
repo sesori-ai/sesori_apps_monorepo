@@ -617,7 +617,7 @@ AcpReplayCollector _collector() => AcpReplayCollector(
   shellCommandResolver: null,
   sessionId: "s1",
   agentId: "ACP",
-  initialUserMessageId: null,
+  initialUserMessage: null,
   messageIdOverride: null,
   messageTimeResolver: null,
   haltClassifier: null,

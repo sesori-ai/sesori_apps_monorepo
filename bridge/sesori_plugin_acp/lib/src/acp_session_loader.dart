@@ -8,6 +8,10 @@ import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
 typedef AcpReplayUserMessageIdOverride = String? Function({required String acpMessageId});
+
+/// The identity and time this bridge process gave a session's live first
+/// prompt, which the first replayed user message reuses.
+typedef AcpReplayInitialUserMessage = ({String id, PluginMessageTime time});
 typedef AcpReplayMessageTimeResolver = PluginMessageTime? Function({required Map<String, dynamic> params});
 typedef AcpReplayToolPartReplacement = PluginMessagePart? Function({
   required String toolCallId,
@@ -41,7 +45,11 @@ abstract interface class AcpSessionReplayCollector() {
 class AcpReplayCollector({
   required final String sessionId,
   required final String agentId,
-  required final String? initialUserMessageId,
+
+  /// Identity and time for the first replayed user message. ACP replay carries
+  /// no message time, so without the live stamp the prompt would reload
+  /// undated. Null leaves that message with its replayed identity and time.
+  required final AcpReplayInitialUserMessage? initialUserMessage,
 
   /// The live mapper's pure hook. Null retains standard ACP envelopes unchanged.
   required final AcpSessionUpdateNormalizer? sessionUpdateNormalizer,
@@ -647,8 +655,8 @@ class AcpReplayCollector({
     final defaultId =
         overrideId ??
         (messageId != null && messageId.isNotEmpty ? "$sessionId-m$messageId-$role" : "$sessionId-h${_seq++}-$role");
-    final initialId = initialUserMessageId;
-    final identity = isFirstUser && initialId != null ? initialId : defaultId;
+    final initial = isFirstUser ? initialUserMessage : null;
+    final identity = initial?.id ?? defaultId;
     final occurrence = (_draftIdOccurrences[identity] ?? 0) + 1;
     _draftIdOccurrences[identity] = occurrence;
     final draft = _Draft(
@@ -657,6 +665,7 @@ class AcpReplayCollector({
       acpMessageId: messageId,
       contentTracker: contentTracker ?? AcpContentTracker(),
     );
+    if (initial != null) draft.time = initial.time;
     _drafts.add(draft);
     _entries.add(draft);
     return draft;

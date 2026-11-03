@@ -27,7 +27,7 @@ class DeepSeekHistoryRepository({
       shellCommandResolver: eventMapper.shellCommandForToolUpdate,
       sessionId: sessionId,
       agentId: pluginId,
-      initialUserMessageId: null,
+      initialUserMessage: null,
       messageIdOverride: ({required acpMessageId}) => acpMessageId,
       messageTimeResolver: ({required params}) => messageTimeParser.parse(params),
       haltClassifier: eventMapper.classifyHaltNotice,
