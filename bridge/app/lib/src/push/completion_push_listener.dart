@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
@@ -22,9 +21,6 @@ class CompletionPushListener({
 }) {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   bool _isStarted = false;
-
-  @visibleForTesting
-  bool get isStarted => _isStarted;
 
   void handleSseEvent(SesoriSseEvent event) {
     _tracker.handleEvent(event);
@@ -83,10 +79,5 @@ class CompletionPushListener({
     _isStarted = false;
     await _subscriptions.cancel();
     _completionNotifier.dispose();
-  }
-
-  void reset() {
-    _completionNotifier.reset();
-    _tracker.reset();
   }
 }

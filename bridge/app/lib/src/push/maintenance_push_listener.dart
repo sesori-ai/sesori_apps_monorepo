@@ -1,10 +1,8 @@
 import "dart:async";
 
-import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "completion_notifier.dart";
-import "push_maintenance_telemetry.dart";
 import "push_rate_limiter.dart";
 import "push_session_state_tracker.dart";
 
@@ -12,17 +10,9 @@ class MaintenancePushListener({
   required final PushSessionStateTracker _tracker,
   required final CompletionNotifier _completionNotifier,
   required final PushRateLimiter _rateLimiter,
-  required final PushMaintenanceTelemetryBuilder _telemetryBuilder,
   final Duration _maintenanceInterval = const Duration(minutes: 10),
 }) {
   Timer? _timer;
-  PushMaintenanceTelemetrySnapshot? _lastMaintenanceTelemetry;
-
-  @visibleForTesting
-  bool get isStarted => _timer != null;
-
-  @visibleForTesting
-  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => _lastMaintenanceTelemetry;
 
   void start() {
     _timer ??= Timer.periodic(_maintenanceInterval, (_) => runNow());
@@ -34,19 +24,20 @@ class MaintenancePushListener({
   }
 
   void runNow() {
+    final stopwatch = Stopwatch()..start();
+    var prunedRootCount = 0;
     _runMaintenanceStep(
       label: "root-prune",
       action: () {
-        final prunableRoots = _tracker.findPrunableRoots();
-        for (final prunableRoot in prunableRoots) {
+        for (final rootSessionId in _tracker.findPrunableRoots()) {
           _runMaintenanceStep(
-            label: "root-prune:${prunableRoot.rootSessionId}",
+            label: "root-prune:$rootSessionId",
             action: () {
-              final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
               _completionNotifier.cleanupPrunedRootSubtree(
-                rootSessionId: prunableRoot.rootSessionId,
-                prunedSessionIds: prunedSubtree.prunedSessionIds,
+                rootSessionId: rootSessionId,
+                prunedSessionIds: _tracker.pruneRootSubtree(rootSessionId: rootSessionId),
               );
+              prunedRootCount += 1;
             },
           );
         }
@@ -55,15 +46,10 @@ class MaintenancePushListener({
 
     _runMaintenanceStep(label: "message-role-prune", action: _tracker.pruneMessageRoleMetadata);
     _runMaintenanceStep(label: "rate-limiter-prune", action: _rateLimiter.pruneStaleEntries);
-    _runMaintenanceStep(
-      label: "telemetry",
-      action: () {
-        final snapshot = _telemetryBuilder.build(
-          trackerSnapshot: _tracker.createTelemetrySnapshot(),
-        );
-        _lastMaintenanceTelemetry = snapshot;
-        Log.d(snapshot.toLogMessage());
-      },
+    Log.d(
+      "[push] maintenance: pruned $prunedRootCount idle roots; tracking ${_tracker.sessionCount} sessions, "
+      "${_tracker.messageRoleCount} message roles, ${_rateLimiter.retainedKeyCount} rate-limit keys "
+      "(${stopwatch.elapsedMilliseconds} ms)",
     );
   }
 
