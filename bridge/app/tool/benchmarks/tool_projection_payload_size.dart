@@ -64,7 +64,7 @@ void main() {
       final projected = part.toShared(sessionId: "s");
       final after = switch (projected) {
         MessagePartTool(:final state) => state,
-        MessagePartSubtask(:final taskState) => taskState!,
+        MessagePartSubtask(taskState: final taskState?) => taskState,
         _ => throw StateError("Unexpected synthetic part"),
       };
       int bytes({required ToolState state}) => utf8.encode(jsonEncode(List.filled(100, state.toJson()))).length;

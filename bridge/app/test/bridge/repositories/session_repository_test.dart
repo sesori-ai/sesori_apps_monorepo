@@ -113,7 +113,7 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
       );
 
-      final root = (await db.sessionDao.getSession(sessionId: "root"))!;
+      final root = await db.sessionDao.getSession(sessionId: "root") ?? fail("the root session row is missing");
       await db.sessionDao.upsertSessionRows(rows: [root.copyWith(parentSessionId: "child")]);
       await expectLater(
         repository.resolveSessionFamily(
@@ -334,8 +334,8 @@ void main() {
       );
 
       final row = await db.sessionDao.getSession(sessionId: "s-update");
-      expect(row, isNotNull);
-      expect(row!.lastAgent, isNull);
+      if (row == null) fail("the updated session row is missing");
+      expect(row.lastAgent, isNull);
       expect(row.lastAgentModel?.providerID, equals("new-provider"));
       expect(row.lastAgentModel?.modelID, equals("new-model"));
       expect(row.lastAgentModel?.variant, isNull);
@@ -443,17 +443,12 @@ void main() {
         title: "Backend title",
         time: PluginSessionTime(created: 10, updated: 20, archived: 30),
       );
-      final committed = repository.bindingCommits.first.then(
-        (commit) async => (
-          commit: commit,
-          session: await repository.getCatalogSession(
-            sessionId: (await db.sessionDao.getSessionByBinding(
-              pluginId: plugin.id,
-              backendSessionId: "backend-created",
-            ))!.sessionId,
-          ),
-        ),
-      );
+      final committed = repository.bindingCommits.first.then((commit) async {
+        final binding =
+            await db.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "backend-created") ??
+            fail("the created session binding is missing");
+        return (commit: commit, session: await repository.getCatalogSession(sessionId: binding.sessionId));
+      });
       const lastAgentModel = AgentModel(
         providerID: "provider",
         modelID: "model",
@@ -1985,10 +1980,10 @@ void main() {
       final byId = {for (final s in summaries) s.id: s};
       expect(byId.keys, [parent]);
       expect(byId.keys, isNot(contains(worktree)));
-      expect(byId[parent]!.activeSessions.single.id, "w1");
-      expect(byId[parent]!.activeSessions.single.mainAgentRunning, isTrue);
-      expect(byId[parent]!.activeSessions.single.updatedAt, 1);
-      expect(byId[parent]!.activeSessions.single.lastUserActivityAt, 7);
+      expect(byId[parent]?.activeSessions.single.id, "w1");
+      expect(byId[parent]?.activeSessions.single.mainAgentRunning, isTrue);
+      expect(byId[parent]?.activeSessions.single.updatedAt, 1);
+      expect(byId[parent]?.activeSessions.single.lastUserActivityAt, 7);
     });
 
     test("getProjectActivitySummaries excludes tombstoned backend sessions", () async {

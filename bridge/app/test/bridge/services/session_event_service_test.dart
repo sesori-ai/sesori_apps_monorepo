@@ -1568,7 +1568,8 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
     return super.advanceUpdatedAt(sessionId: sessionId, updatedAt: updatedAt);
   }
 
-  Future<void> get projectionTransactionEntered => _transactionEntered!.future;
+  Future<void> get projectionTransactionEntered =>
+      (_transactionEntered ?? fail("the next projection transaction is not gated")).future;
 
   void gateNextProjectionTransaction() {
     _transactionEntered = Completer<void>();
@@ -1576,7 +1577,7 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
   }
 
   void releaseProjectionTransaction() {
-    _releaseTransaction!.complete();
+    (_releaseTransaction ?? fail("the next projection transaction is not gated")).complete();
   }
 
   void failNextPromptDefaultsUpdate() {

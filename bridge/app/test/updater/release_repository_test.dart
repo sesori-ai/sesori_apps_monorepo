@@ -123,8 +123,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.0'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.0'));
         expect(
           result.assetUrl,
           equals(
@@ -177,8 +177,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.assetUrl, endsWith('/sesori-bridge-windows-x64.zip'));
+        if (result == null) fail('expected a newer release');
+        expect(result.assetUrl, endsWith('/sesori-bridge-windows-x64.zip'));
         expect(result.checksumsUrl, endsWith('/checksums.txt'));
       });
 
@@ -202,8 +202,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.1'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.1'));
         expect(result.assetUrl, endsWith('/sesori-bridge-macos-arm64.tar.gz'));
       });
 
@@ -403,8 +403,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.9.0'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.9.0'));
         expect(httpCallCount, equals(0), reason: 'should not hit HTTP when cache is fresh');
       });
 
@@ -533,8 +533,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.1'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.1'));
       });
 
       test('cache entries for another target are ignored and refreshed from HTTP', () async {
@@ -560,8 +560,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.0'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.0'));
         expect(httpCallCount, equals(1));
       });
 
@@ -579,8 +579,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.1'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.1'));
       });
 
       test('selects highest eligible bridge semver instead of first eligible release', () async {
@@ -597,8 +597,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.4.0'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.4.0'));
       });
 
       test('skips invalid stable bridge release assets and picks next valid release', () async {
@@ -614,8 +614,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.1'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.1'));
       });
     });
     // -----------------------------------------------------------------------
@@ -633,8 +633,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.1'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.1'));
       });
 
       test('internal track selects a newer internal pre-release', () async {
@@ -651,8 +651,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.5.0-internal.3'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.5.0-internal.3'));
       });
 
       test('internal track picks the newest of stable and internal', () async {
@@ -669,9 +669,9 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
+        if (result == null) fail('expected a newer release');
         // Stable 0.4.0 outranks its own 0.4.0-internal.2 pre-release.
-        expect(result!.version, equals('0.4.0'));
+        expect(result.version, equals('0.4.0'));
       });
 
       test('internal track ignores non-internal pre-releases (rc/beta)', () async {
@@ -689,8 +689,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.1'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.3.1'));
       });
 
       test('internal track is forward-only: stable older than current internal → null', () async {
@@ -723,8 +723,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.4.0-internal.53'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.4.0-internal.53'));
       });
 
       test('internal track writes the track into the cache', () async {
@@ -770,8 +770,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.5.0-internal.4'));
+        if (result == null) fail('expected a newer release');
+        expect(result.version, equals('0.5.0-internal.4'));
         expect(httpCallCount, equals(1), reason: 'a stable cache must not satisfy an internal-track check');
       });
     });

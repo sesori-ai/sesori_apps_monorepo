@@ -27,7 +27,8 @@ class _FakeReleaseRepository() implements ReleaseRepository {
   @override
   Future<ReleaseInfo?> checkForNewerRelease() async {
     checkCount++;
-    return await (onCheck == null ? null : onCheck!());
+    if (onCheck case final check?) return await check();
+    return null;
   }
 
   @override

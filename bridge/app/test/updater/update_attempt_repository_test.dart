@@ -42,8 +42,8 @@ void main() {
     await repository.saveAttempt(attempt: attempt());
 
     final loaded = await repository.readAttempt();
-    expect(loaded, isNotNull);
-    expect(loaded!.fromVersion, '1.0.0');
+    if (loaded == null) fail('expected a saved attempt');
+    expect(loaded.fromVersion, '1.0.0');
     expect(loaded.toVersion, '2.0.0');
     expect(loaded.status, UpdateAttemptStatus.inFlight);
   });
@@ -55,7 +55,7 @@ void main() {
     );
 
     final loaded = await repository.readAttempt();
-    expect(loaded!.status, UpdateAttemptStatus.appliedPendingActivation);
+    expect(loaded?.status, UpdateAttemptStatus.appliedPendingActivation);
   });
 
   test('clear removes the record', () async {

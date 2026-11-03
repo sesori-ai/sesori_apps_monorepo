@@ -58,9 +58,8 @@ Future<SessionDto> _expectStoredBinding({
   required String backendSessionId,
   required String pluginId,
 }) async {
-  final row = await database.sessionDao.getSession(sessionId: sessionId);
-  expect(row, isNotNull);
-  expect(row!.backendSessionId, backendSessionId);
+  final row = await database.sessionDao.getSession(sessionId: sessionId) ?? fail("session $sessionId is not stored");
+  expect(row.backendSessionId, backendSessionId);
   expect(row.pluginId, pluginId);
   return row;
 }
@@ -160,7 +159,7 @@ void main() {
       );
 
       expect(response.status, 200);
-      final created = Session.fromJson(jsonDecodeMap(response.body!));
+      final created = Session.fromJson(jsonDecodeMap(response.body ?? fail("missing body")));
       expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
       expect(created.autoContinuation, isNull);
       expect(plugin.lastCreateSessionParts, [const PluginPromptPart.text(text: "Start")]);
@@ -221,12 +220,12 @@ void main() {
       expect(worktreeService.prepareCallCount, equals(1));
       expect(plugin.lastCreateSessionFastMode, isTrue);
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
-      expect(plugin.lastCreateSessionParts, isNotNull);
-      expect(plugin.lastCreateSessionParts, hasLength(2));
+      final createParts = plugin.lastCreateSessionParts ?? fail("createSession received no parts");
+      expect(createParts, hasLength(2));
       expect(plugin.lastCreateSessionUserVisibleText, "Start");
       expect(plugin.lastCreateSessionVariant, equals("xhigh"));
       expect(
-        plugin.lastCreateSessionParts![0],
+        createParts[0],
         equals(
           PluginPromptPart.text(
             text: _expectedWorktreeSystemPrompt(
@@ -236,7 +235,7 @@ void main() {
           ),
         ),
       );
-      expect(plugin.lastCreateSessionParts![1], equals(const PluginPromptPart.text(text: "Start")));
+      expect(createParts[1], equals(const PluginPromptPart.text(text: "Start")));
 
       final dbSession = await _expectStoredBinding(
         database: db,
@@ -893,6 +892,7 @@ void main() {
 
     test("slash-command acceptance gates response and late metadata", () async {
       final commandGate = Completer<void>();
+      final commandStarted = Completer<void>();
       plugin
         ..createSessionResult = const PluginSession(
           id: "cmd-session-gated",
@@ -902,7 +902,7 @@ void main() {
           title: "Command Session",
           time: null,
         )
-        ..sendCommandStarted = Completer<void>()
+        ..sendCommandStarted = commandStarted
         ..sendCommandCompleter = commandGate;
       metadataRepository.generateResult = "Generated command title";
 
@@ -922,7 +922,7 @@ void main() {
       );
       unawaited(response.then<void>((_) => responseCompleted = true));
 
-      await plugin.sendCommandStarted!.future;
+      await commandStarted.future;
       expect(responseCompleted, isFalse);
       expect(metadataRepository.lastGenerateMessage, isNull);
 
@@ -935,6 +935,7 @@ void main() {
 
     test("slash-command rejection fails creation without starting metadata", () async {
       final commandGate = Completer<void>();
+      final commandStarted = Completer<void>();
       plugin
         ..createSessionResult = const PluginSession(
           id: "cmd-session-rejected",
@@ -944,7 +945,7 @@ void main() {
           title: "Command Session",
           time: null,
         )
-        ..sendCommandStarted = Completer<void>()
+        ..sendCommandStarted = commandStarted
         ..sendCommandCompleter = commandGate;
       metadataRepository.generateResult = "Must not be used";
 
@@ -961,7 +962,7 @@ void main() {
           command: "review",
         ),
       );
-      await plugin.sendCommandStarted!.future;
+      await commandStarted.future;
       commandGate.completeError(StateError("command rejected"));
 
       await expectLater(response, throwsA(isA<StateError>()));
@@ -1065,12 +1066,13 @@ void main() {
       expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
       expect(orderedPlugin.lastSendCommandAgent, equals("coder"));
       expect(orderedPlugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
-      final dbSession = await db.sessionDao.getSessionByBinding(
-        pluginId: orderedPlugin.id,
-        backendSessionId: "ordered-session-1",
-      );
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("coder"));
+      final dbSession =
+          await db.sessionDao.getSessionByBinding(
+            pluginId: orderedPlugin.id,
+            backendSessionId: "ordered-session-1",
+          ) ??
+          fail("session ordered-session-1 is not stored");
+      expect(dbSession.lastAgent, equals("coder"));
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
       expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
       await orderedCreationService.drain();

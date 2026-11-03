@@ -18,8 +18,8 @@ class FakeHttpClient() extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     sendCallCount++;
-    if (error != null) {
-      throw error!;
+    if (error case final failure?) {
+      throw failure;
     }
     final response = responses[request.url.toString()];
     if (response == null) {

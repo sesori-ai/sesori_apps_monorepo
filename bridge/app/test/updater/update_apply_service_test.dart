@@ -29,8 +29,8 @@ class _FakeInstallationRepository() implements UpdateInstallationRepository {
   @override
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) async {
     applyCount++;
-    if (applyError != null) {
-      throw applyError!;
+    if (applyError case final failure?) {
+      throw failure;
     }
   }
 
@@ -41,8 +41,8 @@ class _FakeInstallationRepository() implements UpdateInstallationRepository {
 
   @override
   Future<void> recordManagedVersion({required String installRoot, required String version}) async {
-    if (recordError != null) {
-      throw recordError!;
+    if (recordError case final failure?) {
+      throw failure;
     }
     recordedVersion = version;
   }

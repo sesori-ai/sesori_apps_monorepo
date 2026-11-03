@@ -129,11 +129,13 @@ void main() {
     test("starts metadata only after backend creation is accepted", () async {
       final pluginGate = Completer<void>();
       final metadataGate = Completer<void>();
+      final useStarted = Completer<void>();
+      final generateStarted = Completer<void>();
       final runtime = createTestPluginRuntime(plugins: [plugin])
-        ..useStarted = Completer<void>()
+        ..useStarted = useStarted
         ..useGate = pluginGate.future;
       metadataRepository
-        ..generateStarted = Completer<void>()
+        ..generateStarted = generateStarted
         ..generateGate = metadataGate.future;
       final repository = singlePluginSessionRepository(
         plugin: plugin,
@@ -171,10 +173,10 @@ void main() {
         ),
       );
 
-      await runtime.useStarted!.future;
+      await useStarted.future;
       expect(metadataRepository.generateCalls, isZero);
       pluginGate.complete();
-      await metadataRepository.generateStarted!.future;
+      await generateStarted.future;
       final created = await creation;
       expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
       metadataGate.complete();
@@ -231,8 +233,9 @@ void main() {
     });
 
     test("shutdown aborts and drains the underlying metadata workflow", () async {
+      final generateStarted = Completer<void>();
       metadataRepository
-        ..generateStarted = Completer<void>()
+        ..generateStarted = generateStarted
         ..abortOnShutdown = true
         ..shutdownObserved = Completer<void>();
 
@@ -248,7 +251,7 @@ void main() {
           command: null,
         ),
       );
-      await metadataRepository.generateStarted!.future;
+      await generateStarted.future;
 
       service.beginShutdown();
       await service.drain().timeout(const Duration(seconds: 1));
@@ -389,11 +392,10 @@ void main() {
         ),
       );
 
-      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      final stored = await db.sessionDao.getSession(sessionId: created.id) ?? fail("missing stored session");
       expect(created.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(created.id, isNot("backend-session"));
-      expect(stored, isNotNull);
-      expect(stored!.backendSessionId, "backend-session");
+      expect(stored.backendSessionId, "backend-session");
       expect(stored.pluginId, "fake");
       expect(stored.projectId, "/repo");
       expect(
@@ -567,8 +569,10 @@ void main() {
       expect(plugin.lastCreateUserVisibleText, "Build it\n\nThen test it");
       expect(plugin.lastCreateUserVisibleText, isNot(contains("SYSTEM CONTEXT")));
       expect(plugin.lastCreateParts, hasLength(4));
-      expect(plugin.lastCreateParts?.first, isA<PluginPromptPartText>());
-      expect((plugin.lastCreateParts!.first as PluginPromptPartText).text, contains("SYSTEM CONTEXT"));
+      expect(
+        plugin.lastCreateParts?.first,
+        isA<PluginPromptPartText>().having((part) => part.text, "text", contains("SYSTEM CONTEXT")),
+      );
     });
 
     test("stores the HEAD commit for an in-place session", () async {

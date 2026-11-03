@@ -19,7 +19,7 @@ void main() {
     expect(result, isA<AttachmentThumbnailRendered>());
     final rendered = result as AttachmentThumbnailRendered;
     expect(rendered.format, AttachmentThumbnailFormat.jpeg);
-    final decoded = image.decodeJpg(rendered.bytes)!;
+    final decoded = image.decodeJpg(rendered.bytes) ?? fail("the thumbnail is not a decodable JPEG");
     expect((decoded.width, decoded.height), (512, 256));
     final left = decoded.getPixel(20, 128);
     final center = decoded.getPixel(256, 128);
@@ -39,7 +39,7 @@ void main() {
     expect(result, isA<AttachmentThumbnailRendered>());
     final rendered = result as AttachmentThumbnailRendered;
     expect(rendered.format, AttachmentThumbnailFormat.png);
-    expect(image.decodePng(rendered.bytes)!.getPixel(0, 0).a, 0);
+    expect((image.decodePng(rendered.bytes) ?? fail("the thumbnail is not a decodable PNG")).getPixel(0, 0).a, 0);
   });
 
   test("decodes only the first animated frame", () async {
@@ -51,7 +51,7 @@ void main() {
     final result = await builder.build(bytes: image.encodeGif(animation));
 
     final rendered = result as AttachmentThumbnailRendered;
-    final decoded = image.decodeJpg(rendered.bytes)!;
+    final decoded = image.decodeJpg(rendered.bytes) ?? fail("the thumbnail is not a decodable JPEG");
     final center = decoded.getPixel(256, 256);
     expect(center.r, greaterThan(center.b));
   });
@@ -64,7 +64,8 @@ void main() {
 
     final result = await builder.build(bytes: orientedJpeg);
 
-    final decoded = image.decodeJpg((result as AttachmentThumbnailRendered).bytes)!;
+    final decoded =
+        image.decodeJpg((result as AttachmentThumbnailRendered).bytes) ?? fail("the thumbnail is not a decodable JPEG");
     expect((decoded.width, decoded.height), (171, 512));
     final top = decoded.getPixel(85, 100);
     final bottom = decoded.getPixel(85, 412);
@@ -78,7 +79,8 @@ void main() {
 
     final result = await builder.build(bytes: image.encodePng(source));
 
-    final decoded = image.decodeJpg((result as AttachmentThumbnailRendered).bytes)!;
+    final decoded =
+        image.decodeJpg((result as AttachmentThumbnailRendered).bytes) ?? fail("the thumbnail is not a decodable JPEG");
     expect((decoded.width, decoded.height), (512, 1));
   });
 
