@@ -319,7 +319,7 @@ class PiBackendCatalogRepository({
     PiCatalogModelDto(:final provider?, :final id?, :final name, :final reasoning)
         when provider.isNotEmpty && id.isNotEmpty =>
       (provider: provider, id: id, name: name, reasoning: reasoning),
-    _ => null,
+    PiCatalogModelDto() || null => null,
   };
 
   String _modelKey({required _PiModel model}) => "${model.provider}\u0000${model.id}";

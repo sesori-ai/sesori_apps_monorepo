@@ -422,7 +422,7 @@ class CodexPlugin._({
       _eventMapper.mapThreadStarted(record: thread).forEach(_eventBuffer.add);
       return;
     }
-    final threadId = notification.params["threadId"] as String?;
+    final threadId = notification.threadId;
     if (threadId != null && _deletedThreadIds.contains(threadId)) {
       await _interruptDeletedThreadIfStarted(
         notification: notification,
@@ -586,7 +586,7 @@ class CodexPlugin._({
   }
 
   List<BridgeSseEvent> _subAgentTerminalEvents({required CodexServerNotification notification}) {
-    final childId = notification.params["threadId"] as String?;
+    final childId = notification.threadId;
     if (childId == null) return const [];
     final status = switch (notification.method) {
       "turn/completed" => switch (_turnStatus(params: notification.params)) {
@@ -609,7 +609,12 @@ class CodexPlugin._({
 
   String? _turnStatus({required Map<String, dynamic> params}) {
     final turn = params["turn"];
-    return turn is Map ? turn["status"] as String? : null;
+    if (turn is! Map) return null;
+    return switch (turn["status"]) {
+      null => null,
+      final String status => status,
+      _ => throw const FormatException("Codex turn status is not a string"),
+    };
   }
 
   CodexImageGenerationItemDto? _parseImageGeneration({
@@ -714,6 +719,8 @@ class CodexPlugin._({
         threadId: sessionId,
         promptId: null,
         parts: [PluginPromptPart.text(text: text)],
+        model: null,
+        variant: null,
         collaborationMode: null,
         // Unlike model/effort, this async-answer path has no bridge-supplied
         // fastMode selection to apply; omitting it (see _startTurn) leaves
@@ -763,7 +770,7 @@ class CodexPlugin._({
   }
 
   bool _isSupersededTurnLifecycleNotification({required CodexServerNotification notification}) {
-    final threadId = notification.params["threadId"] as String?;
+    final threadId = notification.threadId;
     if (threadId == null) return false;
     final tracksTurnIdentity = switch (notification.method) {
       "turn/started" || "turn/completed" || "error" || "thread/status/changed" => true,
@@ -828,7 +835,7 @@ class CodexPlugin._({
 
   bool _maintainBookkeeping({required CodexServerNotification notification}) {
     final params = notification.params;
-    final threadId = params["threadId"] as String?;
+    final threadId = notification.threadId;
     switch (notification.method) {
       case "turn/started":
         if (threadId == null) return false;
@@ -1000,6 +1007,7 @@ class CodexPlugin._({
         // stays unattributed, exactly as before.
         promptId: null,
         parts: parts,
+        model: null,
         variant: variant,
         fastMode: fastMode,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
@@ -1324,8 +1332,8 @@ class CodexPlugin._({
     required String threadId,
     required String? promptId,
     required List<PluginPromptPart> parts,
-    ({String providerID, String modelID})? model,
-    PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
   }) async {

@@ -159,7 +159,10 @@ void main() {
     );
 
     expect(replay.initialTurnId, "initial-child-turn");
-    expect((replay.initialInput!.input as CodexSubAgentPlaintextInput).message, "Child plaintext task.");
+    expect(
+      (replay.initialInput ?? fail("missing initial input")).input,
+      isA<CodexSubAgentPlaintextInput>().having((input) => input.message, "message", "Child plaintext task."),
+    );
     expect(replay.terminalStatus, PluginToolStatus.error);
   });
 
@@ -195,7 +198,10 @@ void main() {
       plaintextPayload: null,
     );
     final encryptedFact = repository.subAgentRolloutFact(line: encrypted.last, previousLine: encrypted.first);
-    expect((encryptedFact! as CodexSubAgentInitialInputFact).input, isA<CodexSubAgentEncryptedInput>());
+    expect(
+      encryptedFact,
+      isA<CodexSubAgentInitialInputFact>().having((fact) => fact.input, "input", isA<CodexSubAgentEncryptedInput>()),
+    );
 
     final malformed = _line(
       type: "response_item",

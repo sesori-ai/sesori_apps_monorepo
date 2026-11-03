@@ -612,7 +612,7 @@ class _ProbeProcessService({
     if (processSequence != null) {
       return processSequence[_nextProcess++];
     }
-    return process!;
+    return process ?? fail("no fake process was configured");
   }
 
   @override

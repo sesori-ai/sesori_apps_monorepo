@@ -1,5 +1,3 @@
-import "dart:io" show Directory;
-
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -45,15 +43,14 @@ class CursorPlugin._({
 
   factory({
     String binaryPath = CursorBinary.defaultBinary,
-    String? launchDirectory,
-    String? apiEndpoint,
+    required String launchDirectory,
+    required String? apiEndpoint,
     required AcpProcessFactory processFactory,
     required CursorSessionCleanupService sessionCleanupService,
   }) {
-    final cwd = launchDirectory ?? Directory.current.path;
     final launchSpec = CursorBinary.launchSpec(
       binary: binaryPath,
-      cwd: cwd,
+      cwd: launchDirectory,
       apiEndpoint: apiEndpoint,
     );
     final catalogApi = CursorCatalogProbeApi(
@@ -65,7 +62,7 @@ class CursorPlugin._({
     );
     final catalogRepository = CursorCatalogRepository(
       api: catalogApi,
-      launchScope: cwd,
+      launchScope: launchDirectory,
     );
     final catalogTracker = CursorCatalogTracker();
     final commandTracker = AcpCommandTracker();
@@ -89,14 +86,14 @@ class CursorPlugin._({
       catalogService: catalogService,
       catalogTracker: catalogTracker,
       commandTracker: commandTracker,
-      launchDirectory: cwd,
+      launchDirectory: launchDirectory,
     );
     // The mapper needs the plugin's active-turn resolver and the plugin is
     // constructed with the mapper; `plugin` is assigned immediately below,
     // before any notification can invoke the closure.
     late final CursorPlugin plugin;
     final mapper = CursorEventMapper(
-      launchDirectory: cwd,
+      launchDirectory: launchDirectory,
       pluginId: pluginId,
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
@@ -106,7 +103,7 @@ class CursorPlugin._({
     );
     return plugin = CursorPlugin._(
       launchSpec: launchSpec,
-      launchDirectory: cwd,
+      launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,
       mapper: mapper,
       processFactory: processFactory,

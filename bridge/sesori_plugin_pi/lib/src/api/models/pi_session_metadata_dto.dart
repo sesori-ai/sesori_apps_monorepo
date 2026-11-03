@@ -40,7 +40,7 @@ sealed class PiSettingsDto with _$PiSettingsDto {
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 String? _strictNullableString(Object? value) {
-  if (value == null || value is String) return value as String?;
+  if (value is String?) return value;
   throw const FormatException("Expected a string");
 }
 

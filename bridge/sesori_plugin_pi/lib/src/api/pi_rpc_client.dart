@@ -189,7 +189,10 @@ class PiRpcClient({
       process.stdin.done.catchError((Object error, StackTrace stack) {
         if (generation != _generation || _exited.isCompleted) return;
         Log.w("[pi] stdin stream failed", error, stack);
-        _failPending(PiRpcStdinException(cause: error), stack);
+        _failPending(
+          error: PiRpcStdinException(cause: error),
+          stack: stack,
+        );
         try {
           if (!process.kill(signal: io.ProcessSignal.sigkill)) {
             Log.w("[pi] could not terminate Pi after stdin failed");
@@ -216,8 +219,8 @@ class PiRpcClient({
             if (generation != _generation) return;
             Log.w("[pi] stdout stream failed", error, stack);
             _failPending(
-              PiRpcStdoutException(cause: error),
-              stack,
+              error: PiRpcStdoutException(cause: error),
+              stack: stack,
             );
           },
           onDone: () {
@@ -252,8 +255,8 @@ class PiRpcClient({
         if (!_exited.isCompleted) _exited.complete(code);
         if (generation != _generation) return;
         _failPending(
-          PiRpcProcessExitException(exitCode: code),
-          StackTrace.current,
+          error: PiRpcProcessExitException(exitCode: code),
+          stack: StackTrace.current,
         );
       }),
     );
@@ -447,7 +450,7 @@ class PiRpcClient({
     if (value.startsWith(noModelsDiagnosticPrefix)) return noModelsDiagnosticPrefix;
     try {
       final decoded = jsonDecode(value);
-      if (decoded is Map || decoded is List) return jsonEncode(_redactJson(decoded));
+      if (decoded is Map || decoded is List) return jsonEncode(_redactJson(decoded, key: null));
     } on FormatException {
       // Partial and non-JSON diagnostics use the bounded fallback below.
     }
@@ -465,14 +468,14 @@ class PiRpcClient({
     return value;
   }
 
-  Object? _redactJson(Object? value, {String? key}) {
+  Object? _redactJson(Object? value, {required String? key}) {
     if (key != null && _isCredentialKey(key)) return "***";
     if (value is Map) {
       return <String, Object?>{
         for (final entry in value.entries) entry.key.toString(): _redactJson(entry.value, key: entry.key.toString()),
       };
     }
-    if (value is List) return [for (final entry in value) _redactJson(entry)];
+    if (value is List) return [for (final entry in value) _redactJson(entry, key: null)];
     return value;
   }
 
@@ -486,7 +489,7 @@ class PiRpcClient({
         normalized.contains("credential");
   }
 
-  void _failPending(Object error, StackTrace stack) {
+  void _failPending({required Object error, required StackTrace stack}) {
     final inflight = _pending.values.map((request) => request.completer).toList();
     _pending.clear();
     for (final completer in inflight) {
@@ -501,7 +504,7 @@ class PiRpcClient({
     final process = _process;
     _process = null;
 
-    _failPending(pendingError, StackTrace.current);
+    _failPending(error: pendingError, stack: StackTrace.current);
 
     var stopped = process == null;
     if (process != null) {

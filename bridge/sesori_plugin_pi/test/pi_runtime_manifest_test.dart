@@ -29,7 +29,10 @@ void main() {
         PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
         PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
       ])
-        manifest.assetFor(target: target)! as ArchiveRuntimeAsset,
+        switch (manifest.assetFor(target: target)) {
+          final ArchiveRuntimeAsset asset => asset,
+          final other => fail("expected an archive asset for $target, got $other"),
+        },
     ];
 
     expect(assets.map((asset) => asset.assetName), {
@@ -69,9 +72,11 @@ void main() {
   });
 
   test("builds the official release URL with the v tag", () {
-    final asset = manifest.assetFor(
-      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-    )!;
+    final asset =
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+        ) ??
+        fail("missing macOS arm64 asset");
     expect(
       manifest.downloadUrlFor(asset: asset),
       "https://github.com/earendil-works/pi/releases/download/v1.4.0/pi-darwin-arm64.tar.gz",

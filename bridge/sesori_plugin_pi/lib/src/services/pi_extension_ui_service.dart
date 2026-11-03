@@ -412,7 +412,7 @@ PiExtensionUiReply? _replyFor({
     PiTrackedConfirmDialog() when answer == "Yes" => const PiExtensionUiConfirmationReply(confirmed: true),
     PiTrackedConfirmDialog() when answer == "No" => const PiExtensionUiConfirmationReply(confirmed: false),
     PiTrackedInputDialog() || PiTrackedEditorDialog() => PiExtensionUiValueReply(value: answer),
-    _ => null,
+    PiTrackedSelectDialog() || PiTrackedConfirmDialog() => null,
   };
 }
 

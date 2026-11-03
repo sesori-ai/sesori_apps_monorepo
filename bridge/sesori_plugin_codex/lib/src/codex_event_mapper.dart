@@ -185,13 +185,13 @@ class CodexEventMapper({
 
     switch (method) {
       case "thread/name/updated":
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (threadId == null) return const [];
         return [
           BridgeSseSessionUpdated(
             info: _minimalSession(
               id: threadId,
-              title: params["threadName"] as String?,
+              title: _optionalString(map: params, key: "threadName"),
               time: null,
             ).toJson(),
             titleChanged: true,
@@ -199,7 +199,7 @@ class CodexEventMapper({
         ];
 
       case "thread/status/changed":
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (threadId == null) return const [];
         return [
           BridgeSseSessionStatus(
@@ -209,7 +209,7 @@ class CodexEventMapper({
         ];
 
       case "turn/started":
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (threadId == null) return const [];
         return [
           _sessionActivityUpdated(
@@ -223,7 +223,7 @@ class CodexEventMapper({
         ];
 
       case "turn/completed":
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (threadId == null) return const [];
         final turn = _asMap(value: params["turn"]);
         return [
@@ -239,9 +239,9 @@ class CodexEventMapper({
       case "item/started":
       case "item/completed":
         final item = _asMap(value: params["item"]);
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (item == null || threadId == null) return const [];
-        final itemId = item["id"] as String?;
+        final itemId = _optionalString(map: item, key: "id");
         _recordAppServerItemTime(
           params: params,
           threadId: threadId,
@@ -270,15 +270,19 @@ class CodexEventMapper({
         return _deltaEvent(params: params, partSuffix: "reasoning");
 
       case "error":
-        return [BridgeSseSessionError(sessionID: params["threadId"] as String?)];
+        return [
+          BridgeSseSessionError(
+            sessionID: _optionalString(map: params, key: "threadId"),
+          ),
+        ];
 
       case "thread/closed":
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (threadId != null) _forgetItemTimes(threadId: threadId);
         return const [];
 
       case "turn/diff/updated":
-        final threadId = params["threadId"] as String?;
+        final threadId = _optionalString(map: params, key: "threadId");
         if (threadId == null) return const [];
         return [BridgeSseSessionDiff(sessionID: threadId)];
 
@@ -306,9 +310,9 @@ class CodexEventMapper({
     required String threadId,
     required Map<String, dynamic>? turn,
   }) {
-    final turnId = turn?["id"] as String?;
+    final turnId = _optionalString(map: turn, key: "id");
     final error = _asMap(value: turn?["error"]);
-    final message = error?["message"] as String?;
+    final message = _optionalString(map: error, key: "message");
     if (turnId == null || turnId.trim().isEmpty || message == null || message.trim().isEmpty) {
       return null;
     }
@@ -362,9 +366,9 @@ class CodexEventMapper({
     required Map<String, dynamic> params,
     required String partSuffix,
   }) {
-    final threadId = params["threadId"] as String?;
-    final itemId = params["itemId"] as String?;
-    final delta = params["delta"] as String?;
+    final threadId = _optionalString(map: params, key: "threadId");
+    final itemId = _optionalString(map: params, key: "itemId");
+    final delta = _optionalString(map: params, key: "delta");
     if (threadId == null || itemId == null || delta == null) return const [];
     return [
       BridgeSseMessagePartDelta(
@@ -387,7 +391,7 @@ class CodexEventMapper({
     required String threadId,
     required bool completed,
   }) {
-    final itemId = item["id"] as String?;
+    final itemId = _optionalString(map: item, key: "id");
     if (itemId == null || itemId.isEmpty) return const [];
     final time = _itemTimes[(threadId: threadId, itemId: itemId)];
 
@@ -403,6 +407,7 @@ class CodexEventMapper({
           status: _rolloutToolMapper.appServerItemStatus(event: correlatableItem),
           time: time,
           output: _rolloutToolMapper.clipOutput(output: aggregatedOutput),
+          error: null,
           attachments: const [],
         );
       case CodexFileChangeEventDto(:final changes):
@@ -415,6 +420,7 @@ class CodexEventMapper({
           status: _rolloutToolMapper.appServerItemStatus(event: correlatableItem),
           time: time,
           output: _fileChangeOutput(changes: changes),
+          error: null,
           attachments: const [],
         );
       case null:
@@ -472,6 +478,7 @@ class CodexEventMapper({
           output: _rolloutToolMapper.clipOutput(
             output: _imageBearingToolOutput(content: content),
           ),
+          error: null,
           attachments: _imageAttachmentMapper.map(
             candidates: [
               for (final item in content)
@@ -488,7 +495,7 @@ class CodexEventMapper({
         break;
     }
 
-    switch (item["type"] as String?) {
+    switch (_optionalString(map: item, key: "type")) {
       case "userMessage":
         return _userMessageEvents(
           threadId: threadId,
@@ -501,7 +508,7 @@ class CodexEventMapper({
             // Codex echoes the id the bridge sent with turn/start, so an
             // item caused by a bridge send names its prompt; one typed in the
             // Codex CLI carries none.
-            promptId: item["clientId"] as String?,
+            promptId: _optionalString(map: item, key: "clientId"),
           ),
           text: _userContentMapper.mapSubmittedText(
             text: _extractContentText(content: item["content"]),
@@ -515,7 +522,7 @@ class CodexEventMapper({
           message: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           partType: PluginMessagePartType.text,
           partSuffix: "text",
-          text: item["text"] as String? ?? _extractContentText(content: item["content"]),
+          text: _optionalString(map: item, key: "text") ?? _extractContentText(content: item["content"]),
         );
       case "reasoning":
         return _messageEvents(
@@ -532,10 +539,12 @@ class CodexEventMapper({
           itemId: itemId,
           tool: "web_search",
           shellCommand: null,
-          title: item["query"] as String?,
+          title: _optionalString(map: item, key: "query"),
           // webSearch items carry no status field.
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
           time: time,
+          output: null,
+          error: null,
           attachments: const [],
         );
       case "contextCompaction":
@@ -580,9 +589,9 @@ class CodexEventMapper({
     required PluginToolStatus status,
     required PluginMessageTime? time,
     required List<PluginMessageAttachment> attachments,
-    String? title,
-    String? output,
-    String? error,
+    required String? title,
+    required String? output,
+    required String? error,
   }) {
     return [
       BridgeSseMessageUpdated(
@@ -776,7 +785,17 @@ class CodexEventMapper({
             messageID: itemId,
             text: content,
           ),
-          _ => throw StateError("Codex message part cannot use $partType"),
+          PluginMessagePartType.tool ||
+          PluginMessagePartType.subtask ||
+          PluginMessagePartType.stepStart ||
+          PluginMessagePartType.stepFinish ||
+          PluginMessagePartType.file ||
+          PluginMessagePartType.snapshot ||
+          PluginMessagePartType.patch ||
+          PluginMessagePartType.agent ||
+          PluginMessagePartType.retry ||
+          PluginMessagePartType.compaction ||
+          PluginMessagePartType.unknown => throw StateError("Codex message part cannot use $partType"),
         },
       ),
     ];
@@ -904,7 +923,12 @@ class CodexEventMapper({
   /// Parses the direct and nested status shapes emitted by codex.
   bool isIdleThreadStatus({required Object? raw}) {
     final map = _asMap(value: raw);
-    final type = (map?["type"] ?? _asMap(value: map?["status"])?["type"]) as String?;
+    final type =
+        _optionalString(map: map, key: "type") ??
+        _optionalString(
+          map: _asMap(value: map?["status"]),
+          key: "type",
+        );
     return type == "idle" || type == "notLoaded";
   }
 
@@ -916,7 +940,7 @@ class CodexEventMapper({
     for (final entry in content) {
       final map = _asMap(value: entry);
       if (map == null) continue;
-      final type = map["type"] as String?;
+      final type = _optionalString(map: map, key: "type");
       if (type == "text" || type == "input_text" || type == "output_text") {
         final text = map["text"];
         if (text is String) buffer.write(text);
@@ -962,4 +986,12 @@ class CodexEventMapper({
     if (value is Map) return value.cast<String, dynamic>();
     return null;
   }
+
+  /// Reads an optional string field. Another type is a protocol violation that
+  /// fails the whole notification, which the plugin logs and drops.
+  String? _optionalString({required Map<String, dynamic>? map, required String key}) => switch (map?[key]) {
+    null => null,
+    final String value => value,
+    _ => throw FormatException("Codex field '$key' is not a string"),
+  };
 }

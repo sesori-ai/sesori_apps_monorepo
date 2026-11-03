@@ -67,7 +67,7 @@ void main() {
     expect(reply["id"], "startup-dialog");
     expect(reply["cancelled"], isTrue);
     process.emitResponse(
-      id: history["id"]! as String,
+      id: history.requestId,
       command: "get_entries",
       data: _historyJson(text: "history"),
     );
@@ -100,7 +100,7 @@ void main() {
       final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final command = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
-        id: command["id"]! as String,
+        id: command.requestId,
         command: "get_entries",
         data: _historyJson(text: "from rpc"),
       );
@@ -136,7 +136,7 @@ void main() {
       );
       final initial = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
-        id: initial["id"]! as String,
+        id: initial.requestId,
         command: "get_entries",
         data: _historyJson(text: "first"),
       );
@@ -149,7 +149,7 @@ void main() {
         "pi:session:user:1:2",
       );
       process.emitResponse(
-        id: replay["id"]! as String,
+        id: replay.requestId,
         command: "get_entries",
         data: _historyJson(text: "first"),
       );
@@ -196,7 +196,7 @@ void main() {
           final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
           final command = await waitForCommand(process: process, type: "get_entries");
           process.emitResponse(
-            id: command["id"]! as String,
+            id: command.requestId,
             command: "get_entries",
             data: {"entries": "private malformed payload", "leafId": null},
           );
@@ -273,7 +273,7 @@ void main() {
             "timestamp": "2026-08-01T00:00:00Z",
             "cwd": "/exact/header-cwd",
           },
-          ..._historyJson(text: "from file")["entries"]! as List<Object?>,
+          ..._historyEntries(text: "from file"),
         ].map(jsonEncode).join("\n"),
       );
       final process = FakePiProcess();
@@ -442,7 +442,7 @@ void main() {
       final warnings = await _captureWarnings(() async {
         final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
         final command = await waitForCommand(process: process, type: "get_entries");
-        process.emitFailure(id: command["id"]! as String, command: "get_entries", error: detail);
+        process.emitFailure(id: command.requestId, command: "get_entries", error: detail);
         await expectLater(
           pending,
           throwsA(
@@ -529,7 +529,7 @@ void main() {
       final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final command = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
-        id: command["id"]! as String,
+        id: command.requestId,
         command: "get_entries",
         data: _historyJson(text: "/deploy --token private"),
       );
@@ -550,7 +550,7 @@ void main() {
       final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final command = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
-        id: command["id"]! as String,
+        id: command.requestId,
         command: "get_entries",
         data: _historyJson(text: persistedText),
       );
@@ -599,23 +599,25 @@ Future<Map<String, Object?>> _waitForNthCommand({
 }
 
 Map<String, Object?> _historyJson({required String text}) => {
-  "entries": [
-    {
-      "type": "message",
-      "id": "entry",
-      "parentId": null,
-      "timestamp": "2026-08-01T00:00:00Z",
-      "message": {
-        "role": "user",
-        "content": [
-          {"type": "text", "text": text, "textSignature": null},
-        ],
-        "timestamp": 1,
-      },
-    },
-  ],
+  "entries": _historyEntries(text: text),
   "leafId": "entry",
 };
+
+List<Object?> _historyEntries({required String text}) => [
+  {
+    "type": "message",
+    "id": "entry",
+    "parentId": null,
+    "timestamp": "2026-08-01T00:00:00Z",
+    "message": {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": text, "textSignature": null},
+      ],
+      "timestamp": 1,
+    },
+  },
+];
 
 /// Writes a Pi session file with a header of [version] and returns its path.
 String _writeSessionFile({required int? version, required List<Map<String, Object?>> entries}) {

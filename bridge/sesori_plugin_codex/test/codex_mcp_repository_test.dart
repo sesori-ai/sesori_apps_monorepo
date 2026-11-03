@@ -596,7 +596,7 @@ void main() {
     ).readServers(scope: const PluginMcpSessionScope(sessionId: "original")) as PluginMcpInventoryReadFailed;
     expect(result.cause, same(cause));
     expect(transport.calls, hasLength(2));
-    expect(transport.calls.every((call) => (call.params! as Map)["threadId"] == "original"), isTrue);
+    expect(transport.calls.map((call) => call.params), everyElement(containsPair("threadId", "original")));
   });
 
   test("DTO diagnostics omit metadata and their native tool collection is immutable", () {
@@ -697,7 +697,7 @@ void main() {
       ),
     );
     expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list"]);
-    expect((transport.calls.single.params! as Map)["threadId"], "original");
+    expect(transport.calls.single.params, containsPair("threadId", "original"));
   });
 
   for (final (scope, code, message) in [

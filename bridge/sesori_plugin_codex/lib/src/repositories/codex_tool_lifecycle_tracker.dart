@@ -246,6 +246,7 @@ class CodexToolLifecycleTracker({
       CodexReplayToolDisposition.terminalize => _advanceChronologySegment(
         thread: thread,
         includeNonRolloutCalls: true,
+        nextTurnId: null,
       ),
     };
   }
@@ -478,7 +479,7 @@ class CodexToolLifecycleTracker({
   }) {
     return switch (event) {
       CodexRolloutUserMessageEventDto() =>
-        thread.activeTurnId == null ? _advanceChronologySegment(thread: thread) : const [],
+        thread.activeTurnId == null ? _advanceChronologySegment(thread: thread, nextTurnId: null) : const [],
       CodexRolloutTaskStartedEventDto(:final turnId) => _startTurn(
         thread: thread,
         turnId: turnId,
@@ -552,7 +553,7 @@ class CodexToolLifecycleTracker({
   List<CodexProjectedTool> _advanceChronologySegment({
     required _ThreadToolLifecycle thread,
     bool includeNonRolloutCalls = false,
-    String? nextTurnId,
+    required String? nextTurnId,
   }) {
     final updates = <CodexProjectedTool>[];
     for (final tool in thread.tools.values) {

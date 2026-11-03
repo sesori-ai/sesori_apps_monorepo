@@ -41,7 +41,7 @@ void main() {
     final asset = await repository.resolveLinux(arch: PlatformArch.x64);
     expect(executor.executable, "ldd");
     expect(executor.arguments, ["--version"]);
-    return asset!.assetName;
+    return (asset ?? fail("expected a Linux asset")).assetName;
   }
 
   test("selects musl from the Alpine marker without invoking ldd", () async {
@@ -60,7 +60,7 @@ void main() {
         manifest: const OmpRuntimeManifest(),
       );
       final asset = await repository.resolveLinux(arch: PlatformArch.arm64);
-      expect(asset!.assetName, "omp-linux-musl-arm64");
+      expect(asset?.assetName, "omp-linux-musl-arm64");
       expect(executor.executable, isNull);
     } finally {
       marker.deleteSync();
@@ -88,7 +88,7 @@ void main() {
       target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
     );
 
-    expect(asset!.assetName, "omp-windows-arm64.exe");
+    expect(asset?.assetName, "omp-windows-arm64.exe");
     expect(executor.executable, isNull);
   });
 

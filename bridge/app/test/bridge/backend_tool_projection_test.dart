@@ -227,6 +227,7 @@ void main() {
         dispatcher.map(
           sessionId: "s",
           event: PiEvent.parse(type: "message_end", json: {"type": "message_end", "message": assistant}),
+          now: DateTime.utc(2026),
         );
         final live = dispatcher
             .map(
@@ -241,6 +242,7 @@ void main() {
                   "result": {"content": content},
                 },
               ),
+              now: DateTime.utc(2026),
             )
             .whereType<BridgeSseMessagePartUpdated>()
             .single

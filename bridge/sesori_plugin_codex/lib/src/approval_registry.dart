@@ -559,8 +559,11 @@ class ApprovalRegistry({
   /// Human-readable description for a permission ask, shared by the
   /// `PermissionAsked` event and the pending-permission snapshot so the two
   /// never drift.
-  String _permissionDescriptionFor({required _PendingApproval entry}) =>
-      (entry.params["reason"] as String?) ?? _descriptionFallback(method: entry.method, params: entry.params);
+  String _permissionDescriptionFor({required _PendingApproval entry}) => switch (entry.params["reason"]) {
+    null => _descriptionFallback(method: entry.method, params: entry.params),
+    final String reason => reason,
+    _ => throw const FormatException("Codex approval reason is not a string"),
+  };
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
   /// request's wire method:

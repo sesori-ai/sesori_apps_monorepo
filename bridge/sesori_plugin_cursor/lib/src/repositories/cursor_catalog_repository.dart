@@ -65,11 +65,12 @@ class CursorCatalogRepository({
           final replaceFallbackCwd =
               previous == null || (unfilteredFallbackCandidates.contains(sessionId) && (hasCwd || scanScope != null));
           final previousUpdatedAtMs = previous?.updatedAtMs;
+          final sessionUpdatedAtMs = session.updatedAtMs;
           final updatedAtMs = previousUpdatedAtMs == null
-              ? session.updatedAtMs
-              : session.updatedAtMs == null || previousUpdatedAtMs >= session.updatedAtMs!
+              ? sessionUpdatedAtMs
+              : sessionUpdatedAtMs == null || previousUpdatedAtMs >= sessionUpdatedAtMs
               ? previousUpdatedAtMs
-              : session.updatedAtMs;
+              : sessionUpdatedAtMs;
           candidatesById[sessionId] = CursorCatalogCandidate(
             sessionId: sessionId,
             cwd: replaceFallbackCwd ? cwd : previous.cwd,

@@ -25,10 +25,10 @@ void main() {
         );
         expect(asset, isNotNull, reason: "$os/$arch must be published");
         expect(asset, isA<ArchiveRuntimeAsset>());
-        final archiveAsset = asset! as ArchiveRuntimeAsset;
-        expect(archiveAsset.layout, RuntimeArchiveLayout.packageDirectory);
-        expect(archiveAsset.format, ArchiveFormat.tarGz);
-        expect(archiveAsset.archiveBinaryName, "cursor-agent");
+        if (asset is! ArchiveRuntimeAsset) fail("$os/$arch must publish an archive asset");
+        expect(asset.layout, RuntimeArchiveLayout.packageDirectory);
+        expect(asset.format, ArchiveFormat.tarGz);
+        expect(asset.archiveBinaryName, "cursor-agent");
         expect(asset.sha256, matches(RegExp(r"^[0-9a-f]{64}$")));
       }
     }
@@ -47,10 +47,10 @@ void main() {
     final digests = {
       for (final os in [PlatformOs.macos, PlatformOs.linux])
         for (final arch in [PlatformArch.arm64, PlatformArch.x64])
-          manifest
-              .assetFor(
-                target: PlatformTarget(os: os, arch: arch),
-              )!
+          (manifest.assetFor(
+                    target: PlatformTarget(os: os, arch: arch),
+                  ) ??
+                  fail("missing asset for ${os.name}/${arch.name}"))
               .sha256,
     };
 
@@ -58,9 +58,11 @@ void main() {
   });
 
   test("download URLs use the raw published build, not the normalized version", () {
-    final asset = manifest.assetFor(
-      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-    )!;
+    final asset =
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+        ) ??
+        fail("missing macOS arm64 asset");
 
     expect(
       manifest.downloadUrlFor(asset: asset),

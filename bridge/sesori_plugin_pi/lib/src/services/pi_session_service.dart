@@ -213,11 +213,12 @@ final class PiSessionService({
       _cancelQueuedPresentation(sessionId: sessionId, state: state, turn: active);
       return true;
     }
-    final index = state.queue.indexWhere(
-      (turn) => turn is _PiQueuedPromptTurn && turn.promptId == promptId && turn.queueState == _PiQueueState.visible,
-    );
-    if (index == -1) return false;
-    final turn = state.queue.removeAt(index) as _PiQueuedPromptTurn;
+    final turn = state.queue
+        .whereType<_PiQueuedPromptTurn>()
+        .where((turn) => turn.promptId == promptId && turn.queueState == _PiQueueState.visible)
+        .firstOrNull;
+    if (turn == null) return false;
+    state.queue.remove(turn);
     _cancelQueuedPresentation(sessionId: sessionId, state: state, turn: turn);
     _startNext(sessionId: sessionId, state: state);
     return true;
@@ -1097,12 +1098,11 @@ final class PiSessionService({
       now: now,
     );
     mappedEvents.forEach(_emit);
-    turn.userMessageEmitted = mappedEvents.any(
-      (mapped) => switch (mapped) {
-        BridgeSseMessageUpdated(info: PluginMessageUser(:final promptId)) => promptId == turn.promptId,
-        _ => false,
-      },
-    );
+    turn.userMessageEmitted = mappedEvents
+        .whereType<BridgeSseMessageUpdated>()
+        .map((mapped) => mapped.info)
+        .whereType<PluginMessageUser>()
+        .any((info) => info.promptId == turn.promptId);
   }
 
   Future<void> _clearPendingWhenPersisted({required String sessionId, required String directory}) async {
