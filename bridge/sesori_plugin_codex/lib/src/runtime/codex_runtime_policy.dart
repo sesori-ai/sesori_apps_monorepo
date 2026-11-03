@@ -113,7 +113,7 @@ Future<SpawnedProcess> spawnCodexProcess({
 /// `initialize` handshake. Reports unhealthy rather than throwing on any error.
 Future<RuntimeHealthProbe> probeCodexHealth({
   required int port,
-  Duration timeout = codexHealthProbeTimeout,
+  required Duration timeout,
 }) async {
   try {
     final socket = await io.Socket.connect(codexLoopbackHost, port, timeout: timeout);
@@ -127,7 +127,7 @@ Future<RuntimeHealthProbe> probeCodexHealth({
 /// Builds the "starting" ownership record from the post-spawn facts. The args
 /// mirror [codexAppServerArgs] so the persisted command line matches the live
 /// process for supervisor identity matching.
-CodexOwnershipRecord buildCodexOwnershipRecord(RuntimeRecordDraft draft) {
+CodexOwnershipRecord buildCodexOwnershipRecord({required RuntimeRecordDraft draft}) {
   return CodexOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     codexPid: draft.runtimeIdentity.pid,
@@ -153,9 +153,9 @@ ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
 }) {
   return ManagedRuntimeSpec<CodexOwnershipRecord>(
     spawn: ({required int port}) => spawnCodexProcess(host: host, executablePath: executablePath, port: port),
-    probeHealth: probeCodexHealth,
+    probeHealth: ({required int port}) => probeCodexHealth(port: port, timeout: codexHealthProbeTimeout),
     probePortBindable: ({required int port}) => host.ports.isBindable(host: codexLoopbackHost, port: port),
-    buildRecord: buildCodexOwnershipRecord,
+    buildRecord: (draft) => buildCodexOwnershipRecord(draft: draft),
     portPolicy: portPolicy,
     healthPolicy: RuntimeHealthPolicy(
       deadline: codexHealthDeadline,

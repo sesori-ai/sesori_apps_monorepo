@@ -268,6 +268,7 @@ abstract class AcpPlugin({
     return AcpApprovalRegistry.forClient(
       client: client,
       emit: emitActivityEvent,
+      idGenerator: null,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }

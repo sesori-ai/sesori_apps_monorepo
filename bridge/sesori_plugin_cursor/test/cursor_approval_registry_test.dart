@@ -36,6 +36,7 @@ void main() {
           if (throwOnForward) throw StateError("notification mapping failure");
           forwarded.add(notification);
         },
+        idGenerator: null,
         activeSessionResolver: () => activeSession,
       );
       registry.attach(stream: client.serverRequests);
