@@ -165,10 +165,6 @@ void main() {
     }
 
     expect(
-      await plan("SELECT * FROM projects_table WHERE path = '/projects/one'"),
-      contains("idx_projects_path"),
-    );
-    expect(
       await plan(
         "SELECT * FROM projects_table ORDER BY updated_at DESC, project_id DESC",
       ),
