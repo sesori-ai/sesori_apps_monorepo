@@ -47,7 +47,9 @@
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
   the working precedent) could remove the internet requirement against a
-  same-machine bridge. Revisit only once the cockpit is real.
+  same-machine bridge. The cockpit shipped (macOS v1.9.1, Linux v1.10.1);
+  revisit when users report needing the desktop app offline, or relay latency
+  hurts same-machine use (user decision 2026-11-02).
 - **Unlocks:** always-on ergonomics; proof the core is surface-agnostic; the
   `module_app_ui` shared-UI split.
 - **Invariants:** I3 (shared brain / thin shells), I4 (headless-first).

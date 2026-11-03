@@ -101,6 +101,8 @@ User decisions (review page, 2026-11-02):
 | Q3 | UI-7 phone app macOS/Linux/Windows/web runners | Delete them. The phone app is iOS and Android only. | 26 |
 | Q4 | UI-8 "temporary" voice-engine picker in v1.11.0 | Remove the picker, its route, cubit and stored preference. The automatic device-then-server fallback stays. | 16 |
 | Q5 | XC-DOC-1 eight finished or stalled plans | Retire all eight. The user accepts these unexecuted checks: quota-auto-continuation macOS QA; mcp-management step 37 L4 and external checks; desktop-sign-in full Apple sign-in on a macOS build; user-analytics Looker report and 3-day reconciliation. | 23 |
+| Q6 | Round 2: the retired plans skipped more checks than Q5 listed (opencode-v2 and step-timers never ran their final live matrices; desktop-sign-in and quota-auto-continuation skipped more rows) | Fold the opencode-v2 and step-timers live rows into step 28's matrix and step-timers' reconciliation into step 27. Every other gap stays accepted as recorded in each retired tracker. | 27, 28 |
+| Q7 | Round 2: ROADMAP's same-machine loopback transport for the desktop cockpit | Keep it as an unscheduled idea with a concrete trigger: users needing the desktop app offline, or relay latency hurting same-machine use. | 23 |
 
 ## Phase 1 steps
 
@@ -284,6 +286,8 @@ changes, not a fresh pass of whole feature documents.
 | Bridge services (steps 9–12, 24) | Owning suites, including `supervised_e2e_test`. A headless bridge start, relay connect, reconnect and clean shutdown. A desktop-supervised stop/start keeps the same data directory, now that restart is gone. |
 | Client (steps 13–17) | Owning cubit, widget and golden suites. Headless iOS simulator (`xcrun simctl boot`, never Simulator.app) on the device the local testing setup assigns: project list, session list, rename showing the new title at once without a jump, session detail, settings without the voice-engine row, dictation still working, sign-out and in. |
 | Desktop-specific (step 19) | Owning `module_desktop_core` suites (`dart test`). Notification-open routing on a macOS desktop build if a display is available. Otherwise record it as not run; it is not a pass. |
+| Retired opencode-v2 live rows (Q6) | Headless live bridge on macOS arm64 with a real provider: managed OpenCode 2.0.x fresh install and upgrade from 1.18.32, OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach, each with one completed turn. |
+| Retired step-timers live rows (Q6) | Headless live bridge plus the iOS simulator: running and finished step timers on a real turn for Claude Code, Codex and OpenCode v2, and Pi, DeepSeek, Grok or another ACP harness where installed. Device, Android and macOS desktop rows are not run, per the testing rule. |
 | Shared, linter, CI, docs (steps 18, 20–23, 26) | Owning suites, analyzers, generator dry runs, the CI workflow run itself, link checks over the moved plans. |
 
 Affected regression documents:
@@ -298,7 +302,7 @@ Affected regression documents:
 - `bridge-installation-and-updates.md`: updater, `--import-plugin`.
 - `account-and-onboarding.md`: the login control prompt.
 
-Step 27 reconciles them. Step 28 records Pass, Partial, Fail, Blocked or Not
+Step 27 reconciles them, and also runs the retired step-timers plan's step-6 reconciliation over `tools-and-file-changes.md`, `session-turns.md`, `transcript-turn-navigation.md` and the `docs/HARNESS_CAPABILITIES.md` "Live timers" section (Q6). Step 28 records Pass, Partial, Fail, Blocked or Not
 run per row, and moves the plan to `.plan/completed/periodic-cleanup-2026-11/`
 only when the rows pass. Reducing this matrix needs explicit user acceptance,
 recorded here.

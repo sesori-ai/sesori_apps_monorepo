@@ -10,6 +10,10 @@ support is public. Step 10 never ran. The `periodic-cleanup-2026-11` plan
   real provider: managed OpenCode 2.0.x (fresh install and upgrade from
   1.18.32), OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach.
 
+User decision Q6 (2026-11-02): these rows run in
+[periodic-cleanup-2026-11](../../active/periodic-cleanup-2026-11/PLAN.md#verification-and-retirement)
+step 28, so the gap closes there.
+
 Later v2 fixes landed outside this plan, for example #2309 (session idle at the
 end of v2 turns).
 
