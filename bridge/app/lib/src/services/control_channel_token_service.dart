@@ -97,7 +97,7 @@ class ControlChannelTokenService({
     // resolve via the timeout.
     if (_disposed) {
       throw const ControlTokenUnavailableException(
-        "Control channel token service has been disposed.",
+        reason: "Control channel token service has been disposed.",
       );
     }
     // Stamp this pull's issue order. Its result (cache the token, or invalidate
@@ -122,7 +122,7 @@ class ControlChannelTokenService({
         // clear a token from a later pull issued after the sign-out.
         _applyWrite(seq, _invalidateCache);
         throw const ControlTokenUnavailableException(
-          "The desktop app could not supply an access token (signed out or mid-login).",
+          reason: "The desktop app could not supply an access token (signed out or mid-login).",
         );
       }
       // Seed the cache so the synchronous getter and tokenStream stay current,
@@ -156,7 +156,9 @@ class ControlChannelTokenService({
     for (final completer in pending) {
       if (!completer.isCompleted) {
         completer.completeError(
-          const ControlTokenUnavailableException("Control channel token service disposed before a token arrived."),
+          const ControlTokenUnavailableException(
+            reason: "Control channel token service disposed before a token arrived.",
+          ),
         );
       }
     }

@@ -18,7 +18,9 @@ void main() {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       addTearDown(db.close);
-      handler = GetProvidersHandler(singlePluginProviderRepository(plugin: plugin, projectsDao: db.projectsDao));
+      handler = GetProvidersHandler(
+        repository: singlePluginProviderRepository(plugin: plugin, projectsDao: db.projectsDao),
+      );
     });
 
     tearDown(() => plugin.close());

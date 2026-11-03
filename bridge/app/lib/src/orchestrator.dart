@@ -505,7 +505,7 @@ class Orchestrator({
     final roomKey = _generateRoomKey();
     final cryptoService = RelayCryptoService();
     final sessionEncryptor = cryptoService.createSessionEncryptor(SecretKey(roomKey));
-    final keyExchangeManager = KeyExchangeManager(roomKey, cryptoService: cryptoService);
+    final keyExchangeManager = KeyExchangeManager(roomKey: roomKey, cryptoService: cryptoService);
     final bytesSentController = StreamController<int>.broadcast();
     final localWireEventsController = StreamController<SesoriSseEvent>.broadcast();
     final sseManager = SSEManager(
@@ -718,8 +718,8 @@ class Orchestrator({
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
-        GetProvidersHandler(providerRepository),
-        PostAgentsHandler(agentRepository),
+        GetProvidersHandler(repository: providerRepository),
+        PostAgentsHandler(repository: agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetSessionExternalActionsHandler(service: pendingInteractionService),
         GetSessionFormsHandler(service: pendingInteractionService),
@@ -733,7 +733,7 @@ class Orchestrator({
         DeclineFormHandler(service: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
-        RenameProjectHandler(projectRepository),
+        RenameProjectHandler(projectRepository: projectRepository),
         CreateProjectHandler(projectMutationService: projectMutationService),
         OpenProjectHandler(projectMutationService: projectMutationService),
         HideProjectHandler(projectMutationService: projectMutationService),
@@ -1933,7 +1933,7 @@ class OrchestratorSession._({
   void _enqueueWireEvent(SesoriSseEvent event) => _enqueueDelivery(SseEventDelivery.uniform(event: event));
 
   void _enqueueDelivery(SseEventDelivery delivery) {
-    _sseManager.enqueueEvent(delivery);
+    _sseManager.enqueueEvent(delivery: delivery);
     // The local debug stream has no capability surface of its own, so it keeps
     // the released inline shape.
     if (!_localWireEventsController.isClosed) _localWireEventsController.add(delivery.inlineEvent);
@@ -2198,7 +2198,7 @@ class OrchestratorSession._({
             case PhoneDisconnectedMessage(:final connId):
               Log.v("phone_disconnected connID=$connId");
               activePhoneIncarnations.remove(connId);
-              _sseManager.unsubscribe(connId);
+              _sseManager.unsubscribe(connID: connId);
               _sessionViewTracker.releaseConnection(connID: connId);
             case UnknownRelayControlMessage():
               // The relay deploys on its own schedule, so a newer relay can
@@ -2456,7 +2456,7 @@ class OrchestratorSession._({
         }
       case RelaySseUnsubscribe():
         Log.v("SseUnsubscribe connID=$connID");
-        _sseManager.unsubscribe(connID);
+        _sseManager.unsubscribe(connID: connID);
       case RelaySessionView(:final sessionId):
         Log.v("SessionView connID=$connID sessionId=$sessionId");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);

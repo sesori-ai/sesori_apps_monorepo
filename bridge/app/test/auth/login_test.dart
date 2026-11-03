@@ -39,10 +39,10 @@ void main() {
 
         final service = _createOAuthService(
           authServer: authServer,
-          browserLauncher: (url) async => launchedUrls.add(url),
+          browserLauncher: ({required url}) async => launchedUrls.add(url),
         );
 
-        final result = await service.performOAuthLogin(AuthProvider.github);
+        final result = await service.performOAuthLogin(provider: AuthProvider.github);
         final tokens = result.tokens;
 
         expect(tokens.accessToken, equals('github-access-token'));
@@ -85,11 +85,11 @@ void main() {
         addTearDown(authServer.close);
         final service = _createOAuthService(
           authServer: authServer,
-          browserLauncher: (_) async {},
+          browserLauncher: ({required url}) async {},
         );
 
         expect(
-          service.performOAuthLogin(AuthProvider.github),
+          service.performOAuthLogin(provider: AuthProvider.github),
           throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('denied'))),
         );
       });
@@ -121,9 +121,9 @@ void main() {
           () async {
             final service = _createOAuthService(
               authServer: authServer,
-              browserLauncher: (_) async => throw Exception('no browser available'),
+              browserLauncher: ({required url}) async => throw Exception('no browser available'),
             );
-            final result = await service.performOAuthLogin(AuthProvider.github);
+            final result = await service.performOAuthLogin(provider: AuthProvider.github);
             accessToken = result.tokens.accessToken;
           },
           stdout: () => _CapturingStdout(stdoutLines),
@@ -166,10 +166,10 @@ void main() {
           () async {
             final service = _createOAuthService(
               authServer: authServer,
-              browserLauncher: (url) async => launchedUrls.add(url),
+              browserLauncher: ({required url}) async => launchedUrls.add(url),
               browserOpenability: () => BrowserOpenability.no,
             );
-            final result = await service.performOAuthLogin(AuthProvider.github);
+            final result = await service.performOAuthLogin(provider: AuthProvider.github);
             accessToken = result.tokens.accessToken;
           },
           stdout: () => _CapturingStdout(stdoutLines),
@@ -215,10 +215,10 @@ void main() {
           () async {
             final service = _createOAuthService(
               authServer: authServer,
-              browserLauncher: (url) async => launchedUrls.add(url),
+              browserLauncher: ({required url}) async => launchedUrls.add(url),
               browserOpenability: () => BrowserOpenability.unknown,
             );
-            await service.performOAuthLogin(AuthProvider.github);
+            await service.performOAuthLogin(provider: AuthProvider.github);
           },
           stdout: () => _CapturingStdout(stdoutLines),
           stderr: () => _CapturingStdout(<String>[]),
@@ -260,10 +260,10 @@ void main() {
         addTearDown(authServer.close);
         final service = _createOAuthService(
           authServer: authServer,
-          browserLauncher: (_) async {},
+          browserLauncher: ({required url}) async {},
         );
 
-        final result = await service.performOAuthLogin(AuthProvider.google);
+        final result = await service.performOAuthLogin(provider: AuthProvider.google);
         final tokens = result.tokens;
 
         expect(tokens.accessToken, equals('google-access-token'));
@@ -306,11 +306,11 @@ void main() {
         addTearDown(authServer.close);
         final service = _createOAuthService(
           authServer: authServer,
-          browserLauncher: (_) async {},
+          browserLauncher: ({required url}) async {},
         );
 
         expect(
-          service.performOAuthLogin(AuthProvider.google),
+          service.performOAuthLogin(provider: AuthProvider.google),
           throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('expired'))),
         );
       });
@@ -322,11 +322,11 @@ void main() {
         addTearDown(authServer.close);
         final service = _createOAuthService(
           authServer: authServer,
-          browserLauncher: (_) async {},
+          browserLauncher: ({required url}) async {},
         );
 
         expect(
-          service.performOAuthLogin(AuthProvider.google),
+          service.performOAuthLogin(provider: AuthProvider.google),
           throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('provider failed'))),
         );
       });
@@ -338,13 +338,13 @@ void main() {
         addTearDown(authServer.close);
         final service = _createOAuthService(
           authServer: authServer,
-          browserLauncher: (_) async {},
+          browserLauncher: ({required url}) async {},
           pollTimeout: const Duration(milliseconds: 5),
           pollInterval: const Duration(milliseconds: 1),
         );
 
         expect(
-          service.performOAuthLogin(AuthProvider.google),
+          service.performOAuthLogin(provider: AuthProvider.google),
           throwsA(isA<TimeoutException>()),
         );
       });
@@ -525,7 +525,7 @@ void main() {
 
 LoginOAuthService _createOAuthService({
   required _OAuthLongPollTestServer authServer,
-  required Future<void> Function(String url) browserLauncher,
+  required Future<void> Function({required String url}) browserLauncher,
   BrowserOpenability Function() browserOpenability = _alwaysOpenableBrowser,
   Duration pollTimeout = const Duration(seconds: 2),
   Duration pollInterval = Duration.zero,

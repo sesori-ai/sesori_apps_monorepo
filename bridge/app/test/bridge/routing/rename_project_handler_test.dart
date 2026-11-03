@@ -19,7 +19,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.projectsDao.setActivity(projectId: "p1", createdAt: 101, updatedAt: 202);
       handler = RenameProjectHandler(
-        singlePluginProjectRepository(
+        projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,

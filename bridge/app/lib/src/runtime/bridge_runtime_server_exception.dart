@@ -1,7 +1,7 @@
 /// Exception thrown when the bridge runtime cannot resolve the server
 /// runtime during startup, including startup-mutex contention and singleton
 /// replacement failures.
-class const BridgeRuntimeServerException(final String message) implements Exception {
+class const BridgeRuntimeServerException({required final String message}) implements Exception {
   @override
   String toString() => message;
 }

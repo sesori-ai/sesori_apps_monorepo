@@ -130,7 +130,7 @@ class ProjectGlossaryRepository({
       if (!p.isWithin(projectPath, absolutePath)) continue;
 
       try {
-        if (_filesystemApi.entityType(absolutePath) != FileSystemEntityType.file) continue;
+        if (_filesystemApi.entityType(path: absolutePath) != FileSystemEntityType.file) continue;
         final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: _maximumMetadataBytes);
         if (bytes.isEmpty) continue;
         documents.add(

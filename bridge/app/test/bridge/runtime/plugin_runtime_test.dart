@@ -1998,7 +1998,7 @@ void main() {
   });
 
   test("shared factory failures propagate instead of degrading one plugin", () async {
-    const error = BridgeRuntimeServerException("bridge ownership failed");
+    const error = BridgeRuntimeServerException(message: "bridge ownership failed");
     final factory = _FakeGenerationFactory(
       startGate: Future<void>.value(),
       startError: error,

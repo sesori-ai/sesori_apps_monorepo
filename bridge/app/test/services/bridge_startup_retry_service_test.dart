@@ -113,7 +113,7 @@ void main() {
     const WebSocketException("Invalid upgrade"),
     const HandshakeException("Certificate verification failed"),
     const FileSystemException("permission denied"),
-    const ControlTokenUnavailableException("signed out"),
+    const ControlTokenUnavailableException(reason: "signed out"),
     AuthApiException(method: "GET", uri: Uri.parse("https://auth.test"), statusCode: 401, body: ""),
   ]) {
     test("preserves non-network ${error.runtimeType} failures", () async {
