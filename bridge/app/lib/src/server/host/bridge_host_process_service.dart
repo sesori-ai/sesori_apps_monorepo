@@ -53,7 +53,7 @@ class BridgeHostProcessService({
 
     return _HostSpawnedProcess(
       process: process,
-      identity: await _resolveSpawnedIdentity(spawnIdentity: spawnIdentity),
+      identity: await _resolveSpawnedIdentity(spawnIdentity: spawnIdentity, arguments: arguments),
     );
   }
 
@@ -72,7 +72,10 @@ class BridgeHostProcessService({
     return _processRepository.sendForceSignal(pid: pid);
   }
 
-  Future<ProcessIdentity> _resolveSpawnedIdentity({required ProcessIdentity spawnIdentity}) async {
+  Future<ProcessIdentity> _resolveSpawnedIdentity({
+    required ProcessIdentity spawnIdentity,
+    required List<String> arguments,
+  }) async {
     final ProcessIdentity? inspectedIdentity;
     try {
       inspectedIdentity = await _processRepository.inspectProcess(pid: spawnIdentity.pid);
@@ -86,7 +89,11 @@ class BridgeHostProcessService({
     }
 
     if (inspectedIdentity != null &&
-        _matchesSpawnedIdentity(spawnIdentity: spawnIdentity, inspectedIdentity: inspectedIdentity)) {
+        _matchesSpawnedIdentity(
+          spawnIdentity: spawnIdentity,
+          inspectedIdentity: inspectedIdentity,
+          arguments: arguments,
+        )) {
       return inspectedIdentity;
     }
     return spawnIdentity;
@@ -95,6 +102,7 @@ class BridgeHostProcessService({
   bool _matchesSpawnedIdentity({
     required ProcessIdentity spawnIdentity,
     required ProcessIdentity inspectedIdentity,
+    required List<String> arguments,
   }) {
     if (inspectedIdentity.pid != spawnIdentity.pid) {
       return false;
@@ -110,14 +118,16 @@ class BridgeHostProcessService({
       return true;
     }
 
-    // Interpreter-shim spawn: when the spawned executable is a wrapper script
-    // (e.g. a `#!/usr/bin/env node` shim like Homebrew's `codex`), the OS
-    // reports the command line as `<interpreter> <our exact spawn command>`.
-    // Accept that so the adopted identity carries the real start marker — this
-    // is the same pid we just spawned, so the listen/args suffix is unique.
-    // Without it the ownership record keeps a null start marker that never
-    // re-matches on a later cleanup, leaking the still-running child + its port.
-    return spawnCommandLine.isNotEmpty && inspectedCommandLine.endsWith(" $spawnCommandLine");
+    // The executable part of the live command line can differ from what we
+    // spawned while the arguments stay ours: an interpreter shim (a
+    // `#!/usr/bin/env node` script) shows as `node <shim> <args>`, and a
+    // launcher that execs its native binary in the same pid shows as
+    // `<native> <args>`. This is the pid we just spawned, so ending with our
+    // exact arguments is enough to adopt the identity and its start marker.
+    // Without the marker the ownership record never re-matches the child, so
+    // the bridge could not stop it and its port would leak.
+    final spawnArguments = arguments.join(" ");
+    return spawnArguments.isNotEmpty && inspectedCommandLine.endsWith(" $spawnArguments");
   }
 
   bool _samePath(String? actual, String expected) {

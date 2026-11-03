@@ -15,16 +15,12 @@ abstract class RuntimeRecordMapper<R>() {
 
   String? runtimeExecutablePathOf({required R record});
 
-  /// Full command line the runtime was spawned with, for example command plus
-  /// args joined with single spaces. Used for identity matching when process
-  /// start markers are present.
-  ///
-  /// Non-null by contract: a managed-runtime record must persist enough to
-  /// reconstruct its spawn command line (the frozen OpenCode schema requires
-  /// command and args). A nullable surface here would force the matcher to
-  /// choose between leaking a live child (null never matches) or killing a
-  /// recycled pid (null always matches).
-  String runtimeCommandLineOf({required R record});
+  /// The arguments the runtime was spawned with. When start markers are
+  /// present, a live process matches the record only if its command line ends
+  /// with these arguments. The executable part is not compared because it can
+  /// change after spawn: an interpreter shim shows as `node <shim> <args>`, and
+  /// a launcher can exec its native binary in the same pid.
+  List<String> runtimeArgsOf({required R record});
 
   int bridgePidOf({required R record});
 
