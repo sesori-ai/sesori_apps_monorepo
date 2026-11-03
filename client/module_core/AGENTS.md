@@ -22,7 +22,8 @@ lib/src/
 ├── migrations/       Isolated deprecated upgrade compatibility; never a runtime storage backend
 ├── platform/         Abstract interfaces (UrlLauncher, LifecycleSource, RouteSource,
 │                  NotificationCanceller, …); Flutter adapters live in
-│                  the product shell, mostly under app/lib/core/platform/
+│                  each shell's lib/core/platform/, or module_app_ui/lib/src/platform/
+│                  when both shells use them unchanged
 ├── repositories/     API mapping and domain-facing data operations
 ├── routing/          AppRoute/AppRouteDef, route analytics, computer-switch and notification-open dispatchers
 └── services/         Cross-repository orchestration and lifecycle owners, including per-composer voice sessions

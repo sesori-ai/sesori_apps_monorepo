@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show unwrapDictatedText;
 
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_transcript_record_dto.dart";
+import "../foundation/trimmed_or_null.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
@@ -166,9 +167,12 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
   }
 
   /// A session from the last scan, or from one rescan on a miss.
-  Future<ClaudeSessionRecord?> findSessionById({required String sessionId}) async {
+  Future<PluginSession?> findSessionById({required String sessionId}) async {
     if (!_pathsById.containsKey(sessionId)) await _rescan();
-    return cachedSessionById(sessionId: sessionId);
+    return switch (cachedSessionById(sessionId: sessionId)) {
+      final record? => _toPluginSession(record),
+      null => null,
+    };
   }
 
   /// A session from the last scan only, for callers that cannot wait for a
@@ -297,8 +301,8 @@ ClaudeSessionRecord? _readRootRecord({
   final id = _rootIdFromPath(path);
   if (id == null) return null;
 
-  final List<ClaudeTranscriptLineDto> header;
-  final List<ClaudeTranscriptLineDto> tail;
+  final List<ClaudeTranscriptRecordDto> header;
+  final List<ClaudeTranscriptRecordDto> tail;
   try {
     header = transcriptApi.readHeader(transcriptPath: path);
     tail = transcriptApi.readTailTitleRecords(transcriptPath: path);
@@ -309,8 +313,6 @@ ClaudeSessionRecord? _readRootRecord({
   if (header.isEmpty) return null;
 
   String? cwd;
-  String? gitBranch;
-  String? cliVersion;
   DateTime? createdAt;
   var sawContent = false;
   final titles = <ClaudeTranscriptTitleKind, String>{};
@@ -326,9 +328,7 @@ ClaudeSessionRecord? _readRootRecord({
         // cross-check and records for another session cannot supply metadata.
         if (record.sessionId != null && record.sessionId != id) continue;
         sawContent = true;
-        cwd ??= _nonEmpty(record.cwd);
-        gitBranch ??= _nonEmpty(record.gitBranch);
-        cliVersion ??= _nonEmpty(record.version);
+        cwd ??= trimmedOrNull(value: record.cwd);
         createdAt ??= record.timestamp;
         if (record is ClaudeTranscriptUserRecord) prompts.add(record);
       case ClaudeTranscriptTitleRecord():
@@ -356,7 +356,6 @@ ClaudeSessionRecord? _readRootRecord({
 
   return ClaudeSessionRecord(
     id: id,
-    transcriptPath: path,
     parentId: null,
     cwd: cwd,
     title:
@@ -365,8 +364,6 @@ ClaudeSessionRecord? _readRootRecord({
         prompts.map(_promptTitle).nonNulls.firstOrNull,
     createdAt: createdAt,
     updatedAt: modified,
-    gitBranch: gitBranch,
-    cliVersion: cliVersion,
   );
 }
 
@@ -397,14 +394,11 @@ ClaudeSessionRecord? _childRecord({
   if (id == null || root == null) return null;
   return ClaudeSessionRecord(
     id: id,
-    transcriptPath: path,
     parentId: root.id,
     cwd: root.cwd,
     title: entry.description,
     createdAt: entry.stamp.meta?.modified,
     updatedAt: entry.stamp.transcript.modified,
-    gitBranch: root.gitBranch,
-    cliVersion: root.cliVersion,
   );
 }
 
@@ -447,11 +441,6 @@ final RegExp _uuidPattern = RegExp(
   r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
 );
 
-String? _nonEmpty(String? value) {
-  final trimmed = value?.trim();
-  return trimmed == null || trimmed.isEmpty ? null : trimmed;
-}
-
 /// How much of a first prompt can title a session nobody named.
 const int _promptTitleLength = 100;
 
@@ -485,15 +474,14 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
 }
 
 /// Maps the generated API DTO into the closed variants the repository uses.
-ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
-  final dto = line.record;
+ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
   final type = dto.type;
   if (type == null) {
-    return ClaudeTranscriptUnknownRecord(type: null, sessionId: dto.sessionId, raw: line.raw);
+    return ClaudeTranscriptUnknownRecord(type: null, sessionId: dto.sessionId);
   }
 
   if (type == ClaudeTranscriptUserRecord.wireType) {
-    final id = _nonEmpty(dto.uuid);
+    final id = trimmedOrNull(value: dto.uuid);
     if (id != null) {
       return ClaudeTranscriptUserRecord(
         id: id,
@@ -507,17 +495,14 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
         agentId: dto.agentId,
-        gitBranch: dto.gitBranch,
-        version: dto.version,
         sessionId: dto.sessionId,
-        raw: line.raw,
       );
     }
-    return _unreplayableMessageRecord(line: line);
+    return _unreplayableMessageRecord(dto: dto);
   }
 
   if (type == ClaudeTranscriptAssistantRecord.wireType) {
-    final id = _nonEmpty(dto.message?.id);
+    final id = trimmedOrNull(value: dto.message?.id);
     if (id != null) {
       if (dto.isApiErrorMessage ?? false) {
         return ClaudeTranscriptApiErrorRecord(
@@ -528,35 +513,29 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
           timestamp: dto.timestamp,
           isSidechain: dto.isSidechain,
           agentId: dto.agentId,
-          gitBranch: dto.gitBranch,
-          version: dto.version,
           sessionId: dto.sessionId,
-          raw: line.raw,
         );
       }
       return ClaudeTranscriptAssistantRecord(
         id: id,
-        model: _nonEmpty(dto.message?.model),
+        model: trimmedOrNull(value: dto.message?.model),
         effort: ClaudeEffortLevel.tryParse(dto.effort),
         content: dto.message?.content,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
         agentId: dto.agentId,
-        gitBranch: dto.gitBranch,
-        version: dto.version,
         sessionId: dto.sessionId,
-        raw: line.raw,
       );
     }
-    return _unreplayableMessageRecord(line: line);
+    return _unreplayableMessageRecord(dto: dto);
   }
 
   final attachment = dto.attachment;
   if (type == ClaudeTranscriptContextKind.attachment.wireType &&
       attachment != null &&
       attachment.type == ClaudeTranscriptQueuedCommandRecord.attachmentType) {
-    final id = _nonEmpty(attachment.sourceUuid) ?? _nonEmpty(dto.uuid);
+    final id = trimmedOrNull(value: attachment.sourceUuid) ?? trimmedOrNull(value: dto.uuid);
     if (id != null) {
       return ClaudeTranscriptQueuedCommandRecord(
         id: id,
@@ -570,10 +549,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
         agentId: dto.agentId,
-        gitBranch: dto.gitBranch,
-        version: dto.version,
         sessionId: dto.sessionId,
-        raw: line.raw,
       );
     }
   }
@@ -586,10 +562,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
       timestamp: dto.timestamp,
       isSidechain: dto.isSidechain,
       agentId: dto.agentId,
-      gitBranch: dto.gitBranch,
-      version: dto.version,
       sessionId: dto.sessionId,
-      raw: line.raw,
     );
   }
 
@@ -601,37 +574,32 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
       timestamp: dto.timestamp,
       isSidechain: dto.isSidechain,
       agentId: dto.agentId,
-      gitBranch: dto.gitBranch,
-      version: dto.version,
       sessionId: dto.sessionId,
-      raw: line.raw,
     );
   }
 
   final titleKind = ClaudeTranscriptTitleKind.tryParse(type);
   if (titleKind != null) {
-    final title = _nonEmpty(switch (titleKind) {
-      ClaudeTranscriptTitleKind.custom => dto.customTitle,
-      ClaudeTranscriptTitleKind.generated => dto.aiTitle,
-    });
+    final title = trimmedOrNull(
+      value: switch (titleKind) {
+        ClaudeTranscriptTitleKind.custom => dto.customTitle,
+        ClaudeTranscriptTitleKind.generated => dto.aiTitle,
+      },
+    );
     if (title != null) {
-      return ClaudeTranscriptTitleRecord(kind: titleKind, title: title, sessionId: dto.sessionId, raw: line.raw);
+      return ClaudeTranscriptTitleRecord(kind: titleKind, title: title, sessionId: dto.sessionId);
     }
   }
 
-  return ClaudeTranscriptUnknownRecord(type: type, sessionId: dto.sessionId, raw: line.raw);
+  return ClaudeTranscriptUnknownRecord(type: type, sessionId: dto.sessionId);
 }
 
-ClaudeTranscriptUnreplayableMessageRecord _unreplayableMessageRecord({required ClaudeTranscriptLineDto line}) {
-  final dto = line.record;
+ClaudeTranscriptUnreplayableMessageRecord _unreplayableMessageRecord({required ClaudeTranscriptRecordDto dto}) {
   return ClaudeTranscriptUnreplayableMessageRecord(
     cwd: dto.cwd,
     timestamp: dto.timestamp,
     isSidechain: dto.isSidechain,
     agentId: dto.agentId,
-    gitBranch: dto.gitBranch,
-    version: dto.version,
     sessionId: dto.sessionId,
-    raw: line.raw,
   );
 }

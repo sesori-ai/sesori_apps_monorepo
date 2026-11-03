@@ -1,11 +1,11 @@
 import "dart:async";
 
 import "package:claude_plugin/claude_plugin.dart";
-import "package:claude_plugin/claude_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
+import "support/fake_claude_process.dart";
 
 void main() {
   group("ClaudeSessionProcessRepository", () {
@@ -312,7 +312,7 @@ void main() {
           .where((event) => event is ClaudeSessionProcessMessage)
           .cast<ClaudeSessionProcessMessage>()
           .listen((event) {
-            if (event.message case ClaudeUserMessage(raw: {"isReplay": true})) {
+            if (event.message case ClaudeUserMessage(isReplay: true)) {
               replayPromptIds.add(event.promptId);
             }
           });

@@ -1,6 +1,8 @@
 import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart"
+    show GoRouterRouteDispatcher, NoOpFeedbackPromptConfigSource, PathProviderTemporaryDirectoryProvider;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart";
@@ -9,11 +11,7 @@ import "package:sesori_desktop/core/platform/desktop_analytics_client.dart";
 import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
 import "package:sesori_desktop/core/platform/desktop_failure_reporter.dart";
 import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
-import "package:sesori_desktop/core/platform/desktop_image_clipboard.dart";
-import "package:sesori_desktop/core/platform/desktop_image_sharer.dart";
 import "package:sesori_desktop/core/platform/desktop_route_source.dart";
-import "package:sesori_desktop/core/platform/no_op_feedback_prompt_config_source.dart";
-import "package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
@@ -106,9 +104,10 @@ void main() {
     expect(getIt<RelayCryptoService>(), isA<RelayCryptoService>());
     expect(getIt<FailureReporter>(), isA<DesktopFailureReporter>());
     expect(getIt<ImageSaver>(), isA<DesktopFileImageSaver>());
-    expect(getIt<ImageClipboard>(), isA<DesktopImageClipboard>());
-    expect(getIt<ImageSharer>(), isA<DesktopImageSharer>());
+    expect(getIt<ImageClipboard>(), isA<ImageClipboard>());
+    expect(getIt<ImageSharer>(), isA<ImageSharer>());
     expect(getIt<RouteSource>(), isA<DesktopRouteSource>());
+    expect(getIt<RouteDispatcher>(), isA<GoRouterRouteDispatcher>());
     final ConnectionService connectionService = getIt<ConnectionService>();
     expect(connectionService.currentStatus, isA<ConnectionDisconnected>());
     expect(getIt<RegisteredBridgesService>(), isA<RegisteredBridgesService>());

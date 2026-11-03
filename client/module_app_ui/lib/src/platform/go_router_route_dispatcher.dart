@@ -1,12 +1,14 @@
 import "dart:async";
 
 import "package:flutter/widgets.dart";
-import "package:injectable/injectable.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "../routing/app_router.dart";
-
-@LazySingleton(as: RouteDispatcher)
+/// Surface-neutral [RouteDispatcher] backed by a product shell's [GoRouter].
+///
+/// The shell injects its router, its mounted-readiness fence and the navigators
+/// whose popups a notification open closes; shared core code sees only
+/// [RouteDispatcher] and [RouteStack].
 class GoRouterRouteDispatcher implements RouteDispatcher {
   final void Function(String route) _goRoute;
   final Future<void> Function(String route) _pushRoute;
@@ -14,17 +16,21 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
   final Future<void> _routerReady;
   Future<void> _pendingNavigation = Future<void>.value();
 
-  new()
-    : _goRoute = appRouter.go,
-      // ignore: no_slop_linter/avoid_raw_go_router
-      _pushRoute = ((route) => appRouter.push<void>(route)),
-      _dismissPopups = (() {
-        // Signed-in routes open their sheets on the signed-in navigator.
-        for (final navigatorKey in [appSignedInNavigatorKey, appRouter.routerDelegate.navigatorKey]) {
-          navigatorKey.currentState?.popUntil((route) => !_isPopupRoute(route: route));
-        }
-      }),
-      _routerReady = WidgetsBinding.instance.endOfFrame;
+  new({
+    required GoRouter router,
+    required Future<void> routerReady,
+    required List<GlobalKey<NavigatorState>> popupNavigatorKeys,
+  })
+    // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
+    : _goRoute = router.go,
+       // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
+       _pushRoute = ((route) => router.push<void>(route)),
+       _dismissPopups = (() {
+         for (final navigatorKey in popupNavigatorKeys) {
+           navigatorKey.currentState?.popUntil((route) => !_isPopupRoute(route: route));
+         }
+       }),
+       _routerReady = routerReady;
 
   @visibleForTesting
   new test({
@@ -50,11 +56,12 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
       action: () {
         _goRoute(stack.paths.first);
         for (final routePath in stack.paths.skip(1)) {
-          // Awaiting a push waits until that route is popped.
+          // Awaiting a push waits until that route is popped, so later stack
+          // entries must be dispatched without awaiting completion.
           unawaited(_pushRoute(routePath));
         }
       },
-      failureMessage: "Failed to replace notification route stack",
+      failureMessage: "Failed to replace the notification route stack",
     );
   }
 

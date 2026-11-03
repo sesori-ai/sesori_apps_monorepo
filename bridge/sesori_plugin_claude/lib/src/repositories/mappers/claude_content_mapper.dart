@@ -13,6 +13,7 @@ import "../../api/models/claude_content_block_dto.dart";
 import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
+import "../claude_backend_catalog_repository.dart";
 import "claude_shell_command_mapper.dart";
 import "claude_task_status_mapping.dart";
 import "claude_tool_title_mapper.dart";
@@ -56,9 +57,8 @@ final class const ClaudeMappedUnknownContentBlock() extends ClaudeMappedContentB
 
 /// Maps Claude's standard Anthropic content blocks into backend-neutral parts.
 ///
-/// This class is stateless. Tool-use correlation and lifecycle remain Step 7's
-/// responsibility; the mapped variants retain the identities and input needed
-/// there.
+/// This class is stateless. `ClaudeToolTracker` owns tool-use correlation and
+/// lifecycle; the mapped variants retain the identities and input it needs.
 final class const ClaudeContentMapper() {
   static const int _maxMimeCharacters = 255;
   static const Set<String> _supportedImageMimes = {
@@ -309,7 +309,7 @@ final class const ClaudeContentMapper() {
     sessionID: sessionId,
     agent: "claude",
     modelID: null,
-    providerID: "anthropic",
+    providerID: ClaudeBackendCatalogRepository.providerId,
     variant: null,
     sender: PluginMessageSender.agent,
     time: time,
@@ -358,31 +358,17 @@ final class const ClaudeContentMapper() {
       return;
     }
 
-    final ClaudeContentBlockDto dto;
-    try {
-      dto = ClaudeContentBlockDto.fromJson(content.cast<String, dynamic>());
-    } on Object catch (error, stackTrace) {
-      Log.w(
-        "[claude] content block decode failed "
-        "(fields: ${content.length}, discriminator type: ${content["type"].runtimeType})",
-        error.runtimeType,
-        stackTrace,
-      );
-      yield const ClaudeMappedUnknownContentBlock();
-      return;
-    }
-
-    switch (dto) {
+    switch (_decode(block: content)) {
+      case null:
+        yield const ClaudeMappedUnknownContentBlock();
       case ClaudeTextContentBlockDto(:final text):
         yield text == null ? const ClaudeMappedUnknownContentBlock() : _textBlock(text);
       case ClaudeThinkingContentBlockDto(:final thinking):
         yield thinking == null
             ? const ClaudeMappedUnknownContentBlock()
             : ClaudeMappedThinkingContentBlock(thinking: thinking);
-      case ClaudeToolUseContentBlockDto(:final id, :final name, :final input):
-        yield id == null || id.isEmpty || name == null || name.isEmpty
-            ? const ClaudeMappedUnknownContentBlock()
-            : ClaudeMappedToolUseContentBlock(id: id, name: name, input: input);
+      case final ClaudeToolUseContentBlockDto dto:
+        yield _toolUse(dto: dto) ?? const ClaudeMappedUnknownContentBlock();
       case ClaudeToolResultContentBlockDto(:final toolUseId, :final content, :final isError):
         if (toolUseId == null || toolUseId.isEmpty) {
           yield const ClaudeMappedUnknownContentBlock();
@@ -399,6 +385,36 @@ final class const ClaudeContentMapper() {
         yield const ClaudeMappedUnsupportedContentBlock();
       case ClaudeUnknownContentBlockDto():
         yield const ClaudeMappedUnknownContentBlock();
+    }
+  }
+
+  /// The well-formed tool calls among [content]'s blocks, without the text,
+  /// image and tool-result mapping [map] does for rendering.
+  List<ClaudeMappedToolUseContentBlock> toolUses({required Object? content}) {
+    if (content is! List) return const [];
+    return [
+      for (final block in content)
+        if (block is Map) ?_toolUse(dto: _decode(block: block)),
+    ];
+  }
+
+  ClaudeMappedToolUseContentBlock? _toolUse({required ClaudeContentBlockDto? dto}) => switch (dto) {
+    ClaudeToolUseContentBlockDto(:final id?, :final name?, :final input) when id.isNotEmpty && name.isNotEmpty =>
+      ClaudeMappedToolUseContentBlock(id: id, name: name, input: input),
+    _ => null,
+  };
+
+  ClaudeContentBlockDto? _decode({required Map<Object?, Object?> block}) {
+    try {
+      return ClaudeContentBlockDto.fromJson(block.cast<String, dynamic>());
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[claude] content block decode failed "
+        "(fields: ${block.length}, discriminator type: ${block["type"].runtimeType})",
+        error.runtimeType,
+        stackTrace,
+      );
+      return null;
     }
   }
 

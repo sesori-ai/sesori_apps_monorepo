@@ -22,7 +22,9 @@ dependencies:
   liquid_glass_widgets: 1.15.1
   markdown: ^7.3.1
   material_ui: ^1.8.0
+  pasteboard: ^0.6.0
   path: any
+  path_provider: ^2.1.6
   re_highlight: ^0.0.3
   record: ^7.1.2
   rxdart: ^0.28.0
@@ -30,6 +32,7 @@ dependencies:
     path: ../module_core
   sesori_shared:
     path: ../../shared/sesori_shared
+  share_plus: ^13.3.1
   theme_prego:
     path: ../module_prego
   universal_platform: ^1.1.0

@@ -9,7 +9,6 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/di/injection.dart";
-import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_command_palette.dart";
@@ -126,7 +125,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("visible:false"), findsOneWidget);
     expect(ModalRoute.of(element)?.isCurrent, isTrue);
-    final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
+    final dispatcher = GoRouterRouteDispatcher(
+      router: router,
+      routerReady: Future<void>.value(),
+      popupNavigatorKeys: [router.routerDelegate.navigatorKey],
+    );
     dispatcher.dismissPopups();
     await dispatcher.flushPendingForTesting();
     await tester.pumpAndSettle();
@@ -182,7 +185,11 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
     expect(router.state.uri.path, AppRouteDef.home.path);
-    final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
+    final dispatcher = GoRouterRouteDispatcher(
+      router: router,
+      routerReady: Future<void>.value(),
+      popupNavigatorKeys: [router.routerDelegate.navigatorKey],
+    );
     dispatcher.replaceStack(
       stack: RouteStack(
         paths: [

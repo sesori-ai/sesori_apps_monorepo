@@ -3,13 +3,13 @@ import "dart:convert";
 import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
-import "package:claude_plugin/claude_testing.dart";
 import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
+import "support/fake_claude_process.dart";
 
 const _testIds = [
   "99999999-8888-4777-8666-555555555555",

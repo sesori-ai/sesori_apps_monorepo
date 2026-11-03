@@ -3484,10 +3484,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AcceptedPromptsTableTable(this);
   late final $SessionContinuationTableTable sessionContinuationTable =
       $SessionContinuationTableTable(this);
-  late final Index idxProjectsPath = Index(
-    'idx_projects_path',
-    'CREATE INDEX idx_projects_path ON projects_table (path)',
-  );
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -3522,7 +3518,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     newSessionDefaultsTable,
     acceptedPromptsTable,
     sessionContinuationTable,
-    idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
