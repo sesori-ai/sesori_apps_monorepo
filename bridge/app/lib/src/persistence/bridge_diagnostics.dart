@@ -8,19 +8,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// Runs checks that help surface configuration or permission issues early,
 /// before the user encounters them at runtime.
 class BridgeDiagnostics({required final bool _isSupervised}) {
-  /// Runs all diagnostic checks and logs warnings for any issues found.
-  ///
-  /// Returns `true` if all checks passed, `false` if any warnings were logged.
-  Future<bool> runAll() async {
-    try {
-      final (hasFileSystemAccess, hasGitAvailable) = await (checkFilesystemAccess(), checkGitAvailable()).wait;
-      return hasFileSystemAccess && hasGitAvailable;
-    } on Object catch (error, stackTrace) {
-      Log.w("Unexpected error during diagnostics", error, stackTrace);
-      return false;
-    }
-  }
-
   Future<bool> checkGitAvailable() async {
     try {
       final result = await Process.run("git", ["--version"]);

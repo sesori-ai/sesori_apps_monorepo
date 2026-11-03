@@ -52,10 +52,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
         .get();
   }
 
-  Future<List<ProjectDto>> getProjectsByPath({required String path}) {
-    return (select(projectsTable)..where((table) => table.path.equals(path))).get();
-  }
-
   /// The live directory stored for [projectId], or null when the bridge has no
   /// recorded project with that id. `path` is non-nullable in the schema, so a
   /// present row is authoritative — never infer a directory from the id.
@@ -125,19 +121,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     );
   }
 
-  /// Returns the set of all currently hidden project IDs (one-shot).
-  Future<Set<String>> getHiddenProjectIds() async {
-    final rows = await (select(projectsTable)..where((t) => t.hidden.equals(true))).get();
-    return rows.map((r) => r.projectId).toSet();
-  }
-
-  /// Watches the set of hidden project IDs reactively.
-  Stream<Set<String>> get hiddenProjectIdsStream {
-    return (select(
-      projectsTable,
-    )..where((t) => t.hidden.equals(true))).watch().map((rows) => rows.map((r) => r.projectId).toSet());
-  }
-
   /// Marks a project as hidden. Creates the row if missing. Uses DoUpdate to
   /// update ONLY the hidden column on conflict, preserving all other fields.
   Future<void> hideProject({required String projectId}) async {
@@ -153,27 +136,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
       ),
       onConflict: DoUpdate(
         (old) => const ProjectsTableCompanion(hidden: Value(true)),
-        target: [projectsTable.projectId],
-      ),
-    );
-  }
-
-  /// Removes the hidden flag from a project. Creates the row if missing.
-  /// Uses DoUpdate to update ONLY the hidden column on conflict, preserving
-  /// baseBranch on existing rows.
-  Future<void> unhideProject({required String projectId}) async {
-    final insertedAt = DateTime.now().millisecondsSinceEpoch;
-    await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(
-        projectId: projectId,
-        path: projectId,
-        hidden: const Value(false),
-        createdAt: Value(insertedAt),
-        updatedAt: Value(insertedAt),
-        projectionUpdatedAt: insertedAt,
-      ),
-      onConflict: DoUpdate(
-        (old) => const ProjectsTableCompanion(hidden: Value(false)),
         target: [projectsTable.projectId],
       ),
     );
@@ -205,12 +167,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
         target: [projectsTable.projectId],
       ),
     );
-  }
-
-  /// Deletes the project row for [projectId]. The session/PR FKs cascade, so
-  /// callers must first ensure nothing still references the row.
-  Future<void> deleteProject({required String projectId}) async {
-    await (delete(projectsTable)..where((t) => t.projectId.equals(projectId))).go();
   }
 
   /// Inserts a minimal project row if none exists for each id in [projectIds].
@@ -285,29 +241,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
             );
           },
         ).toList(),
-        mode: InsertMode.insertOrIgnore,
-      );
-    });
-  }
-
-  /// Inserts project rows with the exact [activities] for ids that are missing.
-  /// Existing rows are untouched.
-  Future<void> insertMissingProjectsWithActivity({
-    required Map<String, ({String path, int createdAt, int updatedAt})> activities,
-  }) async {
-    if (activities.isEmpty) return;
-    await batch((b) {
-      b.insertAll(
-        projectsTable,
-        activities.entries.map((e) {
-          return ProjectsTableCompanion.insert(
-            projectId: e.key,
-            path: e.value.path,
-            createdAt: Value(e.value.createdAt),
-            updatedAt: Value(e.value.updatedAt),
-            projectionUpdatedAt: e.value.updatedAt,
-          );
-        }).toList(),
         mode: InsertMode.insertOrIgnore,
       );
     });

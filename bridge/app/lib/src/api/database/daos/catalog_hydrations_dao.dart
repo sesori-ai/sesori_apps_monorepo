@@ -20,8 +20,4 @@ class CatalogHydrationsDao(super.attachedDatabase) extends DatabaseAccessor<AppD
   Future<void> recordCompletion({required CatalogHydrationDto completion}) {
     return into(catalogHydrationsTable).insertOnConflictUpdate(completion);
   }
-
-  Future<void> deleteForPlugin({required String pluginId}) async {
-    await (delete(catalogHydrationsTable)..where((table) => table.pluginId.equals(pluginId))).go();
-  }
 }

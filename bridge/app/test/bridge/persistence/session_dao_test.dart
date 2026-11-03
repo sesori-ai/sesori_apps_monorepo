@@ -19,10 +19,10 @@ void main() {
       await db.close();
     });
 
-    test("adopts the create flow's canonical project id over a placeholder", () async {
-      // A placeholder row keyed to the plugin-supplied (pre-canonicalization)
-      // worktree path, e.g. inserted by the unseen service from a live
-      // session.created before the create handler persists the row.
+    test("adopts the create flow's canonical project id over an earlier row", () async {
+      // An earlier row keyed to the plugin-supplied (pre-canonicalization)
+      // worktree path, e.g. written for a live session.created before the
+      // create handler persists the row.
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo/.worktrees/s1"]);
       await dao.insertSessionsIfMissing(
         pluginId: "opencode",

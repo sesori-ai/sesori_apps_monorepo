@@ -17,6 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
@@ -26,7 +27,15 @@ void main() {
     late _FakeBridgePlugin plugin;
 
     setUp(() {
-      plugin = _FakeBridgePlugin();
+      plugin = _FakeBridgePlugin()
+        ..createSessionResult = const PluginSession(
+          id: "created-session",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: null,
+          time: null,
+        );
     });
 
     test("resolves stable root families and rejects malformed ancestry", () async {
@@ -395,7 +404,7 @@ void main() {
       final result = await repository.getCatalogSession(sessionId: "s-target");
 
       expect(result?.projectID, equals("p-stored"));
-      expect(plugin.getProjectsCalls, isZero);
+      expect(plugin.getProjectsCallCount, isZero);
       expect(plugin.getSessionsCalls, isZero);
     });
 
@@ -413,7 +422,7 @@ void main() {
       final result = await repository.getCatalogSession(sessionId: "s-target");
 
       expect(result, isNull);
-      expect(plugin.getProjectsCalls, isZero);
+      expect(plugin.getProjectsCallCount, isZero);
       expect(plugin.getSessionsCalls, isZero);
     });
 
@@ -689,7 +698,7 @@ void main() {
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
-      expect(plugin.createSessionCalls, isZero);
+      expect(plugin.lastCreateSessionDirectory, isNull);
     });
 
     group("moved project (stable id, new live path)", () {
@@ -801,7 +810,7 @@ void main() {
         final path = await repository.getProjectPath(projectId: "/projects/a");
 
         expect(path, equals("/moved/a"));
-        expect(plugin.lastGetProjectDirectory, isNull);
+        expect(plugin.lastGetCurrentProjectProjectId, isNull);
       });
 
       test("resolveProjectDirectory rejects an unknown project id", () async {
@@ -926,7 +935,7 @@ void main() {
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
-      expect(plugin.sendPromptCalls, isZero);
+      expect(plugin.lastSendPromptSessionId, isNull);
     });
 
     test("history defaults preserve stored fast mode and fall back when history has no selection", () async {
@@ -1372,7 +1381,7 @@ void main() {
       final active = summaries.single.activeSessions.single;
       expect(active.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(active.awaitingInput, isTrue);
-      expect(plugin.lastGetProjectDirectory, directory);
+      expect(plugin.lastGetCurrentProjectProjectId, directory);
       expect(plugin.lastGetSessionsWorktree, directory);
       expect(commit.pluginId, plugin.id);
       expect(commit.projectId, directory);
@@ -2435,58 +2444,13 @@ class _CapabilityProbeFailingRuntime({
   }
 }
 
-class _FakeBridgePlugin() implements NativeProjectsPluginApi {
-  List<PluginProject> projectsResult = const [];
-  List<PluginSession> sessionsResult = const [];
+class _FakeBridgePlugin() extends FakeBridgePlugin {
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
-  List<PluginMessageWithParts> messagesResult = const [];
-  Map<String, PluginSessionStatus> sessionStatusesResult = const {};
-  PluginSession createSessionResult = const PluginSession(
-    id: "created-session",
-    projectID: "/repo",
-    directory: "/repo",
-    parentID: null,
-    title: null,
-    time: null,
-  );
-  String? lastRenameSessionId;
-  String? lastRenameSessionTitle;
-  String? lastCreateSessionVariant;
-  int createSessionCalls = 0;
-  String? lastSendPromptVariant;
-  String? lastSendPromptSessionId;
-  String? lastSendCommandVariant;
-  String? lastSendCommandSessionId;
-  String? lastGetMessagesSessionId;
-  String? lastGetSessionsWorktree;
-  String? lastGetCommandsProjectId;
-  String? lastGetProjectDirectory;
-  int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   int getSessionsFailuresRemaining = 0;
-  int sendPromptCalls = 0;
-  String? lastAbortSessionId;
-  bool? lastAbortUseAtomicStop;
-  Set<String>? lastAbortKnownSubAgentSessionIds;
-  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
   Map<String, PluginProject> projectsByDirectory = const {};
-
-  @override
-  String get id => "fake";
-
-  @override
-  Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
-
-  @override
-  Future<void> deleteSession(String sessionId) async {}
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    getProjectsCalls++;
-    return projectsResult;
-  }
 
   @override
   Future<List<PluginSession>> getSessions({required String projectId}) async {
@@ -2500,118 +2464,14 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    lastGetCommandsProjectId = projectId;
-    return const [];
-  }
-
-  @override
   Future<PluginProject> getProject(String projectId) async {
-    lastGetProjectDirectory = projectId;
+    lastGetCurrentProjectProjectId = projectId;
     if (failingProjectIds.contains(projectId)) throw StateError("project unavailable");
     return projectsByDirectory[projectId] ?? PluginProject(id: projectId, directory: projectId);
   }
 
   @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
-    lastRenameSessionId = sessionId;
-    lastRenameSessionTitle = title;
-    return PluginSession(
-      id: sessionId,
-      projectID: "",
-      directory: "",
-      parentID: null,
-      title: title,
-      time: null,
-    );
-  }
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    createSessionCalls++;
-    lastCreateSessionVariant = variant?.id;
-    return createSessionResult;
-  }
-
-  @override
-  Future<void> sendPrompt({
-    required String promptId,
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    sendPromptCalls++;
-    lastSendPromptSessionId = sessionId;
-    lastSendPromptVariant = variant?.id;
-  }
-
-  @override
-  Future<void> sendCommand({
-    required String promptId,
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastSendCommandSessionId = sessionId;
-    lastSendCommandVariant = variant?.id;
-  }
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
-    lastGetMessagesSessionId = sessionId;
-    return messagesResult;
-  }
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => sessionStatusesResult;
-
-  @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
-
-  @override
-  Future<PluginAbortResult> abortSession({
-    required String sessionId,
-    required PluginAbortSubAgentPolicy subAgents,
-    required bool useAtomicStop,
-    required Set<String> knownSubAgentSessionIds,
-  }) async {
-    lastAbortSessionId = sessionId;
-    lastAbortUseAtomicStop = useAtomicStop;
-    lastAbortKnownSubAgentSessionIds = knownSubAgentSessionIds;
-    return abortResult;
-  }
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakePersistedCleanupPlugin() extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
