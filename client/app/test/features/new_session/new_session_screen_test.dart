@@ -42,6 +42,8 @@ class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceR
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
+class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements AllSessionsCubit;
+
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
@@ -173,9 +175,11 @@ Widget _buildApp({
   GoRouterWidgetBuilder? sessionDetailBuilder,
   String? projectName = "Project One",
   ({ProjectListState initial, Stream<ProjectListState> updates})? projectListStates,
+  String initialLocation = "/sessions/new?project=project-1",
+  AllSessionsCubit? allSessions,
 }) {
   final router = GoRouter(
-    initialLocation: "/sessions/new?project=project-1",
+    initialLocation: initialLocation,
     routes: [
       GoRoute(
         path: "/",
@@ -235,6 +239,8 @@ Widget _buildApp({
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
       // The session scope's live project list, above every signed-in route.
       BlocProvider<ProjectListCubit>.value(value: projectList),
+      // And its sessions list, which remembers a prompt's pick.
+      BlocProvider<AllSessionsCubit>.value(value: allSessions ?? _MockAllSessionsCubit()),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -487,6 +493,7 @@ void main() {
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
     GetIt.instance.registerSingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository());
     GetIt.instance.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+    GetIt.instance.registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
     GetIt.instance.registerSingleton<SessionLaunchService>(
       SessionLaunchService(
         sessionRepository: sessionService,
@@ -516,6 +523,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
+  testWidgets("a project chosen in the prompt opens its setup page and is where the next one opens", (tester) async {
+    final allSessions = _MockAllSessionsCubit();
+    await tester.pumpWidget(_buildApp(initialLocation: "/sessions/new", projectName: null, allSessions: allSessions));
+    await tester.pumpAndSettle();
+    expect(find.byType(NewSessionProjectPrompt), findsOneWidget);
+
+    tester
+        .widget<NewSessionProjectPrompt>(find.byType(NewSessionProjectPrompt))
+        .onProjectSelected(projectId: "project-2", projectName: "Project Two");
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewSessionProjectPrompt), findsNothing);
+    expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id, "project-2");
+    verify(() => allSessions.rememberNewSessionProject(projectId: "project-2")).called(1);
   });
 
   testWidgets("a sent dictation has a landing over the composer", (tester) async {

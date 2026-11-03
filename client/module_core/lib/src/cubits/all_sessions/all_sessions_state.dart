@@ -69,18 +69,23 @@ sealed class AllSessionsState with _$AllSessionsState {
     /// Why the sessions could not be loaded, with none to show.
     required RemoteFailureReason? failure,
 
-    /// Whether the project list or the sessions are still loading for the
-    /// first time, or a retry after a failure has not answered yet.
+    /// Whether the project list, the sessions or the computer's last
+    /// new-session project are still loading for the first time, or a retry
+    /// after a failure has not answered yet.
     required bool isLoading,
 
     /// The bridge's "No project" project, or null on a bridge without one.
     required String? scratchProjectId,
 
-    /// The new-session default: the filter, otherwise [scratchProjectId],
-    /// otherwise the project of the newest session, otherwise null. The newest
-    /// session is read only while nothing narrows the list, and kept through a
-    /// search or a chip; until it is known the default stays null, so a
-    /// consumer that holds the first default it sees never holds a guess.
+    /// The new-session default: the filter, otherwise the listed project the
+    /// user last picked in the composer or started a session in on the
+    /// computer being viewed, otherwise [scratchProjectId], otherwise the
+    /// project of the newest session, otherwise null. Without a filter the
+    /// default stays null until the last project is read, and when neither it
+    /// nor [scratchProjectId] applies, until the newest session is known, so a
+    /// consumer that holds the first default it sees never holds a guess. The
+    /// newest session is read only while nothing narrows the list, and kept
+    /// through a search or a chip.
     required String? defaultProjectId,
   }) = _AllSessionsState;
 }
