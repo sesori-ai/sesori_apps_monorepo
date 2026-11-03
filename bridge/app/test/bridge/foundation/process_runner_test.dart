@@ -22,8 +22,8 @@ void main() {
 ''');
 
     final result = await ProcessRunner().run(
-      Platform.resolvedExecutable,
-      [script.path],
+      executable: Platform.resolvedExecutable,
+      arguments: [script.path],
     );
 
     final expectedStdout = List<String>.generate(4096, (index) => "stdout-$index\n").join();
@@ -83,8 +83,8 @@ Future<void> main(List<String> arguments) async {
     });
     final stopwatch = Stopwatch()..start();
     final run = ProcessRunner().run(
-      Platform.resolvedExecutable,
-      [parentScript.path, childScript.path, server.port.toString(), childPidFile.path],
+      executable: Platform.resolvedExecutable,
+      arguments: [parentScript.path, childScript.path, server.port.toString(), childPidFile.path],
       timeout: const Duration(seconds: 3),
     );
     final timeoutObserved = expectLater(run, throwsA(isA<TimeoutException>()));

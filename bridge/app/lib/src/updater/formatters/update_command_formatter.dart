@@ -82,28 +82,28 @@ class UpdateCommandFormatter({
 
   RenderedLine _success(String text, {required bool isError}) => RenderedLine(
     isError: isError,
-    text: _output(isError: isError).success(text),
+    text: _output(isError: isError).success(text: text),
   );
 
   RenderedLine _warn(String text, {required bool isError}) => RenderedLine(
     isError: isError,
-    text: _output(isError: isError).warn(text),
+    text: _output(isError: isError).warn(text: text),
   );
 
   RenderedLine _error(String text, {required bool isError}) => RenderedLine(
     isError: isError,
-    text: _output(isError: isError).error(text),
+    text: _output(isError: isError).error(text: text),
   );
 
   RenderedLine _note(String text, {required bool isError}) => RenderedLine(
     isError: isError,
-    text: _output(isError: isError).note(text),
+    text: _output(isError: isError).note(text: text),
   );
 
   RenderedLine _dimLine(String text, {required bool isError}) => RenderedLine(
     isError: isError,
-    text: _output(isError: isError).dim(text),
+    text: _output(isError: isError).dim(text: text),
   );
 
-  String _command(String text, {required bool isError}) => _output(isError: isError).command(text);
+  String _command(String text, {required bool isError}) => _output(isError: isError).command(text: text);
 }

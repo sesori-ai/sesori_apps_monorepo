@@ -45,13 +45,13 @@ void main() {
     final invalid = await handler.routeForTest(
       makeRequest("POST", "/plugin/one/command", body: jsonEncode(const {"type": "disable"})),
     );
-    service.error = const PluginManagementPluginNotFoundException("missing");
+    service.error = const PluginManagementPluginNotFoundException(pluginId: "missing");
     final unknown = await _send(handler, pluginId: "missing");
-    service.error = const PluginManagementConflictException(_conflict);
+    service.error = const PluginManagementConflictException(conflict: _conflict);
     final conflict = await _send(handler, pluginId: "one");
     service.error = const PluginManagementMutationOutcomeUncertainException();
     final uncertain = await _send(handler, pluginId: "one");
-    service.error = const PluginManagementCommandFailedException("disk full");
+    service.error = const PluginManagementCommandFailedException(message: "disk full");
     final failed = await _send(handler, pluginId: "one");
 
     expect(invalid.status, 400);

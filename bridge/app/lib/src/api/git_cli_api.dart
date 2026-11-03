@@ -50,8 +50,8 @@ class GitCliApi({
   Future<bool> isInsideGitWorkTree({required String projectPath}) async {
     const arguments = ["rev-parse", "--is-inside-work-tree"];
     final result = await _processRunner.run(
-      "git",
-      arguments,
+      executable: "git",
+      arguments: arguments,
       workingDirectory: projectPath,
       environment: const {"LC_ALL": "C"},
     );
@@ -66,7 +66,7 @@ class GitCliApi({
 
   /// Initializes a new git repository at [path]. Returns `true` on success.
   Future<bool> initRepository({required String path}) async {
-    final result = await _processRunner.run("git", ["init", path]);
+    final result = await _processRunner.run(executable: "git", arguments: ["init", path]);
     return result.exitCode == 0;
   }
 
@@ -257,8 +257,8 @@ class GitCliApi({
       "+refs/heads/$branchName:refs/remotes/origin/$branchName",
     ];
     final result = await _processRunner.run(
-      "git",
-      arguments,
+      executable: "git",
+      arguments: arguments,
       workingDirectory: projectPath,
       timeout: const Duration(seconds: 30),
       environment: const {"GIT_TERMINAL_PROMPT": "0"},
@@ -406,8 +406,8 @@ class GitCliApi({
     }
 
     final statusResult = await _processRunner.run(
-      "git",
-      ["status", "--porcelain"],
+      executable: "git",
+      arguments: ["status", "--porcelain"],
       workingDirectory: worktreePath,
     );
     final hasUnstagedChanges = statusResult.stdout.toString().trim().isNotEmpty;
@@ -427,7 +427,11 @@ class GitCliApi({
       "--tags",
       "--remotes",
     ];
-    final noBranchResult = await _processRunner.run("git", noBranchArguments, workingDirectory: worktreePath);
+    final noBranchResult = await _processRunner.run(
+      executable: "git",
+      arguments: noBranchArguments,
+      workingDirectory: worktreePath,
+    );
     if (noBranchResult.exitCode != 0) {
       throw ProcessException("git", noBranchArguments, noBranchResult.stderr.toString(), noBranchResult.exitCode);
     }
@@ -520,7 +524,7 @@ class GitCliApi({
   }
 
   Future<ProcessResult> runGit({required String projectPath, required List<String> arguments}) {
-    return _processRunner.run("git", arguments, workingDirectory: projectPath);
+    return _processRunner.run(executable: "git", arguments: arguments, workingDirectory: projectPath);
   }
 
   String? _extractBranchName({required Object? output, required String prefix}) {

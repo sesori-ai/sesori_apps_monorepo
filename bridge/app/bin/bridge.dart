@@ -720,7 +720,7 @@ Future<void> main(List<String> args) async {
     ..addCommand(UpdateCommand());
 
   try {
-    await runner.run(effectiveCliArgs(args));
+    await runner.run(effectiveCliArgs(args: args));
   } on cli.UsageException catch (e) {
     stderr.writeln(e.message);
     stderr.writeln(e.usage);

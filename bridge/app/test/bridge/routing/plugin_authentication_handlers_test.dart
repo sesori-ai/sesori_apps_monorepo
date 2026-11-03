@@ -50,11 +50,11 @@ void main() {
   test("POST maps unknown plugins and typed conflicts", () async {
     final service = _FakePluginLifecycleService();
     final handler = PostPluginAuthenticationHandler(lifecycleService: service);
-    service.error = const PluginManagementPluginNotFoundException("missing");
+    service.error = const PluginManagementPluginNotFoundException(pluginId: "missing");
     final missing = await handler.routeForTest(
       makeRequest("POST", "/plugin/missing/authentication"),
     );
-    service.error = const PluginAuthenticationConflictException(_conflict);
+    service.error = const PluginAuthenticationConflictException(conflict: _conflict);
     final conflict = await handler.routeForTest(
       makeRequest("POST", "/plugin/codex/authentication"),
     );
@@ -116,7 +116,7 @@ void main() {
     }
     expect(service.submittedCode, "opaque#state");
 
-    service.codeError = const PluginManagementPluginNotFoundException("codex");
+    service.codeError = const PluginManagementPluginNotFoundException(pluginId: "codex");
     expect((await send(body: codeBody(code: "opaque"))).status, 404);
     service.codeError = const PluginAuthenticationContinuationConflictException(
       reason: PluginAuthenticationContinuationConflictReason.alreadySubmitted,
@@ -135,7 +135,8 @@ void main() {
   });
 
   test("DELETE maps typed unsupported conflicts", () async {
-    final service = _FakePluginLifecycleService()..cancelError = const PluginAuthenticationConflictException(_conflict);
+    final service = _FakePluginLifecycleService()
+      ..cancelError = const PluginAuthenticationConflictException(conflict: _conflict);
     final response = await DeletePluginAuthenticationHandler(lifecycleService: service).routeForTest(
       makeRequest("DELETE", "/plugin/codex/authentication"),
     );

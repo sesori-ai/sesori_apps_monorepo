@@ -1033,9 +1033,15 @@ class OrchestratorSession._({
       return Future.error(StateError("OrchestratorSession has already started"), StackTrace.current);
     }
 
-    _sessionAbortService.abortStartedSessions.listen(_completionListener.markSessionAbortPending).addTo(_subscriptions);
-    _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
-    _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
+    _sessionAbortService.abortStartedSessions
+        .listen((sessionId) => _completionListener.markSessionAbortPending(sessionId: sessionId))
+        .addTo(_subscriptions);
+    _sessionAbortService.abortedSessions
+        .listen((sessionId) => _completionListener.markSessionAborted(sessionId: sessionId))
+        .addTo(_subscriptions);
+    _sessionAbortService.abortFailedSessions
+        .listen((sessionId) => _completionListener.clearPendingAbort(sessionId: sessionId))
+        .addTo(_subscriptions);
     _completionListener.start();
     _normalizedEventSubscription = _pluginEvents.listen(
       (source) {
@@ -1853,7 +1859,7 @@ class OrchestratorSession._({
       }
     }
     try {
-      await _projectActivityService.handleEvent(event);
+      await _projectActivityService.handleEvent(event: event);
     } catch (e, st) {
       Log.w("failed to route project activity for ${event.runtimeType}", e, st);
     }
@@ -1942,7 +1948,7 @@ class OrchestratorSession._({
   /// Feeds an outgoing event to the in-process observers: completion pushes
   /// and, for a projects summary, the desktop status notifier.
   void _feedLocalObservers(SesoriSseEvent event) {
-    _completionListener.handleSseEvent(event);
+    _completionListener.handleSseEvent(event: event);
     if (event is SesoriProjectsSummary) {
       _statusNotifier?.handleProjectsSummary(summary: event);
     }

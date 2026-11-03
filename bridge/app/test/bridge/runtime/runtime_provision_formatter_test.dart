@@ -10,13 +10,13 @@ void main() {
     test("formats nothing on the happy PATH case (resolving then ready, no work)", () {
       final formatter = build(interactive: false);
 
-      expect(formatter.format(const ProvisionResolving()), isNull);
-      expect(formatter.format(const ProvisionReady(binaryPath: "opencode")), isNull);
+      expect(formatter.format(event: const ProvisionResolving()), isNull);
+      expect(formatter.format(event: const ProvisionReady(binaryPath: "opencode")), isNull);
     });
 
     test("uses the injected runtime name, not a hard-coded backend", () {
       final formatter = build(interactive: false);
-      expect(formatter.format(const ProvisionVerifying()), contains("OpenCode"));
+      expect(formatter.format(event: const ProvisionVerifying()), contains("OpenCode"));
     });
 
     test("non-interactive download yields throttled percentage lines", () {
@@ -24,7 +24,7 @@ void main() {
 
       final lines = <String>[];
       for (var pct = 0; pct <= 100; pct += 5) {
-        final out = formatter.format(ProvisionDownloading(receivedBytes: pct, totalBytes: 100));
+        final out = formatter.format(event: ProvisionDownloading(receivedBytes: pct, totalBytes: 100));
         if (out != null) {
           lines.add(out);
         }
@@ -41,9 +41,9 @@ void main() {
     test("interactive download redraws a single bar with carriage returns", () {
       final formatter = build(interactive: true);
 
-      final first = formatter.format(const ProvisionDownloading(receivedBytes: 50, totalBytes: 100));
-      final second = formatter.format(const ProvisionDownloading(receivedBytes: 100, totalBytes: 100));
-      final extracting = formatter.format(const ProvisionExtracting());
+      final first = formatter.format(event: const ProvisionDownloading(receivedBytes: 50, totalBytes: 100));
+      final second = formatter.format(event: const ProvisionDownloading(receivedBytes: 100, totalBytes: 100));
+      final extracting = formatter.format(event: const ProvisionExtracting());
 
       expect(first, startsWith("\r"));
       expect(first, contains("50%"));
@@ -56,15 +56,18 @@ void main() {
     test("formats notice, verifying, and a ready line after real work", () {
       final formatter = build(interactive: false);
 
-      expect(formatter.format(const ProvisionNotice(message: "using a managed runtime")), contains("using a managed runtime"));
-      formatter.format(const ProvisionDownloading(receivedBytes: 1, totalBytes: 2));
-      expect(formatter.format(const ProvisionVerifying()), contains("Verifying"));
-      expect(formatter.format(const ProvisionReady(binaryPath: "/x/opencode")), contains("runtime ready"));
+      expect(
+        formatter.format(event: const ProvisionNotice(message: "using a managed runtime")),
+        contains("using a managed runtime"),
+      );
+      formatter.format(event: const ProvisionDownloading(receivedBytes: 1, totalBytes: 2));
+      expect(formatter.format(event: const ProvisionVerifying()), contains("Verifying"));
+      expect(formatter.format(event: const ProvisionReady(binaryPath: "/x/opencode")), contains("runtime ready"));
     });
 
     test("formats a non-fatal failure line", () {
       final formatter = build(interactive: false);
-      expect(formatter.format(const ProvisionFailed(message: "network down")), contains("network down"));
+      expect(formatter.format(event: const ProvisionFailed(message: "network down")), contains("network down"));
     });
   });
 }

@@ -46,7 +46,7 @@ class ProjectActivityService({
     });
   }
 
-  Future<void> handleEvent(SesoriSseEvent event) async {
+  Future<void> handleEvent({required SesoriSseEvent event}) async {
     switch (event) {
       case SesoriMessageUpdated(:final info):
         final int? occurredAt;

@@ -219,10 +219,10 @@ class FilesystemRepository({
         return const FilePreviewResponse.unsupported();
       }
     } on FileSystemException catch (error) {
-      if (_permissionValidator.isPermissionDenied(error)) return const FilePreviewResponse.denied();
+      if (_permissionValidator.isPermissionDenied(error: error)) return const FilePreviewResponse.denied();
       // Dart raises PathNotFoundException for Windows' missing-folder error
       // (code 3), which isFileMissing does not recognise.
-      if (error is PathNotFoundException || _permissionValidator.isFileMissing(error)) {
+      if (error is PathNotFoundException || _permissionValidator.isFileMissing(error: error)) {
         return const FilePreviewResponse.missing();
       }
       rethrow;
@@ -394,7 +394,7 @@ class FilesystemRepository({
     try {
       return action();
     } on FileSystemException catch (error) {
-      if (_permissionValidator.isPermissionDenied(error)) {
+      if (_permissionValidator.isPermissionDenied(error: error)) {
         throw FilesystemPermissionDeniedException(path: path);
       }
       rethrow;

@@ -110,7 +110,9 @@ class ControlChannelTokenService({
     _pending[id] = completer;
     try {
       try {
-        _client.send(jsonEncode(ControlMessage.tokenRequest(id: id, forceRefresh: forceRefresh).toJson()));
+        _client.send(
+          frame: jsonEncode(ControlMessage.tokenRequest(id: id, forceRefresh: forceRefresh).toJson()),
+        );
       } on ControlChannelNotConnectedException catch (error) {
         throw ControlTokenRetryLaterException(innerError: error);
       }

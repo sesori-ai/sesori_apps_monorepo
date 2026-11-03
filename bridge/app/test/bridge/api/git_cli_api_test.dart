@@ -242,9 +242,9 @@ class _RecordingProcessRunner({
   Map<String, String>? environment;
 
   @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
+  Future<ProcessResult> run({
+    required String executable,
+    required List<String> arguments,
     String? workingDirectory,
     Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),

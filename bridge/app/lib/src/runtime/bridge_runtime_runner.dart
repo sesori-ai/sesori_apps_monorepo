@@ -678,7 +678,7 @@ class const BridgeRuntimeRunner._() {
                 runtimeName: descriptor.displayName,
               ),
             );
-            final rendered = formatter.format(progress.event);
+            final rendered = formatter.format(event: progress.event);
             if (rendered != null) io.stderr.write(rendered);
           })
           .addTo(subscriptions);
@@ -993,7 +993,7 @@ class const BridgeRuntimeRunner._() {
   /// the per-spawn bearer secret to a non-loopback endpoint (defense in depth,
   /// since `--control-url` is GUI-supplied and could be misconfigured/tampered).
   @visibleForTesting
-  static bool isLoopbackControlUrl(Uri url) {
+  static bool isLoopbackControlUrl({required Uri url}) {
     if (url.scheme != "ws" && url.scheme != "wss") return false;
     final host = url.host.toLowerCase();
     return host == "127.0.0.1" || host == "localhost" || host == "::1";
@@ -1011,7 +1011,7 @@ class const BridgeRuntimeRunner._() {
     required void Function() requestAbnormalExit,
   }) async {
     final url = Uri.parse(controlUrl);
-    if (!isLoopbackControlUrl(url)) {
+    if (!isLoopbackControlUrl(url: url)) {
       throw StateError(
         "Refusing supervised control URL '$controlUrl': must be a loopback ws/wss endpoint",
       );
@@ -1282,8 +1282,8 @@ class const BridgeRuntimeRunner._() {
 
     try {
       final result = await processRunner.run(
-        "/usr/sbin/scutil",
-        const ["--get", "LocalHostName"],
+        executable: "/usr/sbin/scutil",
+        arguments: const ["--get", "LocalHostName"],
         timeout: const Duration(seconds: 2),
       );
       final stableName = result.stdout.toString().trim();

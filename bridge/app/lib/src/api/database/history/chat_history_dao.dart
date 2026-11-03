@@ -415,8 +415,8 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
       distinct: true,
     )..addColumns([historySyncStateTable.sessionId])).get();
     return {
-      for (final row in rows) row.read(historyMessagesTable.sessionId)!,
-      for (final row in syncRows) row.read(historySyncStateTable.sessionId)!,
+      for (final row in rows) ?row.read(historyMessagesTable.sessionId),
+      for (final row in syncRows) ?row.read(historySyncStateTable.sessionId),
     };
   }
 

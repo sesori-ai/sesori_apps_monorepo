@@ -49,7 +49,7 @@ void main() {
     await _storeSession(database: database, sessionId: "root", projectId: "project");
 
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
           promptId: null,
           id: "user",
@@ -60,7 +60,7 @@ void main() {
       ),
     );
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.assistant(
           id: "assistant-incomplete",
           sessionID: "root",
@@ -77,7 +77,7 @@ void main() {
       reason: "an incomplete assistant message must not use the receipt-time fallback",
     );
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.assistant(
           id: "assistant-complete",
           sessionID: "root",
@@ -89,7 +89,7 @@ void main() {
       ),
     );
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.user(promptId: null, id: "missing-time", sessionID: "root", agent: null, time: null),
       ),
     );
@@ -104,7 +104,7 @@ void main() {
     await _storeSession(database: database, sessionId: "root", projectId: "project");
 
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.error(
           id: "error",
           sessionID: "root",
@@ -128,7 +128,7 @@ void main() {
     await _storeSession(database: database, sessionId: "root", projectId: "project");
 
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.error(
           id: "error",
           sessionID: "root",
@@ -152,7 +152,7 @@ void main() {
     await _storeSession(database: database, sessionId: "root", projectId: "project");
 
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.error(
           id: "error",
           sessionID: "root",
@@ -223,7 +223,7 @@ void main() {
 
     now = 200;
     await service.handleEvent(
-      const SesoriSseEvent.questionAsked(
+      event: const SesoriSseEvent.questionAsked(
         id: "q1",
         sessionID: "root",
         displaySessionId: null,
@@ -232,15 +232,15 @@ void main() {
     );
     now = 300;
     await service.handleEvent(
-      const SesoriSseEvent.questionReplied(requestID: "q1", sessionID: "root", displaySessionId: null),
+      event: const SesoriSseEvent.questionReplied(requestID: "q1", sessionID: "root", displaySessionId: null),
     );
     now = 400;
     await service.handleEvent(
-      const SesoriSseEvent.questionRejected(requestID: "q2", sessionID: "root", displaySessionId: null),
+      event: const SesoriSseEvent.questionRejected(requestID: "q2", sessionID: "root", displaySessionId: null),
     );
     now = 500;
     await service.handleEvent(
-      const SesoriSseEvent.permissionAsked(
+      event: const SesoriSseEvent.permissionAsked(
         requestID: "p1",
         sessionID: "root",
         displaySessionId: null,
@@ -250,7 +250,7 @@ void main() {
     );
     now = 600;
     await service.handleEvent(
-      const SesoriSseEvent.permissionReplied(
+      event: const SesoriSseEvent.permissionReplied(
         requestID: "p1",
         sessionID: "root",
         displaySessionId: null,
@@ -259,10 +259,10 @@ void main() {
     );
     now = 700;
     await service.handleEvent(
-      const SesoriSseEvent.questionReplied(requestID: "child", sessionID: "child", displaySessionId: "root"),
+      event: const SesoriSseEvent.questionReplied(requestID: "child", sessionID: "child", displaySessionId: "root"),
     );
     await service.handleEvent(
-      const SesoriSseEvent.permissionAsked(
+      event: const SesoriSseEvent.permissionAsked(
         requestID: "child-permission",
         sessionID: "child",
         displaySessionId: "root",
@@ -281,7 +281,7 @@ void main() {
     await _storeSession(database: database, sessionId: "root", projectId: "project");
 
     await service.handleEvent(
-      const SesoriSseEvent.messageUpdated(
+      event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
           promptId: null,
           id: "child-message",
@@ -292,7 +292,7 @@ void main() {
       ),
     );
     await service.handleEvent(
-      const SesoriSseEvent.sessionCreated(
+      event: const SesoriSseEvent.sessionCreated(
         info: Session(
           approvalOverride: null,
           autoContinuation: null,
@@ -323,7 +323,7 @@ void main() {
 
     await Future.wait([
       service.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.user(
             promptId: null,
             id: "newer",
@@ -334,7 +334,7 @@ void main() {
         ),
       ),
       service.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "older",
             sessionID: "root",

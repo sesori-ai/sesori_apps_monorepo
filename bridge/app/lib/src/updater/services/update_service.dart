@@ -97,7 +97,7 @@ class UpdateService({
       Log.w(_rateLimitMessage(error));
       return;
     } on Object catch (error, stackTrace) {
-      if (isTransientNetworkError(error)) {
+      if (isTransientNetworkError(error: error)) {
         Log.w('Skipping update check — network error', error);
         return;
       }

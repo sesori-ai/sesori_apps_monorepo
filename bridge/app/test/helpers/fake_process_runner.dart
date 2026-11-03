@@ -13,9 +13,9 @@ typedef ProcessResponder = FutureOr<ProcessResult> Function(
 
 class NoopProcessRunner() implements ProcessRunner {
   @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
+  Future<ProcessResult> run({
+    required String executable,
+    required List<String> arguments,
     Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
@@ -61,9 +61,9 @@ final class RecordingProcessRunner({
   String? get workingDirectory => invocations.lastOrNull?.workingDirectory;
 
   @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
+  Future<ProcessResult> run({
+    required String executable,
+    required List<String> arguments,
     Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),

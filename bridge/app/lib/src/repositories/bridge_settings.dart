@@ -56,14 +56,14 @@ class const BridgePluginSettings({
   }) {
   factory fromJson({required Object? rawValue}) {
     if (rawValue is! Map || rawValue.keys.any((key) => key is! String)) {
-      throw const PluginSettingsFormatException('"plugins" must be an object');
+      throw const PluginSettingsFormatException(message: '"plugins" must be an object');
     }
     final json = rawValue.cast<String, dynamic>();
     final rawDisabled = json['disabled'];
     if (json.containsKey('disabled') &&
         (rawDisabled is! List || rawDisabled.any((value) => value is! String || value.isEmpty))) {
       throw const PluginSettingsFormatException(
-        '"plugins.disabled" must be a list containing only non-empty plugin ids',
+        message: '"plugins.disabled" must be a list containing only non-empty plugin ids',
       );
     }
     final disabledIds = rawDisabled == null
@@ -72,7 +72,7 @@ class const BridgePluginSettings({
 
     PluginLifecycleSettings parseEntry({required String name, required Object? value}) {
       if (value is! Map || value.keys.any((key) => key is! String)) {
-        throw PluginSettingsFormatException('"plugins.$name" must be an object');
+        throw PluginSettingsFormatException(message: '"plugins.$name" must be an object');
       }
       return PluginLifecycleSettings.fromJson(entryName: name, json: value.cast<String, dynamic>());
     }
@@ -81,7 +81,7 @@ class const BridgePluginSettings({
     for (final entry in json.entries) {
       if (entry.key == 'disabled' || entry.key == 'default') continue;
       if (entry.key.isEmpty) {
-        throw const PluginSettingsFormatException('"plugins" entry names must be non-empty plugin ids');
+        throw const PluginSettingsFormatException(message: '"plugins" entry names must be non-empty plugin ids');
       }
       settingsByPluginId[entry.key] = parseEntry(name: entry.key, value: entry.value);
     }
@@ -239,7 +239,7 @@ class const BridgeSettings({
   }
 
   static ReleaseTrack _parseReleaseTrack(Object? rawValue) {
-    return ReleaseTrack.fromWire(rawValue is String ? rawValue : null);
+    return ReleaseTrack.fromWire(value: rawValue is String ? rawValue : null);
   }
 
   static int _parsePullRequestRefreshInterval({required bool isPresent, required Object? rawValue}) {
@@ -259,11 +259,13 @@ class const BridgeSettings({
   }
 }
 
-class const PluginSettingsFormatException(super.message) extends FormatException;
+class const PluginSettingsFormatException({required String message}) extends FormatException {
+  this : super(message);
+}
 
 class PluginIdleTimeoutFormatException({required final String entryName}) extends PluginSettingsFormatException {
   this
-    : super('"plugins.$entryName.idleTimeoutMins" must be an integer');
+    : super(message: '"plugins.$entryName.idleTimeoutMins" must be an integer');
 }
 
 class const PullRequestRefreshIntervalFormatException() extends FormatException {

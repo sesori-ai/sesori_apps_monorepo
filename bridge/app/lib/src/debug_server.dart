@@ -223,13 +223,14 @@ class DebugServer({
 
       await disconnected.future;
     } catch (error, stackTrace) {
-      Log.w("SSE handler: error during client lifecycle (ignored)", error, stackTrace);
+      // The finally block drops the client.
+      _logSseClientFailure(failure: "debug SSE client connection failed", error: error, stackTrace: stackTrace);
     } finally {
       _removeSseClient(response);
       try {
         await response.close();
       } catch (error, stackTrace) {
-        Log.w("SSE cleanup: response close failed (ignored)", error, stackTrace);
+        _logSseClientFailure(failure: "debug SSE client close failed", error: error, stackTrace: stackTrace);
       }
     }
   }
@@ -241,14 +242,28 @@ class DebugServer({
         client.add(utf8.encode("data: $eventData\n\n"));
         await client.flush();
       } catch (error, stackTrace) {
-        Log.w("fan-out: client write/flush failed, removing", error, stackTrace);
+        // A failed write leaves this client's connection unusable. Drop it; the
+        // other clients keep receiving.
+        _logSseClientFailure(failure: "debug SSE event write failed", error: error, stackTrace: stackTrace);
         _removeSseClient(client);
         try {
           await client.close();
         } catch (error, stackTrace) {
-          Log.w("fan-out cleanup: client close failed (ignored)", error, stackTrace);
+          _logSseClientFailure(failure: "debug SSE client close failed", error: error, stackTrace: stackTrace);
         }
       }
+    }
+  }
+
+  /// A client that disconnects mid-write is routine: dart:io reports it as an
+  /// [IOException], or as a [StateError] when the response was closed while a
+  /// write was still pending. Anything else is unexpected and keeps its error
+  /// and stack trace.
+  void _logSseClientFailure({required String failure, required Object error, required StackTrace stackTrace}) {
+    if (error is IOException || error is StateError) {
+      Log.d("$failure because the client disconnected; dropping it");
+    } else {
+      Log.w("$failure; dropping the client", error, stackTrace);
     }
   }
 

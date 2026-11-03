@@ -31,7 +31,7 @@ class FakeControlChannelClient() implements ControlChannelClient {
   Stream<ControlChannelConnectionState> get connectionState => _connectionState.stream;
 
   @override
-  void send(String frame) {
+  void send({required String frame}) {
     if (throwOnSend) {
       throw const ControlChannelNotConnectedException(message: "Control channel is not connected");
     }

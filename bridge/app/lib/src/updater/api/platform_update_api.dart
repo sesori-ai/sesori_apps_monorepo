@@ -42,7 +42,7 @@ abstract class PlatformUpdateApi {
 
 /// Raised when an in-place swap cannot be completed. The applier rolls back any
 /// partial state before throwing so the running install is left intact.
-class const UpdateApplyException(final String message) implements Exception {
+class const UpdateApplyException({required final String message}) implements Exception {
   @override
   String toString() => 'UpdateApplyException: $message';
 }

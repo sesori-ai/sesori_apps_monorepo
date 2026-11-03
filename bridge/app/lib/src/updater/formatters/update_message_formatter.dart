@@ -22,28 +22,28 @@ class UpdateMessageFormatter({
     required String logPath,
   }) {
     return [
-      RenderedLine(isError: true, text: _errFormatter.error('Automatic update to $toVersion failed: $reason.')),
+      RenderedLine(isError: true, text: _errFormatter.error(text: 'Automatic update to $toVersion failed: $reason.')),
       RenderedLine(
         isError: true,
-        text: _errFormatter.note('Re-run the install script to update manually: $updateInstallScriptUrl'),
+        text: _errFormatter.note(text: 'Re-run the install script to update manually: $updateInstallScriptUrl'),
       ),
-      RenderedLine(isError: true, text: _errFormatter.dim('  Details in $logPath')),
+      RenderedLine(isError: true, text: _errFormatter.dim(text: '  Details in $logPath')),
     ];
   }
 
   /// Confirmation that a swap is staged and will take effect on next launch.
   List<RenderedLine> installedPendingActivation({required String toVersion}) {
     return [
-      RenderedLine(isError: false, text: _outFormatter.success('Update v$toVersion installed.')),
+      RenderedLine(isError: false, text: _outFormatter.success(text: 'Update v$toVersion installed.')),
       RenderedLine(
         isError: false,
-        text: _outFormatter.dim('  Takes effect on next launch; restart a running bridge to apply now.'),
+        text: _outFormatter.dim(text: '  Takes effect on next launch; restart a running bridge to apply now.'),
       ),
     ];
   }
 
   /// Confirmation, on the next launch, that the new version is now running.
   List<RenderedLine> activated({required String toVersion}) {
-    return [RenderedLine(isError: false, text: _outFormatter.success('Updated to v$toVersion.'))];
+    return [RenderedLine(isError: false, text: _outFormatter.success(text: 'Updated to v$toVersion.'))];
   }
 }

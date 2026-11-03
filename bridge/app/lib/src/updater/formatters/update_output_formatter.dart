@@ -66,22 +66,22 @@ class const UpdateOutputFormatter({required final bool _color, required final bo
   bool get color => _color;
 
   /// A green success line: `✓ <text>` (`[OK]` without unicode).
-  String success(String text) => '${_glyph(_green, '\u2713', '[OK]')} $text';
+  String success({required String text}) => '${_glyph(_green, '\u2713', '[OK]')} $text';
 
   /// A yellow warning line: `⚠ <text>` (`!` without unicode).
-  String warn(String text) => '${_glyph(_yellow, '\u26a0', '!')} $text';
+  String warn({required String text}) => '${_glyph(_yellow, '\u26a0', '!')} $text';
 
   /// A red error line: `✗ <text>` (`x` without unicode).
-  String error(String text) => '${_glyph(_red, '\u2717', 'x')} $text';
+  String error({required String text}) => '${_glyph(_red, '\u2717', 'x')} $text';
 
   /// A brand-blue note line: `➜ <text>` (`>` without unicode).
-  String note(String text) => '${_glyph(_brand, '\u279c', '>')} $text';
+  String note({required String text}) => '${_glyph(_brand, '\u279c', '>')} $text';
 
   /// Muted secondary text.
-  String dim(String text) => _paint(_dim, text);
+  String dim({required String text}) => _paint(_dim, text);
 
   /// A highlighted, runnable command (brand blue + bold).
-  String command(String text) => _paint('$_brand$_bold', text);
+  String command({required String text}) => _paint('$_brand$_bold', text);
 
   /// The arrow separator between two versions: `→` (`->` without unicode).
   String get arrow => _unicode ? '\u2192' : '->';
