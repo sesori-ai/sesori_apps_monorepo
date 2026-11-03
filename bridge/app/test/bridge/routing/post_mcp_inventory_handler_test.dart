@@ -76,7 +76,7 @@ void main() {
     ),
   );
   McpInventoryResult decode(RelayResponse response) => McpInventoryResult.fromJson(
-    jsonDecode(response.body!) as Map<String, dynamic>,
+    jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
   );
 
   Future<RelayResponse> act({required String pluginId, required McpScope scope, required McpServerAction action}) =>
@@ -140,8 +140,9 @@ void main() {
       scope: const McpSessionScope(sessionId: "bridge-session"),
     );
     expect(response.status, 200);
-    final result =
-        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpExternalSetup;
+    final result = McpEntryActionResult.fromJson(
+      jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
+    ) as McpExternalSetup;
     expect(result.setupUrl, "https://fixture.example/setup?private=secret");
     expect(result.toString(), isNot(contains("private=secret")));
     expect(plugin.setupTargets.single.offerKey, "opaque-server");
@@ -164,7 +165,7 @@ void main() {
       plugin.setupResult = PluginMcpConnectorExternalSetup(destination: Uri.parse(url));
       final response = await setup(pluginId: "fixture", scope: const McpHarnessScope());
       expect(
-        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>),
+        McpEntryActionResult.fromJson(jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>),
         const McpActionUnavailable(reason: McpActionUnavailableReason.nativeConfigurationRequired),
       );
       expect(response.body, isNot(contains(url)));
@@ -207,7 +208,10 @@ void main() {
       causeStackTrace: StackTrace.current,
     );
     final response = await setup(pluginId: "fixture", scope: const McpHarnessScope());
-    expect(McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>), isA<McpActionFailed>());
+    expect(
+      McpEntryActionResult.fromJson(jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>),
+      isA<McpActionFailed>(),
+    );
     expect(response.body, isNot(contains("fixture-secret")));
     expect(changes, isEmpty);
   });
@@ -233,8 +237,9 @@ void main() {
   test("credential forgetting binds the native target, invalidates its native scope and reads inventory", () async {
     final response = await forget(pluginId: "fixture", target: forgettingTarget);
     expect(response.status, 200);
-    final result =
-        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpActionCompleted;
+    final result = McpEntryActionResult.fromJson(
+      jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
+    ) as McpActionCompleted;
     final server = (result.inventory as McpInventorySnapshot).entries.single as McpServerSnapshot;
     expect(server.serverTarget, forgettingTarget);
     expect(server.connection, const McpConnectionStatus(phase: McpConnectionPhase.connected));
@@ -278,7 +283,8 @@ void main() {
     final archived = await forget(pluginId: "fixture", target: forgettingTarget);
     expect(archived.status, 409);
     expect(
-      SessionArchivedRejection.fromJson(jsonDecode(archived.body!) as Map<String, dynamic>).reason,
+      SessionArchivedRejection.fromJson(jsonDecode(archived.body ?? fail("missing body")) as Map<String, dynamic>)
+          .reason,
       SessionArchivedReason.archivedReadOnly,
     );
     await (db.update(db.sessionTable)..where((row) => row.sessionId.equals("bridge-session"))).write(
@@ -287,7 +293,7 @@ void main() {
     runtime.stoppedPluginIds.add("fixture");
     final inactive = await forget(pluginId: "fixture", target: forgettingTarget);
     expect(
-      McpEntryActionResult.fromJson(jsonDecode(inactive.body!) as Map<String, dynamic>),
+      McpEntryActionResult.fromJson(jsonDecode(inactive.body ?? fail("missing body")) as Map<String, dynamic>),
       const McpActionUnavailable(reason: McpActionUnavailableReason.pluginInactive),
     );
     expect(plugin.forgotten, isEmpty);
@@ -310,13 +316,16 @@ void main() {
       plugin.forgettingError = PluginMcpAuthenticationUnavailableException(reason: nativeReason);
       final response = await forget(pluginId: "fixture", target: forgettingTarget);
       expect(
-        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>),
+        McpEntryActionResult.fromJson(jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>),
         McpActionUnavailable(reason: expected),
       );
     }
     plugin.forgettingError = Exception("fixture-private");
     final failed = await forget(pluginId: "fixture", target: forgettingTarget);
-    expect(McpEntryActionResult.fromJson(jsonDecode(failed.body!) as Map<String, dynamic>), const McpActionFailed());
+    expect(
+      McpEntryActionResult.fromJson(jsonDecode(failed.body ?? fail("missing body")) as Map<String, dynamic>),
+      const McpActionFailed(),
+    );
     expect(failed.body, isNot(contains("fixture-private")));
     expect(changes, isEmpty);
     expect(plugin.scopes, isEmpty);
@@ -330,8 +339,9 @@ void main() {
       action: McpServerAction.reconnect,
     );
     expect(response.status, 200);
-    final result =
-        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpActionCompleted;
+    final result = McpEntryActionResult.fromJson(
+      jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
+    ) as McpActionCompleted;
     final (target, action) = plugin.actions.single;
     expect((target.scope as PluginMcpSessionScope).sessionId, "native-session");
     expect(action, PluginMcpServerAction.reconnect);
@@ -376,7 +386,7 @@ void main() {
     expect(archived.status, 409);
     expect(archived.headers["content-type"], contains("application/json"));
     expect(
-      SessionArchivedRejection.fromJson(jsonDecode(archived.body!) as Map<String, dynamic>),
+      SessionArchivedRejection.fromJson(jsonDecode(archived.body ?? fail("missing body")) as Map<String, dynamic>),
       const SessionArchivedRejection(sessionId: "bridge-session", reason: SessionArchivedReason.archivedReadOnly),
     );
     expect(plugin.actions, isEmpty);
@@ -407,7 +417,7 @@ void main() {
       expect(changes.single, const McpInventoryRequest(pluginId: "fixture", scope: McpHarnessScope()));
       expect(
         ((McpEntryActionResult.fromJson(
-                  jsonDecode(response.body!) as Map<String, dynamic>,
+                  jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
                 ) as McpActionCompleted).inventory
                 as McpInventorySnapshot)
             .scope,
@@ -426,7 +436,10 @@ void main() {
       scope: const McpSessionScope(sessionId: "bridge-session"),
       action: McpServerAction.reconnect,
     );
-    expect(McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>), isA<McpActionFailed>());
+    expect(
+      McpEntryActionResult.fromJson(jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>),
+      isA<McpActionFailed>(),
+    );
     expect(response.body, isNot(contains("fixture-secret")));
     expect(plugin.scopes, isEmpty);
     expect(changes, isEmpty);
@@ -442,8 +455,9 @@ void main() {
       scope: const McpSessionScope(sessionId: "bridge-session"),
       action: McpServerAction.enable,
     );
-    final result =
-        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpActionCompleted;
+    final result = McpEntryActionResult.fromJson(
+      jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
+    ) as McpActionCompleted;
     expect(
       result.inventory,
       isA<McpInventoryUnavailable>().having((r) => r.reason, "reason", McpInventoryUnavailableReason.readFailed),
@@ -459,7 +473,7 @@ void main() {
       action: McpServerAction.reconnect,
     );
     expect(
-      McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>),
+      McpEntryActionResult.fromJson(jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>),
       isA<McpActionUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.pluginInactive),
     );
     expect(

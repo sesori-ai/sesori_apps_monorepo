@@ -229,7 +229,7 @@ void main() {
 
       expect(
         harness.relayClient.sendIfCurrent(
-          connection: harness.relayClient.promotedConnection!,
+          connection: harness.relayClient.promotedConnection ?? fail("no relay connection was promoted"),
           connID: 1,
           payload: Uint8List.fromList(const [1]),
         ),

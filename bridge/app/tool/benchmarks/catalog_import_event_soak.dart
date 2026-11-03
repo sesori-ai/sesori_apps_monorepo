@@ -245,9 +245,10 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
 
       schedulingProbe = _SchedulingLagProbe()..start();
       final writerStarted = Completer<void>();
-      heldWriter = database.transaction(() async {
+      final writerDatabase = database;
+      heldWriter = writerDatabase.transaction(() async {
         try {
-          await database!.customStatement(
+          await writerDatabase.customStatement(
             "UPDATE projects_table SET updated_at = updated_at WHERE project_id = ?",
             <Object?>[fixture.projectPaths.first],
           );
@@ -288,7 +289,9 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       await heldWriter;
       heldWriter = null;
 
-      await _waitForTimestampAfter(timestamp: plugin.enumerationStartedAt!);
+      await _waitForTimestampAfter(
+        timestamp: plugin.enumerationStartedAt ?? (throw StateError("enumeration start time was not recorded")),
+      );
       var translatedEvents = 0;
       for (var index = 0; index < _configuration.warmupCount; index++) {
         translatedEvents += await _projectMapAndEnqueue(
@@ -666,10 +669,13 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
     final sentinel = await database.sessionDao.getSession(sessionId: _sentinelSessionId);
     final finalTitle = "sentinel-${_configuration.eventCount - 1}";
     final finalUpdatedAt = _eventTimestamp + _configuration.warmupCount + _configuration.eventCount - 1;
-    if (sentinel?.backendSessionId != fixture.sessions.first.id ||
-        sentinel?.catalogTitle != finalTitle ||
-        sentinel?.updatedAt != finalUpdatedAt ||
-        sentinel!.projectionUpdatedAt <= plugin.enumerationStartedAt!) {
+    final enumerationStartedAt = plugin.enumerationStartedAt;
+    if (enumerationStartedAt == null) throw StateError("enumeration start time was not recorded");
+    if (sentinel == null ||
+        sentinel.backendSessionId != fixture.sessions.first.id ||
+        sentinel.catalogTitle != finalTitle ||
+        sentinel.updatedAt != finalUpdatedAt ||
+        sentinel.projectionUpdatedAt <= enumerationStartedAt) {
       throw StateError("post-import-start sentinel projection did not survive publication with its final title/time");
     }
     if (eventTracker.length != 0) {

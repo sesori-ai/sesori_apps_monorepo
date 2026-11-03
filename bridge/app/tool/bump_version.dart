@@ -114,13 +114,11 @@ Future<void> main(List<String> args) async {
   // Read current version from pubspec.yaml
   final pubspecPath = p.join(appDir, 'pubspec.yaml');
   final pubspecContent = await readFile(path: pubspecPath);
-  final versionMatch = RegExp('version: (.+)').firstMatch(pubspecContent);
-  if (versionMatch == null) {
+  final oldVersion = RegExp('version: (.+)').firstMatch(pubspecContent)?.group(1)?.trim();
+  if (oldVersion == null) {
     stderr.writeln('Error: Could not find version in pubspec.yaml');
     exit(1);
   }
-
-  final oldVersion = versionMatch.group(1)!.trim();
 
   if (oldVersion == newVersion) {
     stderr.writeln('Error: New version is the same as current version ($oldVersion)');

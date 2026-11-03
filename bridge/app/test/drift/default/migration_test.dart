@@ -1090,7 +1090,8 @@ void main() {
             for (final row in await newDb.select(newDb.sessionsTable).get())
               row.sessionId: row,
           };
-          final root = sessions['root']!;
+          final root =
+              sessions['root'] ?? fail('missing migrated session root');
           expect(root.backendSessionId, 'root');
           expect(root.parentSessionId, isNull);
           expect(root.directory, '/projects/one');
@@ -1101,7 +1102,8 @@ void main() {
           expect(root.lastAgent, 'build');
           expect(root.lastSeenAt, 150);
 
-          final worktree = sessions['worktree']!;
+          final worktree =
+              sessions['worktree'] ?? fail('missing migrated session worktree');
           expect(worktree.backendSessionId, 'worktree');
           expect(worktree.directory, '/worktrees/one');
           expect(worktree.updatedAt, 300);

@@ -157,7 +157,7 @@ class _FamilyRepository(final Map<String, SessionFamilyScope> scopes) implements
   }) async {
     resolutionOrder.add(sessionId);
     await beforeResolve?.call(sessionId);
-    return scopes[sessionId]!;
+    return scopes[sessionId] ?? fail("no family scope for $sessionId");
   }
 
   @override

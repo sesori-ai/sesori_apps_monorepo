@@ -349,7 +349,7 @@ class _FamilyRepository(final Map<String, SessionFamilyScope> scopes) implements
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
     required SessionOperation operation,
-  }) async => scopes[sessionId]!;
+  }) async => scopes[sessionId] ?? fail("no family scope for $sessionId");
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;

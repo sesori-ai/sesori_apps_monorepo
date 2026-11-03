@@ -41,7 +41,7 @@ void main() {
       );
 
       expect(repository.currentSettings.yolo, isTrue);
-      expect(jsonDecodeMap(api.config!)["yolo"], isTrue);
+      expect(jsonDecodeMap(api.config ?? fail("no config written"))["yolo"], isTrue);
       expect(permissionAutoApprovalService.approvePendingCalls, 1);
     });
 
@@ -54,7 +54,7 @@ void main() {
         const YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
       );
 
-      expect(jsonDecodeMap(api.config!)["yolo"], isFalse);
+      expect(jsonDecodeMap(api.config ?? fail("no config written"))["yolo"], isFalse);
       expect(permissionAutoApprovalService.approvePendingCalls, 0);
     });
 

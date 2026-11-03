@@ -204,7 +204,7 @@ class _FakeAppClientStatusRepository() implements AppClientStatusRepository {
   @override
   Future<AppClientStatusResult> getStatus({required String accessToken}) async {
     accessTokens.add(accessToken);
-    if (error != null) throw error!;
+    if (error case final failure?) throw failure;
     return results.removeAt(0);
   }
 }
@@ -228,7 +228,7 @@ class _FakeAppOnboardingStateRepository() implements AppOnboardingStateRepositor
     markCalls += 1;
     lastAuthBackendUrl = authBackendUrl;
     lastUserId = userId;
-    if (markError != null) throw markError!;
+    if (markError case final failure?) throw failure;
   }
 
   @override

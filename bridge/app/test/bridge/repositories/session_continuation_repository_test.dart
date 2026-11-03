@@ -88,7 +88,10 @@ void main() {
       reason: AutoContinuationPauseReason.busy,
       recheckAt: recheckAt,
     );
-    await repository.writeOutcomeAlreadyReserved(record: record!, outcome: paused);
+    await repository.writeOutcomeAlreadyReserved(
+      record: record ?? fail("the session is not ready to check"),
+      outcome: paused,
+    );
     await db.close();
     openDatabase();
     expect((await repository.read(sessionId: "session")).outcome, paused);
@@ -172,7 +175,7 @@ void main() {
         record: await repository.read(sessionId: "session"),
         outcome: outcome,
       );
-      expect((await repository.readMany(sessionIds: {"session", "missing"}))["session"]!.outcome, outcome);
+      expect((await repository.readMany(sessionIds: {"session", "missing"}))["session"]?.outcome, outcome);
     }
     await db.customStatement("DELETE FROM sessions_table WHERE session_id = ?", ["session"]);
     expect(await SessionContinuationDao(database: db).read(sessionId: "session"), isNull);

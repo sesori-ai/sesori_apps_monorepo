@@ -32,7 +32,7 @@ void main() {
     expect(response.status, 200);
     expect(service.receivedRequest, const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30));
     expect(
-      PluginManagementResponse.fromJson(jsonDecodeMap(response.body!)),
+      PluginManagementResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
       _response,
     );
   });
@@ -54,7 +54,7 @@ void main() {
     expect(response.status, 409);
     expect(response.headers, containsPair("content-type", "application/json"));
     expect(
-      PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body!)),
+      PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
       _unsupportedConflict,
     );
   });

@@ -40,7 +40,7 @@ void main() {
       dispatcher: harness.composition.routedRequestDispatcher,
       request: makeRequest("GET", "/plugin"),
     );
-    final plugins = PluginListResponse.fromJson(jsonDecodeMap(response.body!)).plugins;
+    final plugins = PluginListResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))).plugins;
 
     expect(response.status, 200);
     expect(plugins.map((plugin) => plugin.id), ["one", "two"]);
@@ -78,7 +78,7 @@ void main() {
         ),
       ),
     );
-    final management = PluginManagementResponse.fromJson(jsonDecodeMap(response.body!));
+    final management = PluginManagementResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body")));
 
     expect(response.status, 200);
     expect(management.plugins.single.idleTimeoutMins, 25);
@@ -116,7 +116,7 @@ void main() {
     );
 
     expect(response.status, 409);
-    final conflict = PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body!));
+    final conflict = PluginLifecycleConflict.fromJson(jsonDecodeMap(response.body ?? fail("missing body")));
     expect(conflict.reasons, [PluginLifecycleConflictReason.unsupported]);
   });
 
@@ -313,15 +313,13 @@ void main() {
       ),
     );
     expect(response.status, 200);
-    expect(
-      Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.status,
-      isA<SessionAutoContinuationResetKnown>(),
-    );
+    final responseStatus = _responseContinuation(response: response).status;
+    expect(responseStatus, isA<SessionAutoContinuationResetKnown>());
     final projected = await reported.timeout(const Duration(seconds: 2));
     expect(projected.info.id, "stable-session");
     expect(
-      Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.status,
-      projected.info.autoContinuation!.status,
+      responseStatus,
+      (projected.info.autoContinuation ?? fail("the projected session has no auto-continuation")).status,
     );
 
     final cancelled = updates.firstWhere((event) => event.info.autoContinuation?.status is SessionAutoContinuationIdle);
@@ -332,7 +330,7 @@ void main() {
       event: const BridgeSseSessionPromptDefaultsChanged(sessionID: "backend-session", agent: "Default", model: null),
     );
     await handoff();
-    expect((await cancelled.timeout(const Duration(seconds: 2))).info.autoContinuation!.enabled, isFalse);
+    expect((await cancelled.timeout(const Duration(seconds: 2))).info.autoContinuation?.enabled, isFalse);
     await harness.composition.session.cancel();
     await running.stopped.timeout(const Duration(seconds: 5));
   });
@@ -430,7 +428,7 @@ void main() {
 
     await observe(errorId: "first-quota");
     final dao = SessionContinuationDao(database: harness.database);
-    expect((await dao.read(sessionId: "stable-session"))!.enabled, isFalse);
+    expect((await dao.read(sessionId: "stable-session"))?.enabled, isFalse);
     final enabled = await _setContinuationOverRelay(
       socket: socket,
       messages: messages,
@@ -456,7 +454,7 @@ void main() {
       enabled: false,
       requestId: "disable",
     );
-    final disabledRow = (await dao.read(sessionId: "stable-session"))!;
+    final disabledRow = await dao.read(sessionId: "stable-session") ?? fail("the continuation row is missing");
     expect(disabledRow.enabled, isFalse);
     expect(
       SessionContinuationOutcome.fromJson(jsonDecodeMap(disabledRow.outcomeJson)),
@@ -483,7 +481,9 @@ void main() {
     );
     // The production timer stays real; only the reset-policy clock advances.
     now = reset.add(const Duration(minutes: 2));
-    final finalView = (await submitted.timeout(const Duration(seconds: 35))).info.autoContinuation!;
+    final finalView =
+        (await submitted.timeout(const Duration(seconds: 35))).info.autoContinuation ??
+        fail("the submitted session has no auto-continuation");
     expect(finalView.enabled, isTrue);
     expect(plugin.sentPromptIds, hasLength(1));
     expect(plugin.lastSendPromptSessionId, "backend-session");
@@ -500,7 +500,9 @@ void main() {
       isTrue,
     );
     final outcome = SessionContinuationOutcome.fromJson(
-      jsonDecodeMap((await dao.read(sessionId: "stable-session"))!.outcomeJson),
+      jsonDecodeMap(
+        (await dao.read(sessionId: "stable-session") ?? fail("the continuation row is missing")).outcomeJson,
+      ),
     ) as SessionContinuationSubmitted;
     expect(outcome.errorMessageId, "second-quota");
     expect(outcome.promptId, plugin.sentPromptIds.single);
@@ -581,7 +583,7 @@ void main() {
         ),
       );
       expect(response.status, 200);
-      expect(Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.enabled, isTrue);
+      expect(_responseContinuation(response: response).enabled, isTrue);
     } finally {
       await beforeRestart.close();
     }
@@ -607,7 +609,9 @@ void main() {
         // where a persisted accepted outcome must not schedule another send.
         await harness.composition.session.cancel();
         await running.stopped.timeout(const Duration(seconds: 5));
-        final row = (await SessionContinuationDao(database: harness.database).read(sessionId: "stable-session"))!;
+        final row =
+            await SessionContinuationDao(database: harness.database).read(sessionId: "stable-session") ??
+            fail("the continuation row is missing");
         expect(row.enabled, isTrue);
         final outcome =
             SessionContinuationOutcome.fromJson(jsonDecodeMap(row.outcomeJson)) as SessionContinuationSubmitted;
@@ -622,7 +626,7 @@ void main() {
         expect(
           await AcceptedPromptsDao(database: harness.database).hasRow(
             sessionId: "stable-session",
-            promptId: acceptedPromptId!,
+            promptId: acceptedPromptId ?? fail("the first restart did not accept a prompt"),
           ),
           isTrue,
         );
@@ -1117,6 +1121,10 @@ Future<RelayResponse> _dispatch({
   throw StateError("route was rejected during test setup");
 }
 
+SessionAutoContinuationView _responseContinuation({required RelayResponse response}) =>
+    Session.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))).autoContinuation ??
+    fail("the session response has no auto-continuation");
+
 Future<SessionAutoContinuationView> _setContinuationOverRelay({
   required WebSocket socket,
   required StreamIterator<dynamic> messages,
@@ -1150,7 +1158,7 @@ Future<SessionAutoContinuationView> _setContinuationOverRelay({
     if (message is RelayResponse && message.id == requestId) {
       expect(recipient, connId);
       expect(message.status, 200);
-      responseView = Session.fromJson(jsonDecodeMap(message.body!)).autoContinuation!;
+      responseView = _responseContinuation(response: message);
     } else if (message is RelaySseEvent) {
       final payload = jsonDecodeMap(message.data)["payload"] as Map<String, dynamic>;
       final event = SesoriSseEvent.fromJson({
@@ -1158,7 +1166,7 @@ Future<SessionAutoContinuationView> _setContinuationOverRelay({
         "type": payload["type"],
       });
       if (event is SesoriSessionUpdated && event.info.id == "stable-session") {
-        final view = event.info.autoContinuation!;
+        final view = event.info.autoContinuation ?? fail("the session update has no auto-continuation");
         if (view.enabled == enabled) clientViews[recipient] = view;
       }
     }

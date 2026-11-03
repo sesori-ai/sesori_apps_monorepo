@@ -38,8 +38,8 @@ void main() {
 
     final read = await api.read();
 
-    expect(read, isNotNull);
-    expect(read!.toVersion, '2.0.0');
+    if (read == null) fail('expected a stored attempt');
+    expect(read.toVersion, '2.0.0');
     expect(read.status, UpdateAttemptStatus.inFlight);
     // The temp file is renamed into place, never left behind.
     expect(File(tmpPath()).existsSync(), isFalse);
@@ -53,8 +53,8 @@ void main() {
 
     final read = await api.read();
 
-    expect(read, isNotNull);
-    expect(read!.status, UpdateAttemptStatus.appliedPendingActivation);
+    if (read == null) fail('expected a stored attempt');
+    expect(read.status, UpdateAttemptStatus.appliedPendingActivation);
     // The temp is healed into the record path so subsequent operations are clean.
     expect(File(recordPath()).existsSync(), isTrue);
     expect(File(tmpPath()).existsSync(), isFalse);
@@ -71,7 +71,7 @@ void main() {
     final read = await api.read();
 
     // The newer temp wins (not the stale inFlight target) and is healed in.
-    expect(read!.status, UpdateAttemptStatus.appliedPendingActivation);
+    expect(read?.status, UpdateAttemptStatus.appliedPendingActivation);
     expect(File(recordPath()).existsSync(), isTrue);
     expect(File(tmpPath()).existsSync(), isFalse);
   });
@@ -83,7 +83,7 @@ void main() {
     final read = await api.read();
 
     // The corrupt temp is discarded; the last committed record is returned.
-    expect(read!.status, UpdateAttemptStatus.inFlight);
+    expect(read?.status, UpdateAttemptStatus.inFlight);
     expect(File(tmpPath()).existsSync(), isFalse);
   });
 
