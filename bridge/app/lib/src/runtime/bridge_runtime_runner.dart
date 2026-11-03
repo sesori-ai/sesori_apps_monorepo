@@ -1083,9 +1083,7 @@ class const BridgeRuntimeRunner._() {
     // the ADR A9 grace timer un-armed and the helper running with no parent.
     final lossListener = ControlChannelLossListener(
       connectionState: controlChannelClient.connectionState,
-      // The composition root owns the exit-code vocabulary, so the listener's
-      // code is pinned to the enum here rather than relying on the listener's
-      // own default staying in sync with it.
+      gracePeriod: const Duration(seconds: 5),
       exitCode: BridgeSupervisedExitCode.controlChannelLost.code,
       // Don't hard-exit straight from the loss timer: that bypasses the ordered
       // plugin stop in the shutdown coordinator and could orphan an owned

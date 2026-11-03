@@ -30,6 +30,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fakes/fake_bridge_plugin.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_chat_history.dart";
@@ -141,7 +142,7 @@ void main() {
       final second = await _SseTestClient.connect(debugServer.boundPort!);
       addTearDown(second.close);
 
-      plugin.add(const BridgeSseVcsBranchUpdated());
+      plugin.emitEvent(const BridgeSseVcsBranchUpdated());
 
       final firstEvent = await first.nextEvent();
       final secondEvent = await second.nextEvent();
@@ -154,13 +155,13 @@ void main() {
       final client = await _SseTestClient.connect(debugServer.boundPort!);
       addTearDown(client.close);
 
-      plugin.add(const BridgeSseFileEdited(file: "developer’s workspace"));
+      plugin.emitEvent(const BridgeSseFileEdited(file: "developer’s workspace"));
 
       final unicodeEvent = jsonDecodeMap(await client.nextEvent());
       expect(unicodeEvent["type"], "file.edited");
       expect(unicodeEvent["file"], "developer’s workspace");
 
-      plugin.add(const BridgeSseVcsBranchUpdated());
+      plugin.emitEvent(const BridgeSseVcsBranchUpdated());
 
       final followingEvent = jsonDecodeMap(await client.nextEvent());
       expect(followingEvent["type"], "vcs.branch.updated");
@@ -176,7 +177,7 @@ void main() {
 
         await second.close();
 
-        plugin.add(const BridgeSseVcsBranchUpdated());
+        plugin.emitEvent(const BridgeSseVcsBranchUpdated());
         final firstEvent = await first.nextEvent();
         expect(firstEvent, contains("vcs.branch.updated"));
       },
@@ -203,7 +204,7 @@ void main() {
       final client = await _SseTestClient.connect(debugServer.boundPort!);
       addTearDown(client.close);
 
-      plugin.add(
+      plugin.emitEvent(
         const BridgeSseSessionCreated(
           info: {
             "id": "s1",
@@ -216,7 +217,7 @@ void main() {
           },
         ),
       );
-      plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
+      plugin.emitEvent(const BridgeSseSessionDiff(sessionID: "s1"));
 
       final mappedEvents = <Map<String, dynamic>>[];
       while (mappedEvents.length < 2) {
@@ -277,8 +278,8 @@ void main() {
 
       final client = await _SseTestClient.connect(failingServer.boundPort!);
       addTearDown(client.close);
-      failingPlugin.add(const BridgeSseProjectUpdated());
-      failingPlugin.add(const BridgeSseVcsBranchUpdated());
+      failingPlugin.emitEvent(const BridgeSseProjectUpdated());
+      failingPlugin.emitEvent(const BridgeSseVcsBranchUpdated());
 
       String event;
       do {
@@ -1033,192 +1034,31 @@ abstract interface class _SubscriptionAwarePlugin() {
   Future<void> get eventsSubscribed;
 }
 
-class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
-  @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
-
-  @override
-  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
-
-  @override
-  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
-
-  final _controller = StreamController<BridgeSseEvent>.broadcast();
+class _FakeBridgePlugin() extends FakeBridgePlugin implements _SubscriptionAwarePlugin {
   final Completer<void> _eventsSubscribed = Completer<void>();
-
-  List<PluginProject> projectsResult = [];
-  List<PluginSession> sessionsResult = [];
-  List<PluginMessageWithParts> messagesResult = [];
-  List<String> messageSessionIds = [];
-  bool throwOnGetProjects = false;
+  final List<String> messageSessionIds = [];
   bool throwOnActiveSummary = false;
-
-  @override
-  String get id => "fake";
 
   @override
   Stream<BridgeSseEvent> get events {
     if (!_eventsSubscribed.isCompleted) _eventsSubscribed.complete();
-    return _controller.stream;
+    return super.events;
   }
 
   @override
   Future<void> get eventsSubscribed => _eventsSubscribed.future;
 
   @override
-  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
-    required PluginCatalogCancellationSignal cancellation,
-  }) async => const PluginCatalogSnapshotUnavailable();
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    if (throwOnGetProjects) throw Exception("fake error");
-    return projectsResult;
-  }
-
-  @override
-  Future<List<PluginSession>> getSessions({required String projectId}) async => sessionsResult;
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-  );
-
-  @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-  );
-
-  @override
-  Future<void> deleteSession(String sessionId) async {}
-
-  @override
-  Future<void> archiveSession({required String sessionId}) async {}
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async {
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) {
     messageSessionIds.add(sessionId);
-    return messagesResult;
+    return super.getSessionMessages(sessionId);
   }
-
-  @override
-  Future<void> sendPrompt({
-    required String promptId,
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<PluginAbortResult> abortSession({
-    required String sessionId,
-    required PluginAbortSubAgentPolicy subAgents,
-    required bool useAtomicStop,
-    required Set<String> knownSubAgentSessionIds,
-  }) async => const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
     if (throwOnActiveSummary) throw StateError("summary failed");
-    return [];
+    return super.getActiveSessionsSummary();
   }
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      const PluginProvidersResult(providers: []);
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> sendCommand({
-    required String promptId,
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  Future<void> dispose() async {}
-
-  void add(BridgeSseEvent event) => _controller.add(event);
-  Future<void> close() => _controller.close();
 }
 
 class _BlockingMutationPlugin({required final Future<void> Function() onDispose}) extends _FakeBridgePlugin {
@@ -1246,7 +1086,6 @@ class _BlockingMutationPlugin({required final Future<void> Function() onDispose}
     );
   }
 
-  @override
   Future<void> dispose() async {
     disposeCalls++;
     await onDispose();
@@ -1291,31 +1130,18 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
 }
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
-class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
-  @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
-
-  @override
-  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
-
-  @override
-  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
-
-  final _eventController = StreamController<BridgeSseEvent>.broadcast();
+class _TrackingBridgePlugin() extends FakeBridgePlugin implements _SubscriptionAwarePlugin {
   final Completer<void> _eventsSubscribed = Completer<void>();
   int subscribeCount = 0;
   int unsubscribeCount = 0;
 
   @override
-  String get id => "tracking";
-
-  @override
   Stream<BridgeSseEvent> get events {
+    final source = super.events;
     return Stream<BridgeSseEvent>.multi((controller) {
       subscribeCount++;
       if (!_eventsSubscribed.isCompleted) _eventsSubscribed.complete();
-      final sub = _eventController.stream.listen(
+      final sub = source.listen(
         controller.add,
         onError: controller.addError,
         onDone: controller.close,
@@ -1329,150 +1155,6 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
 
   @override
   Future<void> get eventsSubscribed => _eventsSubscribed.future;
-
-  @override
-  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
-    required PluginCatalogCancellationSignal cancellation,
-  }) async => const PluginCatalogSnapshotUnavailable();
-
-  @override
-  Future<List<PluginProject>> getProjects() async => [];
-
-  @override
-  Future<List<PluginSession>> getSessions({required String projectId}) async => [];
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-  );
-
-  @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-  );
-
-  @override
-  Future<void> deleteSession(String sessionId) async {}
-
-  @override
-  Future<void> archiveSession({required String sessionId}) async {}
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async => [];
-
-  @override
-  Future<void> sendPrompt({
-    required String promptId,
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<PluginAbortResult> abortSession({
-    required String sessionId,
-    required PluginAbortSubAgentPolicy subAgents,
-    required bool useAtomicStop,
-    required Set<String> knownSubAgentSessionIds,
-  }) async => const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> sendCommand({
-    required String promptId,
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required bool fastMode,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      const PluginProvidersResult(providers: []);
-
-  Future<void> dispose() async {}
-
-  Future<void> close() => _eventController.close();
 }
 
 // ---------------------------------------------------------------------------

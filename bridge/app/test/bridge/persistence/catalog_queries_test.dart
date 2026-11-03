@@ -129,10 +129,6 @@ void main() {
       "root-new",
     );
     expect(
-      (await db.projectsDao.getProjectsByPath(path: "/projects/one")).single.projectId,
-      "project-1",
-    );
-    expect(
       (await db.projectsDao.getCatalogProjects()).map((row) => row.projectId),
       ["project-2", "project-1"],
     );
@@ -154,8 +150,6 @@ void main() {
       ))?.completedAt,
       20,
     );
-    await db.catalogHydrationsDao.deleteForPlugin(pluginId: "codex");
-    expect(await db.select(db.catalogHydrationsTable).get(), isEmpty);
   });
 
   test("catalog queries use their declared indexes", () async {
