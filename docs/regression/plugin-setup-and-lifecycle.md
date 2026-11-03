@@ -67,11 +67,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   The plugin list reports a stopping runtime as ready, like a starting one, so the
   new-session chooser and the desktop bridge status never show a merely stopping
   harness as degraded; only a degraded or failed runtime is named in the desktop
-  bridge status, with its hint. While a runtime is degraded, the hint the plugin
-  reported with that degradation replaces the generic degraded hint in the plugin
-  list and the harness management row (setup hints still win in the row); it
-  clears on recovery or restart. A failed runtime keeps the generic failed hint,
-  because a plugin's failure reason is a diagnostic for the log, not an instruction.
+  bridge status, with its hint. While a runtime is degraded by a status that needs
+  the user, the hint the plugin reported with it replaces the generic degraded hint
+  in the plugin list (seen by phone and desktop clients) and the harness management
+  row (setup hints still win in the row). It clears on any status other than that
+  degradation (restarting, ready, failed, stopping) and on a degradation that does
+  not need the user. A failed runtime keeps the generic failed hint, because a
+  plugin's failure reason is a diagnostic for the log, not an instruction.
 - Only an authentication-required block offers Recheck. It requests fresh management
   evidence when authentication may have been restored elsewhere; it does not authenticate.
   Disabled and every other blocked reason omit that action. A first check failure

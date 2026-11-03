@@ -1969,7 +1969,7 @@ class PluginRuntime({
       return;
     }
     final previousState = slot.state;
-    slot.degradedActionHint = status is PluginDegraded ? status.userActionHint : null;
+    slot.degradedActionHint = status is PluginDegraded && status.requiresUserAction ? status.userActionHint : null;
     slot.state = switch (status) {
       PluginStarting() || PluginReady() => PluginRuntimeState.active,
       PluginDegraded() || PluginRestarting() => PluginRuntimeState.degraded,

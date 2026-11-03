@@ -104,6 +104,17 @@ void main() {
       expect(runtime.snapshot.single.degradedActionHint, hint);
     }
 
+    statuses.add(
+      PluginDegraded(
+        since: DateTime.utc(2026, 11, 2),
+        recoverable: true,
+        requiresUserAction: false,
+        userActionHint: "Not an instruction.",
+      ),
+    );
+    await pumpEventQueue();
+    expect(runtime.snapshot.single.degradedActionHint, isNull);
+
     statuses.add(const PluginRestarting(attempt: 1, reason: null));
     await pumpEventQueue();
     expect(runtime.snapshot.single.state, PluginRuntimeState.degraded);
