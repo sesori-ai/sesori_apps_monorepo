@@ -1,10 +1,69 @@
+import "package:drift/drift.dart";
 import "package:drift/native.dart";
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 export "single_plugin_repository_test_support.dart";
 
 AppDatabase createTestDatabase() => AppDatabase(NativeDatabase.memory());
+
+/// Test-only reads over the projects table; production code never needs them.
+extension ProjectsDaoTestQueries on ProjectsDao {
+  Future<Set<String>> getHiddenProjectIds() async {
+    final rows = await (select(projectsTable)..where((table) => table.hidden.equals(true))).get();
+    return {for (final row in rows) row.projectId};
+  }
+
+  Future<List<ProjectDto>> getProjectsByPath({required String path}) {
+    return (select(projectsTable)..where((table) => table.path.equals(path))).get();
+  }
+}
+
+/// Test setup only: inserts minimal non-dedicated session rows for ids that do
+/// not exist yet and leaves existing rows untouched. Production rows are
+/// created by `SessionRepository`'s create and observed-binding flows.
+extension SessionDaoTestSeeding on SessionDao {
+  Future<void> insertSessionsIfMissing({
+    required String pluginId,
+    required List<
+      ({
+        String sessionId,
+        String backendSessionId,
+        String projectId,
+        String directory,
+        int createdAt,
+        int? archivedAt,
+      })
+    >
+    sessions,
+  }) async {
+    if (sessions.isEmpty) return;
+    await batch((batch) {
+      batch.insertAll(
+        sessionTable,
+        [
+          for (final session in sessions)
+            SessionTableCompanion(
+              sessionId: Value(session.sessionId),
+              backendSessionId: Value(session.backendSessionId),
+              projectId: Value(session.projectId),
+              directory: Value(session.directory),
+              isDedicated: const Value(false),
+              createdAt: Value(session.createdAt),
+              updatedAt: Value(session.createdAt),
+              projectionUpdatedAt: Value(session.createdAt),
+              archivedAt: Value(session.archivedAt),
+              pluginId: Value(pluginId),
+            ),
+        ],
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+}
 
 /// Inserts a bound session row (and its project) straight through the DAOs.
 ///

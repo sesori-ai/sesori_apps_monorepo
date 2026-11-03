@@ -375,6 +375,7 @@ class Orchestrator({
       tracker: pushTracker,
       debounceDuration: const Duration(milliseconds: 500),
     );
+    const pushContentBuilder = PushNotificationContentBuilder();
     final pushDispatcher = PushDispatcher(
       client: PushNotificationClient(
         authBackendURL: config.authBackendURL,
@@ -383,10 +384,9 @@ class Orchestrator({
       ),
       rateLimiter: pushRateLimiter,
       tracker: pushTracker,
-      contentBuilder: const PushNotificationContentBuilder(),
+      contentBuilder: pushContentBuilder,
       bridgeIdProvider: _bridgeRegistrationService,
     );
-    const pushContentBuilder = PushNotificationContentBuilder();
     final completionListener = CompletionPushListener(
       tracker: pushTracker,
       completionNotifier: completionNotifier,
@@ -1065,15 +1065,12 @@ class OrchestratorSession._({
       },
       onError: (Object e, StackTrace st) {
         Log.w("plugin event stream error", e, st);
-        unawaited(
-          _failureReporter.recordFailure(
-            error: e,
-            stackTrace: st,
-            uniqueIdentifier: "bridge.plugin.events",
-            fatal: false,
-            reason: "plugin event stream failure",
-            information: const [],
-          ),
+        _reportFailure(
+          error: e,
+          stackTrace: st,
+          uniqueIdentifier: "bridge.plugin.events",
+          reason: "plugin event stream failure",
+          information: const [],
         );
       },
       onDone: () {
@@ -1161,11 +1158,7 @@ class OrchestratorSession._({
     _relayConnection = relayConnection;
     Log.d("relay connected");
     if (_cancelled) {
-      final closeFuture = _client.closeIfCurrent(connection: relayConnection);
-      if (identical(_relayConnection, relayConnection)) {
-        _relayConnection = null;
-      }
-      await closeFuture;
+      await _closeAndForgetRelayConnection(connection: relayConnection);
       return;
     }
 
@@ -1183,12 +1176,7 @@ class OrchestratorSession._({
 
     await _permissionAutoApprovalService.approvePending();
     final startupSummary = await _buildProjectsSummary();
-    if (startupSummary != null) {
-      _completionListener.handleSseEvent(startupSummary);
-      if (startupSummary is SesoriProjectsSummary) {
-        _statusNotifier?.handleProjectsSummary(summary: startupSummary);
-      }
-    }
+    if (startupSummary != null) _feedLocalObservers(startupSummary);
     _sessionUnseenService.unseenChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -1267,7 +1255,7 @@ class OrchestratorSession._({
       attempt(_chatHistoryActivityListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-    await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
+    await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_inFlightRelayCompletions.drain)]);
     await Future.wait([
       attempt(_mcpService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
@@ -1316,8 +1304,7 @@ class OrchestratorSession._({
     ]);
     Log.v("[shutdown] maintenance + view listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
-    // shutdown coordinator's ordered step — the deprecated direct
-    // api.dispose() call is gone since the descriptor flip.
+    // shutdown coordinator's ordered step.
     Log.v("stopping sse manager...");
     await attempt(_sseManager.stop);
     Log.v("sse manager stopped (+${teardownSw.elapsedMilliseconds}ms)");
@@ -1433,16 +1420,11 @@ class OrchestratorSession._({
           if (_cancelled) {
             return;
           }
-          final closeFuture = _client.closeIfCurrent(connection: connection);
-          if (identical(_relayConnection, connection)) {
-            _relayConnection = null;
-          }
-          await closeFuture;
+          await _closeAndForgetRelayConnection(connection: connection);
           if (_cancelled) {
             return;
           }
-          final reconnectFuture = _client.connect();
-          final reconnected = await reconnectFuture;
+          final reconnected = await _client.connect();
           if (_cancelled) {
             await _client.closeIfCurrent(connection: reconnected);
             return;
@@ -1501,11 +1483,17 @@ class OrchestratorSession._({
       await _client.cancelPendingConnection();
       return;
     }
+    await _closeAndForgetRelayConnection(connection: connection);
+  }
+
+  /// Closes [connection] if it is still the client's current one and stops
+  /// tracking it, so no later send reuses a connection that is going away.
+  Future<void> _closeAndForgetRelayConnection({required RelayConnection connection}) {
     final closeFuture = _client.closeIfCurrent(connection: connection);
     if (identical(_relayConnection, connection)) {
       _relayConnection = null;
     }
-    await closeFuture;
+    return closeFuture;
   }
 
   void _trackRelayCompletion({
@@ -1535,10 +1523,6 @@ class OrchestratorSession._({
           }(),
         )
         .ignore();
-  }
-
-  Future<void> _drainRelayCompletions() async {
-    await _inFlightRelayCompletions.drain();
   }
 
   String _inFlightRelayWorkDiagnostic({required String separator}) {
@@ -1754,19 +1738,12 @@ class OrchestratorSession._({
       }
     } catch (e, st) {
       Log.e("[sse] error processing event $eventType", e, st);
-      unawaited(
-        _failureReporter
-            .recordFailure(
-              error: e,
-              stackTrace: st,
-              uniqueIdentifier: "sse_event_processing:$eventType",
-              fatal: false,
-              reason: "Failed to process SSE event",
-              information: [eventType.toString()],
-            )
-            .catchError((Object reportError, StackTrace reportStackTrace) {
-              Log.w("[sse] failed to report processing failure", reportError, reportStackTrace);
-            }),
+      _reportFailure(
+        error: e,
+        stackTrace: st,
+        uniqueIdentifier: "sse_event_processing:$eventType",
+        reason: "Failed to process SSE event",
+        information: [eventType.toString()],
       );
     }
   }
@@ -1882,10 +1859,7 @@ class OrchestratorSession._({
     Log.v(
       "[sse] mapped to: ${event.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
     );
-    _completionListener.handleSseEvent(event);
-    if (event is SesoriProjectsSummary) {
-      _statusNotifier?.handleProjectsSummary(summary: event);
-    }
+    _feedLocalObservers(event);
     // A newly announced root must be queryable as soon as a phone receives
     // the event; unlike other activity, its binding is mandatory first.
     if (event is SesoriSessionCreated) {
@@ -1980,26 +1954,49 @@ class OrchestratorSession._({
       );
     } catch (e, st) {
       Log.e("[sse] error building projects summary", e, st);
-      unawaited(
-        _failureReporter
-            .recordFailure(
-              error: e,
-              stackTrace: st,
-              uniqueIdentifier: "sse_projects_summary",
-              fatal: false,
-              reason: "Failed to build projects summary event",
-              information: const [],
-            )
-            .catchError((Object reportError, StackTrace reportStackTrace) {
-              Log.w(
-                "[sse] projects-summary failure report failed",
-                reportError,
-                reportStackTrace,
-              );
-            }),
+      _reportFailure(
+        error: e,
+        stackTrace: st,
+        uniqueIdentifier: "sse_projects_summary",
+        reason: "Failed to build projects summary event",
+        information: const [],
       );
       return null;
     }
+  }
+
+  /// Feeds an outgoing event to the in-process observers: completion pushes
+  /// and, for a projects summary, the desktop status notifier.
+  void _feedLocalObservers(SesoriSseEvent event) {
+    _completionListener.handleSseEvent(event);
+    if (event is SesoriProjectsSummary) {
+      _statusNotifier?.handleProjectsSummary(summary: event);
+    }
+  }
+
+  /// Records a non-fatal failure without waiting for the report, logging a
+  /// failed report instead of letting it escape as an unhandled error.
+  void _reportFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String uniqueIdentifier,
+    required String reason,
+    required List<Object> information,
+  }) {
+    unawaited(
+      _failureReporter
+          .recordFailure(
+            error: error,
+            stackTrace: stackTrace,
+            uniqueIdentifier: uniqueIdentifier,
+            fatal: false,
+            reason: reason,
+            information: information,
+          )
+          .catchError((Object reportError, StackTrace reportStackTrace) {
+            Log.w("failed to report $uniqueIdentifier failure", reportError, reportStackTrace);
+          }),
+    );
   }
 
   /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracking.
@@ -2601,7 +2598,7 @@ class OrchestratorSession._({
           if (_cancelled) return;
           if (projectsSummary != null) {
             _enqueueWireEvent(projectsSummary);
-            _completionListener.handleSseEvent(projectsSummary);
+            _feedLocalObservers(projectsSummary);
           }
           Log.v("initial projectsSummary enqueued");
         } on Object catch (error, stackTrace) {
@@ -2700,12 +2697,8 @@ class OrchestratorSession._({
         payload: payload,
       );
     } on Object {
-      final closeFuture = _client.closeIfCurrent(connection: connection);
-      if (identical(_relayConnection, connection)) {
-        _relayConnection = null;
-      }
       unawaited(
-        closeFuture.then<void>(
+        _closeAndForgetRelayConnection(connection: connection).then<void>(
           (_) {},
           onError: (Object error, StackTrace stackTrace) {
             Log.w("Failed to close relay after send failure", error, stackTrace);
