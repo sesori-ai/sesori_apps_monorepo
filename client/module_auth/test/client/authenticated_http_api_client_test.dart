@@ -721,8 +721,6 @@ void main() {
   });
 }
 
-// ignore: no_slop_linter/prefer_specific_type, mocktail fallback
 String _fakeFromJson(dynamic json) => "";
 
-// ignore: no_slop_linter/prefer_specific_type, test parser callback
 String _parseString(dynamic json) => json as String;

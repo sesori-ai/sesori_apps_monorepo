@@ -7,7 +7,6 @@ import "../repositories/session_repository.dart";
 final class SessionAbortDescendantFailureException({
   // Dart permits throwing any non-null Object; retain exact Error and
   // non-Exception causes instead of narrowing or stringifying them.
-  // ignore: no_slop_linter/prefer_specific_type
   required final Object cause,
   required final StackTrace causeStackTrace,
 }) implements Exception;

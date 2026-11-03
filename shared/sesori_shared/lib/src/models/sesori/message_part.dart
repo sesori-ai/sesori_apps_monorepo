@@ -53,7 +53,6 @@ final class const _MalformedMessageAttachmentError({required final Object innerE
   String toString() => "Malformed message attachment payload";
 }
 
-// ignore: no_slop_linter/prefer_specific_type, JSON converter input
 MessageAttachment? _messageAttachmentOrNullFromJson(Object? json) {
   if (json == null) return null;
   if (json is! Map) {
@@ -61,7 +60,6 @@ MessageAttachment? _messageAttachmentOrNullFromJson(Object? json) {
     return null;
   }
   try {
-    // ignore: no_slop_linter/prefer_specific_type, generated fromJson signature
     return MessageAttachment.fromJson(Map<String, dynamic>.from(json));
   } on Object catch (error, stackTrace) {
     developer.log(
@@ -74,11 +72,9 @@ MessageAttachment? _messageAttachmentOrNullFromJson(Object? json) {
   }
 }
 
-// ignore: no_slop_linter/prefer_specific_type, JSON converter input
 MessageAttachment _messageAttachmentFromJson(Object? json) =>
     _messageAttachmentOrNullFromJson(json) ?? const MessageAttachment.unknown();
 
-// ignore: no_slop_linter/prefer_specific_type, JSON converter input
 List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
   if (json == null) return const [];
   if (json is! List) {

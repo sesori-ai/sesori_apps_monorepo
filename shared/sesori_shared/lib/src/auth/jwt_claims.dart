@@ -33,7 +33,6 @@ String? parseJwtUserId(String token) {
 
 /// Decodes the payload segment of a JWT into its claims map, or `null` when
 /// the token is not a decodable three-segment JWT. Never throws.
-// ignore: no_slop_linter/prefer_specific_type, JSON decoding
 Map<String, dynamic>? _decodeJwtPayload(String token) {
   try {
     final parts = token.split(".");

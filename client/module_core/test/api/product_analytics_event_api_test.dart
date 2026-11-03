@@ -28,7 +28,6 @@ class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpA
   String? lastBody;
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
   Future<ApiResponse<T>> postForUser<T>({
     required Uri url,
     required String userId,

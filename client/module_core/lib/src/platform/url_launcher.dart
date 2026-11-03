@@ -28,7 +28,6 @@ extension UrlDiagnosticPresentation on Uri {
 /// Retains the original failure while omitting its known outbound URI from logs.
 class const ExternalLinkLaunchFailure({
   required final Uri url,
-  // ignore: no_slop_linter/prefer_specific_type, preserve the original arbitrary thrown launcher failure
   required final Object innerError,
 }) implements Exception {
   @override
