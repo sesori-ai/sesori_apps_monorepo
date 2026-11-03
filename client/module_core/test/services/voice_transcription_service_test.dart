@@ -330,6 +330,32 @@ void main() {
       expect(await uploadedKey(from: moving), twoKey);
     });
 
+    test("a recording under way when the project changes uploads with its own project's key", () async {
+      when(
+        () => projectRepository.getProject(projectId: "project-1"),
+      ).thenAnswer((_) async => answer(projectId: "project-1", key: oneKey));
+      when(
+        () => projectRepository.getProject(projectId: "project-2"),
+      ).thenAnswer((_) async => answer(projectId: "project-2", key: twoKey));
+      final moving = service.createSession(projectId: "project-1", allowLive: false);
+      await Future<void>.delayed(Duration.zero);
+
+      await service.start(session: moving);
+      service.setProject(session: moving, projectId: "project-2");
+      await Future<void>.delayed(Duration.zero);
+      await service.stopAndTranscribe(session: moving);
+
+      verify(
+        () => repository.transcribe(
+          audioFilePath: artifact.path,
+          mimeType: artifact.mimeType,
+          projectGlossaryKey: oneKey,
+        ),
+      ).called(1);
+      clearInteractions(repository);
+      expect(await uploadedKey(from: moving), twoKey);
+    });
+
     test("the old project's late answer neither scopes the session nor blocks the new one's", () async {
       final oneAnswer = Completer<ApiResponse<Project>>();
       final twoAnswer = Completer<ApiResponse<Project>>();

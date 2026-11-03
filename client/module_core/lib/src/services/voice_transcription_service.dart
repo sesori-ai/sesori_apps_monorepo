@@ -52,8 +52,8 @@ class VoiceTranscriptionService({
 
   /// Moves [session] to [projectId] for dictation started from now on: it drops
   /// the old project's glossary key, and an answer still on its way for that
-  /// project, and asks for the new one's. A recording under way keeps the key
-  /// it started with.
+  /// project, and asks for the new one's. A recording under way, or one kept
+  /// for a retry, still uploads with its own project's key.
   void setProject({required VoiceTranscriptionSession session, required String? projectId}) {
     final normalized = projectId == null || projectId.trim().isEmpty ? null : projectId;
     if (normalized == session._projectId) return;
@@ -144,10 +144,17 @@ class VoiceTranscriptionService({
     }
   }
 
-  void _logProjectGlossaryUse({required VoiceTranscriptionSession session}) {
-    final glossary = session._projectGlossaryKey == null ? "no project glossary" : "the project glossary";
+  void _logProjectGlossaryUse({required ProjectGlossaryKey? key}) {
+    final glossary = key == null ? "no project glossary" : "the project glossary";
     logi("Transcribing with $glossary");
   }
+
+  /// The glossary key for the dictation [session] last started, in the project
+  /// it started in.
+  ProjectGlossaryKey? _dictationGlossaryKey({required VoiceTranscriptionSession session}) =>
+      session._dictationProjectId == session._projectId
+      ? session._projectGlossaryKey
+      : _rememberedProjectGlossaryKey(projectId: session._dictationProjectId);
 
   Stream<double> amplitudeStream({required VoiceTranscriptionSession session}) =>
       session._captureSession.amplitudeStream;
@@ -212,6 +219,7 @@ class VoiceTranscriptionService({
   Future<void> _start({required VoiceTranscriptionSession session}) async {
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
+    session._dictationProjectId = session._projectId;
     if (session._projectGlossaryKey == null) _loadProjectGlossaryKeyIfIdle(session: session);
     // Read once, here: the dictation keeps this mode whatever the switches do next.
     final mode = _chooseMode(session: session);
@@ -230,7 +238,7 @@ class VoiceTranscriptionService({
         case VoiceDictationMode.afterRecording:
           await _startFileCapture(session: session, generation: generation, fellBackFromLive: false);
         case VoiceDictationMode.live:
-          _logProjectGlossaryUse(session: session);
+          _logProjectGlossaryUse(key: session._projectGlossaryKey);
           await _startLiveCapture(
             session: session,
             generation: generation,
@@ -500,12 +508,13 @@ class VoiceTranscriptionService({
     required bool releaseCaptureOperation,
   }) async {
     VoiceTranscriptionError? retainedFailure;
-    _logProjectGlossaryUse(session: session);
+    final glossaryKey = _dictationGlossaryKey(session: session);
+    _logProjectGlossaryUse(key: glossaryKey);
     try {
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectGlossaryKey: session._projectGlossaryKey,
+        projectGlossaryKey: glossaryKey,
       );
       if (!_ownsGeneration(session: session, generation: generation)) {
         throw VoiceTranscriptionError.cancelled();
@@ -757,6 +766,9 @@ class VoiceTranscriptionSession._({
   Future<void>? _projectGlossaryKeyLoad;
   Timer? _maxDurationTimer;
   ProjectGlossaryKey? _projectGlossaryKey;
+
+  /// The project the last dictation started in, whose key its upload carries.
+  String? _dictationProjectId;
 
   /// False until the voice mode says live and this host can stream, which is also
   /// the answer for a session that doesn't allow live.

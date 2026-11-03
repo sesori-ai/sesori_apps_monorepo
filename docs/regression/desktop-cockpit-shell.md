@@ -189,7 +189,7 @@ The main pane hosts one full-width routed page.
   floating glass bar and one full-width transcript and composer.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project", else the
   newest session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
-  filter or a header pick moves it with its own draft, a still-loading list keeps the loader up until it names the
+  filter or a header pick moves it there with what it holds, a still-loading list keeps the loader up until it names the
   project or finishes loading, and with no default the shared "Choose a project" prompt shows instead, offering only
   "Open folder…" when there are no projects; a bridge whose only project is "No project" still shows the composer, in
   "No project". After the bridge connects, the composer appears at its final layout at once, with the parts still

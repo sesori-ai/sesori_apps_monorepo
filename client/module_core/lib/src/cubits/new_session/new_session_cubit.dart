@@ -378,21 +378,22 @@ class NewSessionCubit({
     final generation = ++_loadGeneration;
     final plugin = data.plugin;
     final source = data.optionsState.source;
-    // A harness with no options to load, or one the user loads on demand,
-    // stays as it is: neither is the project's. So does a login card, unless
-    // its recheck was on its way: the new project answers it instead.
+    // A harness with no options, or one the user loads on demand, stays as it
+    // is: neither is the project's. So does a login card, unless its recheck
+    // was on its way: the new project answers it instead. Options the last
+    // project had none of, or failed to give, are this one's to answer.
     final reloads = switch (data.optionsState) {
       NewSessionOptionsLoadingState() ||
       NewSessionOptionsRefreshingState() ||
       NewSessionOptionsAvailableState() ||
       NewSessionOptionsFailureRetainedState() ||
-      NewSessionOptionsFailureState() => true,
-      NewSessionOptionsAuthenticationRequiredUnavailableState() ||
-      NewSessionOptionsAuthenticationRequiredRetainedState() => superseded != null,
-      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsFailureState() ||
       NewSessionOptionsUnavailableState() ||
       NewSessionOptionsLoadFailureUnavailableState() ||
-      NewSessionOptionsRefreshFailureUnavailableState() => false,
+      NewSessionOptionsRefreshFailureUnavailableState() => true,
+      NewSessionOptionsAuthenticationRequiredUnavailableState() ||
+      NewSessionOptionsAuthenticationRequiredRetainedState() => superseded != null,
+      NewSessionOptionsUnsupportedState() => false,
     };
     if (plugin == null || !plugin.isRoutable || source == null || !data.backendScope.isVerified || !reloads) return;
     _emitStateUpdate(
@@ -748,7 +749,9 @@ class NewSessionCubit({
 
   /// Whether a session can start now. Options are not waited for: a session
   /// sent before they arrive runs on the harness' defaults. The project check
-  /// is, since it decides whether the requested worktree can be honoured.
+  /// is, since it decides whether the requested worktree can be honoured, and
+  /// so are options being asked again: the picks on screen may be another
+  /// project's until the answer reconciles them.
   bool get canCreateSession {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
@@ -757,6 +760,7 @@ class NewSessionCubit({
         (data.plugin?.isRoutable ?? false) &&
         data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.loading &&
         data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
+        data.optionsState is! NewSessionOptionsRefreshingState &&
         !data.optionsState.authenticationRequired;
   }
 
