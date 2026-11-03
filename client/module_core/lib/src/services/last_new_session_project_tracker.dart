@@ -32,8 +32,9 @@ class LastNewSessionProjectTracker({
     _statusSubscription = connectionService.status.listen(_onConnectionStatus);
   }
 
-  /// Only `NewSessionCubit` calls this, when the user picks [projectId] in
-  /// the composer or starts a session in it.
+  /// Called when the user picks [projectId]: by `NewSessionCubit` for a pick
+  /// in the composer or a session started in it, and by `AllSessionsCubit`
+  /// for a pick in the no-project prompt, before any composer exists.
   void record({required String projectId}) {
     final bridgeId = _bridgeId;
     if (bridgeId == null) return;
