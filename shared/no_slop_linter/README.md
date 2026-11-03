@@ -17,7 +17,7 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `avoid_material_icons` | Prevents Material `Icons` glyphs; use `TablerRegular` or `TablerSolid` |
 | `avoid_mutable_class_fields` | Prevents non-final public instance fields |
 | `avoid_navigator_of` | Prevents direct `Navigator` usage; use GoRouter |
-| `avoid_raw_go_router` | Prevents raw GoRouter navigation and direct GoRouter access; use the typed route extensions |
+| `avoid_raw_go_router` | Prevents raw navigation calls on `BuildContext`, `GoRouter` and `NavigatorState` receivers, and direct GoRouter access; use the typed route extensions |
 | `avoid_raw_modal_presenters` | Prevents `showDialog`, `showModalBottomSheet` and other SDK modal presenters; use `showPregoModal` |
 | `avoid_string_literals_in_widgets` | Prevents hardcoded strings in `Text` widgets; use localization |
 | `prefer_edge_insets_directional` | Enforces `EdgeInsetsDirectional` for RTL support |

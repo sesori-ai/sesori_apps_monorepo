@@ -15,7 +15,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   static const String initializeMetadataKey = deepSeekExtensionMetadataKey;
   static const int extensionProtocolVersion = 2;
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekInitializeMetadataDto parseInitializeMetadata(Map<String, dynamic> json) {
     final metadata = DeepSeekInitializeMetadataDto.fromJson(json);
     if (metadata.extensionProtocolVersion != extensionProtocolVersion ||
@@ -27,7 +26,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return metadata;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekPromptMetadataDto parsePromptMetadata(Map<String, dynamic> json) {
     final metadata = DeepSeekPromptMetadataDto.fromJson(json);
     if (metadata.messageId case final messageId? when !_nonblank(messageId, maxLength: 256)) {
@@ -46,7 +44,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return parseCatalogResponse(_json(raw, method: catalogMethod));
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekCatalogResponseDto parseCatalogResponse(Map<String, dynamic> json) {
     final response = DeepSeekCatalogResponseDto.fromJson(json);
     _validateCatalog(response);
@@ -74,7 +71,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return parseHistoryResponse(_json(raw, method: historyMethod), sessionId: sessionId);
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekHistoryResponseDto parseHistoryResponse(Map<String, dynamic> json, {required String? sessionId}) {
     final response = DeepSeekHistoryResponseDto.fromJson(json);
     _validateHistoryResponse(response, sessionId: sessionId);
@@ -102,7 +98,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return response;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekAskUserQuestionRequestDto parseQuestionRequest(Map<String, dynamic> json) {
     final request = DeepSeekAskUserQuestionRequestDto.fromJson(json);
     if (!_nonblank(request.sessionId, maxLength: 256) ||
@@ -124,7 +119,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return request;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekAskUserQuestionResponseDto parseQuestionResponse(Map<String, dynamic> json) {
     final response = DeepSeekAskUserQuestionResponseDto.fromJson(json);
     if (response.answers.isEmpty || response.answers.length > 32) {
@@ -143,7 +137,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return response;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSessionStatusNotificationDto parseSessionStatus(Map<String, dynamic> json) {
     final status = DeepSeekSessionStatusNotificationDto.fromJson(json);
     if (!_nonblank(status.sessionId, maxLength: 256) || !_validStatus(status)) {
@@ -152,7 +145,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return status;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentNotificationDto parseSubagentNotification(Map<String, dynamic> json) {
     final notification = DeepSeekSubagentNotificationDto.fromJson(json);
     if (!_validSubagentText(notification.sessionId, maxScalars: 256) ||
@@ -175,7 +167,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return notification;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentInterruptRequestDto parseSubagentInterruptRequest(Map<String, dynamic> json) {
     final request = DeepSeekSubagentInterruptRequestDto.fromJson(json);
     _validateSubagentInterruptRequest(request: request);
@@ -189,7 +180,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentInterruptResponseDto parseSubagentInterruptResponse(Map<String, dynamic> json) {
     final response = DeepSeekSubagentInterruptResponseDto.fromJson(json);
     if (response.result == DeepSeekSubagentInterruptResult.unknown) {
@@ -218,7 +208,6 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return parseSessionStopResponse(_json(raw, method: sessionStopMethod));
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSessionStopRequestDto parseSessionStopRequest(Map<String, dynamic> json) {
     final request = DeepSeekSessionStopRequestDto.fromJson(json);
     _validateSessionStopRequest(request: request);
@@ -234,11 +223,9 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     if (!valid) throw const FormatException("Invalid DeepSeek session stop request");
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSessionStopResponseDto parseSessionStopResponse(Map<String, dynamic> json) =>
       DeepSeekSessionStopResponseDto.fromJson(json);
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekInputCancelRequestDto parseInputCancelRequest(Map<String, dynamic> json) {
     final request = DeepSeekInputCancelRequestDto.fromJson(json);
     if (!_validScopedStopSessionId(request.sessionId)) {
@@ -247,11 +234,9 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return request;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekInputCancelResponseDto parseInputCancelResponse(Map<String, dynamic> json) =>
       DeepSeekInputCancelResponseDto.fromJson(json);
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentReplayDto parseSubagentReplay(Map<String, dynamic> json) {
     final replay = DeepSeekSubagentReplayDto.fromJson(json);
     _validateSubagentReplay(replay);
@@ -268,10 +253,8 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP response and JSON object values are heterogeneous
   static Map<String, dynamic> _json(Object? raw, {required String method}) {
     if (raw is! Map) throw FormatException("$method returned a non-object result");
-    // ignore: no_slop_linter/prefer_specific_type, JSON object values are heterogeneous
     return raw.cast<String, dynamic>();
   }
 

@@ -75,8 +75,15 @@ class const AcpAuthMethod({
     return AcpAuthMethod(
       id: id,
       type: json["type"] == "terminal" ? AcpAuthMethodType.terminal : AcpAuthMethodType.other,
-      name: json["name"] as String?,
-      description: json["description"] as String?,
+      // Display-only fields: a malformed value is dropped, not fatal.
+      name: switch (json["name"]) {
+        final String name => name,
+        _ => null,
+      },
+      description: switch (json["description"]) {
+        final String description => description,
+        _ => null,
+      },
     );
   }
 }
@@ -138,7 +145,11 @@ class const AcpInitializeResult({
     final rawMethods = json["authMethods"];
     final methods = (rawMethods is List ? rawMethods : const <Object?>[]).whereType<Map<dynamic, dynamic>>();
     return AcpInitializeResult(
-      protocolVersion: (json["protocolVersion"] ?? acpProtocolVersion) as int,
+      protocolVersion: switch (json["protocolVersion"]) {
+        null => acpProtocolVersion,
+        final int version => version,
+        final other => throw FormatException("ACP protocolVersion is not an int: ${other.runtimeType}"),
+      },
       agentCapabilities: AcpAgentCapabilities.fromJson(caps),
       authMethods: [for (final method in methods) ?AcpAuthMethod.tryFromJson(method.cast())],
       requiresAuth: methods.isNotEmpty,
@@ -174,7 +185,7 @@ sealed class AcpSessionInfo with _$AcpSessionInfo {
     /// scanned.
     required String? cwd,
     required String? title,
-    @JsonKey(name: "_meta") @Default(null) Map<String, dynamic>? metadata,
+    @JsonKey(name: "_meta") required Map<String, dynamic>? metadata,
 
     /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
     @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,
@@ -280,7 +291,7 @@ class const AcpPromptResult({required final AcpStopReason stopReason}) {
 /// `parameterizedModelPicker`).
 Map<String, dynamic> buildClientCapabilities({
   required bool formElicitation,
-  Map<String, dynamic>? meta,
+  required Map<String, dynamic>? meta,
 }) {
   return <String, dynamic>{
     "fs": {"readTextFile": false, "writeTextFile": false},

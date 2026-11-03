@@ -157,7 +157,7 @@ Future<void> _answerCatalogControls(FakeClaudeProcess process, {required String 
   while (!process.killed) {
     for (final frame in process.written) {
       if (frame["type"] != "control_request") continue;
-      final requestId = frame["request_id"]! as String;
+      final requestId = frame.field<String>("request_id");
       if (!answered.add(requestId)) continue;
       final subtype = _request(frame)["subtype"];
       process.emitControlResponse(
@@ -188,7 +188,7 @@ Future<void> _answerFastModeProbe(FakeClaudeProcess process, {required bool fail
   while (!process.killed) {
     for (final frame in process.written) {
       if (frame["type"] != "control_request") continue;
-      final requestId = frame["request_id"]! as String;
+      final requestId = frame.field<String>("request_id");
       if (!answered.add(requestId)) continue;
       switch (_request(frame)["subtype"]) {
         case "apply_flag_settings" when failOptIn:
@@ -212,7 +212,7 @@ Future<void> _answerFastModeProbe(FakeClaudeProcess process, {required bool fail
   }
 }
 
-Map<String, Object?> _request(Map<String, Object?> frame) => (frame["request"]! as Map).cast<String, Object?>();
+Map<String, Object?> _request(Map<String, Object?> frame) => frame.field<Map<String, Object?>>("request");
 
 Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
     .where((frame) => frame["type"] == "control_request")

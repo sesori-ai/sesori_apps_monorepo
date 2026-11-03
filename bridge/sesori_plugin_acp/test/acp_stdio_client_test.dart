@@ -45,7 +45,7 @@ void main() {
     });
 
     test("error responses surface as AcpRpcException", () async {
-      final future = client.request(method: "session/new");
+      final future = client.request(method: "session/new", params: null);
       final id = fake.written.single["id"];
       fake.emit({
         "jsonrpc": "2.0",
@@ -130,7 +130,7 @@ void main() {
     });
 
     test("early process exit fails in-flight requests", () async {
-      final future = client.request(method: "session/prompt");
+      final future = client.request(method: "session/prompt", params: null);
       fake.exit(1);
       await expectLater(future, throwsA(isA<AcpRpcException>()));
     });
@@ -141,7 +141,7 @@ void main() {
       // Without the post-exit guard this would write to a dead pipe and block
       // for the full timeout; it must throw synchronously-ish instead.
       await expectLater(
-        client.request(method: "session/prompt"),
+        client.request(method: "session/prompt", params: null),
         throwsA(isA<StateError>()),
       );
     });
@@ -149,14 +149,14 @@ void main() {
     test("a malformed error payload still completes the pending request", () async {
       // `error` is not a map: the old `as Map` cast threw inside the line
       // handler (caught + logged) and orphaned the completer until timeout.
-      final future = client.request(method: "session/new");
+      final future = client.request(method: "session/new", params: null);
       final id = fake.written.single["id"];
       fake.emit({"jsonrpc": "2.0", "id": id, "error": "totally malformed"});
       await expectLater(future, throwsA(isA<AcpRpcException>()));
     });
 
     test("an error payload with a non-int code falls back to a generic code", () async {
-      final future = client.request(method: "session/new");
+      final future = client.request(method: "session/new", params: null);
       final id = fake.written.single["id"];
       fake.emit({
         "jsonrpc": "2.0",
@@ -197,7 +197,7 @@ void main() {
       client.serverRequests.listen(serverRequests.add);
 
       await client.connect();
-      final pending = client.request(method: "session/prompt");
+      final pending = client.request(method: "session/prompt", params: null);
       final pendingFailure = expectLater(pending, throwsA(isA<StateError>()));
 
       await client.reset(gracefulTimeout: const Duration(seconds: 5));
@@ -221,7 +221,7 @@ void main() {
       expect(notifications.single.params["sessionId"], "replacement");
       expect(serverRequests.single.params["sessionId"], "replacement");
 
-      final request = client.request(method: "initialize");
+      final request = client.request(method: "initialize", params: null);
       final id = replacement.written.single["id"];
       replacement.emit({
         "jsonrpc": "2.0",
@@ -253,7 +253,7 @@ void main() {
       var replacementExited = false;
       unawaited(client.processExit.then((_) => replacementExited = true));
       final outcome = client
-          .request(method: "initialize")
+          .request(method: "initialize", params: null)
           .then<Object>(
             (result) => result as Object,
             onError: (Object error, StackTrace _) => error,

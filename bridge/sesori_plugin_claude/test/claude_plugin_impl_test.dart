@@ -97,7 +97,7 @@ void main() {
       final process = harness.processes.single;
       final user = await waitForFrame(process, "user");
       expect(user["session_id"], testSessionId);
-      expect((user["message"]! as Map)["content"], [
+      expect(user.field<Map<String, Object?>>("message")["content"], [
         {"type": "text", "text": "hello"},
       ]);
 
@@ -430,7 +430,7 @@ void main() {
       );
       await _waitForUserText(first, "follow-up");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
-      final uuid = written["uuid"]! as String;
+      final uuid = written.field<String>("uuid");
       // Claude compacts first and echoes the prompt only afterwards.
       first.emit({
         "type": "system",
@@ -681,7 +681,7 @@ void main() {
         knownSubAgentSessionIds: const {},
       );
       final interrupt = await _waitForControl(first, "interrupt");
-      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       await pump();
       await pump();
@@ -859,7 +859,7 @@ void main() {
       }
 
       final user = await waitForFrame(harness.processes.last, "user");
-      expect((user["message"]! as Map)["content"], [
+      expect(user.field<Map<String, Object?>>("message")["content"], [
         {"type": "text", "text": "Continue."},
       ]);
     });
@@ -882,7 +882,7 @@ void main() {
       });
       await pump();
 
-      final retry = (await harness.plugin.getSessionStatuses())[testSessionId]! as PluginSessionStatusRetry;
+      final retry = (await harness.plugin.getSessionStatuses()).field<PluginSessionStatusRetry>(testSessionId);
       expect(retry.attempt, 2);
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect((events.whereType<BridgeSseSessionStatus>().last.status as PluginSessionStatusRetry).next, retry.next);
@@ -1305,7 +1305,7 @@ void main() {
         knownSubAgentSessionIds: const {},
       );
       final interrupt = await _waitForControl(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       await pump();
 
@@ -1636,7 +1636,7 @@ Future<void> _answerControls(FakeClaudeProcess process, {required bool failIniti
   while (!process.killed) {
     for (final frame in process.written) {
       if (frame["type"] != "control_request") continue;
-      final requestId = frame["request_id"]! as String;
+      final requestId = frame.field<String>("request_id");
       if (!answered.add(requestId)) continue;
       final subtype = _request(frame)["subtype"];
       if (subtype == "initialize" && failInitialize) {
@@ -1673,7 +1673,7 @@ Future<void> _waitForUserText(FakeClaudeProcess process, String text) async {
   throw StateError("no user turn containing '$text' written");
 }
 
-Map<String, Object?> _request(Map<String, Object?> frame) => (frame["request"]! as Map).cast<String, Object?>();
+Map<String, Object?> _request(Map<String, Object?> frame) => frame.field<Map<String, Object?>>("request");
 
 Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
     .where((frame) => frame["type"] == "control_request")
@@ -1682,8 +1682,8 @@ Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
 List<String> _userTexts(FakeClaudeProcess process) => [
   for (final frame in process.written)
     if (frame["type"] == "user")
-      for (final block in ((frame["message"]! as Map)["content"]! as List))
-        if (block is Map && block["type"] == "text") block["text"]! as String,
+      for (final block in frame.field<Map<String, Object?>>("message").field<List<Object?>>("content"))
+        if (block is Map && block["type"] == "text") block.field<String>("text"),
 ];
 
 Map<String, Object?> _result() => {
@@ -1759,10 +1759,10 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
 };
 
 Map<String, Object?> _reencodedImageEcho({required Map<String, Object?> written, required String uuid}) {
-  final message = (written["message"]! as Map).cast<String, Object?>();
-  final content = (message["content"]! as List).cast<Object?>();
-  final image = (content[1]! as Map).cast<String, Object?>();
-  final source = (image["source"]! as Map).cast<String, Object?>();
+  final message = written.field<Map<String, Object?>>("message");
+  final content = message.field<List<Object?>>("content");
+  final image = expectType<Map<String, Object?>>(content[1]);
+  final source = image.field<Map<String, Object?>>("source");
   return {
     ...written,
     "uuid": uuid,

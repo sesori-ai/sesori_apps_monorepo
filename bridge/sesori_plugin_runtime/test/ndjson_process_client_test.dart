@@ -94,7 +94,7 @@ void main() {
   test("synchronous IOSink failure does not leave an unhandled pending error", () async {
     final fixture = _Fixture(candidate: _FakeProcess(autoExitOnClose: false));
     await fixture.process.stdin.close();
-    final unhandled = <Object>[]; // ignore: no_slop_linter/prefer_specific_type
+    final unhandled = <Object>[];
 
     await runZonedGuarded<Future<void>>(
       () async {
@@ -359,10 +359,10 @@ final class _Fixture({
 }
 
 final class _FakeProcess({
-  final Object? writeError, // ignore: no_slop_linter/prefer_specific_type
+  final Object? writeError,
   final Completer<void>? writeGate,
-  final Object? closeError, // ignore: no_slop_linter/prefer_specific_type
-  final Object? gracefulKillError, // ignore: no_slop_linter/prefer_specific_type
+  final Object? closeError,
+  final Object? gracefulKillError,
   final bool autoExitOnClose = true,
   final bool autoExitOnForce = true,
 }) implements NdjsonProcessHandle {
@@ -376,7 +376,7 @@ final class _FakeProcess({
   bool stderrCancelled = false;
 
   void emit(String line) => _stdout.add(line);
-  void failStdout(Object error) => _stdout.addError(error); // ignore: no_slop_linter/prefer_specific_type
+  void failStdout(Object error) => _stdout.addError(error);
   void completeExit(int code) {
     if (!_exited.isCompleted) _exited.complete(code);
   }

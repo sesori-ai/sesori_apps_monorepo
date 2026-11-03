@@ -47,7 +47,7 @@ class DeepSeekApprovalRegistry({
       );
     } on Object catch (error, stack) {
       Log.w("[deepseek] invalid question request", error, stack);
-      respondError(request.id, -32602, "Invalid DeepSeek question request");
+      respondError(acpId: request.id, code: -32602, message: "Invalid DeepSeek question request");
     }
     return true;
   }
@@ -56,10 +56,10 @@ class DeepSeekApprovalRegistry({
     try {
       final parsed = api.parseInputCancelRequest(request.params);
       cancelForSession(sessionId: parsed.sessionId);
-      respond(request.id, const DeepSeekInputCancelResponseDto().toJson());
+      respond(acpId: request.id, result: const DeepSeekInputCancelResponseDto().toJson());
     } on Object catch (error, stackTrace) {
       Log.w("[deepseek] invalid input cancellation request", error, stackTrace);
-      respondError(request.id, -32602, "Invalid DeepSeek input cancellation request");
+      respondError(acpId: request.id, code: -32602, message: "Invalid DeepSeek input cancellation request");
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import '../utils/no_slop_rule.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/error.dart';
 
 /// A lint rule that forbids raw GoRouter navigation methods.
@@ -24,6 +25,7 @@ import 'package:analyzer/error/error.dart';
 /// - `context.goRoute(AppRoute.xxx())` - Type-safe custom extension
 /// - `context.pushRoute(AppRoute.xxx())` - Type-safe custom extension
 /// - `context.pop()` - No path involved, always safe
+/// - `uri.replace(...)`, `delete(table).go()` - Not a navigation receiver
 class AvoidRawGoRouterRule extends NoSlopRule {
   AvoidRawGoRouterRule({required super.ignoreTestFiles}) : super(
         name: code.lowerCaseName,
@@ -62,6 +64,11 @@ const _forbiddenMethods = {
   'replaceNamed',
 };
 
+/// Receiver types whose navigation methods bypass the typed extensions:
+/// go_router's `BuildContext` extensions, a `GoRouter`, and a `NavigatorState`
+/// held directly.
+const _navigationReceiverTypes = {'BuildContext', 'GoRouter', 'NavigatorState'};
+
 class _Visitor extends SimpleAstVisitor<void> {
   _Visitor(this.rule);
 
@@ -82,20 +89,20 @@ class _Visitor extends SimpleAstVisitor<void> {
       }
     }
 
-    final methodName = node.methodName.name;
-    if (!_forbiddenMethods.contains(methodName)) return;
+    if (!_forbiddenMethods.contains(node.methodName.name)) return;
 
-    // Only flag calls with a target (e.g., context.go(...), router.push(...)).
-    if (target == null) return;
-
-    // When target is a MethodInvocation, only flag if it's a GoRouter accessor
-    // (e.g. GoRouter.of(context).go(...)). Skip unrelated chains like
-    // Uri.parse(...).replace(...) or String.replaceAll(...).
-    if (target is MethodInvocation) {
-      final targetMethod = target.methodName.name;
-      if (targetMethod != 'of' && targetMethod != 'maybeOf') return;
-    }
+    // The names are navigation only on a navigation receiver. Drift's
+    // `delete(table).go()`, `Uri.replace(...)` and other types' own methods
+    // with these names are not.
+    if (target == null || !_isNavigationReceiver(target.staticType)) return;
 
     rule.reportAtNode(node);
+  }
+
+  static bool _isNavigationReceiver(DartType? type) {
+    if (type is! InterfaceType) return false;
+    return [type, ...type.allSupertypes].any(
+      (candidate) => _navigationReceiverTypes.contains(candidate.element.name),
+    );
   }
 }

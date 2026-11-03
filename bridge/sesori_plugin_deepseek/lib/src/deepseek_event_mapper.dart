@@ -320,14 +320,11 @@ final class _DeferredDeepSeekDelegation() {
     "rawOutput",
   };
 
-  // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
   final Map<String, dynamic> _mergedUpdate = {};
-  // ignore: no_slop_linter/prefer_specific_type, standard ACP params are heterogeneous
   Map<String, dynamic>? _latestParams;
 
   void merge({
     required AcpNotification notification,
-    // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
     required Map<String, dynamic> update,
   }) {
     if (update.containsKey("content")) {
@@ -344,7 +341,6 @@ final class _DeferredDeepSeekDelegation() {
   AcpNotification? get snapshot {
     final params = _latestParams;
     if (params == null) return null;
-    // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
     final mergedUpdate = Map<String, dynamic>.unmodifiable(_mergedUpdate);
     return AcpNotification(
       method: AcpMethods.sessionUpdate,

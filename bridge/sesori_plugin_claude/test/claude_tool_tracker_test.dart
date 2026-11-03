@@ -156,7 +156,7 @@ void main() {
       expect(success?.state.status, PluginToolStatus.completed);
       expect(success?.state.output, "done");
       expect(success?.state.attachments, [attachment]);
-      expect(() => success!.state.attachments.add(attachment), throwsUnsupportedError);
+      expect(() => success?.state.attachments.add(attachment), throwsUnsupportedError);
       expect(failure?.state.status, PluginToolStatus.error);
       expect(failure?.state.output, isNull);
       expect(failure?.state.error, "failed");

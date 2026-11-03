@@ -66,7 +66,7 @@ void main() {
       // Shape observed from Claude 2.1.281's socket with a synthetic MCP sender.
       // No real session content or identifiers are used in this fixture.
       final frame = _user(content: _peerText, origin: {"kind": "peer", "from": "unknown"});
-      final events = live.map(message: ClaudeStreamMessage.parse(frame));
+      final events = live.map(message: ClaudeStreamMessage.parse(frame), now: null);
       final liveInfo = events.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
       final stored = (await replay(records: [frame])).single;
 
@@ -89,7 +89,7 @@ void main() {
         {"kind": "future-origin"},
       ]) {
         final frame = _user(content: "[PR Monitor] This is a human's quoted example.", origin: origin, isMeta: false);
-        final events = live.map(message: ClaudeStreamMessage.parse(frame));
+        final events = live.map(message: ClaudeStreamMessage.parse(frame), now: null);
         expect(events.whereType<BridgeSseMessageUpdated>().single.info, isA<PluginMessageUser>());
         expect((await replay(records: [frame])).single.info, isA<PluginMessageUser>());
       }
@@ -147,12 +147,15 @@ void main() {
           "subtype": "compact_boundary",
           "session_id": _sessionId,
         }),
+        now: null,
       );
       final peer = live.map(
         message: ClaudeStreamMessage.parse(_user(content: _peerText, origin: {"kind": "peer"})),
+        now: null,
       );
       final summary = live.map(
         message: ClaudeStreamMessage.parse(_user(content: "Compacted history", origin: null)),
+        now: null,
       );
       expect(
         (peer.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant).sender,

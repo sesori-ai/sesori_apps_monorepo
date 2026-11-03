@@ -36,15 +36,15 @@ final class const _AcpPendingQuestion({
 }) extends _AcpPendingPayload;
 
 void _resolveAcpPermission({required _AcpPendingPayload payload, required PluginPermissionReply reply}) {
-  final permission = payload as _AcpPendingPermission;
-  final optionId = _selectOptionId(_optionsFrom(permission.params), reply);
+  if (payload is! _AcpPendingPermission) throw StateError("Only a permission payload takes a permission reply");
+  final optionId = _selectOptionId(options: _optionsFrom(payload.params), reply: reply);
   if (optionId == null) {
-    permission.respond(permission.acpId, const {
+    payload.respond(payload.acpId, const {
       "outcome": {"outcome": "cancelled"},
     });
     return;
   }
-  permission.respond(permission.acpId, {
+  payload.respond(payload.acpId, {
     "outcome": {"outcome": "selected", "optionId": optionId},
   });
 }
@@ -53,7 +53,8 @@ PendingQuestionReplyOutcome _resolveAcpQuestion({
   required _AcpPendingPayload payload,
   required List<List<String>> answers,
 }) {
-  final question = payload as _AcpPendingQuestion;
+  if (payload is! _AcpPendingQuestion) throw StateError("Only a question payload takes a question reply");
+  final question = payload;
   Object? result;
   try {
     result = question.replyBuilder(answers);
@@ -71,8 +72,9 @@ PendingQuestionReplyOutcome _resolveAcpQuestion({
 }
 
 void _rejectAcpQuestion({required _AcpPendingPayload payload}) {
+  if (payload is! _AcpPendingQuestion) throw StateError("Only a question payload can be rejected");
   _sendAcpQuestionResolution(
-    payload as _AcpPendingQuestion,
+    payload,
     resolution: AcpQuestionResolution.declined,
     fallbackErrorMessage: "user rejected",
   );
@@ -169,10 +171,11 @@ class AcpApprovalRegistry({
   }
 
   /// Responds to a server request with a result payload.
-  void respond(Object acpId, Object? result) => _respond(acpId, result);
+  void respond({required Object acpId, required Object? result}) => _respond(acpId, result);
 
   /// Responds to a server request with a JSON-RPC error.
-  void respondError(Object acpId, int code, String message) => _respondError(acpId, code, message);
+  void respondError({required Object acpId, required int code, required String message}) =>
+      _respondError(acpId, code, message);
 
   /// Resolves the request's explicit `sessionId`, or the active turn's session
   /// when omitted. Returns `null` when no session can be resolved.
@@ -299,7 +302,7 @@ List<Map<String, dynamic>> _optionsFrom(Map<String, dynamic> params) {
   return raw.whereType<Map<dynamic, dynamic>>().map((map) => map.cast<String, dynamic>()).toList(growable: false);
 }
 
-String? _selectOptionId(List<Map<String, dynamic>> options, PluginPermissionReply reply) {
+String? _selectOptionId({required List<Map<String, dynamic>> options, required PluginPermissionReply reply}) {
   final preference = switch (reply) {
     PluginPermissionReply.once => const ["allow_once"],
     PluginPermissionReply.always => const ["allow_always", "allow_once"],
@@ -307,7 +310,12 @@ String? _selectOptionId(List<Map<String, dynamic>> options, PluginPermissionRepl
   };
   for (final kind in preference) {
     for (final option in options) {
-      if (option["kind"] == kind) return option["optionId"] as String?;
+      if (option["kind"] == kind) {
+        return switch (option["optionId"]) {
+          final String? optionId => optionId,
+          final other => throw FormatException("permission optionId is not a string: ${other.runtimeType}"),
+        };
+      }
     }
   }
   return null;

@@ -182,8 +182,8 @@ void main() {
         timeout: const Duration(seconds: 1),
       );
 
-      expect(snapshot, isNotNull);
-      expect(snapshot!.models.map((model) => model.value), ["default", "gpt-5.6-sol"]);
+      if (snapshot == null) fail("expected an available catalog");
+      expect(snapshot.models.map((model) => model.value), ["default", "gpt-5.6-sol"]);
       expect(snapshot.modes.map((mode) => mode.value), ["agent", "plan", "ask"]);
       expect(snapshot.defaultModeId, "agent");
       expect(snapshot.thoughtLevelsByModel["gpt-5.6-sol"]?.configId, "reasoning");
@@ -217,6 +217,7 @@ AcpSessionInfo _session(
     sessionId: sessionId,
     cwd: cwd,
     title: sessionId,
+    metadata: null,
     updatedAtMs: updatedAtMs,
   );
 }

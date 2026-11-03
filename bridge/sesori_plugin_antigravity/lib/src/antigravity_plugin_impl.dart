@@ -40,7 +40,6 @@ class AntigravityPlugin({
   @override
   AcpOutputInterceptors createOutputInterceptors() => _output.compose();
   @override
-  // ignore: no_slop_linter/prefer_specific_type, identity-preserving initialization error mapping
   Object mapInitializationFailure({required Object error}) => _output.mapInitializationFailure(error: error);
   @override
   AcpPendingRegistry<Object> buildApprovalRegistry({required AcpStdioClient client}) =>

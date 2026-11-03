@@ -157,7 +157,6 @@ final class const PluginFailed({
   required final String reason,
 
   /// The underlying error, when one exists.
-  // ignore: no_slop_linter/prefer_specific_type, caught errors are opaque
   required final Object? cause,
 }) extends PluginStatus {
   @override

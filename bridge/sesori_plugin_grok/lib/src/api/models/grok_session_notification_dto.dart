@@ -16,12 +16,10 @@ abstract final class GrokSessionProtocol() {
 
   /// Exact typed classifier for the generic tool call replaced by Grok's
   /// lifecycle-owned subtask tile.
-  // ignore: no_slop_linter/prefer_specific_type, ACP update payload is open JSON
   static bool isSpawnSubagentUpdate({required Map<String, dynamic> update}) {
     final rawMeta = update["_meta"];
     if (rawMeta is! Map) return false;
     try {
-      // ignore: no_slop_linter/prefer_specific_type, generated DTO accepts JSON maps
       return GrokToolCallMetaDto.fromJson(rawMeta.cast<String, dynamic>()).tool?.name == spawnSubagentToolName;
     } on Object catch (error, stackTrace) {
       Log.w("[grok] tool call metadata could not be parsed; rendering a tool card", error, stackTrace);

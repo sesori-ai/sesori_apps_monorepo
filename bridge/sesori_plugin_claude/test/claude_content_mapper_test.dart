@@ -115,7 +115,7 @@ void main() {
                   .single
               as ClaudeMappedToolResultContentBlock;
 
-      expect(mapped.output!.runes, hasLength(maxToolOutputLength));
+      expect(mapped.output?.runes, hasLength(maxToolOutputLength));
       expect(mapped.output, List.filled(maxToolOutputLength, "😀").join());
     });
 

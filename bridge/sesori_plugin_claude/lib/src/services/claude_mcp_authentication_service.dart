@@ -128,7 +128,7 @@ final class _ClaudeMcpLoginService({
         reason: switch (_termination) {
           _ClaudeMcpLoginProviderRejected(:final cause) when cause.reason == ClaudeMcpOAuthFailure.accessDenied =>
             PluginMcpAuthenticationFailureReason.declined,
-          _ => switch (error) {
+          _ClaudeMcpLoginActive() || _ClaudeMcpLoginCancelled() || _ClaudeMcpLoginProviderRejected() => switch (error) {
             TimeoutException() => PluginMcpAuthenticationFailureReason.expired,
             ClaudeMcpLoginTrustRequiredException() => PluginMcpAuthenticationFailureReason.nativeTrustRequired,
             _ => PluginMcpAuthenticationFailureReason.nativeFailure,
@@ -159,7 +159,7 @@ final class _ClaudeMcpLoginService({
             ),
             causeStackTrace: causeStackTrace,
           ),
-        _ => PluginMcpAuthenticationFailed(
+        PluginMcpAuthenticationChallenge() || PluginMcpAuthenticationCompleted() => PluginMcpAuthenticationFailed(
           reason: PluginMcpAuthenticationFailureReason.nativeFailure,
           cause: cleanup,
           causeStackTrace: stackTrace,

@@ -47,7 +47,6 @@ class const AntigravitySessionMetadataStorage() {
 }
 
 /// Keep the original diagnostic evidence without printing ignored JSON values.
-// ignore: no_slop_linter/prefer_specific_type, retain original decoder evidence without rendering payload values
 class const _MetadataDecodeException({required final Object cause}) implements Exception {
   @override
   String toString() => switch (cause) {

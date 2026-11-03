@@ -116,7 +116,7 @@ void main() {
 
       expect(registry.replyPermission(requestId: id, reply: PluginPermissionReply.once), isTrue);
       final (_, result) = responds.single;
-      expect((result! as Map)["outcome"], {"outcome": "selected", "optionId": "opt-allow-once"});
+      expect(_asMap(result)["outcome"], {"outcome": "selected", "optionId": "opt-allow-once"});
       expect(emitted.whereType<BridgeSsePermissionReplied>(), hasLength(1));
     });
 
@@ -126,7 +126,7 @@ void main() {
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
       registry.replyPermission(requestId: id, reply: PluginPermissionReply.always);
       final (_, result) = responds.single;
-      expect(((result! as Map)["outcome"] as Map)["optionId"], "opt-allow-always");
+      expect(_asMap(_asMap(result)["outcome"])["optionId"], "opt-allow-always");
     });
 
     test("reply 'reject' echoes the reject optionId", () async {
@@ -135,7 +135,7 @@ void main() {
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
       registry.replyPermission(requestId: id, reply: PluginPermissionReply.reject);
       final (_, result) = responds.single;
-      expect(((result! as Map)["outcome"] as Map)["optionId"], "opt-reject");
+      expect(_asMap(_asMap(result)["outcome"])["optionId"], "opt-reject");
     });
 
     test("missing matching option falls back to cancelled", () async {
@@ -156,7 +156,7 @@ void main() {
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
       registry.replyPermission(requestId: id, reply: PluginPermissionReply.reject);
       final (_, result) = responds.single;
-      expect((result! as Map)["outcome"], {"outcome": "cancelled"});
+      expect(_asMap(result)["outcome"], {"outcome": "cancelled"});
     });
 
     test("reply 'once' does NOT escalate to allow_always when allow_once is absent", () async {
@@ -180,7 +180,7 @@ void main() {
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
       registry.replyPermission(requestId: id, reply: PluginPermissionReply.once);
       final (_, result) = responds.single;
-      expect((result! as Map)["outcome"], {"outcome": "cancelled"});
+      expect(_asMap(result)["outcome"], {"outcome": "cancelled"});
     });
 
     test("cancelForSession resolves pending permission + question and emits clearing events", () async {
@@ -299,8 +299,10 @@ void main() {
         isTrue,
       );
       final (_, result) = responds.single;
-      expect((result! as Map)["selected"], "yes");
+      expect(_asMap(result)["selected"], "yes");
       expect(emitted.whereType<BridgeSseQuestionReplied>(), hasLength(1));
     });
   });
 }
+
+Map<dynamic, dynamic> _asMap(Object? value) => value is Map ? value : fail("expected a JSON object, got $value");

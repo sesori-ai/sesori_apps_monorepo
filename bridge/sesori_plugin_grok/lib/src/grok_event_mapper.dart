@@ -15,7 +15,6 @@ class GrokEventMapper({
   /// The `spawn_subagent` call and the `subagent_spawned` notification share
   /// no id, so the call renders nothing and the notification owns the tile.
   @override
-  // ignore: no_slop_linter/prefer_specific_type, ACP override requires open JSON
   bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) =>
       GrokSessionProtocol.isSpawnSubagentUpdate(update: update);
 

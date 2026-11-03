@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 sealed class const AntigravityInteraction({
-  // ignore: no_slop_linter/prefer_specific_type, ACP request IDs preserve their string or integer wire identity
   required final Object requestId,
   required final String sessionId,
 });
@@ -26,7 +25,6 @@ final class AntigravityQuestion({
 
 class const AntigravityInteractionException({
   required final String message,
-  // ignore: no_slop_linter/prefer_specific_type, retain decoder evidence without rendering prompt contents
   required final Object cause,
 }) implements Exception {
   @override

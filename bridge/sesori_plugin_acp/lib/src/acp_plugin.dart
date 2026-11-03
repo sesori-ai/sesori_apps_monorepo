@@ -345,7 +345,6 @@ abstract class AcpPlugin({
   void validateInitializeResult(AcpInitializeResult result) {}
 
   /// Translate only initialization failures; ordinary turn failures never use this hook.
-  // ignore: no_slop_linter/prefer_specific_type, initialization errors retain their original typed identity
   Object mapInitializationFailure({required Object error}) => error;
 
   /// Captures initialize-owned state only for the live connection. Replay uses
@@ -401,7 +400,7 @@ abstract class AcpPlugin({
     final canonical = normalizeProjectDirectory(directory: directory);
     _hintedDirectories.add(canonical);
     _sessionDirectories[sessionId] = canonical;
-    eventMapper.setSessionProject(sessionId, canonical);
+    eventMapper.setSessionProject(sessionId: sessionId, directory: canonical);
   }
 
   /// Explicit import/cold recovery only; this performs no filesystem scan and
@@ -412,7 +411,7 @@ abstract class AcpPlugin({
       final canonical = normalizeProjectDirectory(directory: entry.value);
       _recoveredSessionDirectories[entry.key] = canonical;
       _hintedDirectories.add(canonical);
-      eventMapper.setSessionProject(entry.key, canonical);
+      eventMapper.setSessionProject(sessionId: entry.key, directory: canonical);
     }
   }
 
@@ -613,8 +612,9 @@ abstract class AcpPlugin({
         return await Future<bool>.error(error, stackTrace);
       }
     }();
-    _connectFuture = future.catchError((Object _) => false);
-    return _connectFuture!;
+    final connectFuture = future.catchError((Object _) => false);
+    _connectFuture = connectFuture;
+    return connectFuture;
   }
 
   /// Runs the ACP `initialize` handshake (and `authenticate` if the agent
@@ -794,7 +794,7 @@ abstract class AcpPlugin({
             fallbackDirectory: launchDirectory,
             fallbackIsAuthoritative: false,
           );
-          final hasCwd = info.cwd != null && info.cwd!.trim().isNotEmpty;
+          final hasCwd = info.cwd?.trim().isNotEmpty ?? false;
           if (!hasCwd) fallbackAttributed.add(info.sessionId);
         }
       } on PluginAuthenticationRequiredException {
@@ -937,7 +937,10 @@ abstract class AcpPlugin({
     // to repair.
     if (id.isNotEmpty) {
       if (directoryIsAuthoritative) _sessionDirectories[id] = directory;
-      eventMapper.setSessionProject(id, _knownSessionDirectory(sessionId: id) ?? directory);
+      eventMapper.setSessionProject(
+        sessionId: id,
+        directory: _knownSessionDirectory(sessionId: id) ?? directory,
+      );
       eventMapper.setSessionSnapshot(
         sessionId: id,
         title: info.title,
@@ -986,7 +989,7 @@ abstract class AcpPlugin({
     );
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     _sessionDirectories[session.sessionId] = canonicalDirectory;
-    eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
+    eventMapper.setSessionProject(sessionId: session.sessionId, directory: canonicalDirectory);
     // Seed the snapshot so a title event during the creation race (before the
     // bridge has a stored row to enrich from) still carries a sane time.
     eventMapper.setSessionSnapshot(
@@ -1231,7 +1234,7 @@ abstract class AcpPlugin({
     // (enumeration hit, session/new) stays authoritative.
     if (_sessionDirectories.containsKey(sessionId)) return;
     _sessionDirectories[sessionId] = canonical;
-    eventMapper.setSessionProject(sessionId, canonical);
+    eventMapper.setSessionProject(sessionId: sessionId, directory: canonical);
   }
 
   /// Ensures [sessionId] is resident in the agent process before a turn. A
@@ -1242,9 +1245,9 @@ abstract class AcpPlugin({
   /// each load owns its whole suppression window. Never throws for load
   /// failures — the turn proceeds and surfaces any error itself, except that
   /// an [unrestorableSessionMessage] is returned for the turn to fail with.
-  Future<String?> _ensureResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _ensureResident({required AcpStdioClient client, required String sessionId}) async {
     if (_residentSessions.contains(sessionId)) return null;
-    return await _loadResident(client, sessionId);
+    return await _loadResident(client: client, sessionId: sessionId);
   }
 
   /// Performs the resume `session/load` for [_ensureResident]. Marks the
@@ -1252,7 +1255,7 @@ abstract class AcpPlugin({
   /// load (the no-reload-loop guarantee) — so a transiently failed load
   /// (timeout, RPC hiccup) is retried on the next turn instead of leaving the
   /// conversation unrecoverable until the agent respawns.
-  Future<String?> _loadResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _loadResident({required AcpStdioClient client, required String sessionId}) async {
     final loadSupported = _initResult?.agentCapabilities.loadSession ?? false;
     final resumeSupported = _initResult?.agentCapabilities.resumeSession ?? false;
     if (!loadSupported && !resumeSupported) {
@@ -1274,7 +1277,7 @@ abstract class AcpPlugin({
     if (resumeSupported && (!loadSupported || residencyPreference == AcpResidencyPreference.resumeFirst)) {
       // Preferred/only available resume re-activates the session with NO
       // history replay, so no suppression window is needed.
-      return await _resumeResident(client, sessionId);
+      return await _resumeResident(client: client, sessionId: sessionId);
     }
     _suppressedSessions.add(sessionId);
     _suppressedReplayCounts.remove(sessionId);
@@ -1320,7 +1323,7 @@ abstract class AcpPlugin({
   /// fresh agent process never loaded. Same residency policy as the load
   /// path: resident on success or on a permanently unsupported RPC; transient
   /// failures retry on the next turn.
-  Future<String?> _resumeResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _resumeResident({required AcpStdioClient client, required String sessionId}) async {
     try {
       final result = await AcpAgentApi(client: client).resumeSession(
         sessionId: sessionId,
@@ -1458,7 +1461,7 @@ abstract class AcpPlugin({
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
-    final unrestorableMessage = await _ensureResident(client, sessionId);
+    final unrestorableMessage = await _ensureResident(client: client, sessionId: sessionId);
     if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
@@ -1529,9 +1532,11 @@ abstract class AcpPlugin({
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
       final raw = await dispatched.response;
-      final result = AcpPromptResult.fromJson(
-        (raw as Map?)?.cast<String, dynamic>() ?? const {},
-      );
+      final result = AcpPromptResult.fromJson(switch (raw) {
+        null => const <String, dynamic>{},
+        final Map<dynamic, dynamic> map => map.cast<String, dynamic>(),
+        _ => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
+      });
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1701,14 +1706,14 @@ abstract class AcpPlugin({
       // ACP defines inline image/audio content blocks (base64 `data` +
       // `mimeType`); map those so a phone attachment is not silently lost.
       // Other mime types have no ACP inline block and are dropped.
-      PluginPromptPartFileData(:final mime, :final base64) => _inlineContentBlock(mime, base64),
+      PluginPromptPartFileData(:final mime, :final base64) => _inlineContentBlock(mime: mime, base64: base64),
     };
   }
 
   List<Map<String, dynamic>> _contentBlocks(List<PluginPromptPart> parts) =>
       parts.map(_promptPartToContentBlock).whereType<Map<String, dynamic>>().toList(growable: false);
 
-  Map<String, dynamic>? _inlineContentBlock(String mime, String base64) {
+  Map<String, dynamic>? _inlineContentBlock({required String mime, required String base64}) {
     final type = switch (mime.split("/").first.toLowerCase()) {
       "image" => "image",
       "audio" => "audio",

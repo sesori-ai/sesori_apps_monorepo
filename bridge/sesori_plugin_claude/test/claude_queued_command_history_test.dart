@@ -42,7 +42,7 @@ void main() {
     final infos = <String, PluginMessage>{};
     final parts = <String, Map<String, PluginMessagePart>>{};
     for (final frame in frames) {
-      for (final event in live.map(message: ClaudeStreamMessage.parse(frame))) {
+      for (final event in live.map(message: ClaudeStreamMessage.parse(frame), now: null)) {
         if (event case BridgeSseMessageUpdated(:final info)) infos[info.id] = info;
         if (event case BridgeSseMessagePartUpdated(:final part)) (parts[part.messageID] ??= {})[part.id] = part;
       }

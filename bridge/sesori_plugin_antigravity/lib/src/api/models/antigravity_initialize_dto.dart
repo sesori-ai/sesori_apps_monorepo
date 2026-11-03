@@ -75,7 +75,6 @@ sealed class AntigravityAuthMethodDto with _$AntigravityAuthMethodDto {
 
 /// ACP capability markers are advertised as objects; explicit `false` and
 /// omission both mean unsupported.
-// ignore: no_slop_linter/prefer_specific_type, ACP capability markers are object-or-false wire values
 class const AntigravityCapabilityPresenceConverter() implements JsonConverter<bool, Object?> {
   @override
   bool fromJson(Object? json) => switch (json) {

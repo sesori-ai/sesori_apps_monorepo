@@ -115,7 +115,7 @@ class ClaudeStreamClient({
           onError: (Object error, StackTrace stack) {
             if (generation != _connectionGeneration) return;
             Log.w("[$_logTag] stdout stream error: ${_redactForLog("$error")}");
-            _failPending(error, stack);
+            _failPending(error: error, stack: stack);
           },
           cancelOnError: false,
         );
@@ -138,8 +138,8 @@ class ClaudeStreamClient({
         if (generation != _connectionGeneration) return;
         if (!_disposed) Log.w("[$_logTag] process exited with code $code");
         _failPending(
-          ClaudeControlException(subtype: "<process>", message: "claude process exited with code $code"),
-          StackTrace.current,
+          error: ClaudeControlException(subtype: "<process>", message: "claude process exited with code $code"),
+          stack: StackTrace.current,
         );
       }),
     );
@@ -176,15 +176,18 @@ class ClaudeStreamClient({
         message: "claude process has exited",
       );
     }
-    if (!_writeFrame(process, {
-      "type": "user",
-      "message": {"role": "user", "content": content},
-      "session_id": _launchSpec.launch.sessionId,
-      "uuid": uuid,
-      // Claude absorbs `next` messages at the next tool boundary when a turn
-      // is active, without interrupting the model response currently streaming.
-      "priority": "next",
-    })) {
+    if (!_writeFrame(
+      process: process,
+      envelope: {
+        "type": "user",
+        "message": {"role": "user", "content": content},
+        "session_id": _launchSpec.launch.sessionId,
+        "uuid": uuid,
+        // Claude absorbs `next` messages at the next tool boundary when a turn
+        // is active, without interrupting the model response currently streaming.
+        "priority": "next",
+      },
+    )) {
       throw ClaudeControlException(
         subtype: "<user>",
         message: "failed to write user turn",
@@ -238,11 +241,14 @@ class ClaudeStreamClient({
     final completer = Completer<Map<String, Object?>>();
     _pending[requestId] = completer;
 
-    if (!_writeFrame(process, {
-      "type": "control_request",
-      "request_id": requestId,
-      "request": {...params, "subtype": subtype},
-    })) {
+    if (!_writeFrame(
+      process: process,
+      envelope: {
+        "type": "control_request",
+        "request_id": requestId,
+        "request": {...params, "subtype": subtype},
+      },
+    )) {
       // The frame never left the bridge, so no reply is coming. Fail now rather
       // than orphaning the request until it times out.
       _pending.remove(requestId);
@@ -261,13 +267,16 @@ class ClaudeStreamClient({
   bool sendControlResponse({required String requestId, required Map<String, Object?> payload}) {
     final process = _process;
     if (process == null || _exited.isCompleted) return false;
-    return _writeFrame(process, {
-      "type": "control_response",
-      "response": {"subtype": "success", "request_id": requestId, "response": payload},
-    });
+    return _writeFrame(
+      process: process,
+      envelope: {
+        "type": "control_response",
+        "response": {"subtype": "success", "request_id": requestId, "response": payload},
+      },
+    );
   }
 
-  bool _writeFrame(ClaudeProcessHandle process, Map<String, Object?> envelope) {
+  bool _writeFrame({required ClaudeProcessHandle process, required Map<String, Object?> envelope}) {
     try {
       process.stdin.add(utf8.encode("${jsonEncode(envelope)}\n"));
       return true;
@@ -341,7 +350,7 @@ class ClaudeStreamClient({
 
   String _redactForLog(String frame) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
 
-  void _failPending(Object error, StackTrace stack) {
+  void _failPending({required Object error, required StackTrace stack}) {
     final inflight = List<Completer<Map<String, Object?>>>.from(_pending.values);
     _pending.clear();
     for (final completer in inflight) {
@@ -390,7 +399,7 @@ class ClaudeStreamClient({
     }
     _stderrSubscription = null;
 
-    _failPending(pendingError, StackTrace.current);
+    _failPending(error: pendingError, stack: StackTrace.current);
 
     if (process != null) {
       try {

@@ -552,7 +552,7 @@ final class _ProbeProcess({
     for (var attempt = 0; attempt < 100; attempt++) {
       final initialize = _stdin.frames.where((frame) => frame["type"] == "control_request").firstOrNull;
       if (initialize != null) {
-        final requestId = initialize["request_id"]! as String;
+        final requestId = initialize.field<String>("request_id");
         _stdout.add(
           utf8.encode(
             '${jsonEncode({

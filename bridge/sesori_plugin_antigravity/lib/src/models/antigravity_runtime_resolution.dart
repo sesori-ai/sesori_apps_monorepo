@@ -73,7 +73,6 @@ final class const AntigravityRuntimeCandidateRejected({
 
 final class const AntigravityRuntimeCandidateStorageFailed({
   required final AntigravityRuntimeSource source,
-  // ignore: no_slop_linter/prefer_specific_type, caught storage failures remain opaque
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeCandidateResult;
@@ -89,7 +88,6 @@ final class const AntigravityRuntimeProbeCompleted({
 final class const AntigravityRuntimeProbeBoundaryFailed({
   required final AntigravityRuntimeSource source,
   required final AntigravityRuntimePair pair,
-  // ignore: no_slop_linter/prefer_specific_type, caught probe failures remain opaque
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeProbeResult;
@@ -126,14 +124,12 @@ final class AntigravityRuntimeContractRejected({
 final class const AntigravityRuntimeProbeFailed({
   required final AntigravityRuntimeSource source,
   required final AntigravityRuntimePair pair,
-  // ignore: no_slop_linter/prefer_specific_type, caught probe failures remain opaque
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeResolution;
 
 final class const AntigravityRuntimeStorageFailed({
   required final AntigravityRuntimeSource source,
-  // ignore: no_slop_linter/prefer_specific_type, caught storage failures remain opaque
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeResolution;

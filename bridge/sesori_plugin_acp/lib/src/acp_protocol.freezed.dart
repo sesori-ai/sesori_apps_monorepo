@@ -139,7 +139,7 @@ as int?,
 @JsonSerializable()
 
 class _AcpSessionInfo implements AcpSessionInfo {
-  const _AcpSessionInfo({required this.sessionId, required this.cwd, required this.title, @JsonKey(name: "_meta")  Map<String, dynamic>? metadata = null, @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") required this.updatedAtMs}): _metadata = metadata;
+  const _AcpSessionInfo({required this.sessionId, required this.cwd, required this.title, @JsonKey(name: "_meta") required  Map<String, dynamic>? metadata, @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") required this.updatedAtMs}): _metadata = metadata;
   factory _AcpSessionInfo.fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
 
 /// Required by the spec; an entry without one is skipped as malformed.

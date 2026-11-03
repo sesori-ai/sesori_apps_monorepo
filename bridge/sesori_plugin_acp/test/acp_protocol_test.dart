@@ -40,6 +40,7 @@ void main() {
     test("advertises only form elicitation when enabled", () {
       final capabilities = buildClientCapabilities(
         formElicitation: true,
+        meta: null,
       );
       expect(capabilities["elicitation"], {
         "form": <String, dynamic>{},
@@ -50,7 +51,7 @@ void main() {
 
     test("omits elicitation when disabled", () {
       expect(
-        buildClientCapabilities(formElicitation: false),
+        buildClientCapabilities(formElicitation: false, meta: null),
         isNot(contains("elicitation")),
       );
     });

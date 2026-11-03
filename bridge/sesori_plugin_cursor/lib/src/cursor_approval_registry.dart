@@ -32,10 +32,10 @@ class CursorApprovalRegistry({
   bool handleExtensionRequest(AcpServerRequest request) {
     switch (request.method) {
       case "cursor/task":
-        respond(request.id, const <String, Object?>{});
+        respond(acpId: request.id, result: const <String, Object?>{});
         return true;
       case "cursor/generate_image" || "cursor/update_todos":
-        respond(request.id, const <String, Object?>{});
+        respond(acpId: request.id, result: const <String, Object?>{});
         try {
           _onFireAndForgetNotification(AcpNotification(method: request.method, params: request.params));
         } on Object catch (error, stack) {
@@ -62,7 +62,7 @@ class CursorApprovalRegistry({
       // register an invisible pending question that blocks the turn forever.
       // Reject so the agent can proceed instead of hanging.
       Log.w("[cursor] cursor/ask_question with no resolvable session; rejecting");
-      respondError(request.id, -32602, "cursor/ask_question: no resolvable session");
+      respondError(acpId: request.id, code: -32602, message: "cursor/ask_question: no resolvable session");
       return;
     }
     final title = _str(params["title"]) ?? "Question";
@@ -126,7 +126,7 @@ class CursorApprovalRegistry({
     // the request so the agent can proceed instead of hanging.
     if (pluginQuestions.isEmpty) {
       Log.w("[cursor] cursor/ask_question had no valid questions; rejecting");
-      respondError(request.id, -32602, "cursor/ask_question: no valid questions");
+      respondError(acpId: request.id, code: -32602, message: "cursor/ask_question: no valid questions");
       return;
     }
 
@@ -134,7 +134,7 @@ class CursorApprovalRegistry({
       acpId: request.id,
       sessionId: sessionId,
       questions: pluginQuestions,
-      replyBuilder: (answers) => _buildAskReply(metas, answers),
+      replyBuilder: (answers) => _buildAskReply(metas: metas, answers: answers),
       resolutionBuilder: null,
     );
   }
@@ -143,7 +143,7 @@ class CursorApprovalRegistry({
   /// reply shapes are not formally documented, so casts here are fail-soft.
   static String? _str(Object? value) => value is String ? value : null;
 
-  Object _buildAskReply(List<_QuestionMeta> metas, List<List<String>> answers) {
+  Object _buildAskReply({required List<_QuestionMeta> metas, required List<List<String>> answers}) {
     final out = <Map<String, dynamic>>[];
     for (var i = 0; i < metas.length; i++) {
       final selectedLabels = i < answers.length ? answers[i] : const <String>[];
@@ -163,7 +163,7 @@ class CursorApprovalRegistry({
       // No active turn to attribute the plan to, so the plan-approval question
       // would block forever. Reject so the agent proceeds instead of hanging.
       Log.w("[cursor] cursor/create_plan with no resolvable session; rejecting");
-      respondError(request.id, -32602, "cursor/create_plan: no resolvable session");
+      respondError(acpId: request.id, code: -32602, message: "cursor/create_plan: no resolvable session");
       return;
     }
     final name = _str(params["name"]) ?? "Plan";

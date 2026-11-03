@@ -23,7 +23,7 @@ void main() {
         subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
         delegationTracker: DeepSeekDelegationTracker(),
         compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
-      )..setSessionProject("root", "/project");
+      )..setSessionProject(sessionId: "root", directory: "/project");
       mapper.beginTurn(sessionId: "root", messageId: null);
     });
 
@@ -515,7 +515,7 @@ void main() {
 
     test("a duplicate start refreshes the child's corrected root project", () {
       mapper.map(_started(mode: "foreground"));
-      mapper.setSessionProject("root", "/corrected");
+      mapper.setSessionProject(sessionId: "root", directory: "/corrected");
 
       expect(mapper.map(_started(mode: "foreground")), isEmpty);
       final events = mapper.map(

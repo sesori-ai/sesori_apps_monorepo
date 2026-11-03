@@ -91,7 +91,7 @@ class AcpStdioClient({
 
   Future<dynamic> request({
     required String method,
-    Object? params,
+    required Object? params,
     Duration timeout = const Duration(seconds: 60),
   }) async {
     final dispatched = await dispatchRequest(method: method, params: params, timeout: timeout);
@@ -100,7 +100,7 @@ class AcpStdioClient({
 
   Future<({Future<dynamic> response})> dispatchRequest({
     required String method,
-    Object? params,
+    required Object? params,
     Duration timeout = const Duration(seconds: 60),
   }) => _dispatchRequest(
     method: method,
@@ -172,7 +172,7 @@ class AcpStdioClient({
     return frame["result"];
   }
 
-  void notify({required String method, Object? params}) {
+  void notify({required String method, required Object? params}) {
     final frame = <String, Object?>{"jsonrpc": "2.0", "method": method};
     if (params != null) frame["params"] = params;
     _sendFrame(frame);

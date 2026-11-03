@@ -5,11 +5,11 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 // Decoded JSON values are heterogeneous at transport boundary.
-typedef JsonObject = Map<String, Object?>; // ignore: no_slop_linter/prefer_specific_type
+typedef JsonObject = Map<String, Object?>;
 // Correlation IDs are opaque JSON scalar values owned by plugin protocol.
-typedef NdjsonCorrelationId = Object? Function(JsonObject frame); // ignore: no_slop_linter/prefer_specific_type
+typedef NdjsonCorrelationId = Object? Function(JsonObject frame);
 // Exit failures stay plugin-typed across transport boundary.
-typedef NdjsonExitError = Object Function(int exitCode); // ignore: no_slop_linter/prefer_specific_type
+typedef NdjsonExitError = Object Function(int exitCode);
 // Long-running requests may define which uncorrelated inbound frames prove
 // progress and therefore restart their inactivity deadline.
 typedef NdjsonActivityMatcher = bool Function(JsonObject frame);
@@ -53,7 +53,7 @@ final class NdjsonProcessClient({
   required final Duration _reapTimeout,
 }) {
   // JSON correlation IDs are intentionally opaque protocol boundary values.
-  final Map<Object, _PendingResponse> _pending = {}; // ignore: no_slop_linter/prefer_specific_type
+  final Map<Object, _PendingResponse> _pending = {};
   final StreamController<JsonObject> _notifications = StreamController.broadcast();
 
   NdjsonProcessHandle? _process;
@@ -147,7 +147,7 @@ final class NdjsonProcessClient({
 
   Future<JsonObject> request({
     // JSON correlation IDs are intentionally opaque protocol boundary values.
-    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required Object id,
     required JsonObject frame,
     required Duration timeout,
   }) async {
@@ -157,7 +157,7 @@ final class NdjsonProcessClient({
 
   Future<NdjsonDispatch> dispatch({
     // JSON correlation IDs are intentionally opaque protocol boundary values.
-    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required Object id,
     required JsonObject frame,
     required Duration timeout,
   }) => _dispatch(
@@ -172,7 +172,7 @@ final class NdjsonProcessClient({
   /// the deadline, so unrelated concurrent work cannot keep it alive.
   Future<NdjsonDispatch> dispatchWithInactivityTimeout({
     // JSON correlation IDs are intentionally opaque protocol boundary values.
-    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required Object id,
     required JsonObject frame,
     required Duration timeout,
     required NdjsonActivityMatcher activityMatcher,
@@ -185,7 +185,7 @@ final class NdjsonProcessClient({
 
   Future<NdjsonDispatch> _dispatch({
     // JSON correlation IDs are intentionally opaque protocol boundary values.
-    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required Object id,
     required JsonObject frame,
     required Duration timeout,
     required NdjsonActivityMatcher? activityMatcher,
@@ -227,7 +227,7 @@ final class NdjsonProcessClient({
 
   void _armTimeout({
     // JSON correlation IDs are intentionally opaque protocol boundary values.
-    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required Object id,
     required _PendingResponse pending,
   }) {
     pending.timer?.cancel();
@@ -244,7 +244,6 @@ final class NdjsonProcessClient({
   }
 
   // JSON correlation IDs are intentionally opaque protocol boundary values.
-  // ignore: no_slop_linter/prefer_specific_type
   _PendingResponse? _removePending(Object id) {
     final pending = _pending.remove(id);
     pending?.timer?.cancel();
@@ -253,7 +252,7 @@ final class NdjsonProcessClient({
 
   void _handleLine({required String line}) {
     if (line.trim().isEmpty) return;
-    final Object? decoded; // ignore: no_slop_linter/prefer_specific_type
+    final Object? decoded;
     try {
       decoded = jsonDecode(line);
     } on FormatException {
@@ -267,7 +266,7 @@ final class NdjsonProcessClient({
       Log.d("[$_logTag] ignored non-object stdout frame");
       return;
     }
-    final frame = <String, Object?>{}; // ignore: no_slop_linter/prefer_specific_type
+    final frame = <String, Object?>{};
     for (final entry in decoded.entries) {
       switch (entry) {
         case MapEntry(:final key, :final value) when key is String:
@@ -296,7 +295,7 @@ final class NdjsonProcessClient({
 
   void _failPending({
     // Errors remain opaque so plugin-specific typed failures retain identity.
-    required Object error, // ignore: no_slop_linter/prefer_specific_type
+    required Object error,
     required StackTrace stackTrace,
   }) {
     final pending = _pending.values.toList(growable: false);
@@ -309,7 +308,7 @@ final class NdjsonProcessClient({
 
   Future<void> reset({
     // Teardown reasons remain opaque so callers can preserve typed failures.
-    required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required Object reason,
     required StackTrace? stackTrace,
     required Duration gracefulTimeout,
   }) {
@@ -324,7 +323,7 @@ final class NdjsonProcessClient({
 
   Future<void> dispose({
     // Teardown reasons remain opaque so callers can preserve typed failures.
-    required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required Object reason,
     required Duration gracefulTimeout,
   }) {
     _disposed = true;
@@ -333,7 +332,7 @@ final class NdjsonProcessClient({
 
   Future<void> _startTeardown({
     // Teardown reasons remain opaque so callers can preserve typed failures.
-    required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required Object reason,
     required StackTrace? stackTrace,
     required Duration gracefulTimeout,
     required bool closeNotifications,
@@ -356,7 +355,7 @@ final class NdjsonProcessClient({
 
   Future<void> _teardown({
     // Teardown reasons remain opaque so callers can preserve typed failures.
-    required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required Object reason,
     required StackTrace? stackTrace,
     required Duration gracefulTimeout,
   }) async {

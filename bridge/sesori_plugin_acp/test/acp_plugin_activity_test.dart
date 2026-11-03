@@ -92,7 +92,8 @@ void main() {
       final recencyUpdate = emitted.whereType<BridgeSseSessionUpdated>().single;
       final updatedSession = Session.fromJson(recencyUpdate.info);
       expect(recencyUpdate.titleChanged, isFalse);
-      expect(updatedSession.time?.updated, greaterThan(updatedSession.time!.created));
+      final updatedTime = updatedSession.time ?? fail("the recency update carries no session time");
+      expect(updatedTime.updated, greaterThan(updatedTime.created));
 
       final running = plugin.getActiveSessionsSummary();
       expect(running, hasLength(1));

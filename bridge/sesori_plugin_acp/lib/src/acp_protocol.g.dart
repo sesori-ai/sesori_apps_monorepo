@@ -16,8 +16,7 @@ _AcpSessionInfo _$AcpSessionInfoFromJson(Map json) => _AcpSessionInfo(
   sessionId: json['sessionId'] as String,
   cwd: json['cwd'] as String?,
   title: json['title'] as String?,
-  metadata:
-      (json['_meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)) ?? null,
+  metadata: (json['_meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)),
   updatedAtMs: const AcpTimestampMsConverter().fromJson(json['updatedAt']),
 );
 

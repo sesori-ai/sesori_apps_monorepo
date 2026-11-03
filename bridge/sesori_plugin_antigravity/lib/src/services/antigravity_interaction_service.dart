@@ -36,7 +36,6 @@ class AntigravityInteractionService({
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP request IDs are opaque string or integer values
   AntigravityInteraction _classify({required Object requestId, required AntigravityPermissionRequestDto input}) {
     _validateText(value: input.sessionId, limit: 256);
     _validateText(value: input.toolCall.toolCallId, limit: 256);
@@ -128,7 +127,6 @@ class AntigravityInteractionService({
   void cancel({required AntigravityInteraction payload, required PendingCancellationReason reason}) =>
       _repository.cancel(requestId: payload.requestId);
 
-  // ignore: no_slop_linter/prefer_specific_type, retain opaque ACP request identity and original decoding failure
   void _rejectMalformed({required Object requestId, required Object error, required StackTrace stackTrace}) {
     Log.w(
       "[antigravity] refusing malformed or unsupported permission choices for request ${requestId.toString()}",

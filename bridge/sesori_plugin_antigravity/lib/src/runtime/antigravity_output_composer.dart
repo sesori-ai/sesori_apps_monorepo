@@ -35,7 +35,6 @@ class const AntigravityOutputComposer({
     );
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, preserve other initialization failures unchanged
   Object mapInitializationFailure({required Object error}) {
     if (error case AcpOutputInterceptionException(cause: PluginAuthenticationRequiredException())) {
       return PluginAuthenticationRequiredException(

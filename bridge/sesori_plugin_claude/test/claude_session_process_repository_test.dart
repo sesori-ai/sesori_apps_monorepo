@@ -77,7 +77,7 @@ void main() {
         await pump();
         final process = harness.processes.single;
         final request = process.written.lastWhere((f) => f["type"] == "control_request");
-        process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+        process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {
           "mcpServers": [{"name": "fixture", "status": "needs-auth", "scope": nativeScope, "config": {"type": url == null ? "stdio" : "http", "url": url}}],
         });
         await rejected;
@@ -93,7 +93,7 @@ void main() {
       await pump();
       final process = harness.processes.single;
       final request = process.written.lastWhere((f) => f["type"] == "control_request");
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {
         "mcpServers": [{"name": "fixture", "status": "needs-auth", "scope": "local", "config": {"type": "http", "url": "https://fixture.example/mcp"}}],
       });
       final context = await result;
@@ -117,7 +117,7 @@ void main() {
         var request = process.written.lastWhere((frame) => frame["type"] == "control_request");
         expect(request["request"], {"subtype": "mcp_status"});
         process.emitControlResponse(
-          requestId: request["request_id"]! as String,
+          requestId: request.field<String>("request_id"),
           payload: {
             "mcpServers": [
               {"name": "fixture", "status": "connected"},
@@ -131,7 +131,7 @@ void main() {
           PluginMcpServerAction.enable => {"subtype": "mcp_toggle", "serverName": "fixture", "enabled": true},
           PluginMcpServerAction.disable => {"subtype": "mcp_toggle", "serverName": "fixture", "enabled": false},
         });
-        process.emitControlResponse(requestId: request["request_id"]! as String, payload: {});
+        process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {});
         expect(await result, isA<PluginMcpActionCompleted>().having((value) => value.effectScope, "effect", PluginMcpActionEffectScope.session));
         expect(harness.specs, hasLength(1));
       });
@@ -149,7 +149,7 @@ void main() {
       );
       await pump();
       final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: {"mcpServers": []});
+      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {"mcpServers": []});
       expect(
         await result,
         isA<PluginMcpActionUnavailable>().having(
@@ -176,7 +176,7 @@ void main() {
             : repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
         await pump();
         final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
-        process.emitControlResponse(requestId: request["request_id"]! as String, payload: {"renamedServers": []});
+        process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {"renamedServers": []});
         final failed = await result;
         final (cause, stackTrace) = switch (failed) {
           PluginMcpActionFailed(:final cause, :final causeStackTrace) => (cause, causeStackTrace),
@@ -212,7 +212,7 @@ void main() {
       await pump();
       final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
       expect(request["request"], {"subtype": "mcp_status"});
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {
         "mcpServers": [{"name": "fixture", "status": "connected", "tools": <Map<String, dynamic>>[]}],
       });
       expect((await result as PluginMcpInventorySnapshot).entries, hasLength(1));
@@ -225,7 +225,7 @@ void main() {
       final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
       await pump();
       final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
-      process.emitControlError(requestId: request["request_id"]! as String, error: "fixture native rejection");
+      process.emitControlError(requestId: request.field<String>("request_id"), error: "fixture native rejection");
       final failed = await result as PluginMcpInventoryReadFailed;
       expect(failed.cause, isA<ClaudeControlException>().having((error) => error.message, "message", "fixture native rejection"));
       expect(failed.causeStackTrace.toString(), isNotEmpty);
@@ -604,10 +604,10 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
 };
 
 Map<String, Object?> _reencodedImageEcho({required Map<String, Object?> written, required String uuid}) {
-  final message = (written["message"]! as Map).cast<String, Object?>();
-  final content = (message["content"]! as List).cast<Object?>();
-  final image = (content[1]! as Map).cast<String, Object?>();
-  final source = (image["source"]! as Map).cast<String, Object?>();
+  final message = written.field<Map<String, Object?>>("message");
+  final content = message.field<List<Object?>>("content");
+  final image = expectType<Map<String, Object?>>(content[1]);
+  final source = image.field<Map<String, Object?>>("source");
   return {
     ...written,
     "uuid": uuid,
@@ -642,7 +642,7 @@ final class _ProcessHarness() {
     unawaited(() async {
       await beforeInitialize;
       final request = await waitForFrame(process, "control_request");
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: sampleHandshake);
+      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: sampleHandshake);
     }());
     return process;
   }

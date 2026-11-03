@@ -110,7 +110,7 @@ void main() {
     expect(server.authorization, PluginMcpAuthorizationState.unknown);
     expect(server.authentication, isA<PluginMcpAuthenticationCapabilityAvailable>());
     expect(server.credentialForgetting, isA<PluginMcpAuthenticationCapabilityAvailable>());
-    expect(server.configuration!.mutability, PluginMcpConfigurationMutability.readOnly);
+    expect(server.configuration?.mutability, PluginMcpConfigurationMutability.readOnly);
     expect(server.actions.map((capability) => capability.action), PluginMcpServerAction.values);
     expect(server.actions.every((capability) => capability.effectScope == PluginMcpActionEffectScope.session), isTrue);
     expect(server.actions.clear, throwsUnsupportedError);

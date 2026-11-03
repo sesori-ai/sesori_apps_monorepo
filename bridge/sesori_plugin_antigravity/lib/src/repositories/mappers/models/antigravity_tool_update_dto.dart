@@ -1,7 +1,3 @@
-// rawInput/rawOutput/_meta and preserved content entries are arbitrary ACP JSON;
-// known native fields and text content below still use generated typed decoding.
-// ignore_for_file: no_slop_linter/prefer_specific_type
-
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "antigravity_tool_update_dto.freezed.dart";
