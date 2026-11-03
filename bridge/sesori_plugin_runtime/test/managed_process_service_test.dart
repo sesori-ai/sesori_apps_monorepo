@@ -453,7 +453,8 @@ void main() {
         );
       }
 
-      const nativeCommandLine = "/opt/homebrew/lib/node_modules/agent/vendor/agent serve --port 50140 --hostname 127.0.0.1";
+      const nativeCommandLine =
+          "/opt/homebrew/lib/node_modules/agent/vendor/agent serve --port 50140 --hostname 127.0.0.1";
 
       test("stale cleanup reclaims it once its owner bridge is dead", () async {
         final record = launcherRecord(bridgePid: 901, bridgeStartMarker: "dead-bridge-start");
@@ -480,7 +481,11 @@ void main() {
       test("shutdown stops it by its live identity", () async {
         final record = launcherRecord(bridgePid: 900, bridgeStartMarker: "bridge-start");
         ownershipRepository.records[record.ownerSessionId] = record;
-        processService.inspectResults[801] = <ProcessIdentity?>[liveIdentity(commandLine: nativeCommandLine), null, null];
+        processService.inspectResults[801] = <ProcessIdentity?>[
+          liveIdentity(commandLine: nativeCommandLine),
+          null,
+          null,
+        ];
 
         await _service(
           ownershipRepository: ownershipRepository,
@@ -586,18 +591,18 @@ enum _TestStatus() {
 }
 
 class const _TestRecord({
-    required final String ownerSessionId,
-    required final int openCodePid,
-    required final String? openCodeStartMarker,
-    required final String openCodeExecutablePath,
-    required final String openCodeCommand,
-    required final List<String> openCodeArgs,
-    required final int port,
-    required final int bridgePid,
-    required final String? bridgeStartMarker,
-    required final DateTime startedAt,
-    required final _TestStatus status,
-  });
+  required final String ownerSessionId,
+  required final int openCodePid,
+  required final String? openCodeStartMarker,
+  required final String openCodeExecutablePath,
+  required final String openCodeCommand,
+  required final List<String> openCodeArgs,
+  required final int port,
+  required final int bridgePid,
+  required final String? bridgeStartMarker,
+  required final DateTime startedAt,
+  required final _TestStatus status,
+});
 
 class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   @override
@@ -787,7 +792,8 @@ class _FakeServerClock() implements ServerClock {
   DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
 }
 
-class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately}) implements SpawnedProcess {
+class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately})
+    implements SpawnedProcess {
   this {
     if (exitImmediately) {
       _exitCodeCompleter.complete(0);

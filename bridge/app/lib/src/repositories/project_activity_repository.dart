@@ -17,12 +17,12 @@ typedef ProjectActivityObservation = ({
 
 /// Collects plugin evidence used to reconcile bridge-owned project activity.
 class ProjectActivityRepository({
-    required final PluginRuntime _runtime,
-    required final ProjectsDao _projectsDao,
-    required final SessionDao _sessionDao,
-    required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
-    required final Duration _aggregateSourceDeadline,
-  }) {
+  required final PluginRuntime _runtime,
+  required final ProjectsDao _projectsDao,
+  required final SessionDao _sessionDao,
+  required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+  required final Duration _aggregateSourceDeadline,
+}) {
   Set<String> get operationalPluginIds => _runtime.activePluginIds;
 
   Future<ProjectActivityObservation?> listProjectActivityEvidence({required String pluginId}) async {
@@ -205,18 +205,21 @@ class ProjectActivityRepository({
   }
 }
 
-enum _ProjectActivityOperation() { listProjectActivityEvidence, commitActivities }
+enum _ProjectActivityOperation() {
+  listProjectActivityEvidence,
+  commitActivities,
+}
 
 sealed class const _ProjectActivitySource({required final String pluginId, required final int generation});
 
 final class const _NativeProjectActivitySource({
-    required super.pluginId,
-    required super.generation,
-    required final List<PluginProject> projects,
-  }) extends _ProjectActivitySource;
+  required super.pluginId,
+  required super.generation,
+  required final List<PluginProject> projects,
+}) extends _ProjectActivitySource;
 
 final class const _ResolvedProjectActivitySource({
-    required super.pluginId,
-    required super.generation,
-    required final List<ProjectActivityEvidence> evidence,
-  }) extends _ProjectActivitySource;
+  required super.pluginId,
+  required super.generation,
+  required final List<ProjectActivityEvidence> evidence,
+}) extends _ProjectActivitySource;

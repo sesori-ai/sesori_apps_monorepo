@@ -43,7 +43,8 @@ class const OsVersionFormatter() {
   /// Windows 11 still reports major 10.0; the build number is the only
   /// discriminator (>= 22000 is Windows 11).
   String? _windows(String operatingSystemVersion) {
-    final build = RegExp(r"Build\s+(\d+)").firstMatch(operatingSystemVersion)?.group(1) ??
+    final build =
+        RegExp(r"Build\s+(\d+)").firstMatch(operatingSystemVersion)?.group(1) ??
         RegExp(r"\b(\d{5,})\b").firstMatch(operatingSystemVersion)?.group(1);
     final buildNumber = build == null ? null : int.tryParse(build);
     if (buildNumber == null) return null;
@@ -81,8 +82,7 @@ class const OsVersionFormatter() {
       var value = trimmed.substring(eq + 1).trim();
       // Strip the surrounding single/double quotes os-release(5) allows.
       if (value.length >= 2 &&
-          ((value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'")))) {
+          ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
         value = value.substring(1, value.length - 1);
       }
       result[key] = value;

@@ -22,9 +22,15 @@ final class RelayConnection._({required final IOWebSocketChannel _channel}) {
   String? _lastAuthedToken;
 }
 
-enum RelaySendOutcome() { sent, stale }
+enum RelaySendOutcome() {
+  sent,
+  stale,
+}
 
-enum RelayCloseOutcome() { closed, stale }
+enum RelayCloseOutcome() {
+  closed,
+  stale,
+}
 
 /// Live connection state of the relay WebSocket, emitted on
 /// [RelayClient.connectionState].
@@ -48,17 +54,16 @@ final class const RelayConnected() extends RelayConnectionState;
 final class const RelayDisconnected({required final int? closeCode}) extends RelayConnectionState;
 
 class RelayClient({
-    required final String _relayURL,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final BridgeIdProvider _bridgeIdProvider,
-    final Duration _pingInterval = const Duration(seconds: 15),
-    final Duration _connectTimeout = const Duration(seconds: 15),
-  }) {
+  required final String _relayURL,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final BridgeIdProvider _bridgeIdProvider,
+  final Duration _pingInterval = const Duration(seconds: 15),
+  final Duration _connectTimeout = const Duration(seconds: 15),
+}) {
   final StreamController<RelayConnectionState> _connectionState = StreamController<RelayConnectionState>.broadcast();
   _RelayConnectionAttempt? _pendingConnection;
   RelayConnection? _connection;
-  BridgeConnectionNotificationPolicy _connectionNotificationPolicy =
-      BridgeConnectionNotificationPolicy.conservative;
+  BridgeConnectionNotificationPolicy _connectionNotificationPolicy = BridgeConnectionNotificationPolicy.conservative;
 
   /// The WebSocket close code of [connection], available once it has closed.
   int? closeCode({required RelayConnection connection}) => connection._channel.closeCode;
@@ -326,4 +331,7 @@ class RelayClient({
   }
 }
 
-final class const _RelayConnectionAttempt({required final IOWebSocketChannel channel, required final HttpClient httpClient});
+final class const _RelayConnectionAttempt({
+  required final IOWebSocketChannel channel,
+  required final HttpClient httpClient,
+});

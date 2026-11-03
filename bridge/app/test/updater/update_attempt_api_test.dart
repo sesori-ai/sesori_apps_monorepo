@@ -48,7 +48,8 @@ void main() {
   test('recovers the record from the temp when a crash left the target missing', () async {
     // Simulate a crash in write()'s delete→rename gap: only the flushed temp
     // survives, the target record is gone.
-    File(tmpPath()).writeAsStringSync(jsonEncode(attempt(status: UpdateAttemptStatus.appliedPendingActivation).toJson()));
+    File(tmpPath())
+        .writeAsStringSync(jsonEncode(attempt(status: UpdateAttemptStatus.appliedPendingActivation).toJson()));
     expect(File(recordPath()).existsSync(), isFalse);
 
     final read = await api.read();

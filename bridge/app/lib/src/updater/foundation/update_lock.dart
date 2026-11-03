@@ -19,10 +19,10 @@ enum LockAcquireResult() {
 }
 
 class UpdateLock({
-    required final int _currentPid,
-    required final ProcessRunner _processRunner,
-    required final Clock _clock,
-  }) {
+  required final int _currentPid,
+  required final ProcessRunner _processRunner,
+  required final Clock _clock,
+}) {
   /// Default age after which a still-"held" `.update.lock` is reaped as stale,
   /// even when the holder PID still appears alive.
   ///

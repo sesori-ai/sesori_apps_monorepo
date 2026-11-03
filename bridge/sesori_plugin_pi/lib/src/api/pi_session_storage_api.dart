@@ -288,8 +288,7 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     for (final path in diagnostics.oversizedSettingsPaths) {
       Log.w("[pi] ignored oversized session settings at '$path'");
     }
-    final unreportedOversizedSettings =
-        diagnostics.oversizedSettingsFiles - diagnostics.oversizedSettingsPaths.length;
+    final unreportedOversizedSettings = diagnostics.oversizedSettingsFiles - diagnostics.oversizedSettingsPaths.length;
     if (unreportedOversizedSettings > 0) {
       Log.w("[pi] ignored $unreportedOversizedSettings additional oversized session settings file(s)");
     }
@@ -858,14 +857,10 @@ PiSessionFile? _readSessionMetadata({
 
     scan:
     while (true) {
-      final readLength = scanSessionInfo
-          ? 8192
-          : (externalHeaderBytesRemaining + 1).clamp(1, 8192);
+      final readLength = scanSessionInfo ? 8192 : (externalHeaderBytesRemaining + 1).clamp(1, 8192);
       final chunk = handle.readSync(readLength);
       if (chunk.isEmpty) break;
-      final consumedLength = scanSessionInfo
-          ? chunk.length
-          : chunk.length.clamp(0, externalHeaderBytesRemaining);
+      final consumedLength = scanSessionInfo ? chunk.length : chunk.length.clamp(0, externalHeaderBytesRemaining);
       for (var index = 0; index < consumedLength; index += 1) {
         final byte = chunk[index];
         if (byte == 0x0A) {
@@ -1132,8 +1127,7 @@ final class const _PiPendingMarkerInvalid({
   required final String path,
   required final Object error,
   required final StackTrace stackTrace,
-})
-    extends _PiPendingMarkerResult;
+}) extends _PiPendingMarkerResult;
 
 final class const _PiSettingsAbsent() extends _PiSettingsValue;
 
@@ -1368,8 +1362,8 @@ final class _PiMetadataLineScanner() {
     final result = switch ((_classification, _oversized)) {
       (_, true) => const _PiScannedLineOversizedMetadata(),
       (_PiLineClassification.metadata, false) => _PiScannedLineMetadata(
-          bytes: List<int>.unmodifiable(_metadataBytes),
-        ),
+        bytes: List<int>.unmodifiable(_metadataBytes),
+      ),
       (_PiLineClassification.nonMetadata, false) => const _PiScannedLineNonMetadata(),
       (_PiLineClassification.pending || _PiLineClassification.ignored, false) => const _PiScannedLineIgnored(),
     };

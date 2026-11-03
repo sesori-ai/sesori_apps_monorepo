@@ -7,7 +7,6 @@ import "models/project_not_found_exception.dart";
 
 /// Wraps plugin provider reads and maps plugin models to shared types.
 class ProviderRepository({required final PluginRuntime _runtime, required final ProjectsDao _projectsDao}) {
-
   Future<ProviderListResponse> getProviders({required String projectId, required String pluginId}) async {
     return await _runtime.use(
       pluginId: pluginId,
@@ -26,4 +25,6 @@ class ProviderRepository({required final PluginRuntime _runtime, required final 
   }
 }
 
-enum _ProviderOperation() { getProviders }
+enum _ProviderOperation() {
+  getProviders,
+}

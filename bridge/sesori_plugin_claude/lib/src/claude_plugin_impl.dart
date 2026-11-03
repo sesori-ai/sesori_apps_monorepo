@@ -757,7 +757,8 @@ final class ClaudePlugin({
       // here. User echoes still render (they are the prompt's transcript identity)
       // and so do forwarded sub-agent frames, which belong to the kept work.
       if (interrupted) {
-        if (message case ClaudeAssistantMessage(parentToolUseId: null) || ClaudeStreamEventMessage(parentToolUseId: null)) {
+        if (message
+            case ClaudeAssistantMessage(parentToolUseId: null) || ClaudeStreamEventMessage(parentToolUseId: null)) {
           return;
         }
       }

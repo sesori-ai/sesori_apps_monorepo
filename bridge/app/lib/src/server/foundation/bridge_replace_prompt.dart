@@ -12,7 +12,8 @@ import 'terminal_prompt_decision.dart';
 abstract class BridgeReplacePrompt() {
   /// Shared question copy for both implementations, so the terminal and GUI
   /// paths never drift apart (the terminal appends its own `[y/N]` hint).
-  static const String replaceExistingBridgeMessage = 'Another Sesori bridge is already running. Kill it and start fresh?';
+  static const String replaceExistingBridgeMessage =
+      'Another Sesori bridge is already running. Kill it and start fresh?';
 
   /// See [replaceExistingBridgeMessage].
   static String replaceStartingBridgeMessage({required int holderPid}) =>

@@ -40,8 +40,7 @@ List<String> codexDesktopAppCliCandidates({
       final binDir = p.join(localAppData, "OpenAI", "Codex", "bin");
       return [
         p.join(binDir, "codex.exe"),
-        for (final subdirectory in _subdirectoriesNewestFirst(directoryPath: binDir))
-          p.join(subdirectory, "codex.exe"),
+        for (final subdirectory in _subdirectoriesNewestFirst(directoryPath: binDir)) p.join(subdirectory, "codex.exe"),
       ];
     case PlatformOs.linux:
       return const [];

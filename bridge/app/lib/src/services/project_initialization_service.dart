@@ -21,15 +21,18 @@ class ProjectParentMissingException({required final String path}) implements Exc
 
 /// Thrown when Git setup fails for a newly created project directory.
 class ProjectGitSetupException({
-    required final String path,
-    required final String operation,
-    required final Object? cause,
-  }) implements Exception {
+  required final String path,
+  required final String operation,
+  required final Object? cause,
+}) implements Exception {
   @override
   String toString() => "ProjectGitSetupException: $operation failed: $path";
 }
 
-enum ExistingProjectPreparationOutcome() { ready, gitChoiceRequired }
+enum ExistingProjectPreparationOutcome() {
+  ready,
+  gitChoiceRequired,
+}
 
 /// Layer 3 service that owns the "create a new project from a directory path"
 /// flow: create the directory, initialize git, then stage and commit an
@@ -40,11 +43,10 @@ enum ExistingProjectPreparationOutcome() { ready, gitChoiceRequired }
 /// [FilesystemPermissionDeniedException] propagates unchanged so the handler
 /// can surface an actionable message.
 class ProjectInitializationService({
-    required final WorktreeRepository _worktreeRepository,
-    required final FilesystemRepository _filesystemRepository,
-  }) {
+  required final WorktreeRepository _worktreeRepository,
+  required final FilesystemRepository _filesystemRepository,
+}) {
   static const String _initialCommitMessage = "Initial commit";
-
 
   /// Creates and initializes a new git project at [path].
   ///

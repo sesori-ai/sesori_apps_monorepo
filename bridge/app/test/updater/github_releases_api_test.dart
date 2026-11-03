@@ -53,13 +53,10 @@ void main() {
         final client = MockClient((request) async {
           final attempt = authHeaderSeen.length;
           authHeaderSeen.add(request.headers.containsKey('authorization'));
-          return attempt == 0
-              ? http.Response('Bad credentials', 401)
-              : http.Response('[]', 200);
+          return attempt == 0 ? http.Response('Bad credentials', 401) : http.Response('[]', 200);
         });
 
-        final releases =
-            await GitHubReleasesApi(httpClient: client, authToken: 'stale-token').fetchReleases();
+        final releases = await GitHubReleasesApi(httpClient: client, authToken: 'stale-token').fetchReleases();
 
         expect(releases, isEmpty);
         // Authenticated first, then an unauthenticated retry.
@@ -74,8 +71,7 @@ void main() {
           return attempt == 0 ? http.Response('', 403) : http.Response('[]', 200);
         });
 
-        final releases =
-            await GitHubReleasesApi(httpClient: client, authToken: 'scopeless-token').fetchReleases();
+        final releases = await GitHubReleasesApi(httpClient: client, authToken: 'scopeless-token').fetchReleases();
 
         expect(releases, isEmpty);
         expect(authHeaderSeen, equals([true, false]));
@@ -106,10 +102,14 @@ void main() {
       test('HTTP 403 with x-ratelimit-remaining: 0 → GitHubRateLimitException with reset time', () async {
         final resetEpochSeconds = DateTime.utc(2030, 6, 1, 15).millisecondsSinceEpoch ~/ 1000;
         final client = MockClient(
-          (_) async => http.Response('', 403, headers: {
-            'x-ratelimit-remaining': '0',
-            'x-ratelimit-reset': '$resetEpochSeconds',
-          }),
+          (_) async => http.Response(
+            '',
+            403,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': '$resetEpochSeconds',
+            },
+          ),
         );
 
         await expectLater(
@@ -144,11 +144,15 @@ void main() {
         final now = DateTime.utc(2030, 6, 1, 15);
         final farFutureReset = now.add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000;
         final client = MockClient(
-          (_) async => http.Response('', 403, headers: {
-            'x-ratelimit-remaining': '0',
-            'x-ratelimit-reset': '$farFutureReset',
-            'retry-after': '60',
-          }),
+          (_) async => http.Response(
+            '',
+            403,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': '$farFutureReset',
+              'retry-after': '60',
+            },
+          ),
         );
 
         Object? caught;

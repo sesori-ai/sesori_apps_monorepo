@@ -338,7 +338,8 @@ environment:
     test('keeps the blank line after the pubspec version', () async {
       final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
       fixture = currentFixture;
-      await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\nversion: 1.0.6+13\n\nenvironment:\n');
+      await File(currentFixture.desktopPubspecPath)
+          .writeAsString('name: sesori_desktop\nversion: 1.0.6+13\n\nenvironment:\n');
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--type', 'patch']);
 
@@ -352,7 +353,8 @@ environment:
     test('keeps CRLF line endings in the pubspec', () async {
       final currentFixture = await _createFixtureApp(clientVersion: '1.0.6+8');
       fixture = currentFixture;
-      await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\r\nversion: 1.0.6+13\r\n\r\nenvironment:\r\n');
+      await File(currentFixture.desktopPubspecPath)
+          .writeAsString('name: sesori_desktop\r\nversion: 1.0.6+13\r\n\r\nenvironment:\r\n');
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--type', 'patch']);
 

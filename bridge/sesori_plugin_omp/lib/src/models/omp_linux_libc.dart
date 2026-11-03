@@ -1,1 +1,4 @@
-enum OmpLinuxLibc() { glibc, musl }
+enum OmpLinuxLibc() {
+  glibc,
+  musl,
+}

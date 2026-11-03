@@ -7,7 +7,9 @@ import "../tables/session_options_cache_table.dart";
 part "session_options_cache_dao.g.dart";
 
 @DriftAccessor(tables: [SessionOptionsCacheTable])
-class SessionOptionsCacheDao({required AppDatabase database}) extends DatabaseAccessor<AppDatabase> with _$SessionOptionsCacheDaoMixin {
+class SessionOptionsCacheDao({required AppDatabase database})
+    extends DatabaseAccessor<AppDatabase>
+    with _$SessionOptionsCacheDaoMixin {
   this : super(database);
 
   Future<SessionOptionsCacheTableData?> getRow({

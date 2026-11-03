@@ -14,7 +14,7 @@ One-off benchmark executables belong under the owning package's
 `tool/benchmarks/` directory, never under `lib/`, `bin/`, or another production
 source directory.
 
-`make analyze` and Bridge CI both run `dart analyze --fatal-infos`, so info-level lints (e.g. `directives_ordering` import sorting) fail locally and in CI alike.
+`make analyze` and Bridge CI both run `dart analyze --fatal-infos`, so info-level lints (e.g. `directives_ordering` import sorting) fail locally and in CI alike. Bridge CI also checks `dart format`; run `tool/dart_format.sh bridge` from the repository root to fix it.
 
 From `bridge/app/`:
 - `make build` — build the host-native CLI bundle

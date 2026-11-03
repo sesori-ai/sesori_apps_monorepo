@@ -191,18 +191,18 @@ enum _TestStatus() {
 }
 
 class const _TestRecord({
-    required final String ownerSessionId,
-    required final int openCodePid,
-    required final String? openCodeStartMarker,
-    required final String openCodeExecutablePath,
-    required final String openCodeCommand,
-    required final List<String> openCodeArgs,
-    required final int port,
-    required final int bridgePid,
-    required final String? bridgeStartMarker,
-    required final DateTime startedAt,
-    required final _TestStatus status,
-  }) {
+  required final String ownerSessionId,
+  required final int openCodePid,
+  required final String? openCodeStartMarker,
+  required final String openCodeExecutablePath,
+  required final String openCodeCommand,
+  required final List<String> openCodeArgs,
+  required final int port,
+  required final int bridgePid,
+  required final String? bridgeStartMarker,
+  required final DateTime startedAt,
+  required final _TestStatus status,
+}) {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "ownerSessionId": ownerSessionId,

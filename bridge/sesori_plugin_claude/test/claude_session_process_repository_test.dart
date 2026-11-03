@@ -29,13 +29,23 @@ void main() {
 
     test("inventory reads do not create or resume a process", () async {
       final result = await repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
-      expect(result, isA<PluginMcpInventoryUnavailable>().having(
-        (value) => value.reason, "reason", PluginMcpInventoryUnavailableReason.liveSessionRequired,
-      ));
+      expect(
+        result,
+        isA<PluginMcpInventoryUnavailable>().having(
+          (value) => value.reason,
+          "reason",
+          PluginMcpInventoryUnavailableReason.liveSessionRequired,
+        ),
+      );
       final unsupported = await repository.getMcpInventory(scope: const PluginMcpHarnessScope());
-      expect(unsupported, isA<PluginMcpInventoryUnavailable>().having(
-        (value) => value.reason, "reason", PluginMcpInventoryUnavailableReason.unsupportedScope,
-      ));
+      expect(
+        unsupported,
+        isA<PluginMcpInventoryUnavailable>().having(
+          (value) => value.reason,
+          "reason",
+          PluginMcpInventoryUnavailableReason.unsupportedScope,
+        ),
+      );
       expect(harness.specs, isEmpty);
     });
 
@@ -53,10 +63,15 @@ void main() {
     test("authentication context never starts a resident and rejects unsupported scope", () async {
       for (final (scope, reason) in [
         (const PluginMcpHarnessScope(), PluginMcpAuthenticationUnavailableReason.unsupportedScope),
-        (const PluginMcpSessionScope(sessionId: testSessionId), PluginMcpAuthenticationUnavailableReason.liveSessionRequired),
+        (
+          const PluginMcpSessionScope(sessionId: testSessionId),
+          PluginMcpAuthenticationUnavailableReason.liveSessionRequired,
+        ),
       ]) {
         await expectLater(
-          repository.resolveMcpAuthenticationContext(target: PluginMcpServerTarget(scope: scope, serverKey: "fixture")),
+          repository.resolveMcpAuthenticationContext(
+            target: PluginMcpServerTarget(scope: scope, serverKey: "fixture"),
+          ),
           throwsA(isA<PluginMcpAuthenticationUnavailableException>().having((e) => e.reason, "reason", reason)),
         );
       }
@@ -71,15 +86,31 @@ void main() {
       test("authentication rejects unresolved CLI config $nativeScope/$url", () async {
         await _ensure(repository, createNew: true);
         final result = repository.resolveMcpAuthenticationContext(
-          target: const PluginMcpServerTarget(scope: PluginMcpSessionScope(sessionId: testSessionId), serverKey: "fixture"),
+          target: const PluginMcpServerTarget(
+            scope: PluginMcpSessionScope(sessionId: testSessionId),
+            serverKey: "fixture",
+          ),
         );
-        final rejected = expectLater(result, throwsA(isA<PluginMcpAuthenticationUnavailableException>().having((e) => e.reason, "reason", reason)));
+        final rejected = expectLater(
+          result,
+          throwsA(isA<PluginMcpAuthenticationUnavailableException>().having((e) => e.reason, "reason", reason)),
+        );
         await pump();
         final process = harness.processes.single;
         final request = process.written.lastWhere((f) => f["type"] == "control_request");
-        process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {
-          "mcpServers": [{"name": "fixture", "status": "needs-auth", "scope": nativeScope, "config": {"type": url == null ? "stdio" : "http", "url": url}}],
-        });
+        process.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {
+            "mcpServers": [
+              {
+                "name": "fixture",
+                "status": "needs-auth",
+                "scope": nativeScope,
+                "config": {"type": url == null ? "stdio" : "http", "url": url},
+              },
+            ],
+          },
+        );
         await rejected;
         expect(harness.specs, hasLength(1));
       });
@@ -88,14 +119,27 @@ void main() {
     test("authentication binds the exact native server and resident directory", () async {
       await _ensure(repository, createNew: true);
       final result = repository.resolveMcpAuthenticationContext(
-        target: const PluginMcpServerTarget(scope: PluginMcpSessionScope(sessionId: testSessionId), serverKey: "fixture"),
+        target: const PluginMcpServerTarget(
+          scope: PluginMcpSessionScope(sessionId: testSessionId),
+          serverKey: "fixture",
+        ),
       );
       await pump();
       final process = harness.processes.single;
       final request = process.written.lastWhere((f) => f["type"] == "control_request");
-      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {
-        "mcpServers": [{"name": "fixture", "status": "needs-auth", "scope": "local", "config": {"type": "http", "url": "https://fixture.example/mcp"}}],
-      });
+      process.emitControlResponse(
+        requestId: request.field<String>("request_id"),
+        payload: {
+          "mcpServers": [
+            {
+              "name": "fixture",
+              "status": "needs-auth",
+              "scope": "local",
+              "config": {"type": "http", "url": "https://fixture.example/mcp"},
+            },
+          ],
+        },
+      );
       final context = await result;
       expect(context.serverName, "fixture");
       expect(context.workingDirectory, harness.specs.single.workingDirectory);
@@ -132,7 +176,14 @@ void main() {
           PluginMcpServerAction.disable => {"subtype": "mcp_toggle", "serverName": "fixture", "enabled": false},
         });
         process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {});
-        expect(await result, isA<PluginMcpActionCompleted>().having((value) => value.effectScope, "effect", PluginMcpActionEffectScope.session));
+        expect(
+          await result,
+          isA<PluginMcpActionCompleted>().having(
+            (value) => value.effectScope,
+            "effect",
+            PluginMcpActionEffectScope.session,
+          ),
+        );
         expect(harness.specs, hasLength(1));
       });
     }
@@ -212,9 +263,14 @@ void main() {
       await pump();
       final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
       expect(request["request"], {"subtype": "mcp_status"});
-      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: {
-        "mcpServers": [{"name": "fixture", "status": "connected", "tools": <Map<String, dynamic>>[]}],
-      });
+      process.emitControlResponse(
+        requestId: request.field<String>("request_id"),
+        payload: {
+          "mcpServers": [
+            {"name": "fixture", "status": "connected", "tools": <Map<String, dynamic>>[]},
+          ],
+        },
+      );
       expect((await result as PluginMcpInventorySnapshot).entries, hasLength(1));
       expect(harness.specs, hasLength(1));
     });
@@ -227,7 +283,10 @@ void main() {
       final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
       process.emitControlError(requestId: request.field<String>("request_id"), error: "fixture native rejection");
       final failed = await result as PluginMcpInventoryReadFailed;
-      expect(failed.cause, isA<ClaudeControlException>().having((error) => error.message, "message", "fixture native rejection"));
+      expect(
+        failed.cause,
+        isA<ClaudeControlException>().having((error) => error.message, "message", "fixture native rejection"),
+      );
       expect(failed.causeStackTrace.toString(), isNotEmpty);
       expect(harness.specs, hasLength(1));
     });
@@ -238,7 +297,10 @@ void main() {
       final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
       await pump();
       process.exit(1);
-      expect(await result, isA<PluginMcpInventoryReadFailed>().having((value) => value.cause, "cause", isA<ClaudeControlException>()));
+      expect(
+        await result,
+        isA<PluginMcpInventoryReadFailed>().having((value) => value.cause, "cause", isA<ClaudeControlException>()),
+      );
       expect(harness.specs, hasLength(1));
     });
 
@@ -247,11 +309,18 @@ void main() {
       final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
       await pump();
       await repository.teardown(sessionId: testSessionId);
-      expect(await result, isA<PluginMcpInventoryReadFailed>().having(
-        (value) => value.cause, "cause", isA<ClaudeControlException>().having(
-          (error) => error.message, "message", "ClaudeStreamClient disposed",
+      expect(
+        await result,
+        isA<PluginMcpInventoryReadFailed>().having(
+          (value) => value.cause,
+          "cause",
+          isA<ClaudeControlException>().having(
+            (error) => error.message,
+            "message",
+            "ClaudeStreamClient disposed",
+          ),
         ),
-      ));
+      );
       expect(harness.specs, hasLength(1));
     });
 

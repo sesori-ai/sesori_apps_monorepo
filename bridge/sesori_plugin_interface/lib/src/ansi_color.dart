@@ -10,7 +10,7 @@ enum AnsiColor(
   red("\x1B[31m"),
   yellow("\x1B[33m"),
   blue("\x1B[94m"),
-  gray("\x1B[90m");
+  gray("\x1B[90m"),
 }
 
 /// Wraps terminal text in ANSI color escape sequences.

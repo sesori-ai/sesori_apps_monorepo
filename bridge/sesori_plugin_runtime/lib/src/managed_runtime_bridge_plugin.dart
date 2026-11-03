@@ -25,6 +25,7 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
   required final String displayName,
   required final String logContext,
   required final bool interruptOwnedOnly,
+
   /// Backend-specific warm-up for [BridgePlugin.onStarted], or null when this
   /// plugin has nothing to warm. Required so adding a managed plugin states its
   /// startup intent rather than inheriting one by omission. Nothing waits on it
