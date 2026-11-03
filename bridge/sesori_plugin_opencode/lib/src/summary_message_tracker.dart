@@ -25,7 +25,50 @@ class SummaryMessageTracker() {
       case SseMessagePartUpdated(:final CompactionPart part):
         _markerAuto[part.messageID] = part.auto;
         _bound(_markerAuto);
-      case _:
+      case SseServerConnected() ||
+          SseServerHeartbeat() ||
+          SseServerInstanceDisposed() ||
+          SseGlobalDisposed() ||
+          SseSessionCreated() ||
+          SseSessionUpdated() ||
+          SseSessionDeleted() ||
+          SseSessionDiff() ||
+          SseSessionError() ||
+          SseSessionCompacted() ||
+          SseSessionStatus() ||
+          SseSessionIdle() ||
+          SseCommandExecuted() ||
+          SseMessageUpdated() ||
+          SseMessageRemoved() ||
+          SseMessagePartUpdated() ||
+          SseMessagePartDelta() ||
+          SseMessagePartRemoved() ||
+          SsePtyCreated() ||
+          SsePtyUpdated() ||
+          SsePtyExited() ||
+          SsePtyDeleted() ||
+          SsePermissionAsked() ||
+          SsePermissionReplied() ||
+          SsePermissionUpdated() ||
+          SseQuestionAsked() ||
+          SseQuestionReplied() ||
+          SseQuestionRejected() ||
+          SseTodoUpdated() ||
+          SseProjectUpdated() ||
+          SseVcsBranchUpdated() ||
+          SseFileEdited() ||
+          SseFileWatcherUpdated() ||
+          SseLspUpdated() ||
+          SseLspClientDiagnostics() ||
+          SseMcpToolsChanged() ||
+          SseMcpBrowserOpenFailed() ||
+          SseInstallationUpdated() ||
+          SseInstallationUpdateAvailable() ||
+          SseWorkspaceReady() ||
+          SseWorkspaceFailed() ||
+          SseTuiToastShow() ||
+          SseWorktreeReady() ||
+          SseWorktreeFailed():
     }
   }
 

@@ -81,7 +81,10 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           // finalizes stranded tools before delivering the idle to clients; an
           // extra idle status would reach them twice, first ahead of that work.
           PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: projected.sessionId),
-          final active => BridgeSseSessionStatus(sessionID: projected.sessionId, status: active),
+          PluginSessionStatusBusy() || PluginSessionStatusRetry() => BridgeSseSessionStatus(
+            sessionID: projected.sessionId,
+            status: projected.status,
+          ),
         },
       ...switch (event) {
         V2ServerConnected() => [const BridgeSseServerConnected()],
