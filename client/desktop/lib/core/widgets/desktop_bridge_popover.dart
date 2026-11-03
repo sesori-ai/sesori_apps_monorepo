@@ -118,10 +118,14 @@ class const DesktopBridgePopover({
                           start: _statusDotSize + PregoSpacing.sm,
                           top: PregoSpacing.xs,
                         ),
-                        child: Text(
-                          detail,
-                          style: context.prego.textTheme.textXs.regular.copyWith(
-                            color: context.prego.colors.textTertiary,
+                        // Announced with the status, so the remediation is read too.
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            detail,
+                            style: context.prego.textTheme.textXs.regular.copyWith(
+                              color: context.prego.colors.textTertiary,
+                            ),
                           ),
                         ),
                       ),
