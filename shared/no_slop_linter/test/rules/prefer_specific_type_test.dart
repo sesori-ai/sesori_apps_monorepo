@@ -426,6 +426,17 @@ void fail({required Object cause}) {}
 ''');
   }
 
+  void test_reportForObjectDeclarationMixingCauseAndOtherNames() async {
+    await assertDiagnostics(
+      r'''
+void f() {
+  Object value = 1, cause = 2;
+}
+''',
+      [lint(13, 6)],
+    );
+  }
+
   void test_noErrorForErrorAndStackTraceHandler() async {
     await assertNoDiagnostics(r'''
 class Listener {

@@ -158,8 +158,8 @@ class PreferSpecificTypeRule extends NoSlopRule {
 
   /// Errors and their causes are opaque: Dart can throw any object, and the
   /// original is kept in an `error`, `cause` or `innerError` value. `Object`
-  /// is acceptable for a parameter, field or variable whose name says so.
-  /// `dynamic` is NOT allowed here.
+  /// is acceptable for a parameter, field or variable whose name says so; in
+  /// a multi-variable declaration every name must. `dynamic` is NOT allowed here.
   bool _isErrorValue(NamedType node) {
     AstNode? current = node.parent;
     while (current != null) {
@@ -168,7 +168,7 @@ class PreferSpecificTypeRule extends NoSlopRule {
       }
 
       if (current is VariableDeclarationList) {
-        return current.variables.any((variable) => _isErrorName(variable.name.lexeme));
+        return current.variables.every((variable) => _isErrorName(variable.name.lexeme));
       }
 
       // Stop at declaration boundaries

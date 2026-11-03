@@ -52,16 +52,16 @@ Rule tests extend `AnalysisRuleTest` from `analyzer_testing` and run through
 
 ```dart
 @reflectiveTest
-class YourRuleTest extends AnalysisRuleTest {
+class AvoidDynamicReturnTypeTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = YourRule(ignoreTestFiles: false);
+    rule = AvoidDynamicReturnTypeRule(ignoreTestFiles: false);
     super.setUp();
   }
 
-  void test_reportsBadCode() async {
+  void test_reportForExplicitDynamicReturnType() async {
     await assertDiagnostics(r'''
-dynamic foo;
+dynamic foo() {}
 ''', [lint(0, 7)]);
   }
 }
