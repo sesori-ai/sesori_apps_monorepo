@@ -1,7 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../converters/strict_int_json_converter.dart";
-import "plugin_setup_response.dart";
+import "plugin_setup_metadata.dart";
 
 part "plugin_management.freezed.dart";
 part "plugin_management.g.dart";

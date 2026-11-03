@@ -39,9 +39,6 @@ void main() {
       final repository = QuestionRepository(
         runtime: runtime,
         pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
-        sessionDao: database.sessionDao,
-        projectsDao: database.projectsDao,
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       runtime.stoppedPluginIds.add(plugin.id);
 
@@ -79,9 +76,6 @@ void main() {
       final repository = QuestionRepository(
         runtime: runtime,
         pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
-        sessionDao: database.sessionDao,
-        projectsDao: database.projectsDao,
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
       await repository.getPendingQuestions(sessionId: "ses_a");

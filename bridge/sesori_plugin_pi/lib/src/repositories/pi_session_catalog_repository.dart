@@ -116,7 +116,8 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
   Future<bool> hasPersistedSession({required String sessionId}) async =>
       await resolveSession(sessionId: sessionId, knownDirectories: const {}) != null;
 
-  Future<({String displaySessionId, String projectId})?> resolveDisplayScope({required String sessionId}) async {
+  /// The top-most known ancestor of [sessionId], or null for an unknown session.
+  Future<String?> resolveDisplaySessionId({required String sessionId}) async {
     final owner = await findSessionById(sessionId: sessionId);
     if (owner == null) return null;
     var display = owner;
@@ -128,7 +129,7 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
       if (parent == null) break;
       display = parent;
     }
-    return (displaySessionId: display.id, projectId: owner.projectID);
+    return display.id;
   }
 
   /// Deletes a persisted session's file and the session's pending markers.

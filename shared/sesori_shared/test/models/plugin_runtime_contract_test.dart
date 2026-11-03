@@ -90,37 +90,36 @@ void main() {
     expect(metadata.state, PluginLifecycleState.unavailable);
   });
 
-  test("plugin setup round-trips ordered generic metadata and maps future states to unknown", () {
-    const response = PluginSetupResponse(
-      plugins: [
-        PluginSetupMetadata(
-          id: "codex",
-          displayName: "Codex",
-          state: PluginSetupState.authenticationRequired,
-          runtimeVersion: "0.42.0",
-          actionHint: "Run codex login on this machine.",
-        ),
-        PluginSetupMetadata(
-          id: "opencode",
-          displayName: "OpenCode",
-          state: PluginSetupState.ready,
-          runtimeVersion: "1.18.11",
-          actionHint: null,
-        ),
-        PluginSetupMetadata(
-          id: "pi",
-          displayName: "Pi",
-          state: PluginSetupState.runtimeOutdated,
-          runtimeVersion: "0.84.0",
-          actionHint: "Update the global Pi installation.",
-        ),
-      ],
-    );
+  test("plugin setup metadata round-trips and maps future states to unknown", () {
+    const plugins = [
+      PluginSetupMetadata(
+        id: "codex",
+        displayName: "Codex",
+        state: PluginSetupState.authenticationRequired,
+        runtimeVersion: "0.42.0",
+        actionHint: "Run codex login on this machine.",
+      ),
+      PluginSetupMetadata(
+        id: "opencode",
+        displayName: "OpenCode",
+        state: PluginSetupState.ready,
+        runtimeVersion: "1.18.11",
+        actionHint: null,
+      ),
+      PluginSetupMetadata(
+        id: "pi",
+        displayName: "Pi",
+        state: PluginSetupState.runtimeOutdated,
+        runtimeVersion: "0.84.0",
+        actionHint: "Update the global Pi installation.",
+      ),
+    ];
 
-    expect(PluginSetupResponse.fromJson(response.toJson()), response);
-    final oldPayload = response.toJson();
-    ((oldPayload["plugins"] as List<Object?>).first! as Map<String, dynamic>).remove("runtimeVersion");
-    expect(PluginSetupResponse.fromJson(oldPayload).plugins.first.runtimeVersion, isNull);
+    for (final plugin in plugins) {
+      expect(PluginSetupMetadata.fromJson(plugin.toJson()), plugin);
+    }
+    final oldPayload = plugins.first.toJson()..remove("runtimeVersion");
+    expect(PluginSetupMetadata.fromJson(oldPayload).runtimeVersion, isNull);
     expect(
       PluginSetupMetadata.fromJson(const {
         "id": "future",

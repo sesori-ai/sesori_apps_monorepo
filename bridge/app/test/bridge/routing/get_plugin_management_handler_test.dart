@@ -13,7 +13,6 @@ void main() {
 
     expect(handler.canHandle(makeRequest("GET", "/plugin/management")), isTrue);
     expect(handler.canHandle(makeRequest("POST", "/plugin/management")), isFalse);
-    expect(handler.canHandle(makeRequest("GET", "/plugin/setup")), isFalse);
   });
 
   test("returns the current lifecycle service snapshot unchanged", () async {

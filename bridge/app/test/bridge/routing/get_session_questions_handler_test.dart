@@ -27,7 +27,6 @@ void main() {
         questionRepository: singlePluginQuestionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
         ),
       );
     });

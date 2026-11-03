@@ -295,9 +295,6 @@ class OpenCodeV2Plugin._({
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) =>
       _service.getPendingPermissions(sessionId: sessionId);
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) =>
-      _service.getProjectQuestions(projectId: projectId);
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

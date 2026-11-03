@@ -1725,21 +1725,6 @@ class CodexPlugin._({
   }) async => _approvalRegistry?.pendingPermissionsForSessionTree(sessionId: sessionId) ?? const [];
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({
-    required String projectId,
-  }) async {
-    final registry = _approvalRegistry;
-    if (registry == null) return const [];
-    // Scope to the sessions whose directory belongs to this project so a pending
-    // approval in one codex project doesn't surface under every other. Resolves
-    // each session's directory via [_directoryForSession] so a freshly-created
-    // session (not yet flushed to its rollout) is still scoped correctly.
-    final target = normalizeProjectDirectory(directory: projectId);
-    final sessionIds = _sessionStatuses.keys.where((id) => _directoryForSession(id) == target).toList(growable: false);
-    return registry.pendingForProject(sessionIds: sessionIds);
-  }
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

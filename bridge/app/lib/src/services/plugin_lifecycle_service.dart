@@ -194,18 +194,6 @@ class PluginLifecycleService({
     ]);
   }
 
-  PluginSetupResponse get setupSnapshot {
-    return PluginSetupResponse(
-      plugins: [
-        for (final plugin in _registeredPlugins)
-          _mapSetupMetadata(
-            plugin: plugin,
-            setup: _setupOf(pluginId: plugin.id),
-          ),
-      ],
-    );
-  }
-
   PluginManagementResponse get managementSnapshot {
     final snapshot = _requireManagementSnapshot();
     return _buildManagementResponse(snapshot: snapshot, bridgeId: _requireBridgeId());

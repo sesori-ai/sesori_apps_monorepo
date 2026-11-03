@@ -725,25 +725,6 @@ class OpenCodePlugin._({
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({
-    required String projectId,
-  }) async {
-    final pending = await _call(
-      () => _service.repository.api.getPendingQuestions(
-        directory: projectId,
-      ),
-    );
-    return pending
-        .map(
-          (q) => _pluginModelMapper.mapQuestion(
-            q,
-            displaySessionId: _service.resolveDisplaySessionId(q.sessionID),
-          ),
-        )
-        .toList();
-  }
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

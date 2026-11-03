@@ -6,7 +6,6 @@ sealed class const PiTrackedExtensionDialog({
   required final String ownerSessionId,
   required final int processGeneration,
   required final String displaySessionId,
-  required final String projectId,
   required final PluginQuestionInfo question,
 });
 
@@ -16,7 +15,6 @@ final class const PiTrackedSelectDialog({
   required super.ownerSessionId,
   required super.processGeneration,
   required super.displaySessionId,
-  required super.projectId,
   required super.question,
   required final Set<String> options,
 }) extends PiTrackedExtensionDialog;
@@ -27,7 +25,6 @@ final class const PiTrackedConfirmDialog({
   required super.ownerSessionId,
   required super.processGeneration,
   required super.displaySessionId,
-  required super.projectId,
   required super.question,
 }) extends PiTrackedExtensionDialog;
 
@@ -37,7 +34,6 @@ final class const PiTrackedInputDialog({
   required super.ownerSessionId,
   required super.processGeneration,
   required super.displaySessionId,
-  required super.projectId,
   required super.question,
 }) extends PiTrackedExtensionDialog;
 
@@ -47,7 +43,6 @@ final class const PiTrackedEditorDialog({
   required super.ownerSessionId,
   required super.processGeneration,
   required super.displaySessionId,
-  required super.projectId,
   required super.question,
 }) extends PiTrackedExtensionDialog;
 
@@ -55,7 +50,6 @@ final class PiExtensionUiTracker() {
   final Map<String, PiTrackedExtensionDialog> _byQuestionId = {};
   final Map<String, Set<String>> _byOwner = {};
   final Map<String, Set<String>> _byDisplaySession = {};
-  final Map<String, Set<String>> _byProject = {};
   var _nextQuestionId = 1;
 
   String nextQuestionId() => "pi-extension-${_nextQuestionId++}";
@@ -64,7 +58,6 @@ final class PiExtensionUiTracker() {
     _byQuestionId[dialog.questionId] = dialog;
     _index(_byOwner, dialog.ownerSessionId, dialog.questionId);
     _index(_byDisplaySession, dialog.displaySessionId, dialog.questionId);
-    _index(_byProject, dialog.projectId, dialog.questionId);
   }
 
   PiTrackedExtensionDialog? find({required String questionId}) => _byQuestionId[questionId];
@@ -76,7 +69,6 @@ final class PiExtensionUiTracker() {
     if (dialog == null) return null;
     _unindex(_byOwner, dialog.ownerSessionId, questionId);
     _unindex(_byDisplaySession, dialog.displaySessionId, questionId);
-    _unindex(_byProject, dialog.projectId, questionId);
     return dialog;
   }
 
@@ -84,9 +76,6 @@ final class PiExtensionUiTracker() {
     final ids = {...?_byOwner[sessionId], ...?_byDisplaySession[sessionId]};
     return _forQuestionId(ids).map(_pending).toList(growable: false);
   }
-
-  List<PluginPendingQuestion> pendingForProject({required String projectId}) =>
-      _forQuestionId(_byProject[projectId] ?? const {}).map(_pending).toList(growable: false);
 
   List<PiTrackedExtensionDialog> takeForOwner({
     required String sessionId,

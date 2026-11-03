@@ -80,9 +80,9 @@ final class PiExtensionUiService({
       case final PiExtensionDialogRequest dialog:
         final elapsed = Stopwatch()..start();
         final generation = _ownerGenerations[ownerSessionId] ?? 0;
-        final ({String displaySessionId, String projectId})? scope;
+        final String? displaySessionId;
         try {
-          scope = await _catalogRepository.resolveDisplayScope(sessionId: ownerSessionId);
+          displaySessionId = await _catalogRepository.resolveDisplaySessionId(sessionId: ownerSessionId);
         } on Object {
           _cancel(
             ownerSessionId: ownerSessionId,
@@ -108,7 +108,7 @@ final class PiExtensionUiService({
           );
           return;
         }
-        if (scope == null) {
+        if (displaySessionId == null) {
           _cancel(
             ownerSessionId: ownerSessionId,
             processGeneration: processGeneration,
@@ -132,7 +132,7 @@ final class PiExtensionUiService({
           dialog: dialog,
           ownerSessionId: ownerSessionId,
           processGeneration: processGeneration,
-          scope: scope,
+          displaySessionId: displaySessionId,
         );
         _tracker.add(dialog: tracked);
         _scheduleTimeout(tracked: tracked, timeout: remaining);
@@ -142,9 +142,6 @@ final class PiExtensionUiService({
 
   List<PluginPendingQuestion> getPendingQuestions({required String sessionId}) =>
       _tracker.pendingForSession(sessionId: sessionId);
-
-  List<PluginPendingQuestion> getProjectQuestions({required String projectId}) =>
-      _tracker.pendingForProject(projectId: projectId);
 
   void replyToQuestion({
     required String questionId,
@@ -238,7 +235,7 @@ final class PiExtensionUiService({
     required PiExtensionDialogRequest dialog,
     required String ownerSessionId,
     required int processGeneration,
-    required ({String displaySessionId, String projectId}) scope,
+    required String displaySessionId,
   }) {
     final questionId = _tracker.nextQuestionId();
     final shared = (
@@ -246,8 +243,7 @@ final class PiExtensionUiService({
       requestId: dialog.id,
       ownerSessionId: ownerSessionId,
       processGeneration: processGeneration,
-      displaySessionId: scope.displaySessionId,
-      projectId: scope.projectId,
+      displaySessionId: displaySessionId,
     );
     return switch (dialog) {
       PiSelectDialogRequest(:final title, :final options) => PiTrackedSelectDialog(
@@ -256,7 +252,6 @@ final class PiExtensionUiService({
         ownerSessionId: shared.ownerSessionId,
         processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
-        projectId: shared.projectId,
         question: PluginQuestionInfo(
           question: _dialogPrompt(
             title: title,
@@ -276,7 +271,6 @@ final class PiExtensionUiService({
         ownerSessionId: shared.ownerSessionId,
         processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
-        projectId: shared.projectId,
         question: PluginQuestionInfo(
           question: _boundedNullable(message) ?? "Confirm this action.",
           header: _boundedNullable(title) ?? "Confirmation",
@@ -294,7 +288,6 @@ final class PiExtensionUiService({
         ownerSessionId: shared.ownerSessionId,
         processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
-        projectId: shared.projectId,
         question: PluginQuestionInfo(
           question: _dialogPrompt(
             title: title,
@@ -313,7 +306,6 @@ final class PiExtensionUiService({
         ownerSessionId: shared.ownerSessionId,
         processGeneration: shared.processGeneration,
         displaySessionId: shared.displaySessionId,
-        projectId: shared.projectId,
         question: PluginQuestionInfo(
           question: _dialogPrompt(
             title: title,

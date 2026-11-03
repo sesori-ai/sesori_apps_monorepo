@@ -531,11 +531,6 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   }) async => [];
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({
-    required String projectId,
-  }) async => [];
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

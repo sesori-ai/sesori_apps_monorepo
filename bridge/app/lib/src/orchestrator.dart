@@ -110,9 +110,7 @@ import "routing/get_commands_handler.dart";
 import "routing/get_current_project_handler.dart";
 import "routing/get_mcp_authentication_handler.dart";
 import "routing/get_plugin_management_handler.dart";
-import "routing/get_plugin_setup_handler.dart";
 import "routing/get_plugins_handler.dart";
-import "routing/get_project_questions_handler.dart";
 import "routing/get_projects_handler.dart";
 import "routing/get_providers_handler.dart";
 import "routing/get_pull_request_refresh_settings_handler.dart";
@@ -466,9 +464,6 @@ class Orchestrator({
     final questionRepository = QuestionRepository(
       runtime: _pluginRuntime,
       pendingSupport: pendingInteractionSupport,
-      sessionDao: _database.sessionDao,
-      projectsDao: _database.projectsDao,
-      aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final externalActionRepository = ExternalActionRepository(
       runtime: _pluginRuntime,
@@ -687,7 +682,6 @@ class Orchestrator({
         PostMcpAuthenticationContinueHandler(service: mcpAuthenticationService),
         PostMcpAuthenticationCancelHandler(service: mcpAuthenticationService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
-        GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
         PostSessionOptionsHandler(
           service: sessionOptionsService,
@@ -728,7 +722,6 @@ class Orchestrator({
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetSessionExternalActionsHandler(service: pendingInteractionService),
         GetSessionFormsHandler(service: pendingInteractionService),
-        GetProjectQuestionsHandler(questionRepository: questionRepository),
         GetSessionPermissionsHandler(
           permissionRepository: permissionRepository,
           permissionAutoApprovalService: permissionAutoApprovalService,

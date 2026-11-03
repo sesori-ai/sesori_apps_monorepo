@@ -731,7 +731,7 @@ void main() {
     expect(service.compositionView.defaultPluginId, "alpha");
   });
 
-  test("setup endpoint remains an alphabetical startup snapshot", () {
+  test("management snapshot reports alphabetical startup setup", () {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["cursor", "opencode"]);
     addTearDown(runtime.dispose);
     final service = _service(
@@ -768,7 +768,7 @@ void main() {
     addTearDown(service.dispose);
 
     expect(
-      service.setupSnapshot.plugins,
+      service.managementSnapshot.plugins.map((plugin) => plugin.setup),
       [
         const PluginSetupMetadata(
           id: "cursor",
@@ -2364,7 +2364,7 @@ void main() {
 
     expect(progress.single.phase, PluginInstallPhase.failed);
     expect(repository.inspectCalls, isZero, reason: "a failed upgrade must not re-inspect");
-    expect(service.setupSnapshot.plugins.single.runtimeVersion, "1.0.0");
+    expect(service.managementSnapshot.plugins.single.setup.runtimeVersion, "1.0.0");
   });
 
   test("an explicit install joins a running startup upgrade and a refresh conflicts", () async {
@@ -2650,7 +2650,7 @@ void main() {
     expect(policy.eligiblePluginIds, isEmpty);
     expect(service.compositionView.defaultPluginId, isNull);
     expect(await service.metadataSnapshots.first, isEmpty);
-    expect(service.setupSnapshot.plugins, isEmpty);
+    expect(service.managementSnapshot.plugins, isEmpty);
   });
 
   test("rejects incomplete setup snapshots", () {

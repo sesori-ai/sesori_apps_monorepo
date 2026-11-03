@@ -360,14 +360,6 @@ class OpenCodeV2Service({
         ),
   ];
 
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [
-    for (final form in await _repository.getPendingForms(directory: projectId))
-      ?_modelMapper.mapForm(
-        form: form,
-        displaySessionId: _tracker.rootSessionId(sessionId: form.sessionID),
-      ),
-  ];
-
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [
     for (final permission in _tracker.permissions)
       if (permission.sessionID == sessionId || _tracker.rootSessionId(sessionId: permission.sessionID) == sessionId)

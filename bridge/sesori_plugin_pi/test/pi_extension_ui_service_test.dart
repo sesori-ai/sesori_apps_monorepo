@@ -9,7 +9,6 @@ import "package:pi_plugin/src/repositories/pi_session_process_repository.dart";
 import "package:pi_plugin/src/services/pi_extension_ui_service.dart";
 import "package:pi_plugin/src/trackers/pi_extension_ui_tracker.dart";
 import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -19,11 +18,9 @@ void main() {
   late List<PiExtensionUiEvent> events;
   late PiExtensionUiService service;
   late _ProcessFixture processes;
-  late String projectId;
 
   setUp(() async {
     events = [];
-    projectId = normalizeProjectDirectory(directory: "/repo/worktree");
     final storage = FakePiExtensionSessionStorageApi(
       initialSessions: [
         _metadata(id: "root", cwd: "/repo", updated: 3),
@@ -67,7 +64,6 @@ void main() {
     expect(select.questions.single.header, "Pi extension");
     expect(select.questions.single.question, selectPrompt);
     expect(select.questions.single.options.map((option) => option.label), ["one", "two"]);
-    expect(service.getProjectQuestions(projectId: projectId).single.id, select.id);
 
     service.replyToQuestion(
       questionId: select.id,
