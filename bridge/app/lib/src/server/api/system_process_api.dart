@@ -16,7 +16,6 @@ class SystemProcessApi({
   required final ProcessRunner _processRunner,
   required final ServerClock _clock,
   required final bool _isWindows,
-  required final String _platform,
   required final InheritingStdioProcessRunner _inheritingStdioProcessRunner,
 }) {
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
@@ -220,7 +219,6 @@ class SystemProcessApi({
           executablePath: _executableFromCommandLine(commandLine: commandLine),
           commandLine: commandLine,
           ownerUser: owner,
-          platform: _platform,
           capturedAt: capturedAt,
         ),
       );
@@ -285,7 +283,6 @@ class SystemProcessApi({
           executablePath: executablePath,
           commandLine: executablePath,
           ownerUser: ownerUser,
-          platform: _platform,
           capturedAt: capturedAt,
         ),
       );

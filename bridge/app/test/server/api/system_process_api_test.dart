@@ -19,7 +19,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -35,7 +34,6 @@ void main() {
       expect(identity!.pid, equals(321));
       expect(identity.executablePath, equals("sesori-bridge.exe"));
       expect(identity.ownerUser, equals(ProcessUser.fromRawUser(r"HOST\alex")));
-      expect(identity.platform, equals("windows"));
     });
 
     test("inspectProcess returns null when tasklist reports no matching task", () async {
@@ -46,7 +44,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -62,7 +59,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -78,7 +74,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -93,7 +88,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -114,7 +108,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -141,7 +134,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -176,7 +168,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -199,7 +190,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -213,7 +203,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
-        platform: "windows",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -232,7 +221,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        platform: "macos",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -254,7 +242,6 @@ void main() {
       expect(identity.executablePath, equals("/usr/local/bin/sesori-bridge"));
       expect(identity.commandLine, equals("/usr/local/bin/sesori-bridge --relay wss://relay"));
       expect(identity.ownerUser, equals(ProcessUser.fromRawUser("alex")));
-      expect(identity.platform, equals("macos"));
     });
 
     test("inspectProcess returns null (without throwing) when ps exits non-zero with no stderr", () async {
@@ -265,7 +252,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        platform: "macos",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -285,7 +271,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        platform: "macos",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -301,7 +286,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        platform: "macos",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 
@@ -314,7 +298,6 @@ void main() {
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: false,
-        platform: "macos",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       );
 

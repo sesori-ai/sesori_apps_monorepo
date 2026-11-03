@@ -648,7 +648,6 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
     executablePath: executablePath,
     commandLine: executablePath == null ? "opencode" : "$executablePath serve",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 6, 1),
   );
 }
@@ -723,7 +722,6 @@ class _FakeSpawnedProcess({@override required final int pid}) implements Spawned
     executablePath: "/bin/opencode",
     commandLine: "/bin/opencode serve",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 6, 1),
   );
 

@@ -14,7 +14,6 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
     executablePath: executablePath,
     commandLine: executablePath == null ? "codex" : "$executablePath app-server",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 6, 1),
   );
 }

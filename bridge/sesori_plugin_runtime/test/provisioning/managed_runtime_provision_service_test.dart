@@ -78,7 +78,7 @@ class _FakeValidator({
     required String executable,
     required Map<String, String>? environment,
   }) async {
-    final version = await detectVersion(executable: executable, environment: environment);
+    final version = _detect(executable: executable);
     return version == null
         ? RuntimeProbeMissing(
             innerError: ProcessException(executable, const []),
@@ -87,11 +87,7 @@ class _FakeValidator({
         : RuntimeProbeReady(version: version);
   }
 
-  @override
-  Future<RuntimeVersion?> detectVersion({
-    required String executable,
-    required Map<String, String>? environment,
-  }) async {
+  RuntimeVersion? _detect({required String executable}) {
     detectedExecutables.add(executable);
     onDetect?.call(executable);
     if (executable == "opencode") return pathVersion;

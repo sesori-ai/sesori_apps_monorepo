@@ -256,7 +256,6 @@ class LogoutCommand() extends cli.Command<void> {
       processRunner: processRunner,
       clock: const ServerClock(),
       isWindows: Platform.isWindows,
-      platform: Platform.operatingSystem,
       inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(

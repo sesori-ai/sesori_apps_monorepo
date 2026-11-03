@@ -958,7 +958,6 @@ BridgeRestartService _spawnableRestartService({
         processRunner: processRunner,
         clock: const ServerClock(),
         isWindows: false,
-        platform: "linux",
         inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       ),
       currentUser: null,

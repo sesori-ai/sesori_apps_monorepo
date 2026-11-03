@@ -721,7 +721,6 @@ void main() {
           executablePath: "/bin/sesori-bridge",
           commandLine: "sesori-bridge",
           ownerUser: null,
-          platform: "macos",
           capturedAt: DateTime.utc(2026, 6, 1),
         ),
       ];
@@ -1307,7 +1306,6 @@ void _seedStaleRecord(_FakeHost host) {
     executablePath: "/bin/opencode",
     commandLine: "/bin/opencode serve --port 50999 --hostname 127.0.0.1",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 6, 1),
   );
 }
@@ -1465,7 +1463,6 @@ class _FakeBridgeHostInfo() implements BridgeHostInfo {
     executablePath: "/bin/sesori-bridge",
     commandLine: "sesori-bridge",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 6, 1),
   );
 
@@ -1597,7 +1594,6 @@ class _FakeSpawnedProcess({
     executablePath: _executablePath,
     commandLine: "$_executablePath serve",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 6, 1),
   );
 

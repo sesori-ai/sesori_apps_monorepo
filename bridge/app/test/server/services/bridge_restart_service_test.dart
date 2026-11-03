@@ -82,7 +82,6 @@ void main() {
           processRunner: runner,
           clock: const ServerClock(),
           isWindows: false,
-          platform: 'linux',
           inheritingStdioProcessRunner: runner.runInheritingStdio,
         ),
         currentUser: null,

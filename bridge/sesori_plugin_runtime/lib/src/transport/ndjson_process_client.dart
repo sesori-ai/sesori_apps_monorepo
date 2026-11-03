@@ -19,19 +19,9 @@ enum MalformedFramePolicy() {
   failPending,
 }
 
-enum NonObjectFramePolicy() {
-  discard,
-  failPending,
-}
-
-enum MalformedFrameLogPolicy() {
-  metadataOnly,
-  sanitizedContent,
-}
-
 enum StderrPolicy() {
   discard,
-  forwardSanitized,
+  log,
 }
 
 abstract interface class NdjsonProcessHandle() {
@@ -58,10 +48,7 @@ final class NdjsonProcessClient({
   required final NdjsonCorrelationId _responseCorrelationId,
   required final NdjsonExitError _exitError,
   required final MalformedFramePolicy _malformedFramePolicy,
-  required final NonObjectFramePolicy _nonObjectFramePolicy,
-  required final MalformedFrameLogPolicy _malformedFrameLogPolicy,
   required final StderrPolicy _stderrPolicy,
-  required final String Function(String) _sanitizeForLog,
   required final String _logTag,
   required final Duration _reapTimeout,
 }) {
@@ -128,8 +115,8 @@ final class NdjsonProcessClient({
     _stderrSubscription = process.stderrLines.listen(
       (line) {
         if (generation != _generation) return;
-        if (_stderrPolicy == StderrPolicy.forwardSanitized) {
-          Log.d("[$_logTag][stderr] ${_sanitizeForLog(line)}");
+        if (_stderrPolicy == StderrPolicy.log) {
+          Log.d("[$_logTag][stderr] $line");
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -270,11 +257,7 @@ final class NdjsonProcessClient({
     try {
       decoded = jsonDecode(line);
     } on FormatException {
-      final suffix = switch (_malformedFrameLogPolicy) {
-        MalformedFrameLogPolicy.metadataOnly => "",
-        MalformedFrameLogPolicy.sanitizedContent => ": ${_sanitizeForLog(line)}",
-      };
-      Log.w("[$_logTag] ignored malformed stdout frame$suffix");
+      Log.w("[$_logTag] ignored malformed stdout frame");
       if (_malformedFramePolicy == MalformedFramePolicy.failPending) {
         _failPending(error: StateError("$_logTag returned malformed JSON"), stackTrace: StackTrace.current);
       }
@@ -282,9 +265,6 @@ final class NdjsonProcessClient({
     }
     if (decoded is! Map) {
       Log.d("[$_logTag] ignored non-object stdout frame");
-      if (_nonObjectFramePolicy == NonObjectFramePolicy.failPending) {
-        _failPending(error: StateError("$_logTag returned non-object JSON"), stackTrace: StackTrace.current);
-      }
       return;
     }
     final frame = <String, Object?>{}; // ignore: no_slop_linter/prefer_specific_type

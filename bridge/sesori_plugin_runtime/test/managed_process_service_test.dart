@@ -235,7 +235,6 @@ void main() {
       expect(ownershipRepository.records.keys, contains("current-owner"));
       expect(ownershipRepository.records.values.single.status, equals(_TestStatus.stopping));
       expect(clock.delays, equals(<Duration>[_gracefulShutdownWait]));
-      expect(service.isTrackingOwnedRuntime(ownerSessionId: record.ownerSessionId), isTrue);
     });
 
     test("shutdown does not signal an exited current-owned missing-marker child", () async {
@@ -267,7 +266,6 @@ void main() {
       expect(processService.signalRequests, isEmpty);
       expect(ownershipRepository.records, isEmpty);
       expect(clock.delays, isEmpty);
-      expect(service.isTrackingOwnedRuntime(ownerSessionId: record.ownerSessionId), isFalse);
     });
 
     test("stop path never calls child process kill directly", () async {
@@ -349,6 +347,7 @@ ManagedProcessService<_TestRecord> _service({
     processes: processService,
     bridge: bridge,
     clock: clock,
+    isWindows: false,
     runtimeId: "OPENCODE",
     gracefulShutdownWait: _gracefulShutdownWait,
   );
@@ -398,7 +397,6 @@ ProcessIdentity _identity({
     executablePath: executablePath,
     commandLine: commandLine,
     ownerUser: ProcessUser.fromRawUser("alex"),
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }
@@ -501,7 +499,7 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   }
 }
 
-class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestRecord> {
+class _FakeOwnershipRepository() implements HostJsonRuntimeOwnershipRepository<_TestRecord> {
   final Map<String, _TestRecord> records = <String, _TestRecord>{};
   final List<_TestStatus> upsertedStatuses = <_TestStatus>[];
 
@@ -512,9 +510,6 @@ class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestReco
 
   @override
   Future<List<_TestRecord>> readAll() async => records.values.toList(growable: false);
-
-  @override
-  Future<_TestRecord?> readByOwnerSessionId({required String ownerSessionId}) async => records[ownerSessionId];
 
   @override
   Future<void> upsert({required _TestRecord record}) async {

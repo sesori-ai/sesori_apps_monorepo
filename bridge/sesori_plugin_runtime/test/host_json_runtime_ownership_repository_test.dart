@@ -20,7 +20,7 @@ void main() {
       );
     });
 
-    test("readAll and readByOwnerSessionId return decoded records", () async {
+    test("readAll returns decoded records", () async {
       final record = _record(ownerSessionId: "owner-a", pid: 401, status: _TestStatus.ready);
       store.files["opencode-processes.json"] = jsonEncode(<String, dynamic>{"owner-a": record.toJson()});
 
@@ -28,8 +28,7 @@ void main() {
         (await repository.readAll()).map((entry) => entry.toJson()),
         equals(<Map<String, dynamic>>[record.toJson()]),
       );
-      expect((await repository.readByOwnerSessionId(ownerSessionId: "owner-a"))?.toJson(), equals(record.toJson()));
-      expect(store.calls, equals(<String>["read:opencode-processes.json", "read:opencode-processes.json"]));
+      expect(store.calls, equals(<String>["read:opencode-processes.json"]));
     });
 
     test("upsert writes root map keyed by ownerSessionId through update", () async {
@@ -112,7 +111,7 @@ void main() {
     test("non-map file is quarantined with legacy-compatible name and treated as empty", () async {
       store.files["opencode-processes.json"] = jsonEncode(<String>["not", "a", "map"]);
 
-      expect(await repository.readByOwnerSessionId(ownerSessionId: "owner-a"), isNull);
+      expect(await repository.readAll(), isEmpty);
 
       expect(
         store.calls.last,

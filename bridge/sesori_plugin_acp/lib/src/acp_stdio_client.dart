@@ -44,10 +44,7 @@ class AcpStdioClient({
       message: "agent process exited with code $code",
     ),
     malformedFramePolicy: MalformedFramePolicy.discard,
-    nonObjectFramePolicy: NonObjectFramePolicy.discard,
-    malformedFrameLogPolicy: MalformedFrameLogPolicy.metadataOnly,
-    stderrPolicy: StderrPolicy.forwardSanitized,
-    sanitizeForLog: (line) => line,
+    stderrPolicy: StderrPolicy.log,
     logTag: _logTag,
     reapTimeout: const Duration(seconds: 5),
   );

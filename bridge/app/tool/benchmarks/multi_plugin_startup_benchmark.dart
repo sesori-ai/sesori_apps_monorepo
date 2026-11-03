@@ -95,7 +95,6 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
       executablePath: "/fixture/sesori-bridge",
       commandLine: "/fixture/sesori-bridge",
       ownerUser: null,
-      platform: Platform.operatingSystem,
       capturedAt: DateTime.utc(2026, 7, 17),
     ),
     ownerSessionId: "benchmark-owner",
