@@ -123,6 +123,7 @@ class const AcpAgentCapabilities({
 class const AcpInitializeResult({
   required final int protocolVersion,
   required final AcpAgentCapabilities agentCapabilities,
+
   /// The advertised methods that have an id; malformed entries are skipped.
   required final List<AcpAuthMethod> authMethods,
 
