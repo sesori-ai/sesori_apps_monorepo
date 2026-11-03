@@ -59,6 +59,10 @@ class const PluginRuntimeSnapshot({
   required final bool startAllowed,
   required final int? generation,
   required final PluginRuntimeState state,
+
+  /// What the plugin asked the user to do while it is degraded, when it said;
+  /// null in every other state.
+  required final String? degradedActionHint,
   required final PluginWorkState workState,
   required final int leaseCount,
   required final PluginRuntimeTransition transition,
@@ -1965,6 +1969,7 @@ class PluginRuntime({
       return;
     }
     final previousState = slot.state;
+    slot.degradedActionHint = status is PluginDegraded ? status.userActionHint : null;
     slot.state = switch (status) {
       PluginStarting() || PluginReady() => PluginRuntimeState.active,
       PluginDegraded() || PluginRestarting() => PluginRuntimeState.degraded,
@@ -2219,6 +2224,7 @@ class PluginRuntime({
       startAllowed: slot.startAllowed,
       generation: slot.generation,
       state: state,
+      degradedActionHint: state == PluginRuntimeState.degraded ? slot.degradedActionHint : null,
       workState: slot.workState,
       leaseCount: slot.leaseCount,
       transition: slot.transition,
@@ -2245,6 +2251,7 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
   int setupInspectionRevision = 0;
   int? generation;
   PluginRuntimeState state = PluginRuntimeState.disabled;
+  String? degradedActionHint;
   PluginWorkState workState = PluginWorkState.unknown;
   PluginRuntimeTransition transition = PluginRuntimeTransition.none;
   _CommandTransition? commandTransition;

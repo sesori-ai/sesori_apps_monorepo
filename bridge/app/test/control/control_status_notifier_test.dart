@@ -51,7 +51,12 @@ void main() {
     ]);
   }
 
-  const unhealthyPlugin = [ControlUnhealthyPlugin(displayName: "Plugin", actionHint: null)];
+  const degradedPlugin = [
+    ControlUnhealthyPlugin(displayName: "Plugin", state: ControlUnhealthyPluginState.degraded, actionHint: null),
+  ];
+  const failedPlugin = [
+    ControlUnhealthyPlugin(displayName: "Plugin", state: ControlUnhealthyPluginState.failed, actionHint: null),
+  ];
 
   test("reports waiting before runtime attachment and resends it on reconnect", () async {
     await notifier.dispose();
@@ -97,9 +102,9 @@ void main() {
         client.sentMessages.whereType<ControlStatus>().map((s) => s.unhealthyPlugins).toList(),
         equals([
           <ControlUnhealthyPlugin>[],
-          unhealthyPlugin,
+          degradedPlugin,
           <ControlUnhealthyPlugin>[],
-          unhealthyPlugin,
+          failedPlugin,
           <ControlUnhealthyPlugin>[],
         ]),
       );
@@ -143,9 +148,10 @@ void main() {
         equals(const [
           ControlUnhealthyPlugin(
             displayName: "Pi",
+            state: ControlUnhealthyPluginState.degraded,
             actionHint: "Check the bridge console if this plugin needs attention.",
           ),
-          ControlUnhealthyPlugin(displayName: "Codex", actionHint: null),
+          ControlUnhealthyPlugin(displayName: "Codex", state: ControlUnhealthyPluginState.failed, actionHint: null),
         ]),
       );
     });
@@ -226,7 +232,7 @@ void main() {
 
       expect(
         client.sentMessages.whereType<ControlStatus>().map((s) => s.unhealthyPlugins).toList(),
-        equals([<ControlUnhealthyPlugin>[], unhealthyPlugin]),
+        equals([<ControlUnhealthyPlugin>[], degradedPlugin]),
       );
     });
 

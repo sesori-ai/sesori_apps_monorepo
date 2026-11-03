@@ -558,21 +558,31 @@ class BridgeControlCubit._create({
     };
   }
 
-  /// Names the unhealthy plugins in the status and carries their hints as the
-  /// detail, each prefixed with its plugin's name once several need attention.
+  /// Names the unhealthy plugins in the status, grouped under their state with
+  /// the worst first ("Failed · Codex; Degraded · Pi"), and carries their
+  /// hints as the detail, each prefixed with its plugin's name once several
+  /// need attention.
   static _StatusText _connectedStatusText({required List<ControlUnhealthyPlugin> unhealthyPlugins}) {
     if (unhealthyPlugins.isEmpty) {
       return (label: "Connected", detail: null);
     }
+    final groups = [
+      for (final state in const [ControlUnhealthyPluginState.failed, ControlUnhealthyPluginState.degraded])
+        if (unhealthyPlugins.where((plugin) => plugin.state == state).map((plugin) => plugin.displayName).toList()
+            case final names when names.isNotEmpty)
+          "${_unhealthyStateLabel(state)} · ${names.join(", ")}",
+    ];
     final hints = [
       for (final plugin in unhealthyPlugins)
         if (plugin.actionHint case final hint?) unhealthyPlugins.length == 1 ? hint : "${plugin.displayName}: $hint",
     ];
-    return (
-      label: "Degraded · ${unhealthyPlugins.map((plugin) => plugin.displayName).join(", ")}",
-      detail: hints.isEmpty ? null : hints.join("\n"),
-    );
+    return (label: groups.join("; "), detail: hints.isEmpty ? null : hints.join("\n"));
   }
+
+  static String _unhealthyStateLabel(ControlUnhealthyPluginState state) => switch (state) {
+    ControlUnhealthyPluginState.failed => "Failed",
+    ControlUnhealthyPluginState.degraded => "Degraded",
+  };
 
   @override
   Future<void> close() async {

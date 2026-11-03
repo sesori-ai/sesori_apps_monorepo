@@ -19,10 +19,14 @@ and keep native close/quit behavior safe.
   existing login-required path; an offline token refresh must not be treated as
   a logout.
 - While the bridge is otherwise connected, a degraded or failed harness names
-  itself in the status ("Degraded · Pi", several joined in harness order) in the
-  bridge popover, tray menu and sidebar tooltip, and the popover shows each
-  harness's action hint under the status, name-prefixed when several need
-  attention. The hint grows and fades in and out without snapping the actions
+  itself in the status ("Degraded · Pi", "Failed · Codex", several joined in
+  harness order) in the bridge popover, tray menu and sidebar tooltip, and the
+  popover shows each harness's action hint under the status, name-prefixed when
+  several need attention. Mixed states group names under their own state, worst
+  first ("Failed · Codex; Degraded · Pi"). The hint is the harness's own when it
+  reported one (Pi: "Verify the configured Pi binary and retry."), otherwise the
+  bridge's generic hint. The status dot stays amber for an unhealthy harness;
+  red stays reserved for the bridge itself failing to run. The hint grows and fades in and out without snapping the actions
   below it. A harness that is merely stopping (idle suspension, restart,
   disable) is not reported. The control channel carries the unhealthy harness
   names and hints; the GUI only talks to the helper it bundles, so that contract
@@ -264,8 +268,9 @@ verify the actual relocated helper, not merely the presence of its binary.
   the crash budget, or loses the waiting status after control-channel reconnect.
   A disconnected helper claims ready, or a temporary desktop token refresh is
   treated as logout/login-required instead of waiting for authentication.
-- The status shows a bare "Degraded" without the unhealthy harness, drops its
-  action hint, flashes degraded while a harness is only stopping, or snaps the
+- The status shows a bare "Degraded" without the unhealthy harness, calls a
+  failed harness degraded, shows the generic hint when the harness reported its
+  own, drops its action hint, flashes degraded while a harness is only stopping, or snaps the
   popover's actions when the hint appears or clears.
 
 - No tray or command subscriptions until a signed-in screen reads the cubit.

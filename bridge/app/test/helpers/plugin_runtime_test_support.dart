@@ -354,6 +354,7 @@ class TestPluginRuntime({
       startAllowed: true,
       generation: currentGeneration,
       state: _states[plugin.id] ?? PluginRuntimeState.active,
+      degradedActionHint: null,
       workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: _transitions[plugin.id] ?? PluginRuntimeTransition.none,

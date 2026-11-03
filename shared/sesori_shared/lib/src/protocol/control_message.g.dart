@@ -156,6 +156,7 @@ Map<String, dynamic> _$ControlRegisteredToJson(ControlRegistered instance) =>
 _ControlUnhealthyPlugin _$ControlUnhealthyPluginFromJson(Map json) =>
     _ControlUnhealthyPlugin(
       displayName: json['displayName'] as String,
+      state: $enumDecode(_$ControlUnhealthyPluginStateEnumMap, json['state']),
       actionHint: json['actionHint'] as String?,
     );
 
@@ -163,5 +164,11 @@ Map<String, dynamic> _$ControlUnhealthyPluginToJson(
   _ControlUnhealthyPlugin instance,
 ) => <String, dynamic>{
   'displayName': instance.displayName,
+  'state': _$ControlUnhealthyPluginStateEnumMap[instance.state]!,
   'actionHint': ?instance.actionHint,
+};
+
+const _$ControlUnhealthyPluginStateEnumMap = {
+  ControlUnhealthyPluginState.degraded: 'degraded',
+  ControlUnhealthyPluginState.failed: 'failed',
 };

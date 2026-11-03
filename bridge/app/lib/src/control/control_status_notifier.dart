@@ -158,9 +158,15 @@ class ControlStatusNotifier({
 
   List<ControlUnhealthyPlugin> _mapPluginMetadata(List<PluginMetadata> metadata) => [
     for (final plugin in metadata)
-      if (plugin.state == PluginLifecycleState.degraded || plugin.state == PluginLifecycleState.failed)
-        ControlUnhealthyPlugin(displayName: plugin.displayName, actionHint: plugin.actionHint),
+      if (_unhealthyState(plugin.state) case final state?)
+        ControlUnhealthyPlugin(displayName: plugin.displayName, state: state, actionHint: plugin.actionHint),
   ];
+
+  ControlUnhealthyPluginState? _unhealthyState(PluginLifecycleState state) => switch (state) {
+    PluginLifecycleState.degraded => ControlUnhealthyPluginState.degraded,
+    PluginLifecycleState.failed => ControlUnhealthyPluginState.failed,
+    PluginLifecycleState.ready || PluginLifecycleState.unavailable => null,
+  };
 
   ControlRelayConnectionState _mapRelayState(RelayConnectionState state) {
     return switch (state) {

@@ -129,6 +129,7 @@ const _activeSnapshot = PluginRuntimeSnapshot(
   startAllowed: true,
   generation: 1,
   state: PluginRuntimeState.active,
+  degradedActionHint: null,
   workState: PluginWorkState.idle,
   leaseCount: 0,
   transition: PluginRuntimeTransition.none,
