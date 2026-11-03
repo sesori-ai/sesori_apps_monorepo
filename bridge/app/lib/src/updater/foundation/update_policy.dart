@@ -73,18 +73,19 @@ bool shouldSkipUpdates({
       );
 }
 
+/// Whether a filesystem error means the updater cannot write the install.
+/// The shared validator covers EPERM(1)/EACCES(13) and permission messages.
+/// Code 5 is ERROR_ACCESS_DENIED on Windows and EIO on POSIX; the updater
+/// aborts on both just like a permission error.
+bool isUpdatePermissionDenied({required FileSystemException error}) {
+  return const FilesystemPermissionValidator().isPermissionDenied(error) || error.osError?.errorCode == 5;
+}
+
 /// Whether an HTTP status from a release check or artifact download is a
 /// transient, retryable outage (server-side errors, request timeout, or
 /// throttling) rather than a genuine failure. The best-effort updater stays
 /// quiet on these and retries on the next cycle; other non-2xx statuses (404,
 /// auth rejections, etc.) are genuine and surfaced with reinstall guidance.
-/// The shared validator covers EPERM(1)/EACCES(13) and permission messages.
-/// The updater additionally treats EIO(5) as a denial because a read-only or
-/// failing install volume must abort the update just like a permission error.
-bool isUpdatePermissionDenied({required FileSystemException error}) {
-  return const FilesystemPermissionValidator().isPermissionDenied(error) || error.osError?.errorCode == 5;
-}
-
 bool isRetryableHttpStatus(int statusCode) {
   return statusCode >= 500 || statusCode == 429 || statusCode == 408;
 }

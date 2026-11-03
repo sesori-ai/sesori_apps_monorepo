@@ -128,7 +128,7 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       }
     } on Object catch (error, stackTrace) {
       // Best-effort: still try to restore the binary below.
-      Log.w('Failed to roll back the lib directory in ${targetLibDir.parent.path}', error, stackTrace);
+      Log.w('Failed to roll back the lib directory ${targetLibDir.path}', error, stackTrace);
     }
 
     try {

@@ -98,7 +98,7 @@ class UpdateService({
       return;
     } on Object catch (error, stackTrace) {
       if (isTransientNetworkError(error)) {
-        Log.w('Skipping update check — network error', error, stackTrace);
+        Log.w('Skipping update check — network error', error);
         return;
       }
       await _reportGenuineFailure(

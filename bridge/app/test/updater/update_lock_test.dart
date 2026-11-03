@@ -294,6 +294,31 @@ void main() {
       expect(lockFile.existsSync(), isTrue);
     });
 
+    test('a lock without a processMarker key still names a live holder', () async {
+      if (Platform.isWindows) {
+        return;
+      }
+
+      final lockFile = File('${tempDir.path}/.update.lock');
+      await lockFile.writeAsString('{"pid":999999}', flush: true);
+      await lockFile.setLastModified(DateTime.now().subtract(const Duration(seconds: 5)));
+
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 0, stdout: 'marker\n'),
+        clock: const Clock(),
+      );
+
+      final result = await lock.locked<LockAcquireResult>(
+        lockFile: lockFile,
+        onLockAcquired: () async => LockAcquireResult.acquired,
+        onLockRejected: (reason) async => reason,
+      );
+
+      expect(result, equals(LockAcquireResult.alreadyLocked));
+      expect(lockFile.existsSync(), isTrue);
+    });
+
     test('a write failure after create deletes the empty lock file', () async {
       final lockFile = _WriteFailingFile();
       final lock = UpdateLock(

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_shared/sesori_shared.dart' show jsonDecodeMap;
 
 import '../../foundation/filesystem_cleaner.dart';
 import '../../foundation/filesystem_permission_validator.dart';
@@ -272,17 +273,14 @@ class UpdateLock({
   /// The owner a lock file records, or null for an empty, partial or
   /// otherwise unreadable write.
   static _LockOwner? _parseOwner({required String content}) {
-    final Object? json;
+    final Map<String, dynamic> json;
     try {
-      json = jsonDecode(content);
+      json = jsonDecodeMap(content);
     } on FormatException {
       return null;
     }
-    return switch (json) {
-      {'pid': final int pid, 'processMarker': final String? processMarker} => _LockOwner(
-        pid: pid,
-        processMarker: processMarker,
-      ),
+    return switch ((json['pid'], json['processMarker'])) {
+      (final int pid, final String? processMarker) => _LockOwner(pid: pid, processMarker: processMarker),
       _ => null,
     };
   }
