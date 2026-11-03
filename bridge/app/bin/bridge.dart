@@ -115,7 +115,7 @@ class RunCommand() extends cli.Command<void> {
     final allResults = globalResults;
     if (results == null || allResults == null) usageException('Unable to read command arguments.');
 
-    if (results['version'] as bool) {
+    if (results.flag('version')) {
       stdout.writeln(bridgeVersion);
       return;
     }
@@ -215,7 +215,7 @@ class LogoutCommand() extends cli.Command<void> {
   @override
   Future<void> run() async {
     final results = argResults ?? usageException('Unable to read command arguments.');
-    final dataDirectoryFlag = results['data-dir'] as String?;
+    final dataDirectoryFlag = results.option('data-dir');
     final defaultDataDirectory = sesoriDataDirectory();
     final String dataDirectory;
     try {
@@ -238,7 +238,7 @@ class LogoutCommand() extends cli.Command<void> {
       );
     }
     final authBackendUrl = BridgeCliOptions.resolveAuthBackendUrl(
-      authBackendFlag: results['auth-backend'] as String?,
+      authBackendFlag: results.option('auth-backend'),
       environment: Platform.environment,
       defaultAuthUrl: _defaultAuthURL,
     );
@@ -614,7 +614,7 @@ class UpdateCommand() extends cli.Command<void> {
   @override
   Future<void> run() async {
     final results = argResults ?? usageException('Unable to read command arguments.');
-    final bool force = results['force'] as bool;
+    final force = results.flag('force');
     final environment = Platform.environment;
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(environment: environment);
     final releaseTrack = await _resolveReleaseTrack();

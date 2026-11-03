@@ -86,8 +86,8 @@ class UpdateLogApi({
     // multi-parameter scheme (e.g. Digest with several comma-separated params)
     // can't leak its remaining parameters.
     out = out.replaceAllMapped(
-      RegExp(r'(?<key>authorization)\s*[:=]\s*[^\r\n]+', caseSensitive: false),
-      (Match m) => '${(m as RegExpMatch).namedGroup('key')}: [REDACTED]',
+      RegExp(r'(authorization)\s*[:=]\s*[^\r\n]+', caseSensitive: false),
+      (Match m) => '${m[1]}: [REDACTED]',
     );
 
     // Standalone bearer credential (not behind an Authorization header).
@@ -99,10 +99,10 @@ class UpdateLogApi({
     // Secret key/value pairs in `=`, `:`, or JSON ("key": "value") form.
     out = out.replaceAllMapped(
       RegExp(
-        r'''(?<key>access_token|api_key|token|secret|password)["']?\s*[:=]\s*["']?[^\s"',&}\]]+''',
+        r'''(access_token|api_key|token|secret|password)["']?\s*[:=]\s*["']?[^\s"',&}\]]+''',
         caseSensitive: false,
       ),
-      (Match m) => '${(m as RegExpMatch).namedGroup('key')}=[REDACTED]',
+      (Match m) => '${m[1]}=[REDACTED]',
     );
 
     return out;

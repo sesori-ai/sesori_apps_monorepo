@@ -416,8 +416,9 @@ class const CodexPluginDescriptor({
     final CommandResult loginResult;
     try {
       loginResult = await executor.run(
-        executable,
-        const ["login", "status"],
+        executable: executable,
+        arguments: const ["login", "status"],
+        workingDirectory: null,
         environment: environment,
         timeout: codexVersionProbeTimeout,
       );

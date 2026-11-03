@@ -55,7 +55,10 @@ participates.
   tokens and user data before emitting unauthenticated; non-definitive 4xx,
   transport, and other server failures leave credentials intact. Standalone
   bridge logout remains clean and idempotent when tokens are
-  already absent or the saved authentication session has expired. Non-sandboxed
+  already absent or the saved authentication session has expired. A bridge token
+  file that does not hold both tokens and a known last provider, including one
+  written before the provider was saved, is cleared and asks for a fresh login
+  instead of failing startup. Non-sandboxed
   macOS desktop builds protect the master through flutter_secure_storage's classic
   Keychain mode, without a provisioned Data Protection Keychain access group.
   Android plugin-level destructive reset stays disabled.

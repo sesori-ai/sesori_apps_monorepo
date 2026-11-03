@@ -7,12 +7,12 @@ class FakeCommandExecutor({required final Map<String, CommandResult> _results}) 
   final List<String> commands = [];
 
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     final command = [executable, ...arguments].join(" ");
     commands.add(command);

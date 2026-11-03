@@ -37,13 +37,13 @@ class const BridgeCliOptions({
     required String defaultDataDirectory,
   }) {
     final authBackendUrl = resolveAuthBackendUrl(
-      authBackendFlag: results["auth-backend"] as String?,
+      authBackendFlag: results.option("auth-backend"),
       environment: environment,
       defaultAuthUrl: defaultAuthUrl,
     );
-    final debugPortRaw = results["debug-port"] as String?;
+    final debugPortRaw = results.option("debug-port");
     final dataDirectory = resolveDataDirectory(
-      dataDirectoryFlag: results["data-dir"] as String?,
+      dataDirectoryFlag: results.option("data-dir"),
       defaultDataDirectory: defaultDataDirectory,
       environment: environment,
     );
@@ -51,19 +51,24 @@ class const BridgeCliOptions({
     // Supervised-only option: trim and treat blank as absent. Do NOT validate
     // it here (no URI parse) — strict parse-time validation would risk failing
     // a standalone invocation; it is parsed only when supervised mode is active.
-    final controlUrlRaw = (results["control-url"] as String?)?.trim();
+    final controlUrlRaw = results.option("control-url")?.trim();
     final controlUrl = (controlUrlRaw != null && controlUrlRaw.isNotEmpty) ? controlUrlRaw : null;
 
     return BridgeCliOptions(
       cliArgs: cliArgs,
-      relayUrl: results["relay"] as String,
+      relayUrl: _optionWithDefault(results: results, name: "relay"),
       authBackendUrl: authBackendUrl,
       dataDirectory: dataDirectory,
       debugPort: debugPortRaw == null ? null : int.tryParse(debugPortRaw),
-      logLevelName: results["log-level"] as String,
+      logLevelName: _optionWithDefault(results: results, name: "log-level"),
       controlUrl: controlUrl,
     );
   }
+
+  /// The value of an option registered with `defaultsTo`, which the parser
+  /// always fills in.
+  static String _optionWithDefault({required ArgResults results, required String name}) =>
+      results.option(name) ?? (throw StateError("--$name was registered without a default value."));
 
   static String resolveDataDirectory({
     required String? dataDirectoryFlag,

@@ -22,7 +22,7 @@ void main() {
       expect(restored.lastProvider, equals(original.lastProvider));
     });
 
-    test("toJson serializes the provider key", () {
+    test("toJson writes the persisted token file shape", () {
       final data = TokenData(
         accessToken: "access-token",
         refreshToken: "refresh-token",
@@ -31,17 +31,45 @@ void main() {
 
       final json = data.toJson();
 
-      expect(json["lastProvider"], equals("github"));
+      expect(json, {
+        "accessToken": "access-token",
+        "refreshToken": "refresh-token",
+        "lastProvider": "github",
+      });
     });
 
     test("fromJson throws when lastProvider is missing", () {
+      // Released bridges wrote token files without lastProvider.
       expect(
         () => TokenData.fromJson(<String, dynamic>{
           "accessToken": "access-token",
           "refreshToken": "refresh-token",
+          "bridgeToken": "bridge-token",
         }),
         throwsA(isA<FormatException>()),
       );
+    });
+
+    test("fromJson throws when a token is missing", () {
+      expect(
+        () => TokenData.fromJson(<String, dynamic>{
+          "refreshToken": "refresh-token",
+          "lastProvider": "github",
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test("fromJson ignores fields that released bridges no longer write", () {
+      final restored = TokenData.fromJson(<String, dynamic>{
+        "accessToken": "access-token",
+        "refreshToken": "refresh-token",
+        "lastProvider": "github",
+        "bridgeId": "bridge-id",
+      });
+
+      expect(restored.accessToken, "access-token");
+      expect(restored.lastProvider, AuthProvider.github);
     });
 
     test("fromJson throws when lastProvider is invalid", () {

@@ -30,8 +30,9 @@ class AntigravityProfileStorage({
       budget.remaining;
       if (_target.os != PlatformOs.windows) {
         final result = await _commands.run(
-          "chmod",
-          ["700", directory],
+          executable: "chmod",
+          arguments: ["700", directory],
+          workingDirectory: null,
           environment: environment,
           timeout: budget.remaining,
         );
@@ -55,8 +56,9 @@ class AntigravityProfileStorage({
     // Source-mode helpers compile the bridge before reaching the silent no-op.
     // Keep them within the operation deadline, not a native-startup-sized cap.
     return _commands.run(
-      executable,
-      arguments,
+      executable: executable,
+      arguments: arguments,
+      workingDirectory: null,
       environment: environment,
       timeout: budget.remaining,
     );

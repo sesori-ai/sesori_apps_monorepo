@@ -37,7 +37,7 @@ class DeviceTypeDetector({
         );
         return false;
       }
-      final model = (result.stdout as String).trim().toLowerCase();
+      final model = result.stdout.toString().trim().toLowerCase();
       return model.contains("macbook");
     } on Object catch (error) {
       Log.w("[device-type] failed to detect macOS laptop", error);
@@ -61,7 +61,7 @@ class DeviceTypeDetector({
         );
         return false;
       }
-      final count = int.tryParse((result.stdout as String).trim()) ?? 0;
+      final count = int.tryParse(result.stdout.toString().trim()) ?? 0;
       return count > 0;
     } on Object catch (error) {
       Log.w("[device-type] failed to detect Windows laptop", error);

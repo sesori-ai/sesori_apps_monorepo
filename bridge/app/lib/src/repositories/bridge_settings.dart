@@ -19,12 +19,17 @@ class const PluginLifecycleSettings({
     required String entryName,
     required Map<String, dynamic> json,
   }) {
-    final rawIdleTimeout = json['idleTimeoutMins'];
-    if (json.containsKey('idleTimeoutMins') && rawIdleTimeout is! int) {
-      throw PluginIdleTimeoutFormatException(entryName: entryName);
+    final int? idleTimeoutMins;
+    switch (json['idleTimeoutMins']) {
+      case final int value:
+        idleTimeoutMins = value;
+      case null when !json.containsKey('idleTimeoutMins'):
+        idleTimeoutMins = null;
+      case _:
+        throw PluginIdleTimeoutFormatException(entryName: entryName);
     }
     return PluginLifecycleSettings(
-      idleTimeoutMins: rawIdleTimeout as int?,
+      idleTimeoutMins: idleTimeoutMins,
       additionalProperties: Map<String, Object?>.unmodifiable({
         for (final entry in json.entries)
           if (entry.key != 'idleTimeoutMins') entry.key: entry.value,
@@ -59,16 +64,17 @@ class const BridgePluginSettings({
       throw const PluginSettingsFormatException(message: '"plugins" must be an object');
     }
     final json = rawValue.cast<String, dynamic>();
-    final rawDisabled = json['disabled'];
-    if (json.containsKey('disabled') &&
-        (rawDisabled is! List || rawDisabled.any((value) => value is! String || value.isEmpty))) {
-      throw const PluginSettingsFormatException(
-        message: '"plugins.disabled" must be a list containing only non-empty plugin ids',
-      );
+    final Set<String> disabledIds;
+    switch (json['disabled']) {
+      case null when !json.containsKey('disabled'):
+        disabledIds = const <String>{};
+      case final List<Object?> values when values.every((value) => value is String && value.isNotEmpty):
+        disabledIds = Set<String>.unmodifiable(values.whereType<String>());
+      case _:
+        throw const PluginSettingsFormatException(
+          message: '"plugins.disabled" must be a list containing only non-empty plugin ids',
+        );
     }
-    final disabledIds = rawDisabled == null
-        ? const <String>{}
-        : Set<String>.unmodifiable((rawDisabled as List).cast<String>());
 
     PluginLifecycleSettings parseEntry({required String name, required Object? value}) {
       if (value is! Map || value.keys.any((key) => key is! String)) {

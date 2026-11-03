@@ -206,8 +206,9 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     );
     try {
       final result = await executor.run(
-        executablePath,
-        const ["status"],
+        executable: executablePath,
+        arguments: const ["status"],
+        workingDirectory: null,
         environment: environment,
         timeout: _versionProbeTimeout,
       );
@@ -242,8 +243,9 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     final CommandResult result;
     try {
       result = await executor.run(
-        executablePath,
-        const ["acp", "--version"],
+        executable: executablePath,
+        arguments: const ["acp", "--version"],
+        workingDirectory: null,
         environment: environment,
         timeout: _versionProbeTimeout,
       );

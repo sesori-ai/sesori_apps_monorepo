@@ -67,20 +67,23 @@ class SessionDiffService({
         worktreePath: worktreePath,
         entry: entry,
       );
-      final skipReason = _skipReason(before: beforeResult, after: afterResult);
-      if (skipReason != null) {
-        diffs.add(
-          FileDiff.skipped(
-            file: entry.file,
-            reason: skipReason,
-            status: entry.status,
-          ),
-        );
-        continue;
+      final String before;
+      final String after;
+      switch ((beforeResult, afterResult)) {
+        case (_DiffFileContent(content: final beforeContent), _DiffFileContent(content: final afterContent)):
+          before = beforeContent;
+          after = afterContent;
+        case _:
+          diffs.add(
+            FileDiff.skipped(
+              file: entry.file,
+              reason: _skipReason(before: beforeResult, after: afterResult),
+              status: entry.status,
+            ),
+          );
+          continue;
       }
 
-      final before = (beforeResult as _DiffFileContent).content;
-      final after = (afterResult as _DiffFileContent).content;
       if (utf8.encode(before).length + utf8.encode(after).length > _maxFileContentBytes) {
         diffs.add(
           FileDiff.skipped(
@@ -249,7 +252,9 @@ class SessionDiffService({
     };
   }
 
-  FileDiffSkipReason? _skipReason({
+  /// Why a file pair with at least one non-content side is skipped. A read
+  /// failure outranks a size limit, which outranks binary content.
+  FileDiffSkipReason _skipReason({
     required _DiffFileReadResult before,
     required _DiffFileReadResult after,
   }) {
@@ -259,10 +264,7 @@ class SessionDiffService({
     if (before is _DiffFileTooLarge || after is _DiffFileTooLarge) {
       return FileDiffSkipReason.tooLarge;
     }
-    if (before is _DiffFileBinary || after is _DiffFileBinary) {
-      return FileDiffSkipReason.binary;
-    }
-    return null;
+    return FileDiffSkipReason.binary;
   }
 
   SessionDiffLineCounts _lineCounts({

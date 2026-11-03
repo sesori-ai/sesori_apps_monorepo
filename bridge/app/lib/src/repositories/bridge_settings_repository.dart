@@ -172,11 +172,8 @@ class BridgeSettingsRepository({
     final rawPlugins = repaired['plugins'];
     if (rawPlugins is Map) {
       repaired['plugins'] = <String, dynamic>{
-        for (final entry in rawPlugins.entries)
-          if (entry.key is String)
-            entry.key as String: entry.value is Map
-                ? Map<String, dynamic>.from((entry.value as Map).cast<String, dynamic>())
-                : entry.value,
+        for (final MapEntry(:key, :value) in rawPlugins.entries)
+          if (key is String) key: value is Map ? Map<String, dynamic>.from(value.cast<String, dynamic>()) : value,
       };
     }
     final errors = <({FormatException error, StackTrace stackTrace})>[];

@@ -30,8 +30,9 @@ class AntigravityAcpApi({
     required Duration timeout,
   }) async {
     final command = await _commands.run(
-      serverPath,
-      const ["--version"],
+      executable: serverPath,
+      arguments: const ["--version"],
+      workingDirectory: null,
       environment: environment,
       timeout: timeout,
     );

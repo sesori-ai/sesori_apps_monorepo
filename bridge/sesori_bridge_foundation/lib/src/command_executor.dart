@@ -10,15 +10,14 @@ import "package:meta/meta.dart";
 abstract class CommandExecutor() {
   /// Runs [executable] with [arguments], waits for it to exit, and returns the
   /// captured result. Implementations must enforce a timeout (killing the child
-  /// and throwing) so a hung command can never stall the caller; [timeout],
-  /// when provided, overrides the implementation default.
-  // ignore: no_slop_linter/prefer_required_named_parameters, public command-execution API has established positional call sites
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  /// and throwing) so a hung command can never stall the caller; a non-null
+  /// [timeout] overrides the implementation default.
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   });
 }
 

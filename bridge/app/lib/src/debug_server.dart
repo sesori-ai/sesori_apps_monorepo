@@ -122,13 +122,13 @@ class DebugServer({
         headers[name] = values.join(", ");
       });
 
-      final relayRequest = RelayMessage.request(
+      final relayRequest = RelayRequest(
         id: (_nextRequestId++).toString(),
         method: request.method,
         path: request.uri.toString(),
         headers: headers,
         body: body,
-      ) as RelayRequest;
+      );
 
       final RelayResponse? message;
       final dispatch = _routedRequestDispatcher.dispatch(request: relayRequest);

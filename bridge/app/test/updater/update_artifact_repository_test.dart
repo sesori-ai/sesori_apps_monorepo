@@ -45,12 +45,12 @@ class _FakeChecksumValidator({required final bool result, final Object? error}) 
 /// so the extractor is constructed but never invoked.
 class _UnusedCommandExecutor() implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     throw UnimplementedError();
   }
