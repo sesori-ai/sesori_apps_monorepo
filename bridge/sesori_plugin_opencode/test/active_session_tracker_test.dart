@@ -1000,10 +1000,11 @@ void main() {
       expect(summary, hasLength(1));
       final byId = {for (final a in summary.first.activeSessions) a.id: a};
       // s1 is a root with direct child c1.
-      expect(byId["s1"]!.mainAgentRunning, isTrue);
-      expect(byId["s1"]!.childSessionIds, equals(["c1"]));
+      final s1 = byId["s1"] ?? fail("expected an s1 row");
+      expect(s1.mainAgentRunning, isTrue);
+      expect(s1.childSessionIds, equals(["c1"]));
       // g1's immediate parent c1 is surfaced as its own row (no deep walk-up).
-      expect(byId["c1"]!.childSessionIds, equals(["g1"]));
+      expect((byId["c1"] ?? fail("expected a c1 row")).childSessionIds, equals(["g1"]));
     });
 
     group("parent-ID resolution (phantom-root fix)", () {

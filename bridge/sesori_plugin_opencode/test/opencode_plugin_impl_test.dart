@@ -996,7 +996,8 @@ void main() {
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
-      server.holdCommand = Completer<void>();
+      final holdCommand = Completer<void>();
+      server.holdCommand = holdCommand;
 
       await plugin.sendCommand(
         fastMode: false,
@@ -1013,7 +1014,7 @@ void main() {
 
       final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
       server.commandStatusCode = HttpStatus.internalServerError;
-      server.holdCommand!.complete();
+      holdCommand.complete();
 
       await idle.timeout(const Duration(seconds: 1));
       expect(plugin.currentWorkState, PluginWorkState.idle);
@@ -1113,9 +1114,8 @@ void main() {
       final messages = await plugin.getSessionMessages("ses-tool-long");
 
       expect(messages, hasLength(2));
-      final output = messages.last.parts.single.state.output;
-      expect(output, isNotNull);
-      expect(output!.length, lessThanOrEqualTo(500));
+      final output = messages.last.parts.single.state.output ?? fail("expected tool output");
+      expect(output.length, lessThanOrEqualTo(500));
       expect(output.length, equals(500));
     });
 
@@ -1436,9 +1436,8 @@ void main() {
         expect(server.requestLog, equals(["PATCH /session/s-root"]));
 
         // Verify the fake server applied the archived timestamp.
-        final sessionTime = server.getSessionTime("s-root");
-        expect(sessionTime, isNotNull);
-        expect(sessionTime!["archived"], isA<int>());
+        final sessionTime = server.getSessionTime("s-root") ?? fail("expected the session time");
+        expect(sessionTime["archived"], isA<int>());
       });
     });
   });
@@ -1493,11 +1492,15 @@ class _DynamicStatusServer() {
   /// change it between the cold-start call and the explicit plugin call.
   Map<String, Map<String, dynamic>> sessionStatuses = {};
 
-  String get baseUrl => "http://${_server!.address.address}:${_server!.port}";
+  String get baseUrl {
+    final server = _server ?? fail("the fake OpenCode server has not started");
+    return "http://${server.address.address}:${server.port}";
+  }
 
   Future<void> start() async {
-    _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _server!.listen((request) async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    _server = server;
+    server.listen((request) async {
       final path = request.uri.path;
 
       if (request.method == "GET" && path == "/project") {
@@ -1635,7 +1638,7 @@ class _FakeOpenCodeServer() {
   /// [projectKey]'s project — how the backend represents a moved folder's
   /// live location.
   void addSandbox({required String projectKey, required String sandbox}) {
-    (_projects[projectKey]!["sandboxes"] as List).add(sandbox);
+    ((_projects[projectKey] ?? fail("unknown project $projectKey"))["sandboxes"] as List).add(sandbox);
   }
 
   final Map<String, Map<String, dynamic>> _sessions = {
@@ -1661,11 +1664,15 @@ class _FakeOpenCodeServer() {
     },
   };
 
-  String get baseUrl => "http://${_server!.address.address}:${_server!.port}";
+  String get baseUrl {
+    final server = _server ?? fail("the fake OpenCode server has not started");
+    return "http://${server.address.address}:${server.port}";
+  }
 
   Future<void> start() async {
-    _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _server!.listen((request) async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    _server = server;
+    server.listen((request) async {
       final path = request.uri.path;
       requestLog.add("${request.method} $path");
 
@@ -1767,7 +1774,7 @@ class _FakeOpenCodeServer() {
         lastCreatedSessionParentId = body["parentID"] as String?;
         final directory = request.headers.value("x-opencode-directory") ?? "/repo";
         const sessionId = "s-created";
-        _sessions[sessionId] = {
+        final session = <String, dynamic>{
           "id": sessionId,
           "slug": "created-session",
           "projectID": "global",
@@ -1776,13 +1783,14 @@ class _FakeOpenCodeServer() {
           "title": "Created Session",
           "time": <String, dynamic>{"created": 300, "updated": 300},
         };
-        await _sendJson(request.response, _sessions[sessionId]!);
+        _sessions[sessionId] = session;
+        await _sendJson(request.response, session);
         return;
       }
 
       final sessionMatch = RegExp(r"^/session/([^/]+)$").firstMatch(path);
       if (sessionMatch != null && request.method == "GET") {
-        final sessionId = sessionMatch.group(1)!;
+        final sessionId = sessionMatch.group(1) ?? fail("session route without an id");
         final session = _sessions[sessionId];
         if (session == null) {
           request.response.statusCode = HttpStatus.notFound;
@@ -1810,7 +1818,7 @@ class _FakeOpenCodeServer() {
 
       final messageCollectionMatch = RegExp(r"^/session/([^/]+)/message$").firstMatch(path);
       if (messageCollectionMatch != null && request.method == "POST") {
-        final sessionId = messageCollectionMatch.group(1)!;
+        final sessionId = messageCollectionMatch.group(1) ?? fail("message route without a session id");
         final rawBody = await utf8.decoder.bind(request).join();
         final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         noReplyMessageBodies.add(body);
@@ -1852,27 +1860,28 @@ class _FakeOpenCodeServer() {
       ).firstMatch(path);
       if (messagePartMatch != null && request.method == "PATCH") {
         final rawBody = await utf8.decoder.bind(request).join();
-        lastUpdatedPart = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        final part = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        lastUpdatedPart = part;
         if (messagePartStatusCode != HttpStatus.ok) {
           request.response.statusCode = messagePartStatusCode;
           request.response.write("part update failed");
           await request.response.close();
           return;
         }
-        await _sendJson(request.response, lastUpdatedPart!);
+        await _sendJson(request.response, part);
         return;
       }
 
       final messageMatch = RegExp(r"^/session/([^/]+)/message/([^/]+)$").firstMatch(path);
       if (messageMatch != null && request.method == "DELETE") {
-        deletedMessageIds.add(messageMatch.group(2)!);
+        deletedMessageIds.add(messageMatch.group(2) ?? fail("message route without a message id"));
         await _sendJson(request.response, true);
         return;
       }
 
       final abortMatch = RegExp(r"^/session/([^/]+)/abort$").firstMatch(path);
       if (abortMatch != null && request.method == "POST") {
-        final sessionId = abortMatch.group(1)!;
+        final sessionId = abortMatch.group(1) ?? fail("abort route without a session id");
         abortedSessionIds.add(sessionId);
         sessionStatuses[sessionId] = {"type": "idle"};
         await _sendJson(request.response, true);
@@ -1901,14 +1910,14 @@ class _FakeOpenCodeServer() {
       }
 
       if (sessionMatch != null && request.method == "DELETE") {
-        final sessionId = sessionMatch.group(1)!;
+        final sessionId = sessionMatch.group(1) ?? fail("session route without an id");
         _sessions.remove(sessionId);
         await _sendJson(request.response, true);
         return;
       }
 
       if (sessionMatch != null && request.method == "PATCH") {
-        final sessionId = sessionMatch.group(1)!;
+        final sessionId = sessionMatch.group(1) ?? fail("session route without an id");
         final session = _sessions[sessionId];
         if (session == null) {
           request.response.statusCode = HttpStatus.notFound;

@@ -74,8 +74,9 @@ void main() {
     ];
     final projects = await repository.getProjects();
     expect(projects.first.id, directory);
-    expect(projects.first.activity!.createdAt, 5);
-    expect(projects.first.activity!.updatedAt, 40);
+    final activity = projects.first.activity ?? fail("expected project activity");
+    expect(activity.createdAt, 5);
+    expect(activity.updatedAt, 40);
     expect(projects.last.activity, isNull);
     expect(api.rootQueries, <String?>[null]);
   });
@@ -178,7 +179,7 @@ void main() {
     final details = await repository.getSessionDetails(sessionId: "session-fixture");
     expect(details.projectID, directory);
     expect(details.directory, worktree);
-    expect(details.promptDefaults!.agent, "Build");
+    expect((details.promptDefaults ?? fail("expected prompt defaults")).agent, "Build");
     expect(details.pluginId, "fixture-plugin");
     final messages = await repository.getMessages(sessionId: "session-fixture");
     expect((messages.single.info as PluginMessageAssistant).agent, "Build");
@@ -209,13 +210,14 @@ void main() {
     final created = await repository.createSession(directory: worktree, title: "New", agent: "Build", model: model);
     expect(created.projectID, directory);
     expect(created.directory, worktree);
-    expect(api.createBody!.agent, "build");
-    expect(api.createBody!.location.directory, worktree);
-    expect(api.createBody!.model!.variant, "high");
+    final createBody = api.createBody ?? fail("expected a create body");
+    expect(createBody.agent, "build");
+    expect(createBody.location.directory, worktree);
+    expect((createBody.model ?? fail("expected a model selection")).variant, "high");
     await repository.switchAgent(sessionId: created.id, directory: worktree, agent: "Build");
     await repository.switchModel(sessionId: created.id, model: model);
-    expect(api.agentBody!.agent, "build");
-    expect(api.modelBody!.model.id, "model");
+    expect((api.agentBody ?? fail("expected an agent body")).agent, "build");
+    expect((api.modelBody ?? fail("expected a model body")).model.id, "model");
     api.agents = [];
     await expectLater(
       repository.switchAgent(sessionId: created.id, directory: worktree, agent: "Build"),
@@ -227,9 +229,10 @@ void main() {
   test("preserves native defaults without fetching an agent catalog", () async {
     api.agents = [];
     await repository.createSession(directory: directory, title: null, agent: null, model: null);
-    expect(api.createBody!.agent, isNull);
-    expect(api.createBody!.model, isNull);
-    expect(api.createBody!.title, isNull);
+    final createBody = api.createBody ?? fail("expected a create body");
+    expect(createBody.agent, isNull);
+    expect(createBody.model, isNull);
+    expect(createBody.title, isNull);
     expect(api.agentDirectories, isEmpty);
   });
 
@@ -245,19 +248,21 @@ void main() {
         PluginPromptPart.fileData(mime: "image/png", base64: "AQID", filename: "fixture.png"),
       ],
     );
-    final body = api.promptBody!;
+    final body = api.promptBody ?? fail("expected a prompt body");
     expect(body.text, "First\nSecond");
-    expect(body.files!.map((file) => file.uri), [
+    final files = body.files ?? fail("expected prompt files");
+    expect(files.map((file) => file.uri), [
       Uri.file("/fixture/file name.txt").toString(),
       "https://fixture.invalid/image.png",
       "data:image/png;base64,AQID",
     ]);
-    expect(body.files!.first.name, "file name.txt");
+    expect(files.first.name, "file name.txt");
     expect(body.id, isNull);
     expect(body.delivery, isNull);
     await repository.sendCommand(sessionId: "session-fixture", command: "review", arguments: "fixture args");
-    expect(api.commandBody!.name, "review");
-    expect(api.commandBody!.text, "fixture args");
+    final commandBody = api.commandBody ?? fail("expected a command body");
+    expect(commandBody.name, "review");
+    expect(commandBody.text, "fixture args");
   });
 
   test("routes mutations with native IDs and leaves synthetic presentation explicit", () async {
@@ -265,9 +270,10 @@ void main() {
     expect(renamed.title, "Renamed");
     await repository.deleteSession(sessionId: "session-fixture");
     await repository.deleteWorktree(directory: directory, worktreePath: worktree, force: true);
-    expect(api.worktreeBody!.projectID, "project-fixture");
-    expect(api.worktreeBody!.directory, worktree);
-    expect(api.worktreeBody!.force, isTrue);
+    final worktreeBody = api.worktreeBody ?? fail("expected a worktree body");
+    expect(worktreeBody.projectID, "project-fixture");
+    expect(worktreeBody.directory, worktree);
+    expect(worktreeBody.force, isTrue);
     expect(await repository.interrupt(sessionId: "session-fixture", resume: false), isTrue);
     expect(api.interruptResume, isFalse);
     await repository.addSyntheticMessage(
@@ -276,9 +282,10 @@ void main() {
       description: "Visible fixture",
       resume: false,
     );
-    expect(api.syntheticBody!.text, "Internal fixture");
-    expect(api.syntheticBody!.description, "Visible fixture");
-    expect(api.syntheticBody!.resume, isFalse);
+    final syntheticBody = api.syntheticBody ?? fail("expected a synthetic body");
+    expect(syntheticBody.text, "Internal fixture");
+    expect(syntheticBody.description, "Visible fixture");
+    expect(syntheticBody.resume, isFalse);
     await repository.compact(sessionId: "session-fixture", promptId: null);
     for (final reply in PluginPermissionReply.values) {
       await repository.replyToPermission(sessionId: "session-fixture", requestId: "permission", reply: reply);
@@ -316,13 +323,16 @@ void main() {
       messageId: "message",
       directory: worktree,
     );
-    expect((message!.info as PluginMessageAssistant).agent, "Build");
+    expect(((message ?? fail("expected the message")).info as PluginMessageAssistant).agent, "Build");
     expect(
       (await repository.getLatestMessage(
-        sessionId: "session-fixture",
-        filter: V2MessageFilter.assistant,
-        directory: worktree,
-      ))!.info.id,
+                sessionId: "session-fixture",
+                filter: V2MessageFilter.assistant,
+                directory: worktree,
+              ) ??
+              fail("expected the latest message"))
+          .info
+          .id,
       "message",
     );
     expect(api.calls, ["message:session-fixture/message", "latest:assistant"]);
