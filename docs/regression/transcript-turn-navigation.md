@@ -572,6 +572,8 @@ answer, and on a trackpad while text streams.
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart` and
   its test
 - `client/app/test/features/session_detail/widgets/session_detail_body_test.dart`
+  and, for the Prompts screen's transition and pinch out,
+  `client/module_app_ui/test/features/session_detail/widgets/session_prompts_transition_test.dart`
 - The user message count: `countUserMessagesBefore` in
   `bridge/app/lib/src/api/database/history/chat_history_dao.dart`,
   `bridge/app/lib/src/repositories/chat_history_repository.dart` and
