@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show ControlMessage, ControlPromptKind;
+import "package:sesori_shared/sesori_shared.dart" show ControlMessage;
 
 import "../foundation/control_channel_client.dart";
 import "../server/foundation/bridge_replace_prompt.dart";
@@ -37,44 +37,12 @@ class ControlPromptService({
 
   @override
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) {
-    return _ask(
-      kind: ControlPromptKind.replaceBridge,
-      message: BridgeReplacePrompt.replaceExistingBridgeMessage,
-    );
+    return _ask(message: BridgeReplacePrompt.replaceExistingBridgeMessage);
   }
 
   @override
   Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) {
-    return _ask(
-      kind: ControlPromptKind.replaceBridge,
-      message: BridgeReplacePrompt.replaceStartingBridgeMessage(holderPid: holderPid),
-    );
-  }
-
-  /// Best-effort heads-up that the bridge needs the user to log in (the GUI
-  /// could not supply a token at bootstrap). Fire-and-forget: no response is
-  /// awaited — the authoritative signal is the auth-required exit sentinel; this
-  /// prompt is advisory, so a send failure is logged and swallowed.
-  void announceLoginNeeded() {
-    final id = "prompt-${_nextId++}";
-    try {
-      _client.send(
-        jsonEncode(
-          ControlMessage.promptRequest(
-            id: id,
-            kind: ControlPromptKind.loginNeeded,
-            message: "Sign in to the Sesori desktop app to start the bridge.",
-          ).toJson(),
-        ),
-      );
-    } on ControlChannelNotConnectedException catch (error) {
-      Log.w("[control][prompt] could not announce login-needed — control channel down", error);
-    } on Object catch (error, stackTrace) {
-      // Best-effort by contract: an unexpected transport failure (e.g. a
-      // mid-close sink) must never mask the authoritative auth-required exit
-      // code the caller is about to return.
-      Log.w("[control][prompt] could not announce login-needed", error, stackTrace);
-    }
+    return _ask(message: BridgeReplacePrompt.replaceStartingBridgeMessage(holderPid: holderPid));
   }
 
   /// Delivers the GUI's answer to a pending ask. Called by the control-message
@@ -102,10 +70,7 @@ class ControlPromptService({
     }
   }
 
-  Future<TerminalPromptDecision> _ask({
-    required ControlPromptKind kind,
-    required String message,
-  }) async {
+  Future<TerminalPromptDecision> _ask({required String message}) async {
     if (_disposed) {
       return TerminalPromptDecision.nonInteractive;
     }
@@ -115,7 +80,7 @@ class ControlPromptService({
     try {
       try {
         _client.send(
-          jsonEncode(ControlMessage.promptRequest(id: id, kind: kind, message: message).toJson()),
+          jsonEncode(ControlMessage.promptRequest(id: id, message: message).toJson()),
         );
       } on ControlChannelNotConnectedException catch (error) {
         // The GUI is unreachable (outage / mid-reconnect): the question cannot

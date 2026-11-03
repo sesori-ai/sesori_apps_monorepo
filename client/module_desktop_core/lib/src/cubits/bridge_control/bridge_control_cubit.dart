@@ -553,7 +553,6 @@ class BridgeControlCubit._create({
         ControlRelayConnectionState.connecting => (label: "Connecting", detail: null),
         ControlRelayConnectionState.disconnected => (label: "Reconnecting", detail: null),
         ControlRelayConnectionState.takenOver => (label: "Relay taken over", detail: null),
-        ControlRelayConnectionState.unknown => (label: "Status unknown", detail: null),
       },
     };
   }

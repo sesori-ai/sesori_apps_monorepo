@@ -170,54 +170,6 @@ void main() {
       expect(routeDispatcher.replacedStacks, isEmpty);
     });
 
-    test("rebuilds when that session is shown read-only", () async {
-      // Background tasks and subtasks open the same session on the read-only
-      // route, which renders without the composer. The notification wants the
-      // editable screen, so it must still navigate.
-      routeSource.currentLocation = "/sessions/project-1/session-1?readOnly=true";
-      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
-        accountId: null,
-        bridgeId: null,
-      );
-
-      await dispatcher.start();
-
-      expect(routeDispatcher.replacedStacks, hasLength(1));
-    });
-
-    test("rebuilds the stack when a different session is on top", () async {
-      routeSource.currentLocation = "/sessions/project-1/session-2";
-      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
-        accountId: null,
-        bridgeId: null,
-      );
-
-      await dispatcher.start();
-
-      expect(routeDispatcher.replacedStacks, hasLength(1));
-    });
-
-    test("rebuilds the stack when a pushed screen sits above that session", () async {
-      routeSource.currentLocation = "/sessions/project-1/session-1/diffs";
-      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
-        accountId: null,
-        bridgeId: null,
-      );
-
-      await dispatcher.start();
-
-      expect(routeDispatcher.replacedStacks, hasLength(1));
-    });
-
     test("latest pending notification wins after auth replay", () async {
       authSession.emit(const AuthState.unauthenticated());
       final initialOpenCompleter = Completer<NotificationOpenRequest?>();

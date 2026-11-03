@@ -88,15 +88,7 @@ void main() {
       dispatcher.start();
       client.emit(_encode(const ControlMessage.registered(bridgeId: "b-1")));
       client.emit(_encode(const ControlMessage.tokenRequest(id: "t-1")));
-      client.emit(
-        _encode(
-          const ControlMessage.promptRequest(
-            id: "p-1",
-            kind: ControlPromptKind.replaceBridge,
-            message: null,
-          ),
-        ),
-      );
+      client.emit(_encode(const ControlMessage.promptRequest(id: "p-1", message: null)));
       client.emit(
         _encode(
           const ControlMessage.status(

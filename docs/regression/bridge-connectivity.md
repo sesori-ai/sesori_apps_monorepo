@@ -268,8 +268,8 @@ an id, and whether restart is explicit.
   uneven rounded borders, losing its content clipping or theme contrast,
   overlapping navigation/content, clipping the
   disconnected title at standard phone text size, or leaving space after recovery.
-- GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the
-  auth-required sentinel because teardown cancelled the bootstrap token request.
+- GUI shutdown unregistering the bridge or exiting with the auth-required
+  sentinel because teardown cancelled the bootstrap token request.
 - A forced stop leaving a backend alive, targeting only one process-table snapshot,
   or reporting success after process-group/tree termination was rejected.
 - Helper output blocking a child pipe, an unterminated line or persistence backlog

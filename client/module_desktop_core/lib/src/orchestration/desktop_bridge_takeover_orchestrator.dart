@@ -142,8 +142,7 @@ class DesktopBridgeTakeoverOrchestrator.forTesting({
       return;
     }
     for (final ControlPromptRequest prompt in prompts) {
-      if (prompt.kind != ControlPromptKind.replaceBridge ||
-          !_promptTracker.prompts.any((pending) => identical(pending, prompt))) {
+      if (!_promptTracker.prompts.any((pending) => identical(pending, prompt))) {
         continue;
       }
       try {

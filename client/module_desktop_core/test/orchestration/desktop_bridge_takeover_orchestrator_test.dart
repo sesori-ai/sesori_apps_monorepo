@@ -66,26 +66,12 @@ void main() {
       order.add("start");
       await startGate.future;
     });
-    const ControlPromptRequest staleReplacementPrompt = ControlPromptRequest(
-      id: "stale-replace",
-      kind: ControlPromptKind.replaceBridge,
-      message: "stale",
-    );
+    const ControlPromptRequest staleReplacementPrompt = ControlPromptRequest(id: "stale-replace", message: "stale");
     promptTracker.addPrompt(prompt: staleReplacementPrompt);
-    const ControlPromptRequest loginPrompt = ControlPromptRequest(
-      id: "login-1",
-      kind: ControlPromptKind.loginNeeded,
-      message: "login",
-    );
-    const ControlPromptRequest replacementPrompt = ControlPromptRequest(
-      id: "replace-1",
-      kind: ControlPromptKind.replaceBridge,
-      message: "replace",
-    );
+    const ControlPromptRequest replacementPrompt = ControlPromptRequest(id: "replace-1", message: "replace");
 
     final Future<void> operation = orchestrator.takeOver();
     await pumpEventQueue(times: 2);
-    promptTracker.addPrompt(prompt: loginPrompt);
     promptTracker.addPrompt(prompt: replacementPrompt);
     await pumpEventQueue(times: 2);
     startGate.complete();
@@ -104,16 +90,8 @@ void main() {
   test("accepts multiple fresh replacement prompts without stale answer attempts", () async {
     final Completer<void> startGate = Completer<void>();
     when(() => processService.start()).thenAnswer((_) => startGate.future);
-    const ControlPromptRequest firstPrompt = ControlPromptRequest(
-      id: "replace-1",
-      kind: ControlPromptKind.replaceBridge,
-      message: "replace first",
-    );
-    const ControlPromptRequest secondPrompt = ControlPromptRequest(
-      id: "replace-2",
-      kind: ControlPromptKind.replaceBridge,
-      message: "replace second",
-    );
+    const ControlPromptRequest firstPrompt = ControlPromptRequest(id: "replace-1", message: "replace first");
+    const ControlPromptRequest secondPrompt = ControlPromptRequest(id: "replace-2", message: "replace second");
 
     final Future<void> operation = orchestrator.takeOver();
     await pumpEventQueue(times: 2);
@@ -132,11 +110,7 @@ void main() {
     processStates.add(const BridgeProcessContention());
     final Completer<void> startGate = Completer<void>();
     when(() => processService.start()).thenAnswer((_) => startGate.future);
-    const ControlPromptRequest replacementPrompt = ControlPromptRequest(
-      id: "replace-fresh",
-      kind: ControlPromptKind.replaceBridge,
-      message: "replace",
-    );
+    const ControlPromptRequest replacementPrompt = ControlPromptRequest(id: "replace-fresh", message: "replace");
 
     final Future<void> operation = orchestrator.takeOver();
     await pumpEventQueue(times: 2);
@@ -168,11 +142,7 @@ void main() {
   });
 
   test("stops approving replacement prompts when logout begins during negotiation", () async {
-    const ControlPromptRequest replacementPrompt = ControlPromptRequest(
-      id: "replace-after-logout",
-      kind: ControlPromptKind.replaceBridge,
-      message: "replace",
-    );
+    const ControlPromptRequest replacementPrompt = ControlPromptRequest(id: "replace-after-logout", message: "replace");
 
     final Future<void> operation = orchestrator.takeOver();
     await pumpEventQueue(times: 3);
