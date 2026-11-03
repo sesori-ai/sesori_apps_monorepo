@@ -4,7 +4,7 @@ import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 
 // COMPATIBILITY 2026-10-25 (v1.10.0): Released apps still read and save the pull request refresh interval,
-// which no longer has any effect. Remove once public apps older than v1.9.2 are unsupported.
+// which no longer has any effect. Remove once public apps older than v1.10.1 are unsupported.
 class PullRequestRefreshSettingsService({required final BridgeSettingsRepository _bridgeSettingsRepository}) {
   Future<PullRequestRefreshSettingsResponse> readCommittedSettings() async {
     return _response(settings: await _bridgeSettingsRepository.readCommittedSettings());

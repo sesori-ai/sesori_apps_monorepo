@@ -10,7 +10,7 @@ sealed class SessionStatusResponse with _$SessionStatusResponse {
   const factory({
     // key is session id, value is status
     required Map<String, SessionStatus> statuses,
-    // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
+    // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once public bridges older than v1.6.0 are unsupported.
     @Default(<String>[]) List<String> unavailablePluginIds,
   }) = _SessionStatusResponse;
 

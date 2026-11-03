@@ -22,7 +22,8 @@ sealed class ProjectSummary with _$ProjectSummary {
     required String id,
     required String? name,
     required String path,
-    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks once
+    // public bridges older than v1.5.1 are unsupported.
     required ProjectTime? time,
     // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
     @Default(false) bool hasUnseenChanges,
@@ -56,7 +57,8 @@ sealed class Project with _$Project {
     // empty.
     // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
     @Default("") String path,
-    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks once
+    // public bridges older than v1.5.1 are unsupported.
     required ProjectTime? time,
     // Whether this project has at least one non-archived session with unseen
     // activity. Backend-derived from its sessions. Defaults to false so older

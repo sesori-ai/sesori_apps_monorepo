@@ -20,22 +20,20 @@ enum CodexCollaborationMode({
   static CodexCollaborationMode? fromAgent({required String? agent}) {
     final normalized = agent?.trim().toLowerCase();
     return switch (normalized) {
-      // COMPATIBILITY 2026-07-24 (v1.6.0): Older apps omit the agent and
-      // expect normal execution. Remove this mapping when those app versions
-      // are no longer supported.
       null => defaultMode,
       "agent" => defaultMode,
       // COMPATIBILITY 2026-08-19 (v1.7.0): This mode was named "Default" until
       // it was renamed to "Agent". Remove once no supported app can send it.
       "default" => defaultMode,
-      // COMPATIBILITY 2026-09-21 (v1.9.0): Plan was advertised as an agent, and
-      // catalogs captured then are served for up to 30 days, so a client can
-      // still send it. It is honoured rather than run in the editing default.
-      // Remove once no catalog captured before this date can still be served.
+      // COMPATIBILITY 2026-09-21 (v1.9.0): Plan is no longer advertised as an
+      // agent, but stored session and new-session defaults can still name it,
+      // and public apps older than v1.8.3 send a stored agent without checking
+      // the catalog. It is honoured rather than run in the editing default.
+      // Remove once those apps are unsupported and no stored default can still
+      // name Plan.
       "plan" => plan,
-      // COMPATIBILITY 2026-07-24 (v1.6.0): Earlier Codex plugins persisted
-      // their sole agent as "codex". Remove this alias after v1.6.0 prompt
-      // defaults are no longer supported.
+      // Codex history reports "codex" as each message's agent, and the bridge
+      // resends the latest one, for example when continuing after a usage limit.
       "codex" => defaultMode,
       _ => null,
     };

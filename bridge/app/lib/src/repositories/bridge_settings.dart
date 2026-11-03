@@ -174,7 +174,7 @@ class const BridgeSettings({
   final ReleaseTrack releaseTrack = ReleaseTrack.stable,
     /// Pull request refresh interval that released apps read and save; it has no effect.
   // COMPATIBILITY 2026-10-25 (v1.10.0): Released apps read and save this interval through the settings routes, so
-  // it is still persisted. Remove once public apps older than v1.9.2 are unsupported.
+  // it is still persisted. Remove once public apps older than v1.10.1 are unsupported.
   final int pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
     /// Whether opening a session should start its plugin before the first operation needs it.
   final bool warmUpPluginsOnSessionOpen = defaultWarmUpPluginsOnSessionOpen,

@@ -143,10 +143,10 @@ class SessionLifecycleService({
     required bool deleteWorktree,
     required bool force,
   }) async {
-    // COMPATIBILITY 2026-08-07 (v1.7.0): published apps render Unarchive from
-    // time.archived alone, so the request shape still accepts `archived: false`
-    // and answers with an explicit rejection; remove tolerance when out of
-    // support.
+    // COMPATIBILITY 2026-08-07 (v1.7.0): apps older than v1.7.1 render Unarchive
+    // from time.archived alone, so the request shape still accepts
+    // `archived: false` and answers with an explicit rejection. Remove this
+    // tolerance once public apps older than v1.7.1 are unsupported.
     if (!archived) {
       return await _refuseUnarchive(sessionId: sessionId);
     }

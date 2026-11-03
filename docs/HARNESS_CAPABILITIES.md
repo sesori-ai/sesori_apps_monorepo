@@ -488,9 +488,10 @@ one selectable agent, so it appears for OpenCode alone. Claude, Codex,
 Copilot, Cursor and OMP have modes such as Plan and Ask that Sesori used to
 list as agents; since 2026-09-21 each advertises only its default mode
 (Cursor always its Agent mode) and Sesori offers no mode control. A mode name
-that still arrives from a catalog captured earlier is honoured, never run in
-the default mode. Naming the advertised default returns a session left in
-another mode to the default with its next prompt.
+that still arrives from a stored session or new-session default, or from an
+app older than v1.8.3, is honoured, never run in the default mode. Naming the
+advertised default returns a session left in another mode to the default with
+its next prompt.
 
 ## Read-only run details
 

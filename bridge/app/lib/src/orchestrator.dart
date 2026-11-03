@@ -2459,8 +2459,8 @@ class OrchestratorSession._({
       case RelaySessionView(:final sessionId):
         Log.v("SessionView connID=$connID sessionId=$sessionId");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
-      // COMPATIBILITY 2026-10-25 (v1.10.0): Apps older than v1.10.0 still send project_view, and it no longer has any
-      // effect. Remove once public apps older than v1.10.0 are unsupported.
+      // COMPATIBILITY 2026-10-25 (v1.10.0): Apps older than v1.10.1 still send project_view, and it no longer has any
+      // effect. Remove once public apps older than v1.10.1 are unsupported.
       case RelayProjectView():
         break;
       default:

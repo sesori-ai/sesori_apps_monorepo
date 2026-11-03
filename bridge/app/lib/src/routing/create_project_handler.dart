@@ -12,6 +12,8 @@ class CreateProjectHandler({required final ProjectMutationService _projectMutati
   this
     : super(
         HttpMethod.post,
+        // COMPATIBILITY 2026-11-03 (v1.12.0): Apps older than v1.6.0 create projects here; current apps no longer
+        // call it. Remove once public apps older than v1.6.0 are unsupported.
         "/project/create",
         fromJson: ProjectPathRequest.fromJson,
       );

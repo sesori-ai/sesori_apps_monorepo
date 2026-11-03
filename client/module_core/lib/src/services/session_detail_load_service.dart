@@ -334,8 +334,9 @@ class SessionDetailLoadService({
         // so it declines the fallback rather than trading one activation path
         // for another.
         if (mode == SessionOptionsRequestMode.cacheOnly) return unavailable;
-        // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
-        // expose /session/options. Remove this fallback with support for them.
+        // COMPATIBILITY 2026-08-09 (v1.8.0): Bridges older than v1.7.0 do not
+        // expose /session/options. Remove this fallback once public bridges
+        // older than v1.7.0 are unsupported.
         switch (await _repository.loadLegacySessionOptions(projectId: normalizedProjectId, pluginId: pluginId)) {
           case LegacySessionOptionsRepositoryAvailable(:final catalog):
             return fromCatalog(catalog);

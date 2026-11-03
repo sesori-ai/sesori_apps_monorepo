@@ -16,7 +16,9 @@ sealed class SessionOptionsResponse with _$SessionOptionsResponse {
     required CommandListResponse commands,
     // COMPATIBILITY 2026-08-27 (v1.8.2): Bridges before v1.8.2 omit
     // lastUsedPromptDefaults, which means no bridge-stored new-session selection
-    // is available. Missing nullable JSON fields decode to null.
+    // is available. Missing nullable JSON fields decode to null. Remove this
+    // marker once public bridges older than v1.8.2 are unsupported; null stays
+    // valid when the bridge has no stored selection.
     required SessionPromptDefaults? lastUsedPromptDefaults,
 
     /// Whether the bridge served a cached snapshot older than its freshness

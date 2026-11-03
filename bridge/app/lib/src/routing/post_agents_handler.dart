@@ -8,6 +8,8 @@ class PostAgentsHandler(final AgentRepository _repository) extends BodyRequestHa
   this
     : super(
         HttpMethod.post,
+        // COMPATIBILITY 2026-11-03 (v1.12.0): Apps older than v1.7.1 load agents here; later apps call it only on
+        // bridges without /session/options. Remove once public apps older than v1.7.1 are unsupported.
         "/agent",
         fromJson: PluginProjectIdRequest.fromJson,
       );
