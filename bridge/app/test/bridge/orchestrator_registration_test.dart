@@ -451,27 +451,6 @@ void main() {
       expect(harness.relayServer.connectedClientCount, equals(1));
     });
 
-    test("the 1000/replaced rollout fallback also holds off reconnect", () async {
-      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(
-        repository: repository,
-        backoffPolicy: _takeoverHoldoffBackoff,
-      );
-      addTearDown(harness.close);
-
-      final firstSocket = await harness.relayServer.nextClient();
-      await _firstTextMessage(firstSocket);
-
-      await firstSocket.close(1000, "replaced");
-
-      await expectLater(
-        harness.relayServer.nextClient(timeout: const Duration(milliseconds: 400)),
-        throwsA(isA<TimeoutException>()),
-        reason: "the rollout fallback (1000/replaced) must be treated as a takeover",
-      );
-      expect(harness.relayServer.connectedClientCount, equals(1));
-    });
-
     test("cancel wakes a long takeover backoff promptly (no shutdown stall)", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
       final harness = await _RegistrationHarness.start(repository: repository);

@@ -1410,10 +1410,7 @@ class OrchestratorSession._({
       // headless/VM failover is preserved because we still retry, just
       // slowly. The GUI is told separately via ControlStatusNotifier (it observes the same replaced-close on the
       // connection-state stream); this loop owns only the backoff policy.
-      final takenOver = RelayCloseCodes.isBridgeReplaced(
-        closeCode: _client.closeCode(connection: connection),
-        closeReason: _client.closeReason(connection: connection),
-      );
+      final takenOver = _client.closeCode(connection: connection) == RelayCloseCodes.bridgeReplaced;
       if (takenOver) {
         Console.warning(
           "Another bridge with this bridge's id (for example on a cloned machine) "
