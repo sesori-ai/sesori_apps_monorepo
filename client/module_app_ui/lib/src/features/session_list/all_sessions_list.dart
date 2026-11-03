@@ -21,12 +21,9 @@ import "session_tile.dart";
 
 typedef AllSessionsRowOpenedCallback = void Function({required AllSessionsRow row});
 
-/// Builds the [SessionActionService] a row's swipe and menu actions run on,
+/// Builds the [SessionActionsCubit] the rows' swipe and menu actions run on,
 /// over [window], the list's own.
-typedef SessionActionServiceFactory = SessionActionService Function({
-  required String projectId,
-  required SessionWindowService window,
-});
+typedef SessionActionsCubitFactory = SessionActionsCubit Function({required SessionWindowService window});
 
 /// The page, as a sliver, for a computer that is not connected, or null while
 /// the surface knows it is about to connect: the list then shows its own
@@ -51,13 +48,13 @@ typedef AllSessionsDisconnectedBuilder = Widget? Function({
 /// While older sessions follow, a loader row ends the list, and rows built
 /// within reach of the end ask for the next page, which lands above it.
 ///
-/// A row's actions run on a [SessionActionService] over the list's window,
+/// The rows' actions run on one [SessionActionsCubit] over the list's window,
 /// built only once a swipe or menu needs it.
 class const AllSessionsList({
   super.key,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
-  required final SessionActionServiceFactory createActions,
+  required final SessionActionsCubitFactory createActions,
 
   /// The session a content pane beside the list shows, highlighted.
   required final String? selectedSessionId,
@@ -75,7 +72,12 @@ class const AllSessionsList({
   required final double endClearance,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => switch (context.watch<ProjectListCubit>().state) {
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) => createActions(window: context.read<SessionWindowService>()),
+    child: _content(context: context),
+  );
+
+  Widget _content({required BuildContext context}) => switch (context.watch<ProjectListCubit>().state) {
     ProjectListFailed(:final reason) => SliverFillRemaining(
       hasScrollBody: false,
       child: RemoteFailureView(
@@ -876,8 +878,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final dispatcher = list.actionDispatcher;
     // Actions run against the list's context, not the row's: a delete
     // unmounts the row before its follow-ups run.
-    SessionActionService actions() =>
-        list.createActions(projectId: row.project.id, window: context.read<SessionWindowService>());
+    SessionActionsCubit actions() => context.read<SessionActionsCubit>();
     final tile = Padding(
       padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
       child: SessionTile(

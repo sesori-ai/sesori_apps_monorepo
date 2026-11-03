@@ -69,7 +69,7 @@ class const SessionListActionDispatcher({
   /// [isRunning] is whether the session works right now, so archive asks first.
   List<PregoMenuEntry> sessionMenuEntries({
     required BuildContext context,
-    required SessionActionService actions,
+    required SessionActionsCubit actions,
     required Session session,
     required bool isRunning,
     required SessionReadMenuEntry readEntry,
@@ -136,7 +136,7 @@ class const SessionListActionDispatcher({
   /// from the row's trailing swipe pill.
   void handleSessionDelete({
     required BuildContext context,
-    required SessionActionService actions,
+    required SessionActionsCubit actions,
     required Session session,
   }) => _delete(context: context, actions: actions, session: session);
 
@@ -152,8 +152,8 @@ class const SessionListActionDispatcher({
     }());
   }
 
-  void _delete({required BuildContext context, required SessionActionService actions, required Session session}) {
-    final deletesFolder = _isNoProject(context: context, actions: actions);
+  void _delete({required BuildContext context, required SessionActionsCubit actions, required Session session}) {
+    final deletesFolder = _isNoProject(context: context, session: session);
     switch (deleteConfirmation) {
       case SessionDeleteConfirmation.sheet:
         _showDeleteSheet(
@@ -181,15 +181,15 @@ class const SessionListActionDispatcher({
     }
   }
 
-  /// Whether [actions]' sessions are "No project" ones, each in its own folder
-  /// that deleting the session removes with its files.
-  bool _isNoProject({required BuildContext context, required SessionActionService actions}) =>
-      context.read<ProjectListCubit>().state.kindOf(projectId: actions.projectId) == ProjectKind.scratch;
+  /// Whether [session] is a "No project" one, in its own folder that deleting
+  /// the session removes with its files.
+  bool _isNoProject({required BuildContext context, required Session session}) =>
+      context.read<ProjectListCubit>().state.kindOf(projectId: session.projectID) == ProjectKind.scratch;
 
   /// Flips [session]'s read state, [unseen], from the row's leading swipe.
   void handleSessionToggleUnread({
     required BuildContext context,
-    required SessionActionService actions,
+    required SessionActionsCubit actions,
     required Session session,
     required bool unseen,
   }) => _setRead(context: context, actions: actions, session: session, read: unseen);
@@ -199,17 +199,17 @@ class const SessionListActionDispatcher({
   /// toggle would mark it read instead.
   void handleSessionMarkUnread({
     required BuildContext context,
-    required SessionActionService actions,
+    required SessionActionsCubit actions,
     required Session session,
   }) => _setRead(context: context, actions: actions, session: session, read: false);
 
   void _setRead({
     required BuildContext context,
-    required SessionActionService actions,
+    required SessionActionsCubit actions,
     required Session session,
     required bool read,
   }) {
-    unawaited(actions.markSessionSeen(sessionId: session.id, read: read));
+    unawaited(actions.markSessionSeen(projectId: session.projectID, sessionId: session.id, read: read));
     if (!read) onSessionMarkedUnread?.call(context: context, session: session);
   }
 }

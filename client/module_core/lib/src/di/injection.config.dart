@@ -253,6 +253,8 @@ import 'package:sesori_dart_core/src/services/selected_computer_service.dart'
     as _i370;
 import 'package:sesori_dart_core/src/services/session_abort_service.dart'
     as _i386;
+import 'package:sesori_dart_core/src/services/session_action_service.dart'
+    as _i119;
 import 'package:sesori_dart_core/src/services/session_approval_service.dart'
     as _i432;
 import 'package:sesori_dart_core/src/services/session_auto_continuation_service.dart'
@@ -877,6 +879,14 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i433.ComputerSwitchDispatcher(
         selectedComputerService: gh<_i370.SelectedComputerService>(),
         routeDispatcher: gh<_i951.RouteDispatcher>(),
+      ),
+    );
+    gh.lazySingleton<_i119.SessionActionService>(
+      () => _i119.SessionActionService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        sessionCleanupService: gh<_i692.SessionCleanupService>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(

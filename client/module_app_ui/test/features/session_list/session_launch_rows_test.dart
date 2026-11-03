@@ -138,8 +138,7 @@ void main() {
                               onSessionDeleted: null,
                               onSessionMarkedUnread: null,
                             ),
-                            createActions: ({required projectId, required window}) =>
-                                throw StateError("no row to act on"),
+                            createActions: ({required window}) => throw StateError("no row to act on"),
                             selectedSessionId: null,
                             disconnectedBuilder: ({required context, required state}) =>
                                 const SliverToBoxAdapter(child: Text("Computer offline")),

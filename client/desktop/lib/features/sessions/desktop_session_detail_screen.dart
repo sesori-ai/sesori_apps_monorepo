@@ -57,12 +57,8 @@ class const DesktopSessionDetailScreen({
         ),
         // The toolbar's session actions run through the same dispatcher as a
         // row's menu.
-        RepositoryProvider<SessionActionService>(
-          create: (context) => createSessionActionService(
-            locator: getIt,
-            projectId: projectId,
-            window: context.read<SessionWindowService>(),
-          ),
+        BlocProvider(
+          create: (context) => createSessionActionsCubit(locator: getIt, window: context.read<SessionWindowService>()),
         ),
       ],
       child: DesktopComposerPresentationScope(
@@ -203,7 +199,7 @@ class const DesktopSessionDetailView({
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(
       context: context,
-      actions: context.read<SessionActionService>(),
+      actions: context.read<SessionActionsCubit>(),
       session: session,
     );
     onMarkedUnread();
@@ -319,7 +315,7 @@ class const DesktopSessionDetailView({
                       ),
                       ...sessionActions.sessionMenuEntries(
                         context: context,
-                        actions: context.read<SessionActionService>(),
+                        actions: context.read<SessionActionsCubit>(),
                         session: session,
                         isRunning: isBusy,
                         readEntry: const SessionReadMenuNone(),

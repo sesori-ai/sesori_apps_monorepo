@@ -6,27 +6,22 @@ import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dar
 import "package:sesori_dart_core/src/services/models/session_delete_result.dart";
 import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
-import "package:sesori_dart_core/src/services/session_window_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
-
-class _MockSessionWindowService() extends Mock implements SessionWindowService;
 
 void main() {
   setUpAll(registerAllFallbackValues);
 
   const projectId = "project-1";
   late MockSessionRepository sessionRepository;
-  late _MockSessionWindowService window;
   late FakeSessionUnseenTracker unseen;
   late MockFailureReporter failureReporter;
   late SessionActionService actions;
 
   setUp(() {
     sessionRepository = MockSessionRepository();
-    window = _MockSessionWindowService();
     unseen = FakeSessionUnseenTracker();
     failureReporter = MockFailureReporter();
     when(
@@ -40,22 +35,14 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     actions = SessionActionService(
-      window: window,
       sessionRepository: sessionRepository,
       sessionCleanupService: SessionCleanupService(repository: sessionRepository),
       sessionUnseenTracker: unseen,
       failureReporter: failureReporter,
-      projectId: projectId,
     );
   });
 
   tearDown(() => unseen.onDispose());
-
-  test("a rename runs on the window it was built with", () async {
-    when(() => window.renameSession(sessionId: "s1", title: "New")).thenAnswer((_) async => true);
-
-    expect(await actions.renameSession(sessionId: "s1", title: "New"), isTrue);
-  });
 
   group("delete", () {
     void stubDelete(Future<ApiResponse<void>> Function() answer) => when(
@@ -108,7 +95,7 @@ void main() {
         () => sessionRepository.markSessionSeen(sessionId: "s1", read: true),
       ).thenAnswer((_) async => ApiResponse.success(null));
 
-      final mark = actions.markSessionSeen(sessionId: "s1", read: true);
+      final mark = actions.markSessionSeen(projectId: projectId, sessionId: "s1", read: true);
       expect(unseen.currentSessionUnseen[projectId]?["s1"]?.unseen, isFalse);
       await mark;
 
@@ -123,7 +110,7 @@ void main() {
         projectId: {"s1": (unseen: false, lastUserActivityAt: 42)},
       });
 
-      await actions.markSessionSeen(sessionId: "s1", read: false);
+      await actions.markSessionSeen(projectId: projectId, sessionId: "s1", read: false);
 
       expect(unseen.currentSessionUnseen[projectId]?["s1"], (unseen: false, lastUserActivityAt: 42));
     });
@@ -131,7 +118,7 @@ void main() {
     test("a thrown request drops an entry the tracker did not have", () async {
       when(() => sessionRepository.markSessionSeen(sessionId: "s1", read: true)).thenThrow(StateError("transport"));
 
-      await actions.markSessionSeen(sessionId: "s1", read: true);
+      await actions.markSessionSeen(projectId: projectId, sessionId: "s1", read: true);
 
       expect(unseen.currentSessionUnseen[projectId]?.containsKey("s1"), isFalse);
     });

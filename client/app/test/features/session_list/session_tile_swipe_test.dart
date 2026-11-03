@@ -1,3 +1,4 @@
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -20,16 +21,15 @@ import "../../helpers/test_helpers.dart";
 /// settles open comfortably past ~200px of drag, the leading one past ~150px,
 /// and the full-swipe commit threshold is 480px. ~20px of every drag is spent
 /// on touch slop.
-class _MockSessionActionService() extends Mock implements SessionActionService;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 void main() {
-  late _MockSessionActionService actions;
+  late _MockSessionActionsCubit actions;
   final markedUnread = <String>[];
 
   setUp(() {
     markedUnread.clear();
-    actions = _MockSessionActionService();
-    when(() => actions.projectId).thenReturn("project-1");
+    actions = _MockSessionActionsCubit();
   });
 
   /// Renders the real list. [AllSessionsList] wires the swipe actions to the
@@ -183,6 +183,7 @@ void main() {
     final session = testSession(title: "My Session");
     when(
       () => actions.markSessionSeen(
+        projectId: any(named: "projectId"),
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -199,7 +200,7 @@ void main() {
     await tester.tap(find.text("Mark as unread"));
     await tester.pumpAndSettle();
 
-    verify(() => actions.markSessionSeen(sessionId: session.id, read: false)).called(1);
+    verify(() => actions.markSessionSeen(projectId: session.projectID, sessionId: session.id, read: false)).called(1);
     expect(markedUnread, [session.id]);
   });
 
@@ -207,6 +208,7 @@ void main() {
     final session = testSession(title: "My Session").copyWith(unseen: true);
     when(
       () => actions.markSessionSeen(
+        projectId: any(named: "projectId"),
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -218,7 +220,7 @@ void main() {
     await tester.drag(tile("My Session"), const Offset(520, 0));
     await tester.pumpAndSettle();
 
-    verify(() => actions.markSessionSeen(sessionId: session.id, read: true)).called(1);
+    verify(() => actions.markSessionSeen(projectId: session.projectID, sessionId: session.id, read: true)).called(1);
     expect(markedUnread, isEmpty);
   });
 

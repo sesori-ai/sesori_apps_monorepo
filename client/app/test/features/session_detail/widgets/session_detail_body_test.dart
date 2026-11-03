@@ -34,7 +34,7 @@ import "../../../helpers/test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class _MockSessionActionService() extends Mock implements SessionActionService;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
@@ -419,9 +419,10 @@ void main() {
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     // Locally still unseen: a toggle would offer "Mark as read" here.
     final unseen = testConstSession.copyWith(unseen: true);
-    final actions = _MockSessionActionService();
+    final actions = _MockSessionActionsCubit();
     when(
       () => actions.markSessionSeen(
+        projectId: any(named: "projectId"),
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -457,7 +458,7 @@ void main() {
     await tester.tap(find.text("Mark as unread"));
     await tester.pumpAndSettle();
 
-    verify(() => actions.markSessionSeen(sessionId: unseen.id, read: false)).called(1);
+    verify(() => actions.markSessionSeen(projectId: unseen.projectID, sessionId: unseen.id, read: false)).called(1);
     expect(left, [unseen.id]);
   });
 

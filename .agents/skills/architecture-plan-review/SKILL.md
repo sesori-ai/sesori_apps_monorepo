@@ -420,12 +420,13 @@ Layer 0 — Foundation (transport, platform interfaces, logging)
 └─ Platform interfaces and utilities have NO cross-dependency; transport may consume
    platform, auth and storage contracts.
 └─ Transport stack: RelayClient → ConnectionService → RelayHttpApiClient, in
-   capabilities/relay/, capabilities/server_connection/ and api/client/. This
-   vertical dep within the transport stack is acceptable (single transport pipeline).
+   capabilities/relay/, capabilities/server_connection/ and api/client/, the one
+   Layer 0 directory under api/. This vertical dep within the transport stack is
+   acceptable (single transport pipeline).
 └─ ConnectionService also exposes observable streams (connection status, SSE events)
-   and a lifecycle facade (connect, reconnect, disconnect). Higher layers may LISTEN
-   to these streams and call that facade, but never call RelayClient or raw transport
-   methods
+   and a lifecycle facade (connectWithFreshAuthToken, reconnect, disconnect). Higher
+   layers may LISTEN to these streams and call that facade, but never call
+   RelayClient or raw transport methods
 
         ▲ consumed by
 
@@ -469,7 +470,7 @@ Layer 4 — State Management
 
 Directories mirror these layers, so violations are visible in import paths.
 When reviewing proposed imports: if the plan puts a file in `services/` or
-`cubits/` that imports a Layer 1 API class (anything in `api/`, or an
+`cubits/` that imports a Layer 1 API class (anything in `api/` outside the transport's `api/client/`, or an
 `*_api.dart` under `capabilities/` such as `VoiceApi`), that is a violation.
 
 **B-C5. Product Flutter Shells (`app` and `desktop`) — Internal Layer Architecture**
@@ -899,7 +900,7 @@ Do not flag any of the following:
 3. Vertical dependencies WITHIN the `module_core` Layer 0 transport stack: `RelayClient → ConnectionService → RelayHttpApiClient`.
 4. Base classes consumed by the next layer up (e.g., `HttpApiClient` → `AuthenticatedHttpApiClient`; `RequestHandler` → routing handlers).
 5. A service composing another service when one coordinates the other (e.g., `OpenCodeService` using `OpenCodeRepository` + `ActiveSessionTracker`). Flag cross-service dependency only when it represents duplicated responsibility, not composition.
-6. Cubits subscribing to streams exposed by `ConnectionService` or calling its lifecycle facade (connect, reconnect, disconnect). Push-based reactive consumption is the intended pattern.
+6. Cubits subscribing to streams exposed by `ConnectionService` or calling its lifecycle facade (connectWithFreshAuthToken, reconnect, disconnect). Push-based reactive consumption is the intended pattern.
 7. Repositories that delegate to a single API. The mandatory repository layer exists for exactly this.
 8. Periodic timers used for genuine scheduling (heartbeats, stuck-session sweeps), not data polling. See A4.
 

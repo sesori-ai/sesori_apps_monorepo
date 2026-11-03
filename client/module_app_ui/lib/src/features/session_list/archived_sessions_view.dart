@@ -24,7 +24,7 @@ class const ArchivedSessionsView({
   required final VoidCallback onExit,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
-  required final SessionActionServiceFactory createActions,
+  required final SessionActionsCubitFactory createActions,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PregoGlassScaffold(

@@ -5,6 +5,7 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/new_session/new_session_state.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
+import "../cubits/session_list/session_actions_cubit.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../repositories/composer_draft_repository.dart";
@@ -24,19 +25,16 @@ import "../services/session_abort_service.dart";
 import "../services/session_action_service.dart";
 import "../services/session_approval_service.dart";
 import "../services/session_auto_continuation_service.dart";
-import "../services/session_cleanup_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_interaction_calculator.dart";
 import "../services/session_launch_service.dart";
-import "../services/session_unseen_tracker.dart";
 import "../services/session_viewing_service.dart";
 import "../services/session_window_service.dart";
 import "../services/sse_event_tracker.dart";
 
-/// Shared cubit and per-scope action composition for the phone and desktop
-/// shells.
+/// Shared cubit composition for the phone and desktop shells.
 ///
-/// Each function returns a fresh object wired to the same collaborators every
+/// Each function returns a fresh cubit wired to the same collaborators every
 /// shell resolves from its locator. Shells keep `BlocProvider(create:)`, route
 /// ids, ownership and disposal, and surface-specific presentation; only the
 /// collaborator list lives here, so the two shells cannot drift apart.
@@ -72,21 +70,10 @@ SessionDetailCubit createSessionDetailCubit({
   );
 }
 
-/// The action service for [projectId]'s rows in [window], the window of the
-/// scope the actions start from.
-SessionActionService createSessionActionService({
-  required GetIt locator,
-  required String projectId,
-  required SessionWindowService window,
-}) {
-  return SessionActionService(
-    window: window,
-    sessionRepository: locator<SessionRepository>(),
-    sessionCleanupService: locator<SessionCleanupService>(),
-    sessionUnseenTracker: locator<SessionUnseenTracker>(),
-    failureReporter: locator<FailureReporter>(),
-    projectId: projectId,
-  );
+/// The session actions over [window], the window of the scope they start
+/// from.
+SessionActionsCubit createSessionActionsCubit({required GetIt locator, required SessionWindowService window}) {
+  return SessionActionsCubit(window: window, actionService: locator<SessionActionService>());
 }
 
 NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessionProject project}) {

@@ -841,6 +841,25 @@ void main() {
       });
     });
 
+    test("a refused rename keeps a title the bridge sent while it was pending", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 1);
+        final window = create();
+        async.flushMicrotasks();
+        final reply = replies(["Refused"])["Refused"];
+
+        unawaited(window.renameSession(sessionId: "s0000", title: "Refused"));
+        emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions.first.copyWith(title: "Auto title")));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "Refused");
+
+        reply?.complete(ApiResponse<Session>.error(ApiError.generic()));
+        async.flushMicrotasks();
+        expect(title(window, "s0000"), "Auto title");
+        unawaited(window.dispose());
+      });
+    });
+
     test("overlapping renames settle on the newest one the bridge accepted", () {
       inFakeTime((async) {
         bridge.sessions = [_session(id: "s0000", updatedAt: 1).copyWith(title: null)];

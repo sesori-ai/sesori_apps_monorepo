@@ -1,3 +1,4 @@
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -15,14 +16,13 @@ import "../../helpers/test_helpers.dart";
 /// beside the menu — the same treatment project rows get. The entries come
 /// from the real [SessionListActionDispatcher], so this covers the wiring from
 /// the row all the way to the actions it dispatches.
-class _MockSessionActionService() extends Mock implements SessionActionService;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 void main() {
-  late _MockSessionActionService actions;
+  late _MockSessionActionsCubit actions;
 
   setUp(() {
-    actions = _MockSessionActionService();
-    when(() => actions.projectId).thenReturn("project-1");
+    actions = _MockSessionActionsCubit();
   });
 
   /// Renders the real list with the real action dispatcher behind the row.
@@ -99,6 +99,7 @@ void main() {
     final session = testSession(title: "My Session");
     when(
       () => actions.markSessionSeen(
+        projectId: any(named: "projectId"),
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),
@@ -112,7 +113,7 @@ void main() {
     await tester.tap(find.widgetWithText(InkWell, "Mark as unread"));
     await tester.pumpAndSettle();
 
-    verify(() => actions.markSessionSeen(sessionId: session.id, read: false)).called(1);
+    verify(() => actions.markSessionSeen(projectId: session.projectID, sessionId: session.id, read: false)).called(1);
     // The menu is gone; the row's off-row swipe pill is the only remaining
     // "Mark as unread", and it is not reachable.
     expect(find.text("Mark as unread").hitTestable(), findsNothing);
@@ -162,6 +163,7 @@ void main() {
     expect(find.text("Delete").hitTestable(), findsNothing);
     verifyNever(
       () => actions.markSessionSeen(
+        projectId: any(named: "projectId"),
         sessionId: any(named: "sessionId"),
         read: any(named: "read"),
       ),

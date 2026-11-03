@@ -9,7 +9,7 @@ import "../../widgets/rename_sheet.dart";
 Future<void> showRenameSessionDialog({
   required BuildContext context,
   required Session session,
-  required SessionActionService actions,
+  required SessionActionsCubit actions,
 }) {
   return showPregoModal<void>(
     context: context,

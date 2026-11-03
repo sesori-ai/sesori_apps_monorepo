@@ -109,11 +109,8 @@ class const DesktopSidebar({
                             session: row.session,
                           ),
                           actionDispatcher: sessionActions,
-                          createActions: ({required projectId, required window}) => createSessionActionService(
-                            locator: getIt,
-                            projectId: projectId,
-                            window: window,
-                          ),
+                          createActions: ({required window}) =>
+                              createSessionActionsCubit(locator: getIt, window: window),
                           selectedSessionId: selectedSessionId,
                           // The footer's recovery card says so, unless this
                           // computer's bridge is still starting: that is the

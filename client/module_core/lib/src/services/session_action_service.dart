@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
@@ -10,25 +11,22 @@ import "models/session_cleanup_outcome.dart";
 import "models/session_delete_result.dart";
 import "session_cleanup_service.dart";
 import "session_unseen_tracker.dart";
-import "session_window_service.dart";
 
-/// One project's session actions (rename, delete, mark read or unread). The
-/// rows they change live in the [SessionWindowService] it was built with and
-/// in the trackers; this holds nothing a list shows.
+/// Deletes sessions and marks them read or unread. The rows they change live
+/// in the session windows and the trackers; this holds nothing a list shows.
+@lazySingleton
 class SessionActionService({
-  required final SessionWindowService _window,
   required final SessionRepository _sessionRepository,
   required final SessionCleanupService _sessionCleanupService,
   required final SessionUnseenTracker _sessionUnseenTracker,
   required final FailureReporter _failureReporter,
-  required final String projectId,
 }) {
   /// Marks a session read (clears its bold) or unread (forces bold). Applied
   /// optimistically to the tracker so the row updates immediately; the bridge
   /// echo delivers the authoritative state (including the project aggregate)
   /// within the round trip. On failure, the tracker gets back the value it
   /// held before the optimistic write, unless something newer replaced it.
-  Future<void> markSessionSeen({required String sessionId, required bool read}) async {
+  Future<void> markSessionSeen({required String projectId, required String sessionId, required bool read}) async {
     final write = _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: projectId,
       sessionId: sessionId,
@@ -60,11 +58,6 @@ class SessionActionService({
       restore();
     }
   }
-
-  /// Renames a session; its row shows [title] at once. False when the bridge
-  /// refused it, after the row got its previous title back.
-  Future<bool> renameSession({required String sessionId, required String title}) =>
-      _window.renameSession(sessionId: sessionId, title: title);
 
   /// Deletes a session permanently. [deleteSessionFolder] also removes a
   /// "No project" session's own folder.

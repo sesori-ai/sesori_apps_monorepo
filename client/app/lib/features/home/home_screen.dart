@@ -67,11 +67,7 @@ class const _HomeView({
       onSessionDeleted: closeDeletedSessionRoute,
       onSessionMarkedUnread: null,
     ),
-    createActions: ({required projectId, required window}) => createSessionActionService(
-      locator: getIt,
-      projectId: projectId,
-      window: window,
-    ),
+    createActions: ({required window}) => createSessionActionsCubit(locator: getIt, window: window),
     onNewSession: onNewSession,
     disconnectedBuilder: ({required context, required state}) => DisconnectedComputerSlivers(state: state),
     noProjectsState: Builder(

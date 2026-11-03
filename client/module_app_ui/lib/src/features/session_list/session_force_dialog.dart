@@ -13,7 +13,7 @@ part of "session_list_action_dispatcher.dart";
 /// unexpected branch, which only older bridges report.
 Future<void> _showForceDialog({
   required BuildContext context,
-  required SessionActionService actions,
+  required SessionActionsCubit actions,
   required String sessionId,
   required bool deleteSessionFolder,
   required SessionCleanupRejection rejection,

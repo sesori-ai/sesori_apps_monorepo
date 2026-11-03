@@ -158,11 +158,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               onSessionDeleted: null,
               onSessionMarkedUnread: null,
             ),
-            createActions: ({required projectId, required window}) => createSessionActionService(
-              locator: getIt,
-              projectId: projectId,
-              window: window,
-            ),
+            createActions: ({required window}) => createSessionActionsCubit(locator: getIt, window: window),
           ),
         ),
       ),

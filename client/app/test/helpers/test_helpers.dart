@@ -248,7 +248,7 @@ class _MockProjectListCubit() extends MockCubit<ProjectListState> implements Pro
 /// Under a router, not a plain MaterialApp: action sheets close through
 /// GoRouter, which the lint requires over direct Navigator.
 Widget sessionRowApp({
-  required SessionActionService actions,
+  required SessionActionsCubit actions,
   required SessionListActionDispatcher dispatcher,
   required Session session,
 }) {
@@ -302,7 +302,7 @@ Widget sessionRowApp({
               AllSessionsList(
                 onSessionTap: ({required row}) {},
                 actionDispatcher: dispatcher,
-                createActions: ({required projectId, required window}) => actions,
+                createActions: ({required window}) => actions,
                 selectedSessionId: null,
                 disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
                 emptyState: const SizedBox.shrink(),

@@ -44,12 +44,8 @@ class const SessionDetailScreen({
           ),
         ),
         // Lazy: only the live page's menu actions run on it.
-        RepositoryProvider<SessionActionService>(
-          create: (context) => createSessionActionService(
-            locator: getIt,
-            projectId: projectId,
-            window: context.read<SessionWindowService>(),
-          ),
+        BlocProvider(
+          create: (context) => createSessionActionsCubit(locator: getIt, window: context.read<SessionWindowService>()),
         ),
       ],
       child: SessionDetailActivityOwner(
@@ -198,7 +194,7 @@ class const _MobileSessionDetailBody({
           if (!auditView && session.parentID == null)
             ..._sessionActions.sessionMenuEntries(
               context: context,
-              actions: context.read<SessionActionService>(),
+              actions: context.read<SessionActionsCubit>(),
               session: session,
               isRunning: isBusy,
               readEntry: const SessionReadMenuMarkUnread(),

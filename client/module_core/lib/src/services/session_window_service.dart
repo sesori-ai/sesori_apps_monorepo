@@ -346,12 +346,14 @@ class SessionWindowService({
     final renamed = await _requestRename(sessionId: sessionId, title: title);
     if (rename != null) {
       rename.complete(token: token, value: title, succeeded: renamed);
-      if (rename.isSettled) {
-        _renameBySessionId.remove(sessionId);
+      if (rename.isSettled) _renameBySessionId.remove(sessionId);
+      if (rename.isSettled && rename.hasConfirmed) {
         // The bridge's own update of the session can come after its answer,
         // so the row keeps the confirmed title rather than the one it loaded.
         _storeTitle(sessionId: sessionId, title: rename.confirmedValue);
       } else {
+        // With nothing renamed, the stored row keeps the bridge's latest
+        // title, which can be newer than the one the rename started from.
         _emitRows();
       }
     }

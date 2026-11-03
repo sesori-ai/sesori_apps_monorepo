@@ -11,18 +11,18 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockSessionActionService() extends Mock implements SessionActionService;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
 void main() {
-  late _MockSessionActionService actions;
+  late _MockSessionActionsCubit actions;
   late PendingSessionArchiveCubit archives;
   late List<String> archived;
   final session = testSession(id: "s1", title: "Fix the build");
 
   setUp(() {
-    actions = _MockSessionActionService();
+    actions = _MockSessionActionsCubit();
     archived = [];
     archives = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository()));
   });
@@ -150,7 +150,6 @@ void main() {
       bool noProject = false,
     }) async {
       final pending = [...rejections];
-      when(() => actions.projectId).thenReturn(noProject ? "scratch" : "folder");
       final projects = _MockProjectListCubit();
       const scratch = shared.ProjectSummary(
         id: "scratch",
@@ -206,8 +205,11 @@ void main() {
                   child: Material(
                     child: Builder(
                       builder: (context) => TextButton(
-                        onPressed: () =>
-                            dispatcher.handleSessionDelete(context: context, actions: actions, session: target),
+                        onPressed: () => dispatcher.handleSessionDelete(
+                          context: context,
+                          actions: actions,
+                          session: target.copyWith(projectID: noProject ? "scratch" : "folder"),
+                        ),
                         child: const Text("go"),
                       ),
                     ),

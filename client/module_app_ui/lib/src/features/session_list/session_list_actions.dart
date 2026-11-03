@@ -10,7 +10,7 @@ part of "session_list_action_dispatcher.dart";
 /// so this path must never destroy anything unconfirmed.
 void _showDeleteSheet({
   required BuildContext context,
-  required SessionActionService actions,
+  required SessionActionsCubit actions,
   required Session session,
   required bool deletesFolder,
   required SessionDeletedRouteHandler? onSessionDeleted,
@@ -39,7 +39,7 @@ void _showDeleteSheet({
 
 Future<void> _deleteSession({
   required BuildContext context,
-  required SessionActionService actions,
+  required SessionActionsCubit actions,
   required String sessionId,
   required bool deleteWorktree,
 
