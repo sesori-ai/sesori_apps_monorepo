@@ -8,7 +8,7 @@ See the [root README](../README.md) for the full monorepo overview.
 
 | Screen | Description |
 |--------|-------------|
-| `LoginScreen` | OAuth sign-in entry point, handles deep link callback |
+| `LoginScreen` | OAuth and email sign-in entry point |
 | `HomeScreen` | Lists every project's recent sessions, with onboarding and offline states |
 | `SessionDetailScreen` | Full session view with message thread, voice input, and live updates |
 

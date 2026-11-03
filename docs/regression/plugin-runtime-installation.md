@@ -188,8 +188,7 @@ download, verification, or placement. Use a disposable data directory.
 ## Known Limitations
 
 - Retained client failure is not persisted or historical: a new surface cannot reconstruct an
-  earlier failure from runtimeMissing alone. Automatic bridge-start upgrades remain independent
-  of the unsupported client automatic-update preference.
+  earlier failure from runtimeMissing alone.
 
 - Only harnesses declaring the capability with a pinned per-platform asset can install; a
   registered harness without one is correctly not installable.

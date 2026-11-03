@@ -260,8 +260,9 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 "Working…" ticks the time since the running turn's latest user message was
 sent: a message sent mid-turn, else the prompt that opened the turn, from that
 message's `time.created`. Each mid-turn message restarts it; automation does
-not. Without that time it reads plain "Working…"; the client never starts its
-own clock.
+not. A prompt the bridge held before delivery counts from the bridge's
+acceptance instead, on a screen that saw it held. Without either time it reads
+plain "Working…"; the client never starts its own clock.
 
 | Harness | Prompt sent time |
 |---|---|

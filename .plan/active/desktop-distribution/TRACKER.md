@@ -214,7 +214,8 @@ Parent closeout is no longer a macOS publication prerequisite. Do not reopen tho
 checks or interrupt the running app/bridge. Windows and stable Linux gates remain
 intact; D11 records the later, limited Linux internal-preview acceptance.
 
-`DESKTOP_MACOS_PUBLICATION_ENABLED=true` now admits macOS through the shared cycle.
+`DESKTOP_MACOS_PUBLICATION_ENABLED=true` admitted macOS through the shared cycle; #2314
+later removed that gate, so macOS publication no longer depends on it.
 The unchanged publisher attached four signed installers, desktop checksums and the
 completion manifest to existing internal `v1.9.1-internal.987`, from successful producer
 `36198178787` / `acc0de273de4f9e618be7d2f362b1437b5d84541`.

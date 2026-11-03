@@ -16,7 +16,7 @@ The v1 stack below remains layered. Each layer has a single responsibility:
 ```
 OpenCodePlugin          BridgePlugin implementation — coordinates all layers, maps types
     |
-OpenCodeService         Coordination — pagination, last-exchange extraction, SSE dispatch
+OpenCodeService         Coordination — SSE dispatch and active-session summaries
     |
 OpenCodeRepository      Data access — merges standard and global sessions, builds virtual projects
     |
@@ -87,7 +87,7 @@ Raw HTTP client for the OpenCode REST API. All methods add `Authorization: Basic
 | `listProjects()` | `GET /project` |
 | `listSessions({directory?, roots})` | `GET /session` |
 | `listRootSessions()` | `GET /session?roots=true` |
-| `listGlobalSessions({directory?, roots?})` | `GET /experimental/session` |
+| `listAllSessions({directory?, roots?})` | `GET /experimental/session` |
 | `getMessages(sessionId)` | `GET /session/:id/message` |
 | `listProviders()` | `GET /provider` |
 | `getSessionStatuses()` | `GET /session/status` |
@@ -101,7 +101,7 @@ Data access layer that merges OpenCode's standard and global session APIs into a
 
 ### `OpenCodeService`
 
-Thin coordination layer sitting between `OpenCodePlugin` and `OpenCodeRepository`. Applies `start` and `limit` pagination to session lists, extracts the last exchange from a message list (from the last user message to the end), and delegates SSE event handling and summary building to `ActiveSessionTracker`.
+Thin coordination layer sitting between `OpenCodePlugin` and `OpenCodeRepository`. It delegates SSE event handling and summary building to `ActiveSessionTracker`.
 
 ## Testing
 
