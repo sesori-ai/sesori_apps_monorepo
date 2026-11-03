@@ -18,8 +18,8 @@ class CursorApprovalRegistry({
   required AcpStdioClient client,
   required super.emit,
   required final void Function(AcpNotification notification) _onFireAndForgetNotification,
-  super.idGenerator,
-  super.activeSessionResolver,
+  required super.idGenerator,
+  required super.activeSessionResolver,
 }) extends AcpApprovalRegistry {
   this
     : super(

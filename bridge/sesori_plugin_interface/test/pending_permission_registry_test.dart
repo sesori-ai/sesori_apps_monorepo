@@ -14,7 +14,7 @@ class _Registry({
   required super.rejectQuestion,
   required super.cancelPending,
 }) extends PendingPermissionRegistry<String, _Payload> {
-  this : super(logContext: "[test]");
+  this : super(logContext: "[test]", idGenerator: null);
 
   final List<String> requests = [];
 

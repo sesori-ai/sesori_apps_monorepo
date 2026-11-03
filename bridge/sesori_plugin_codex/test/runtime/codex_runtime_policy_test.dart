@@ -69,7 +69,7 @@ void main() {
   group("buildCodexOwnershipRecord", () {
     test("maps the draft into a starting record with the spawn args", () {
       final record = buildCodexOwnershipRecord(
-        RuntimeRecordDraft(
+        draft: RuntimeRecordDraft(
           ownerSessionId: "owner-1",
           runtimeIdentity: _identity(pid: 4242, executablePath: "/bin/codex", startMarker: "marker"),
           port: 51000,
@@ -93,7 +93,7 @@ void main() {
 
     test("falls back to codex when the runtime executable path is unknown", () {
       final record = buildCodexOwnershipRecord(
-        RuntimeRecordDraft(
+        draft: RuntimeRecordDraft(
           ownerSessionId: "owner-2",
           runtimeIdentity: _identity(pid: 7, executablePath: null, startMarker: null),
           port: 49152,
@@ -112,7 +112,7 @@ void main() {
       server.listen((socket) => socket.destroy());
       addTearDown(server.close);
 
-      final probe = await probeCodexHealth(port: server.port);
+      final probe = await probeCodexHealth(port: server.port, timeout: codexHealthProbeTimeout);
       expect(probe.healthy, isTrue);
       expect(probe.error, isNull);
     });
