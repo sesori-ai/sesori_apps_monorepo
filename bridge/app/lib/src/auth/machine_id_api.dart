@@ -71,7 +71,13 @@ Future<String?> _runOrNull({
 }) async {
   final command = [executable, ...arguments].join(" ");
   try {
-    final result = await commandExecutor.run(executable, arguments);
+    final result = await commandExecutor.run(
+      executable: executable,
+      arguments: arguments,
+      workingDirectory: null,
+      environment: null,
+      timeout: null,
+    );
     if (result.exitCode != 0) {
       Log.w("[machine-id] `$command` exited ${result.exitCode}: ${result.stderr}");
       return null;

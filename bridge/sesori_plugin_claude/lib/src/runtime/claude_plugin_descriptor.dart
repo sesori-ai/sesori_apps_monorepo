@@ -137,8 +137,9 @@ final class const ClaudePluginDescriptor({
     final CommandResult versionResult;
     try {
       versionResult = await executor.run(
-        executable,
-        const ["--version"],
+        executable: executable,
+        arguments: const ["--version"],
+        workingDirectory: null,
         environment: environment,
         timeout: _probeTimeout,
       );
@@ -201,8 +202,9 @@ final class const ClaudePluginDescriptor({
     final CommandResult authResult;
     try {
       authResult = await executor.run(
-        executable,
-        const ["auth", "status"],
+        executable: executable,
+        arguments: const ["auth", "status"],
+        workingDirectory: null,
         environment: environment,
         timeout: _probeTimeout,
       );

@@ -107,12 +107,13 @@ class McpRepository({
 
     Future<void> prepare() async {
       try {
-        if (plugin is! McpAuthenticationPluginApi) {
-          throw const McpAuthenticationUnavailableException(
+        final authentication = switch (plugin) {
+          final McpAuthenticationPluginApi supported => supported,
+          _ => throw const McpAuthenticationUnavailableException(
             reason: McpAuthenticationUnavailableReason.unsupportedHarness,
-          );
-        }
-        final operation = await (plugin as McpAuthenticationPluginApi).beginMcpAuthentication(target: target);
+          ),
+        };
+        final operation = await authentication.beginMcpAuthentication(target: target);
         final native = _PreparedMcpAuthentication(operation: operation);
         if (cancelled) {
           // Preparation is read-only. A discarded operation is never subscribed.
@@ -196,14 +197,18 @@ class McpRepository({
       pluginId: pluginId,
       operation: McpOperation.getInventory,
       body: (plugin, _) async {
-        if (plugin is! McpManagementPluginApi) {
-          return McpInventoryUnavailable(
-            scope: scope,
-            reason: McpInventoryUnavailableReason.unsupportedHarness,
-            message: "This integration does not yet expose MCP inventory.",
-          );
+        final McpManagementPluginApi management;
+        switch (plugin) {
+          case final McpManagementPluginApi supported:
+            management = supported;
+          case _:
+            return McpInventoryUnavailable(
+              scope: scope,
+              reason: McpInventoryUnavailableReason.unsupportedHarness,
+              message: "This integration does not yet expose MCP inventory.",
+            );
         }
-        final native = await (plugin as McpManagementPluginApi).getMcpInventory(scope: nativeScope);
+        final native = await management.getMcpInventory(scope: nativeScope);
         if (native case PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace)) {
           Log.w("MCP inventory read failed for $pluginId in $scope", cause, causeStackTrace);
         }
@@ -242,10 +247,14 @@ class McpRepository({
       pluginId: pluginId,
       operation: McpOperation.executeAction,
       body: (plugin, _) async {
-        if (plugin is! McpManagementPluginApi) {
-          return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+        final McpManagementPluginApi management;
+        switch (plugin) {
+          case final McpManagementPluginApi supported:
+            management = supported;
+          case _:
+            return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
         }
-        final native = await (plugin as McpManagementPluginApi).executeMcpServerAction(
+        final native = await management.executeMcpServerAction(
           target: PluginMcpServerTarget(scope: nativeScope, serverKey: target.serverKey),
           action: nativeAction,
         );
@@ -286,11 +295,15 @@ class McpRepository({
       pluginId: pluginId,
       operation: McpOperation.executeAction,
       body: (plugin, _) async {
-        if (plugin is! McpAuthenticationPluginApi) {
-          return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+        final McpAuthenticationPluginApi authentication;
+        switch (plugin) {
+          case final McpAuthenticationPluginApi supported:
+            authentication = supported;
+          case _:
+            return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
         }
         try {
-          final effectScope = await (plugin as McpAuthenticationPluginApi).forgetMcpAuthentication(
+          final effectScope = await authentication.forgetMcpAuthentication(
             target: PluginMcpServerTarget(scope: nativeScope, serverKey: target.serverKey),
           );
           return McpControlCompleted(
@@ -330,10 +343,14 @@ class McpRepository({
       pluginId: pluginId,
       operation: McpOperation.executeAction,
       body: (plugin, _) async {
-        if (plugin is! McpConnectorSetupPluginApi) {
-          return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+        final McpConnectorSetupPluginApi connectorSetup;
+        switch (plugin) {
+          case final McpConnectorSetupPluginApi supported:
+            connectorSetup = supported;
+          case _:
+            return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
         }
-        final native = await (plugin as McpConnectorSetupPluginApi).resolveMcpConnectorSetup(
+        final native = await connectorSetup.resolveMcpConnectorSetup(
           target: PluginMcpConnectorOfferTarget(scope: scope, offerKey: target.offerKey),
         );
         return switch (native) {

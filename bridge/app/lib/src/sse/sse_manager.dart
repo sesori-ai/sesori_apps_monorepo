@@ -250,9 +250,9 @@ class SSEManager({
   /// `type`, then calls SseEventData.fromJson(merged). Sending the flat Sesori
   /// format (no `properties` key) causes all required fields to be missing.
   Map<String, dynamic> _toOpenCodeFormat(SesoriSseEvent event) {
-    final json = event.toJson();
-    final type = json['type'] as String;
-    final properties = Map<String, dynamic>.from(json)..remove('type');
+    final properties = Map<String, dynamic>.of(event.toJson());
+    // The union key Freezed writes for the variant moves verbatim.
+    final type = properties.remove('type');
     return {
       'payload': {'type': type, 'properties': properties},
     };

@@ -34,7 +34,13 @@ void main() {
     );
     final executor = _executor(processes: _FakeHostProcessService(process: process));
 
-    final result = await executor.run("probe", const []);
+    final result = await executor.run(
+      executable: "probe",
+      arguments: const [],
+      workingDirectory: null,
+      environment: null,
+      timeout: null,
+    );
 
     expect(result.stdout, "123456");
     expect(result.stderr, "abcdef");

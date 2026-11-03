@@ -233,11 +233,16 @@ final class const OmpPluginDescriptor({
     required Map<String, String> environment,
     required String runtimeVersion,
   }) async {
+    final commandExecutor = _commandExecutor(processes: processes);
     final CommandResult result;
     try {
-      result = await _commandExecutor(
-        processes: processes,
-      ).run(binaryPath, const ["models", "--json"], environment: environment, timeout: _versionProbeTimeout);
+      result = await commandExecutor.run(
+        executable: binaryPath,
+        arguments: const ["models", "--json"],
+        workingDirectory: null,
+        environment: environment,
+        timeout: _versionProbeTimeout,
+      );
     } on Object catch (error, stackTrace) {
       Log.w(
         "[${OmpPluginIdentity.id}] model listing probe failed for '$binaryPath models --json'",

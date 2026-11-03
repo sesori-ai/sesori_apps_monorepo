@@ -59,8 +59,8 @@ class RuntimeVersionValidator({
     final CommandResult result;
     try {
       result = await _commandExecutor.run(
-        executable,
-        const ["--version"],
+        executable: executable,
+        arguments: const ["--version"],
         workingDirectory: workingDirectory,
         environment: environment,
         timeout: _executableLocator.isWindows && _probeTimeout < _windowsMinimumProbeTimeout

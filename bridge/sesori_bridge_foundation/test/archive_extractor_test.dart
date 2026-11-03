@@ -9,12 +9,12 @@ import "package:test/test.dart";
 /// security hardening is exercised against the actual `tar`/`unzip` binaries.
 class _RealCommandExecutor() implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     final ProcessResult result = await Process.run(
       executable,
@@ -34,12 +34,12 @@ class _RealCommandExecutor() implements CommandExecutor {
 /// (`ProcessException`) or a force-killed timeout (`TimeoutException`).
 class _ThrowingCommandExecutor({required final Object error}) implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     throw error;
   }
@@ -51,12 +51,12 @@ class _BudgetCommandExecutor({required final List<Duration> durations, required 
   final List<Duration?> observedTimeouts = [];
 
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     final duration = durations[observedTimeouts.length];
     observedTimeouts.add(timeout);
