@@ -95,7 +95,7 @@ final class SentBubbleLandingController() {
     _phase = switch (_phase) {
       _Held(slot: final held, :final text) when identical(held, slot) => _Lost(text: text),
       _Landed(slot: final held) when identical(held, slot) => const _Idle(),
-      final phase => phase,
+      _Idle() || _Expecting() || _Held() || _Landed() || _Lost() => _phase,
     };
   }
 }

@@ -21,7 +21,7 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `avoid_raw_modal_presenters` | Prevents `showDialog`, `showModalBottomSheet` and other SDK modal presenters; use `showPregoModal` |
 | `avoid_string_literals_in_widgets` | Prevents hardcoded strings in `Text` widgets; use localization |
 | `prefer_edge_insets_directional` | Enforces `EdgeInsetsDirectional` for RTL support |
-| `prefer_exhaustive_switch` | Prevents `default` cases in switches over enums and sealed classes |
+| `prefer_exhaustive_switch` | Prevents catch-all cases (`default`, `_`, an untyped `final x`) in switches over enums and sealed classes |
 | `prefer_required_named_parameters` | Enforces required named parameters for multi-argument functions |
 | `prefer_specific_type` | Prevents `Object` and `dynamic`. Exempt: `Map<String, dynamic>`/`Map<String, Object?>` JSON maps; `dynamic`/`Object?` parameters named `json`; `Object`/`Object?` declarations whose names all contain `error` or `cause` (`dynamic error` is still reported); `on Object catch`; generic bounds; overrides, `external` declarations and inline callback parameters |
 | `prefer_text_align_directional` | Enforces `TextAlign.start`/`end` instead of `left`/`right` for RTL support |

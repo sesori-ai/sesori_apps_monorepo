@@ -810,7 +810,20 @@ final class ClaudeSessionService({
           state.subAgentOwnedTaskIds.remove(notification.taskId);
         }
         if (message.taskNotifications.isNotEmpty) _settleIdle(sessionId: sessionId, state: state);
-      case ClaudeStreamMessage():
+      case ClaudeInitMessage() ||
+          ClaudeCompactBoundaryMessage() ||
+          ClaudeStatusMessage() ||
+          ClaudeTaskStartedMessage() ||
+          ClaudeTaskNotificationMessage() ||
+          ClaudeApiRetryMessage() ||
+          ClaudeAssistantMessage() ||
+          ClaudeUserMessage() ||
+          ClaudeStreamEventMessage() ||
+          ClaudeResultMessage() ||
+          ClaudeControlRequestMessage() ||
+          ClaudeControlResponseMessage() ||
+          ClaudeIgnoredMessage() ||
+          ClaudeUnknownMessage():
         break;
     }
   }
@@ -858,7 +871,17 @@ final class ClaudeSessionService({
             message.terminalReason != ClaudeTerminalReason.abortedTools) {
           _emit(BridgeSseSessionQuotaBlocked(sessionID: sessionId, interruption: candidate));
         }
-      case ClaudeStreamMessage():
+      case ClaudeInitMessage() ||
+          ClaudeCompactBoundaryMessage() ||
+          ClaudeStatusMessage() ||
+          ClaudeTaskStartedMessage() ||
+          ClaudeTaskNotificationMessage() ||
+          ClaudeApiRetryMessage() ||
+          ClaudeStreamEventMessage() ||
+          ClaudeControlRequestMessage() ||
+          ClaudeControlResponseMessage() ||
+          ClaudeIgnoredMessage() ||
+          ClaudeUnknownMessage():
         break;
     }
   }
@@ -914,7 +937,15 @@ final class ClaudeSessionService({
         _emit(const BridgeSseProjectUpdated());
       case ClaudeResultMessage():
         if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: sessionId, state: state);
-      case ClaudeStreamMessage():
+      case ClaudeInitMessage() ||
+          ClaudeCompactBoundaryMessage() ||
+          ClaudeStatusMessage() ||
+          ClaudeTaskStartedMessage() ||
+          ClaudeApiRetryMessage() ||
+          ClaudeControlRequestMessage() ||
+          ClaudeControlResponseMessage() ||
+          ClaudeIgnoredMessage() ||
+          ClaudeUnknownMessage():
         break;
     }
   }

@@ -366,14 +366,7 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
             GoRoute(
               path: _newSessionRouteSegment,
               pageBuilder: (context, state) {
-                final route = switch (AppRoute.fromDef(
-                  def: AppRouteDef.newSession,
-                  pathParams: state.pathParameters,
-                  queryParams: state.uri.queryParameters,
-                )) {
-                  final AppRouteNewSession route => route,
-                  final route => throw StateError("Route ${route.def.name} is not a new-session route"),
-                };
+                final route = AppRouteNewSession.fromParams(queryParams: state.uri.queryParameters);
                 final screen = NewSessionScreen(
                   projectId: route.projectId,
                   projectName: route.projectName,
@@ -400,14 +393,10 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
             GoRoute(
               path: _sessionDetailRouteSegment,
               pageBuilder: (context, state) {
-                final route = switch (AppRoute.fromDef(
-                  def: AppRouteDef.sessionDetail,
+                final route = AppRouteSessionDetail.fromParams(
                   pathParams: state.pathParameters,
                   queryParams: state.uri.queryParameters,
-                )) {
-                  final AppRouteSessionDetail route => route,
-                  final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
-                };
+                );
                 return buildSessionPaneTransitionPage(
                   context: context,
                   state: state,
@@ -429,14 +418,10 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
                 GoRoute(
                   path: _sessionDiffsRouteSegment,
                   pageBuilder: (context, state) {
-                    final route = switch (AppRoute.fromDef(
-                      def: AppRouteDef.sessionDiffs,
+                    final route = AppRouteSessionDiffs.fromParams(
                       pathParams: state.pathParameters,
                       queryParams: state.uri.queryParameters,
-                    )) {
-                      final AppRouteSessionDiffs route => route,
-                      final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
-                    };
+                    );
                     return buildSessionPaneTransitionPage(
                       context: context,
                       state: state,

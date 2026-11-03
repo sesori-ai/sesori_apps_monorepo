@@ -344,7 +344,7 @@ class SessionDetailCubit(
     _unsentLaunchFollowUps = unsent;
     _emitQueueUpdate(switch (state) {
       final SessionDetailLoaded current => current.copyWith(launchFollowUps: unsent),
-      final other => other,
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => state,
     });
     if (released) _tryDrainQueue();
   }
@@ -1661,13 +1661,15 @@ class SessionDetailCubit(
     null => session,
   };
 
-  Future<SessionDetailMetadataLoadResult> _loadMetadata() async =>
-      switch (await _loadService.loadMetadata(sessionId: _sessionId)) {
-        SessionDetailMetadataFound(:final session) => SessionDetailMetadataFound(
-          session: _withPendingTitle(session: session),
-        ),
-        final other => other,
-      };
+  Future<SessionDetailMetadataLoadResult> _loadMetadata() async {
+    final result = await _loadService.loadMetadata(sessionId: _sessionId);
+    return switch (result) {
+      SessionDetailMetadataFound(:final session) => SessionDetailMetadataFound(
+        session: _withPendingTitle(session: session),
+      ),
+      SessionDetailMetadataWaitingForConnection() || SessionDetailMetadataFailed() => result,
+    };
+  }
 
   void _onSessionUpdated(Session update) {
     final current = state;

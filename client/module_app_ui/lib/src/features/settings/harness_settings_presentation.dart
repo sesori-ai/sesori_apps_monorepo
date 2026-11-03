@@ -60,7 +60,13 @@ String _status({
       PluginManagementWorkState.idle => context.loc.harnessesStatusIdle,
       PluginManagementWorkState.unknown => context.loc.harnessesStatusUnknown,
     },
-    final runtime => _runtimeStatus(context: context, state: runtime),
+    PluginRuntimeState.disabled ||
+    PluginRuntimeState.blocked ||
+    PluginRuntimeState.starting ||
+    PluginRuntimeState.degraded ||
+    PluginRuntimeState.stopping ||
+    PluginRuntimeState.failed ||
+    PluginRuntimeState.unknown => _runtimeStatus(context: context, state: plugin.runtimeState),
   };
 }
 

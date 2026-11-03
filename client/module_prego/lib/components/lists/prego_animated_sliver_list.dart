@@ -249,7 +249,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
         });
       case final _LeavingEntry<T> leaving when identical(leaving.leaving, motion) && status.isDismissed:
         setState(() => _setEntries([..._entries]..removeAt(index)));
-      case _:
+      case _ShownEntry<T>() || _LeavingEntry<T>():
         return;
     }
     motion.dispose();

@@ -125,7 +125,15 @@ class NewSessionCubit({
               options: options,
               source: source,
             ),
-            final other => other,
+            NewSessionOptionsLoadingState() ||
+            NewSessionOptionsRefreshingState() ||
+            NewSessionOptionsUnsupportedState() ||
+            NewSessionOptionsUnavailableState() ||
+            NewSessionOptionsLoadFailureUnavailableState() ||
+            NewSessionOptionsAuthenticationRequiredUnavailableState() ||
+            NewSessionOptionsAuthenticationRequiredRetainedState() ||
+            NewSessionOptionsFailureState() ||
+            NewSessionOptionsRefreshFailureUnavailableState() => data.optionsState,
           },
           backendScope: data.backendScope.invalidate(),
           isPluginDiscoveryInFlight: null,
@@ -256,8 +264,10 @@ class NewSessionCubit({
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
     final data = state.agentModelData;
+    // No options yet are a load with no source.
+    final optionsState = data?.optionsState ?? const NewSessionOptionsLoadingState(source: null);
     // What the rediscovery held on screen gives way to its error and Retry.
-    final options = switch (data?.optionsState) {
+    final options = switch (optionsState) {
       NewSessionOptionsRefreshingState(:final options, :final source) ||
       NewSessionOptionsAuthenticationRequiredRetainedState(
         :final options,
@@ -272,8 +282,14 @@ class NewSessionCubit({
         reason: reason,
         source: NewSessionOptionsSource.aggregate,
       ),
-      NewSessionOptionsLoadingState(source: null) || null => const NewSessionOptionsLoadingState(source: null),
-      final current => current,
+      NewSessionOptionsLoadingState(source: null) ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() => optionsState,
     };
     final backendScope =
         data?.backendScope.invalidate() ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null);
