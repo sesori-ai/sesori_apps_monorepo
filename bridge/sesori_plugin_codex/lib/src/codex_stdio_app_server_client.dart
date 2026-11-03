@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io" as io;
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
@@ -34,11 +35,7 @@ class CodexStdioAppServerClient({
   Stream<CodexServerRequest> get serverRequests => _serverRequests.stream;
   Future<int> get processExit => _transport.exit;
 
-  Future<CodexInitializeResult> connect({
-    required String clientName,
-    required String clientVersion,
-    required Duration timeout,
-  }) async {
+  Future<CodexInitializeResult> connect({required Duration timeout}) async {
     if (_disposed) throw StateError("CodexStdioAppServerClient is disposed");
     final token = _transport.beginAttach();
     final process = await _processes.spawn(
@@ -59,7 +56,7 @@ class CodexStdioAppServerClient({
       final raw = await request(
         method: "initialize",
         params: {
-          "clientInfo": {"name": clientName, "title": "Sesori Bridge", "version": clientVersion},
+          "clientInfo": {"name": "sesori-bridge", "title": "Sesori Bridge", "version": bridgeVersion},
         },
         timeout: timeout,
       );

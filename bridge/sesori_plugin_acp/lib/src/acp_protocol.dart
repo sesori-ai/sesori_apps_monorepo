@@ -4,6 +4,7 @@
 library;
 
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 part "acp_protocol.freezed.dart";
@@ -14,7 +15,6 @@ const int acpProtocolVersion = 1;
 
 /// The default `clientInfo` identity reported by Sesori ACP connections.
 const String acpClientName = "sesori-bridge";
-const String acpClientVersion = "0.0.0";
 
 /// Immutable standard ACP identity selected by the owning harness integration.
 class const AcpClientIdentity({
@@ -26,7 +26,7 @@ class const AcpClientIdentity({
 const acpDefaultClientIdentity = AcpClientIdentity(
   name: acpClientName,
   title: null,
-  version: acpClientVersion,
+  version: bridgeVersion,
 );
 
 /// Standard ACP JSON-RPC method names.

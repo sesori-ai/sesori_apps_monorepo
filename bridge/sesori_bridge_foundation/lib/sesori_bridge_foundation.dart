@@ -6,6 +6,7 @@ library;
 export "src/ansi.dart";
 export "src/archive_extractor.dart";
 export "src/binary_download_client.dart";
+export "src/bridge_version.dart";
 export "src/browser_noop.dart";
 export "src/checksum_validator.dart";
 export "src/command_executor.dart";

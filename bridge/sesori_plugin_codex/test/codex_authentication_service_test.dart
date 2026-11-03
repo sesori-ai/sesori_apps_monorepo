@@ -219,11 +219,7 @@ class _FakeStdioClient({final Object? connectError}) implements CodexStdioAppSer
   bool disposed = false;
 
   @override
-  Future<CodexInitializeResult> connect({
-    required String clientName,
-    required String clientVersion,
-    required Duration timeout,
-  }) async {
+  Future<CodexInitializeResult> connect({required Duration timeout}) async {
     final error = connectError;
     if (error != null) throw error;
     return const CodexInitializeResult(userAgent: "codex_cli_rs/0.146.0");

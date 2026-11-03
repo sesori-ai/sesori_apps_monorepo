@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -143,7 +144,7 @@ class CodexAppServerClient({
           "clientInfo": {
             "name": "sesori-bridge",
             "title": null,
-            "version": "0.0.0",
+            "version": bridgeVersion,
           },
           "capabilities": {
             // Codex gates turn/start.collaborationMode behind this capability.
