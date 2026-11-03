@@ -382,13 +382,22 @@ Future<({int statusCode, OpenCodeProbeResponse? body})> _getOpenCodeJson({
 }
 
 /// Builds the "starting" ownership record from the post-spawn facts.
+///
+/// Throws a [StateError] when the spawned identity has no executable path.
+/// The host always records the path it spawned, and a record without one
+/// could never match the child again, so the bridge could not stop it. The
+/// supervisor stops the untracked child when this throws.
 OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraft draft, required String bindHost}) {
+  final executablePath = draft.runtimeIdentity.executablePath;
+  if (executablePath == null) {
+    throw StateError("The spawned OpenCode process ${draft.runtimeIdentity.pid} has no executable path");
+  }
   return OpenCodeOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     openCodePid: draft.runtimeIdentity.pid,
     openCodeStartMarker: draft.runtimeIdentity.startMarker,
-    openCodeExecutablePath: draft.runtimeIdentity.executablePath ?? "",
-    openCodeCommand: draft.runtimeIdentity.executablePath ?? "opencode",
+    openCodeExecutablePath: executablePath,
+    openCodeCommand: executablePath,
     openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", bindHost],
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,

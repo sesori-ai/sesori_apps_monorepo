@@ -129,19 +129,20 @@ void main() {
       expect(record.openCodeArgs, equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]));
     });
 
-    test("falls back to opencode when the runtime executable path is unknown", () {
-      final record = buildOpenCodeOwnershipRecord(
-        draft: RuntimeRecordDraft(
-          ownerSessionId: "owner-2",
-          runtimeIdentity: _identity(pid: 7, executablePath: null, startMarker: null),
-          port: 4096,
-          bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: null),
-          startedAt: DateTime.utc(2026, 6, 1),
+    test("throws when the runtime executable path is unknown", () {
+      expect(
+        () => buildOpenCodeOwnershipRecord(
+          draft: RuntimeRecordDraft(
+            ownerSessionId: "owner-2",
+            runtimeIdentity: _identity(pid: 7, executablePath: null, startMarker: null),
+            port: 4096,
+            bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: null),
+            startedAt: DateTime.utc(2026, 6, 1),
+          ),
+          bindHost: "127.0.0.1",
         ),
-        bindHost: "127.0.0.1",
+        throwsStateError,
       );
-      expect(record.openCodeExecutablePath, equals(""));
-      expect(record.openCodeCommand, equals("opencode"));
     });
   });
 
