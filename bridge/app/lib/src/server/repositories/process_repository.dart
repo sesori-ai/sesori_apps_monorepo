@@ -13,7 +13,9 @@ class ProcessRepository({
   required final ProcessUser? _currentUser,
 }) {
   /// Windows only: starts a process that, with everything it starts, ends
-  /// when the bridge exits. Throws when it cannot, leaving nothing running.
+  /// when the bridge exits, except descendants that break away with
+  /// `CREATE_BREAKAWAY_FROM_JOB`. Throws when it cannot, leaving nothing
+  /// running.
   io.Process startBoundToBridgeLifetime({
     required String executable,
     required List<String> arguments,
@@ -32,7 +34,8 @@ class ProcessRepository({
     );
   }
 
-  /// Windows only: [pid] and its later descendants end when the bridge exits.
+  /// Windows only: [pid] and its later descendants, except those that break
+  /// away, end when the bridge exits.
   void bindToBridgeLifetime({required int pid}) => _windowsJobObjectApi.bindToBridgeLifetime(pid: pid);
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) => _api.inspectProcess(pid: pid);

@@ -379,14 +379,16 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   included. The job allows breakaway, so a descendant a runtime starts with
   `CREATE_BREAKAWAY_FROM_JOB` leaves the job and survives. Short commands stay out of
   the job, so the shared OpenCode 2 service that `opencode service start` detaches
-  keeps running. If starting inside the job fails, the bridge logs the Win32 error,
-  starts the runtime normally and binds it right after; a runtime the shell launched
-  before that bind, or one whose bind fails too (also logged), may then keep running
-  after a bridge crash. The `windows-job-object` job in Bridge CI proves that a
-  runtime `cmd.exe` starts inside the job ends when the bridge process is killed, that
-  the in-job start gives the same stdin, stdout, stderr, environment, arguments and
-  exit code as a normal start, and that a late-bound process ends when the process
-  holding the job exits while an unbound one survives.
+  keeps running. Starting inside the job needs Windows 10 1607 or later. If it fails,
+  older Windows included, the bridge logs the Win32 error, starts the runtime normally
+  and binds it right after; a runtime the shell launched before that bind, or one
+  whose bind fails too (also logged), may then keep running after a bridge crash. The
+  `windows-job-object` job in Bridge CI proves that a runtime `cmd.exe` starts inside
+  the job ends when the bridge process is killed, that the in-job start gives the same
+  stdin, stdout, stderr, working directory, environment, arguments and exit code as a
+  normal start, with an explicit variable replacing the parent's whatever its case,
+  and that a late-bound process ends when the process holding the job exits while an
+  unbound one survives.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:collection" show SplayTreeMap;
 import "dart:ffi";
 import "dart:io" as io;
 import "dart:math" show Random;
@@ -39,9 +40,15 @@ class WindowsJobObjectApi() {
     if (job == null) {
       throw const io.OSError("The bridge's job object could not be created");
     }
-    // Same environment io.Process.start passes: the explicit entries first,
-    // then the parent's entries they do not override.
-    final explicitEnvironment = environment ?? const <String, String>{};
+    // Windows names are case-insensitive, so an explicit entry replaces the
+    // parent's whatever its case (io.Process.start would pass both), and
+    // CreateProcess wants the block sorted by name.
+    final environmentBlock = SplayTreeMap<String, String>.of({
+      if (includeParentEnvironment)
+        for (final MapEntry(:key, :value) in io.Platform.environment.entries) key.toUpperCase(): "$key=$value",
+      for (final MapEntry(:key, :value) in (environment ?? const <String, String>{}).entries)
+        key.toUpperCase(): "$key=$value",
+    });
     final pipes = <({HANDLE server, HANDLE child})>[];
     final ({HANDLE process, int pid}) started;
     try {
@@ -52,12 +59,7 @@ class WindowsJobObjectApi() {
       started = _createProcess(
         job: job,
         commandLine: _commandLine(executable: executable, arguments: arguments, runInShell: runInShell),
-        environment: [
-          for (final MapEntry(:key, :value) in explicitEnvironment.entries) "$key=$value",
-          if (includeParentEnvironment)
-            for (final MapEntry(:key, :value) in io.Platform.environment.entries)
-              if (!explicitEnvironment.containsKey(key)) "$key=$value",
-        ],
+        environment: environmentBlock.values.toList(),
         workingDirectory: workingDirectory,
         stdio: [for (final pipe in pipes) pipe.child],
       );
@@ -347,7 +349,7 @@ final class _JobProcess({
     CloseHandle(_handle);
     _exited.close();
     // io.Process closes stdin when the process exits, in case the caller did not.
-    _stdinWriter.closeIfIdle();
+    _stdinWriter.closeWhenIdle();
     _exitCode.complete(exitCode);
   }
 }
@@ -412,7 +414,8 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
       ? GetLastError()
       : ERROR_SUCCESS;
   Completer<void>? _pending;
-  bool _closed = false;
+  bool _releaseWhenIdle = false;
+  bool _released = false;
 
   @override
   Future<void> addStream(Stream<List<int>> stream) async {
@@ -422,14 +425,17 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
   }
 
   @override
-  Future<void> close() async => _release();
+  Future<void> close() async => closeWhenIdle();
 
-  void closeIfIdle() {
+  /// Releases the pipe now, or once the write in flight settles. The listener
+  /// callback keeps the isolate alive until then.
+  void closeWhenIdle() {
+    _releaseWhenIdle = true;
     if (_pending == null) _release();
   }
 
   Future<void> _write(List<int> bytes) async {
-    if (_closed) throw const io.OSError("The process's stdin is closed", ERROR_BROKEN_PIPE);
+    if (_releaseWhenIdle) throw const io.OSError("The process's stdin is closed", ERROR_BROKEN_PIPE);
     if (_bindError != ERROR_SUCCESS) throw io.OSError("BindIoCompletionCallback", _bindError);
     final buffer = calloc<Uint8>(bytes.length);
     buffer.asTypedList(bytes.length).setAll(0, bytes);
@@ -439,9 +445,14 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
       final Win32Result(value: written, error: writeError) = WriteFile(_pipe, buffer, bytes.length, null, _overlapped);
       if (!written && writeError != ERROR_IO_PENDING) throw io.OSError("WriteFile", writeError);
       await pending.future;
+    } on Object {
+      // IOSink never closes a consumer whose addStream failed.
+      _releaseWhenIdle = true;
+      rethrow;
     } finally {
       _pending = null;
       calloc.free(buffer);
+      if (_releaseWhenIdle) _release();
     }
   }
 
@@ -458,8 +469,8 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
 
   // Only called with no write in flight, so no completion can follow.
   void _release() {
-    if (_closed) return;
-    _closed = true;
+    if (_released) return;
+    _released = true;
     CloseHandle(_pipe);
     _completion.close();
     calloc.free(_overlapped);

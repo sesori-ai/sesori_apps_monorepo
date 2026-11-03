@@ -157,7 +157,9 @@ void main() {
           input: testCase.input,
         );
 
-        expect(actual, expected);
+        // Unordered: the in-job environment block is sorted and Process.start's is not.
+        expect(LineSplitter.split(actual.stdout), unorderedEquals(LineSplitter.split(expected.stdout)));
+        expect((actual.stderr, actual.exitCode), (expected.stderr, expected.exitCode));
         expect(actual.stdout, contains(testCase.shows));
         expect(actual.exitCode, testCase.exitCode);
       });
@@ -179,6 +181,24 @@ void main() {
       expect(await process.exitCode, -1);
       expect(process.kill(), isFalse);
     });
+  });
+
+  test("an explicit variable replaces the parent's whatever its case", () async {
+    final result = await _collect(
+      process: WindowsJobObjectApi().startBoundToBridgeLifetime(
+        executable: "cmd",
+        arguments: ["/c", "set"],
+        environment: {"pAtH": r"C:\sesori-job-test"},
+        workingDirectory: null,
+        runInShell: false,
+        includeParentEnvironment: true,
+      ),
+      input: null,
+    );
+
+    expect(LineSplitter.split(result.stdout).where((line) => line.toUpperCase().startsWith("PATH=")), [
+      r"pAtH=C:\sesori-job-test",
+    ]);
   });
 }
 
