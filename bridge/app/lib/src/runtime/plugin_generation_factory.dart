@@ -288,7 +288,6 @@ class PluginGenerationFactory({
         clock: _clock,
         currentUser: _currentUser,
         isWindows: io.Platform.isWindows,
-        platform: io.Platform.operatingSystem,
       ),
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
       store: request.registration.store,

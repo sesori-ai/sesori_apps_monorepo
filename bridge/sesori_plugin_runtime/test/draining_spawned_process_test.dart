@@ -110,7 +110,6 @@ final class _FakeSpawnedProcess() implements SpawnedProcess {
     executablePath: "/bin/runtime",
     commandLine: "/bin/runtime serve",
     ownerUser: null,
-    platform: "macos",
     capturedAt: DateTime.utc(2026),
   );
 

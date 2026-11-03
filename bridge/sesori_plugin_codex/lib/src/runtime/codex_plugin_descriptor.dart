@@ -614,6 +614,7 @@ class const CodexPluginDescriptor({
       processes: host.processes,
       bridge: host.bridge,
       clock: host.clock,
+      isWindows: io.Platform.isWindows,
       runtimeId: "codex",
       gracefulShutdownWait: codexGracefulShutdownWait,
     );
@@ -626,10 +627,6 @@ class const CodexPluginDescriptor({
       Log.d("[codex] starting on a dynamic port");
       portPolicy = DynamicPortPolicy(
         candidates: codexDynamicCandidates(candidates: _candidatePorts, random: _random),
-        maxAttempts: dynamicCodexMaxAttempts,
-        reservedPort: codexNoReservedPort,
-        minPort: dynamicCodexPortMin,
-        maxPort: dynamicCodexPortMax,
       );
     }
 
@@ -654,13 +651,9 @@ class const CodexPluginDescriptor({
     // Honor a late abort: a managed start the supervisor returned just as the
     // bridge aborted must release the owned child before we surface it.
     if (host.startAborted.isAborted) {
-      if (handle.isOwned) {
-        await service.stopOwnedRuntime(record: handle.record!);
-      }
+      await service.stopOwnedRuntime(record: handle.record);
       throw const PluginStartAbortedException();
     }
-
-    final ownedRecord = handle.record;
 
     final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
@@ -700,7 +693,7 @@ class const CodexPluginDescriptor({
       reporter: reporter,
       monitor: monitor,
       service: service,
-      ownedRecord: ownedRecord,
+      ownedRecord: handle.record,
       diagnostics: PluginDiagnostics(
         pluginId: Harness.codex.name,
         endpoint: serverUrl,

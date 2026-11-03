@@ -231,7 +231,6 @@ ProcessIdentity _candidate({required int pid}) {
     executablePath: '/Users/alex/.local/bin/sesori-bridge',
     commandLine: '/Users/alex/.local/bin/sesori-bridge',
     ownerUser: ProcessUser.fromRawUser("alex"),
-    platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }

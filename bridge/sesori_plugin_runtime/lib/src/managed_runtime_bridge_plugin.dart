@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "managed_process_service.dart";
 import "managed_runtime_monitor.dart";
+import "managed_runtime_spec.dart";
 import "managed_runtime_status_reporter.dart";
 
 abstract interface class ManagedRuntimeApi() {
@@ -35,7 +36,10 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
 
   PluginStatusController get _status => reporter.status;
 
-  R? get _currentOwnedRecord => monitor.currentHandle?.record ?? ownedRecord;
+  R? get _currentOwnedRecord => switch (monitor.currentHandle) {
+    OwnedRuntimeHandle<R>(:final record) => record,
+    AttachedRuntimeHandle<R>() || null => ownedRecord,
+  };
 
   @override
   Stream<PluginStatus> get status => _status.stream;

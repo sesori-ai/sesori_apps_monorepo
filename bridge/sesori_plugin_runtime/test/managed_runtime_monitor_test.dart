@@ -29,17 +29,11 @@ void main() {
       final monitor = fakes.monitor(status: status, restartPolicy: _bounded());
 
       monitor.arm(
-        const ManagedRuntimeHandle<_TestRecord>(
-          port: 50100,
-          record: null,
-          process: null,
-          identity: null,
-          health: RuntimeHealthProbe(healthy: true),
-        ),
+        const AttachedRuntimeHandle<_TestRecord>(port: 50100),
       );
       await pumpEventQueue();
 
-      expect(monitor.currentHandle, isNotNull);
+      expect(monitor.currentHandle, isA<AttachedRuntimeHandle<_TestRecord>>());
       expect(fakes.spawn.spawnedPorts, isEmpty);
       expect(tags, equals(<String>["ready"]));
     });
@@ -103,7 +97,10 @@ void main() {
       expect(tags, equals(<String>["ready", "restarting(1)", "ready"]));
       // Pinned: the restart spawned on the same port it started on.
       expect(fakes.spawn.spawnedPorts, equals(<int>[4096]));
-      expect(monitor.currentHandle!.process, same(restarted));
+      expect(
+        monitor.currentHandle,
+        isA<OwnedRuntimeHandle<_TestRecord>>().having((handle) => handle.process, "process", same(restarted)),
+      );
       expect(fakes.ownership.records.values.single.status, equals(_TestStatus.ready));
     });
 
@@ -129,7 +126,10 @@ void main() {
       await pumpEventQueue();
 
       expect(tags, equals(<String>["ready", "restarting(1)", "ready", "restarting(1)", "ready"]));
-      expect(monitor.currentHandle!.process, same(restartedAgain));
+      expect(
+        monitor.currentHandle,
+        isA<OwnedRuntimeHandle<_TestRecord>>().having((handle) => handle.process, "process", same(restartedAgain)),
+      );
     });
 
     test("exhausting the restart attempts fails terminally", () async {
@@ -300,7 +300,10 @@ void main() {
       // By the time disarm returns the committed child has already been
       // adopted, so the owner stops the *live* child, not the dead one — and
       // no terminal failure surfaced.
-      expect(monitor.currentHandle!.process, same(restarted));
+      expect(
+        monitor.currentHandle,
+        isA<OwnedRuntimeHandle<_TestRecord>>().having((handle) => handle.process, "process", same(restarted)),
+      );
       expect(tags, isNot(contains("failed")));
     });
 
@@ -369,13 +372,11 @@ RuntimeRestartPolicy _bounded({int maxAttempts = 3}) {
   );
 }
 
-ManagedRuntimeHandle<_TestRecord> _handle({required int port, required SpawnedProcess process}) {
-  return ManagedRuntimeHandle<_TestRecord>(
+OwnedRuntimeHandle<_TestRecord> _handle({required int port, required SpawnedProcess process}) {
+  return OwnedRuntimeHandle<_TestRecord>(
     port: port,
     record: _record(pid: process.pid, port: port),
     process: process,
-    identity: process.identity,
-    health: const RuntimeHealthProbe(healthy: true),
   );
 }
 
@@ -398,7 +399,6 @@ ProcessIdentity _identity({required int pid}) {
     executablePath: "/usr/local/bin/opencode",
     commandLine: "/usr/local/bin/opencode serve --port 4096 --hostname 127.0.0.1",
     ownerUser: ProcessUser.fromRawUser("alex"),
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }
@@ -434,6 +434,7 @@ class _Fakes({ServerClock? clock}) {
       processes: processes,
       bridge: bridge,
       clock: clock,
+      isWindows: false,
       runtimeId: "OPENCODE",
       gracefulShutdownWait: _gracefulShutdownWait,
     );
@@ -574,7 +575,7 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   _TestRecord markStopping({required _TestRecord record}) => record.withStatus(_TestStatus.stopping);
 }
 
-class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestRecord> {
+class _FakeOwnershipRepository() implements HostJsonRuntimeOwnershipRepository<_TestRecord> {
   final Map<String, _TestRecord> records = <String, _TestRecord>{};
   Completer<void>? readyUpsertGate;
   Completer<void>? readyUpsertReached;
@@ -586,9 +587,6 @@ class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestReco
 
   @override
   Future<List<_TestRecord>> readAll() async => records.values.toList(growable: false);
-
-  @override
-  Future<_TestRecord?> readByOwnerSessionId({required String ownerSessionId}) async => records[ownerSessionId];
 
   @override
   Future<void> upsert({required _TestRecord record}) async {
@@ -664,7 +662,6 @@ class _FakeBridgeHostInfo() implements BridgeHostInfo {
     executablePath: "/usr/local/bin/sesori-bridge",
     commandLine: "sesori-bridge",
     ownerUser: ProcessUser.fromRawUser("alex"),
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 

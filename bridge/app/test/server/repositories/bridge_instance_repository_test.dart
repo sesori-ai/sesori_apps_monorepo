@@ -128,7 +128,6 @@ ProcessIdentity _fact({
     executablePath: executablePath,
     commandLine: commandLine ?? executablePath ?? '',
     ownerUser: ProcessUser.fromRawUser(ownerUser),
-    platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }

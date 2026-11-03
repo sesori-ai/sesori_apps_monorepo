@@ -257,7 +257,6 @@ class const BridgeRuntimeRunner._() {
       processRunner: processRunner,
       clock: serverClock,
       isWindows: io.Platform.isWindows,
-      platform: io.Platform.operatingSystem,
       inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
@@ -583,7 +582,6 @@ class const BridgeRuntimeRunner._() {
         clock: serverClock,
         currentUser: currentUser,
         isWindows: io.Platform.isWindows,
-        platform: io.Platform.operatingSystem,
       );
       final pluginRuntimeRegistrations = <PluginRuntimeRegistration>[];
       for (final descriptor in knownPlugins) {
@@ -1275,7 +1273,6 @@ class const BridgeRuntimeRunner._() {
       executablePath: io.Platform.resolvedExecutable,
       commandLine: cliArgs.join(" "),
       ownerUser: currentUser,
-      platform: io.Platform.operatingSystem,
       capturedAt: serverClock.now(),
     );
   }

@@ -1,18 +1,16 @@
 /// How the supervisor responds when a managed runtime exits unexpectedly
 /// while it is meant to be running.
 ///
-/// The legacy behavior is [RuntimeRestartPolicy.disabled] — an unexpected
-/// nonzero exit is terminal. The hardened bounded-restart pacing
-/// ([RuntimeRestartPolicy.bounded]) becomes available only when the real
-/// descriptor opts in at the flip; until then the monitor is simply never
-/// armed, so production behavior is unchanged.
+/// Each plugin descriptor picks one: [RuntimeRestartPolicy.disabled] when its
+/// client cannot reattach to a restarted runtime, otherwise
+/// [RuntimeRestartPolicy.bounded].
 sealed class const RuntimeRestartPolicy() {
-  /// Legacy: an unexpected nonzero exit is terminal and surfaces as
+  /// An unexpected nonzero exit is terminal and surfaces as
   /// `PluginFailed`. A clean (code 0) exit after startup is the runtime
   /// stopping on its own and surfaces as `PluginStopping` then `PluginStopped`.
   const factory disabled() = DisabledRestartPolicy;
 
-  /// Hardened: up to [maxAttempts] restarts within a single failure episode,
+  /// Up to [maxAttempts] restarts within a single failure episode,
   /// each preceded by an exponential backoff and a bounded wait for the
   /// address-frozen port to free. Exhausting the attempts surfaces as
   /// `PluginFailed`.
@@ -52,7 +50,7 @@ class BoundedRestartPolicy({
   final double backoffMultiplier = 2.0,
 }) extends RuntimeRestartPolicy {
   // Not const: the parameter guards compare Durations, which is not a
-  // constant-evaluable operation. Built at runtime anyway (at the flip).
+  // constant-evaluable operation.
   this
     : assert(maxAttempts > 0, "maxAttempts must be positive"),
       assert(!initialBackoff.isNegative, "initialBackoff must be non-negative"),

@@ -25,7 +25,6 @@ void main() {
         executablePath: "/usr/local/bin/opencode",
         commandLine: "/usr/local/bin/opencode serve --port 53111",
         ownerUser: ProcessUser.fromRawUser("alex"),
-        platform: "macos",
         capturedAt: capturedAt,
       );
 
@@ -38,7 +37,6 @@ void main() {
       expect(identity.executablePath, equals("/usr/local/bin/opencode"));
       expect(identity.commandLine, contains("opencode serve"));
       expect(identity.ownerUser, equals(ProcessUser.fromRawUser("alex")));
-      expect(identity.platform, equals("macos"));
       expect(identity.capturedAt, equals(capturedAt));
     });
 
@@ -49,7 +47,6 @@ void main() {
         executablePath: "/Users/alex/.local/bin/sesori-bridge",
         commandLine: "/Users/alex/.local/bin/sesori-bridge --relay wss://relay.sesori.com",
         ownerUser: ProcessUser.fromRawUser("alex"),
-        platform: "macos",
         capturedAt: DateTime.utc(2026, 5, 15, 12),
       );
 
@@ -66,7 +63,6 @@ void main() {
         executablePath: "/usr/bin/python3",
         commandLine: "python3 worker.py",
         ownerUser: ProcessUser.fromRawUser("other"),
-        platform: "macos",
         capturedAt: DateTime.utc(2026, 5, 15, 12, 2),
       );
 

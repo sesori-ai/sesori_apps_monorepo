@@ -153,18 +153,6 @@ class RuntimeVersionValidator({
     }
   }
 
-  /// Returns only the parsed version for callers that do not need failure
-  /// classification.
-  Future<RuntimeVersion?> detectVersion({
-    required String executable,
-    required Map<String, String>? environment,
-  }) async {
-    return switch (await probe(executable: executable, environment: environment)) {
-      RuntimeProbeReady(:final version) => version,
-      RuntimeProbeFailure() => null,
-    };
-  }
-
   /// Extracts the first whitespace-separated token that parses with the
   /// manifest's version scheme. Every token is tried, and non-version tokens
   /// are skipped. A leading `v`/`V` is stripped so prefixed builds are not

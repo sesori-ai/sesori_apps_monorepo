@@ -62,17 +62,6 @@ class _Validator({
   }
 
   @override
-  Future<RuntimeVersion?> detectVersion({
-    required String executable,
-    required Map<String, String>? environment,
-  }) async {
-    return switch (await probe(executable: executable, environment: environment)) {
-      RuntimeProbeReady(:final version) => version,
-      RuntimeProbeFailure() => null,
-    };
-  }
-
-  @override
   RuntimeVersion? parseVersionOutput({required String output}) => SemanticRuntimeVersion.tryParse(value: output);
 }
 
@@ -133,9 +122,12 @@ void main() {
       abortSignal: StartAbortSignal.never,
     );
 
-    expect(result, isA<ManagedRuntimeSelected>());
-    expect(result, isA<ManagedRuntimeExplicitSelected>());
-    expect((result as ManagedRuntimeSelected).binaryPath, "/custom/runtime");
+    expect(
+      result,
+      isA<ManagedRuntimeSelected>()
+          .having((s) => s.binaryPath, "binaryPath", "/custom/runtime")
+          .having((s) => s.source, "source", ManagedRuntimeSource.explicit),
+    );
     expect(validator.probes, ["/custom/runtime"]);
   });
 
@@ -155,8 +147,12 @@ void main() {
       abortSignal: StartAbortSignal.never,
     );
 
-    expect(result, isA<ManagedRuntimeFallbackSelected>());
-    expect((result as ManagedRuntimeFallbackSelected).binaryPath, "/desktop/runtime");
+    expect(
+      result,
+      isA<ManagedRuntimeSelected>()
+          .having((s) => s.binaryPath, "binaryPath", "/desktop/runtime")
+          .having((s) => s.source, "source", ManagedRuntimeSource.fallback),
+    );
     expect(validator.probes, ["runtime", "/old/runtime", "/desktop/runtime"]);
   });
 
@@ -192,8 +188,12 @@ void main() {
 
     final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
 
-    expect(result, isA<ManagedRuntimeManagedSelected>());
-    expect((result as ManagedRuntimeSelected).version.raw, "2.1.0");
+    expect(
+      result,
+      isA<ManagedRuntimeSelected>()
+          .having((s) => s.source, "source", ManagedRuntimeSource.managed)
+          .having((s) => s.version.raw, "version", "2.1.0"),
+    );
   });
 
   test("prefers the pinned managed version over a newer installed one", () async {
@@ -226,7 +226,7 @@ void main() {
 
     final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
 
-    final selected = result as ManagedRuntimeManagedSelected;
+    final selected = result as ManagedRuntimeSelected;
     expect(selected.binaryPath, managedPathFor("1.5.0"));
     expect(selected.version.raw, "1.5.0");
     expect(validator.probes, isNot(contains(managedPathFor("1.0.0"))));

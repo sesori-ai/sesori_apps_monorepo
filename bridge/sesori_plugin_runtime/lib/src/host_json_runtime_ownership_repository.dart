@@ -2,7 +2,6 @@ import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
 
 class HostJsonRuntimeOwnershipRepository<R>({
@@ -10,20 +9,12 @@ class HostJsonRuntimeOwnershipRepository<R>({
   required final RuntimeRecordMapper<R> _mapper,
   required final String _fileName,
   required final ServerClock _clock,
-}) implements RuntimeOwnershipRepository<R> {
-  @override
+}) {
   Future<List<R>> readAll() async {
     final records = await _loadRecordsFromRead();
     return records.values.toList(growable: false);
   }
 
-  @override
-  Future<R?> readByOwnerSessionId({required String ownerSessionId}) async {
-    final records = await _loadRecordsFromRead();
-    return records[ownerSessionId];
-  }
-
-  @override
   Future<void> upsert({required R record}) async {
     await _store.update(
       name: _fileName,
@@ -38,7 +29,6 @@ class HostJsonRuntimeOwnershipRepository<R>({
     );
   }
 
-  @override
   Future<void> deleteByOwnerSessionId({required String ownerSessionId}) async {
     await _store.update(
       name: _fileName,

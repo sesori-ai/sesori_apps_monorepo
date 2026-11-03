@@ -1,15 +1,17 @@
+import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "host_json_runtime_ownership_repository.dart";
 import "managed_runtime_spec.dart";
-import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
 
 class ManagedProcessService<R>({
-  required final RuntimeOwnershipRepository<R> _ownershipRepository,
+  required final HostJsonRuntimeOwnershipRepository<R> _ownershipRepository,
   required final RuntimeRecordMapper<R> _mapper,
   required final HostProcessService _processes,
   required final BridgeHostInfo _bridge,
   required final ServerClock _clock,
+  required final bool _isWindows,
   required final String _runtimeId,
   required final Duration _gracefulShutdownWait,
 }) {
@@ -26,7 +28,7 @@ class ManagedProcessService<R>({
   /// settles. A spawn that cannot even launch propagates from the explicit
   /// path and is retried on the dynamic path; any other start failure rolls
   /// back and throws [PluginStartException].
-  Future<ManagedRuntimeHandle<R>> start({
+  Future<OwnedRuntimeHandle<R>> start({
     required ManagedRuntimeSpec<R> spec,
     required List<ProcessIdentity> terminatedBridgeIdentities,
     required StartAbortSignal startAborted,
@@ -47,9 +49,9 @@ class ManagedProcessService<R>({
 
   /// Attaches to a runtime already listening on [port] (the `--no-auto-start`
   /// path): a single health probe, no ownership, no process to kill. Returns
-  /// an un-owned handle on success; throws [PluginStartException] when the
+  /// an attached handle on success; throws [PluginStartException] when the
   /// existing server is unreachable.
-  Future<ManagedRuntimeHandle<R>> attach({
+  Future<AttachedRuntimeHandle<R>> attach({
     required ManagedRuntimeSpec<R> spec,
     required int port,
     required StartAbortSignal startAborted,
@@ -68,13 +70,7 @@ class ManagedProcessService<R>({
       );
     }
 
-    return ManagedRuntimeHandle<R>(
-      port: port,
-      record: null,
-      process: null,
-      identity: null,
-      health: probe,
-    );
+    return AttachedRuntimeHandle<R>(port: port);
   }
 
   /// Re-spawns the runtime on its original, address-frozen [port] after an
@@ -87,7 +83,7 @@ class ManagedProcessService<R>({
   /// it throws [PluginStartException], which the caller treats as terminal.
   /// Otherwise it spawns a fresh child and writes the new ownership record and
   /// confirms health on exactly the cold-start path, including rollback.
-  Future<ManagedRuntimeHandle<R>> restartOnPort({
+  Future<OwnedRuntimeHandle<R>> restartOnPort({
     required ManagedRuntimeSpec<R> spec,
     required int port,
     required Duration portReleaseTimeout,
@@ -141,7 +137,7 @@ class ManagedProcessService<R>({
     return (timeout.inMicroseconds / pollInterval.inMicroseconds).ceil() + 2;
   }
 
-  Future<ManagedRuntimeHandle<R>> _startOnExplicitPort({
+  Future<OwnedRuntimeHandle<R>> _startOnExplicitPort({
     required ManagedRuntimeSpec<R> spec,
     required ExplicitPortPolicy policy,
     required StartAbortSignal abort,
@@ -157,7 +153,7 @@ class ManagedProcessService<R>({
     return await _startAndConfirmHealthy(spec: spec, port: policy.port, abort: abort);
   }
 
-  Future<ManagedRuntimeHandle<R>> _startOnDynamicPort({
+  Future<OwnedRuntimeHandle<R>> _startOnDynamicPort({
     required ManagedRuntimeSpec<R> spec,
     required DynamicPortPolicy policy,
     required StartAbortSignal abort,
@@ -165,23 +161,11 @@ class ManagedProcessService<R>({
     Object? lastError;
     var attempts = 0;
 
-    // The cap counts every raw candidate examined — not just the in-range
-    // ones — so a lazy source that keeps yielding the reserved or out-of-range
-    // port can never spin past maxAttempts while the startup mutex is held.
     for (final port in policy.candidates) {
-      if (attempts >= policy.maxAttempts) {
-        break;
-      }
       attempts += 1;
-
       // Honor cancellation on every iteration boundary, including the ones
-      // that only skip an invalid candidate, so an abort during an all-invalid
-      // tail settles as an abort rather than a generic exhaustion failure.
+      // that only skip an unbindable candidate.
       _throwIfAborted(abort);
-
-      if (port == policy.reservedPort || port < policy.minPort || port > policy.maxPort) {
-        continue;
-      }
 
       final bindable = await spec.probePortBindable(port: port);
       if (!bindable) {
@@ -208,7 +192,7 @@ class ManagedProcessService<R>({
     );
   }
 
-  Future<ManagedRuntimeHandle<R>> _startAndConfirmHealthy({
+  Future<OwnedRuntimeHandle<R>> _startAndConfirmHealthy({
     required ManagedRuntimeSpec<R> spec,
     required int port,
     required StartAbortSignal abort,
@@ -252,24 +236,18 @@ class ManagedProcessService<R>({
       await _ownershipRepository.upsert(record: record);
       _throwIfAborted(abort);
 
-      final health = await _confirmHealthy(spec: spec, port: port, spawned: spawned, abort: abort);
+      await _confirmHealthy(spec: spec, port: port, spawned: spawned, abort: abort);
 
       _throwIfAborted(abort);
 
       final readyRecord = _mapper.markReady(record: record);
       await _ownershipRepository.upsert(record: readyRecord);
 
-      return ManagedRuntimeHandle<R>(
-        port: port,
-        record: readyRecord,
-        process: spawned,
-        identity: spawned.identity,
-        health: health,
-      );
+      return OwnedRuntimeHandle<R>(port: port, record: readyRecord, process: spawned);
     } on Object {
       // Never let a cleanup failure mask the error that triggered it.
       try {
-        await _cleanupFailedStart(record: record);
+        await _stopRecord(record: record);
       } on Object catch (cleanupError, cleanupStackTrace) {
         Log.w("[$_runtimeId] Failed to clean up after a failed start on port $port", cleanupError, cleanupStackTrace);
       }
@@ -277,7 +255,7 @@ class ManagedProcessService<R>({
     }
   }
 
-  Future<RuntimeHealthProbe> _confirmHealthy({
+  Future<void> _confirmHealthy({
     required ManagedRuntimeSpec<R> spec,
     required int port,
     required SpawnedProcess spawned,
@@ -295,7 +273,7 @@ class ManagedProcessService<R>({
       await _clock.delay(duration: policy.pollInterval);
       final probe = await _probeOnce(spec: spec, port: port, spawned: spawned, abort: abort);
       if (probe.healthy) {
-        return probe;
+        return;
       }
       polls += 1;
       if (polls >= maxPolls || !_clock.now().isBefore(deadline)) {
@@ -342,10 +320,6 @@ class ManagedProcessService<R>({
     return exitCode != null;
   }
 
-  Future<void> _cleanupFailedStart({required R record}) async {
-    await _stopRecord(record: record, removeOwnership: true);
-  }
-
   /// Stops an untracked, unrecorded child without letting the stop failure mask
   /// the start outcome that triggered it (an abort, a record-build error). Only
   /// logs on failure.
@@ -381,15 +355,14 @@ class ManagedProcessService<R>({
     }
   }
 
+  /// Public only so stop-path tests can seed a tracked child; production
+  /// tracks a child only from [start] and [restartOnPort].
+  @visibleForTesting
   void trackOwnedRuntime({required String ownerSessionId, required SpawnedProcess process}) {
     _currentOwnedProcessesBySessionId[ownerSessionId] = _CurrentOwnedRuntimeProcess(
       process: process,
       identity: process.identity,
     );
-  }
-
-  bool isTrackingOwnedRuntime({required String ownerSessionId}) {
-    return _currentOwnedProcessesBySessionId.containsKey(ownerSessionId);
   }
 
   Future<void> cleanupStaleOwnedRuntimes({required List<ProcessIdentity> terminatedBridgeIdentities}) async {
@@ -471,18 +444,16 @@ class ManagedProcessService<R>({
 
   Future<void> stopOwnedRuntime({required R record}) async {
     await _ownershipRepository.upsert(record: _mapper.markStopping(record: record));
-    await _stopRecord(record: record, removeOwnership: true);
+    await _stopRecord(record: record);
   }
 
-  Future<void> _stopRecord({required R record, required bool removeOwnership}) async {
+  Future<void> _stopRecord({required R record}) async {
     final currentOwnedProcess = _currentOwnedProcessFor(record: record);
     final initialIdentity = await _processes.inspect(pid: _runtimePidOf(record: record));
     final matchesInitialIdentity =
         initialIdentity != null && _matchesRuntimeRecord(identity: initialIdentity, record: record);
     if (!matchesInitialIdentity && currentOwnedProcess == null) {
-      if (removeOwnership) {
-        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: _ownerSessionIdOf(record: record));
-      }
+      await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: _ownerSessionIdOf(record: record));
       return;
     }
 
@@ -490,9 +461,7 @@ class ManagedProcessService<R>({
       final currentOwnedStillRunningBeforeGraceful = await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
       if (!currentOwnedStillRunningBeforeGraceful) {
         _currentOwnedProcessesBySessionId.remove(_ownerSessionIdOf(record: record));
-        if (removeOwnership) {
-          await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: _ownerSessionIdOf(record: record));
-        }
+        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: _ownerSessionIdOf(record: record));
         return;
       }
     }
@@ -520,9 +489,7 @@ class ManagedProcessService<R>({
     }
 
     if (finalIdentity == null || !_matchesRuntimeRecord(identity: finalIdentity, record: record)) {
-      if (removeOwnership) {
-        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: _ownerSessionIdOf(record: record));
-      }
+      await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: _ownerSessionIdOf(record: record));
     }
   }
 
@@ -564,7 +531,6 @@ class ManagedProcessService<R>({
         _samePath(
           actual: process.identity.executablePath,
           expected: _runtimeExecutablePathOf(record: record),
-          platform: process.identity.platform,
         ) &&
         _matchesRuntimeCommandLine(identity: process.identity, record: record);
   }
@@ -616,14 +582,12 @@ class ManagedProcessService<R>({
           _samePath(
             actual: identity.executablePath,
             expected: _runtimeExecutablePathOf(record: record),
-            platform: identity.platform,
           ) &&
           _matchesRuntimeCommandLine(identity: identity, record: record);
     }
     return _samePath(
       actual: identity.executablePath,
       expected: _runtimeExecutablePathOf(record: record),
-      platform: identity.platform,
     );
   }
 
@@ -637,12 +601,12 @@ class ManagedProcessService<R>({
     return true;
   }
 
-  bool _samePath({required String? actual, required String? expected, required String platform}) {
+  bool _samePath({required String? actual, required String? expected}) {
     if (actual == null || expected == null) {
       return false;
     }
 
-    if (!_isWindowsPlatform(platform: platform)) {
+    if (!_isWindows) {
       return actual == expected;
     }
 
@@ -653,11 +617,6 @@ class ManagedProcessService<R>({
     }
 
     return _windowsPathBasename(normalizedActual) == _windowsPathBasename(normalizedExpected);
-  }
-
-  bool _isWindowsPlatform({required String platform}) {
-    final normalizedPlatform = platform.toLowerCase();
-    return normalizedPlatform == "windows" || normalizedPlatform == "win32";
   }
 
   String _normalizeWindowsPath(String path) {

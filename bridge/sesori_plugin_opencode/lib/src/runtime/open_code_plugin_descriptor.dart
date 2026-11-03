@@ -669,6 +669,7 @@ class const OpenCodePluginDescriptor({
       processes: host.processes,
       bridge: host.bridge,
       clock: host.clock,
+      isWindows: io.Platform.isWindows,
       runtimeId: "opencode",
       gracefulShutdownWait: openCodeGracefulShutdownWait,
     );
@@ -794,10 +795,6 @@ class const OpenCodePluginDescriptor({
           Log.d("[opencode] starting on a dynamic port");
           portPolicy = DynamicPortPolicy(
             candidates: openCodeDynamicCandidates(candidates: _candidatePorts, random: _random),
-            maxAttempts: dynamicOpenCodeMaxAttempts,
-            reservedPort: openCodeDefaultPort,
-            minPort: dynamicOpenCodePortMin,
-            maxPort: dynamicOpenCodePortMax,
           );
         }
 
@@ -845,16 +842,15 @@ class const OpenCodePluginDescriptor({
     // Honor a late abort: a managed start the supervisor returned just as the
     // bridge aborted must release the owned child before we surface it.
     if (host.startAborted.isAborted) {
-      final ownedHandle = handle;
-      if (ownedHandle != null && ownedHandle.isOwned) {
-        await service.stopOwnedRuntime(record: ownedHandle.record!);
+      if (handle case OwnedRuntimeHandle(:final record)) {
+        await service.stopOwnedRuntime(record: record);
       }
       throw const PluginStartAbortedException();
     }
 
     // Older v2 releases have already migrated the database: never suggest v1.
     if (protocol case OpenCodeProtocolV2(:final version) when version.version.compareTo(openCodeMinimumV2Version) < 0) {
-      if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
+      if (handle case OwnedRuntimeHandle(:final record)) {
         await service.stopOwnedRuntime(record: record);
       }
       throw PluginStartException(
@@ -864,7 +860,10 @@ class const OpenCodePluginDescriptor({
       );
     }
 
-    final ownedRecord = handle?.record;
+    final ownedRecord = switch (handle) {
+      OwnedRuntimeHandle(:final record) => record,
+      AttachedRuntimeHandle() || null => null,
+    };
 
     final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),

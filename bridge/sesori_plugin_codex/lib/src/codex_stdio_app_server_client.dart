@@ -19,10 +19,7 @@ class CodexStdioAppServerClient({
     responseCorrelationId: (frame) => frame["method"] == null ? frame["id"] : null,
     exitError: (_) => StateError("Codex App Server process exited before replying"),
     malformedFramePolicy: MalformedFramePolicy.failPending,
-    nonObjectFramePolicy: NonObjectFramePolicy.discard,
-    malformedFrameLogPolicy: MalformedFrameLogPolicy.metadataOnly,
     stderrPolicy: StderrPolicy.discard,
-    sanitizeForLog: (_) => "<redacted>",
     logTag: "codex][stdio",
     reapTimeout: _shutdownTimeout,
   );

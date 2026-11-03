@@ -143,15 +143,10 @@ class _Monitor({required final List<String> calls, required final String? record
   Object? disarmError;
 
   @override
-  ManagedRuntimeHandle<String>? get currentHandle => record == null
-      ? null
-      : ManagedRuntimeHandle<String>(
-          port: 1,
-          record: record,
-          process: null,
-          identity: null,
-          health: const RuntimeHealthProbe(healthy: true),
-        );
+  ManagedRuntimeHandle<String>? get currentHandle => switch (record) {
+    final record? => OwnedRuntimeHandle<String>(port: 1, record: record, process: _Process()),
+    null => null,
+  };
 
   @override
   Future<void> disarm() async {
@@ -179,4 +174,9 @@ class const _Clock() implements ServerClock {
 
   @override
   DateTime now() => DateTime.utc(2026);
+}
+
+class _Process() implements SpawnedProcess {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

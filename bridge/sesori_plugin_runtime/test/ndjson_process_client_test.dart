@@ -126,19 +126,13 @@ void main() {
     await fail.dispose();
   });
 
-  test("non-object policy discards or fails pending", () async {
-    final discard = _Fixture(nonObjectPolicy: NonObjectFramePolicy.discard);
+  test("non-object frames are discarded and keep pending", () async {
+    final discard = _Fixture();
     final waiting = discard.client.request(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
     discard.process.emit("[]");
     discard.process.emit('{"id":1}');
     await waiting;
     await discard.dispose();
-
-    final fail = _Fixture(nonObjectPolicy: NonObjectFramePolicy.failPending);
-    final failed = fail.client.request(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
-    fail.process.emit("[]");
-    await expectLater(failed, throwsStateError);
-    await fail.dispose();
   });
 
   test("stdout error and process exit fail all pending", () async {
@@ -336,16 +330,12 @@ void main() {
 
 NdjsonProcessClient _client({
   MalformedFramePolicy malformedFramePolicy = MalformedFramePolicy.discard,
-  NonObjectFramePolicy nonObjectFramePolicy = NonObjectFramePolicy.discard,
   Duration reapTimeout = Duration.zero,
 }) => NdjsonProcessClient(
   responseCorrelationId: (frame) => frame["id"],
   exitError: (code) => StateError("exited $code"),
   malformedFramePolicy: malformedFramePolicy,
-  nonObjectFramePolicy: nonObjectFramePolicy,
-  malformedFrameLogPolicy: MalformedFrameLogPolicy.metadataOnly,
   stderrPolicy: StderrPolicy.discard,
-  sanitizeForLog: (_) => "<redacted>",
   logTag: "test",
   reapTimeout: reapTimeout,
 );
@@ -353,13 +343,9 @@ NdjsonProcessClient _client({
 final class _Fixture({
   final _FakeProcess? candidate,
   final MalformedFramePolicy malformedPolicy = MalformedFramePolicy.discard,
-  final NonObjectFramePolicy nonObjectPolicy = NonObjectFramePolicy.discard,
 }) {
   late final _FakeProcess process = candidate ?? _FakeProcess();
-  late final NdjsonProcessClient _transport = _client(
-    malformedFramePolicy: malformedPolicy,
-    nonObjectFramePolicy: nonObjectPolicy,
-  );
+  late final NdjsonProcessClient _transport = _client(malformedFramePolicy: malformedPolicy);
   late final Future<void> attached = _transport.attach(token: _transport.beginAttach(), process: process);
   NdjsonProcessClient get client {
     unawaited(attached);

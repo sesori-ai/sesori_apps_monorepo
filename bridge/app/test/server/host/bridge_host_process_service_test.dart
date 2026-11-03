@@ -28,7 +28,6 @@ void main() {
         clock: _FakeServerClock(),
         currentUser: ProcessUser.fromRawUser('alex'),
         isWindows: isWindows,
-        platform: 'macos',
       );
     }
 
@@ -96,7 +95,6 @@ void main() {
       expect(spawned.identity.executablePath, '/usr/local/bin/agent');
       expect(spawned.identity.commandLine, '/usr/local/bin/agent --stdio');
       expect(spawned.identity.ownerUser, ProcessUser.fromRawUser('alex'));
-      expect(spawned.identity.platform, 'macos');
     });
 
     test('spawn falls back when the inspected command line does not match (pid reuse)', () async {
@@ -282,7 +280,6 @@ void main() {
               processRunner: ProcessRunner(),
               clock: const ServerClock(),
               isWindows: Platform.isWindows,
-              platform: Platform.operatingSystem,
               inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
             ),
             currentUser: null,
@@ -290,7 +287,6 @@ void main() {
           clock: const ServerClock(),
           currentUser: null,
           isWindows: Platform.isWindows,
-          platform: Platform.operatingSystem,
         );
 
         final spawned = await realService.spawn(
@@ -331,7 +327,6 @@ ProcessIdentity _identity({
     executablePath: executablePath,
     commandLine: commandLine,
     ownerUser: ProcessUser.fromRawUser('alex'),
-    platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }

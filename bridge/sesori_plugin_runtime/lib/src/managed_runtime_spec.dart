@@ -1,13 +1,14 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "draining_spawned_process.dart";
+
 /// Structured outcome of a single runtime health probe.
 ///
 /// Plugins return this from [ManagedRuntimeSpec.probeHealth]. The supervisor
-/// only looks at [healthy] to decide whether the runtime is up; [version] and
-/// [detail] are surfaced through the resulting [ManagedRuntimeHandle] for
-/// diagnostics, and [error] carries the failure cause when a probe reports
-/// unhealthy (so a start failure can name why).
-class const RuntimeHealthProbe({required final bool healthy, final String? version, final String? detail, final Object? error}) {
+/// only looks at [healthy] to decide whether the runtime is up; [error]
+/// carries the failure cause when a probe reports unhealthy (so a start
+/// failure can name why).
+class const RuntimeHealthProbe({required final bool healthy, final Object? error}) {
   /// A probe that failed, carrying its [error] cause.
   const new unhealthy({Object? error}) : this(healthy: false, error: error);
 
@@ -46,48 +47,18 @@ class RuntimeHealthPolicy({required final Duration deadline, required final Dura
 }
 
 /// Where the supervisor obtains the listening port for a start.
-sealed class const RuntimePortPolicy() {
-  /// A single, caller-chosen port.
-  const factory explicit({required int port}) = ExplicitPortPolicy;
+sealed class const RuntimePortPolicy();
 
-  /// Dynamic discovery across [candidates]: probe each for bindability and
-  /// start on the first that works, up to [maxAttempts] examined candidates.
-  const factory dynamic({
-    required Iterable<int> candidates,
-    required int maxAttempts,
-    required int reservedPort,
-    required int minPort,
-    required int maxPort,
-  }) = DynamicPortPolicy;
-}
+/// A single, caller-chosen port.
+class const ExplicitPortPolicy({required final int port}) extends RuntimePortPolicy;
 
-class const ExplicitPortPolicy({required final int port}) extends RuntimePortPolicy {
-  this : super();
-
-}
-
+/// Dynamic discovery: probe each of [candidates] for bindability and start on
+/// the first that works.
 class const DynamicPortPolicy({
-    /// Candidate ports to consider, in order. May be a lazy or unbounded
-  /// generator (e.g. a random source): the supervisor pulls at most
-  /// [maxAttempts] values from it and counts every value examined against that
-  /// cap — including ones skipped for being [reservedPort] or outside
-  /// [[minPort], [maxPort]] — so even an all-invalid infinite source still
-  /// terminates rather than spinning under the startup mutex.
+  /// Ports to try, in order. Must be finite and already exclude reserved and
+  /// out-of-range ports; build it with `dynamicPortCandidates`.
   required final Iterable<int> candidates,
-    /// Maximum number of candidates examined (whether skipped, unbindable, or
-  /// attempted) before giving up — bounds discovery the way the legacy
-  /// five-candidate cap does, and guarantees termination for lazy [candidates].
-  required final int maxAttempts,
-    /// The reserved default port, excluded from dynamic discovery.
-  required final int reservedPort,
-    /// Inclusive bounds of the dynamic range.
-  required final int minPort,
-    required final int maxPort,
-  }) extends RuntimePortPolicy {
-  this : assert(maxAttempts > 0, "maxAttempts must be positive"),
-       super();
-
-}
+}) extends RuntimePortPolicy;
 
 /// Everything a [ManagedProcessService] needs to start (or attach to) one
 /// managed runtime, expressed as seams so one supervisor serves every plugin
@@ -100,7 +71,9 @@ class const DynamicPortPolicy({
 class const ManagedRuntimeSpec<R>({
     /// Launches the runtime on [port] and returns the spawned process with its
   /// captured identity. Contract: the returned [SpawnedProcess.identity] is
-  /// authoritative — the supervisor does not re-inspect it.
+  /// authoritative — the supervisor does not re-inspect it — and the process
+  /// drains its own stdout and stderr (wrap it in [DrainingSpawnedProcess]);
+  /// the supervisor only listens to stderr for logging.
   required final Future<SpawnedProcess> Function({required int port}) spawn,
     /// Probes the runtime's health on [port]. Should report unhealthy rather
   /// than throw, but the supervisor tolerates a thrown probe (treated as
@@ -116,19 +89,16 @@ class const ManagedRuntimeSpec<R>({
     required final RuntimeHealthPolicy healthPolicy,
   });
 
-/// The outcome of a successful [ManagedProcessService.start] or
-/// [ManagedProcessService.attach].
-///
-/// A started runtime is owned ([process], [identity] and [record] are
-/// populated); an attached runtime is not ([isOwned] is false and those
-/// fields are null — the bridge never kills or records a server it merely
-/// connected to).
-class const ManagedRuntimeHandle<R>({
-    required final int port,
-    required final R? record,
-    required final SpawnedProcess? process,
-    required final ProcessIdentity? identity,
-    required final RuntimeHealthProbe health,
-  }) {
-  bool get isOwned => process != null;
-}
+/// The outcome of a successful [ManagedProcessService.start],
+/// [ManagedProcessService.restartOnPort] or [ManagedProcessService.attach].
+sealed class const ManagedRuntimeHandle<R>({required final int port});
+
+/// A runtime this bridge spawned and recorded, so it may stop or restart it.
+final class const OwnedRuntimeHandle<R>({
+  required super.port,
+  required final R record,
+  required final SpawnedProcess process,
+}) extends ManagedRuntimeHandle<R>;
+
+/// A runtime the bridge only connected to: it never kills, records or restarts it.
+final class const AttachedRuntimeHandle<R>({required super.port}) extends ManagedRuntimeHandle<R>;

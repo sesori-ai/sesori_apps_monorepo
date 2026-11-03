@@ -23,20 +23,18 @@ void main() {
       fakes = _Fakes();
     });
 
-    test("skips the reserved port and starts on the first bindable candidate", () async {
+    test("starts on the first bindable candidate", () async {
       fakes.bindable.byPort.addAll(<int, bool>{49152: false, 49153: true});
       fakes.spawn.results.add(_spawned(pid: 101, port: 49153));
       fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
 
       final handle = await fakes.service().start(
-        spec: fakes.spec(portPolicy: _dynamic(<int>[4096, 49152, 49153])),
+        spec: fakes.spec(portPolicy: _dynamic(<int>[49152, 49153])),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
         startAborted: StartAbortSignal.never,
       );
 
       expect(handle.port, equals(49153));
-      expect(handle.isOwned, isTrue);
-      // 4096 is the reserved port: never probed, never spawned on.
       expect(fakes.bindable.probedPorts, equals(<int>[49152, 49153]));
       expect(fakes.spawn.spawnedPorts, equals(<int>[49153]));
       expect(fakes.ownership.records.values.single.status, equals(_TestStatus.ready));
@@ -112,51 +110,6 @@ void main() {
       );
       expect(fakes.ownership.records.values.single.status, equals(_TestStatus.ready));
       expect(fakes.ownership.records.values.single.port, equals(49153));
-    });
-
-    test("stops dynamic discovery after the configured candidate cap", () async {
-      for (var port = 49152; port < 49162; port += 1) {
-        fakes.bindable.byPort[port] = false;
-      }
-
-      await expectLater(
-        fakes.service().start(
-          spec: fakes.spec(
-            portPolicy: _dynamic(List<int>.generate(10, (index) => 49152 + index)),
-          ),
-          terminatedBridgeIdentities: const <ProcessIdentity>[],
-          startAborted: StartAbortSignal.never,
-        ),
-        throwsA(isA<PluginStartException>()),
-      );
-
-      expect(fakes.bindable.probedPorts, hasLength(5));
-      expect(fakes.spawn.spawnedPorts, isEmpty);
-      expect(fakes.processes.signalRequests, isEmpty);
-    });
-
-    test("caps an unbounded source that only ever yields the reserved port", () async {
-      // A lazy candidate generator that never yields an in-range port must
-      // still terminate at maxAttempts — the cap counts raw candidates.
-      await expectLater(
-        fakes.service().start(
-          spec: fakes.spec(
-            portPolicy: RuntimePortPolicy.dynamic(
-              candidates: _endless(4096),
-              maxAttempts: 5,
-              reservedPort: 4096,
-              minPort: 49152,
-              maxPort: 65535,
-            ),
-          ),
-          terminatedBridgeIdentities: const <ProcessIdentity>[],
-          startAborted: StartAbortSignal.never,
-        ),
-        throwsA(isA<PluginStartException>()),
-      );
-
-      expect(fakes.bindable.probedPorts, isEmpty);
-      expect(fakes.spawn.spawnedPorts, isEmpty);
     });
 
     test("stops on a spawn error instead of retrying the next candidate", () async {
@@ -240,7 +193,7 @@ void main() {
 
     test("records starting then ready in order", () async {
       fakes.spawn.results.add(_spawned(pid: 301, port: 50123));
-      fakes.probe.results.add(const RuntimeHealthProbe(healthy: true, version: "1.2.3"));
+      fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
 
       final handle = await fakes.service().start(
         spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50123)),
@@ -253,8 +206,8 @@ void main() {
         equals(<_TestStatus>[_TestStatus.starting, _TestStatus.ready]),
       );
       expect(fakes.ownership.records.values.single.openCodePid, equals(301));
-      expect(handle.health.version, equals("1.2.3"));
-      expect(handle.identity!.pid, equals(301));
+      expect(handle.record.openCodePid, equals(301));
+      expect(handle.process.pid, equals(301));
     });
 
     test("failed-start cleanup force-stops a surviving markerless child via host signals", () async {
@@ -612,7 +565,7 @@ void main() {
       fakes = _Fakes();
     });
 
-    test("returns an un-owned handle when the existing server is healthy", () async {
+    test("returns an attached handle when the existing server is healthy", () async {
       fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
 
       final handle = await fakes.service().attach(
@@ -622,10 +575,6 @@ void main() {
       );
 
       expect(handle.port, equals(50125));
-      expect(handle.isOwned, isFalse);
-      expect(handle.record, isNull);
-      expect(handle.process, isNull);
-      expect(handle.identity, isNull);
       expect(fakes.probe.probedPorts, equals(<int>[50125]));
       expect(fakes.spawn.spawnedPorts, isEmpty);
       expect(fakes.ownership.writeCallCount, equals(0));
@@ -688,23 +637,7 @@ void main() {
   });
 }
 
-/// An unbounded source that keeps yielding [value] — used to prove the
-/// dynamic-start cap terminates even when every candidate is filtered out.
-Iterable<int> _endless(int value) sync* {
-  while (true) {
-    yield value;
-  }
-}
-
-RuntimePortPolicy _dynamic(List<int> candidates) {
-  return RuntimePortPolicy.dynamic(
-    candidates: candidates,
-    maxAttempts: 5,
-    reservedPort: 4096,
-    minPort: 49152,
-    maxPort: 65535,
-  );
-}
+RuntimePortPolicy _dynamic(List<int> candidates) => DynamicPortPolicy(candidates: candidates);
 
 _FakeSpawnedProcess _spawned({
   required int pid,
@@ -728,7 +661,6 @@ ProcessIdentity _runtimeIdentity({required int pid, required int port, String? s
     executablePath: "/usr/local/bin/opencode",
     commandLine: "/usr/local/bin/opencode serve --port $port --hostname 127.0.0.1",
     ownerUser: ProcessUser.fromRawUser("alex"),
-    platform: "macos",
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }
@@ -760,7 +692,6 @@ class _Fakes({_RecordingClock? clock}) {
       executablePath: "/usr/local/bin/sesori-bridge",
       commandLine: "sesori-bridge",
       ownerUser: ProcessUser.fromRawUser("alex"),
-      platform: "macos",
       capturedAt: DateTime.utc(2026, 5, 15, 12),
     ),
   );
@@ -776,6 +707,7 @@ class _Fakes({_RecordingClock? clock}) {
       processes: processes,
       bridge: bridge,
       clock: clock,
+      isWindows: false,
       runtimeId: "OPENCODE",
       gracefulShutdownWait: _gracefulShutdownWait,
     );
@@ -919,7 +851,7 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   _TestRecord markStopping({required _TestRecord record}) => record.copyWith(status: _TestStatus.stopping);
 }
 
-class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestRecord> {
+class _FakeOwnershipRepository() implements HostJsonRuntimeOwnershipRepository<_TestRecord> {
   final Map<String, _TestRecord> records = <String, _TestRecord>{};
   final List<_TestStatus> upsertedStatuses = <_TestStatus>[];
   int writeCallCount = 0;
@@ -938,9 +870,6 @@ class _FakeOwnershipRepository() implements RuntimeOwnershipRepository<_TestReco
 
   @override
   Future<List<_TestRecord>> readAll() async => records.values.toList(growable: false);
-
-  @override
-  Future<_TestRecord?> readByOwnerSessionId({required String ownerSessionId}) async => records[ownerSessionId];
 
   @override
   Future<void> upsert({required _TestRecord record}) async {

@@ -7,8 +7,8 @@ import "managed_process_service.dart";
 import "managed_runtime_spec.dart";
 import "runtime_restart_policy.dart";
 
-/// Supervises an already-started managed runtime: drains its stdio (logging
-/// stderr with a `[runtimeId]` prefix), watches for an unexpected exit, and —
+/// Supervises an already-started managed runtime: logs its stderr with a
+/// `[runtimeId]` prefix, watches for an unexpected exit, and —
 /// when a bounded restart policy is configured — relaunches it on its original,
 /// address-frozen port with backoff, publishing lifecycle transitions through
 /// the plugin's [PluginStatusController].
@@ -27,7 +27,7 @@ import "runtime_restart_policy.dart";
 ///   machine, belt-and-suspenders with [disarm].
 /// - [disarm] (called by the owner's shutdown *before* it signals the child)
 ///   aborts any in-flight restart so the relaunched child is rolled back rather
-///   than leaked, and cancels the stdio subscriptions. It is idempotent.
+///   than leaked, and cancels the stderr subscription. It is idempotent.
 class ManagedRuntimeMonitor<R>({
   required final ManagedProcessService<R> _service,
   required final ManagedRuntimeSpec<R> _spec,
@@ -37,13 +37,10 @@ class ManagedRuntimeMonitor<R>({
   required final RuntimeRestartPolicy _restartPolicy,
 }) {
   ManagedRuntimeHandle<R>? _currentHandle;
-  int? _pinnedPort;
   bool _disarmed = false;
   Future<void>? _activeRestartEpisode;
-  // Long-lived stdio drains, cancelled in _cancelStdioSubscriptions (on restart)
-  // and disarm (on stop) rather than where they are created.
-  // ignore: cancel_subscriptions
-  StreamSubscription<void>? _stdoutSubscription;
+  // Long-lived stderr logger, cancelled in _cancelStderrSubscription (on
+  // restart) and disarm (on stop) rather than where it is created.
   // ignore: cancel_subscriptions
   StreamSubscription<String>? _stderrSubscription;
   StartAbortController? _restartAbort;
@@ -55,31 +52,22 @@ class ManagedRuntimeMonitor<R>({
 
   /// Begins supervising [handle].
   ///
-  /// For an attached (un-owned) handle there is no child to watch, so this only
-  /// records the handle. For an owned handle it pins the port, wires the stdout
-  /// drain and stderr logging in a single synchronous turn (both are
-  /// single-subscription and a full pipe would block the child), and watches
-  /// the child's exit. Safe to call once; a no-op once disarmed.
+  /// For an attached handle there is no child to watch, so this only records
+  /// the handle. For an owned handle it wires stderr logging and watches the
+  /// child's exit. Safe to call once; a no-op once disarmed.
   void arm(ManagedRuntimeHandle<R> handle) {
     if (_disarmed) {
       return;
     }
     _currentHandle = handle;
-
-    final process = handle.process;
-    if (process == null) {
-      // Attach mode: the bridge connected to a runtime it does not own, so
-      // there is no child to drain, watch, or restart.
-      return;
+    if (handle case OwnedRuntimeHandle(:final process)) {
+      _watchProcess(process);
     }
-
-    _pinnedPort = handle.port;
-    _watchProcess(process);
   }
 
   /// Stops supervising: aborts any in-flight restart (so its freshly spawned
   /// child is rolled back, not leaked), **waits for that restart episode to
-  /// settle**, and cancels the stdio subscriptions.
+  /// settle**, and cancels the stderr subscription.
   ///
   /// The settle-wait is what makes the owner's shutdown safe: when this
   /// returns, an aborted restart has already rolled its fresh child back, and
@@ -100,24 +88,21 @@ class ManagedRuntimeMonitor<R>({
     final episode = _activeRestartEpisode;
     if (episode != null) {
       // The episode handles its own errors; a throw here must never leave the
-      // stdio subscriptions dangling or mask the owner's shutdown.
+      // stderr subscription dangling or mask the owner's shutdown.
       try {
         await episode;
       } on Object catch (error, stackTrace) {
         Log.w("[$_runtimeId] restart episode failed while disarming", error, stackTrace);
       }
     }
-    await _cancelStdioSubscriptions();
+    await _cancelStderrSubscription();
   }
 
   void _watchProcess(SpawnedProcess process) {
-    // Wire both stdio drains synchronously: both streams are single
-    // subscription and the child blocks on a full pipe, so neither may wait on
-    // an await before being consumed. Both subscriptions are long-lived and
-    // cancelled in _cancelStdioSubscriptions (on restart) and disarm (on stop).
-    _stdoutSubscription = process.stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    // allowMalformed: a crashing runtime can emit non-UTF-8 bytes on stderr; a
-    // strict decoder would throw and tear down the drain, so substitute instead.
+    // The spawn seam already drains both pipes (DrainingSpawnedProcess), so
+    // this only logs stderr. allowMalformed: a crashing runtime can emit
+    // non-UTF-8 bytes on stderr; a strict decoder would throw and tear down the
+    // logger, so substitute instead.
     final stderrLines = process.stderr
         .transform(const Utf8Decoder(allowMalformed: true))
         .transform(const LineSplitter());
@@ -135,7 +120,8 @@ class ManagedRuntimeMonitor<R>({
   }
 
   Future<void> _onUnexpectedExit({required SpawnedProcess process, required int exitCode}) async {
-    if (_disarmed || !identical(process, _currentHandle?.process)) {
+    final current = _currentHandle;
+    if (_disarmed || current is! OwnedRuntimeHandle<R> || !identical(process, current.process)) {
       return;
     }
     final policy = _restartPolicy;
@@ -159,7 +145,7 @@ class ManagedRuntimeMonitor<R>({
         // Tracked so disarm() can wait the episode out: returning from disarm
         // while a respawn is mid-flight would let the owner's shutdown stop a
         // stale record while this episode commits a child nobody ever stops.
-        final episode = _runRestartEpisode(policy: policy, exitCode: exitCode);
+        final episode = _runRestartEpisode(policy: policy, port: current.port, exitCode: exitCode);
         _activeRestartEpisode = episode;
         try {
           await episode;
@@ -171,11 +157,11 @@ class ManagedRuntimeMonitor<R>({
     }
   }
 
-  Future<void> _runRestartEpisode({required BoundedRestartPolicy policy, required int exitCode}) async {
-    final port = _pinnedPort;
-    if (port == null) {
-      return;
-    }
+  Future<void> _runRestartEpisode({
+    required BoundedRestartPolicy policy,
+    required int port,
+    required int exitCode,
+  }) async {
     final reason = "runtime exited with code $exitCode";
     final abort = StartAbortController();
     _restartAbort = abort;
@@ -255,32 +241,24 @@ class ManagedRuntimeMonitor<R>({
     }
   }
 
-  void _adoptRestartedHandle(ManagedRuntimeHandle<R> handle) {
-    // Cancel the exited child's stdio drains before wiring the new child's.
-    unawaited(_cancelStdioSubscriptions());
+  void _adoptRestartedHandle(OwnedRuntimeHandle<R> handle) {
+    // Cancel the exited child's stderr logger before wiring the new child's.
+    unawaited(_cancelStderrSubscription());
     _currentHandle = handle;
-    final process = handle.process;
     // When disarmed (a shutdown raced this restart), the child is now tracked
     // and reachable via _currentHandle for the owner's stop, but it must not be
     // re-watched: a fresh exit watch could only fire after disarm and would be
-    // dropped anyway, and leaving stdio subscriptions would be a needless leak.
-    if (process != null && !_disarmed) {
-      _watchProcess(process);
+    // dropped anyway, and leaving a stderr subscription would be a needless leak.
+    if (!_disarmed) {
+      _watchProcess(handle.process);
     }
   }
 
-  Future<void> _cancelStdioSubscriptions() async {
-    final stdoutSubscription = _stdoutSubscription;
+  Future<void> _cancelStderrSubscription() async {
     final stderrSubscription = _stderrSubscription;
-    _stdoutSubscription = null;
     _stderrSubscription = null;
     // This runs unawaited from _adoptRestartedHandle, so a throwing cancel would
     // surface as an unhandled async error; swallow (logged) to keep teardown safe.
-    try {
-      await stdoutSubscription?.cancel();
-    } on Object catch (error, stackTrace) {
-      Log.w("[$_runtimeId] Failed to cancel the runtime stdout drain", error, stackTrace);
-    }
     try {
       await stderrSubscription?.cancel();
     } on Object catch (error, stackTrace) {

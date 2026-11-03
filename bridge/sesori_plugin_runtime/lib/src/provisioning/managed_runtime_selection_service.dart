@@ -6,6 +6,7 @@ import "runtime_manifest.dart";
 import "runtime_version.dart";
 import "runtime_version_validator.dart";
 
+/// Where the selected runtime came from; shown in the startup log.
 enum ManagedRuntimeSource() {
   explicit,
   path,
@@ -23,43 +24,11 @@ final class const ManagedRuntimeVersionRejected({required final RuntimeVersion v
 
 sealed class const ManagedRuntimeSelection();
 
-sealed class const ManagedRuntimeSelected() extends ManagedRuntimeSelection {
-  String get binaryPath;
-  ManagedRuntimeSource get source;
-  RuntimeVersion get version;
-}
-
-final class const ManagedRuntimeExplicitSelected({
-  @override required final String binaryPath,
-  @override required final RuntimeVersion version,
-}) extends ManagedRuntimeSelected {
-  @override
-  ManagedRuntimeSource get source => ManagedRuntimeSource.explicit;
-}
-
-final class const ManagedRuntimePathSelected({
-  @override required final String binaryPath,
-  @override required final RuntimeVersion version,
-}) extends ManagedRuntimeSelected {
-  @override
-  ManagedRuntimeSource get source => ManagedRuntimeSource.path;
-}
-
-final class const ManagedRuntimeFallbackSelected({
-  @override required final String binaryPath,
-  @override required final RuntimeVersion version,
-}) extends ManagedRuntimeSelected {
-  @override
-  ManagedRuntimeSource get source => ManagedRuntimeSource.fallback;
-}
-
-final class const ManagedRuntimeManagedSelected({
-  @override required final String binaryPath,
-  @override required final RuntimeVersion version,
-}) extends ManagedRuntimeSelected {
-  @override
-  ManagedRuntimeSource get source => ManagedRuntimeSource.managed;
-}
+final class const ManagedRuntimeSelected({
+  required final String binaryPath,
+  required final ManagedRuntimeSource source,
+  required final RuntimeVersion version,
+}) extends ManagedRuntimeSelection;
 
 sealed class const ManagedRuntimeNotSelected() extends ManagedRuntimeSelection {
   ManagedRuntimeRejection get primaryRejection;
@@ -104,8 +73,9 @@ class ManagedRuntimeSelectionService({
       );
       return switch (probe) {
         RuntimeProbeReady(:final version) when version.compareTo(_manifest.minPathVersion) >= 0 =>
-          ManagedRuntimeExplicitSelected(
+          ManagedRuntimeSelected(
             binaryPath: explicitExecutablePath,
+            source: ManagedRuntimeSource.explicit,
             version: version,
           ),
         RuntimeProbeReady(:final version) => ManagedRuntimeExplicitNotSelected(
@@ -124,8 +94,9 @@ class ManagedRuntimeSelectionService({
     );
     switch (pathProbe) {
       case RuntimeProbeReady(:final version) when version.compareTo(_manifest.minPathVersion) >= 0:
-        return ManagedRuntimePathSelected(
+        return ManagedRuntimeSelected(
           binaryPath: _manifest.pathExecutableName,
+          source: ManagedRuntimeSource.path,
           version: version,
         );
       case RuntimeProbeReady():
@@ -145,8 +116,9 @@ class ManagedRuntimeSelectionService({
         abortSignal: abortSignal,
       );
       if (probe case RuntimeProbeReady(:final version) when version.compareTo(_manifest.minPathVersion) >= 0) {
-        return ManagedRuntimeFallbackSelected(
+        return ManagedRuntimeSelected(
           binaryPath: candidate,
+          source: ManagedRuntimeSource.fallback,
           version: version,
         );
       }
@@ -169,8 +141,9 @@ class ManagedRuntimeSelectionService({
       abortSignal: abortSignal,
     );
     if (pinnedProbe case RuntimeProbeReady(:final version) when _isSupported(version: version)) {
-      return ManagedRuntimeManagedSelected(
+      return ManagedRuntimeSelected(
         binaryPath: pinnedPath,
+        source: ManagedRuntimeSource.managed,
         version: version,
       );
     }
@@ -185,8 +158,9 @@ class ManagedRuntimeSelectionService({
         abortSignal: abortSignal,
       );
       if (probe case RuntimeProbeReady(:final version) when _isSupported(version: version)) {
-        return ManagedRuntimeManagedSelected(
+        return ManagedRuntimeSelected(
           binaryPath: candidatePath,
+          source: ManagedRuntimeSource.managed,
           version: version,
         );
       }

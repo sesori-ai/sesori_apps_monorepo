@@ -81,16 +81,18 @@ class const _SemverManifest() extends RuntimeManifest {
 }
 
 void main() {
-  group("RuntimeVersionValidator.detectVersion", () {
-    Future<RuntimeVersion?> detect(_FakeCommandExecutor executor) {
-      return RuntimeVersionValidator(
+  group("RuntimeVersionValidator.probe version parsing", () {
+    Future<RuntimeVersion?> detect(_FakeCommandExecutor executor) async {
+      final validator = RuntimeVersionValidator(
         commandExecutor: executor,
         manifest: const _SemverManifest(),
         executableLocator: _presentLocator,
-      ).detectVersion(
-        executable: "opencode",
-        environment: const {"PATH": "/usr/bin"},
       );
+      final outcome = await validator.probe(executable: "opencode", environment: const {"PATH": "/usr/bin"});
+      return switch (outcome) {
+        RuntimeProbeReady(:final version) => version,
+        RuntimeProbeFailure() => null,
+      };
     }
 
     test("parses a bare version string", () async {

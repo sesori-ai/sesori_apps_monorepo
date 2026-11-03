@@ -33,7 +33,6 @@ void main() {
           processRunner: NoopProcessRunner(),
           clock: const ServerClock(),
           isWindows: false,
-          platform: 'linux',
           inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
         ),
         currentUser: null,

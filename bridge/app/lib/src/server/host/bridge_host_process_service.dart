@@ -23,7 +23,6 @@ class BridgeHostProcessService({
   required final ServerClock _clock,
   required final ProcessUser? _currentUser,
   required final bool _isWindows,
-  required final String _platform,
 }) implements HostProcessService {
   @override
   Future<SpawnedProcess> spawn({
@@ -49,7 +48,6 @@ class BridgeHostProcessService({
       executablePath: executable,
       commandLine: [executable, ...arguments].join(" "),
       ownerUser: _currentUser,
-      platform: _platform,
       capturedAt: _clock.now(),
     );
 
