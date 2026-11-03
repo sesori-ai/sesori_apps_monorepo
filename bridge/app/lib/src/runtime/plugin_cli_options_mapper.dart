@@ -55,9 +55,9 @@ final class const PluginCliOptionsMapper({
       final canonical = _flagName(optionName: option.name);
       switch (option) {
         case PluginFlagOption():
-          values[option.name] = results[canonical] as bool;
+          values[option.name] = results.flag(canonical);
         case PluginValueOption():
-          final raw = results[canonical] as String?;
+          final raw = results.option(canonical);
           values[option.name] = raw;
           final validate = option.validate;
           if (validate != null && raw != null && raw.isNotEmpty) {

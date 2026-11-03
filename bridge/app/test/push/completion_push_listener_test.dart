@@ -84,12 +84,12 @@ void main() {
       final harness = _newHarness();
 
       harness.listener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "session-a", title: "Session A"),
         ),
       );
       harness.listener.handleSseEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
           displaySessionId: null,
@@ -109,10 +109,10 @@ void main() {
         // No session created/updated event: the root was pruned for idleness or
         // predates this bridge run, so only the stored title is left.
         harness.listener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.listener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -142,17 +142,17 @@ void main() {
         harness.listener.start();
 
         harness.listener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "root", title: "Root task"),
           ),
         );
         harness.listener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "root"),
           ),
         );
         harness.listener.handleSseEvent(
-          const SesoriSseEvent.messageUpdated(
+          event: const SesoriSseEvent.messageUpdated(
             info: Message.assistant(
               id: "msg-1",
               sessionID: "child",
@@ -164,7 +164,7 @@ void main() {
           ),
         );
         harness.listener.handleSseEvent(
-          const SesoriSseEvent.messagePartUpdated(
+          event: const SesoriSseEvent.messagePartUpdated(
             part: MessagePart.text(
               id: "part-1",
               sessionID: "child",
@@ -178,8 +178,8 @@ void main() {
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
 
-        expect(harness.tracker.getLatestAssistantText("root"), isNull);
-        expect(harness.tracker.getLatestAssistantText("child"), isNull);
+        expect(harness.tracker.getLatestAssistantText(sessionId: "root"), isNull);
+        expect(harness.tracker.getLatestAssistantText(sessionId: "child"), isNull);
         expect(harness.dispatcher.dispatchedRootSessionIds, equals(["root"]));
       });
     });
@@ -194,10 +194,10 @@ class _Harness({
 }) {
   void emitCompletion({required String rootSessionId}) {
     listener.handleSseEvent(
-      SesoriSseEvent.sessionCreated(info: _session(id: rootSessionId)),
+      event: SesoriSseEvent.sessionCreated(info: _session(id: rootSessionId)),
     );
     listener.handleSseEvent(
-      SesoriSseEvent.sessionUpdated(
+      event: SesoriSseEvent.sessionUpdated(
         info: _session(id: rootSessionId, title: "Session $rootSessionId"),
       ),
     );
@@ -216,7 +216,7 @@ class _Harness({
   }
 
   void _dispatch(SesoriSseEvent event) {
-    listener.handleSseEvent(event);
+    listener.handleSseEvent(event: event);
   }
 }
 
@@ -261,7 +261,7 @@ class _FakePushDispatcher() implements PushDispatcher {
   }
 
   @override
-  void dispatchImmediateIfApplicable(SesoriSseEvent event) {
+  void dispatchImmediateIfApplicable({required SesoriSseEvent event}) {
     immediateEvents.add(event);
   }
 }

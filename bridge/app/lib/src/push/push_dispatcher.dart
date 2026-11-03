@@ -18,7 +18,7 @@ class PushDispatcher({
   required final PushNotificationContentBuilder _contentBuilder,
   required final BridgeIdProvider _bridgeIdProvider,
 }) {
-  void dispatchImmediateIfApplicable(SesoriSseEvent event) {
+  void dispatchImmediateIfApplicable({required SesoriSseEvent event}) {
     _sendImmediateNotificationIfApplicable(event);
   }
 
@@ -39,7 +39,7 @@ class PushDispatcher({
   }
 
   void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
-    final notificationData = _contentBuilder.extractNotificationData(event);
+    final notificationData = _contentBuilder.extractNotificationData(event: event);
     if (notificationData == null) {
       return;
     }
@@ -104,7 +104,7 @@ class PushDispatcher({
     );
 
     unawaited(
-      _client.sendNotification(payload).catchError((Object e, StackTrace stackTrace) {
+      _client.sendNotification(payload: payload).catchError((Object e, StackTrace stackTrace) {
         if (e is TokenRefreshException || (e is PushSendException && e.statusCode == 401)) {
           Log.e("[push] auth failure, credentials may need re-authentication", e, stackTrace);
         } else {

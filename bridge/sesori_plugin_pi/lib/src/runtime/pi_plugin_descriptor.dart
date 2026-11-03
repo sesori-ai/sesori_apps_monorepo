@@ -250,11 +250,16 @@ final class const PiPluginDescriptor({
       runtimeVersion: runtimeVersion,
     );
 
+    final commandExecutor = _commandExecutor(processes: processes);
     final CommandResult result;
     try {
-      result = await _commandExecutor(
-        processes: processes,
-      ).run(binaryPath, const ["--list-models"], environment: environment, timeout: _versionProbeTimeout);
+      result = await commandExecutor.run(
+        executable: binaryPath,
+        arguments: const ["--list-models"],
+        workingDirectory: null,
+        environment: environment,
+        timeout: _versionProbeTimeout,
+      );
     } on Object catch (error, stackTrace) {
       Log.w("[${PiPluginIdentity.id}] model listing probe failed for '$binaryPath --list-models'", error, stackTrace);
       return undetermined();

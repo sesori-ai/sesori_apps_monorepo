@@ -428,7 +428,13 @@ class RuntimeInstallService({
       // existing managed-runtime and Antigravity profile trust boundary.
       return;
     }
-    final CommandResult result = await _commandExecutor.run("chmod", ["700", directoryPath]);
+    final CommandResult result = await _commandExecutor.run(
+      executable: "chmod",
+      arguments: ["700", directoryPath],
+      workingDirectory: null,
+      environment: null,
+      timeout: null,
+    );
     if (result.exitCode != 0) {
       throw RuntimeInstallException(
         "failed to make managed runtime validation private (chmod exit ${result.exitCode}): ${result.stderr.trim()}",
@@ -440,7 +446,13 @@ class RuntimeInstallService({
     if (Platform.isWindows) {
       return;
     }
-    final CommandResult result = await _commandExecutor.run("chmod", ["+x", binaryPath]);
+    final CommandResult result = await _commandExecutor.run(
+      executable: "chmod",
+      arguments: ["+x", binaryPath],
+      workingDirectory: null,
+      environment: null,
+      timeout: null,
+    );
     if (result.exitCode != 0) {
       throw RuntimeInstallException(
         "failed to mark $assetName executable (chmod exit ${result.exitCode}): ${result.stderr.trim()}",

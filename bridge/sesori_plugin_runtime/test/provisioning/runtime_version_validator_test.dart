@@ -15,12 +15,12 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
   Duration? ranTimeout;
 
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     ranExecutable = executable;
     ranArguments = arguments;

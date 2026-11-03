@@ -22,8 +22,8 @@ class CompletionNotifier({
 
   Stream<String> get completions => _completionController.stream;
 
-  void markSessionAbortPending(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+  void markSessionAbortPending({required String sessionId}) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionId);
     _pendingAbortRoots.add(rootSessionId);
     _cancelDebounceForRoot(rootSessionId);
   }
@@ -31,15 +31,15 @@ class CompletionNotifier({
   /// Marks a session as user-aborted so the next idle transition does not
   /// trigger a completion notification. The flag is cleared when the session
   /// becomes busy again (new turn) or is deleted.
-  void markSessionAborted(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+  void markSessionAborted({required String sessionId}) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionId);
     _pendingAbortRoots.remove(rootSessionId);
     _abortedRoots.add(rootSessionId);
     _cancelDebounceForRoot(rootSessionId);
   }
 
-  void clearPendingAbort(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+  void clearPendingAbort({required String sessionId}) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionId);
     final wasPending = _pendingAbortRoots.remove(rootSessionId);
     if (!wasPending) {
       return;
@@ -49,7 +49,7 @@ class CompletionNotifier({
 
   /// Process an SSE event for completion tracking.
   /// Call AFTER tracker.handleEvent() has already updated state.
-  void handleEvent(SesoriSseEvent event) {
+  void handleEvent({required SesoriSseEvent event}) {
     switch (event) {
       // A new question blocks completion for this session group.
       case SesoriQuestionAsked(:final sessionID):
@@ -59,7 +59,7 @@ class CompletionNotifier({
         _cancelDebounceForSessionGroup(sessionID);
       // Session status transitions determine when completion can fire.
       case SesoriSessionStatus(:final sessionID, :final status):
-        final rootSessionId = _tracker.resolveRootSessionId(sessionID);
+        final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionID);
         switch (status) {
           case SessionStatusBusy():
           case SessionStatusRetry():
@@ -69,7 +69,8 @@ class CompletionNotifier({
             _abortedRoots.remove(rootSessionId);
             _cancelDebounceForRoot(rootSessionId);
           case SessionStatusIdle():
-            if (_tracker.isSessionGroupFullyIdle(rootSessionId) && _tracker.hasPendingInteraction(rootSessionId)) {
+            if (_tracker.isSessionGroupFullyIdle(sessionId: rootSessionId) &&
+                _tracker.hasPendingInteraction(sessionId: rootSessionId)) {
               // The agent finished while prompts are still pending. Block
               // completion until the user resolves all of them.
               _completionBlockedByPendingInteraction.add(rootSessionId);
@@ -95,7 +96,7 @@ class CompletionNotifier({
             // a mid-level child in a deeper hierarchy. The tracker has already
             // processed this deletion, yet the parent chain above the deleted
             // session is intact, so resolution still reaches the real root.
-            rootSessionId: _tracker.resolveRootSessionId(parentId),
+            rootSessionId: _tracker.resolveRootSessionId(sessionId: parentId),
             originalSessionId: info.id,
           );
         }
@@ -155,7 +156,7 @@ class CompletionNotifier({
   /// so an already-idle session can still fire completion once the last blocker
   /// is removed.
   void _maybeResumeBlockedCompletion(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionId);
     _maybeResumeBlockedCompletionForRoot(
       rootSessionId: rootSessionId,
       originalSessionId: sessionId,
@@ -185,9 +186,9 @@ class CompletionNotifier({
     if (blockedKey == null) {
       return;
     }
-    if (_tracker.wasPreviouslyBusy(rootSessionId) &&
-        _tracker.isSessionGroupFullyIdle(rootSessionId) &&
-        !_tracker.hasPendingInteraction(rootSessionId)) {
+    if (_tracker.wasPreviouslyBusy(sessionId: rootSessionId) &&
+        _tracker.isSessionGroupFullyIdle(sessionId: rootSessionId) &&
+        !_tracker.hasPendingInteraction(sessionId: rootSessionId)) {
       _completionBlockedByPendingInteraction.remove(blockedKey);
       _maybeScheduleCompletion(rootSessionId);
     }
@@ -195,7 +196,7 @@ class CompletionNotifier({
 
   /// Schedules (or reschedules) completion emission for [sessionId]'s root.
   void _maybeScheduleCompletion(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionId);
     if (!_shouldTriggerCompletion(rootSessionId)) {
       _cancelDebounceForRoot(rootSessionId);
       return;
@@ -208,7 +209,7 @@ class CompletionNotifier({
       // Re-resolve: parent links may have been established during the debounce
       // window (e.g., from a SesoriProjectsSummary or late SesoriSessionCreated).
       // If this session is now known to be a child, reschedule for the real root.
-      final currentRoot = _tracker.resolveRootSessionId(rootSessionId);
+      final currentRoot = _tracker.resolveRootSessionId(sessionId: rootSessionId);
       if (currentRoot != rootSessionId) {
         _maybeScheduleCompletion(rootSessionId);
         return;
@@ -227,9 +228,9 @@ class CompletionNotifier({
 
   /// Returns true when completion notification criteria are satisfied.
   bool _shouldTriggerCompletion(String rootSessionId) {
-    return _tracker.wasPreviouslyBusy(rootSessionId) &&
-        _tracker.isSessionGroupFullyIdle(rootSessionId) &&
-        !_tracker.hasPendingInteraction(rootSessionId) &&
+    return _tracker.wasPreviouslyBusy(sessionId: rootSessionId) &&
+        _tracker.isSessionGroupFullyIdle(sessionId: rootSessionId) &&
+        !_tracker.hasPendingInteraction(sessionId: rootSessionId) &&
         !_completionSentForRoots.contains(rootSessionId) &&
         !_pendingAbortRoots.contains(rootSessionId) &&
         !_abortedRoots.contains(rootSessionId);
@@ -237,7 +238,7 @@ class CompletionNotifier({
 
   /// Cancels debounce timers for a session and its current root session.
   void _cancelDebounceForSessionGroup(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId: sessionId);
     _cancelDebounceForRoot(rootSessionId);
     if (rootSessionId != sessionId) {
       // Also cancel any timer for sessionId itself, in case it was

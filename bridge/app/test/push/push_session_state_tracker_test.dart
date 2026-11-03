@@ -8,74 +8,74 @@ void main() {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
           status: SessionStatus.busy(since: null),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("session-a"), isFalse);
-      expect(tracker.wasPreviouslyBusy("session-a"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "session-a"), isFalse);
+      expect(tracker.wasPreviouslyBusy(sessionId: "session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
           status: SessionStatus.retry(attempt: 2, message: "retry", next: 1000, since: null),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("session-a"), isFalse);
-      expect(tracker.wasPreviouslyBusy("session-a"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "session-a"), isFalse);
+      expect(tracker.wasPreviouslyBusy(sessionId: "session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
           status: SessionStatus.idle(),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("session-a"), isTrue);
-      expect(tracker.wasPreviouslyBusy("session-a"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "session-a"), isTrue);
+      expect(tracker.wasPreviouslyBusy(sessionId: "session-a"), isTrue);
     });
 
     test("tracks parent-child relationships from session created and updated", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "parent"),
         ),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "parent"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "child",
           status: SessionStatus.busy(since: null),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("parent"), isFalse);
-      expect(tracker.resolveRootSessionId("child"), equals("parent"));
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "parent"), isFalse);
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("parent"));
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionUpdated(
+        event: SesoriSseEvent.sessionUpdated(
           info: _session(id: "child", parentID: null),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("parent"), isTrue);
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "parent"), isTrue);
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
     });
 
     test("tracks messageID to role from message updated events", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "m-1",
             sessionID: "session-a",
@@ -88,7 +88,7 @@ void main() {
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "part-1",
             sessionID: "session-a",
@@ -98,14 +98,14 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("session-a"), equals("assistant text"));
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), equals("assistant text"));
     });
 
     test("tracks latest assistant text only for assistant text parts", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "assistant-msg",
             sessionID: "session-a",
@@ -117,7 +117,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "part-1",
             sessionID: "session-a",
@@ -127,7 +127,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "part-2",
             sessionID: "session-a",
@@ -137,10 +137,10 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("session-a"), equals("latest"));
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), equals("latest"));
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "system-msg",
             sessionID: "session-a",
@@ -153,7 +153,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "part-system",
             sessionID: "session-a",
@@ -163,56 +163,56 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("session-a"), equals("latest"));
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), equals("latest"));
     });
 
     test("tracks pending questions and clears on replied or rejected", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
           displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(
+        event: const SesoriSseEvent.questionReplied(
           requestID: "q-1",
           sessionID: "session-a",
           displaySessionId: null,
         ),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isFalse);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-2",
           sessionID: "session-a",
           displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionRejected(
+        event: const SesoriSseEvent.questionRejected(
           requestID: "q-2",
           sessionID: "session-a",
           displaySessionId: null,
         ),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isFalse);
     });
 
     test("tracks pending permissions and clears them on reply", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.permissionAsked(
+        event: const SesoriSseEvent.permissionAsked(
           requestID: "req-1",
           sessionID: "session-a",
           displaySessionId: null,
@@ -221,10 +221,10 @@ void main() {
         ),
       );
 
-      expect(tracker.hasPendingInteraction("session-a"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.permissionReplied(
+        event: const SesoriSseEvent.permissionReplied(
           requestID: "req-1",
           sessionID: "session-a",
           displaySessionId: null,
@@ -232,97 +232,101 @@ void main() {
         ),
       );
 
-      expect(tracker.hasPendingInteraction("session-a"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isFalse);
     });
 
     test("isSessionGroupFullyIdle is true only when session and direct children are idle", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child-1", parentID: "root"),
         ),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child-2", parentID: "root"),
         ),
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "child-1",
           status: SessionStatus.busy(since: null),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isFalse);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "child-1",
           status: SessionStatus.idle(),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isTrue);
     });
 
     test("isSessionGroupFullyIdle returns false when a grandchild is busy", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "grandchild", parentID: "child"),
         ),
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "grandchild",
           status: SessionStatus.busy(since: null),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isFalse);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "grandchild",
           status: SessionStatus.idle(),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isTrue);
     });
 
     test("hasPendingInteraction returns true for pending question or permission", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
           displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
+        event: const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isFalse);
 
       tracker.handleEvent(
-        const SesoriSseEvent.permissionAsked(
+        event: const SesoriSseEvent.permissionAsked(
           requestID: "req-1",
           sessionID: "session-a",
           displaySessionId: null,
@@ -330,7 +334,7 @@ void main() {
           description: "run",
         ),
       );
-      expect(tracker.hasPendingInteraction("session-a"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "session-a"), isTrue);
     });
 
     test("hasPendingInteraction includes direct child sessions", () {
@@ -338,55 +342,57 @@ void main() {
 
       // Register parent and child.
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "parent"),
         ),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "parent"),
         ),
       );
 
       // No pending on either.
-      expect(tracker.hasPendingInteraction("parent"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "parent"), isFalse);
 
       // Question on child → parent group has pending interaction.
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-child",
           sessionID: "child",
           displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
-      expect(tracker.hasPendingInteraction("parent"), isTrue);
-      expect(tracker.hasPendingInteraction("child"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "parent"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "child"), isTrue);
 
       // Reply clears it.
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(requestID: "q-child", sessionID: "child", displaySessionId: null),
+        event: const SesoriSseEvent.questionReplied(requestID: "q-child", sessionID: "child", displaySessionId: null),
       );
-      expect(tracker.hasPendingInteraction("parent"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "parent"), isFalse);
     });
 
     test("hasPendingInteraction includes grandchild sessions", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "grandchild", parentID: "child"),
         ),
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-grandchild",
           sessionID: "grandchild",
           displaySessionId: null,
@@ -394,26 +400,26 @@ void main() {
         ),
       );
 
-      expect(tracker.hasPendingInteraction("root"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "root"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(
+        event: const SesoriSseEvent.questionReplied(
           requestID: "q-grandchild",
           sessionID: "grandchild",
           displaySessionId: null,
         ),
       );
 
-      expect(tracker.hasPendingInteraction("root"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "root"), isFalse);
     });
 
     test("getLatestAssistantText returns cached text or null", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      expect(tracker.getLatestAssistantText("session-a"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), isNull);
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "m-1",
             sessionID: "session-a",
@@ -425,7 +431,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "p-1",
             sessionID: "session-a",
@@ -435,43 +441,43 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("session-a"), equals("hello"));
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), equals("hello"));
     });
 
     test("wasPreviouslyBusy true only when session was seen busy before idle", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      expect(tracker.wasPreviouslyBusy("session-a"), isFalse);
+      expect(tracker.wasPreviouslyBusy(sessionId: "session-a"), isFalse);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
           status: SessionStatus.busy(since: null),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
           status: SessionStatus.idle(),
         ),
       );
 
-      expect(tracker.wasPreviouslyBusy("session-a"), isTrue);
+      expect(tracker.wasPreviouslyBusy(sessionId: "session-a"), isTrue);
     });
 
     test("handleEvent processes events and updates state", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "root", title: "Root title"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "root",
           displaySessionId: null,
@@ -479,8 +485,8 @@ void main() {
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
-      expect(tracker.hasPendingInteraction("root"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isFalse);
+      expect(tracker.hasPendingInteraction(sessionId: "root"), isTrue);
     });
 
     test("cleans up session state on session deleted", () {
@@ -488,20 +494,20 @@ void main() {
 
       tracker
         ..handleEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "root", title: "Root"),
           ),
         )
         ..handleEvent(
-          SesoriSseEvent.sessionCreated(
+          event: SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "root"),
           ),
         )
         ..handleEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+          event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         )
         ..handleEvent(
-          const SesoriSseEvent.questionAsked(
+          event: const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "root",
             displaySessionId: null,
@@ -509,7 +515,7 @@ void main() {
           ),
         )
         ..handleEvent(
-          const SesoriSseEvent.permissionAsked(
+          event: const SesoriSseEvent.permissionAsked(
             requestID: "req-1",
             sessionID: "root",
             displaySessionId: null,
@@ -519,24 +525,28 @@ void main() {
         );
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionDeleted(
+        event: SesoriSseEvent.sessionDeleted(
           info: _session(id: "root", title: "Root"),
         ),
       );
 
-      expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
-      expect(tracker.hasPendingInteraction("root"), isFalse);
-      expect(tracker.wasPreviouslyBusy("root"), isFalse);
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isTrue);
+      expect(tracker.hasPendingInteraction(sessionId: "root"), isFalse);
+      expect(tracker.wasPreviouslyBusy(sessionId: "root"), isFalse);
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
     });
 
     test("session delete removes only indexed message roles for that session", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "other")));
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "other")),
+      );
+      tracker.handleEvent(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "root-msg",
             sessionID: "root",
@@ -548,7 +558,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "other-msg",
             sessionID: "other",
@@ -560,12 +570,14 @@ void main() {
         ),
       );
 
-      tracker.handleEvent(SesoriSseEvent.sessionDeleted(info: _session(id: "root")));
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionDeleted(info: _session(id: "root")),
+      );
 
       expect(tracker.messageRoleCount, equals(1));
 
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "root-part",
             sessionID: "root",
@@ -575,7 +587,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "other-part",
             sessionID: "other",
@@ -585,8 +597,8 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("root"), isNull);
-      expect(tracker.getLatestAssistantText("other"), equals("survived delete"));
+      expect(tracker.getLatestAssistantText(sessionId: "root"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "other"), equals("survived delete"));
     });
 
     test("ignores message part updates with non-text type", () {
@@ -594,7 +606,7 @@ void main() {
 
       tracker
         ..handleEvent(
-          const SesoriSseEvent.messageUpdated(
+          event: const SesoriSseEvent.messageUpdated(
             info: Message.assistant(
               id: "m-1",
               sessionID: "session-a",
@@ -606,7 +618,7 @@ void main() {
           ),
         )
         ..handleEvent(
-          const SesoriSseEvent.messagePartUpdated(
+          event: const SesoriSseEvent.messagePartUpdated(
             part: MessagePart.tool(
               id: "p-1",
               sessionID: "session-a",
@@ -615,7 +627,7 @@ void main() {
           ),
         );
 
-      expect(tracker.getLatestAssistantText("session-a"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), isNull);
     });
 
     test("ignores message part updates for non-assistant messages", () {
@@ -623,7 +635,7 @@ void main() {
 
       tracker
         ..handleEvent(
-          const SesoriSseEvent.messageUpdated(
+          event: const SesoriSseEvent.messageUpdated(
             info: Message.user(
               promptId: null,
               id: "m-1",
@@ -634,7 +646,7 @@ void main() {
           ),
         )
         ..handleEvent(
-          const SesoriSseEvent.messagePartUpdated(
+          event: const SesoriSseEvent.messagePartUpdated(
             part: MessagePart.text(
               id: "p-1",
               sessionID: "session-a",
@@ -644,28 +656,28 @@ void main() {
           ),
         );
 
-      expect(tracker.getLatestAssistantText("session-a"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "session-a"), isNull);
     });
 
     test("idle without prior busy does not mark session as previously busy", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
           status: SessionStatus.idle(),
         ),
       );
 
-      expect(tracker.wasPreviouslyBusy("session-a"), isFalse);
-      expect(tracker.isSessionGroupFullyIdle("session-a"), isTrue);
+      expect(tracker.wasPreviouslyBusy(sessionId: "session-a"), isFalse);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "session-a"), isTrue);
     });
 
     test("getSessionProjectId returns stored projectId after session upsert", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "x", projectID: "p1"),
         ),
       );
@@ -683,24 +695,24 @@ void main() {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
 
       // Only child goes busy, root never does.
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
       );
 
       // Root was never busy itself, but its descendant was.
-      expect(tracker.wasPreviouslyBusy("root"), isTrue);
+      expect(tracker.wasPreviouslyBusy(sessionId: "root"), isTrue);
     });
 
     test("projectsSummary establishes parent-child links for status-only sessions", () {
@@ -708,18 +720,18 @@ void main() {
 
       // Sessions created implicitly via status events (e.g., after bridge restart).
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
 
       // Without a projects.summary, the child appears to be a root.
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
 
       // projects.summary arrives and establishes the parent link.
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "project-a",
@@ -737,24 +749,26 @@ void main() {
         ),
       );
 
-      expect(tracker.resolveRootSessionId("child"), equals("root"));
-      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("root"));
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isFalse);
     });
 
     test("projectsSummary does not overwrite parent links from sessionCreated", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Proper creation events establish parent link.
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
 
       // A summary with stale or different data should not overwrite.
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "project-a",
@@ -773,14 +787,14 @@ void main() {
       );
 
       // Parent link from sessionCreated is preserved.
-      expect(tracker.resolveRootSessionId("child"), equals("root"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("root"));
     });
 
     test("root session gets projectId from projects summary", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "proj-a",
@@ -799,7 +813,7 @@ void main() {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "proj-a",
@@ -824,12 +838,12 @@ void main() {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "sess-1", projectID: "proj-old"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "proj-new",
@@ -849,18 +863,18 @@ void main() {
 
       // Three sessions known only via status events.
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy(since: null)),
       );
 
       // Two summaries establish root→child and child→grandchild.
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "project-a",
@@ -885,22 +899,22 @@ void main() {
         ),
       );
 
-      expect(tracker.resolveRootSessionId("grandchild"), equals("root"));
-      expect(tracker.resolveRootSessionId("child"), equals("root"));
+      expect(tracker.resolveRootSessionId(sessionId: "grandchild"), equals("root"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("root"));
 
       // Grandchild busy keeps entire group non-idle.
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
       );
-      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isFalse);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.idle()),
       );
-      expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "root"), isTrue);
     });
 
     test("resolveRootSessionId stops at child when parent entry is missing", () {
@@ -908,42 +922,44 @@ void main() {
 
       // Child has parentId set via sessionCreated, but parent was never seen.
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "unknown-parent"),
         ),
       );
 
       // Cannot walk up because parent is not in _sessions.
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
 
       // Once the parent appears (e.g., via a summary), the link works.
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(
+        event: const SesoriSseEvent.sessionStatus(
           sessionID: "unknown-parent",
           status: SessionStatus.busy(since: null),
         ),
       );
-      expect(tracker.resolveRootSessionId("child"), equals("unknown-parent"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("unknown-parent"));
     });
 
     test("prunes an idle subtree", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
       final tracker = PushSessionStateTracker(now: clock.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "assistant-msg",
             sessionID: "child",
@@ -955,7 +971,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "part-1",
             sessionID: "child",
@@ -966,7 +982,7 @@ void main() {
       );
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
       );
 
       clock.advance(const Duration(minutes: 31));
@@ -977,27 +993,31 @@ void main() {
       expect(tracker.messageRoleCount, equals(1));
 
       tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: "root");
-      expect(tracker.getLatestAssistantText("child"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "child"), isNull);
 
       expect(tracker.pruneRootSubtree(rootSessionId: "root"), unorderedEquals(["root", "child"]));
       expect(tracker.sessionCount, equals(0));
       expect(tracker.messageRoleCount, equals(0));
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
     });
 
     test("subtree prune removes only indexed message roles for that subtree", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root-a")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child-a", parentID: "root-a"),
         ),
       );
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root-b")),
+      );
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "pruned-msg",
             sessionID: "child-a",
@@ -1009,7 +1029,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "survivor-msg",
             sessionID: "root-b",
@@ -1025,7 +1045,7 @@ void main() {
       expect(tracker.messageRoleCount, equals(1));
 
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "pruned-part",
             sessionID: "child-a",
@@ -1035,7 +1055,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "survivor-part",
             sessionID: "root-b",
@@ -1045,32 +1065,34 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("child-a"), isNull);
-      expect(tracker.getLatestAssistantText("root-b"), equals("survivor text"));
+      expect(tracker.getLatestAssistantText(sessionId: "child-a"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "root-b"), equals("survivor text"));
     });
 
     test("does not prune busy or pending roots before they become idle long enough", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
       final tracker = PushSessionStateTracker(now: clock.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
 
       clock.advance(const Duration(minutes: 40));
       expect(tracker.findPrunableRoots(), isEmpty);
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.questionAsked(
+        event: const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "child",
           displaySessionId: null,
@@ -1082,7 +1104,7 @@ void main() {
       expect(tracker.findPrunableRoots(), isEmpty);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child", displaySessionId: null),
+        event: const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child", displaySessionId: null),
       );
 
       clock.advance(const Duration(minutes: 31));
@@ -1093,30 +1115,32 @@ void main() {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
       final tracker = PushSessionStateTracker(now: clock.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
       );
 
       clock.advance(const Duration(minutes: 31));
       tracker.pruneRootSubtree(rootSessionId: "root");
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
-      expect(tracker.isSessionGroupFullyIdle("child"), isFalse);
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.isSessionGroupFullyIdle(sessionId: "child"), isFalse);
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "late-msg",
             sessionID: "child",
@@ -1128,7 +1152,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "late-part",
             sessionID: "child",
@@ -1137,15 +1161,17 @@ void main() {
           ),
         ),
       );
-      expect(tracker.getLatestAssistantText("child"), equals("rebuilt text"));
+      expect(tracker.getLatestAssistantText(sessionId: "child"), equals("rebuilt text"));
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionUpdated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionUpdated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
-      expect(tracker.resolveRootSessionId("child"), equals("root"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("root"));
     });
 
     test("prunes stale message roles and enforces the hard cap", () {
@@ -1153,7 +1179,7 @@ void main() {
       final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "expired-msg",
             sessionID: "expired-session",
@@ -1168,7 +1194,7 @@ void main() {
       clock.advance(const Duration(minutes: 31));
       tracker.pruneMessageRoleMetadata();
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "expired-part",
             sessionID: "expired-session",
@@ -1177,11 +1203,11 @@ void main() {
           ),
         ),
       );
-      expect(tracker.getLatestAssistantText("expired-session"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "expired-session"), isNull);
 
       for (var index = 0; index <= PushSessionMaintenancePolicy.messageRoleHardCap; index++) {
         tracker.handleEvent(
-          SesoriSseEvent.messageUpdated(
+          event: SesoriSseEvent.messageUpdated(
             info: Message.assistant(
               id: "msg-$index",
               sessionID: "session-$index",
@@ -1202,7 +1228,7 @@ void main() {
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "oldest-part",
             sessionID: "session-0",
@@ -1211,10 +1237,10 @@ void main() {
           ),
         ),
       );
-      expect(tracker.getLatestAssistantText("session-0"), isNull);
+      expect(tracker.getLatestAssistantText(sessionId: "session-0"), isNull);
 
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "newest-part",
             sessionID: "session-10000",
@@ -1223,7 +1249,7 @@ void main() {
           ),
         ),
       );
-      expect(tracker.getLatestAssistantText("session-10000"), equals("latest kept role"));
+      expect(tracker.getLatestAssistantText(sessionId: "session-10000"), equals("latest kept role"));
     });
 
     test("active assistant message parts refresh role retention timestamps", () {
@@ -1231,7 +1257,7 @@ void main() {
       final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.messageUpdated(
+        event: const SesoriSseEvent.messageUpdated(
           info: Message.assistant(
             id: "stream-msg",
             sessionID: "stream-session",
@@ -1245,7 +1271,7 @@ void main() {
 
       clock.advance(const Duration(minutes: 29));
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "stream-part-1",
             sessionID: "stream-session",
@@ -1258,7 +1284,7 @@ void main() {
       clock.advance(const Duration(minutes: 2));
       tracker.pruneMessageRoleMetadata();
       tracker.handleEvent(
-        const SesoriSseEvent.messagePartUpdated(
+        event: const SesoriSseEvent.messagePartUpdated(
           part: MessagePart.text(
             id: "stream-part-2",
             sessionID: "stream-session",
@@ -1268,15 +1294,17 @@ void main() {
         ),
       );
 
-      expect(tracker.getLatestAssistantText("stream-session"), equals("fresh after prune"));
+      expect(tracker.getLatestAssistantText(sessionId: "stream-session"), equals("fresh after prune"));
     });
 
     test("subtree prune helpers are safe no-ops after a prior prune", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root"),
         ),
       );
@@ -1292,27 +1320,31 @@ void main() {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
       final tracker = PushSessionStateTracker(now: clock.now);
 
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
-      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
       tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root-a")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(info: _session(id: "root-b")),
+      );
+      tracker.handleEvent(
+        event: SesoriSseEvent.sessionCreated(
           info: _session(id: "child", parentID: "root-a"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        SesoriSseEvent.sessionUpdated(
+        event: SesoriSseEvent.sessionUpdated(
           info: _session(id: "child", parentID: "root-b"),
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        event: const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "project-a",
@@ -1330,11 +1362,11 @@ void main() {
         ),
       );
 
-      expect(tracker.resolveRootSessionId("child"), equals("root-b"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("root-b"));
 
       clock.advance(const Duration(minutes: 31));
       expect(tracker.pruneRootSubtree(rootSessionId: "root-a"), equals(["root-a"]));
-      expect(tracker.resolveRootSessionId("child"), equals("root-b"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("root-b"));
       expect(tracker.findPrunableRoots(), contains("root-b"));
     });
 
@@ -1342,18 +1374,18 @@ void main() {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionUpdated(
+        event: SesoriSseEvent.sessionUpdated(
           info: _session(id: "child", parentID: "missing-root"),
         ),
       );
-      expect(tracker.resolveRootSessionId("child"), equals("child"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("child"));
 
       tracker.handleEvent(
-        SesoriSseEvent.sessionDeleted(info: _session(id: "missing-root")),
+        event: SesoriSseEvent.sessionDeleted(info: _session(id: "missing-root")),
       );
 
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "project-a",
@@ -1371,7 +1403,7 @@ void main() {
         ),
       );
 
-      expect(tracker.resolveRootSessionId("child"), equals("repaired-root"));
+      expect(tracker.resolveRootSessionId(sessionId: "child"), equals("repaired-root"));
     });
 
     test("projectsSummary-only roots receive timestamps and become prunable", () {
@@ -1379,7 +1411,7 @@ void main() {
       final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(
-        const SesoriSseEvent.projectsSummary(
+        event: const SesoriSseEvent.projectsSummary(
           projects: [
             ProjectActivitySummary(
               id: "project-a",
@@ -1423,9 +1455,9 @@ void main() {
         ],
       );
 
-      tracker.handleEvent(summaryEvent);
+      tracker.handleEvent(event: summaryEvent);
       clock.advance(const Duration(minutes: 20));
-      tracker.handleEvent(summaryEvent);
+      tracker.handleEvent(event: summaryEvent);
       clock.advance(const Duration(minutes: 11));
 
       expect(tracker.findPrunableRoots(), equals(["root"]));

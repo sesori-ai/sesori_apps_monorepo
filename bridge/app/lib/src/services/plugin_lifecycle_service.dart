@@ -241,7 +241,7 @@ class PluginLifecycleService({
   }) {
     _requireAcceptingRequests();
     if (!_knownPluginIds.contains(pluginId)) {
-      throw PluginManagementPluginNotFoundException(pluginId);
+      throw PluginManagementPluginNotFoundException(pluginId: pluginId);
     }
     if (_lastPublishedManagementSnapshot == null) {
       throw StateError("Plugin management snapshot is not ready.");
@@ -278,7 +278,7 @@ class PluginLifecycleService({
         throw StateError("A non-install command must own response state.");
       }
       throw PluginManagementConflictException(
-        PluginLifecycleConflict(
+        conflict: PluginLifecycleConflict(
           pluginId: pluginId,
           reasons: const [PluginLifecycleConflictReason.transitioning],
           current: _managementRowForPluginId(pluginId),
@@ -287,7 +287,7 @@ class PluginLifecycleService({
     }
     if (_activePluginAuthentications.containsKey(pluginId)) {
       throw PluginManagementConflictException(
-        PluginLifecycleConflict(
+        conflict: PluginLifecycleConflict(
           pluginId: pluginId,
           reasons: const [PluginLifecycleConflictReason.transitioning],
           current: _managementRowForPluginId(pluginId),
@@ -382,7 +382,7 @@ class PluginLifecycleService({
   Future<PluginAuthenticationChallengeResponse> authenticate({required String pluginId}) {
     _requireAcceptingRequests();
     if (!_knownPluginIds.contains(pluginId)) {
-      throw PluginManagementPluginNotFoundException(pluginId);
+      throw PluginManagementPluginNotFoundException(pluginId: pluginId);
     }
     _requireBridgeId();
     final active = _activePluginAuthentications[pluginId];
@@ -392,7 +392,7 @@ class PluginLifecycleService({
       capability: PluginControlCapability.authentication,
     )) {
       throw PluginAuthenticationConflictException(
-        PluginAuthenticationConflict(
+        conflict: PluginAuthenticationConflict(
           pluginId: pluginId,
           reasons: const [PluginAuthenticationConflictReason.unsupported],
           current: _managementRowForPluginId(pluginId),
@@ -401,7 +401,7 @@ class PluginLifecycleService({
     }
     if (_activePluginCommands.containsKey(pluginId)) {
       throw PluginAuthenticationConflictException(
-        PluginAuthenticationConflict(
+        conflict: PluginAuthenticationConflict(
           pluginId: pluginId,
           reasons: const [PluginAuthenticationConflictReason.inFlight],
           current: _managementRowForPluginId(pluginId),
@@ -410,7 +410,7 @@ class PluginLifecycleService({
     }
     if (_setupOf(pluginId: pluginId) is! PluginSetupAuthenticationRequired) {
       throw PluginAuthenticationConflictException(
-        PluginAuthenticationConflict(
+        conflict: PluginAuthenticationConflict(
           pluginId: pluginId,
           reasons: const [PluginAuthenticationConflictReason.setupNotRequired],
           current: _managementRowForPluginId(pluginId),
@@ -457,7 +457,7 @@ class PluginLifecycleService({
   }) async {
     _requireAcceptingRequests();
     if (!_knownPluginIds.contains(pluginId)) {
-      throw PluginManagementPluginNotFoundException(pluginId);
+      throw PluginManagementPluginNotFoundException(pluginId: pluginId);
     }
     _requireBridgeId();
     final authentication = _activePluginAuthentications[pluginId];
@@ -508,7 +508,7 @@ class PluginLifecycleService({
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
     _requireAcceptingRequests();
     if (!_knownPluginIds.contains(pluginId)) {
-      throw PluginManagementPluginNotFoundException(pluginId);
+      throw PluginManagementPluginNotFoundException(pluginId: pluginId);
     }
     _requireBridgeId();
     if (!_supportsManagementCapability(
@@ -516,7 +516,7 @@ class PluginLifecycleService({
       capability: PluginControlCapability.authentication,
     )) {
       throw PluginAuthenticationConflictException(
-        PluginAuthenticationConflict(
+        conflict: PluginAuthenticationConflict(
           pluginId: pluginId,
           reasons: const [PluginAuthenticationConflictReason.unsupported],
           current: _managementRowForPluginId(pluginId),
@@ -799,7 +799,7 @@ class PluginLifecycleService({
       case PluginIdleTimeoutSetOverrideRequest(:final pluginId) ||
           PluginIdleTimeoutClearOverrideRequest(:final pluginId):
         if (!_knownPluginIds.contains(pluginId)) {
-          throw PluginManagementPluginNotFoundException(pluginId);
+          throw PluginManagementPluginNotFoundException(pluginId: pluginId);
         }
     }
     _requireBridgeId();
@@ -919,14 +919,14 @@ class PluginLifecycleService({
     switch (result) {
       case PluginRuntimeCommandConflict(:final reasons):
         throw PluginManagementConflictException(
-          PluginLifecycleConflict(
+          conflict: PluginLifecycleConflict(
             pluginId: pluginId,
             reasons: reasons.map(_mapConflictReason).toList(growable: false),
             current: _managementRowForPluginId(pluginId),
           ),
         );
       case PluginRuntimeCommandFailed(:final message):
-        throw PluginManagementCommandFailedException(message);
+        throw PluginManagementCommandFailedException(message: message);
       case PluginRuntimeCommandApplied() || PluginRuntimeCommandCurrent():
         break;
     }
@@ -938,18 +938,18 @@ class PluginLifecycleService({
         _lifecycleRepository.rollbackDisable(pluginId: pluginId);
       } on Object catch (rollbackError) {
         throw PluginManagementCommandFailedException(
-          "Plugin disable persistence failed ($error) and runtime rollback failed ($rollbackError).",
+          message: "Plugin disable persistence failed ($error) and runtime rollback failed ($rollbackError).",
         );
       }
       _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
-      throw PluginManagementCommandFailedException("Plugin disable persistence failed: $error");
+      throw PluginManagementCommandFailedException(message: "Plugin disable persistence failed: $error");
     }
 
     try {
       _lifecycleRepository.commitDisable(pluginId: pluginId);
     } on Object catch (error) {
       _setEligibility(pluginId: pluginId, eligible: false);
-      throw PluginManagementCommandFailedException("Plugin disable commit failed: $error");
+      throw PluginManagementCommandFailedException(message: "Plugin disable commit failed: $error");
     }
     _setEligibility(pluginId: pluginId, eligible: false);
   }
@@ -961,7 +961,7 @@ class PluginLifecycleService({
   }) async {
     if (!_eligiblePluginIds.contains(pluginId)) {
       throw PluginManagementConflictException(
-        PluginLifecycleConflict(
+        conflict: PluginLifecycleConflict(
           pluginId: pluginId,
           reasons: const [PluginLifecycleConflictReason.notEnabled],
           current: _managementRowForPluginId(pluginId),
@@ -997,11 +997,11 @@ class PluginLifecycleService({
       markUnselectedNotInspected: false,
     );
     if (!identical(_activePluginCommands[pluginId], command)) {
-      throw const PluginManagementCommandFailedException("plugin command was superseded");
+      throw const PluginManagementCommandFailedException(message: "plugin command was superseded");
     }
     final setup = inspected[pluginId];
     if (setup == null) {
-      throw PluginManagementCommandFailedException('Plugin "$pluginId" inspection returned no result.');
+      throw PluginManagementCommandFailedException(message: 'Plugin "$pluginId" inspection returned no result.');
     }
     _applyInspectedSetup(pluginId: pluginId, setup: setup);
     return setup;
@@ -1041,14 +1041,14 @@ class PluginLifecycleService({
         return;
       case PluginRuntimeCommandConflict(:final reasons):
         throw PluginManagementConflictException(
-          PluginLifecycleConflict(
+          conflict: PluginLifecycleConflict(
             pluginId: pluginId,
             reasons: reasons.map(_mapConflictReason).toList(growable: false),
             current: _managementRowForPluginId(pluginId),
           ),
         );
       case PluginRuntimeCommandFailed(:final message):
-        throw PluginManagementCommandFailedException(message);
+        throw PluginManagementCommandFailedException(message: message);
     }
   }
 
@@ -1264,7 +1264,7 @@ class PluginLifecycleService({
   void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {
     if (_isManagementCapabilityAvailable(pluginId: pluginId, capability: capability)) return;
     throw PluginManagementConflictException(
-      PluginLifecycleConflict(
+      conflict: PluginLifecycleConflict(
         pluginId: pluginId,
         reasons: const [PluginLifecycleConflictReason.unsupported],
         current: _managementRowForPluginId(pluginId),
@@ -1603,11 +1603,12 @@ final class const _PluginManagementSnapshot({
   }
 }
 
-class const PluginManagementPluginNotFoundException(final String pluginId) implements Exception;
+class const PluginManagementPluginNotFoundException({required final String pluginId}) implements Exception;
 
-class const PluginManagementConflictException(final PluginLifecycleConflict conflict) implements Exception;
+class const PluginManagementConflictException({required final PluginLifecycleConflict conflict}) implements Exception;
 
-class const PluginAuthenticationConflictException(final PluginAuthenticationConflict conflict) implements Exception;
+class const PluginAuthenticationConflictException({required final PluginAuthenticationConflict conflict})
+    implements Exception;
 
 enum PluginAuthenticationContinuationConflictReason() {
   noActive,
@@ -1622,7 +1623,7 @@ class const PluginAuthenticationContinuationConflictException({
 
 class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 
-class const PluginManagementCommandFailedException(final String message) implements Exception {
+class const PluginManagementCommandFailedException({required final String message}) implements Exception {
   @override
   String toString() => message;
 }

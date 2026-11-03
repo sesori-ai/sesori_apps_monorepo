@@ -28,7 +28,7 @@ class RuntimeProvisionFormatter({required final bool _interactive, required fina
 
   static const int _barWidth = 24;
 
-  String? format(RuntimeProvisionProgress event) {
+  String? format({required RuntimeProvisionProgress event}) {
     switch (event) {
       case ProvisionResolving():
         // Silent: a quick resolution should leave no trace on the happy path.

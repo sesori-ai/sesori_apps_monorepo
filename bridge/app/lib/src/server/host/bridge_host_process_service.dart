@@ -53,7 +53,11 @@ class BridgeHostProcessService({
 
     return _HostSpawnedProcess(
       process: process,
-      identity: await _resolveSpawnedIdentity(spawnIdentity: spawnIdentity, arguments: arguments),
+      identity: await _resolveSpawnedIdentity(
+        spawnIdentity: spawnIdentity,
+        spawnedExecutable: executable,
+        arguments: arguments,
+      ),
     );
   }
 
@@ -74,6 +78,7 @@ class BridgeHostProcessService({
 
   Future<ProcessIdentity> _resolveSpawnedIdentity({
     required ProcessIdentity spawnIdentity,
+    required String spawnedExecutable,
     required List<String> arguments,
   }) async {
     final ProcessIdentity? inspectedIdentity;
@@ -91,6 +96,7 @@ class BridgeHostProcessService({
     if (inspectedIdentity != null &&
         _matchesSpawnedIdentity(
           spawnIdentity: spawnIdentity,
+          spawnedExecutable: spawnedExecutable,
           inspectedIdentity: inspectedIdentity,
           arguments: arguments,
         )) {
@@ -101,6 +107,7 @@ class BridgeHostProcessService({
 
   bool _matchesSpawnedIdentity({
     required ProcessIdentity spawnIdentity,
+    required String spawnedExecutable,
     required ProcessIdentity inspectedIdentity,
     required List<String> arguments,
   }) {
@@ -109,7 +116,7 @@ class BridgeHostProcessService({
     }
 
     if (_isWindows && _isWindowsImageNameOnlyCommandLine(inspectedIdentity.commandLine)) {
-      return _samePath(inspectedIdentity.executablePath, spawnIdentity.executablePath ?? "");
+      return _samePath(actual: inspectedIdentity.executablePath, expected: spawnedExecutable);
     }
 
     final inspectedCommandLine = inspectedIdentity.commandLine;
@@ -130,7 +137,7 @@ class BridgeHostProcessService({
     return spawnArguments.isNotEmpty && inspectedCommandLine.endsWith(" $spawnArguments");
   }
 
-  bool _samePath(String? actual, String expected) {
+  bool _samePath({required String? actual, required String expected}) {
     if (actual == null) {
       return false;
     }

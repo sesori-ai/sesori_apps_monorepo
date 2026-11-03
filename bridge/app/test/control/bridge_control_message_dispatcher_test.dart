@@ -165,7 +165,7 @@ class _FakeControlChannelClient() implements ControlChannelClient {
   }
 
   @override
-  void send(String frame) {}
+  void send({required String frame}) {}
 
   @override
   Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();

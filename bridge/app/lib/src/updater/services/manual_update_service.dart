@@ -47,7 +47,7 @@ class ManualUpdateService({
     } on GitHubRateLimitException catch (error) {
       return ExplicitUpdateFailed(reason: _rateLimitReason(error), logPath: null);
     } on Object catch (error) {
-      if (isTransientNetworkError(error)) {
+      if (isTransientNetworkError(error: error)) {
         return ExplicitUpdateFailed(reason: "couldn't reach GitHub: $error", logPath: null);
       }
       return ExplicitUpdateFailed(reason: error.toString(), logPath: null);

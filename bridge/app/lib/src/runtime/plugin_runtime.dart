@@ -364,11 +364,10 @@ class PluginRuntime({
     if (slot.authentication != null) {
       throw StateError('Plugin "$pluginId" already has an active authentication operation.');
     }
-    final descriptor = slot.registration.descriptor;
-    if (descriptor is! InteractivePluginAuthenticationDescriptor) {
-      throw StateError('Plugin "$pluginId" does not support interactive authentication.');
-    }
-    final authenticationDescriptor = descriptor as InteractivePluginAuthenticationDescriptor;
+    final authenticationDescriptor = switch (slot.registration.descriptor) {
+      final InteractivePluginAuthenticationDescriptor interactive => interactive,
+      _ => throw StateError('Plugin "$pluginId" does not support interactive authentication.'),
+    };
     final abortController = StartAbortController();
     final descriptorOperation = authenticationDescriptor.authenticate(
       config: slot.registration.config,

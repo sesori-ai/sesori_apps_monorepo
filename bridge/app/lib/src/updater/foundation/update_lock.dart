@@ -138,7 +138,7 @@ class UpdateLock({
     try {
       content = await lockFile.readAsString();
     } on FileSystemException catch (error) {
-      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error: error) || !lockFile.existsSync()) {
         return LockAcquireResult.acquired;
       }
       if (isUpdatePermissionDenied(error: error)) {
@@ -195,8 +195,8 @@ class UpdateLock({
 
     if (Platform.isWindows) {
       final ProcessResult result = await _processRunner.run(
-        'powershell',
-        [
+        executable: 'powershell',
+        arguments: [
           '-NoProfile',
           '-Command',
           '(Get-Process -Id $pidToCheck -ErrorAction SilentlyContinue).StartTime.ToUniversalTime().ToString("o")',
@@ -210,8 +210,8 @@ class UpdateLock({
     }
 
     final ProcessResult result = await _processRunner.run(
-      'ps',
-      ['-o', 'lstart=', '-p', '$pidToCheck'],
+      executable: 'ps',
+      arguments: ['-o', 'lstart=', '-p', '$pidToCheck'],
     );
     if (result.exitCode != 0) {
       return null;
@@ -234,8 +234,8 @@ class UpdateLock({
 
     if (Platform.isWindows) {
       final ProcessResult result = await _processRunner.run(
-        'tasklist',
-        ['/FI', 'PID eq $pidToCheck', '/NH'],
+        executable: 'tasklist',
+        arguments: ['/FI', 'PID eq $pidToCheck', '/NH'],
       );
       if (result.exitCode != 0) {
         return false;
@@ -245,8 +245,8 @@ class UpdateLock({
     }
 
     final ProcessResult result = await _processRunner.run(
-      'kill',
-      ['-0', '$pidToCheck'],
+      executable: 'kill',
+      arguments: ['-0', '$pidToCheck'],
     );
     return result.exitCode == 0;
   }
@@ -260,7 +260,7 @@ class UpdateLock({
       await lockFile.delete();
       return LockAcquireResult.acquired;
     } on FileSystemException catch (error) {
-      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error: error) || !lockFile.existsSync()) {
         return LockAcquireResult.acquired;
       }
       if (isUpdatePermissionDenied(error: error)) {

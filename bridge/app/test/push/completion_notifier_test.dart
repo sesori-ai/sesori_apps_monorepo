@@ -693,7 +693,7 @@ void main() {
         async.flushMicrotasks();
         expect(harness.completedRoots, equals(["session-a"]));
 
-        harness.notifier.markSessionAborted("session-a");
+        harness.notifier.markSessionAborted(sessionId: "session-a");
         harness.notifier.cleanupPrunedRootSubtree(
           rootSessionId: "session-a",
           prunedSessionIds: const ["session-a"],
@@ -746,7 +746,7 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
         );
         harness.notifier.handleEvent(
-          const SesoriSseEvent.permissionReplied(
+          event: const SesoriSseEvent.permissionReplied(
             requestID: "perm-old",
             sessionID: "root",
             displaySessionId: null,
@@ -773,13 +773,13 @@ void main() {
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
 
-        harness.notifier.markSessionAbortPending("session-a");
+        harness.notifier.markSessionAbortPending(sessionId: "session-a");
 
         async.elapse(const Duration(milliseconds: 400));
         async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
 
-        harness.notifier.clearPendingAbort("session-a");
+        harness.notifier.clearPendingAbort(sessionId: "session-a");
 
         async.elapse(const Duration(milliseconds: 499));
         async.flushMicrotasks();
@@ -804,8 +804,8 @@ void main() {
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
 
-        harness.notifier.markSessionAbortPending("session-a");
-        harness.notifier.markSessionAborted("session-a");
+        harness.notifier.markSessionAbortPending(sessionId: "session-a");
+        harness.notifier.markSessionAborted(sessionId: "session-a");
 
         async.elapse(const Duration(seconds: 1));
         async.flushMicrotasks();
@@ -1060,8 +1060,8 @@ class _Harness({
   required final List<String> completedRoots,
 }) {
   void dispatch(SesoriSseEvent event) {
-    tracker.handleEvent(event);
-    notifier.handleEvent(event);
+    tracker.handleEvent(event: event);
+    notifier.handleEvent(event: event);
   }
 }
 

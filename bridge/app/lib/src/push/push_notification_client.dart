@@ -11,7 +11,7 @@ class PushNotificationClient({
   required final TokenRefresher _tokenRefreshManager,
   required final http.Client _client,
 }) {
-  Future<void> sendNotification(SendNotificationPayload payload) async {
+  Future<void> sendNotification({required SendNotificationPayload payload}) async {
     final token = await _tokenRefreshManager.getAccessToken();
     final response = await _sendPost(payload, token);
 

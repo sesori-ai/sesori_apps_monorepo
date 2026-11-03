@@ -9,25 +9,25 @@ import "process_runner.dart";
 /// can run commands to completion without depending on the app's process layer.
 class ProcessRunnerCommandExecutor({required final ProcessRunner _processRunner}) implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     // ProcessRunner.run owns the default timeout; only override it when the
     // caller asked for a specific one rather than duplicating that default here.
     final ProcessResult result = timeout == null
         ? await _processRunner.run(
-            executable,
-            arguments,
+            executable: executable,
+            arguments: arguments,
             workingDirectory: workingDirectory,
             environment: environment,
           )
         : await _processRunner.run(
-            executable,
-            arguments,
+            executable: executable,
+            arguments: arguments,
             workingDirectory: workingDirectory,
             environment: environment,
             timeout: timeout,

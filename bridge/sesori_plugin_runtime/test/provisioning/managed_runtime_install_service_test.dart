@@ -139,12 +139,12 @@ class const _FakeArchiveExtractor() implements ArchiveExtractor {
 
 class _FakeCommandExecutor() implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     return const CommandResult(exitCode: 0, stdout: "", stderr: "");
   }

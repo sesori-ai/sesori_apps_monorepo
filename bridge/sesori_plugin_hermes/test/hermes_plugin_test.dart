@@ -471,11 +471,11 @@ HermesPlugin _plugin({
 
 class const _UnusedCommandExecutor() implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) => throw StateError("command execution not expected");
 }

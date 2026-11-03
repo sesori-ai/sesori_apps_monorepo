@@ -342,10 +342,32 @@ class ManagedProcessService<R>({
     if (await _spawnedProcessExited(process: process)) {
       return;
     }
-    await _processes.signalGraceful(pid: process.pid);
-    await _clock.delay(duration: _gracefulShutdownWait);
+    if (await _requestGracefulStop(pid: process.pid)) {
+      await _clock.delay(duration: _gracefulShutdownWait);
+    }
     if (!await _spawnedProcessExited(process: process)) {
       await _processes.signalForce(pid: process.pid);
+    }
+  }
+
+  /// Requests a graceful stop without letting its failure skip the force step
+  /// that follows. Windows refuses a non-forced `taskkill` for a windowless
+  /// console runtime, so the caller's own checks must still decide on force.
+  ///
+  /// Returns whether the signal was sent. When it was not — the request failed,
+  /// or the process was already gone — there is no graceful exit to wait for,
+  /// so the caller skips the grace wait and goes straight to its force checks.
+  Future<bool> _requestGracefulStop({required int pid}) async {
+    try {
+      final result = await _processes.signalGraceful(pid: pid);
+      return result.wasRequested;
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[$_runtimeId] Graceful stop of pid $pid failed; force stopping it if it is still running",
+        error,
+        stackTrace,
+      );
+      return false;
     }
   }
 
@@ -384,17 +406,22 @@ class ManagedProcessService<R>({
       return;
     }
 
-    try {
-      await Future.wait(
-        recordsToTerminate.map(
-          (record) => Future.sync(() => _processes.signalGraceful(pid: _runtimePidOf(record: record))),
-        ),
-      ).timeout(_gracefulShutdownWait);
-    } catch (error, stackTrace) {
-      Log.w("[$_runtimeId] Failed to gracefully stop some runtime instance(s)", error, stackTrace);
-    }
+    // Each failed request is logged and reported as not sent. A request that
+    // hangs past the timeout may still land, so it keeps the grace wait.
+    final gracefulRequests = Future.wait(
+      recordsToTerminate.map((record) => _requestGracefulStop(pid: _runtimePidOf(record: record))),
+    ).then((sent) => sent.contains(true));
+    final anyGracefulSignalSent = await gracefulRequests.timeout(
+      _gracefulShutdownWait,
+      onTimeout: () {
+        Log.w("[$_runtimeId] Graceful stop of some runtime instance(s) timed out");
+        return true;
+      },
+    );
 
-    await _clock.delay(duration: _gracefulShutdownWait);
+    if (anyGracefulSignalSent) {
+      await _clock.delay(duration: _gracefulShutdownWait);
+    }
 
     final survivors = <R>[];
     for (final record in recordsToTerminate) {
@@ -466,8 +493,9 @@ class ManagedProcessService<R>({
       }
     }
 
-    await _processes.signalGraceful(pid: _runtimePidOf(record: record));
-    await _clock.delay(duration: _gracefulShutdownWait);
+    if (await _requestGracefulStop(pid: _runtimePidOf(record: record))) {
+      await _clock.delay(duration: _gracefulShutdownWait);
+    }
 
     final currentOwnedStillRunningAfterGraceful =
         currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);

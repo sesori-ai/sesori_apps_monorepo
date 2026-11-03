@@ -22,24 +22,24 @@ class CompletionPushListener({
   final CompositeSubscription _subscriptions = CompositeSubscription();
   bool _isStarted = false;
 
-  void handleSseEvent(SesoriSseEvent event) {
-    _tracker.handleEvent(event);
-    _completionNotifier.handleEvent(event);
-    _dispatcher.dispatchImmediateIfApplicable(event);
+  void handleSseEvent({required SesoriSseEvent event}) {
+    _tracker.handleEvent(event: event);
+    _completionNotifier.handleEvent(event: event);
+    _dispatcher.dispatchImmediateIfApplicable(event: event);
   }
 
   /// Marks a session as user-aborted so the completion notification is
   /// suppressed for the current busy→idle transition.
-  void markSessionAbortPending(String sessionId) {
-    _completionNotifier.markSessionAbortPending(sessionId);
+  void markSessionAbortPending({required String sessionId}) {
+    _completionNotifier.markSessionAbortPending(sessionId: sessionId);
   }
 
-  void markSessionAborted(String sessionId) {
-    _completionNotifier.markSessionAborted(sessionId);
+  void markSessionAborted({required String sessionId}) {
+    _completionNotifier.markSessionAborted(sessionId: sessionId);
   }
 
-  void clearPendingAbort(String sessionId) {
-    _completionNotifier.clearPendingAbort(sessionId);
+  void clearPendingAbort({required String sessionId}) {
+    _completionNotifier.clearPendingAbort(sessionId: sessionId);
   }
 
   void start() {
@@ -50,9 +50,9 @@ class CompletionPushListener({
 
     _completionNotifier.completions
         .listen((rootSessionId) async {
-          final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
+          final latestAssistantText = _tracker.getLatestAssistantText(sessionId: rootSessionId);
           final body = _contentBuilder.truncateToWords(
-            (latestAssistantText == null || latestAssistantText.trim().isEmpty)
+            text: (latestAssistantText == null || latestAssistantText.trim().isEmpty)
                 ? "Task completed"
                 : latestAssistantText,
           );
@@ -66,7 +66,7 @@ class CompletionPushListener({
           _dispatcher.dispatchCompletion(
             rootSessionId: rootSessionId,
             title: _contentBuilder.truncateTitle(
-              (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
+              title: (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
             ),
             body: body,
             projectId: projectId,

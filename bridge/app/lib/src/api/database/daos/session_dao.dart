@@ -322,13 +322,13 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       ..addColumns([sessionTable.sessionId])
       ..where(sessionTable.pluginId.equals(pluginId));
     final rows = await query.get();
-    return {for (final row in rows) row.read(sessionTable.sessionId)!};
+    return {for (final row in rows) ?row.read(sessionTable.sessionId)};
   }
 
   Future<Set<String>> getAllSessionIds() async {
     final query = selectOnly(sessionTable)..addColumns([sessionTable.sessionId]);
     final rows = await query.get();
-    return {for (final row in rows) row.read(sessionTable.sessionId)!};
+    return {for (final row in rows) ?row.read(sessionTable.sessionId)};
   }
 
   /// The distinct stored directory of every session row, archived ones

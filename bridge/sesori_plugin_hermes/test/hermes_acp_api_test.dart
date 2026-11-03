@@ -69,12 +69,12 @@ HermesAcpApi _api({required CommandResult result}) => HermesAcpApi(
 
 class _DeleteCommandExecutor({required final CommandResult result}) implements CommandExecutor {
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     expect(executable, "/fixture/hermes");
     expect(arguments, ["sessions", "delete", _sessionId, "--yes"]);

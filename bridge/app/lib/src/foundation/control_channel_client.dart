@@ -80,7 +80,7 @@ class ControlChannelClient({
   /// Sends a raw text frame. Throws [ControlChannelNotConnectedException] if not
   /// currently connected (GUI outage / mid-reconnect), so callers can map that
   /// transient condition to their own typed failure.
-  void send(String frame) {
+  void send({required String frame}) {
     final channel = _channel;
     if (channel == null) {
       throw const ControlChannelNotConnectedException(message: "Control channel is not connected");

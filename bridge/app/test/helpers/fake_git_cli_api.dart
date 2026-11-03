@@ -25,9 +25,9 @@ class FakeGitCliApi({final String? _remoteUrl}) extends GitCliApi {
 /// Fails every command with exit code 1 without spawning a process.
 class _FailingProcessRunner() implements ProcessRunner {
   @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
+  Future<ProcessResult> run({
+    required String executable,
+    required List<String> arguments,
     String? workingDirectory,
     Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),

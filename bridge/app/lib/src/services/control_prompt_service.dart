@@ -80,7 +80,7 @@ class ControlPromptService({
     try {
       try {
         _client.send(
-          jsonEncode(ControlMessage.promptRequest(id: id, message: message).toJson()),
+          frame: jsonEncode(ControlMessage.promptRequest(id: id, message: message).toJson()),
         );
       } on ControlChannelNotConnectedException catch (error) {
         // The GUI is unreachable (outage / mid-reconnect): the question cannot

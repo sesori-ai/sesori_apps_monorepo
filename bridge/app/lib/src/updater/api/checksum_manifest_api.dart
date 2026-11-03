@@ -14,7 +14,7 @@ class ChecksumManifestApi({
 }) {
   Future<ChecksumManifest?> fetchManifest({required String url}) async {
     final response = await _httpClient.get(Uri.parse(url)).timeout(_requestTimeout);
-    if (isRetryableHttpStatus(response.statusCode)) {
+    if (isRetryableHttpStatus(statusCode: response.statusCode)) {
       // A transient server-side/throttling outage is not a missing manifest.
       // Throw so verifyDownloadedArchive propagates it as a network error
       // (retryable, quiet) rather than letting a null manifest be treated as a

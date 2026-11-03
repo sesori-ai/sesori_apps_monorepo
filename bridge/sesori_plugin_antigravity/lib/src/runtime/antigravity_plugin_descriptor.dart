@@ -284,8 +284,9 @@ class const AntigravityPluginDescriptor({
   }) async {
     try {
       final result = await commands.run(
-        "unzip",
-        const ["-Z", "-h"],
+        executable: "unzip",
+        arguments: const ["-Z", "-h"],
+        workingDirectory: null,
         environment: environment,
         timeout: const Duration(seconds: 10),
       );

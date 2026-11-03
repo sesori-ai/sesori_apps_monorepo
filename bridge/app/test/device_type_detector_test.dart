@@ -183,9 +183,9 @@ class _FakeProcessRunner({required final Map<String, _FakeResult> results}) impl
   final Map<String, int> _callCounts = <String, int>{};
 
   @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
+  Future<ProcessResult> run({
+    required String executable,
+    required List<String> arguments,
     Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),

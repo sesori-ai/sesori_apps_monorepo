@@ -664,9 +664,9 @@ class _FakeProcessRunner() implements ProcessRunner {
   }
 
   @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
+  Future<ProcessResult> run({
+    required String executable,
+    required List<String> arguments,
     Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),

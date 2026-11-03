@@ -80,8 +80,9 @@ class HermesAcpApi({
     required Duration timeout,
   }) async {
     final result = await _commandExecutor.run(
-      _binaryPath,
-      ["sessions", "delete", sessionId, "--yes"],
+      executable: _binaryPath,
+      arguments: ["sessions", "delete", sessionId, "--yes"],
+      workingDirectory: null,
       environment: _environment,
       timeout: timeout,
     );

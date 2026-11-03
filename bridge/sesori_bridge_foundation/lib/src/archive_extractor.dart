@@ -119,10 +119,13 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     // Defence-in-depth over tar's own refusal of absolute/`..` members: list the
     // archive and reject any member that would resolve outside the staging dir
     // before writing anything.
-    final CommandResult listing = await _commandExecutor.run("tar", [
-      "-tzf",
-      archivePath,
-    ], timeout: archiveCommandTimeout);
+    final CommandResult listing = await _commandExecutor.run(
+      executable: "tar",
+      arguments: ["-tzf", archivePath],
+      workingDirectory: null,
+      environment: null,
+      timeout: archiveCommandTimeout,
+    );
     if (listing.exitCode != 0) {
       return ArchiveExtractionResult.failure(
         reason: _toolFailure(tool: "tar -tzf", result: listing),
@@ -134,8 +137,10 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     }
 
     final CommandResult result = await _commandExecutor.run(
-      "tar",
-      ["-xzf", archivePath, "-C", stagingPath],
+      executable: "tar",
+      arguments: ["-xzf", archivePath, "-C", stagingPath],
+      workingDirectory: null,
+      environment: null,
       timeout: archiveCommandTimeout,
     );
     if (result.exitCode != 0) {
@@ -153,10 +158,13 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
   }) async {
     // `unzip -Z1` lists member names one per line (zipinfo mode); reject any that
     // would escape before extracting.
-    final CommandResult listing = await _commandExecutor.run("unzip", [
-      "-Z1",
-      archivePath,
-    ], timeout: archiveCommandTimeout);
+    final CommandResult listing = await _commandExecutor.run(
+      executable: "unzip",
+      arguments: ["-Z1", archivePath],
+      workingDirectory: null,
+      environment: null,
+      timeout: archiveCommandTimeout,
+    );
     if (listing.exitCode != 0) {
       return ArchiveExtractionResult.failure(
         reason: _toolFailure(tool: "unzip -Z1", result: listing),
@@ -168,8 +176,10 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     }
 
     final CommandResult result = await _commandExecutor.run(
-      "unzip",
-      ["-o", "-q", archivePath, "-d", stagingPath],
+      executable: "unzip",
+      arguments: ["-o", "-q", archivePath, "-d", stagingPath],
+      workingDirectory: null,
+      environment: null,
       timeout: archiveCommandTimeout,
     );
     if (result.exitCode != 0) {
@@ -189,12 +199,14 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     final String psArchive = archivePath.replaceAll("'", "''");
     final String psStaging = stagingPath.replaceAll("'", "''");
     final CommandResult result = await _commandExecutor.run(
-      "powershell",
-      [
+      executable: "powershell",
+      arguments: [
         "-NoProfile",
         "-Command",
         "\$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '$psArchive' -DestinationPath '$psStaging' -Force",
       ],
+      workingDirectory: null,
+      environment: null,
       timeout: archiveCommandTimeout,
     );
     if (result.exitCode != 0) {

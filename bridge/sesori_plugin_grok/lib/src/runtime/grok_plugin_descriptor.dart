@@ -156,14 +156,21 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
     required String runtimeVersion,
   }) async {
+    final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
     final CommandResult result;
     try {
-      result = await HostProcessCommandExecutor(
-        includeParentEnvironment: true,
-        processes: processes,
-        runInShell: io.Platform.isWindows,
-        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-      ).run(executablePath, const ["models"], environment: environment, timeout: _versionProbeTimeout);
+      result = await executor.run(
+        executable: executablePath,
+        arguments: const ["models"],
+        workingDirectory: null,
+        environment: environment,
+        timeout: _versionProbeTimeout,
+      );
     } on Object catch (error, stackTrace) {
       Log.w("[grok] model listing probe failed for '$executablePath models'", error, stackTrace);
       return PluginSetupUnknown.versioned(
@@ -193,8 +200,9 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     final CommandResult result;
     try {
       result = await executor.run(
-        executablePath,
-        const ["--version"],
+        executable: executablePath,
+        arguments: const ["--version"],
+        workingDirectory: null,
         environment: environment,
         timeout: _versionProbeTimeout,
       );

@@ -33,7 +33,7 @@ class const WindowsUpdateApi() implements PlatformUpdateApi {
     final Directory backupLibDir = Directory(p.join(installRoot, _libBackupName));
 
     if (!newBinary.existsSync() || !newLibDir.existsSync()) {
-      throw const UpdateApplyException('Staged payload is missing the binary or lib directory.');
+      throw const UpdateApplyException(message: 'Staged payload is missing the binary or lib directory.');
     }
 
     targetBinary.parent.createSync(recursive: true);

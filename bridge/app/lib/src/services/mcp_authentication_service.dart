@@ -77,7 +77,11 @@ class McpAuthenticationService({required final McpRepository _repository}) {
     }
     await _repository.validateAuthenticationTarget(attempt: owner.attempt);
     // Archive validation awaits catalog I/O; native settlement can occur meanwhile.
-    if (owner.done.isCompleted || owner.state is! McpAuthenticationCallbackChallenge) {
+    // A callback challenge is only published once the native operation runs.
+    final native = owner.native;
+    if (owner.done.isCompleted ||
+        owner.state is! McpAuthenticationCallbackChallenge ||
+        native is! _RunningMcpAuthentication) {
       return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.attemptNotFound);
     }
     final Uri callbackUri;
@@ -86,7 +90,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
     } on FormatException {
       return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.callbackRejected);
     }
-    final operation = (owner.native as _RunningMcpAuthentication).operation;
+    final operation = native.operation;
     _publish(
       owner: owner,
       state: McpAuthenticationSettling(attempt: owner.attempt),
@@ -115,32 +119,34 @@ class McpAuthenticationService({required final McpRepository _repository}) {
       return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.attemptNotFound);
     }
     if (owner.cancelRequested) return McpAuthenticationStateResult(state: owner.state);
-    if (owner.native is _PreparingMcpAuthentication) {
-      owner.cancelRequested = true;
-      try {
-        await owner.dispose();
-        _publish(
-          owner: owner,
-          state: McpAuthenticationCancelled(attempt: owner.attempt),
-        );
-      } on Object catch (error, stackTrace) {
-        _publish(
-          owner: owner,
-          state: McpAuthenticationFailed(attempt: owner.attempt, reason: McpAuthenticationFailureReason.nativeFailure),
-        );
-        Error.throwWithStackTrace(McpAuthenticationCancellationException(innerError: error), stackTrace);
-      } finally {
-        if (!owner.ready.isCompleted) owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
-        if (!owner.done.isCompleted) owner.done.complete();
-      }
-      return McpAuthenticationStateResult(state: owner.state);
-    }
-    switch ((owner.native as _RunningMcpAuthentication).operation) {
-      case PluginMcpNativeSettlementAuthentication():
+    switch (owner.native) {
+      case _PreparingMcpAuthentication():
+        owner.cancelRequested = true;
+        try {
+          await owner.dispose();
+          _publish(
+            owner: owner,
+            state: McpAuthenticationCancelled(attempt: owner.attempt),
+          );
+        } on Object catch (error, stackTrace) {
+          _publish(
+            owner: owner,
+            state: McpAuthenticationFailed(
+              attempt: owner.attempt,
+              reason: McpAuthenticationFailureReason.nativeFailure,
+            ),
+          );
+          Error.throwWithStackTrace(McpAuthenticationCancellationException(innerError: error), stackTrace);
+        } finally {
+          if (!owner.ready.isCompleted) owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
+          if (!owner.done.isCompleted) owner.done.complete();
+        }
+        return McpAuthenticationStateResult(state: owner.state);
+      case _RunningMcpAuthentication(operation: PluginMcpNativeSettlementAuthentication()):
         return const McpAuthenticationUnavailable(
           reason: McpAuthenticationUnavailableReason.nativeCancellationUnavailable,
         );
-      case PluginMcpCancelableAuthentication(:final cancel):
+      case _RunningMcpAuthentication(operation: PluginMcpCancelableAuthentication(:final cancel)):
         owner.cancelRequested = true;
         _publish(
           owner: owner,
@@ -273,28 +279,29 @@ class McpAuthenticationService({required final McpRepository _repository}) {
   }
 
   void _settled({required _OwnedMcpAuthentication owner}) {
-    if (owner.native is _PreparingMcpAuthentication) {
-      if (!owner.ready.isCompleted) {
-        owner.ready.complete(
-          const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.pluginInactive),
-        );
-      }
-      _current = null;
-      _changes.add(null);
-    } else {
-      final terminal =
-          owner.terminal ??
-          (owner.cancelRequested
-              ? McpAuthenticationCancelled(attempt: owner.attempt)
-              : McpAuthenticationFailed(attempt: owner.attempt, reason: McpAuthenticationFailureReason.interrupted));
-      _publish(owner: owner, state: terminal);
-      if (terminal is McpAuthenticationCompleted) {
-        final scope = switch ((owner.native as _RunningMcpAuthentication).operation.effectScope) {
-          PluginMcpActionEffectScope.session || PluginMcpActionEffectScope.project => owner.attempt.target.scope,
-          PluginMcpActionEffectScope.harness => const McpHarnessScope(),
-        };
-        _inventoryChanges.add(McpInventoryRequest(pluginId: owner.attempt.pluginId, scope: scope));
-      }
+    switch (owner.native) {
+      case _PreparingMcpAuthentication():
+        if (!owner.ready.isCompleted) {
+          owner.ready.complete(
+            const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.pluginInactive),
+          );
+        }
+        _current = null;
+        _changes.add(null);
+      case _RunningMcpAuthentication(:final operation):
+        final terminal =
+            owner.terminal ??
+            (owner.cancelRequested
+                ? McpAuthenticationCancelled(attempt: owner.attempt)
+                : McpAuthenticationFailed(attempt: owner.attempt, reason: McpAuthenticationFailureReason.interrupted));
+        _publish(owner: owner, state: terminal);
+        if (terminal is McpAuthenticationCompleted) {
+          final scope = switch (operation.effectScope) {
+            PluginMcpActionEffectScope.session || PluginMcpActionEffectScope.project => owner.attempt.target.scope,
+            PluginMcpActionEffectScope.harness => const McpHarnessScope(),
+          };
+          _inventoryChanges.add(McpInventoryRequest(pluginId: owner.attempt.pluginId, scope: scope));
+        }
     }
     owner.done.complete();
   }

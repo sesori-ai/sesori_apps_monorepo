@@ -12,8 +12,8 @@ void main() {
 
     group('fromWire', () {
       test('maps known values', () {
-        expect(ReleaseTrack.fromWire('stable'), ReleaseTrack.stable);
-        expect(ReleaseTrack.fromWire('internal'), ReleaseTrack.internal);
+        expect(ReleaseTrack.fromWire(value: 'stable'), ReleaseTrack.stable);
+        expect(ReleaseTrack.fromWire(value: 'internal'), ReleaseTrack.internal);
       });
 
       test('treats a missing value (null) as stable without logging', () {
@@ -21,7 +21,7 @@ void main() {
         late final ReleaseTrack track;
 
         IOOverrides.runZoned(
-          () => track = ReleaseTrack.fromWire(null),
+          () => track = ReleaseTrack.fromWire(value: null),
           stderr: () => _CapturingStdout(stderrLines),
         );
 
@@ -35,7 +35,7 @@ void main() {
         late final ReleaseTrack track;
 
         IOOverrides.runZoned(
-          () => track = ReleaseTrack.fromWire('nightly'),
+          () => track = ReleaseTrack.fromWire(value: 'nightly'),
           stderr: () => _CapturingStdout(stderrLines),
           stdout: () => _CapturingStdout(stdoutLines),
         );

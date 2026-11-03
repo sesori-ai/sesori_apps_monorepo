@@ -358,6 +358,11 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   its transport directly. Stdio transports close child stdin before graceful termination
   and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
+  Three paths stop an owned Codex or OpenCode runtime: the shutdown stop, stale cleanup
+  after a crash, and the cleanup of a newly spawned child after an aborted start or a
+  failed record build. On each path, if the graceful request fails or finds the process
+  already gone, the stop skips the grace wait and goes straight to its force checks.
+  Windows `taskkill` without `/F` fails this way for a windowless console process.
   On macOS and Linux, an owned Codex or OpenCode runtime is stopped on shutdown and
   reclaimed by stale cleanup after a crash in every launch shape: a native binary, an
   npm `#!/usr/bin/env node` shim (`ps` shows `node <shim> <args>`), and a launcher

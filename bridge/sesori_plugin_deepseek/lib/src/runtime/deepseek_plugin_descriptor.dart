@@ -236,8 +236,9 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }) async {
     try {
       final result = await _executor(processes).run(
-        binary,
-        ["check", "--state-dir", stateDirectory],
+        executable: binary,
+        arguments: ["check", "--state-dir", stateDirectory],
+        workingDirectory: null,
         environment: environment,
         timeout: _probeTimeout,
       );

@@ -27,8 +27,8 @@ class DeviceTypeDetector({
   Future<bool> _isMacOSLaptop() async {
     try {
       final result = await _processRunner.run(
-        "sysctl",
-        <String>["-n", "hw.model"],
+        executable: "sysctl",
+        arguments: <String>["-n", "hw.model"],
       );
       if (result.exitCode != 0) {
         Log.w(
@@ -37,7 +37,7 @@ class DeviceTypeDetector({
         );
         return false;
       }
-      final model = (result.stdout as String).trim().toLowerCase();
+      final model = result.stdout.toString().trim().toLowerCase();
       return model.contains("macbook");
     } on Object catch (error) {
       Log.w("[device-type] failed to detect macOS laptop", error);
@@ -48,8 +48,8 @@ class DeviceTypeDetector({
   Future<bool> _isWindowsLaptop() async {
     try {
       final result = await _processRunner.run(
-        "powershell.exe",
-        <String>[
+        executable: "powershell.exe",
+        arguments: <String>[
           "-Command",
           "Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count",
         ],
@@ -61,7 +61,7 @@ class DeviceTypeDetector({
         );
         return false;
       }
-      final count = int.tryParse((result.stdout as String).trim()) ?? 0;
+      final count = int.tryParse(result.stdout.toString().trim()) ?? 0;
       return count > 0;
     } on Object catch (error) {
       Log.w("[device-type] failed to detect Windows laptop", error);

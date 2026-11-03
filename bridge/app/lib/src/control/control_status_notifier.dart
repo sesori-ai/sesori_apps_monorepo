@@ -146,7 +146,7 @@ class ControlStatusNotifier({
   /// into an observed stream's callback or block the caller.
   void _send(ControlMessage message) {
     try {
-      _client.send(jsonEncode(message.toJson()));
+      _client.send(frame: jsonEncode(message.toJson()));
     } on ControlChannelNotConnectedException {
       // Expected while the GUI is briefly away; the reconnect re-sync in
       // _handleControlChannelState converges the missed state.

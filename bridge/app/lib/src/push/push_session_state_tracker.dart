@@ -16,7 +16,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
 
   int get messageRoleCount => _messageRoles.length;
 
-  void handleEvent(SesoriSseEvent event) {
+  void handleEvent({required SesoriSseEvent event}) {
     final now = _now();
     switch (event) {
       case SesoriSessionCreated(:final info):
@@ -85,20 +85,20 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     }
   }
 
-  bool isSessionGroupFullyIdle(String sessionId) {
+  bool isSessionGroupFullyIdle({required String sessionId}) {
     return _collectSubtreeStates(
       rootSessionId: sessionId,
     ).every((sessionState) => sessionState.status == null);
   }
 
-  bool hasPendingInteraction(String sessionId) {
+  bool hasPendingInteraction({required String sessionId}) {
     return _collectSubtreeStates(rootSessionId: sessionId).any(
       (sessionState) =>
           sessionState.pendingQuestionIds.isNotEmpty || sessionState.pendingPermissionRequestIds.isNotEmpty,
     );
   }
 
-  bool wasPreviouslyBusy(String sessionId) {
+  bool wasPreviouslyBusy({required String sessionId}) {
     return _collectSubtreeStates(
       rootSessionId: sessionId,
     ).any((sessionState) => sessionState.previouslyBusy);
@@ -108,7 +108,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     return _sessions[sessionId]?.projectId;
   }
 
-  String? getLatestAssistantText(String sessionId) {
+  String? getLatestAssistantText({required String sessionId}) {
     return _sessions[sessionId]?.latestAssistantText;
   }
 
@@ -175,7 +175,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     }
   }
 
-  String resolveRootSessionId(String sessionId) {
+  String resolveRootSessionId({required String sessionId}) {
     var current = sessionId;
     final visited = <String>{};
 

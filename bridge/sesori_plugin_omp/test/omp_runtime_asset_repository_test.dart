@@ -12,12 +12,12 @@ class _Executor({required final CommandResult result}) implements CommandExecuto
   List<String>? arguments;
 
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     this.executable = executable;
     this.arguments = arguments;

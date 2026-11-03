@@ -37,12 +37,12 @@ class _Commands({required final List<String> events}) implements CommandExecutor
       [];
 
   @override
-  Future<CommandResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration? timeout,
+  Future<CommandResult> run({
+    required String executable,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required Map<String, String>? environment,
+    required Duration? timeout,
   }) async {
     calls.add((executable: executable, arguments: arguments, environment: environment, timeout: timeout));
     if (executable == "chmod") {

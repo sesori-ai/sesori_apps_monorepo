@@ -17,7 +17,7 @@ class const FilesystemPermissionValidator() {
   static const int _eAcces = 13;
 
   /// Returns `true` when [error] is an OS-level permission denial.
-  bool isPermissionDenied(FileSystemException error) {
+  bool isPermissionDenied({required FileSystemException error}) {
     final int? code = error.osError?.errorCode;
     if (code == _ePerm || code == _eAcces) {
       return true;
@@ -28,7 +28,7 @@ class const FilesystemPermissionValidator() {
         message.contains("access is denied");
   }
 
-  bool isFileMissing(FileSystemException error) {
+  bool isFileMissing({required FileSystemException error}) {
     if (error.osError?.errorCode == 2) {
       return true;
     }

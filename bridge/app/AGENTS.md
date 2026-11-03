@@ -100,8 +100,8 @@ bridge/ workspace modules (siblings of app/):
     fooRequest = FooRequest.fromJson(
       jsonDecodeMap(request.body),
     );
-  } catch (error) {
-    Log.d("Rejecting request with an invalid JSON body: $error");
+  } catch (error, stackTrace) {
+    Log.w("Rejecting request with an invalid JSON body", error, stackTrace);
     return buildErrorResponse(request: request, status: 400, message: "invalid JSON body");
   }
   ```

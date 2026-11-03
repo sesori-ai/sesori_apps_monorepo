@@ -17,7 +17,13 @@ class const OmpLinuxLibcProbeApi({
     if (File(_alpineMarkerPath).existsSync()) {
       return const OmpAlpineMarkerEvidence();
     }
-    final result = await _commandExecutor.run("ldd", const ["--version"], timeout: _timeout);
+    final result = await _commandExecutor.run(
+      executable: "ldd",
+      arguments: const ["--version"],
+      workingDirectory: null,
+      environment: null,
+      timeout: _timeout,
+    );
     return OmpLddEvidence(result: result);
   }
 }

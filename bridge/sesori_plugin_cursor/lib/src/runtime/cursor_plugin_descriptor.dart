@@ -360,8 +360,9 @@ class const CursorPluginDescriptor({
     final CommandResult statusResult;
     try {
       statusResult = await executor.run(
-        executablePath,
-        const ["status"],
+        executable: executablePath,
+        arguments: const ["status"],
+        workingDirectory: null,
         environment: environment,
         timeout: _versionProbeTimeout,
       );
