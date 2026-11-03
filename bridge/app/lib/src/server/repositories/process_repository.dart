@@ -55,9 +55,8 @@ class ProcessRepository({
   }
 
   ProcessMatchKind _resolveKind({required ProcessIdentity identity}) {
-    final executableBasename = identity.executablePath == null
-        ? null
-        : path.basename(identity.executablePath!).toLowerCase();
+    final executablePath = identity.executablePath;
+    final executableBasename = executablePath == null ? null : path.basename(executablePath).toLowerCase();
     final commandLine = identity.commandLine.toLowerCase();
 
     if (executableBasename == "sesori-bridge" ||

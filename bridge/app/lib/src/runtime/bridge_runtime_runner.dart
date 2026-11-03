@@ -9,6 +9,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show DownloadProgress, OsVersionFormatter, PlatformOs, sesoriAttachmentsDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
+        BridgePluginDescriptor,
         Console,
         HostJsonStore,
         Log,
@@ -122,7 +123,7 @@ class const BridgeRuntimeRunner._() {
 
   static Future<int> run({
     required BridgeCliOptions options,
-    required Map<String, PluginConfig> pluginConfigs,
+    required Map<BridgePluginDescriptor, PluginConfig> pluginConfigs,
   }) async {
     final startAbortController = StartAbortController();
     PluginRuntime? pluginRuntime;
@@ -152,6 +153,7 @@ class const BridgeRuntimeRunner._() {
       // Last resort before a forced exit: stop plugin backends so their agent
       // processes are not orphaned when the teardown (or a phase) hangs.
       emergencyDisposal: shutdownStartedPlugins,
+      exitProcess: io.exit,
     );
     shutdownCoordinator
       ..addPhase(
@@ -248,7 +250,7 @@ class const BridgeRuntimeRunner._() {
     );
     // Also the legacy shared plugin state directory. Shipped ownership files
     // live here under a frozen cross-version contract (see pluginStateDirectoryPath).
-    final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
+    final runtimeDirectory = path.join(managedRuntimePaths.installRoot, "runtime");
     final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
     final pluginStoresByStateDirectory = <String, HostJsonStore>{
       runtimeDirectory: BridgeHostJsonStore(fileApi: runtimeFileApi),
@@ -340,9 +342,9 @@ class const BridgeRuntimeRunner._() {
       // Standalone builds it after the interactive auth flow yields its token
       // refresher.
       BridgeRegistrationService? supervisedRegistrationService;
-      if (options.isSupervised) {
+      if (options.controlUrl case final controlUrl?) {
         controlChannelClient = await _connectSupervisedControlChannel(
-          options: options,
+          controlUrl: controlUrl,
           shutdownCoordinator: shutdownCoordinator,
           // `??=`: a loss must never demote an already decided intentional
           // exit (restart/auth/logout/contention) to the abnormal code.
@@ -584,7 +586,7 @@ class const BridgeRuntimeRunner._() {
         isWindows: io.Platform.isWindows,
       );
       final pluginRuntimeRegistrations = <PluginRuntimeRegistration>[];
-      for (final descriptor in knownPlugins) {
+      for (final MapEntry(key: descriptor, value: config) in pluginConfigs.entries) {
         final stateDirectory = pluginStateDirectoryPath(
           paths: managedRuntimePaths,
           pluginId: descriptor.id,
@@ -599,7 +601,7 @@ class const BridgeRuntimeRunner._() {
         pluginRuntimeRegistrations.add(
           PluginRuntimeRegistration(
             descriptor: descriptor,
-            config: pluginConfigs[descriptor.id]!,
+            config: config,
             stateDirectory: stateDirectory,
             store: store,
           ),
@@ -630,14 +632,14 @@ class const BridgeRuntimeRunner._() {
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
       final registeredPlugins = <RegisteredPluginMetadata>[
-        for (final descriptor in knownPlugins)
+        for (final MapEntry(key: descriptor, value: config) in pluginConfigs.entries)
           (
             id: descriptor.id,
             displayName: descriptor.displayName,
-            activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
-            residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
+            activationPolicy: descriptor.activationPolicy(config: config),
+            residencyPolicy: descriptor.residencyPolicy(config: config),
             sessionOptionsScope: descriptor.sessionOptionsScope,
-            managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
+            managementCapabilities: descriptor.managementCapabilities(config: config),
             supportsPromptAttachments: descriptor.supportsPromptAttachments,
           ),
       ];
@@ -1062,14 +1064,14 @@ class const BridgeRuntimeRunner._() {
   /// Both the client and the loss listener are torn down via the shutdown
   /// coordinator. Only ever called when `--control-url` is set.
   static Future<ControlChannelClient> _connectSupervisedControlChannel({
-    required BridgeCliOptions options,
+    required String controlUrl,
     required BridgeShutdownCoordinator shutdownCoordinator,
     required void Function() requestAbnormalExit,
   }) async {
-    final url = Uri.parse(options.controlUrl!);
+    final url = Uri.parse(controlUrl);
     if (!isLoopbackControlUrl(url)) {
       throw StateError(
-        "Refusing supervised control URL '${options.controlUrl}': must be a loopback ws/wss endpoint",
+        "Refusing supervised control URL '$controlUrl': must be a loopback ws/wss endpoint",
       );
     }
 

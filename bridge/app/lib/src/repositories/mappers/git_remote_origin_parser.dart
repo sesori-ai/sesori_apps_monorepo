@@ -47,21 +47,17 @@ class const GitRemoteOriginParser() {
 
   _ScpRemote? _parseScpRemote({required String value}) {
     if (_windowsDrivePath.hasMatch(value)) return null;
-    final bracketed = _bracketedScpRemote.firstMatch(value);
-    if (bracketed != null) {
+    // Both shapes capture user, host, and path in groups 1, 2, and 3.
+    final match = _bracketedScpRemote.firstMatch(value) ?? _scpLikeRemote.firstMatch(value);
+    if (match == null) return null;
+    if ((match.group(2), match.group(3)) case (final String host, final String path)) {
       return (
-        user: bracketed.group(1),
-        host: bracketed.group(2)!.toLowerCase(),
-        path: bracketed.group(3)!,
+        user: match.group(1),
+        host: host.toLowerCase(),
+        path: path,
       );
     }
-    final regular = _scpLikeRemote.firstMatch(value);
-    if (regular == null) return null;
-    return (
-      user: regular.group(1),
-      host: regular.group(2)!.toLowerCase(),
-      path: regular.group(3)!,
-    );
+    return null;
   }
 
   String? _parseGithubUri({required Uri uri}) {

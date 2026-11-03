@@ -16,8 +16,8 @@ class LoginEmailRepository({
         email: credentials.email,
         password: credentials.password,
       );
-      if (username.isNotEmpty) {
-        Console.message('Login successful! Welcome, $username');
+      if (username case final name? when name.isNotEmpty) {
+        Console.message('Login successful! Welcome, $name');
       } else {
         Console.message('Login successful!');
       }
@@ -28,29 +28,30 @@ class LoginEmailRepository({
     }
   }
 
-  Future<(TokenData, String)> _performEmailLoginInternal({
+  Future<(TokenData, String?)> _performEmailLoginInternal({
     required String email,
     required String password,
   }) async {
     final AuthResponse authResponse;
     try {
       authResponse = await emailAuthApi.loginWithEmail(email: email, password: password);
-    } on EmailAuthApiException catch (e) {
-      if (e.statusCode == 429) {
+    } on EmailAuthApiException catch (error) {
+      if (error.statusCode == 429) {
         throw RateLimitException();
       }
-      if (e.statusCode == 401) {
-        throw EmailLoginExceptionImpl("invalid email or password");
+      if (error.statusCode == 401) {
+        throw EmailLoginExceptionImpl(message: "invalid email or password", cause: error);
       }
       throw EmailLoginExceptionImpl(
-        "login failed: status ${e.statusCode}: ${e.body.trim()}",
+        message: "login failed: status ${error.statusCode}: ${error.body.trim()}",
+        cause: error,
       );
-    } catch (e) {
-      throw EmailLoginExceptionImpl("network error: $e");
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(EmailLoginExceptionImpl(message: "network error: $error", cause: error), stackTrace);
     }
 
     if (authResponse.accessToken.isEmpty || authResponse.refreshToken.isEmpty) {
-      throw EmailLoginExceptionImpl("response missing tokens");
+      throw EmailLoginExceptionImpl(message: "response missing tokens", cause: null);
     }
 
     return (
@@ -59,7 +60,7 @@ class LoginEmailRepository({
         refreshToken: authResponse.refreshToken,
         lastProvider: AuthProvider.email,
       ),
-      authResponse.user.providerUsername ?? "",
+      authResponse.user.providerUsername,
     );
   }
 }

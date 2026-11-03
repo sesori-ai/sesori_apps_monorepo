@@ -105,11 +105,11 @@ class const BridgePluginSettings({
 
   Map<String, dynamic> toJson() {
     final sortedDisabledIds = disabledPluginIds.toList()..sort();
-    final sortedPluginIds = settingsByPluginId.keys.toList()..sort();
+    final sortedPluginSettings = settingsByPluginId.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
     return {
       if (sortedDisabledIds.isNotEmpty) 'disabled': sortedDisabledIds,
       if (!defaults.isEmpty) 'default': defaults.toJson(),
-      for (final pluginId in sortedPluginIds) pluginId: settingsByPluginId[pluginId]!.toJson(),
+      for (final MapEntry(key: pluginId, value: settings) in sortedPluginSettings) pluginId: settings.toJson(),
     };
   }
 

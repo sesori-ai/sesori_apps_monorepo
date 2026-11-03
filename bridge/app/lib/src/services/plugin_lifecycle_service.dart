@@ -1144,9 +1144,10 @@ class PluginLifecycleService({
 
   List<PluginMetadata> _orderedMetadata() {
     final defaultPluginId = _selectableDefaultPluginId();
+    // _rebuildMetadata keys this map by the eligible IDs in registration order,
+    // so its values are already the eligible metadata in presentation order.
     return List<PluginMetadata>.unmodifiable([
-      for (final pluginId in _eligiblePluginIds)
-        _metadataById[pluginId]!.copyWith(isDefault: pluginId == defaultPluginId),
+      for (final metadata in _metadataById.values) metadata.copyWith(isDefault: metadata.id == defaultPluginId),
     ]);
   }
 
@@ -1372,43 +1373,36 @@ class PluginLifecycleService({
       entry.timer.cancel();
     }
     _idleTimers.clear();
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    (Object, StackTrace)? firstFailure;
     try {
       await Future.wait([for (final command in _activePluginCommands.values) command.settled.future]);
     } on Object catch (error, stackTrace) {
-      firstError = error;
-      firstStackTrace = stackTrace;
+      firstFailure = (error, stackTrace);
     }
     try {
       await _runtimeSubscription.cancel();
     } on Object catch (error, stackTrace) {
-      firstError = error;
-      firstStackTrace = stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
     try {
       await _metadataSubject.close();
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
     try {
       await _readyPluginIdsSubject.close();
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
     try {
       await _managementSnapshotTokenController.close();
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
     try {
       await _installProgressController.close();
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
     for (final authentication in _activePluginAuthentications.values) {
       authentication.operation.abort();
@@ -1418,16 +1412,14 @@ class PluginLifecycleService({
         for (final authentication in _activePluginAuthentications.values) authentication.settled.future,
       ]);
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
     try {
       await _authenticationProgressController.close();
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
-    if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+    if (firstFailure case (final error, final stackTrace)) Error.throwWithStackTrace(error, stackTrace);
   }
 
   List<String> _buildReadyPluginIds(List<PluginRuntimeSnapshot> snapshots) {

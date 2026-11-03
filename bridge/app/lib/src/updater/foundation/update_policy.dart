@@ -76,9 +76,11 @@ bool shouldSkipUpdates({
 /// Whether a filesystem error means the updater cannot write the install.
 /// The shared validator covers EPERM(1)/EACCES(13) and permission messages.
 /// Code 5 is ERROR_ACCESS_DENIED on Windows and EIO on POSIX; the updater
-/// aborts on both just like a permission error.
+/// aborts on both just like a permission error. Code 30 is EROFS on POSIX: the
+/// install sits on a read-only filesystem, which no retry can fix either.
 bool isUpdatePermissionDenied({required FileSystemException error}) {
-  return const FilesystemPermissionValidator().isPermissionDenied(error) || error.osError?.errorCode == 5;
+  final code = error.osError?.errorCode;
+  return const FilesystemPermissionValidator().isPermissionDenied(error) || code == 5 || code == 30;
 }
 
 /// Whether an HTTP status from a release check or artifact download is a

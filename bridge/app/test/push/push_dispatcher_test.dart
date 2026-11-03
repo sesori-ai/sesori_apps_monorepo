@@ -475,7 +475,7 @@ _newHarness({
     tracker: resolvedTracker,
     debounceDuration: const Duration(milliseconds: 500),
   );
-  final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now);
+  final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now ?? DateTime.now);
   const contentBuilder = PushNotificationContentBuilder();
   final dispatcher = PushDispatcher(
     client: resolvedClient,
@@ -536,7 +536,7 @@ class FakePushNotificationClient() extends PushNotificationClient {
   }
 }
 
-class FakePushRateLimiter({var bool shouldAllowSend = true, super.now}) extends PushRateLimiter {
+class FakePushRateLimiter({var bool shouldAllowSend = true, required super.now}) extends PushRateLimiter {
   @override
   bool shouldSend({
     required NotificationCategory category,

@@ -174,7 +174,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
       for (final match in _metadataTokenPattern.allMatches(filteredDocument)) {
         _recordTerm(
           candidates: candidates,
-          term: match.group(0)!,
+          term: match.input.substring(match.start, match.end),
           origin: _GlossaryTermOrigin.metadata,
           isCompound: false,
           distinctTerms: documentTerms,
@@ -237,7 +237,7 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
     for (final match in _metadataTokenPattern.allMatches(separated)) {
       _recordTerm(
         candidates: candidates,
-        term: match.group(0)!,
+        term: match.input.substring(match.start, match.end),
         origin: origin,
         isCompound: false,
         distinctTerms: distinctTerms,
@@ -250,8 +250,8 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
     var cursor = 0;
     for (final opening in _xmlOpeningElementPattern.allMatches(value)) {
       if (opening.start < cursor) continue;
-      final name = opening.group(1)!;
-      if (!_isCredentialName(name)) continue;
+      final name = opening.group(1);
+      if (name == null || !_isCredentialName(name)) continue;
 
       filtered.write(value.substring(cursor, opening.start));
       if (opening.group(2) == "/") {
@@ -276,13 +276,15 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
     var index = 0;
     while (index < lines.length) {
       final header = _yamlCredentialHeaderPattern.firstMatch(lines[index]);
-      if (header == null || !_isCredentialName(header.group(3)!)) {
+      final indentation = header?.group(1);
+      final name = header?.group(3);
+      if (header == null || indentation == null || name == null || !_isCredentialName(name)) {
         filtered.add(lines[index]);
         index++;
         continue;
       }
 
-      final headerIndent = header.group(1)!.length + (header.group(2)?.length ?? 0);
+      final headerIndent = indentation.length + (header.group(2)?.length ?? 0);
       filtered.add("");
       index++;
       while (index < lines.length) {
@@ -338,18 +340,18 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
   }
 
   String _redactCredentialAssignments({required String value, required RegExp pattern}) {
-    return value.replaceAllMapped(
-      pattern,
-      (match) => _isCredentialName(match.group(1)!) ? " " : match.group(0)!,
-    );
+    return value.replaceAllMapped(pattern, _redactCredentialNamedMatch);
   }
 
   String _filterCredentialOptions(String value) {
-    return value.replaceAllMapped(
-      _credentialOptionPattern,
-      (match) => _isCredentialName(match.group(1)!) ? " " : match.group(0)!,
-    );
+    return value.replaceAllMapped(_credentialOptionPattern, _redactCredentialNamedMatch);
   }
+
+  /// Blanks a match whose first group names a credential and keeps any other match verbatim.
+  String _redactCredentialNamedMatch(Match match) => switch (match.group(1)) {
+    final name? when _isCredentialName(name) => " ",
+    _ => match.input.substring(match.start, match.end),
+  };
 
   String _filterCredentialSpans(String value) {
     final structured = _filterYamlCredentialBlocks(
@@ -363,10 +365,10 @@ xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
         .replaceAll(_bearerCredentialPattern, " ")
         .replaceAll(_credentialLabeledSpanPattern, " ")
         .replaceAll(_credentialPrefixedSpanPattern, " ")
-        .replaceAllMapped(
-          _metadataSecretSpanPattern,
-          (match) => _looksCredentialShaped(match.group(0)!) ? " " : match.group(0)!,
-        );
+        .replaceAllMapped(_metadataSecretSpanPattern, (match) {
+          final span = match.input.substring(match.start, match.end);
+          return _looksCredentialShaped(span) ? " " : span;
+        });
   }
 
   void _recordTerm({

@@ -36,13 +36,16 @@ class EmailAuthApiException({required final int statusCode, required final Strin
   String toString() => message;
 }
 
-class EmailLoginExceptionImpl(@override final String message) implements EmailLoginException {
+class EmailLoginExceptionImpl({@override required final String message, required final Object? cause})
+    implements EmailLoginException {
   @override
   String toString() => "EmailLoginException: $message";
 }
 
-class RateLimitException([@override final String message = "Rate limit exceeded. Please try again later."])
-    implements EmailLoginException {
+class RateLimitException() implements EmailLoginException {
+  @override
+  final String message = "Rate limit exceeded. Please try again later.";
+
   @override
   String toString() => "RateLimitException: $message";
 }

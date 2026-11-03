@@ -692,9 +692,10 @@ class ChatHistoryRepository({
       final useRetained =
           importedIndex == importedMessageRows.length ||
           (retainedIndex < retained.length &&
-              retainedCreatedAt[retainedIndex] != null &&
-              messages[importedIndex].info.time?.created != null &&
-              retainedCreatedAt[retainedIndex]! < messages[importedIndex].info.time!.created);
+              switch ((retainedCreatedAt[retainedIndex], messages[importedIndex].info.time?.created)) {
+                (final int retainedAt, final int importedAt) => retainedAt < importedAt,
+                _ => false,
+              });
       final row = useRetained ? retained[retainedIndex++] : importedMessageRows[importedIndex++];
       final orderedSeq = messageRows.length + 1;
       messageRows.add(row.seq == orderedSeq ? row : row.copyWith(seq: orderedSeq));
@@ -1048,20 +1049,18 @@ class ChatHistoryRepository({
   }) async {
     if (sessionIds.isEmpty) return;
     await _chatHistoryDao.deleteSessionRows(sessionIds: sessionIds);
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    (Object, StackTrace)? firstFailure;
     if (includeArchive) {
       for (final sessionId in sessionIds) {
         try {
           await _archivedSessionStorage.delete(sessionId: sessionId);
         } on Object catch (error, stackTrace) {
-          firstError ??= error;
-          firstStackTrace ??= stackTrace;
+          firstFailure ??= (error, stackTrace);
         }
       }
     }
     await _chatHistoryDao.reclaimFreedPages();
-    if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+    if (firstFailure case (final error, final stackTrace)) Error.throwWithStackTrace(error, stackTrace);
   }
 
   Set<String> _anchoredReplayExtensionStoredIds({
@@ -1089,8 +1088,8 @@ class ChatHistoryRepository({
     for (var importedAnchorIndex = 1; importedAnchorIndex + 1 < importedMessages.length; importedAnchorIndex++) {
       final anchorId = importedMessages[importedAnchorIndex].info.id;
       if (importedIdCounts[anchorId] != 1 || storedIdCounts[anchorId] != 1) continue;
-      final storedAnchorIndex = storedIndexById[anchorId]!;
-      if (storedAnchorIndex <= 0 || storedAnchorIndex + 1 >= storedRows.length) continue;
+      final storedAnchorIndex = storedIndexById[anchorId];
+      if (storedAnchorIndex == null || storedAnchorIndex <= 0 || storedAnchorIndex + 1 >= storedRows.length) continue;
       if (storedRows[storedAnchorIndex - 1].seq + 1 != storedRows[storedAnchorIndex].seq ||
           storedRows[storedAnchorIndex].seq + 1 != storedRows[storedAnchorIndex + 1].seq) {
         continue;
@@ -1184,14 +1183,14 @@ class ChatHistoryRepository({
       final importedPart = imported.parts[index];
       final storedPart = stored.parts[index];
       if (importedPart.content == storedPart.content) continue;
+      final importedText = importedPart.text;
+      final storedText = storedPart.text;
       if (foundExtension ||
-          importedPart.text == null ||
-          storedPart.text == null ||
+          importedText == null ||
+          storedText == null ||
           importedPart.contentWithoutText != storedPart.contentWithoutText) {
         return false;
       }
-      final importedText = importedPart.text!;
-      final storedText = storedPart.text!;
       // An empty retained snapshot is still a strict prefix when replay has
       // nonempty text; the anchored window already supplies exact identity.
       if (importedText.length <= storedText.length || !importedText.startsWith(storedText)) {

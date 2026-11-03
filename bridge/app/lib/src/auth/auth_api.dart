@@ -25,6 +25,13 @@ class AuthApiException({
   String toString() => "AuthApiException: $method $uri returned status $statusCode";
 }
 
+/// An auth endpoint answered with a body the bridge could not decode; [cause]
+/// keeps the decoding error.
+class AuthResponseFormatException({required final String endpoint, required final Object cause}) implements Exception {
+  @override
+  String toString() => "AuthResponseFormatException: $endpoint response malformed: $cause";
+}
+
 class BridgeRegistrationException({required final int statusCode, required String body}) implements Exception {
   final String message = "BridgeRegistrationException: status $statusCode | body $body";
 
@@ -65,8 +72,8 @@ class AuthApi({
     final AuthInitResponse initResp;
     try {
       initResp = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
-    } on Object catch (e) {
-      throw Exception("auth init response malformed: $e");
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(AuthResponseFormatException(endpoint: "auth init", cause: error), stackTrace);
     }
 
     if (initResp.authUrl.isEmpty || initResp.state.isEmpty) {

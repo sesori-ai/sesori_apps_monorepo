@@ -261,23 +261,26 @@ class PluginRuntime({
         }
       }
     }
-    final inspections = {
+    final inspections = [
       for (final pluginId in selectedIds)
-        pluginId: () {
-          final slot = _slots[pluginId]!;
+        () {
+          final slot = _requireSlot(pluginId);
           return (
+            pluginId: pluginId,
+            slot: slot,
             revision: ++slot.setupInspectionRevision,
             generation: slot.generation,
           );
         }(),
-    };
+    ];
     final results = await Future.wait(
-      selectedIds.map((pluginId) async {
-        final slot = _slots[pluginId]!;
+      inspections.map((inspection) async {
+        final pluginId = inspection.pluginId;
+        final slot = inspection.slot;
         final descriptor = slot.registration.descriptor;
         try {
           return (
-            pluginId: pluginId,
+            inspection: inspection,
             setup: await descriptor.inspectSetup(
               config: slot.registration.config,
               processes: _setupProcesses,
@@ -288,7 +291,7 @@ class PluginRuntime({
         } on Object catch (error, stackTrace) {
           Log.w('Plugin "$pluginId" setup inspection failed', error, stackTrace);
           return (
-            pluginId: pluginId,
+            inspection: inspection,
             setup: const PluginSetupUnknown(
               actionHint: "Plugin setup could not be determined. Check the bridge console and retry.",
             ),
@@ -296,11 +299,10 @@ class PluginRuntime({
         }
       }),
     );
-    for (final result in results) {
-      final slot = _slots[result.pluginId]!;
-      final inspection = inspections[result.pluginId]!;
+    for (final (:inspection, :setup) in results) {
+      final slot = inspection.slot;
       if (slot.setupInspectionRevision == inspection.revision && slot.generation == inspection.generation) {
-        slot.setup = result.setup;
+        slot.setup = setup;
       }
     }
     _publishSnapshots();
@@ -887,8 +889,9 @@ class PluginRuntime({
             releaseLease();
             return;
           }
-          generationCancellation = () => finish(cancelSource: true);
-          acquired.slot.operationStreamCancellations.add(generationCancellation!);
+          Future<void> cancellation() => finish(cancelSource: true);
+          generationCancellation = cancellation;
+          acquired.slot.operationStreamCancellations.add(cancellation);
           sourceSubscription = body(acquired.api, acquired.generation).listen(
             (value) {
               try {
@@ -1447,18 +1450,15 @@ class PluginRuntime({
         );
       }
     }
-    Object? startError;
-    StackTrace? startStackTrace;
+    (Object, StackTrace)? startFailure;
     try {
       await slot.startFuture;
     } on PluginStartAbortedException catch (error, stackTrace) {
       if (intent != PluginStopIntent.force && !_shuttingDown) {
-        startError = error;
-        startStackTrace = stackTrace;
+        startFailure = (error, stackTrace);
       }
     } on Object catch (error, stackTrace) {
-      startError = error;
-      startStackTrace = stackTrace;
+      startFailure = (error, stackTrace);
     }
     await slot.cleanupFuture;
     final plugin = slot.plugin;
@@ -1494,16 +1494,14 @@ class PluginRuntime({
       ..state = const PluginRuntimeStopping()
       ..workState = PluginWorkState.unknown;
     _publishSnapshots();
-    Object? cleanupError;
-    StackTrace? cleanupStackTrace;
+    (Object, StackTrace)? cleanupFailure;
     try {
       await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
     } on Object catch (error, stackTrace) {
-      cleanupError = error;
-      cleanupStackTrace = stackTrace;
+      cleanupFailure = (error, stackTrace);
     }
-    if (startError != null) Error.throwWithStackTrace(startError, startStackTrace!);
-    if (cleanupError != null) Error.throwWithStackTrace(cleanupError, cleanupStackTrace!);
+    if (startFailure case (final error, final stackTrace)) Error.throwWithStackTrace(error, stackTrace);
+    if (cleanupFailure case (final error, final stackTrace)) Error.throwWithStackTrace(error, stackTrace);
   }
 
   Set<String> _snapshotActiveSessionIds({
@@ -1770,6 +1768,7 @@ class PluginRuntime({
           slot: slot,
           generation: generation,
           abortController: abortController,
+          residencyController: residencyController,
         ).whenComplete(() {
           if (identical(slot.startFuture, tracked)) slot.startFuture = null;
           if (identical(slot.startAbortController, abortController)) slot.startAbortController = null;
@@ -1786,6 +1785,7 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required int generation,
     required StartAbortController abortController,
+    required PluginGenerationResidencyController residencyController,
   }) async {
     final pluginId = slot.registration.descriptor.id;
     BridgePlugin? started;
@@ -1793,7 +1793,7 @@ class PluginRuntime({
       await for (final event in _generationFactory.start(
         registration: slot.registration,
         startAborted: abortController.signal,
-        residency: slot.residencyController!,
+        residency: residencyController,
       )) {
         switch (event) {
           case PluginGenerationProvisionProgress(:final event):
@@ -2190,23 +2190,20 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required BridgePlugin? plugin,
   }) async {
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    (Object, StackTrace)? firstFailure;
     try {
       await _cancelGenerationSubscriptions(slot);
     } on Object catch (error, stackTrace) {
-      firstError = error;
-      firstStackTrace = stackTrace;
+      firstFailure = (error, stackTrace);
     }
     try {
       await plugin?.shutdown(budget: _shutdownBudget);
       await slot.residencyController?.dispose();
       slot.residencyController = null;
     } on Object catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      firstFailure ??= (error, stackTrace);
     }
-    if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+    if (firstFailure case (final error, final stackTrace)) Error.throwWithStackTrace(error, stackTrace);
   }
 
   bool _isRoutable(_PluginRuntimeSlot slot) {

@@ -8,12 +8,9 @@ import 'package:test/test.dart';
 
 void main() {
   group('pluginStateDirectoryPath', () {
-    // Distinct values on purpose: production sets these equal today, and an
-    // installRoot/cacheDirectory mix-up must not pass these tests.
     const paths = ManagedRuntimePaths(
       installRoot: '/home/alex/.local/share/sesori',
       binaryPath: '/home/alex/.local/share/sesori/bin/sesori-bridge',
-      cacheDirectory: '/home/alex/.cache/sesori',
     );
 
     test('plugins live under <installRoot>/plugins/<id>', () {
@@ -27,7 +24,7 @@ void main() {
       );
     });
 
-    test('OpenCode and Codex keep the frozen <cacheDirectory>/runtime directory', () {
+    test('OpenCode and Codex keep the frozen <installRoot>/runtime directory', () {
       final descriptors = [OpenCodePluginDescriptor.production(), const CodexPluginDescriptor()];
 
       for (final descriptor in descriptors) {
@@ -37,14 +34,14 @@ void main() {
             pluginId: descriptor.id,
             stateStorage: descriptor.stateStorage,
           ),
-          p.join('/home/alex/.cache/sesori', 'runtime'),
+          p.join('/home/alex/.local/share/sesori', 'runtime'),
           reason: descriptor.id,
         );
       }
     });
 
     test('legacy shared plugins namespace files and managed runtime subdirectories', () {
-      final sharedDirectory = p.join('/home/alex/.cache/sesori', 'runtime');
+      final sharedDirectory = p.join('/home/alex/.local/share/sesori', 'runtime');
 
       expect(OpenCodePluginDescriptor.ownershipFileName, isNot(CodexPluginDescriptor.ownershipFileName));
       expect(

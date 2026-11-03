@@ -1,39 +1,26 @@
 import 'dart:io' show Platform;
 
 import 'package:path/path.dart' as p;
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show resolveUserHomeDirectory;
 
 import '../models/managed_runtime_paths.dart';
 
 class const ManagedRuntimePathService() {
   ManagedRuntimePaths currentPaths({required Map<String, String> environment}) {
     if (Platform.isWindows) {
-      final localAppData = _requireEnv(
-        environment: environment,
-        key: 'LOCALAPPDATA',
-      );
+      final localAppData = environment['LOCALAPPDATA'];
+      if (localAppData == null || localAppData.isEmpty) {
+        throw StateError('LOCALAPPDATA environment variable not set');
+      }
       final installRoot = p.join(localAppData, 'sesori');
-      return ManagedRuntimePaths(
-        installRoot: installRoot,
-        binaryPath: p.join(installRoot, 'bin', 'sesori-bridge.exe'),
-        cacheDirectory: installRoot,
-      );
+      return ManagedRuntimePaths(installRoot: installRoot, binaryPath: p.join(installRoot, 'bin', 'sesori-bridge.exe'));
     }
 
-    final home = _requireEnv(environment: environment, key: 'HOME');
+    final home = resolveUserHomeDirectory(environment: environment);
+    if (home == null) {
+      throw StateError('HOME environment variable not set');
+    }
     final installRoot = p.join(home, '.local', 'share', 'sesori');
-    return ManagedRuntimePaths(
-      installRoot: installRoot,
-      binaryPath: p.join(installRoot, 'bin', 'sesori-bridge'),
-      cacheDirectory: installRoot,
-    );
-  }
-
-  String _requireEnv({required Map<String, String> environment, required String key}) {
-    final value = environment[key];
-    if (value == null || value.isEmpty) {
-      throw StateError('$key environment variable not set');
-    }
-
-    return value;
+    return ManagedRuntimePaths(installRoot: installRoot, binaryPath: p.join(installRoot, 'bin', 'sesori-bridge'));
   }
 }

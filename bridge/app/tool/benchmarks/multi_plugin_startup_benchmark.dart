@@ -85,7 +85,6 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
   final managedRuntimePaths = ManagedRuntimePaths(
     installRoot: runtimeDirectory.path,
     binaryPath: p.join(runtimeDirectory.path, "bin", "sesori-bridge"),
-    cacheDirectory: runtimeDirectory.path,
   );
   final generationFactory = PluginGenerationFactory(
     managedRuntimePaths: managedRuntimePaths,

@@ -226,19 +226,16 @@ class SessionOptionsRepository({
   }
 
   SessionOptionsCacheEntry _entryFromRow(SessionOptionsCacheTableData row) {
-    final key = switch (row.scope) {
-      PluginSessionOptionsScope.plugin
-          when row.ownerId == row.pluginId && row.projectId == null && row.capturedProjectPath == null =>
-        SessionOptionsCacheKey.plugin(pluginId: row.pluginId),
-      PluginSessionOptionsScope.project
-          when row.projectId != null &&
-              row.ownerId == row.projectId &&
-              row.capturedProjectPath != null &&
-              row.capturedProjectPath!.isNotEmpty =>
+    final key = switch ((row.scope, row.projectId, row.capturedProjectPath)) {
+      (PluginSessionOptionsScope.plugin, null, null) when row.ownerId == row.pluginId => SessionOptionsCacheKey.plugin(
+        pluginId: row.pluginId,
+      ),
+      (PluginSessionOptionsScope.project, final String projectId, final String projectPath)
+          when row.ownerId == projectId && projectPath.isNotEmpty =>
         SessionOptionsCacheKey.project(
           pluginId: row.pluginId,
-          projectId: row.projectId!,
-          projectPath: row.capturedProjectPath!,
+          projectId: projectId,
+          projectPath: projectPath,
         ),
       _ => throw const FormatException("invalid session options cache identity"),
     };

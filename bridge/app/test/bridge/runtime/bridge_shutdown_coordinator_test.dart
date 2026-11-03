@@ -14,6 +14,8 @@ void main() {
     test("runs signal, drain, plugin disposal, lifecycle, runtime disposal, and shared phases in order", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final operations = <String>[];
@@ -52,6 +54,8 @@ void main() {
     test("runs ordered steps in order, before the parallel phase", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final operations = <String>[];
@@ -77,6 +81,8 @@ void main() {
     test("a failing ordered step does not block later steps or the parallel phase, then surfaces", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final operations = <String>[];
@@ -104,6 +110,8 @@ void main() {
     test("a synchronously throwing disposable does not prevent the others from running", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final operations = <String>[];
@@ -118,6 +126,8 @@ void main() {
     test("an async signal action is awaited before the drain phase starts", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final interrupt = Completer<void>();
@@ -152,6 +162,8 @@ void main() {
     test("runtime disposal starts only after lifecycle disposal settles", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final lifecycleSettled = Completer<void>();
@@ -183,6 +195,8 @@ void main() {
     test("starts plugin shutdown and catalog drain together before awaiting either", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final catalogDrainStarted = Completer<void>();
@@ -215,6 +229,8 @@ void main() {
       final startAbortController = StartAbortController();
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: startAbortController.signal,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       final operations = <String>[];
@@ -248,6 +264,8 @@ void main() {
     test("repeated shutdown calls share one run", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
+        backstopExitCode: () => 0,
+        emergencyDisposal: () async {},
         exitProcess: (_) {},
       );
       var disposals = 0;
@@ -267,6 +285,7 @@ void main() {
         final exitCalls = <int>[];
         final coordinator = BridgeShutdownCoordinator(
           startAbortSignal: StartAbortSignal.never,
+          emergencyDisposal: () async {},
           backstopExitCode: () => 1,
           exitProcess: exitCalls.add,
         );
@@ -295,6 +314,8 @@ void main() {
             fakeAsync((async) {
               final coordinator = BridgeShutdownCoordinator(
                 startAbortSignal: StartAbortSignal.never,
+                backstopExitCode: () => 0,
+                emergencyDisposal: () async {},
                 exitProcess: (_) {},
               );
               coordinator.addPhase(
@@ -320,6 +341,8 @@ void main() {
         final exitCalls = <int>[];
         final coordinator = BridgeShutdownCoordinator(
           startAbortSignal: StartAbortSignal.never,
+          backstopExitCode: () => 0,
+          emergencyDisposal: () async {},
           exitProcess: exitCalls.add,
         );
         coordinator.add(disposable: () => Completer<void>().future);
@@ -336,6 +359,8 @@ void main() {
         final exitCalls = <int>[];
         final coordinator = BridgeShutdownCoordinator(
           startAbortSignal: StartAbortSignal.never,
+          backstopExitCode: () => 0,
+          emergencyDisposal: () async {},
           exitProcess: exitCalls.add,
         );
         coordinator.addPhase(
@@ -364,6 +389,7 @@ void main() {
         var emergencyRuns = 0;
         final coordinator = BridgeShutdownCoordinator(
           startAbortSignal: StartAbortSignal.never,
+          backstopExitCode: () => 0,
           emergencyDisposal: () async {
             emergencyRuns++;
             await Completer<void>().future;
@@ -419,6 +445,7 @@ void main() {
         final exitCalls = <int>[];
         final coordinator = BridgeShutdownCoordinator(
           startAbortSignal: StartAbortSignal.never,
+          backstopExitCode: () => 0,
           emergencyDisposal: () async {},
           exitProcess: exitCalls.add,
         );
@@ -436,6 +463,8 @@ void main() {
         final exitCalls = <int>[];
         final coordinator = BridgeShutdownCoordinator(
           startAbortSignal: StartAbortSignal.never,
+          backstopExitCode: () => 0,
+          emergencyDisposal: () async {},
           exitProcess: exitCalls.add,
         );
         coordinator.addPhase(
