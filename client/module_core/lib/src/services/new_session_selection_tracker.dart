@@ -13,7 +13,8 @@ typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revisi
 /// service-computed default for another. Selections live only for the current
 /// app run and are cleared when the backend changes. They belong to the
 /// harness, not the project: a project that does not offer a pick falls back
-/// to its own default, and the pick returns with a project that does.
+/// to its own default, and the pick returns with a project that does, unless
+/// the user has picked another value for it in the meantime.
 @lazySingleton
 class NewSessionSelectionTracker() {
   final Map<String, _RevisionedSelection> _selections = {};

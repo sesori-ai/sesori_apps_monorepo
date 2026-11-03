@@ -23,7 +23,8 @@ class const HomeComposerPane({super.key}) extends StatefulWidget {
 
 class _HomeComposerPaneState() extends State<HomeComposerPane> {
   /// The project the next composer starts in, or null until a default lands
-  /// or one is chosen. Once a composer is up, it owns its project.
+  /// or one is chosen. It follows the composer's project, so one built again,
+  /// after the list reloads, starts where the last one was.
   String? _projectId;
 
   /// Counts the sessions this pane started. The page stays under the session
@@ -48,10 +49,15 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       ProjectListLoading() || ProjectListLoaded() || ProjectListFailed() || ProjectListBridgeDisconnected() => _empty(),
     };
     return BlocListener<AllSessionsCubit, AllSessionsState>(
-      // Until a composer is up, the first default to land, or another
-      // filter's, is where it starts.
-      listenWhen: (previous, current) => _projectId == null && previous.defaultProjectId != current.defaultProjectId,
-      listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
+      // Another filter's default is where the next composer starts, even while
+      // none is up; until there is a project, so is the first default to land.
+      listenWhen: (previous, current) =>
+          previous.projectId != current.projectId ||
+          (_projectId == null && previous.defaultProjectId != current.defaultProjectId),
+      listener: (_, state) {
+        final projectId = state.defaultProjectId;
+        if (projectId != null) setState(() => _projectId = projectId);
+      },
       child: AnimatedSwitcher(
         duration: _motionDuration,
         child: pane,
@@ -113,10 +119,11 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       child: MultiBlocListener(
         listeners: [
           BlocListener<NewSessionCubit, NewSessionState>(
-            listenWhen: (_, current) => current is NewSessionCreated,
-            // The next composer starts where this one's session did.
+            listenWhen: (previous, current) =>
+                current is NewSessionCreated || previous.project.id != current.project.id,
+            // The next composer starts where this one is, or where its session did.
             listener: (_, state) => setState(() {
-              _launches++;
+              if (state is NewSessionCreated) _launches++;
               _projectId = state.project.id;
             }),
           ),

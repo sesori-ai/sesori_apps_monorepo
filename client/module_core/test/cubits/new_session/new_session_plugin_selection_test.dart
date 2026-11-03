@@ -1737,8 +1737,9 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA, pluginB])),
       );
       establishSelectionScope(bridgeId: "bridge-a");
+      // A pick the session starts with; one it could not apply would stay.
       selectionTracker
-        ..recordAgent(pluginId: "plugin-a", agentName: "agent-a")
+        ..recordFastMode(pluginId: "plugin-a", fastMode: false)
         ..recordAgent(pluginId: "plugin-b", agentName: "agent-b");
       when(
         () => sessionService.createSessionWithMessage(
