@@ -45,7 +45,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -346,6 +346,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // Session pages order archived sessions by archived_at, so no query
         // reads the updated_at archive index any more.
         await customStatement("DROP INDEX idx_sessions_archive");
+      },
+      from22To23: (m, schema) async {
+        // Projects are read by id, visibility and recency only, so no query
+        // reads the path index any more.
+        await customStatement("DROP INDEX idx_projects_path");
       },
     ),
     beforeOpen: (details) async {
