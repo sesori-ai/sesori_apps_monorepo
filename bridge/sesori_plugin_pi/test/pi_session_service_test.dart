@@ -3418,7 +3418,7 @@ final class _Storage({
 
 final class _HistoryStorage({required super.storageApi}) extends PiSessionHistoryStorageApi {
   @override
-  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
+  Future<PiSessionEntriesDto> readSessionHistory({required String path}) =>
       Future.error(StateError("file fallback not expected"));
 }
 

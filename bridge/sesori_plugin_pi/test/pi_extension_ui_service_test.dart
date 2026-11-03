@@ -548,7 +548,7 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
 
 final class _FakeHistoryStorage({required super.storageApi}) extends PiSessionHistoryStorageApi {
   @override
-  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) =>
+  Future<PiSessionEntriesDto> readSessionHistory({required String path}) =>
       Future.error(StateError("file fallback not expected"));
 }
 

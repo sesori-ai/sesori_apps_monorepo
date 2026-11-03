@@ -379,9 +379,16 @@ void main() {
 
     test("falls back when exact no-model startup surfaces as stdin failure", () async {
       final storage = _ProcessStorage(
-        history: PiSessionFileHistoryDto(
-          header: const PiSessionFileHeaderDto(version: 3, id: "session"),
-          entries: [_fileUserEntry(id: "entry", parentId: null, text: "from file", timestamp: 1)],
+        history: PiSessionEntriesDto(
+          entries: [
+            PiSessionEntryDto.message(
+              id: "entry",
+              parentId: null,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
+              message: const PiAgentMessageDto.user(content: [PiContentDto.text(text: "from file")], timestamp: 1),
+            ),
+          ],
+          leafId: "entry",
         ),
       );
       final process = FakePiProcess();
@@ -478,41 +485,38 @@ void main() {
     });
 
     test("migrates v1 file entries into a linear active branch", () async {
-      final storage = _ProcessStorage(
-        history: PiSessionFileHistoryDto(
-          header: const PiSessionFileHeaderDto(version: null, id: "session"),
-          entries: [
-            _fileUserEntry(id: null, parentId: null, text: "first", timestamp: 1),
-            _fileUserEntry(id: null, parentId: null, text: "second", timestamp: 2),
-          ],
-        ),
+      final path = _writeSessionFile(
+        version: null,
+        entries: [
+          for (final (index, text) in ["first", "second"].indexed)
+            {
+              "type": "message",
+              "timestamp": "2026-08-01T00:00:0${index + 1}Z",
+              "message": {"role": "user", "content": text, "timestamp": index + 1},
+            },
+        ],
       );
 
-      final messages = await _loadFileFallback(storage: storage);
+      final messages = await _loadFileFallback(storage: _ProcessStorage(path: path));
 
       expect(messages.map((message) => message.parts.single.text), ["first", "second"]);
     });
 
     test("migrates v2 hookMessage role to visible custom content", () async {
-      final storage = _ProcessStorage(
-        history: PiSessionFileHistoryDto(
-          header: const PiSessionFileHeaderDto(version: 2, id: "session"),
-          entries: [
-            PiSessionFileEntryDto.message(
-              id: "hook",
-              parentId: null,
-              timestamp: DateTime.utc(2026, 8),
-              message: const PiSessionFileAgentMessageDto.hookMessage(
-                content: [PiContentDto.text(text: "hook content")],
-                display: true,
-                timestamp: 1,
-              ),
-            ),
-          ],
-        ),
+      final path = _writeSessionFile(
+        version: 2,
+        entries: [
+          {
+            "type": "message",
+            "id": "hook",
+            "parentId": null,
+            "timestamp": "2026-08-01T00:00:01Z",
+            "message": {"role": "hookMessage", "content": "hook content", "display": true, "timestamp": 1},
+          },
+        ],
       );
 
-      final messages = await _loadFileFallback(storage: storage);
+      final messages = await _loadFileFallback(storage: _ProcessStorage(path: path));
 
       expect((messages.single.info as PluginMessageAssistant).sender, PluginMessageSender.system);
       expect(messages.single.parts.single.text, "hook content");
@@ -613,20 +617,25 @@ Map<String, Object?> _historyJson({required String text}) => {
   "leafId": "entry",
 };
 
-PiSessionFileEntryDto _fileUserEntry({
-  required String? id,
-  required String? parentId,
-  required String text,
-  required int timestamp,
-}) => PiSessionFileEntryDto.message(
-  id: id,
-  parentId: parentId,
-  timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true),
-  message: PiSessionFileAgentMessageDto.user(
-    content: [PiContentDto.text(text: text)],
-    timestamp: timestamp,
-  ),
-);
+/// Writes a Pi session file with a header of [version] and returns its path.
+String _writeSessionFile({required int? version, required List<Map<String, Object?>> entries}) {
+  final root = Directory.systemTemp.createTempSync("pi-history-repository-");
+  addTearDown(() => root.deleteSync(recursive: true));
+  final path = "${root.path}/session.jsonl";
+  File(path).writeAsStringSync(
+    [
+      {
+        "type": "session",
+        "version": ?version,
+        "id": "session",
+        "timestamp": "2026-08-01T00:00:00Z",
+        "cwd": "/exact/header-cwd",
+      },
+      ...entries,
+    ].map(jsonEncode).join("\n"),
+  );
+  return path;
+}
 
 Future<List<PluginMessageWithParts>> _loadFileFallback({required _ProcessStorage storage}) {
   final process = FakePiProcess();
@@ -657,7 +666,7 @@ PiResolvedSession _resolved({String path = "/exact/session.jsonl"}) => PiResolve
 
 final class _ProcessStorage({
   final String path = "/exact/session.jsonl",
-  final PiSessionFileHistoryDto? history,
+  final PiSessionEntriesDto? history,
 }) implements PiSessionStorageApi {
   @override
   Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
@@ -668,7 +677,7 @@ final class _ProcessStorage({
 
 final class _FakeHistoryStorageApi({required super.storageApi}) extends PiSessionHistoryStorageApi {
   @override
-  Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) {
+  Future<PiSessionEntriesDto> readSessionHistory({required String path}) {
     if (storageApi case _ProcessStorage(:final history?)) return Future.value(history);
     return PiSessionHistoryStorageApi(
       storageApi: PiSessionStorageApi(environment: const {}),
