@@ -608,11 +608,6 @@ void main() {
       contains(PluginControlCapability.install),
     );
     expect(
-      candidate.managementCapabilities(config: config(server: null)),
-      isNot(contains(PluginControlCapability.runtimeUpdate)),
-    );
-    expect(candidate.runtimeUpdateSpec(config: config(server: null)), isNull);
-    expect(
       candidate.managementCapabilities(config: config(server: pair.server)),
       isNot(contains(PluginControlCapability.install)),
     );

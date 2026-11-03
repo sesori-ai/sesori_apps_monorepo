@@ -114,26 +114,19 @@ void main() {
       expect(const CursorRuntimeManifest().bundledVersion.raw, "2026.10.22-27dcf5f");
     });
 
-    test("advertises install and global update without an explicit binary override", () {
+    test("advertises install without an explicit binary override", () {
       const descriptor = CursorPluginDescriptor();
       final capabilities = descriptor.managementCapabilities(config: config);
 
       expect(capabilities, contains(PluginControlCapability.install));
-      expect(capabilities, contains(PluginControlCapability.runtimeUpdate));
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "cursor-agent");
-      expect(update?.arguments, const ["update"]);
-      expect(update?.timeout, const Duration(minutes: 10));
     });
 
-    test("explicit binary overrides disable install and global update", () {
+    test("explicit binary overrides disable install", () {
       const explicit = PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null});
       const descriptor = CursorPluginDescriptor();
       final capabilities = descriptor.managementCapabilities(config: explicit);
 
       expect(capabilities, isNot(contains(PluginControlCapability.install)));
-      expect(capabilities, isNot(contains(PluginControlCapability.runtimeUpdate)));
-      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("declares plugin-scoped session options", () {

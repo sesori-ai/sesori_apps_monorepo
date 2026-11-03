@@ -84,11 +84,6 @@ void main() {
       );
       expect(descriptor.options.single.name, "bin");
       expect((descriptor.options.single as PluginValueOption).defaultsTo, isNull);
-      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "pi");
-      expect(update?.arguments, const ["update", "--self", "--no-approve"]);
-      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
@@ -215,8 +210,6 @@ void main() {
       final descriptor = PiPluginDescriptor.production();
       final capabilities = descriptor.managementCapabilities(config: config);
       expect(capabilities, isNot(contains(PluginControlCapability.install)));
-      expect(capabilities, isNot(contains(PluginControlCapability.runtimeUpdate)));
-      expect(descriptor.runtimeUpdateSpec(config: config), isNull);
       expect(
         await descriptor
             .ensureRuntime(

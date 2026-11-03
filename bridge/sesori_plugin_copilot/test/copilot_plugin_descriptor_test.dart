@@ -71,11 +71,6 @@ void main() {
     final descriptor = CopilotPluginDescriptor.production();
     expect(descriptor.managementCapabilities(config: defaultConfig), contains(PluginControlCapability.install));
     expect(
-      descriptor.managementCapabilities(config: defaultConfig),
-      isNot(contains(PluginControlCapability.runtimeUpdate)),
-    );
-    expect(descriptor.runtimeUpdateSpec(config: defaultConfig), isNull);
-    expect(
       descriptor.managementCapabilities(
         config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
       ),

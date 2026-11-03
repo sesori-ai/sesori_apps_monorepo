@@ -76,8 +76,6 @@ void main() {
     expect(descriptor.supportsPromptAttachments, isTrue);
     expect(descriptor.options.map((option) => option.name), [DeepSeekPluginDescriptor.binOption]);
     expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.install));
-    expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.runtimeUpdate)));
-    expect(descriptor.runtimeUpdateSpec(config: config), isNull);
   });
 
   test("ensureRuntime accepts a supported explicit adapter", () async {

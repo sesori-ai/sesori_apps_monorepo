@@ -806,7 +806,7 @@ String _setupStatus({required BuildContext context, required PluginSetupState st
   PluginSetupState.notInspected => context.loc.harnessesSetupNotInspected,
   PluginSetupState.ready => context.loc.harnessesSetupReady,
   PluginSetupState.runtimeMissing => context.loc.harnessesSetupRuntimeMissing,
-  // Runtime updates remain non-actionable until their command contract lands.
+  // The bridge offers no runtime update action; the user updates the harness.
   PluginSetupState.runtimeOutdated => context.loc.harnessesSetupUnavailable,
   PluginSetupState.authenticationRequired => context.loc.harnessesSetupAuthenticationRequired,
   PluginSetupState.unavailable => context.loc.harnessesSetupUnavailable,

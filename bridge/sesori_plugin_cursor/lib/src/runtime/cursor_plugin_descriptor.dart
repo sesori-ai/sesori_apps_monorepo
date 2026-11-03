@@ -137,18 +137,7 @@ class const CursorPluginDescriptor({
     return {
       ...super.managementCapabilities(config: config),
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
-      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
-  }
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: "cursor-agent",
-      arguments: ["update"],
-      timeout: Duration(minutes: 10),
-    );
   }
 
   /// Whether the pinned managed Cursor CLI can be installed on request: no

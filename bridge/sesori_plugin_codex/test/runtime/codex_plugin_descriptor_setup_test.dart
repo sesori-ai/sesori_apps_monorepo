@@ -86,13 +86,8 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
           PluginControlCapability.install,
-          PluginControlCapability.runtimeUpdate,
         },
       );
-      final update = descriptor.runtimeUpdateSpec(config: config);
-      expect(update?.executable, "codex");
-      expect(update?.arguments, const ["update"]);
-      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -106,12 +101,6 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
         },
-      );
-      expect(
-        descriptor.runtimeUpdateSpec(
-          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
-        ),
-        isNull,
       );
     });
 
