@@ -79,7 +79,6 @@ void main() {
         ),
         isFalse,
       );
-      expect(descriptor.runtimeUpdateSpec(config: const PluginConfig.empty()), isNull);
     });
 
     test('a descriptor can reject configuration with PluginConfigException', () {

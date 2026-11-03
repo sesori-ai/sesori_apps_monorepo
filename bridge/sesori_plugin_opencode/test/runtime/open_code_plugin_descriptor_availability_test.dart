@@ -159,10 +159,6 @@ void main() {
 
       expect(result, isA<PluginSetupRuntimeOutdated>());
       expect(result.runtimeVersion, "0.0.1");
-      expect(
-        descriptor.managementCapabilities(config: automaticConfig),
-        contains(PluginControlCapability.runtimeUpdate),
-      );
       expect(processes.spawnedExecutables, ["opencode"]);
     });
 

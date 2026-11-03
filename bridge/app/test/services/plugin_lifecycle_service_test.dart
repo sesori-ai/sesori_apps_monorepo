@@ -15,7 +15,7 @@ import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
-  test("maps authoritative setup without exposing managed install or dormant updater metadata", () async {
+  test("maps authoritative setup without exposing managed install", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),
       inspectionGate: null,
@@ -28,7 +28,6 @@ void main() {
       managementCapabilities: const {
         PluginControlCapability.setupRefresh,
         PluginControlCapability.install,
-        PluginControlCapability.runtimeUpdate,
       },
       disabledPluginIds: const {},
       setupById: const {

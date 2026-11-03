@@ -111,22 +111,10 @@ final class const OmpPluginDescriptor({
 
   @override
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
-    final explicitBin = _explicitBin(config);
     return {
       ...super.managementCapabilities(config: config),
-      if (explicitBin == null && _supportsManagedInstall()) PluginControlCapability.install,
-      if (explicitBin == null) PluginControlCapability.runtimeUpdate,
+      if (_explicitBin(config) == null && _supportsManagedInstall()) PluginControlCapability.install,
     };
-  }
-
-  @override
-  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return null;
-    return const PluginRuntimeUpdateSpec(
-      executable: "omp",
-      arguments: ["update"],
-      timeout: Duration(minutes: 10),
-    );
   }
 
   @override
