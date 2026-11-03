@@ -324,7 +324,7 @@ class const MessagePartMapper() {
     return switch (raw.toJson()) {
       {"id": final String id, "sessionID": final String sessionID, "messageID": final String messageID} =>
         PluginMessagePart.unknown(id: id, sessionID: sessionID, messageID: messageID),
-      final json => throw FormatException("OpenCode part is missing id, sessionID or messageID", json),
+      _ => throw const FormatException("OpenCode part is missing id, sessionID or messageID"),
     };
   }
 

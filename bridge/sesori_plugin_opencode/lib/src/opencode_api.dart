@@ -126,7 +126,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     );
     try {
       return jsonDecodeMap(response.body).map((name, value) {
-        if (value is! Object) throw FormatException("MCP status of $name is null");
+        if (value is! Map<String, dynamic>) throw FormatException("MCP status of $name is not an object", value);
         return MapEntry(name, MCPStatus.fromJson(value));
       });
     } on Object catch (error, stackTrace) {
