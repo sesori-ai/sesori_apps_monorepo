@@ -20,11 +20,7 @@ void main() {
         ],
         activeSessionCount: 3,
       ),
-      "prompt_request": const ControlMessage.promptRequest(
-        id: "p-1",
-        kind: ControlPromptKind.replaceBridge,
-        message: "Another bridge is running",
-      ),
+      "prompt_request": const ControlMessage.promptRequest(id: "p-1", message: "Another bridge is running"),
       "prompt_response": const ControlMessage.promptResponse(id: "p-1", accepted: true),
       "shutdown": const ControlMessage.shutdown(),
       "unregister_and_exit": const ControlMessage.unregisterAndExit(),
@@ -57,11 +53,7 @@ void main() {
     });
 
     test("promptRequest omits message when null", () {
-      const original = ControlMessage.promptRequest(
-        id: "p-2",
-        kind: ControlPromptKind.loginNeeded,
-        message: null,
-      );
+      const original = ControlMessage.promptRequest(id: "p-2", message: null);
 
       final json = original.toJson();
 
@@ -69,31 +61,15 @@ void main() {
       expect(ControlMessage.fromJson(json), equals(original));
     });
 
-    group("forward-compatibility", () {
-      test("relay enum falls back to unknown for an unrecognized value", () {
-        final parsed = ControlMessage.fromJson({
-          "type": "status",
-          "startup": "ready",
-          "relay": "rebooting",
-          "unhealthyPlugins": <Object>[],
-        });
-
-        final status = parsed as ControlStatus;
-        expect(status.relay, equals(ControlRelayConnectionState.unknown));
-        expect(status.unhealthyPlugins, isEmpty);
-        expect(status.activeSessionCount, equals(0));
+    test("status defaults activeSessionCount to zero when absent", () {
+      final parsed = ControlMessage.fromJson({
+        "type": "status",
+        "startup": "ready",
+        "relay": "connected",
+        "unhealthyPlugins": <Object>[],
       });
 
-      test("prompt-kind enum falls back to unknown for an unrecognized value", () {
-        final parsed = ControlMessage.fromJson({
-          "type": "prompt_request",
-          "id": "p-3",
-          "kind": "future_prompt",
-          "message": null,
-        });
-
-        expect((parsed as ControlPromptRequest).kind, equals(ControlPromptKind.unknown));
-      });
+      expect((parsed as ControlStatus).activeSessionCount, equals(0));
     });
 
     for (final startup in ControlStartupState.values) {

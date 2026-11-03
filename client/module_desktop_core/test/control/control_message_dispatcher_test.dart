@@ -170,11 +170,7 @@ void main() {
 
   test("prompt requests land in the prompt tracker", () async {
     final WebSocket helper = await connectHelper();
-    const ControlMessage prompt = ControlMessage.promptRequest(
-      id: "p1",
-      kind: ControlPromptKind.replaceBridge,
-      message: "Replace?",
-    );
+    const ControlMessage prompt = ControlMessage.promptRequest(id: "p1", message: "Replace?");
 
     sendFromHelper(helper, prompt);
     await promptTracker.promptsStream.firstWhere((prompts) => prompts.isNotEmpty);
@@ -230,10 +226,7 @@ void main() {
 
   test("helper connect/disconnect drive the trackers and clear prompts", () async {
     final WebSocket helper = await connectHelper();
-    sendFromHelper(
-      helper,
-      const ControlMessage.promptRequest(id: "p2", kind: ControlPromptKind.loginNeeded, message: null),
-    );
+    sendFromHelper(helper, const ControlMessage.promptRequest(id: "p2", message: null));
     await promptTracker.promptsStream.firstWhere((prompts) => prompts.isNotEmpty);
     expect(statusTracker.status.helperOnline, isTrue);
 

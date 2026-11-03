@@ -15,8 +15,8 @@ import "../services/control_unregister_service.dart";
 /// calls. The services keep their own correlation state and outbound send
 /// paths — this class sends nothing.
 ///
-/// An undecodable frame (malformed, or a forward-compat message type a newer
-/// GUI added) is logged and skipped so it can never stall the channel.
+/// An undecodable frame is logged and skipped so it can never stall the
+/// channel.
 /// Helper→GUI variants echoed back have no inbound meaning and are ignored.
 class BridgeControlMessageDispatcher({
   required final ControlChannelClient _client,

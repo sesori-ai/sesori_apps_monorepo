@@ -11,8 +11,8 @@ import "../platform/push_messaging_source.dart";
 import "../platform/route_dispatcher.dart";
 import "../platform/route_source.dart";
 import "../services/selected_computer_service.dart";
-import "app_routes.dart";
 import "computer_switch_dispatcher.dart";
+import "notification_session_route.dart";
 
 @lazySingleton
 class NotificationOpenDispatcher({
@@ -106,42 +106,22 @@ class NotificationOpenDispatcher({
   }
 
   Future<void> _dispatch(NotificationOpenRequest request) async {
-    final sessionDetail = AppRouteSessionDetail(
-      projectId: request.projectId,
-      projectName: null,
-      sessionId: request.sessionId,
-      sessionTitle: request.sessionTitle,
-      readOnly: false,
-      fromLaunch: false,
-    );
-
     final bridgeId = request.bridgeId;
+    final bool switchedComputer;
     if (bridgeId != null && bridgeId != await _selectedComputerService.targetBridgeId()) {
       // The switch returns to the home and retargets the connection before the
-      // session screen below is built, so that screen waits for the new
-      // computer's connection and loads the session there, as after a cold
-      // launch. Whatever is on top belongs to the previous computer.
+      // session screen is built, so that screen waits for the new computer's
+      // connection and loads the session there, as after a cold launch.
       await _computerSwitchDispatcher.switchTo(bridgeId: bridgeId, source: ComputerSwitchSource.notification);
+      switchedComputer = true;
     } else {
-      // Replacing the stack tears down the live session detail screen and builds
-      // a new one, whose cubit starts from `loading` and refetches the whole
-      // session before any prompt can be shown. When that screen is already the
-      // one on top, the notification asks for something the user is looking at:
-      // the mounted screen surfaces the prompt through its own event stream, so
-      // navigating again only costs a reload.
-      final location = _routeSource.currentLocation;
-      if (location != null && sessionDetail.showsEditableLocation(location: Uri.parse(location))) {
-        return;
-      }
+      switchedComputer = false;
     }
-
-    _routeDispatcher.replaceStack(
-      stack: RouteStack(
-        paths: [
-          const AppRoute.home(),
-          sessionDetail,
-        ].map((route) => route.buildPath()).toList(growable: false),
-      ),
+    openNotificationSession(
+      request: request,
+      routeDispatcher: _routeDispatcher,
+      routeSource: _routeSource,
+      keepIfAlreadyShown: !switchedComputer,
     );
   }
 

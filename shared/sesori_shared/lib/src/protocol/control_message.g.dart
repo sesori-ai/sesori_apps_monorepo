@@ -48,11 +48,7 @@ Map<String, dynamic> _$ControlTokenRetryLaterToJson(
 
 ControlStatus _$ControlStatusFromJson(Map json) => ControlStatus(
   startup: $enumDecode(_$ControlStartupStateEnumMap, json['startup']),
-  relay: $enumDecode(
-    _$ControlRelayConnectionStateEnumMap,
-    json['relay'],
-    unknownValue: ControlRelayConnectionState.unknown,
-  ),
+  relay: $enumDecode(_$ControlRelayConnectionStateEnumMap, json['relay']),
   unhealthyPlugins: (json['unhealthyPlugins'] as List<dynamic>)
       .map(
         (e) => ControlUnhealthyPlugin.fromJson(
@@ -87,17 +83,11 @@ const _$ControlRelayConnectionStateEnumMap = {
   ControlRelayConnectionState.connecting: 'connecting',
   ControlRelayConnectionState.disconnected: 'disconnected',
   ControlRelayConnectionState.takenOver: 'taken_over',
-  ControlRelayConnectionState.unknown: 'unknown',
 };
 
 ControlPromptRequest _$ControlPromptRequestFromJson(Map json) =>
     ControlPromptRequest(
       id: json['id'] as String,
-      kind: $enumDecode(
-        _$ControlPromptKindEnumMap,
-        json['kind'],
-        unknownValue: ControlPromptKind.unknown,
-      ),
       message: json['message'] as String?,
       $type: json['type'] as String?,
     );
@@ -106,15 +96,8 @@ Map<String, dynamic> _$ControlPromptRequestToJson(
   ControlPromptRequest instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'kind': _$ControlPromptKindEnumMap[instance.kind]!,
   'message': ?instance.message,
   'type': instance.$type,
-};
-
-const _$ControlPromptKindEnumMap = {
-  ControlPromptKind.replaceBridge: 'replace_bridge',
-  ControlPromptKind.loginNeeded: 'login_needed',
-  ControlPromptKind.unknown: 'unknown',
 };
 
 ControlPromptResponse _$ControlPromptResponseFromJson(Map json) =>

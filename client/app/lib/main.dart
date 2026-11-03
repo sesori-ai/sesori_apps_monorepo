@@ -81,27 +81,24 @@ void main() async {
     SystemUiMode.edgeToEdge,
     overlays: SystemUiOverlay.values,
   );
-  final shouldInitializeFirebase = _supportsFirebase;
-  final supportsFirebaseAnalytics = _supportsFirebase;
-  final supportsFirebaseCrashlytics = _supportsFirebase;
-  if (shouldInitializeFirebase) {
+  final firebaseEnabled = _supportsFirebase;
+  if (firebaseEnabled) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
 
   await bootstrapSesoriApp(
-    shouldInitializeFirebase: shouldInitializeFirebase,
+    shouldInitializeFirebase: firebaseEnabled,
     configureDependenciesFn: () async {
       final analyticsBootstrap = await configureDependencies(
         scope: clientPersistenceScope,
-        firebaseEnabled: shouldInitializeFirebase,
+        firebaseEnabled: firebaseEnabled,
         createAnalyticsRuntimeBootstrap: ({required crawlGateService}) => _createAnalyticsRuntimeBootstrap(
-          shouldInitializeFirebase: shouldInitializeFirebase,
-          supportsFirebaseAnalytics: supportsFirebaseAnalytics,
+          firebaseEnabled: firebaseEnabled,
           crawlGateService: crawlGateService,
         ),
       );
       _configureFirebaseSdk(
-        supportsCrashlytics: supportsFirebaseCrashlytics,
+        supportsCrashlytics: firebaseEnabled,
       );
       return analyticsBootstrap;
     },
@@ -109,7 +106,7 @@ void main() async {
     applySingularCrawlGateFn: _applySingularCrawlGate,
     startAttributionFn: () => getIt<AttributionService>().start(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
-    startFeedbackPromptFn: () => _startFeedbackPrompt(supportsCrashlytics: supportsFirebaseCrashlytics),
+    startFeedbackPromptFn: () => _startFeedbackPrompt(supportsCrashlytics: firebaseEnabled),
     startFounderCallFn: () => getIt<FounderCallService>().start(),
     startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
     startNotificationStartupFn: () => startNotificationStartup(
@@ -214,11 +211,10 @@ Future<void> _completeAnalyticsStartup({
 }
 
 Future<AnalyticsRuntimeBootstrap> _createAnalyticsRuntimeBootstrap({
-  required bool shouldInitializeFirebase,
-  required bool supportsFirebaseAnalytics,
+  required bool firebaseEnabled,
   required AnalyticsCrawlGateService crawlGateService,
 }) async {
-  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
+  if (!firebaseEnabled) {
     return AnalyticsRuntimeBootstrap(
       capability: const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,

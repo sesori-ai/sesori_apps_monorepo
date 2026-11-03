@@ -798,7 +798,7 @@ startup-extension file failure, retry once the filesystem is usable.
   `client/module_app_ui/lib/src/features/new_session/`,
   `client/app/lib/features/new_session/new_session_screen.dart`, and
   `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
-- Client tests: `client/app/test/core/widgets/agent_model_buttons_test.dart`,
+- Client tests: `client/module_app_ui/test/features/session_detail/widgets/agent_model_buttons_test.dart`,
   `client/app/test/features/new_session/new_session_screen_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`,
   `client/desktop/test/core/routing/desktop_router_test.dart`, and, for read-only run details,

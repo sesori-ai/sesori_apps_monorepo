@@ -58,7 +58,6 @@ void main() {
       promptTracker.clear();
       final ControlPromptRequest replacement = ControlPromptRequest(
         id: _prompt.id,
-        kind: _prompt.kind,
         message: _prompt.message,
       );
       promptTracker.addPrompt(prompt: replacement);
@@ -80,11 +79,7 @@ void main() {
   });
 }
 
-const ControlPromptRequest _prompt = ControlPromptRequest(
-  id: "replace-1",
-  kind: ControlPromptKind.replaceBridge,
-  message: "Replace the running bridge?",
-);
+const ControlPromptRequest _prompt = ControlPromptRequest(id: "replace-1", message: "Replace the running bridge?");
 
 class _FakeControlChannelApi() implements ControlChannelApi {
   final List<ControlMessage> sentMessages = <ControlMessage>[];

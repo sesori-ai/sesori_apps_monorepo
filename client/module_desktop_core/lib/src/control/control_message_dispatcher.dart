@@ -63,7 +63,7 @@ class ControlMessageDispatcher({
     try {
       message = ControlMessage.fromJson(jsonDecodeMap(frame));
     } on Object catch (error, stackTrace) {
-      // Forward compat: a newer helper's frame must not kill the pipeline.
+      // A malformed frame must not kill the pipeline.
       logw("Dropping an undecodable control frame", error, stackTrace);
       return;
     }

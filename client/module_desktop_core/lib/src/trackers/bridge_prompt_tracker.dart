@@ -2,8 +2,7 @@ import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Holds the helper's pending prompts (replace-bridge, login-needed) as
-/// stream + snapshot.
+/// Holds the helper's pending replace-bridge prompts as stream + snapshot.
 ///
 /// Written by the control-message dispatcher; read by the desktop
 /// cubits/window. Prompts are per-connection: a disconnected helper's prompt

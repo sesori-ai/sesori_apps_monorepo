@@ -41,17 +41,16 @@ sealed class ControlMessage with _$ControlMessage {
   @FreezedUnionValue("status")
   const factory status({
     required ControlStartupState startup,
-    @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required ControlRelayConnectionState relay,
+    required ControlRelayConnectionState relay,
     required List<ControlUnhealthyPlugin> unhealthyPlugins,
     @Default(0) int activeSessionCount,
   }) = ControlStatus;
 
-  /// helper → GUI: surface a user prompt (e.g. replace-bridge, login-needed).
-  /// [id] correlates the [ControlPromptResponse].
+  /// helper → GUI: ask whether this bridge may replace another one for the
+  /// account. [id] correlates the [ControlPromptResponse].
   @FreezedUnionValue("prompt_request")
   const factory promptRequest({
     required String id,
-    @JsonKey(unknownEnumValue: ControlPromptKind.unknown) required ControlPromptKind kind,
     required String? message,
   }) = ControlPromptRequest;
 
@@ -83,8 +82,8 @@ sealed class ControlMessage with _$ControlMessage {
   factory fromJson(Map<String, dynamic> json) => _$ControlMessageFromJson(json);
 }
 
-/// Relay connection state reported in a [ControlStatus]. [unknown] is the
-/// forward-compat fallback for values a newer helper might add.
+/// Relay connection state reported in a [ControlStatus]. The GUI only talks to
+/// the helper it bundles, so this closed set needs no unknown fallback.
 enum ControlRelayConnectionState() {
   @JsonValue("connected")
   connected,
@@ -98,8 +97,6 @@ enum ControlRelayConnectionState() {
   /// "take over" affordance (a plain helper respawn).
   @JsonValue("taken_over")
   takenOver,
-  @JsonValue("unknown")
-  unknown,
 }
 
 /// A degraded or failed plugin (backend) reported in a [ControlStatus].
@@ -125,17 +122,6 @@ enum ControlUnhealthyPluginState() {
   /// Stopped after a terminal failure; the bridge and other plugins keep
   /// running without it.
   failed,
-}
-
-/// The kind of prompt a [ControlPromptRequest] surfaces. [unknown] is the
-/// forward-compat fallback.
-enum ControlPromptKind() {
-  @JsonValue("replace_bridge")
-  replaceBridge,
-  @JsonValue("login_needed")
-  loginNeeded,
-  @JsonValue("unknown")
-  unknown,
 }
 
 /// Startup readiness is separate from the helper process and relay socket.

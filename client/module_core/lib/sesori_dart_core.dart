@@ -282,6 +282,7 @@ export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/computer_switch_dispatcher.dart";
 export "src/routing/notification_open_dispatcher.dart";
+export "src/routing/notification_session_route.dart";
 export "src/services/analytics_crawl_gate_service.dart";
 export "src/services/attribution_service.dart";
 export "src/services/bridge_settings_service.dart";
