@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart" show Project, ProjectGlossaryK
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/voice/voice_dictation_outcome.dart";
-import "../foundation/models/voice/voice_engine.dart";
 import "../foundation/models/voice/voice_live.dart";
 import "../foundation/models/voice/voice_mode.dart";
 import "../foundation/models/voice/voice_transcription_error.dart";
@@ -66,7 +65,6 @@ class VoiceTranscriptionService({
   /// Both answers can take seconds, so a hold never waits for them (D26). The
   /// support check spawns a process on Linux, so it runs only when live is on.
   Future<void> _loadLiveAvailability({required VoiceTranscriptionSession session}) async {
-    await _voiceModeRepository.loadEngine();
     try {
       await _voiceModeRepository.load();
     } catch (error, stackTrace) {
@@ -78,16 +76,15 @@ class VoiceTranscriptionService({
   }
 
   Future<void> _checkOnDevice({required VoiceTranscriptionSession session}) async {
-    if (!_voiceModeRepository.onDeviceEnabled || _voiceModeRepository.engine == VoiceEngine.remote) return;
+    if (!_voiceModeRepository.onDeviceEnabled) return;
     session._canRunOnDevice = await _repository.prepareOnDevice() && await session._captureSession.supportsPcmStream();
   }
 
-  /// The two switches are independent: the device's engine runs whenever it's
-  /// picked and can, and the live switch decides whether the words show while the
-  /// user speaks.
+  /// The two switches are independent: the device's engine runs whenever it can,
+  /// and the live switch decides whether the words show while the user speaks.
   VoiceDictationMode _chooseMode({required VoiceTranscriptionSession session}) {
     final liveEnabled = _voiceModeRepository.mode is VoiceModeLive;
-    if (session._canRunOnDevice && _voiceModeRepository.engine == VoiceEngine.device) {
+    if (session._canRunOnDevice) {
       return liveEnabled ? VoiceDictationMode.onDeviceLive : VoiceDictationMode.onDeviceHidden;
     }
     return session._canRunLive && liveEnabled ? VoiceDictationMode.live : VoiceDictationMode.afterRecording;
@@ -223,8 +220,7 @@ class VoiceTranscriptionService({
     if (session._projectGlossaryKey == null) _loadProjectGlossaryKeyIfIdle(session: session);
     // Read once, here: the dictation keeps this mode whatever the switches do next.
     final mode = _chooseMode(session: session);
-    // The model may have finished downloading or the pick changed, which the next
-    // hold can then use.
+    // The model may have finished downloading, which the next hold can then use.
     if (session._allowLive && !session._canRunOnDevice) unawaited(_checkOnDevice(session: session));
 
     try {

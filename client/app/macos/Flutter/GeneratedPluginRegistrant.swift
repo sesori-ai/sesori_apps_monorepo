@@ -5,7 +5,6 @@
 import FlutterMacOS
 import Foundation
 
-import app_links
 import desktop_webview_window
 import device_info_plus
 import file_selector_macos
@@ -29,7 +28,6 @@ import wakelock_plus
 import window_to_front
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  AppLinksMacosPlugin.register(with: registry.registrar(forPlugin: "AppLinksMacosPlugin"))
   DesktopWebviewWindowPlugin.register(with: registry.registrar(forPlugin: "DesktopWebviewWindowPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))

@@ -27,7 +27,7 @@ void main() {
     registerFallbackValue(FakeNotificationSettings());
   });
 
-  group("notificationOpenFromMessageForTesting", () {
+  group("notificationOpenFromMessage", () {
     test("returns normalized open request with session title", () {
       const message = RemoteMessage(
         data: {
@@ -43,7 +43,7 @@ void main() {
         ),
       );
 
-      final request = source.notificationOpenFromMessageForTesting(message: message);
+      final request = source.notificationOpenFromMessage(message: message);
 
       expect(request, isNotNull);
       expect(request!.projectId, equals("proj_1"));
@@ -61,7 +61,7 @@ void main() {
         },
       );
 
-      final request = source.notificationOpenFromMessageForTesting(message: message);
+      final request = source.notificationOpenFromMessage(message: message);
 
       expect(request, isNull);
     });
@@ -69,13 +69,13 @@ void main() {
     test("returns null when payload is invalid", () {
       const message = RemoteMessage(data: {"not": "a_notification_payload"});
 
-      final request = source.notificationOpenFromMessageForTesting(message: message);
+      final request = source.notificationOpenFromMessage(message: message);
 
       expect(request, isNull);
     });
   });
 
-  test("pushNotificationMessageFromRemoteMessageForTesting preserves typed data", () {
+  test("pushNotificationMessageFromRemoteMessage preserves typed data", () {
     const message = RemoteMessage(
       data: {
         "category": "session_message",
@@ -88,7 +88,7 @@ void main() {
       ),
     );
 
-    final pushMessage = source.pushNotificationMessageFromRemoteMessageForTesting(
+    final pushMessage = source.pushNotificationMessageFromRemoteMessage(
       message: message,
     );
 

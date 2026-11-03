@@ -161,8 +161,8 @@ streams exposed by `ConnectionService`. Desktop control cubits may subscribe to
 
 Root `AGENTS.md` has the full suffix vocabulary. Concrete client examples:
 
-- **Platform abstractions** (in `module_core/lib/src/platform/` and `module_core/lib/src/foundation/platform/`) are interfaces named by capability: `UrlLauncher`, `DeepLinkSource`, `LifecycleSource`, `RouteSource`, `NotificationCanceller`
-- **Platform implementations** (mostly in `app/lib/core/platform/`; deep-link and route sources in `app/lib/core/routing/`) use `Adapter` or `Flutter*` prefix for the concrete Flutter version: `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`, `AppLinksDeepLinkSource`, `GoRouterRouteSource`
+- **Platform abstractions** (in `module_core/lib/src/platform/` and `module_core/lib/src/foundation/platform/`) are interfaces named by capability: `UrlLauncher`, `LifecycleSource`, `RouteSource`, `NotificationCanceller`
+- **Platform implementations** (mostly in `app/lib/core/platform/`) use `Adapter` or `Flutter*` prefix for the concrete Flutter version: `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`, `GoRouterRouteSource`
 - **Transport Layer 0** uses `Client` / `Service`: `RelayClient` (raw WebSocket), `ConnectionService` (lifecycle + reconnect), `RelayHttpApiClient` (HTTP-over-relay)
 - **Layer 1 APIs** use `Api`: `SessionApi`, `ProjectApi`, `VoiceApi`, `NotificationApi`
 - **Layer 2 Repositories** use `Repository`: `SessionRepository`, `ProjectRepository`, `NotificationPreferencesRepository`

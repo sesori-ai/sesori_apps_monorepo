@@ -88,7 +88,6 @@ void main() {
   late List<VoiceLiveEvent> events;
   VoiceMode mode = const VoiceModeLive();
   bool onDeviceEnabled = false;
-  VoiceEngine engine = VoiceEngine.device;
   bool onDeviceReady = false;
 
   setUpAll(() {
@@ -130,7 +129,6 @@ void main() {
     mode = const VoiceModeLive();
     onDeviceEnabled = false;
     onDeviceReady = false;
-    engine = VoiceEngine.device;
     frames = StreamController<Uint8List>();
     repository = _MockVoiceRepository();
     voiceModeRepository = _MockVoiceModeRepository();
@@ -159,8 +157,6 @@ void main() {
     when(platform.createSession).thenReturn(capture);
     when(platform.prewarm).thenAnswer((_) async {});
     when(voiceModeRepository.load).thenAnswer((_) async {});
-    when(voiceModeRepository.loadEngine).thenAnswer((_) async {});
-    when(() => voiceModeRepository.engine).thenAnswer((_) => engine);
     when(() => voiceModeRepository.mode).thenAnswer((_) => mode);
     when(() => voiceModeRepository.onDeviceEnabled).thenAnswer((_) => onDeviceEnabled);
     when(repository.prepareOnDevice).thenAnswer((_) async => onDeviceReady);
@@ -296,49 +292,6 @@ void main() {
       await service.start(session: session);
 
       verify(() => repository.openOnDevice(sampleRate: any(named: "sampleRate"))).called(1);
-    });
-
-    group("with an engine picked", () {
-      setUp(() {
-        mode = const VoiceModeAfterRecording();
-      });
-
-      test("Remote uses the server and never asks the device's engine", () async {
-        engine = VoiceEngine.remote;
-        session = await createSession();
-        await service.start(session: session);
-        await pumpEventQueue();
-
-        verify(capture.start).called(1);
-        verifyNever(repository.prepareOnDevice);
-      });
-
-      test("the first hold after picking Device uses the server, and the next the device's engine", () async {
-        engine = VoiceEngine.remote;
-        session = await createSession();
-
-        engine = VoiceEngine.device;
-        await service.start(session: session);
-        await pumpEventQueue();
-
-        verify(capture.start).called(1);
-        verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
-
-        await service.cancel(session: session);
-        await service.start(session: session);
-
-        verify(() => repository.openOnDevice(sampleRate: any(named: "sampleRate"))).called(1);
-      });
-
-      test("picking Remote takes effect on the next hold", () async {
-        session = await createSession();
-
-        engine = VoiceEngine.remote;
-        await service.start(session: session);
-
-        verify(capture.start).called(1);
-        verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
-      });
     });
 
     test("a session that doesn't allow live keeps recording first", () async {

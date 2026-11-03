@@ -23,7 +23,6 @@ import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../foundation/platform/active_bridge_locality.dart";
-import "../platform/deep_link_source.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../platform/route_source.dart";
@@ -235,8 +234,6 @@ class MockRelayClient() extends Mock implements RelayClient;
 class MockVoiceApi() extends Mock implements VoiceApi;
 
 class MockSecureStorageRepository() extends Mock implements SecureStorageRepository;
-
-class MockDeepLinkSource() extends Mock implements DeepLinkSource;
 
 class MockUrlLauncher() extends Mock implements UrlLauncher;
 

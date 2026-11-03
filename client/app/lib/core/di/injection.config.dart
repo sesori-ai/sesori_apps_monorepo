@@ -109,8 +109,6 @@ import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dar
     as _i776;
 import 'package:sesori_mobile/core/platform/singular_attribution_startup.dart'
     as _i853;
-import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i902;
-import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
@@ -201,9 +199,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
-    );
-    gh.lazySingleton<_i948.DeepLinkSource>(
-      () => _i919.AppLinksDeepLinkSource(),
     );
     gh.lazySingleton<_i948.InstalledAppBuildSource>(
       () => _i186.PackageInfoInstalledAppBuildSource(
@@ -331,10 +326,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i52.NoOpFailureReporter(),
       registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i902.DeepLinkService>(
-      () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.AppReviewClient>(
       () => _i291.FlutterAppReviewClient(urlLauncher: gh<_i948.UrlLauncher>()),

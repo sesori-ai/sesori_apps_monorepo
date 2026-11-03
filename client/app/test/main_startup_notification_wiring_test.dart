@@ -43,8 +43,6 @@ void main() {
       singularGateApplied.complete();
     }
 
-    void initializeDeepLinks() => events.add("deepLinks");
-
     void startAttribution() => events.add("attribution");
 
     Future<void> startProductAnalytics() async => events.add("productAnalytics");
@@ -84,7 +82,6 @@ void main() {
       configureDependenciesFn: configureDependencies,
       prepareSingularAttributionFn: prepareSingularAttribution,
       applySingularCrawlGateFn: applySingularCrawlGate,
-      initializeDeepLinks: initializeDeepLinks,
       startAttributionFn: startAttribution,
       startProductAnalyticsFn: startProductAnalytics,
       startFeedbackPromptFn: () {},
@@ -124,7 +121,6 @@ void main() {
     expect(events, [
       "configureDependencies",
       "singularAttribution.prepare",
-      "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
       "notificationStartup.start",
@@ -145,7 +141,6 @@ void main() {
       [
         "configureDependencies",
         "singularAttribution.prepare",
-        "deepLinks",
         "productAnalytics",
         "analyticsRoutes",
         "notificationStartup.start",
@@ -180,7 +175,6 @@ void main() {
         singularGateAttempted.complete();
         throw StateError("startup failed");
       },
-      initializeDeepLinks: () => events.add("deepLinks"),
       startAttributionFn: () => events.add("attribution"),
       startProductAnalyticsFn: () async => events.add("productAnalytics"),
       startFeedbackPromptFn: () {},
@@ -196,7 +190,6 @@ void main() {
     expect(events, [
       "configureDependencies",
       "singularAttribution.prepare",
-      "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
       "runApp",

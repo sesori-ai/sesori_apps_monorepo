@@ -20,8 +20,8 @@ lib/src/
 ├── foundation/       Platform interfaces and shared models (analytics, composer)
 ├── logging/          logd/logw/loge with configurable LogLevel
 ├── migrations/       Isolated deprecated upgrade compatibility; never a runtime storage backend
-├── platform/         Abstract interfaces (UrlLauncher, DeepLinkSource, LifecycleSource,
-│                  RouteSource, NotificationCanceller, …); Flutter adapters live in
+├── platform/         Abstract interfaces (UrlLauncher, LifecycleSource, RouteSource,
+│                  NotificationCanceller, …); Flutter adapters live in
 │                  the product shell, mostly under app/lib/core/platform/
 ├── repositories/     API mapping and domain-facing data operations
 ├── routing/          AppRoute/AppRouteDef, route analytics, computer-switch and notification-open dispatchers
@@ -44,7 +44,6 @@ lib/src/
 The core package defines abstract interfaces that each platform must implement:
 
 - `UrlLauncher` — open URLs in browser (Flutter: `url_launcher`, CLI: `Process.run("open", ...)`)
-- `DeepLinkSource` — stream of incoming deep link URIs (Flutter: `app_links`, CLI: unused)
 - `LifecycleSource` — app lifecycle state stream (Flutter: `AppLifecycleObserver`)
 
 ## DI Initialization
@@ -58,7 +57,7 @@ configureCoreDependencies(getIt);              // from sesori_dart_core
 ```
 
 Platform registers persistence's `MasterKeyStore`, `PersistenceDirectory` and
-`PersistenceScope`, plus core's `UrlLauncher`, `DeepLinkSource` and `LifecycleSource`.
+`PersistenceScope`, plus core's `UrlLauncher` and `LifecycleSource`.
 Shared persistence DI precedes auth, which precedes core. Normal core consumers
 use typed `PersisterRepository`/`SecureStorageRepository` from the persistence
 public barrel; keys and serialization remain core-owned.

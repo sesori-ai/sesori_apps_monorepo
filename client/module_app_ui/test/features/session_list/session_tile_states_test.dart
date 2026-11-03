@@ -28,7 +28,6 @@ void main() {
     bool awaitingInput = false,
     bool isRetrying = false,
     int backgroundTaskCount = 0,
-    bool canOpen = true,
     VoidCallback? onArchive,
     VoidCallback? onToggleUnread,
   }) {
@@ -42,7 +41,7 @@ void main() {
       awaitingInput: awaitingInput,
       isRetrying: isRetrying,
       backgroundTaskCount: backgroundTaskCount,
-      onTap: canOpen ? () {} : null,
+      onTap: () {},
       menuEntries: () => const [],
       onArchive: onArchive ?? () {},
       onDelete: () {},
@@ -401,35 +400,6 @@ void main() {
         find.descendant(of: find.byType(SessionTile), matching: find.byType(Ink)),
       );
       expect(ink.decoration, isNull);
-    });
-
-    testWidgets("does not announce a dead button when the shell has no detail route", (tester) async {
-      final semantics = tester.ensureSemantics();
-
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(
-            title: "My Session",
-            updatedAt: DateTime.now().millisecondsSinceEpoch,
-          ),
-          canOpen: false,
-        ),
-      );
-
-      expect(
-        tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
-        matchesSemantics(
-          label: "plugin-1\nMy Session\njust now",
-          isButton: false,
-          hasTapAction: false,
-          hasLongPressAction: true,
-          isFocusable: true,
-          hasFocusAction: true,
-        ),
-      );
-
-      semantics.dispose();
     });
 
     testWidgets("announces the whole row as one button", (tester) async {

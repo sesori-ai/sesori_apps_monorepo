@@ -641,9 +641,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPluginWarmupRetry => 'Retry harness warm-up setting';
 
   @override
-  String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
-
-  @override
   String get harnessManagementDefaultsSection => 'Global harness settings';
 
   @override
@@ -657,13 +654,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessManagementRefreshSetup => 'Check setup';
-
-  @override
-  String get harnessManagementInstall => 'Install runtime';
-
-  @override
-  String get harnessManagementInstallDescription =>
-      'Download this harness for Sesori only. Your system stays untouched.';
 
   @override
   String get harnessManagementInstallDownloading => 'Downloading…';
@@ -690,9 +680,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessManagementIdleTimeout => 'Idle timeout';
-
-  @override
-  String get harnessManagementClearOverride => 'Use bridge default';
 
   @override
   String get harnessManagementExternalTitle => 'Managed outside Sesori';
@@ -737,9 +724,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String harnessManagementForceDisableTitle(String harnessName) {
     return 'Force disable $harnessName?';
   }
-
-  @override
-  String get harnessManagementForceRestartTitle => 'Force restart harness?';
 
   @override
   String get harnessManagementForceDescription =>
@@ -908,9 +892,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationPastedCodeNotConfirmed => 'The code could not be confirmed. Submit it again.';
 
   @override
-  String get harnessesRegisteredSection => 'Registered harnesses';
-
-  @override
   String get harnessesEmptyTitle => 'No harnesses registered';
 
   @override
@@ -944,31 +925,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesDismissRefreshError => 'Dismiss refresh error';
 
   @override
-  String get harnessesDefaultBadge => 'Default';
-
-  @override
-  String get harnessesSetupStatus => 'Setup';
-
-  @override
-  String get harnessesRuntimeVersion => 'Version';
-
-  @override
-  String get harnessesRuntimeStatus => 'Runtime';
-
-  @override
-  String get harnessesWorkStatus => 'Work';
-
-  @override
-  String get harnessesCustomIdleTimeout => 'Custom for this harness';
-
-  @override
-  String get harnessesUsesDefaultIdleTimeout => 'Uses the bridge default';
-
-  @override
   String get harnessesNoIdleTimeout => 'No timeout';
-
-  @override
-  String get harnessesNoIdleTimeoutDescription => 'This harness stays running';
 
   @override
   String harnessesIdleTimeoutMinutes(int minutes) {
@@ -1079,25 +1036,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDefaultInputTextPreview => 'Ask Sesori';
-
-  @override
-  String get settingsVoiceEngineTitle => 'Dictation engine';
-
-  @override
-  String get settingsVoiceEngineDescription =>
-      'A temporary comparison. If the one you pick can\'t run, dictation uses the server.';
-
-  @override
-  String get settingsVoiceEngineDevice => 'Device';
-
-  @override
-  String get settingsVoiceEngineDeviceDescription => 'This phone\'s own speech engine. Stays on this phone.';
-
-  @override
-  String get settingsVoiceEngineRemote => 'Remote';
-
-  @override
-  String get settingsVoiceEngineRemoteDescription => 'Audio goes to the Sesori server.';
 
   @override
   String get settingsSectionSupport => 'Support';
@@ -1346,9 +1284,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailMoreActions => 'More actions';
-
-  @override
-  String get sessionDetailHideActions => 'Hide actions';
 
   @override
   String get sessionDetailAttachImage => 'Attach image';
@@ -2335,12 +2270,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hide => 'Hide';
-
-  @override
-  String get noProjects => 'No projects';
-
-  @override
-  String get addProjectPrompt => 'Add a project to get started';
 
   @override
   String get projectDiscovered => 'Project discovered';

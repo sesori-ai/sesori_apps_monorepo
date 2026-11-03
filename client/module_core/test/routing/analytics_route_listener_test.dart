@@ -113,7 +113,6 @@ void main() {
       AppRouteDef.settingsProfile,
       AppRouteDef.settingsComputers,
       AppRouteDef.settingsProjects,
-      AppRouteDef.settingsVoiceEngine,
       AppRouteDef.archivedSessions,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,

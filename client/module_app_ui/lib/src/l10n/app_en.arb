@@ -573,14 +573,11 @@
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPluginWarmupUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupRetry": "Retry harness warm-up setting",
-  "harnessManagementDescription": "Control the harnesses that support management through Sesori.",
   "harnessManagementDefaultsSection": "Global harness settings",
   "harnessManagementDefaultTimeout": "Default idle timeout",
   "harnessManagementDefaultTimeoutDescription": "Apply to all harnesses and replace individual overrides.",
   "harnessManagementEnabled": "Enabled",
   "harnessManagementRefreshSetup": "Check setup",
-  "harnessManagementInstall": "Install runtime",
-  "harnessManagementInstallDescription": "Download this harness for Sesori only. Your system stays untouched.",
   "harnessManagementInstallDownloading": "Downloading…",
   "harnessManagementInstallDownloadingPercent": "Downloading… {percent}%",
   "@harnessManagementInstallDownloadingPercent": {
@@ -596,7 +593,6 @@
   "harnessManagementInstallInProgress": "Installing…",
   "harnessManagementRestart": "Restart harness",
   "harnessManagementIdleTimeout": "Idle timeout",
-  "harnessManagementClearOverride": "Use bridge default",
   "harnessManagementExternalTitle": "Managed outside Sesori",
   "harnessManagementExternalDescription": "This harness process is controlled externally. Sesori will not start, stop, restart, or suspend it.",
   "harnessManagementDefaultTimeoutDialogTitle": "Set default idle timeout",
@@ -618,7 +614,6 @@
   "harnessManagementSave": "Save",
   "harnessManagementForceDisableTitle": "Force disable {harnessName}?",
   "@harnessManagementForceDisableTitle": {"placeholders": {"harnessName": {"type": "String"}}},
-  "harnessManagementForceRestartTitle": "Force restart harness?",
   "harnessManagementForceDescription": "Active work may be interrupted. This action is sent once and cannot be undone.",
   "harnessManagementForceAction": "Force action",
   "harnessManagementActionFailedTitle": "Harness action failed",
@@ -677,7 +672,6 @@
   "harnessAuthenticationSubmitCode": "Submit code",
   "harnessAuthenticationPastedCodeInvalid": "Paste the complete code shown after approval, without spaces.",
   "harnessAuthenticationPastedCodeNotConfirmed": "The code could not be confirmed. Submit it again.",
-  "harnessesRegisteredSection": "Registered harnesses",
   "harnessesEmptyTitle": "No harnesses registered",
   "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
   "harnessesLoading": "Loading harnesses",
@@ -689,15 +683,7 @@
   "harnessesRefreshFailedTitle": "Could not refresh harnesses",
   "harnessesRefreshFailedDescription": "Showing the last information received from the bridge.",
   "harnessesDismissRefreshError": "Dismiss refresh error",
-  "harnessesDefaultBadge": "Default",
-  "harnessesSetupStatus": "Setup",
-  "harnessesRuntimeVersion": "Version",
-  "harnessesRuntimeStatus": "Runtime",
-  "harnessesWorkStatus": "Work",
-  "harnessesCustomIdleTimeout": "Custom for this harness",
-  "harnessesUsesDefaultIdleTimeout": "Uses the bridge default",
   "harnessesNoIdleTimeout": "No timeout",
-  "harnessesNoIdleTimeoutDescription": "This harness stays running",
   "harnessesIdleTimeoutMinutes": "{minutes} min",
   "@harnessesIdleTimeoutMinutes": {
     "placeholders": {
@@ -762,21 +748,6 @@
   "@settingsDefaultInputTextPreview": {
     "description": "Placeholder shown in the typed-input preview"
   },
-  "settingsVoiceEngineTitle": "Dictation engine",
-  "@settingsVoiceEngineTitle": {
-    "description": "Settings entry and page title for picking the engine that transcribes dictation"
-  },
-  "settingsVoiceEngineDescription": "A temporary comparison. If the one you pick can't run, dictation uses the server.",
-  "settingsVoiceEngineDevice": "Device",
-  "@settingsVoiceEngineDevice": {
-    "description": "Dictation engine option: the operating system's own speech engine"
-  },
-  "settingsVoiceEngineDeviceDescription": "This phone's own speech engine. Stays on this phone.",
-  "settingsVoiceEngineRemote": "Remote",
-  "@settingsVoiceEngineRemote": {
-    "description": "Dictation engine option: transcription on the server"
-  },
-  "settingsVoiceEngineRemoteDescription": "Audio goes to the Sesori server.",
   "settingsSectionSupport": "Support",
   "settingsSupportEmail": "Email",
   "settingsSupportDiscord": "Discord",
@@ -995,10 +966,6 @@
   "sessionDetailMoreActions": "More actions",
   "@sessionDetailMoreActions": {
     "description": "Accessibility label of the chevron that expands the composer's advanced-options drawer."
-  },
-  "sessionDetailHideActions": "Hide actions",
-  "@sessionDetailHideActions": {
-    "description": "Accessibility label of the chevron while the composer's advanced-options drawer is open and tapping it collapses the drawer."
   },
   "sessionDetailAttachImage": "Attach image",
   "@sessionDetailAttachImage": {
@@ -1705,8 +1672,6 @@
   "@hide": {
     "description": "Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill."
   },
-  "noProjects": "No projects",
-  "addProjectPrompt": "Add a project to get started",
   "projectDiscovered": "Project discovered",
   "addProjectEnableGitTitle": "Enable Git tracking?",
   "addProjectEnableGitBody": "Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.",

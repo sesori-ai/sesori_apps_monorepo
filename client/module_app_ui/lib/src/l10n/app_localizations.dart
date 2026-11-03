@@ -1201,12 +1201,6 @@ abstract class AppLocalizations {
   /// **'Retry harness warm-up setting'**
   String get settingsPluginWarmupRetry;
 
-  /// No description provided for @harnessManagementDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Control the harnesses that support management through Sesori.'**
-  String get harnessManagementDescription;
-
   /// No description provided for @harnessManagementDefaultsSection.
   ///
   /// In en, this message translates to:
@@ -1236,18 +1230,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check setup'**
   String get harnessManagementRefreshSetup;
-
-  /// No description provided for @harnessManagementInstall.
-  ///
-  /// In en, this message translates to:
-  /// **'Install runtime'**
-  String get harnessManagementInstall;
-
-  /// No description provided for @harnessManagementInstallDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Download this harness for Sesori only. Your system stays untouched.'**
-  String get harnessManagementInstallDescription;
 
   /// No description provided for @harnessManagementInstallDownloading.
   ///
@@ -1296,12 +1278,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Idle timeout'**
   String get harnessManagementIdleTimeout;
-
-  /// No description provided for @harnessManagementClearOverride.
-  ///
-  /// In en, this message translates to:
-  /// **'Use bridge default'**
-  String get harnessManagementClearOverride;
 
   /// No description provided for @harnessManagementExternalTitle.
   ///
@@ -1380,12 +1356,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Force disable {harnessName}?'**
   String harnessManagementForceDisableTitle(String harnessName);
-
-  /// No description provided for @harnessManagementForceRestartTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Force restart harness?'**
-  String get harnessManagementForceRestartTitle;
 
   /// No description provided for @harnessManagementForceDescription.
   ///
@@ -1693,12 +1663,6 @@ abstract class AppLocalizations {
   /// **'The code could not be confirmed. Submit it again.'**
   String get harnessAuthenticationPastedCodeNotConfirmed;
 
-  /// No description provided for @harnessesRegisteredSection.
-  ///
-  /// In en, this message translates to:
-  /// **'Registered harnesses'**
-  String get harnessesRegisteredSection;
-
   /// No description provided for @harnessesEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -1765,59 +1729,11 @@ abstract class AppLocalizations {
   /// **'Dismiss refresh error'**
   String get harnessesDismissRefreshError;
 
-  /// No description provided for @harnessesDefaultBadge.
-  ///
-  /// In en, this message translates to:
-  /// **'Default'**
-  String get harnessesDefaultBadge;
-
-  /// No description provided for @harnessesSetupStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Setup'**
-  String get harnessesSetupStatus;
-
-  /// No description provided for @harnessesRuntimeVersion.
-  ///
-  /// In en, this message translates to:
-  /// **'Version'**
-  String get harnessesRuntimeVersion;
-
-  /// No description provided for @harnessesRuntimeStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Runtime'**
-  String get harnessesRuntimeStatus;
-
-  /// No description provided for @harnessesWorkStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Work'**
-  String get harnessesWorkStatus;
-
-  /// No description provided for @harnessesCustomIdleTimeout.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom for this harness'**
-  String get harnessesCustomIdleTimeout;
-
-  /// No description provided for @harnessesUsesDefaultIdleTimeout.
-  ///
-  /// In en, this message translates to:
-  /// **'Uses the bridge default'**
-  String get harnessesUsesDefaultIdleTimeout;
-
   /// No description provided for @harnessesNoIdleTimeout.
   ///
   /// In en, this message translates to:
   /// **'No timeout'**
   String get harnessesNoIdleTimeout;
-
-  /// No description provided for @harnessesNoIdleTimeoutDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'This harness stays running'**
-  String get harnessesNoIdleTimeoutDescription;
 
   /// No description provided for @harnessesIdleTimeoutMinutes.
   ///
@@ -2034,42 +1950,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ask Sesori'**
   String get settingsDefaultInputTextPreview;
-
-  /// Settings entry and page title for picking the engine that transcribes dictation
-  ///
-  /// In en, this message translates to:
-  /// **'Dictation engine'**
-  String get settingsVoiceEngineTitle;
-
-  /// No description provided for @settingsVoiceEngineDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'A temporary comparison. If the one you pick can\'t run, dictation uses the server.'**
-  String get settingsVoiceEngineDescription;
-
-  /// Dictation engine option: the operating system's own speech engine
-  ///
-  /// In en, this message translates to:
-  /// **'Device'**
-  String get settingsVoiceEngineDevice;
-
-  /// No description provided for @settingsVoiceEngineDeviceDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'This phone\'s own speech engine. Stays on this phone.'**
-  String get settingsVoiceEngineDeviceDescription;
-
-  /// Dictation engine option: transcription on the server
-  ///
-  /// In en, this message translates to:
-  /// **'Remote'**
-  String get settingsVoiceEngineRemote;
-
-  /// No description provided for @settingsVoiceEngineRemoteDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Audio goes to the Sesori server.'**
-  String get settingsVoiceEngineRemoteDescription;
 
   /// No description provided for @settingsSectionSupport.
   ///
@@ -2544,12 +2424,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More actions'**
   String get sessionDetailMoreActions;
-
-  /// Accessibility label of the chevron while the composer's advanced-options drawer is open and tapping it collapses the drawer.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide actions'**
-  String get sessionDetailHideActions;
 
   /// Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message.
   ///
@@ -4206,18 +4080,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide'**
   String get hide;
-
-  /// No description provided for @noProjects.
-  ///
-  /// In en, this message translates to:
-  /// **'No projects'**
-  String get noProjects;
-
-  /// No description provided for @addProjectPrompt.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a project to get started'**
-  String get addProjectPrompt;
 
   /// No description provided for @projectDiscovered.
   ///

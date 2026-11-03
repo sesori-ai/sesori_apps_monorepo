@@ -9,10 +9,6 @@ extension BuildContextLocalization on BuildContext {
     return brightness == Brightness.dark;
   }
 
-  bool get isLightMode {
-    return brightness == Brightness.light;
-  }
-
   Brightness get brightness {
     return Theme.of(this).brightness;
   }

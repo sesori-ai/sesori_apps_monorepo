@@ -481,7 +481,7 @@ Layer 0 — Platform Implementations
 └─ One implementation per interface per product/platform — no alternatives or
    factories inside a single shell. Mobile and desktop may each provide their
    own adapter for shared module_core interfaces.
-└─ Examples: FlutterUrlLauncher, AppLifecycleObserver, AppLinksDeepLinkSource,
+└─ Examples: FlutterUrlLauncher, AppLifecycleObserver,
    GoRouterRouteSource, CrashlyticsFailureReporter
 └─ No cross-dependency between implementations
 └─ Location: lib/core/platform/

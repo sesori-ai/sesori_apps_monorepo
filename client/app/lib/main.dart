@@ -22,7 +22,6 @@ import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
-import "core/routing/deep_link_service.dart";
 import "core/widgets/feedback_voice_input_scope.dart";
 import "firebase_options.dart";
 
@@ -108,7 +107,6 @@ void main() async {
     },
     prepareSingularAttributionFn: _prepareSingularAttribution,
     applySingularCrawlGateFn: _applySingularCrawlGate,
-    initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startAttributionFn: () => getIt<AttributionService>().start(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
     startFeedbackPromptFn: () => _startFeedbackPrompt(supportsCrashlytics: supportsFirebaseCrashlytics),
@@ -133,7 +131,6 @@ Future<void> bootstrapSesoriApp({
   required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
-  required void Function() initializeDeepLinks,
   required void Function() startAttributionFn,
   required Future<void> Function() startProductAnalyticsFn,
   required void Function() startFeedbackPromptFn,
@@ -146,7 +143,6 @@ Future<void> bootstrapSesoriApp({
 }) async {
   final analyticsBootstrap = await configureDependenciesFn();
   prepareSingularAttributionFn();
-  initializeDeepLinks();
   await startProductAnalyticsFn();
   startFeedbackPromptFn();
   startFounderCallFn();
