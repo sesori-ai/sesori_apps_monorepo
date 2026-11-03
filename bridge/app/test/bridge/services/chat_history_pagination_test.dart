@@ -225,9 +225,11 @@ void main() {
       test("the archived slice matches the stored one", () async {
         final window = HistoryWindowThrough(throughSeq: seqs[2], before: seqs[7]);
         final stored = await history.service.getSessionMessages(sessionId: "ses_a", window: window);
-        final session = await _FakeSessionRepository(transcript: transcript).getStoredSession(sessionId: "ses_a");
+        final session =
+            await _FakeSessionRepository(transcript: transcript).getStoredSession(sessionId: "ses_a") ??
+            fail("missing stored session");
         await history.service.exportSessionHistory(
-          session: session!,
+          session: session,
           title: null,
           createdAt: 1,
           updatedAt: 1,

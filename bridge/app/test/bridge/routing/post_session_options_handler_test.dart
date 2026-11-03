@@ -110,7 +110,7 @@ void main() {
 
       expect(response.status, 200);
       expect(response.headers, containsPair("content-type", "application/json"));
-      expect(SessionOptionsResponse.fromJson(jsonDecodeMap(response.body!)), _optionsResponse);
+      expect(SessionOptionsResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))), _optionsResponse);
     });
 
     for (final mapping in <({SessionOptionsOutcome outcome, int status, SessionOptionsErrorCode code})>[
@@ -157,7 +157,7 @@ void main() {
 
       expect(response.status, 503);
       expect(
-        SessionOptionsErrorResponse.fromJson(jsonDecodeMap(response.body!)),
+        SessionOptionsErrorResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const SessionOptionsErrorResponse(
           code: SessionOptionsErrorCode.authenticationRequired,
           actionHint: "Open the harness locally and authenticate.",
@@ -214,7 +214,7 @@ void _expectError(
   expect(response.status, status);
   expect(response.headers, containsPair("content-type", "application/json"));
   expect(
-    SessionOptionsErrorResponse.fromJson(jsonDecodeMap(response.body!)),
+    SessionOptionsErrorResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
     SessionOptionsErrorResponse(code: code, actionHint: null),
   );
 }

@@ -19,7 +19,8 @@ void main() {
       );
       final event = BridgeSseSessionQuotaBlocked(sessionID: "backend-session", interruption: interruption);
       expect(mapper.backendSessionIds(event: event), {"backend-session"});
-      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids)! as BridgeSseSessionQuotaBlocked;
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
+      if (mapped is! BridgeSseSessionQuotaBlocked) fail("expected a quota event, got $mapped");
       expect(mapped.sessionID, "ses-session");
       expect(mapped.interruption, same(interruption));
       expect(mapper.map(event: event, sessionIdsByBackendId: const {}), isNull);
@@ -209,10 +210,10 @@ void main() {
           reason: testCase.name,
         );
         final mapped = mapper.map(event: testCase.event, sessionIdsByBackendId: ids);
-        expect(mapped, isNotNull, reason: testCase.name);
+        if (mapped == null) fail("${testCase.name}: the event was dropped");
         expect(
-          mapper.backendSessionIds(event: mapped!),
-          testCase.expectedBackendIds.map((id) => ids[id]!).toSet(),
+          mapper.backendSessionIds(event: mapped),
+          testCase.expectedBackendIds.map((id) => ids[id] ?? fail("${testCase.name}: unknown backend id $id")).toSet(),
           reason: testCase.name,
         );
       }
@@ -261,8 +262,7 @@ void main() {
 
       expect(mapper.backendSessionIds(event: error), isEmpty);
       final mappedError = mapper.map(event: error, sessionIdsByBackendId: const {});
-      expect(mappedError, isA<BridgeSseSessionError>());
-      expect((mappedError! as BridgeSseSessionError).sessionID, isNull);
+      expect(mappedError, isA<BridgeSseSessionError>().having((e) => e.sessionID, "sessionID", isNull));
       expect(mapper.backendSessionIds(event: toast), isEmpty);
       expect(mapper.map(event: toast, sessionIdsByBackendId: const {}), same(toast));
       expect(mapper.map(event: connected, sessionIdsByBackendId: const {}), same(connected));
@@ -288,7 +288,8 @@ void main() {
         event: event,
         sessionIdsByBackendId: const {...ids, "backend-child": "ses-child"},
       );
-      final part = (mapped! as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+      if (mapped is! BridgeSseMessagePartUpdated) fail("expected a part update, got $mapped");
+      final part = mapped.part as PluginMessagePartSubtask;
 
       expect(part.sessionID, "ses-session");
       expect(part.childSessionID, "ses-child");
@@ -298,7 +299,8 @@ void main() {
       final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
 
       final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
-      final part = (mapped! as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+      if (mapped is! BridgeSseMessagePartUpdated) fail("expected a part update, got $mapped");
+      final part = mapped.part as PluginMessagePartSubtask;
 
       expect(part.sessionID, "ses-session");
       expect(part.description, "description");
@@ -310,7 +312,8 @@ void main() {
 
       expect(mapper.optionalBackendSessionIds(event: event), isEmpty);
       final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
-      expect(((mapped! as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask).childSessionID, isNull);
+      if (mapped is! BridgeSseMessagePartUpdated) fail("expected a part update, got $mapped");
+      expect((mapped.part as PluginMessagePartSubtask).childSessionID, isNull);
     });
   });
 }

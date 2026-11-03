@@ -18,8 +18,8 @@ class _FakeUpdateHttpClient({required final Future<http.StreamedResponse> Functi
 class _FakeChecksumManifestApi({final ChecksumManifest? manifest, final Object? error}) implements ChecksumManifestApi {
   @override
   Future<ChecksumManifest?> fetchManifest({required String url}) async {
-    if (error != null) {
-      throw error!;
+    if (error case final failure?) {
+      throw failure;
     }
     return manifest;
   }
@@ -34,8 +34,8 @@ class _FakeChecksumValidator({required final bool result, final Object? error}) 
   @override
   Future<bool> verify({required String filePath, required String expectedHash}) async {
     lastExpectedHash = expectedHash;
-    if (error != null) {
-      throw error!;
+    if (error case final failure?) {
+      throw failure;
     }
     return result;
   }

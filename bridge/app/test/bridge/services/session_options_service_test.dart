@@ -1183,7 +1183,7 @@ void main() {
       final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
       expect(outcome, isA<SessionOptionsRefreshFailedRetained>());
-      expect(repository.stored(key)!.response, _response(marker: "plugin-cache"));
+      expect(repository.stored(key)?.response, _response(marker: "plugin-cache"));
     });
 
     test("path-invalid and expired rows are deleted before failed capture and cannot be retained", () async {
@@ -1314,7 +1314,7 @@ void main() {
       expect(outcome, isA<SessionOptionsAvailable>());
       expect((outcome as SessionOptionsAvailable).response, _response(marker: "partial"));
       expect(repository.commitCalls.single.expectedRevision, isNull);
-      expect(repository.stored(key)!.response, _response(marker: "partial"));
+      expect(repository.stored(key)?.response, _response(marker: "partial"));
     });
 
     test("a complete observation replaces the retained row whatever it was captured as", () async {
@@ -1468,7 +1468,7 @@ void main() {
 
       expect(currentOutcome, isA<SessionOptionsAvailable>());
       expect(staleOutcome, isA<SessionOptionsRefreshFailedUnavailable>());
-      expect(repository.stored(newKey)!.response, _response(marker: "new-path"));
+      expect(repository.stored(newKey)?.response, _response(marker: "new-path"));
       expect(repository.commitCalls, hasLength(1));
     });
   });

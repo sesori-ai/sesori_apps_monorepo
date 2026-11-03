@@ -49,7 +49,7 @@ void main() {
 
       expect(response.status, 200);
       expect(
-        PullRequestRefreshSettingsResponse.fromJson(jsonDecodeMap(response.body!)),
+        PullRequestRefreshSettingsResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       );
     });
@@ -90,10 +90,13 @@ void main() {
 
       expect(response.status, 200);
       expect(
-        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body!)),
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45),
       );
-      expect((jsonDecode(api.config!) as Map)["pullRequestRefreshIntervalSeconds"], 45);
+      expect(
+        (jsonDecode(api.config ?? fail("missing stored settings")) as Map)["pullRequestRefreshIntervalSeconds"],
+        45,
+      );
     });
 
     test("PATCH returns a typed 400 for an out-of-range interval", () async {
@@ -115,7 +118,7 @@ void main() {
       expect(response.status, 400);
       expect(response.headers["content-type"], "application/json");
       expect(
-        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body!)),
+        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(
           minimumIntervalSeconds: 15,
           maximumIntervalSeconds: 3600,
@@ -162,7 +165,7 @@ void main() {
       expect(response.status, 400);
       expect(response.headers["content-type"], "application/json");
       expect(
-        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body!)),
+        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingUpdateRejection.unknown(),
       );
       expect(api.writeCount, 0);

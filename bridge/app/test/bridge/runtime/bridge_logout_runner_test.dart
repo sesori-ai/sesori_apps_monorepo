@@ -45,16 +45,16 @@ void main() {
           unregisterBridgeCalls += 1;
           operations.add('unregister');
           clearTokensCallsAtLastUnregister = clearTokensCalls;
-          if (unregisterBridgeError != null) {
-            throw unregisterBridgeError!;
+          if (unregisterBridgeError case final error?) {
+            throw error;
           }
         },
         appOnboardingStateRepository: appOnboardingStateRepository,
         clearTokens: () async {
           clearTokensCalls += 1;
           operations.add('tokens');
-          if (clearTokensError != null) {
-            throw clearTokensError!;
+          if (clearTokensError case final error?) {
+            throw error;
           }
         },
       );
@@ -210,7 +210,7 @@ class _FakeAppOnboardingStateRepository() implements AppOnboardingStateRepositor
   Future<void> clearAll() async {
     clearCalls += 1;
     onClear?.call();
-    if (clearError != null) throw clearError!;
+    if (clearError case final error?) throw error;
   }
 
   @override

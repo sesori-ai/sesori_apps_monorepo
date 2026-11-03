@@ -107,7 +107,7 @@ void main() {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.getSessionMessages(sessionId: "ses_a");
-      final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
       expect(repository.promptDefaultsUpdates, isEmpty);
 
       await history.service.observeBackendActivity(
@@ -217,7 +217,7 @@ void main() {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.getSessionMessages(sessionId: "ses_a");
-      final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
       history.repository.syncStateReads.clear();
 
       await history.service.observeBackendActivity(
@@ -228,7 +228,7 @@ void main() {
       );
 
       expect(history.repository.syncStateReads, ["ses_a"]);
-      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final state = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
       expect(state.backendActivityAt, synced.watermark + 5000);
     });
 
@@ -236,7 +236,7 @@ void main() {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.getSessionMessages(sessionId: "ses_a");
-      final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
 
       // Issue the read, then enqueue the staleness update while it is still
       // running. The read must not observe a half-applied state, and the
@@ -249,7 +249,7 @@ void main() {
       await observing;
 
       expect(served.map((message) => message.info.id), const ["m1"]);
-      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final state = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
       expect(state.backendActivityAt, greaterThan(state.watermark), reason: "the update still applied");
 
       repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
@@ -348,7 +348,7 @@ void main() {
       expect(synced.messages.map((message) => message.info.id), const ["m1"]);
       expect(synced.awaitingHarnessSync, isFalse, reason: "a current store owes the harness nothing");
 
-      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      final state = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
       await history.service.observeBackendActivity(
         activity: [(sessionId: "ses_a", activityAt: state.watermark + 5000)],
       );

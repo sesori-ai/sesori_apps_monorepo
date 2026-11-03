@@ -199,9 +199,9 @@ void main() {
         command: "review",
       );
 
-      final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-command");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("planner"));
+      final dbSession =
+          await db.sessionDao.getSession(sessionId: "s-defaults-command") ?? fail("missing stored session");
+      expect(dbSession.lastAgent, equals("planner"));
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
       expect(dbSession.lastAgentModel?.modelID, equals("gpt-4o"));
       expect(dbSession.lastAgentModel?.variant, equals("low"));
@@ -355,7 +355,7 @@ void main() {
       commandGate.complete();
       await Future.wait([command, abort, prompt]);
       expect(events, ["abort", "defaults:first", "defaults:second"]);
-      expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, "second");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.lastAgent, "second");
     });
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {
@@ -460,7 +460,7 @@ void main() {
 
       expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
       // The rejected selection is not persisted as the session's defaults.
-      expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "s1") ?? fail("missing stored session")).lastAgent, isNull);
     });
   });
 }

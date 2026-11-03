@@ -50,7 +50,7 @@ void main() {
 
       expect(response.status, 200);
       expect(
-        BridgeSettingsResponse.fromJson(jsonDecodeMap(response.body!)),
+        BridgeSettingsResponse.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
@@ -66,10 +66,10 @@ void main() {
 
       expect(response.status, 200);
       expect(
-        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body!)),
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingUpdate.yolo(enabled: true),
       );
-      expect(jsonDecodeMap(api.config!)["yolo"], isTrue);
+      expect(jsonDecodeMap(api.config ?? fail("missing stored settings"))["yolo"], isTrue);
     });
 
     test("PATCH applies session-open plugin warm-up without a bridge restart", () async {
@@ -90,11 +90,11 @@ void main() {
 
       expect(response.status, 200);
       expect(
-        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body!)),
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false),
       );
       expect(repository.currentSettings.warmUpPluginsOnSessionOpen, isFalse);
-      expect(jsonDecodeMap(api.config!)["warmUpPluginsOnSessionOpen"], isFalse);
+      expect(jsonDecodeMap(api.config ?? fail("missing stored settings"))["warmUpPluginsOnSessionOpen"], isFalse);
       expect(changes, [false]);
       await subscription.cancel();
     });

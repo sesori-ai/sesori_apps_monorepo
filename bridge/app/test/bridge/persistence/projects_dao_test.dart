@@ -100,9 +100,8 @@ void main() {
           updatedAt: 222,
         );
 
-        final row = await dao.getProject(projectId: "/projects/a");
-        expect(row, isNotNull);
-        expect(row!.path, equals("/projects/a"));
+        final row = await dao.getProject(projectId: "/projects/a") ?? fail("project row missing");
+        expect(row.path, equals("/projects/a"));
         expect(row.displayName, "Opened project");
         expect(row.createdAt, equals(111));
         expect(row.updatedAt, equals(222));
@@ -125,8 +124,8 @@ void main() {
           updatedAt: 222,
         );
 
-        final row = await dao.getProject(projectId: "/projects/a");
-        expect(row!.path, equals("/moved/a"));
+        final row = await dao.getProject(projectId: "/projects/a") ?? fail("project row missing");
+        expect(row.path, equals("/moved/a"));
         expect(row.createdAt, equals(111));
         expect(row.updatedAt, equals(222));
       });
@@ -148,8 +147,8 @@ void main() {
           updatedAt: 333,
         );
 
-        final row = await dao.getProject(projectId: "/projects/a");
-        expect(row!.hidden, isFalse);
+        final row = await dao.getProject(projectId: "/projects/a") ?? fail("project row missing");
+        expect(row.hidden, isFalse);
         expect(row.baseBranch, equals("develop"));
         expect(row.displayName, equals("My App"));
         expect(row.path, equals("/moved/a"));

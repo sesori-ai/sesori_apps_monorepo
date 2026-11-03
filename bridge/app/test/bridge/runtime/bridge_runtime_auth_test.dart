@@ -126,8 +126,8 @@ void main() {
         result: (tokens: oauthTokens, sessionToken: 'oauth-session-token'),
         onAck: (sessionToken) {
           expect(sessionToken, equals('oauth-session-token'));
-          expect(savedTokens, isNotNull);
-          expect(savedTokens!.accessToken, equals('oauth-access-token'));
+          final saved = savedTokens ?? fail('tokens were not persisted before the ACK');
+          expect(saved.accessToken, equals('oauth-access-token'));
         },
       );
       final service = BridgeRuntimeAuthService(
