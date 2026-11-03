@@ -41,7 +41,9 @@ class OmpSessionCleanupRepository({required final OmpAcpApi _api}) {
     required Duration timeout,
   }) async {
     final result = await _api.resumeSession(sessionId: sessionId, cwd: cwd, timeout: timeout);
-    if (result.sessionId != sessionId) {
+    // OMP echoes the resumed id. `/session delete` removes whichever session is
+    // current, so a mismatch must stop before the wrong session is deleted.
+    if (result.raw["sessionId"] != sessionId) {
       throw StateError("OMP resumed a different session");
     }
   }

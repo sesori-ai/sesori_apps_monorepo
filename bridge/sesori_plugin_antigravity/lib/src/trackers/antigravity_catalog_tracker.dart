@@ -6,7 +6,6 @@ class AntigravityCatalogTracker() {
 
   AntigravityModelCatalog? get snapshot => _state?.catalog;
   AntigravityModelSelection? get newSessionDefault => _state?.newSessionDefault;
-  String? get newSessionDefaultModelId => _state?.newSessionDefault?.modelId;
 
   void storeValidated({
     required AntigravityModelCatalog catalog,

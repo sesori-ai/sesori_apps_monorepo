@@ -21,7 +21,6 @@ class HermesPlugin({
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
   required final HermesSessionOptionsService _hermesSessionOptionsService,
 }) extends AcpPlugin {

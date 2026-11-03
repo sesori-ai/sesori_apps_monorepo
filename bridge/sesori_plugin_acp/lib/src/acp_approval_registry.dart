@@ -175,13 +175,13 @@ class AcpApprovalRegistry({
   void respondError(Object acpId, int code, String message) => _respondError(acpId, code, message);
 
   /// Resolves the request's explicit `sessionId`, or the active turn's session
-  /// when omitted. Returns an empty string when no session can be resolved.
-  String resolveSessionId(Map<String, dynamic> params) {
+  /// when omitted. Returns `null` when no session can be resolved.
+  String? resolveSessionId(Map<String, dynamic> params) {
     final rawSessionId = params["sessionId"];
-    if (rawSessionId != null && rawSessionId is! String) return "";
+    if (rawSessionId != null && rawSessionId is! String) return null;
     final explicit = rawSessionId is String ? rawSessionId.trim() : null;
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    return _activeSessionResolver?.call() ?? "";
+    return _activeSessionResolver?.call();
   }
 
   /// Registers and emits a harness-specific pending question.
@@ -227,7 +227,7 @@ class AcpApprovalRegistry({
 
   void _handlePermission(AcpServerRequest request) {
     final sessionId = resolveSessionId(request.params);
-    if (sessionId.isEmpty) {
+    if (sessionId == null) {
       Log.w("[acp] permission request with no resolvable session; auto-cancelling");
       _respond(request.id, const {
         "outcome": {"outcome": "cancelled"},
@@ -247,7 +247,7 @@ class AcpApprovalRegistry({
 
   void _handleElicitation(AcpServerRequest request) {
     final sessionId = resolveSessionId(request.params);
-    if (sessionId.isEmpty) {
+    if (sessionId == null) {
       Log.w("[acp] elicitation with no resolvable session; cancelling");
       _respond(request.id, const {"action": "cancel"});
       return;

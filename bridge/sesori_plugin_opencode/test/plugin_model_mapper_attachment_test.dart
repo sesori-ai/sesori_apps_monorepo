@@ -6,6 +6,7 @@ import "package:opencode_plugin/src/models/openapi/session_messages_response_ite
 import "package:opencode_plugin/src/models/openapi/text_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:opencode_plugin/src/plugin_model_mapper.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

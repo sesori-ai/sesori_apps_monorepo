@@ -160,10 +160,10 @@ reaches the backend so the turn continues.
   an ambiguous match cancels rather than falling back to another active turn.
   Without tool-call attribution, a sessionless backend request uses the most
   recently dispatched active turn, or the last dispatched turn at its settlement
-  boundary. A backend requiring exact form correlation must serialize prompts
-  process-wide so another session cannot become the attribution target. OMP
-  supplies explicit session IDs on permissions and forms, so its independent
-  session turns remain attributable while running concurrently.
+  boundary. Turns of different sessions run concurrently, so a backend that
+  needs exact form correlation must attribute its requests by session ID or
+  tool call. OMP supplies explicit session IDs on permissions and forms, so its
+  independent session turns remain attributable while running concurrently.
 - Deleting a tracked ACP parent retires pending input for its full descendant
   subtree, including a running grandchild of a finished child, so removed
   sessions cannot leave unanswered requests holding the plugin busy.

@@ -57,8 +57,8 @@ class CursorApprovalRegistry({
     // Cursor's question requests may omit `sessionId`; fall back to the active
     // turn's session so the request still surfaces in the conversation.
     final sessionId = resolveSessionId(params);
-    if (sessionId.isEmpty) {
-      // A question stamped with "" is dropped by the mobile client, so it would
+    if (sessionId == null) {
+      // A question with no session never reaches a conversation, so it would
       // register an invisible pending question that blocks the turn forever.
       // Reject so the agent can proceed instead of hanging.
       Log.w("[cursor] cursor/ask_question with no resolvable session; rejecting");
@@ -89,7 +89,9 @@ class CursorApprovalRegistry({
       final labelToId = <String, String>{};
       final pluginOptions = <PluginQuestionOption>[];
       for (final option in options) {
-        final id = _str(option["id"]) ?? _str(option["value"]) ?? "";
+        // An option without an id cannot be selected in the reply.
+        final id = _str(option["id"]) ?? _str(option["value"]);
+        if (id == null) continue;
         var label = _str(option["label"]) ?? id;
         // The bridge round-trips the *label* the user picked, so duplicate
         // labels would collapse to one id and reply with the wrong option.
@@ -152,13 +154,12 @@ class CursorApprovalRegistry({
   void _handleCreatePlan(AcpServerRequest request) {
     final params = request.params;
     // `cursor/create_plan` carries no `sessionId` (only a `toolCallId`), so
-    // resolve it from the active turn — otherwise the plan-approval question is
-    // stamped with an empty session and dropped by the mobile client.
+    // resolve it from the active turn — otherwise the plan-approval question
+    // has no conversation to appear in.
     final sessionId = resolveSessionId(params);
-    if (sessionId.isEmpty) {
-      // No active turn to attribute the plan to: a "" session is dropped by the
-      // mobile client, so the plan-approval question would block forever. Reject
-      // so the agent proceeds instead of hanging.
+    if (sessionId == null) {
+      // No active turn to attribute the plan to, so the plan-approval question
+      // would block forever. Reject so the agent proceeds instead of hanging.
       Log.w("[cursor] cursor/create_plan with no resolvable session; rejecting");
       respondError(request.id, -32602, "cursor/create_plan: no resolvable session");
       return;

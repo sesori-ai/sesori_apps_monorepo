@@ -6,14 +6,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 class _PolicyPlugin({
-  required final bool processWide,
-  required final bool failClosed,
   required final bool forms,
   required final Duration closeTimeout,
   required super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
 }) extends TestAcpPlugin {
   this
@@ -26,12 +23,6 @@ class _PolicyPlugin({
 
   int selectionFailures = 0;
   void Function()? onPromptWriting;
-
-  @override
-  bool get serializesPromptsProcessWide => processWide;
-
-  @override
-  bool get failsTurnOnSelectionError => failClosed;
 
   @override
   bool get supportsFormElicitation => forms;
@@ -73,8 +64,6 @@ void main() {
     late List<BridgeSseEvent> events;
 
     _PolicyPlugin buildPlugin({
-      required bool processWide,
-      required bool failClosed,
       bool forms = false,
       Duration closeTimeout = const Duration(seconds: 1),
     }) {
@@ -82,8 +71,6 @@ void main() {
       final commandTracker = AcpCommandTracker();
       final childSessionTracker = AcpChildSessionTracker();
       return _PolicyPlugin(
-        processWide: processWide,
-        failClosed: failClosed,
         forms: forms,
         closeTimeout: closeTimeout,
         childSessionTracker: childSessionTracker,
@@ -94,12 +81,6 @@ void main() {
           childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async => fake,
       );
     }
@@ -107,7 +88,7 @@ void main() {
     setUp(() {
       fake = FakeAcpProcess();
       events = [];
-      plugin = buildPlugin(processWide: false, failClosed: false);
+      plugin = buildPlugin();
       plugin.events.listen(events.add);
     });
 
@@ -215,38 +196,14 @@ void main() {
 
     Future<PluginSession> setUpRootCancel({required Duration timeout}) async {
       await plugin.dispose();
-      plugin = buildPlugin(
-        processWide: false,
-        failClosed: false,
-        closeTimeout: timeout,
-      );
+      plugin = buildPlugin(closeTimeout: timeout);
       await connect();
       return await create("session-1");
     }
 
-    test("opt-in process lane serializes prompts across sessions", () async {
-      await plugin.dispose();
-      plugin = buildPlugin(processWide: true, failClosed: false);
-      plugin.events.listen(events.add);
-      await connect();
-      final first = await create("first");
-      final second = await create("second");
-
-      await send(first.id, "one");
-      final firstPrompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
-      await send(second.id, "two");
-      await pump();
-      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
-
-      respond(firstPrompt, {"stopReason": "end_turn"});
-      final secondPrompt = await waitForFrameCount(AcpMethods.sessionPrompt, 2);
-      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
-      respond(secondPrompt, {"stopReason": "end_turn"});
-    });
-
     test("form capability is advertised only by an opted-in plugin", () async {
       await plugin.dispose();
-      plugin = buildPlugin(processWide: false, failClosed: false, forms: true);
+      plugin = buildPlugin(forms: true);
       plugin.events.listen(events.add);
 
       final connecting = plugin.ensureConnected();
@@ -264,10 +221,7 @@ void main() {
       expect(await connecting, isTrue);
     });
 
-    test("fail-closed selection stops before prompt dispatch", () async {
-      await plugin.dispose();
-      plugin = buildPlugin(processWide: false, failClosed: true);
-      plugin.events.listen(events.add);
+    test("a selection failure stops the turn before prompt dispatch", () async {
       await connect();
       final session = await create("session-1");
       plugin.selectionFailures = 1;
@@ -282,9 +236,6 @@ void main() {
     });
 
     test("empty-session selection failure stays bound and retries on first prompt", () async {
-      await plugin.dispose();
-      plugin = buildPlugin(processWide: false, failClosed: true);
-      plugin.events.listen(events.add);
       await connect();
       plugin.selectionFailures = 1;
 
@@ -315,20 +266,16 @@ void main() {
       expect(await plugin.getSessionStatuses(), isNot(contains(session.id)));
     });
 
-    test("deleting a queued session does not wait behind another session", () async {
-      await plugin.dispose();
-      plugin = buildPlugin(processWide: true, failClosed: false);
-      plugin.events.listen(events.add);
+    test("deleting an idle session does not wait behind another session's turn", () async {
       await connect(close: true);
       final running = await create("running");
-      final queued = await create("queued");
+      final idle = await create("idle");
       await send(running.id, "long turn");
       final runningPrompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
-      await send(queued.id, "never dispatch");
 
-      final deleting = plugin.deleteSession(queued.id);
+      final deleting = plugin.deleteSession(idle.id);
       final close = await waitForFrameCount(AcpMethods.sessionClose, 1);
-      expect((close["params"] as Map)["sessionId"], queued.id);
+      expect((close["params"] as Map)["sessionId"], idle.id);
       respond(close, const {});
       await deleting;
 
@@ -464,11 +411,7 @@ void main() {
 
     test("close timeout fails deletion and preserves local session state", () async {
       await plugin.dispose();
-      plugin = buildPlugin(
-        processWide: false,
-        failClosed: false,
-        closeTimeout: const Duration(milliseconds: 20),
-      );
+      plugin = buildPlugin(closeTimeout: const Duration(milliseconds: 20));
       plugin.events.listen(events.add);
       await connect(close: true);
       final session = await create("session-1");

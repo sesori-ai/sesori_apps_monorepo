@@ -549,16 +549,13 @@ defaults and queued client sends coherent.
   when it settles, and reasoning streamed before the Task is finalized at the
   suppressed card. Replay keeps its childless tiles.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
-  turn, declared process-wide lane, resume, or selection blocks their
-  `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
+  turn, resume, or selection blocks their `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
   never sends overlapping prompt requests. It does define `session/cancel`:
-  the shared ACP plugin therefore defaults every harness to active-turn
+  the shared ACP plugin therefore gives every harness active-turn
   stop-and-send, immediately cancelling the active turn and
   dispatching the queued input after cancellation settles. Further already-queued
-  inputs retain FIFO order. A concrete plugin may disable that fallback only when
-  it supplies another immediate active-turn delivery path; natural-completion
-  queueing is not valid production behavior. Cursor, Hermes, DeepSeek, Copilot,
-  Grok, and OMP use the shared fallback. Their
+  inputs retain FIFO order; natural-completion queueing is not valid production
+  behavior. Cursor, Hermes, DeepSeek, Copilot, Grok, and OMP use it. Their
   synthetic user transcript message is published only after its frame is
   synchronously admitted to the agent's stdin. The shared NDJSON transport
   relies on one IOSink's FIFO admission rather than per-request flushing, so
