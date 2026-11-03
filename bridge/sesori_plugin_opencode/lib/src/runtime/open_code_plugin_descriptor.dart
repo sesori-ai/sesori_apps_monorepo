@@ -860,11 +860,6 @@ class const OpenCodePluginDescriptor({
       );
     }
 
-    final ownedRecord = switch (handle) {
-      OwnedRuntimeHandle(:final record) => record,
-      AttachedRuntimeHandle() || null => null,
-    };
-
     final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
@@ -907,7 +902,6 @@ class const OpenCodePluginDescriptor({
       reporter: reporter,
       monitor: monitor,
       service: service,
-      ownedRecord: ownedRecord,
       diagnostics: PluginDiagnostics(
         pluginId: Harness.opencode.name,
         endpoint: serverUrl,

@@ -11,7 +11,7 @@ void main() {
     final monitor = _Monitor(calls: calls, record: "replacement")..disarmError = StateError("disarm");
     final service = _Service(calls: calls);
     final status = PluginStatusController(initial: const PluginReady());
-    final plugin = _plugin(api: api, monitor: monitor, service: service, status: status, ownedRecord: "original");
+    final plugin = _plugin(api: api, monitor: monitor, service: service, status: status);
 
     final first = plugin.shutdown(budget: null);
     final second = plugin.shutdown(budget: const Duration(seconds: 1));
@@ -20,22 +20,6 @@ void main() {
     await expectLater(first, throwsA(isA<StateError>().having((error) => error.message, "message", "disarm")));
     expect(calls, <String>["disarm", "dispose", "stop:replacement"]);
     expect(status.current, isA<PluginStopped>());
-  });
-
-  test("shutdown falls back to originally owned record", () async {
-    final calls = <String>[];
-    final status = PluginStatusController(initial: const PluginReady());
-    final plugin = _plugin(
-      api: _Api(calls: calls),
-      monitor: _Monitor(calls: calls, record: null),
-      service: _Service(calls: calls),
-      status: status,
-      ownedRecord: "original",
-    );
-
-    await plugin.shutdown(budget: null);
-
-    expect(calls, <String>["disarm", "dispose", "stop:original"]);
   });
 
   test("owned-only interruption skips attached runtime and delegates for owned runtime", () async {
@@ -47,7 +31,6 @@ void main() {
       monitor: _Monitor(calls: calls, record: null),
       service: _Service(calls: calls),
       status: status,
-      ownedRecord: null,
       interruptOwnedOnly: true,
     );
 
@@ -59,7 +42,6 @@ void main() {
       monitor: _Monitor(calls: calls, record: "replacement"),
       service: _Service(calls: calls),
       status: PluginStatusController(initial: const PluginReady()),
-      ownedRecord: null,
       interruptOwnedOnly: true,
     );
     await owned.interruptActiveWork(budget: Duration.zero);
@@ -74,7 +56,6 @@ void main() {
       monitor: _Monitor(calls: calls, record: null),
       service: _Service(calls: calls),
       status: PluginStatusController(initial: const PluginReady()),
-      ownedRecord: null,
     );
 
     await plugin.interruptActiveWork(budget: Duration.zero);
@@ -88,7 +69,6 @@ ManagedRuntimeBridgePlugin<String, _Api> _plugin({
   required _Monitor monitor,
   required _Service service,
   required PluginStatusController status,
-  required String? ownedRecord,
   bool interruptOwnedOnly = false,
   Future<void> Function()? onStartWarmUp,
 }) {
@@ -103,7 +83,6 @@ ManagedRuntimeBridgePlugin<String, _Api> _plugin({
     ),
     monitor: monitor,
     service: service,
-    ownedRecord: ownedRecord,
     diagnostics: const PluginDiagnostics(pluginId: "test", endpoint: null, details: <String, String>{}),
     displayName: "Test",
     logContext: "test",

@@ -21,7 +21,6 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
   required final ManagedRuntimeStatusReporter reporter,
   required final ManagedRuntimeMonitor<R> monitor,
   required final ManagedProcessService<R> service,
-  required final R? ownedRecord,
   required final PluginDiagnostics diagnostics,
   required final String displayName,
   required final String logContext,
@@ -38,7 +37,7 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
 
   R? get _currentOwnedRecord => switch (monitor.currentHandle) {
     OwnedRuntimeHandle<R>(:final record) => record,
-    AttachedRuntimeHandle<R>() || null => ownedRecord,
+    AttachedRuntimeHandle<R>() || null => null,
   };
 
   @override
@@ -75,7 +74,7 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
 
   Future<void> _shutdownNow() async {
     final sw = Stopwatch()..start();
-    Log.d("[shutdown] $displayName plugin stop begin (mode=${ownedRecord == null ? "attached" : "managed"})");
+    Log.d("[shutdown] $displayName plugin stop begin (mode=${_currentOwnedRecord == null ? "attached" : "managed"})");
     reporter.dispose();
     if (!_status.isClosed && _status.current is! PluginStopped) {
       _status.trySet(const PluginStopping());

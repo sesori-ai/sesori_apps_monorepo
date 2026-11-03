@@ -693,7 +693,6 @@ class const CodexPluginDescriptor({
       reporter: reporter,
       monitor: monitor,
       service: service,
-      ownedRecord: handle.record,
       diagnostics: PluginDiagnostics(
         pluginId: Harness.codex.name,
         endpoint: serverUrl,
