@@ -16,18 +16,13 @@ class PushRateLimiter({DateTime Function()? now}) {
 
   int get retainedKeyCount => _lastSent.length;
 
-  int pruneStaleEntries({Duration ttl = staleEntryTtl}) {
-    final cutoff = _now().subtract(ttl);
-    final previousCount = _lastSent.length;
-    _lastSent.removeWhere(
-      (_, lastSentAt) => lastSentAt.isBefore(cutoff),
-    );
-    return previousCount - _lastSent.length;
+  void pruneStaleEntries() {
+    final cutoff = _now().subtract(staleEntryTtl);
+    _lastSent.removeWhere((_, lastSentAt) => lastSentAt.isBefore(cutoff));
   }
 
   bool shouldSend({
     required NotificationCategory category,
-    required String? sessionId,
     required String rateLimitKey,
   }) {
     final cooldown = _cooldowns[category] ?? const Duration(seconds: 30);

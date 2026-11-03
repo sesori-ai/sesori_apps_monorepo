@@ -7,13 +7,13 @@ name: Submit Release
 # auto-updater consumes).
 #
 # Store submission jobs run on ubuntu-latest because submission is pure HTTPS
-# API work. Bridge, admitted macOS and Linux desktop binaries are rebuilt on native matrices.
+# API work. Bridge, macOS and Linux desktop binaries are rebuilt on native matrices.
 # Each desktop platform attaches to the same release only after its own verification and
 # the existing production approval; it never changes the bridge/mobile finalizer.
 #
 # Required prerequisite: the build must have been uploaded by
 # release-all-platforms.yml, which pushes an annotated `v<X>-internal.<N>` tag
-# (legacy: `build-<N>`) used to map a build number → commit.
+# used to map a build number → commit.
 #
 # Bridge publish modes (production):
 #   - publish_bridge ticked (default): the GitHub release is published
@@ -46,7 +46,7 @@ on:
           - android
           - bridge-only
       build_number:
-        description: "Build number to submit (must match an existing v*-internal.<N> or build-<N> tag)"
+        description: "Build number to submit (must match an existing v*-internal.<N> tag)"
         type: string
         required: true
       publish_bridge:
@@ -107,33 +107,27 @@ jobs:
           fi
 
           # 2) Resolve the originating commit from the internal tag pushed by
-          # release-all-platforms.yml (legacy fallback: build-<N>).
+          # release-all-platforms.yml.
           mapfile -t MATCHES < <(git tag -l "v*-internal.${N}")
           if [[ ${#MATCHES[@]} -gt 1 ]]; then
             echo "::error::Multiple internal tags match build ${N}: ${MATCHES[*]}"
             exit 1
           fi
           TAG_NAME="${MATCHES[0]:-}"
-          if [[ -z "$TAG_NAME" ]] && git rev-parse -q --verify "refs/tags/build-${N}" >/dev/null; then
-            TAG_NAME="build-${N}"
-          fi
           if [[ -z "$TAG_NAME" ]]; then
-            echo "::error::No tag v*-internal.${N} (or legacy build-${N}) found. Build ${N} was either never created by release-all-platforms.yml or its tag was deleted."
+            echo "::error::No tag v*-internal.${N} found. Build ${N} was either never created by release-all-platforms.yml or its tag was deleted."
             exit 1
           fi
           SHA=$(git rev-list -n1 "$TAG_NAME")
 
           # 3) Read marketing version from pubspec.yaml on the resolved commit
           # (NOT current main) so the submit tag matches the binary's version,
-          # and assert client and bridge are in sync at that commit. Try the
-          # client/app path first and fall back to the legacy mobile/app path so
-          # build tags created before the mobile/->client/ rename still promote.
-          CLIENT_PUBSPEC=$(git show "${SHA}:client/app/pubspec.yaml" 2>/dev/null \
-            || git show "${SHA}:mobile/app/pubspec.yaml" 2>/dev/null || true)
+          # and assert client and bridge are in sync at that commit.
+          CLIENT_PUBSPEC=$(git show "${SHA}:client/app/pubspec.yaml" 2>/dev/null || true)
           VERSION=$(printf '%s\n' "$CLIENT_PUBSPEC" \
             | awk '/^version:/{split($2,a,"+"); print a[1]; exit}')
           if [[ -z "$VERSION" ]]; then
-            echo "::error::Could not parse version from client/app (or legacy mobile/app) pubspec.yaml at ${SHA}"
+            echo "::error::Could not parse version from client/app/pubspec.yaml at ${SHA}"
             exit 1
           fi
           BRIDGE_VERSION=$(git show "${SHA}:bridge/app/pubspec.yaml" \
@@ -416,9 +410,7 @@ jobs:
 
   build-desktop-macos:
     name: Build and qualify macOS desktop (release)
-    if: >-
-      inputs.track == 'production' && inputs.platforms != 'bridge-only' &&
-      vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+    if: inputs.track == 'production' && inputs.platforms != 'bridge-only'
     needs: resolve
     permissions:
       contents: read
@@ -438,8 +430,7 @@ jobs:
     needs: [resolve, build-desktop-macos, release]
     if: >-
       always() && inputs.track == 'production' &&
-      needs.build-desktop-macos.result == 'success' && needs.release.result == 'success' &&
-      vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+      needs.build-desktop-macos.result == 'success' && needs.release.result == 'success'
     permissions:
       contents: write
       actions: read
@@ -507,9 +498,7 @@ jobs:
   update-feed-macos:
     name: Publish macOS update appcasts (stable)
     needs: [resolve, publish-desktop]
-    if: >-
-      always() && needs.publish-desktop.result == 'success' &&
-      vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+    if: always() && needs.publish-desktop.result == 'success'
     permissions:
       contents: read
       id-token: write
@@ -726,8 +715,7 @@ jobs:
       # Deliberately NOT the resolved commit: this job needs nothing from the
       # release's tree (notes are API-driven, checksums come from artifacts,
       # the tag is already pushed) — only tool/generate_release_notes.dart,
-      # which must come from the workflow's own revision. Resolved commits can
-      # predate the script entirely (legacy build-<N> tags).
+      # which must come from the workflow's own revision.
       - uses: actions/checkout@v6
 
       # The notes script is dependency-free pure Dart — a bare Dart SDK

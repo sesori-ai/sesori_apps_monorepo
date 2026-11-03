@@ -279,7 +279,7 @@ class LinuxWorkflowTest(unittest.TestCase):
             self.assertIn(expected, build)
         self.assertIn("needs: [preflight, next-build-number, desktop-linux, finalize]", workflow)
         self.assertIn("needs: [preflight, next-build-number, ios, android, bridge]", workflow)
-        self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", workflow)
+        self.assertIn("needs: [preflight, next-build-number, desktop-macos, finalize]", workflow)
         publish = workflow.split("  publish-desktop-linux:\n", 1)[1].split("\n\n", 1)[0]
         self.assertIn("channel: internal", publish)
         producer = (WORKFLOWS / "desktop-qualification.yml").read_text()

@@ -51,7 +51,6 @@ import "push/completion_notifier.dart";
 import "push/completion_push_listener.dart";
 import "push/maintenance_push_listener.dart";
 import "push/push_dispatcher.dart";
-import "push/push_maintenance_telemetry.dart" show PushMaintenanceTelemetryBuilder, readCurrentRssBytes;
 import "push/push_notification_client.dart";
 import "push/push_notification_content_builder.dart";
 import "push/push_rate_limiter.dart";
@@ -401,11 +400,6 @@ class Orchestrator({
       tracker: pushTracker,
       completionNotifier: completionNotifier,
       rateLimiter: pushRateLimiter,
-      telemetryBuilder: PushMaintenanceTelemetryBuilder(
-        completionNotifier: completionNotifier,
-        rateLimiter: pushRateLimiter,
-        rssBytesReader: readCurrentRssBytes,
-      ),
     );
     final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
@@ -570,10 +564,7 @@ class Orchestrator({
       pauseRecheckDelay: const Duration(minutes: 5),
       clock: clock,
     );
-    final sessionContinuationTimer = SessionContinuationTimerListener(
-      service: sessionContinuationService,
-      timerFactory: ({required delay, required callback}) => Timer(delay, callback),
-    );
+    final sessionContinuationTimer = SessionContinuationTimerListener(service: sessionContinuationService);
     final chatHistoryService = ChatHistoryService(
       chatHistoryRepository: ChatHistoryRepository(
         chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
@@ -1188,12 +1179,12 @@ class OrchestratorSession._({
     _maintenanceListener.start();
     _projectActivityService.changes
         .listen((change) {
-          final event = SesoriSseEvent.projectUpdated(
-            projectID: change.projectId,
-            updatedAt: change.updatedAt,
+          _enqueueWireEvent(
+            SesoriSseEvent.projectUpdated(
+              projectID: change.projectId,
+              updatedAt: change.updatedAt,
+            ),
           );
-          _enqueueWireEvent(event);
-          _completionListener.handleSseEvent(event);
         })
         .addTo(_subscriptions);
 

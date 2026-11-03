@@ -6,12 +6,10 @@ import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
 import "package:sesori_bridge/src/push/push_dispatcher.dart";
-import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
-import "package:sesori_bridge/src/push/push_session_state_tracker_types.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -211,23 +209,6 @@ void main() {
       expect(completion.data?.bridgeId, equals("br_this_computer"));
     });
 
-    test("markSessionAborted delegates abort suppression to the notifier", () {
-      final harness = _newHarness();
-
-      harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(info: _session(id: "root")),
-      );
-      harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "child", parentID: "root"),
-        ),
-      );
-
-      harness.completionListener.markSessionAborted("child");
-
-      expect(harness.notifier.abortedRootCount, equals(1));
-    });
-
     test("AC2: parent+child idle completion sends one agentTurnCompleted notification", () {
       fakeAsync((async) {
         final harness = _newHarness();
@@ -323,7 +304,6 @@ void main() {
         async.flushMicrotasks();
 
         expect(harness.client.sentPayloads, isEmpty);
-        expect(harness.notifier.abortedRootCount, equals(1));
       });
     });
 
@@ -411,6 +391,7 @@ void main() {
         final harness = _newHarness(
           now: () => DateTime(2026, 4, 16).add(async.elapsed),
         );
+        harness.completionListener.start();
 
         harness.completionListener.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
         harness.completionListener.handleSseEvent(
@@ -435,62 +416,21 @@ void main() {
         async.flushMicrotasks();
         harness.completionListener.markSessionAborted("child");
 
-        expect(harness.notifier.completionSentRootCount, equals(1));
+        expect(harness.client.sentPayloads, hasLength(1));
+        expect(harness.rateLimiter.retainedKeyCount, equals(1));
 
         async.elapse(const Duration(minutes: 40));
         async.flushMicrotasks();
-        harness.maintenanceListener.runNow();
+        final logOutput = _captureLogOutput(level: LogLevel.debug, action: harness.maintenanceListener.runNow);
 
-        final telemetry = harness.maintenanceListener.lastMaintenanceTelemetry;
-        expect(telemetry, isNotNull);
-        expect(telemetry!.sessions, equals(0));
-        expect(telemetry.prunableRoots, equals(0));
-        expect(telemetry.completionSentRoots, equals(0));
-        expect(telemetry.abortedRoots, equals(0));
-        expect(telemetry.rateLimiterKeys, equals(0));
+        expect(harness.tracker.sessionCount, equals(0));
+        expect(harness.tracker.findPrunableRoots(), isEmpty);
+        expect(harness.rateLimiter.retainedKeyCount, equals(0));
+        expect(
+          logOutput,
+          contains("[push] maintenance: pruned 1 idle roots; tracking 0 sessions, 0 message roles, 0 rate-limit keys"),
+        );
       });
-    });
-
-    test("M3: post-maintenance telemetry snapshot reflects maintained state", () {
-      fakeAsync((async) {
-        final harness = _newHarness(
-          now: () => DateTime(2026, 4, 16).add(async.elapsed),
-        );
-
-        harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(info: _session(id: "root")),
-        );
-        harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
-        );
-        harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
-        );
-
-        async.elapse(const Duration(minutes: 40));
-        async.flushMicrotasks();
-        harness.maintenanceListener.runNow();
-
-        final telemetry = harness.maintenanceListener.lastMaintenanceTelemetry;
-        expect(telemetry, isNotNull);
-        expect(telemetry!.sessions, equals(0));
-        expect(telemetry.idleRoots, equals(0));
-        expect(telemetry.prunableRoots, equals(0));
-        expect(telemetry.completionSentRoots, equals(0));
-        expect(telemetry.abortedRoots, equals(0));
-      });
-    });
-
-    test("maintenance logs telemetry snapshots", () {
-      final harness = _newHarness();
-
-      final logOutput = _captureLogOutput(
-        level: LogLevel.debug,
-        action: harness.maintenanceListener.runNow,
-      );
-
-      expect(harness.maintenanceListener.lastMaintenanceTelemetry, isNotNull);
-      expect(logOutput, contains(harness.maintenanceListener.lastMaintenanceTelemetry!.toLogMessage()));
     });
 
     test("M3b: maintenance continues when root pruning throws", () {
@@ -498,50 +438,18 @@ void main() {
         now: DateTime.now,
         throwFindPrunableRoots: true,
       );
-      final harness = _newHarness(
-        tracker: tracker,
-        rssBytesReader: () => 3 * 1024 * 1024,
-      );
+      final harness = _newHarness(tracker: tracker);
 
       harness.rateLimiter.shouldSend(
         category: NotificationCategory.sessionMessage,
-        sessionId: "session-a",
         rateLimitKey: "sessionMessage-session-a",
       );
 
-      harness.maintenanceListener.runNow();
+      final logOutput = _captureLogOutput(level: LogLevel.debug, action: harness.maintenanceListener.runNow);
 
-      final telemetry = harness.maintenanceListener.lastMaintenanceTelemetry;
-      expect(telemetry, isNotNull);
-      expect(telemetry!.rssMb, closeTo(3, 0.001));
-      expect(telemetry.rateLimiterKeys, equals(1));
-    });
-
-    test("reset clears tracker and notifier state", () {
-      fakeAsync((async) {
-        final harness = _newHarness();
-
-        harness.completionListener.handleSseEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "session-a", title: "Session A"),
-          ),
-        );
-        harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
-        );
-        harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
-        );
-        async.elapse(const Duration(milliseconds: 500));
-        async.flushMicrotasks();
-        harness.completionListener.markSessionAborted("session-a");
-
-        harness.completionListener.reset();
-
-        expect(harness.tracker.getSessionProjectId(sessionId: "session-a"), isNull);
-        expect(harness.notifier.completionSentRootCount, equals(0));
-        expect(harness.notifier.abortedRootCount, equals(0));
-      });
+      expect(logOutput, contains("[push] maintenance step 'root-prune' failed"));
+      expect(logOutput, contains("findPrunableRoots boom"));
+      expect(logOutput, contains("pruned 0 idle roots; tracking 0 sessions, 0 message roles, 1 rate-limit keys"));
     });
   });
 }
@@ -560,7 +468,6 @@ _newHarness({
   FakePushRateLimiter? rateLimiter,
   PushSessionStateTracker? tracker,
   DateTime Function()? now,
-  int? Function()? rssBytesReader,
 }) {
   final resolvedClient = client ?? FakePushNotificationClient();
   final resolvedTracker = tracker ?? PushSessionStateTracker(now: now ?? DateTime.now);
@@ -569,12 +476,6 @@ _newHarness({
     debounceDuration: const Duration(milliseconds: 500),
   );
   final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now);
-  final resolvedRssBytesReader = rssBytesReader ?? readCurrentRssBytes;
-  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
-    completionNotifier: notifier,
-    rateLimiter: resolvedRateLimiter,
-    rssBytesReader: resolvedRssBytesReader,
-  );
   const contentBuilder = PushNotificationContentBuilder();
   final dispatcher = PushDispatcher(
     client: resolvedClient,
@@ -594,7 +495,6 @@ _newHarness({
     tracker: resolvedTracker,
     completionNotifier: notifier,
     rateLimiter: resolvedRateLimiter,
-    telemetryBuilder: telemetryBuilder,
   );
 
   return (
@@ -611,7 +511,7 @@ _newHarness({
 class ThrowingPushSessionStateTracker({required super.now, final bool throwFindPrunableRoots = false})
     extends PushSessionStateTracker {
   @override
-  List<PushPrunableRoot> findPrunableRoots() {
+  List<String> findPrunableRoots() {
     if (throwFindPrunableRoots) {
       throw StateError("findPrunableRoots boom");
     }
@@ -640,18 +540,13 @@ class FakePushRateLimiter({var bool shouldAllowSend = true, super.now}) extends 
   @override
   bool shouldSend({
     required NotificationCategory category,
-    required String? sessionId,
     required String rateLimitKey,
   }) {
     if (!shouldAllowSend) {
       return false;
     }
 
-    return super.shouldSend(
-      category: category,
-      sessionId: sessionId,
-      rateLimitKey: rateLimitKey,
-    );
+    return super.shouldSend(category: category, rateLimitKey: rateLimitKey);
   }
 }
 
@@ -691,7 +586,7 @@ String _captureLogOutput({required LogLevel level, required void Function() acti
     Log.level = previousLevel;
   }
 
-  // Diagnostic logs (including maintenance telemetry) are written to stderr.
+  // Diagnostic logs (including the maintenance summary) are written to stderr.
   return stderrBuffer.text;
 }
 

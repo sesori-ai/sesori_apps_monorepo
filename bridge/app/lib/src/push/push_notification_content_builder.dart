@@ -21,20 +21,34 @@ class const PushNotificationContentBuilder() {
     return "${words.take(maxWords).join(" ")}...";
   }
 
-  ({NotificationCategory category, NotificationEventType eventType, String title, String body})?
+  /// The push content for [event], or null when it raises no immediate push.
+  ///
+  /// A permission or question prompt targets its display (root) session, so
+  /// the collapse key and deep link open the session the request is surfaced
+  /// on (a sub-agent request surfaces on its root). The owner session is the
+  /// one that raised the prompt.
+  ({
+    NotificationCategory category,
+    NotificationEventType eventType,
+    String title,
+    String body,
+    ({String displaySessionId, String ownerSessionId})? session,
+  })?
   extractNotificationData(SesoriSseEvent event) {
     return switch (event) {
-      SesoriQuestionAsked(:final questions) => (
+      SesoriQuestionAsked(:final questions, :final sessionID, :final displaySessionId) => (
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.questionAsked,
         title: "Question requires input",
         body: questions.isNotEmpty ? questions.first.question : "The assistant is waiting for your response.",
+        session: (displaySessionId: displaySessionId ?? sessionID, ownerSessionId: sessionID),
       ),
-      SesoriPermissionAsked(:final tool, :final description) => (
+      SesoriPermissionAsked(:final tool, :final description, :final sessionID, :final displaySessionId) => (
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.permissionAsked,
         title: "Permission requested",
         body: description.isNotEmpty ? description : "The assistant requested permission to run $tool.",
+        session: (displaySessionId: displaySessionId ?? sessionID, ownerSessionId: sessionID),
       ),
       SesoriInstallationUpdateAvailable(:final version) => (
         category: NotificationCategory.systemUpdate,
@@ -43,6 +57,7 @@ class const PushNotificationContentBuilder() {
         body: (version != null && version.isNotEmpty)
             ? "Version $version is available."
             : "A new bridge version is available.",
+        session: null,
       ),
       _ => null,
     };
@@ -73,44 +88,5 @@ class const PushNotificationContentBuilder() {
       collapseKey: collapseKey,
       data: data,
     );
-  }
-
-  /// The session that actually raised a permission/question prompt (the owner),
-  /// which may differ from [extractSessionId] when a child/sub-agent request is
-  /// surfaced on its root. Used to resolve the notification's project, since the
-  /// owner session (which just triggered the event) is the one most reliably
-  /// known to the push tracker, and a child shares its root's project.
-  String? extractRequestSessionId(SesoriSseEvent event) {
-    return switch (event) {
-      SesoriPermissionAsked(:final sessionID) => sessionID,
-      SesoriQuestionAsked(:final sessionID) => sessionID,
-      _ => null,
-    };
-  }
-
-  String? extractSessionId(SesoriSseEvent event) {
-    return switch (event) {
-      SesoriSessionCreated(:final info) => info.id,
-      SesoriSessionUpdated(:final info) => info.id,
-      SesoriSessionDeleted(:final info) => info.id,
-      SesoriSessionDiff(:final sessionID) => sessionID,
-      SesoriSessionError(:final sessionID) => sessionID,
-      SesoriSessionCompacted(:final sessionID) => sessionID,
-      SesoriSessionStatus(:final sessionID) => sessionID,
-      SesoriMessageUpdated(:final info) => info.sessionID,
-      SesoriMessageRemoved(:final sessionID) => sessionID,
-      SesoriMessagePartUpdated(:final part) => part.sessionID,
-      SesoriMessagePartDelta(:final sessionID) => sessionID,
-      SesoriMessagePartRemoved(:final sessionID) => sessionID,
-      // Attribute permission/question prompts to their display (root) session so
-      // the notification's collapse key and deep-link target open the session
-      // the request is surfaced on (a sub-agent request surfaces on its root).
-      SesoriPermissionAsked(:final sessionID, :final displaySessionId) => displaySessionId ?? sessionID,
-      SesoriQuestionAsked(:final sessionID, :final displaySessionId) => displaySessionId ?? sessionID,
-      SesoriQuestionReplied(:final sessionID) => sessionID,
-      SesoriQuestionRejected(:final sessionID) => sessionID,
-      SesoriTodoUpdated(:final sessionID) => sessionID,
-      _ => null,
-    };
   }
 }

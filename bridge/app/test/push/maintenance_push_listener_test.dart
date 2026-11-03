@@ -1,7 +1,6 @@
 import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
-import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:test/test.dart";
@@ -10,111 +9,82 @@ void main() {
   group("MaintenancePushListener", () {
     test("construction is passive until start", () {
       fakeAsync((async) {
-        final harness = _newHarness(
-          maintenanceInterval: const Duration(minutes: 2),
-        );
-        addTearDown(harness.dispose);
-
-        expect(harness.listener.lastMaintenanceTelemetry, isNull);
+        final harness = _newHarness(maintenanceInterval: const Duration(minutes: 2));
+        addTearDown(harness.listener.dispose);
 
         async.elapse(const Duration(minutes: 3));
-        async.flushMicrotasks();
-
-        expect(harness.listener.lastMaintenanceTelemetry, isNull);
+        expect(harness.rateLimiter.pruneCount, 0);
 
         harness.listener.start();
 
         async.elapse(const Duration(minutes: 1, seconds: 59));
-        async.flushMicrotasks();
-
-        expect(harness.listener.lastMaintenanceTelemetry, isNull);
+        expect(harness.rateLimiter.pruneCount, 0);
 
         async.elapse(const Duration(seconds: 1));
-        async.flushMicrotasks();
-
-        expect(harness.listener.lastMaintenanceTelemetry, isNotNull);
+        expect(harness.rateLimiter.pruneCount, 1);
       });
     });
 
     test("start is idempotent", () {
       fakeAsync((async) {
-        final harness = _newHarness(
-          maintenanceInterval: const Duration(minutes: 1),
-        );
-        addTearDown(harness.dispose);
+        final harness = _newHarness(maintenanceInterval: const Duration(minutes: 1));
+        addTearDown(harness.listener.dispose);
 
         harness.listener.start();
         harness.listener.start();
 
-        async.elapse(const Duration(minutes: 1));
-        async.flushMicrotasks();
-        final firstTelemetry = harness.listener.lastMaintenanceTelemetry;
+        async.elapse(const Duration(minutes: 2));
 
-        async.elapse(const Duration(minutes: 1));
-        async.flushMicrotasks();
-
-        expect(firstTelemetry, isNotNull);
-        expect(harness.listener.lastMaintenanceTelemetry, isNotNull);
+        expect(harness.rateLimiter.pruneCount, 2);
       });
     });
 
-    test("runNow captures exactly one maintenance snapshot", () {
+    test("runNow runs one maintenance pass", () {
       final harness = _newHarness();
-      addTearDown(harness.dispose);
+      addTearDown(harness.listener.dispose);
 
       harness.listener.runNow();
 
-      expect(harness.listener.lastMaintenanceTelemetry, isNotNull);
+      expect(harness.rateLimiter.pruneCount, 1);
     });
 
     test("dispose cancels the periodic timer", () {
       fakeAsync((async) {
-        final harness = _newHarness(
-          maintenanceInterval: const Duration(minutes: 1),
-        );
-        addTearDown(harness.dispose);
+        final harness = _newHarness(maintenanceInterval: const Duration(minutes: 1));
 
         harness.listener.start();
-
         async.elapse(const Duration(minutes: 1));
-        async.flushMicrotasks();
-        final firstTelemetry = harness.listener.lastMaintenanceTelemetry;
-        expect(firstTelemetry, isNotNull);
+        expect(harness.rateLimiter.pruneCount, 1);
 
         harness.listener.dispose();
-
         async.elapse(const Duration(minutes: 5));
-        async.flushMicrotasks();
-        expect(identical(harness.listener.lastMaintenanceTelemetry, firstTelemetry), isTrue);
+
+        expect(harness.rateLimiter.pruneCount, 1);
       });
     });
   });
 }
 
-class _Harness({required final MaintenancePushListener listener}) {
-  void dispose() {
-    listener.dispose();
+class _CountingRateLimiter() extends PushRateLimiter {
+  int pruneCount = 0;
+
+  @override
+  void pruneStaleEntries() {
+    pruneCount += 1;
+    super.pruneStaleEntries();
   }
 }
 
-_Harness _newHarness({Duration maintenanceInterval = const Duration(minutes: 10)}) {
+({MaintenancePushListener listener, _CountingRateLimiter rateLimiter}) _newHarness({
+  Duration maintenanceInterval = const Duration(minutes: 10),
+}) {
   final tracker = PushSessionStateTracker(now: DateTime.now);
-  final notifier = CompletionNotifier(
-    tracker: tracker,
-    debounceDuration: const Duration(milliseconds: 500),
-  );
-  final rateLimiter = PushRateLimiter(now: DateTime.now);
+  final rateLimiter = _CountingRateLimiter();
   final listener = MaintenancePushListener(
     tracker: tracker,
-    completionNotifier: notifier,
+    completionNotifier: CompletionNotifier(tracker: tracker),
     rateLimiter: rateLimiter,
-    telemetryBuilder: PushMaintenanceTelemetryBuilder(
-      completionNotifier: notifier,
-      rateLimiter: rateLimiter,
-      rssBytesReader: () => null,
-    ),
     maintenanceInterval: maintenanceInterval,
   );
-
-  return _Harness(listener: listener);
+  return (listener: listener, rateLimiter: rateLimiter);
 }

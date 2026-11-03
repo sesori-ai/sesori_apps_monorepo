@@ -30,6 +30,9 @@ external.
   a session collapses to one identity derived identically by bridge, server, and client.
 - A send failure is logged well enough to separate auth from transport failure and never fails the session flow that
   produced it.
+- Bridge push maintenance runs every ten minutes and prunes roots idle for 30 minutes, stale message roles, and
+  expired cooldown keys. A failing step is logged and does not stop the other steps. Each pass logs one debug summary
+  line: the pruned-root count, the tracked sessions, message roles and cooldown keys left, and the pass duration.
 - On macOS, public system-power callbacks suppress only connection-status pushes while a system-sleep episode has not
   produced a completed-wake callback (`kIOMessageSystemHasPoweredOn`, not `kIOMessageSystemWillPowerOn`). DarkWake never
   gates relay transport, requests, pings, reconnects, or plugin/session

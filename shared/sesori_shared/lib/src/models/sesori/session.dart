@@ -94,41 +94,6 @@ sealed class SessionTime with _$SessionTime {
   factory fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
 }
 
-/// Session with embedded project info, returned by `/experimental/session`.
-///
-/// This is the `GlobalInfo` type from the backend server — a [Session] extended
-/// with a nullable [SessionProject] that identifies which project the session
-/// belongs to.
-@Freezed(fromJson: true, toJson: true)
-sealed class GlobalSession with _$GlobalSession {
-  const factory({
-    required String id,
-    required String projectID,
-    required String directory,
-    required String? parentID,
-    required String? title,
-    required SessionTime? time,
-    required SessionProject? project,
-  }) = _GlobalSession;
-
-  factory fromJson(Map<String, dynamic> json) => _$GlobalSessionFromJson(json);
-}
-
-/// Lightweight project reference embedded in [GlobalSession].
-///
-/// This is the `ProjectInfo` / `ProjectSummary` type from the backend server —
-/// a subset of [Project] with only `id`, `name`, and `worktree`.
-@Freezed(fromJson: true, toJson: true)
-sealed class SessionProject with _$SessionProject {
-  const factory({
-    required String id,
-    required String? name,
-    required String worktree,
-  }) = _SessionProject;
-
-  factory fromJson(Map<String, dynamic> json) => _$SessionProjectFromJson(json);
-}
-
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionIdRequest with _$SessionIdRequest {
   const factory({

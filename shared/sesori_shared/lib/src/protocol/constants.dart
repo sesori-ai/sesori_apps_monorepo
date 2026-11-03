@@ -23,8 +23,4 @@ abstract final class RelayProtocol() {
   /// One protocol-version byte, a 24-byte XChaCha20 nonce, and a 16-byte tag.
   static const int encryptedMessageOverheadBytes = 1 + 24 + 16;
   static const int maxPlaintextMessageBytes = maxMessageBytes - encryptedMessageOverheadBytes;
-
-  static bool canEncryptMessage({required int plaintextBytes}) {
-    return plaintextBytes >= 0 && plaintextBytes <= maxPlaintextMessageBytes;
-  }
 }

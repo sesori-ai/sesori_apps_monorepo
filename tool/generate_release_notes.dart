@@ -31,7 +31,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-const String _ignoreLabel = 'ignore-for-release';
 const Set<String> _excludedAuthors = {'dependabot', 'dependabot[bot]'};
 
 void main(List<String> args) async {
@@ -347,12 +346,6 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
 
   final author = (pr['user'] as Map<String, dynamic>?)?['login'] as String?;
   if (author != null && _excludedAuthors.contains(author)) {
-    return null;
-  }
-  final labels = (pr['labels'] as List<dynamic>? ?? [])
-      .cast<Map<String, dynamic>>()
-      .map((label) => label['name'] as String);
-  if (labels.contains(_ignoreLabel)) {
     return null;
   }
 

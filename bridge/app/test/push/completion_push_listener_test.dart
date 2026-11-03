@@ -136,21 +136,6 @@ void main() {
       });
     });
 
-    test("markSessionAborted updates abort suppression state", () {
-      final harness = _newHarness();
-
-      harness.listener.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
-      harness.listener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "child", parentID: "root"),
-        ),
-      );
-
-      harness.listener.markSessionAborted("child");
-
-      expect(harness.notifier.abortedRootCount, equals(1));
-    });
-
     test("completion flow clears root subtree assistant text before dispatching outbound data", () {
       fakeAsync((async) {
         final harness = _newHarness();
