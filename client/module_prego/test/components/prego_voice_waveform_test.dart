@@ -76,7 +76,8 @@ void main() {
       ..add(0.0);
     await tester.pump(const Duration(milliseconds: 50));
 
-    final painter = tester.widget<CustomPaint>(find.byType(CustomPaint).last).painter!;
+    final painter =
+        tester.widget<CustomPaint>(find.byType(CustomPaint).last).painter ?? fail("the waveform has no painter");
     final canvas = _RecordingCanvas();
     painter.paint(canvas, const Size(200, 24));
 
@@ -143,7 +144,8 @@ void main() {
     flatten.value = 1;
     await tester.pump();
 
-    final painter = tester.widget<CustomPaint>(find.byType(CustomPaint).last).painter!;
+    final painter =
+        tester.widget<CustomPaint>(find.byType(CustomPaint).last).painter ?? fail("the waveform has no painter");
     final canvas = _RecordingCanvas();
     painter.paint(canvas, const Size(200, 24));
 

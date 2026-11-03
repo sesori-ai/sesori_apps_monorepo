@@ -687,9 +687,9 @@ void main() {
 
     expect(originalRequests, 1);
     final thumbnailImage = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
-    final transformationController = tester
-        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
-        .transformationController!;
+    final transformationController =
+        tester.widget<InteractiveViewer>(find.byType(InteractiveViewer)).transformationController ??
+        fail("The viewer has no transformation controller.");
     transformationController.value = Matrix4.diagonal3Values(2, 2, 1);
     expect(find.byIcon(TablerRegular.copy), findsNothing);
     expect(find.byIcon(TablerRegular.share), findsNothing);
@@ -1019,7 +1019,8 @@ void main() {
 
     await _openImageViewer(tester: tester);
 
-    final route = ModalRoute.of(tester.element(find.byType(ImageAttachmentViewer)))! as PageRoute<void>;
+    final route = ModalRoute.of(tester.element(find.byType(ImageAttachmentViewer)));
+    if (route is! PageRoute<void>) fail("The viewer is not on a page route.");
     expect(route.transitionDuration, Duration.zero);
     expect(route.reverseTransitionDuration, Duration.zero);
   });
@@ -1086,17 +1087,20 @@ void main() {
       sessionNavigatorKey: sessionNavigatorKey,
     );
     await _openImageViewer(tester: tester);
-    final sessionRoute = ModalRoute.of(tester.element(find.byKey(FilePartWidget.previewTapTargetKey)))!;
+    final sessionRoute =
+        ModalRoute.of(tester.element(find.byKey(FilePartWidget.previewTapTargetKey))) ??
+        fail("The preview has no route.");
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
-    final viewerRoute = ModalRoute.of(tester.element(find.byType(ImageAttachmentViewer)))!;
+    final viewerRoute =
+        ModalRoute.of(tester.element(find.byType(ImageAttachmentViewer))) ?? fail("The viewer has no route.");
     expect(viewerRoute.navigator, same(rootNavigatorKey.currentState));
     expect(viewerRoute.opaque, isFalse);
     expect(tester.getSize(find.byType(ImageAttachmentViewer)), const Size(1024, 800));
     expect(sessionRoute.willHandlePopInternally, isTrue);
 
-    expect(await sessionNavigatorKey.currentState!.maybePop(), isTrue);
+    expect(await sessionNavigatorKey.currentState?.maybePop(), isTrue);
     await tester.pumpAndSettle();
 
     expect(find.byType(ImageAttachmentViewer), findsNothing);
@@ -1104,7 +1108,7 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
     expect(sessionRoute.willHandlePopInternally, isFalse);
 
-    expect(await sessionNavigatorKey.currentState!.maybePop(), isTrue);
+    expect(await sessionNavigatorKey.currentState?.maybePop(), isTrue);
     await tester.pumpAndSettle();
 
     expect(find.text("Session list route"), findsOneWidget);
@@ -1253,7 +1257,8 @@ void main() {
     await _openImageViewer(tester: tester);
     final viewer = find.byType(ImageAttachmentViewer);
     final interactiveViewer = tester.widget<InteractiveViewer>(find.byType(InteractiveViewer));
-    final transformationController = interactiveViewer.transformationController!;
+    final transformationController =
+        interactiveViewer.transformationController ?? fail("The viewer has no transformation controller.");
 
     await _doubleTap(tester: tester, finder: viewer);
 

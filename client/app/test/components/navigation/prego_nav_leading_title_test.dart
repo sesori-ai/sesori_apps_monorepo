@@ -45,15 +45,16 @@ void main() {
   }
 
   final dotFinder = find.byWidgetPredicate(
-    (widget) =>
-        widget is Container &&
-        widget.decoration is BoxDecoration &&
-        (widget.decoration! as BoxDecoration).shape == BoxShape.circle,
+    (widget) => switch (widget) {
+      Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
+      _ => false,
+    },
   );
 
   Color dotColor(WidgetTester tester) {
     final container = tester.widget<Container>(dotFinder);
-    return (container.decoration! as BoxDecoration).color!;
+    if (container.decoration case BoxDecoration(:final color?)) return color;
+    fail("status dot has no colour");
   }
 
   testWidgets("renders the title with the full subtitle row: dot, icon and text, with no chevron", (tester) async {
@@ -104,12 +105,12 @@ void main() {
     await pumpBlock(tester, title: "Projects", subtitle: "Waiting for the bridge...");
     final colors = PregoDesignSystem.light.colors;
 
-    final title = tester.widget<Text>(find.text("Projects")).style!;
+    final title = tester.widget<Text>(find.text("Projects")).style ?? fail("title has no style");
     expect(title.fontSize, 18);
     expect(title.fontWeight, FontWeight.bold);
     expect(title.color, colors.textPrimary);
 
-    final subtitle = tester.widget<Text>(find.text("Waiting for the bridge...")).style!;
+    final subtitle = tester.widget<Text>(find.text("Waiting for the bridge...")).style ?? fail("subtitle has no style");
     expect(subtitle.fontSize, 12);
     expect(subtitle.color, colors.textTertiary);
   });

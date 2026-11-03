@@ -242,9 +242,11 @@ void main() {
     expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(7));
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
     await tester.pumpAndSettle();
-    expect(sent, orderedEquals(images.take(7)));
-    for (var i = 0; i < sent!.length; i++) {
-      expect(identical(sent![i].bytes, images[i].bytes), isTrue);
+    final sentImages = sent;
+    expect(sentImages, orderedEquals(images.take(7)));
+    if (sentImages == null) fail("No images were sent.");
+    for (var i = 0; i < sentImages.length; i++) {
+      expect(identical(sentImages[i].bytes, images[i].bytes), isTrue);
     }
     expect(strip, findsNothing);
     expect(tester.takeException(), isNull);
@@ -353,7 +355,7 @@ void main() {
       findsNothing,
     );
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus, isTrue);
+    expect(tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus, isTrue);
     // The trailing slot stays while the chip stands in for the header.
     expect(find.text("Picker header"), findsNothing);
     expect(find.text("Sub-agents"), findsOneWidget);
@@ -366,10 +368,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(GlassMaterializeTransition), findsNothing);
     expect(find.text("Picker header"), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, "Keep this draft");
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "Keep this draft");
     // The chip sits outside the editor tap region: clearing already dismissed
     // focus before the transition change. Staging still focuses the editor.
-    expect(tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus, isFalse);
+    expect(
+      (tester.widget<TextField>(find.byType(TextField)).focusNode ?? fail("The field has no focus node.")).hasFocus,
+      isFalse,
+    );
 
     command.value = _stagedCommand;
     await tester.pumpAndSettle();
@@ -394,7 +399,7 @@ void main() {
     expect(find.byKey(const ValueKey("saved-recording-actions")), findsOneWidget);
     expect(find.text("Sub-agents"), findsOneWidget);
     expect(find.byType(GlassMaterializeTransition), findsNothing);
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, "Keep this draft");
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "Keep this draft");
   }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}));
 
   for (final (name, features, fadeMs) in const [

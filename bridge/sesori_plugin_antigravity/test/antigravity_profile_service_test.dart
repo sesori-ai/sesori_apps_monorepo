@@ -196,7 +196,8 @@ void main() {
   test("cancellation awaits an in-flight atomic write then rejects its late success", () async {
     final abort = StartAbortController();
     final release = Completer<void>();
-    store.writeStarted = Completer<void>();
+    final writeStarted = Completer<void>();
+    store.writeStarted = writeStarted;
     store.writeGate = release.future;
     var settled = false;
     final preparation = service(target: windows, executable: "/bridge", prefix: []).prepare(
@@ -204,7 +205,7 @@ void main() {
       hostEnvironment: {},
     );
     final assertion = expectLater(preparation, throwsA(isA<PluginStartAbortedException>())).then((_) => settled = true);
-    await store.writeStarted!.future;
+    await writeStarted.future;
     abort.abort();
     await Future<void>(() {});
     expect(settled, isFalse);

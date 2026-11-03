@@ -45,8 +45,8 @@ void main() {
 
       final request = source.notificationOpenFromMessage(message: message);
 
-      expect(request, isNotNull);
-      expect(request!.projectId, equals("proj_1"));
+      if (request == null) fail("message did not open a session");
+      expect(request.projectId, equals("proj_1"));
       expect(request.sessionId, equals("ses_1"));
       expect(request.sessionTitle, equals("Session title"));
       expect(request.bridgeId, equals("br_workstation"));

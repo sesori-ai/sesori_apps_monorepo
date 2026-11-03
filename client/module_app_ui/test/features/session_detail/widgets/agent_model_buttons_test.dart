@@ -226,7 +226,7 @@ void main() {
         ),
       );
       final context = tester.element(find.byType(AgentModelButtons));
-      final loc = AppLocalizations.of(context)!;
+      final loc = context.loc;
 
       expect(tester.widget<Icon>(find.byIcon(TablerRegular.bolt_off)).color, context.prego.colors.fgDisabled);
 
@@ -248,7 +248,7 @@ void main() {
           onFastModeChanged: changes.add,
         ),
       );
-      final loc = AppLocalizations.of(tester.element(find.byType(AgentModelButtons)))!;
+      final loc = tester.element(find.byType(AgentModelButtons)).loc;
 
       await tester.tap(pill());
       await tester.pumpAndSettle();
@@ -277,7 +277,7 @@ void main() {
           lessThan(tester.getTopLeft(_menuItem(displayOrder[index].id)).dy),
         );
       }
-      final loc = AppLocalizations.of(tester.element(find.byType(AgentModelButtons)))!;
+      final loc = tester.element(find.byType(AgentModelButtons)).loc;
       expect(
         tester.getBottomLeft(find.text(loc.sessionDetailPickerVariant.toUpperCase())).dy,
         lessThanOrEqualTo(tester.getTopLeft(_menuItem("minimal")).dy),

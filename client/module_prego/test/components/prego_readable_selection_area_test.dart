@@ -194,10 +194,10 @@ Future<String?> _copySelection({required WidgetTester tester}) async {
   addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
 
   final selectionArea = tester.state<SelectionAreaState>(find.byType(SelectionArea));
-  selectionArea.selectableRegion.contextMenuButtonItems
-      .singleWhere((item) => item.type == ContextMenuButtonType.copy)
-      .onPressed!
-      .call();
+  final copy = selectionArea.selectableRegion.contextMenuButtonItems.singleWhere(
+    (item) => item.type == ContextMenuButtonType.copy,
+  );
+  (copy.onPressed ?? fail("the copy menu item is disabled"))();
   await tester.pump();
   return copiedText;
 }

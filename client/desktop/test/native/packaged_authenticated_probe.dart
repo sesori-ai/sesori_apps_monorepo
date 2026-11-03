@@ -223,8 +223,14 @@ Future<void> main() async {
       Platform.environment["GITHUB_EVENT_NAME"] != "workflow_dispatch") {
     throw StateError("Authenticated fixture requires a disposable main-only Linux Actions dispatch");
   }
-  final phase = AuthenticatedProbePhase.values.byName(Platform.environment["SESORI_AUTHENTICATED_PROBE_PHASE"]!);
-  final report = File(Platform.environment["SESORI_AUTHENTICATED_PROBE_OUTPUT"]!);
+  final phase = AuthenticatedProbePhase.values.byName(
+    Platform.environment["SESORI_AUTHENTICATED_PROBE_PHASE"] ??
+        (throw StateError("SESORI_AUTHENTICATED_PROBE_PHASE is not set")),
+  );
+  final report = File(
+    Platform.environment["SESORI_AUTHENTICATED_PROBE_OUTPUT"] ??
+        (throw StateError("SESORI_AUTHENTICATED_PROBE_OUTPUT is not set")),
+  );
   try {
     WidgetsFlutterBinding.ensureInitialized();
     runApp(const SizedBox.shrink());

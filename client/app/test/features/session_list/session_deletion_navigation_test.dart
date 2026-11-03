@@ -27,7 +27,7 @@ void main() {
       addTearDown(router.dispose);
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
-      final context = navigatorKey.currentContext!;
+      final context = navigatorKey.currentContext ?? fail("navigator is not mounted");
       expect(ModalRoute.of(context), isNull);
 
       closeDeletedSessionRoute(context: context, sessionId: "another-session");

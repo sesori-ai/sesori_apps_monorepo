@@ -111,7 +111,7 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
-        child: child!,
+        child: child ?? fail("The app built no child."),
       ),
       home: HarnessSettingsFlowView(
         child: detailId == null

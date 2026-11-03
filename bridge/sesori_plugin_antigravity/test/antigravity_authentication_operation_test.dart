@@ -62,8 +62,9 @@ class _Runtime({required final _Profile profile}) implements AntigravityRuntimeS
     expect(managedServerPath, isNull);
     expect(pathEnvironment, same(profile.prepared.environment));
     expect(probeEnvironment, same(profile.prepared.environment));
-    expect(abortSignal, same(profile.budget!.abortSignal));
-    expect(timeout <= profile.budget!.timeout, isTrue);
+    final budget = profile.budget ?? fail("profile was not prepared before probing");
+    expect(abortSignal, same(budget.abortSignal));
+    expect(timeout <= budget.timeout, isTrue);
     return resolution;
   }
 
@@ -227,7 +228,8 @@ void main() {
 
   test("remote continuation is one-shot and completion waits for its in-flight transport", () async {
     final attempt = _Attempt();
-    attempt.authentication.callbackGate = Completer<void>();
+    final callbackGate = Completer<void>();
+    attempt.authentication.callbackGate = callbackGate;
     attempt.start();
     await attempt.offer();
     final submitted = attempt.operation.submitRedirect(redirectUri: _redirect);
@@ -239,7 +241,7 @@ void main() {
     attempt.authentication.completed.complete();
     await Future<void>(() {});
     expect(attempt.done.isCompleted, isFalse);
-    attempt.authentication.callbackGate!.complete();
+    callbackGate.complete();
     await submitted;
     await attempt.done.future;
     expect(attempt.authentication.redirects, [_redirect]);
@@ -249,8 +251,10 @@ void main() {
 
   test("cancellation awaits callback and ACP cleanup; stale callbacks cannot affect the next attempt", () async {
     final attempt = _Attempt();
-    attempt.authentication.cleanupGate = Completer<void>();
-    attempt.authentication.callbackGate = Completer<void>();
+    final cleanupGate = Completer<void>();
+    final callbackGate = Completer<void>();
+    attempt.authentication.cleanupGate = cleanupGate;
+    attempt.authentication.callbackGate = callbackGate;
     attempt.start();
     await attempt.offer();
     final submitted = expectLater(
@@ -261,10 +265,10 @@ void main() {
     attempt.abort.abort();
     await Future<void>(() {});
     expect(attempt.done.isCompleted, isFalse);
-    attempt.authentication.cleanupGate!.complete();
+    cleanupGate.complete();
     await Future<void>(() {});
     expect(attempt.done.isCompleted, isFalse);
-    attempt.authentication.callbackGate!.complete();
+    callbackGate.complete();
     await submitted;
     await attempt.done.future;
     expect(attempt.errors.single.error, isA<PluginStartAbortedException>());
@@ -281,14 +285,15 @@ void main() {
 
   test("stream cancellation aborts an idle authentication and waits for boundary cleanup", () async {
     final attempt = _Attempt();
-    attempt.authentication.cleanupGate = Completer<void>();
+    final cleanupGate = Completer<void>();
+    attempt.authentication.cleanupGate = cleanupGate;
     attempt.start();
     await attempt.offer();
     var cancelled = false;
     final cancelling = attempt.cancel().then((_) => cancelled = true);
     await Future<void>(() {});
     expect(cancelled, isFalse);
-    attempt.authentication.cleanupGate!.complete();
+    cleanupGate.complete();
     await cancelling;
     expect(attempt.authentication.cleanedUp, isTrue);
     expect(attempt.authentication.disposed, isTrue);
@@ -296,11 +301,12 @@ void main() {
 
   test("profile cancellation prevents probing and still disposes attempt peers", () async {
     final attempt = _Attempt();
-    attempt.profile.gate = Completer<void>();
+    final profileGate = Completer<void>();
+    attempt.profile.gate = profileGate;
     attempt.start();
     await attempt.profile.started.future;
     attempt.abort.abort();
-    attempt.profile.gate!.complete();
+    profileGate.complete();
     await attempt.done.future;
     expect(attempt.runtime.calls, 0);
     expect(attempt.errors.single.error, isA<PluginStartAbortedException>());

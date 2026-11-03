@@ -396,7 +396,7 @@ final class _FakeProcess({
   @override
   Future<void> kill({required bool force}) async {
     actions.add(force ? "force" : "graceful");
-    if (!force && gracefulKillError != null) throw gracefulKillError!;
+    if (gracefulKillError case final error? when !force) throw error;
     if (force && autoExitOnForce) completeExit(0);
   }
 }
@@ -405,7 +405,7 @@ final class _RecordingConsumer({required final _FakeProcess process}) implements
   @override
   Future<void> addStream(Stream<List<int>> stream) async {
     await process.writeGate?.future;
-    if (process.writeError != null) throw process.writeError!;
+    if (process.writeError case final error?) throw error;
     await for (final bytes in stream) {
       process.frames.add(String.fromCharCodes(bytes).trim());
     }
@@ -414,7 +414,7 @@ final class _RecordingConsumer({required final _FakeProcess process}) implements
   @override
   Future<void> close() async {
     process.actions.add("stdin-close");
-    if (process.closeError != null) throw process.closeError!;
+    if (process.closeError case final error?) throw error;
     if (process.autoExitOnClose) process.completeExit(0);
   }
 }

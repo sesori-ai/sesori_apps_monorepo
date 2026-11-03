@@ -205,9 +205,10 @@ void main() {
     test('an integer option validates its raw value at parse time', () {
       const option = PluginValueOption.integer(name: 'port', help: 'Port', defaultsTo: null, valueHelp: null);
 
-      expect(() => option.validate!('port', '4096'), returnsNormally);
+      final validate = option.validate ?? fail('integer option has no validator');
+      expect(() => validate('port', '4096'), returnsNormally);
       expect(
-        () => option.validate!('port', 'not-a-port'),
+        () => validate('port', 'not-a-port'),
         throwsA(
           isA<PluginConfigException>().having(
             (exception) => exception.message,

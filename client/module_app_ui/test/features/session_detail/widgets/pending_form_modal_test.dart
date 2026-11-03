@@ -135,7 +135,7 @@ class _Harness() {
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale), disableAnimations: reduced),
-      child: child!,
+      child: child ?? fail("The app built no router child."),
     ),
   );
   Future<void> close() async {
@@ -222,7 +222,8 @@ void main() {
     );
     await open(tester: tester);
     expect(find.text("Required · Whole number · Minimum: 0 · Maximum: 3"), findsOneWidget);
-    final controller = tester.widget<TextField>(input(id: "count")).controller!;
+    final controller =
+        tester.widget<TextField>(input(id: "count")).controller ?? fail("The count field has no controller.");
     await tester.enterText(input(id: "count"), "99");
     await tap(tester: tester, label: "No");
     await tap(tester: tester, label: "Submit answers");
@@ -230,7 +231,7 @@ void main() {
     expect(tester.widget<TextField>(input(id: "count")).controller, same(controller));
     expect(controller.text, "99");
     expect(find.text("This value is outside the allowed range."), findsOneWidget);
-    expect(tester.widget<TextField>(input(id: "text")).controller!.text, "Fixture answer");
+    expect(tester.widget<TextField>(input(id: "text")).controller?.text, "Fixture answer");
     expect(harness.settlements, 0);
   });
 
@@ -263,13 +264,13 @@ void main() {
     await tester.tap(field);
     await tester.pump();
     final widget = tester.widget<TextField>(field);
-    widget.controller!.selection = const TextSelection.collapsed(offset: 1);
+    (widget.controller ?? fail("The field has no controller.")).selection = const TextSelection.collapsed(offset: 1);
     final height = tester.getSize(find.byType(PendingFormFieldEditor)).height;
     update(() {
       editable = false;
     });
     await tester.pump();
-    expect(widget.focusNode!.hasFocus, isTrue);
+    expect(widget.focusNode?.hasFocus, isTrue);
     expect(tester.widget<TextField>(field).readOnly, isTrue);
     update(() {
       editable = true;
@@ -277,8 +278,8 @@ void main() {
     });
     await tester.pump();
     expect(tester.widget<TextField>(field).controller, same(widget.controller));
-    expect(widget.focusNode!.hasFocus, isTrue);
-    expect(widget.controller!.selection.baseOffset, 1);
+    expect(widget.focusNode?.hasFocus, isTrue);
+    expect(widget.controller?.selection.baseOffset, 1);
     expect(tester.getSize(find.byType(PendingFormFieldEditor)).height, height);
   });
 
@@ -326,7 +327,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("The connection changed. Close this request and reopen it after reconnecting."), findsOneWidget);
     expect(find.text("Sending your response to the coding agent…"), findsNothing);
-    expect(tester.widget<TextField>(input(id: "text")).controller!.text, "Fixture answer");
+    expect(tester.widget<TextField>(input(id: "text")).controller?.text, "Fixture answer");
     expect(tester.widget<TextField>(input(id: "text")).readOnly, isTrue);
     reply.complete(ApiResponse.success(const FormReplyAccepted()));
     await tester.pumpAndSettle();
@@ -399,7 +400,8 @@ void main() {
             : ApiResponse.error(ApiError.generic()),
       );
       await open(tester: tester, size: const Size(390, 844));
-      final controller = tester.widget<TextField>(input(id: "text")).controller!;
+      final controller =
+          tester.widget<TextField>(input(id: "text")).controller ?? fail("The text field has no controller.");
       controller.selection = const TextSelection.collapsed(offset: 3);
       await tap(tester: tester, label: "No");
       final submit = find.widgetWithText(PregoButtonsSolid, "Submit answers");

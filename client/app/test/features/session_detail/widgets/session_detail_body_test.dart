@@ -196,7 +196,7 @@ SessionDetailLoaded _loadedState({
     selectedAgent: "coder",
     selectedAgentModel: AgentModel(
       providerID: provider.id,
-      modelID: provider.defaultModelID!,
+      modelID: provider.defaultModelID ?? fail("fixture provider has no default model"),
       variant: "xhigh",
     ),
     promptDefaults: null,
@@ -638,7 +638,7 @@ void main() {
       ),
     );
     expect(submitted, hasLength(1));
-    expect(identical(submitted!.single, second), isTrue);
+    expect(identical(submitted?.single, second), isTrue);
   });
 
   testWidgets("an empty user envelope keeps the empty transcript state visible", (tester) async {
@@ -5179,7 +5179,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final editable = tester.widget<EditableText>(find.byType(EditableText));
-    final scrollController = editable.scrollController!;
+    final scrollController = editable.scrollController ?? fail("composer has no scroll controller");
     expect(editable.focusNode.hasFocus, isFalse);
     expect(editable.controller.selection, TextSelection.collapsed(offset: transcript.length));
     expect(scrollController.position.maxScrollExtent, greaterThan(0));
@@ -5236,13 +5236,15 @@ void main() {
 
     final textField = tester.widget<TextField>(find.byType(TextField));
     final editableTextState = tester.state<EditableTextState>(find.byType(EditableText));
-    final toolbar = textField.contextMenuBuilder!(
+    final toolbar = (textField.contextMenuBuilder ?? fail("composer has no context menu"))(
       tester.element(find.byType(TextField)),
       editableTextState,
     ) as AdaptiveTextSelectionToolbar;
-    final pasteItem = toolbar.buttonItems!.singleWhere((item) => item.type == ContextMenuButtonType.paste);
+    final pasteItem = (toolbar.buttonItems ?? fail("context menu has no button items")).singleWhere(
+      (item) => item.type == ContextMenuButtonType.paste,
+    );
 
-    pasteItem.onPressed!();
+    (pasteItem.onPressed ?? fail("paste is disabled"))();
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
@@ -5347,13 +5349,15 @@ void main() {
 
     final textField = tester.widget<TextField>(find.byType(TextField));
     final editableTextState = tester.state<EditableTextState>(find.byType(EditableText));
-    final toolbar = textField.contextMenuBuilder!(
+    final toolbar = (textField.contextMenuBuilder ?? fail("composer has no context menu"))(
       tester.element(find.byType(TextField)),
       editableTextState,
     ) as AdaptiveTextSelectionToolbar;
-    final pasteItem = toolbar.buttonItems!.singleWhere((item) => item.type == ContextMenuButtonType.paste);
+    final pasteItem = (toolbar.buttonItems ?? fail("context menu has no button items")).singleWhere(
+      (item) => item.type == ContextMenuButtonType.paste,
+    );
 
-    pasteItem.onPressed!();
+    (pasteItem.onPressed ?? fail("paste is disabled"))();
     editableText.controller.selection = TextSelection.collapsed(offset: editableText.controller.text.length);
     imageRead.complete(null);
     await tester.pumpAndSettle();
@@ -5775,8 +5779,8 @@ void main() {
       await tester.pumpAndSettle();
       verify(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote")).called(1);
       final field = tester.widget<TextField>(find.byType(TextField));
-      expect(field.controller!.text, "Keep my draft");
-      expect(field.focusNode!.hasFocus, isTrue);
+      expect(field.controller?.text, "Keep my draft");
+      expect(field.focusNode?.hasFocus, isTrue);
     });
   }
 

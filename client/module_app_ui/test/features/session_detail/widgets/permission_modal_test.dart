@@ -108,16 +108,18 @@ void main() {
 
     final colors = PregoDesignSystem.light.colors;
     final detail = tester.widget<Container>(find.byKey(const Key("permission-request-detail")));
-    final decoration = detail.decoration! as BoxDecoration;
+    final decoration = detail.decoration;
+    if (decoration is! BoxDecoration) fail("The detail has no box decoration.");
     expect(decoration.color, colors.bgSurface2);
-    expect((decoration.border! as Border).top.color, colors.borderPrimary);
+    expect((decoration.border as Border?)?.top.color, colors.borderPrimary);
     expect(decoration.borderRadius, BorderRadius.circular(PregoRadius.xl));
 
     final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
     expect(markdown.data, _command);
     expect(markdown.selectable, isTrue);
-    expect(markdown.styleSheet!.p!.fontSize, 12);
-    final codeBlockDecoration = markdown.styleSheet!.codeblockDecoration! as BoxDecoration;
+    expect(markdown.styleSheet?.p?.fontSize, 12);
+    final codeBlockDecoration = markdown.styleSheet?.codeblockDecoration;
+    if (codeBlockDecoration is! BoxDecoration) fail("The markdown has no code block box decoration.");
     expect(codeBlockDecoration.color, isNot(decoration.color));
     expect(find.byType(PregoCopyIconButton), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
@@ -158,7 +160,11 @@ void main() {
     await tester.pumpWidget(_buildApp(router: router));
     await _openPermissionModal(tester);
     final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
-    markdown.onTapLink!("the docs", "https://example.com/docs", "the docs");
+    (markdown.onTapLink ?? fail("The markdown has no link handler."))(
+      "the docs",
+      "https://example.com/docs",
+      "the docs",
+    );
     await tester.pump();
 
     expect(openedUrl, Uri.parse("https://example.com/docs"));

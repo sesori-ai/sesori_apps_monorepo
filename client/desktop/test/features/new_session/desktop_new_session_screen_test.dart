@@ -571,7 +571,7 @@ void main() {
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {
-        draft = invocation.namedArguments[#draft]! as ComposerDraft;
+        draft = invocation.namedArguments[#draft] as ComposerDraft;
       });
       whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
       final service = _MockPluginManagementService();
@@ -653,7 +653,7 @@ void main() {
               final route = shell.routes.whereType<GoRoute>().singleWhere(
                 (route) => route.path == AppRouteDef.newSession.path,
               );
-              final screen = route.builder!(context, state) as DesktopNewSessionScreen;
+              final screen = (route.builder ?? fail("no builder"))(context, state) as DesktopNewSessionScreen;
               return DesktopNewSessionView(
                 onBack: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,

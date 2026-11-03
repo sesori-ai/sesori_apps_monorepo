@@ -30,8 +30,12 @@ Future<void> main() async {
     throw StateError("This fixture may only run on an isolated macOS or Linux Actions runner");
   }
   final String nativeStore = Platform.isMacOS ? "Keychain" : "Secret Service";
-  final String output = Platform.environment["SESORI_PACKAGED_PROBE_OUTPUT"]!;
-  final _ProbePhase phase = _ProbePhase.values.byName(Platform.environment["SESORI_PACKAGED_PROBE_PHASE"]!);
+  final String output =
+      Platform.environment["SESORI_PACKAGED_PROBE_OUTPUT"] ??
+      (throw StateError("SESORI_PACKAGED_PROBE_OUTPUT is not set"));
+  final _ProbePhase phase = _ProbePhase.values.byName(
+    Platform.environment["SESORI_PACKAGED_PROBE_PHASE"] ?? (throw StateError("SESORI_PACKAGED_PROBE_PHASE is not set")),
+  );
   final File report = File(output);
   try {
     WidgetsFlutterBinding.ensureInitialized();

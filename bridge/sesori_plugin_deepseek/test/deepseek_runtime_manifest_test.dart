@@ -31,7 +31,7 @@ void main() {
         PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
         PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
       ])
-        manifest.assetFor(target: target)! as ArchiveRuntimeAsset,
+        (manifest.assetFor(target: target) ?? fail("no asset for $target")) as ArchiveRuntimeAsset,
     ];
 
     expect(
@@ -63,9 +63,11 @@ void main() {
   });
 
   test("builds the immutable GitHub release URL", () {
-    final asset = manifest.assetFor(
-      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-    )!;
+    final asset =
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+        ) ??
+        fail("no macOS arm64 asset");
     expect(
       manifest.downloadUrlFor(asset: asset),
       "https://github.com/sesori-ai/sesori-deepseek-acp/releases/download/v0.2.1/sesori-deepseek-acp-v0.2.1-darwin-arm64.tar.gz",

@@ -115,7 +115,7 @@ class AdaptiveSessionRouterTestHarness() {
     when(
       () => projectRepository.getProject(projectId: any(named: "projectId")),
     ).thenAnswer((invocation) async {
-      final projectId = invocation.namedArguments[#projectId]! as String;
+      final projectId = invocation.namedArguments[#projectId] as String;
       return ApiResponse.success(
         Project(
           id: projectId,
@@ -158,19 +158,19 @@ class AdaptiveSessionRouterTestHarness() {
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((invocation) async {
-      final projectId = invocation.namedArguments[#projectId]! as String;
+      final projectId = invocation.namedArguments[#projectId] as String;
       return ApiResponse.success(SessionListResponse(items: sessionsByProject[projectId] ?? const []));
     });
 
     when(
       () => sessionRepository.getSessionDiffs(sessionId: any(named: "sessionId")),
     ).thenAnswer((invocation) async {
-      final sessionId = invocation.namedArguments[#sessionId]! as String;
+      final sessionId = invocation.namedArguments[#sessionId] as String;
       return ApiResponse.success(SessionDiffsResponse(diffs: diffsBySession[sessionId] ?? const []));
     });
     Future<SessionDetailLoadResult> loadSnapshot(Invocation invocation) async {
-      final projectId = invocation.namedArguments[#projectId]! as String;
-      final sessionId = (invocation.namedArguments[#session]! as Session).id;
+      final projectId = invocation.namedArguments[#projectId] as String;
+      final sessionId = (invocation.namedArguments[#session] as Session).id;
       return SessionDetailLoadResult.loaded(
         snapshot: _buildDetailSnapshot(
           projectId: projectId,

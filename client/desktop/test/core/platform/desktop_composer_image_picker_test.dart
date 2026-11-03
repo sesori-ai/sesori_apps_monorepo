@@ -18,7 +18,7 @@ void main() {
 
     expect(await picker.pickImage(), isNull);
     expect(capturedGroups, hasLength(1));
-    expect(capturedGroups!.single.extensions, containsAll(["bmp", "gif", "jpeg", "jpg", "png", "webp"]));
+    expect(capturedGroups?.single.extensions, containsAll(["bmp", "gif", "jpeg", "jpg", "png", "webp"]));
   });
 
   test("adapter returns the selected bytes and filename", () async {
@@ -32,7 +32,8 @@ void main() {
 
     final picked = await picker.pickImage();
 
-    expect(picked!.bytes, orderedEquals(bytes));
+    if (picked == null) fail("no image was picked");
+    expect(picked.bytes, orderedEquals(bytes));
     expect(picked.filename, "photo.jpg");
   });
 

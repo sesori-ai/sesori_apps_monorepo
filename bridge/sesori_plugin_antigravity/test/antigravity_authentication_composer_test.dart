@@ -100,7 +100,11 @@ class _Processes({required final Map<String, dynamic> initialize}) implements Ho
     expect(includeParentEnvironment, isFalse);
     expect(environment, isNotNull);
     expect(environment, isNot(contains("GOOGLE_API_KEY")));
-    launches.add((command: executable, arguments: arguments, environment: environment!));
+    launches.add((
+      command: executable,
+      arguments: arguments,
+      environment: environment ?? fail("spawn received no environment"),
+    ));
     if (executable == "/synthetic/bridge" || executable == "chmod") return _Helper();
     final agent = _Agent(initialize: initialize, pid: agents.length + 10);
     agents.add(agent);

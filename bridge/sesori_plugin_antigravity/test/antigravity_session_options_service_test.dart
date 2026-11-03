@@ -134,7 +134,8 @@ void main() {
     expect(provider.models.map((model) => model.id), [" opaque one ", "opaque:two", "opaque:three"]);
     expect(provider.models.map((model) => model.name), [" First label ", "Same name", "Same name"]);
     expect(provider.models.every((model) => model.isAvailable && model.variants.isEmpty), isTrue);
-    expect(() => tracker.snapshot!.models.clear(), throwsUnsupportedError);
+    final snapshot = tracker.snapshot ?? fail("catalog was not captured");
+    expect(snapshot.models.clear, throwsUnsupportedError);
     expect(repository.writes, isEmpty);
   });
 
@@ -185,7 +186,7 @@ void main() {
       variant: null,
     );
     expect(service.getSessionOptions().providers.providers.single.defaultModelID, "account-default");
-    expect(tracker.snapshot!.currentNativeModelId, "session-model");
+    expect(tracker.snapshot?.currentNativeModelId, "session-model");
     expect(configuration.snapshotForSession(sessionId: "existing").modelId, "session-model");
     service.capture(
       sessionId: "session",
@@ -364,7 +365,8 @@ void main() {
     );
     expect(configuration.processDefaults.modelId, " chosen ");
     expect(configuration.snapshotForSession(sessionId: "session").modelId, " chosen ");
-    repository.modelGate = Completer<void>();
+    final modelGate = Completer<void>();
+    repository.modelGate = modelGate;
     repository.response = _catalog(id: " chosen ");
     final apply = service.applyForPrompt(
       configRepository: repository,
@@ -373,10 +375,10 @@ void main() {
       variant: null,
     );
     expect(repository.writes, [(session: "session-2", config: "model", value: " chosen ")]);
-    repository.modelGate!.complete();
+    modelGate.complete();
     await apply;
     expect(repository.writes.last, (session: "session-2", config: "mode", value: "default"));
-    expect(tracker.snapshot!.currentNativeModelId, " chosen ");
+    expect(tracker.snapshot?.currentNativeModelId, " chosen ");
     expect(configuration.snapshotForSession(sessionId: "session-2").modelId, " chosen ");
   });
 
