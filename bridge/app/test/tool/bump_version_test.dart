@@ -240,5 +240,22 @@ void main() {
       expect(await File(fixture.versionDartPath).readAsString(), equals(beforeVersionDart));
       expect(await File(fixture.wrapperPackagePath).readAsString(), equals(beforeWrapperPackage));
     });
+
+    test('fails without writing when bridge_version.dart lacks the old constant', () async {
+      await File(fixture.versionDartPath).writeAsString("const String bridgeVersion = '0.0.1';\n");
+      final beforePubspec = await File(fixture.pubspecPath).readAsString();
+      final beforeWrapperPackage = await File(fixture.wrapperPackagePath).readAsString();
+
+      final result = await _runTool(fixture: fixture, args: [fixture.newVersion]);
+
+      expect(result.exitCode, equals(1));
+      expect(result.stderr, contains("Could not find \"const String bridgeVersion = '${fixture.oldVersion}';\""));
+      expect(
+        await File(fixture.versionDartPath).readAsString(),
+        equals("const String bridgeVersion = '0.0.1';\n"),
+      );
+      expect(await File(fixture.pubspecPath).readAsString(), equals(beforePubspec));
+      expect(await File(fixture.wrapperPackagePath).readAsString(), equals(beforeWrapperPackage));
+    });
   });
 }

@@ -48,10 +48,11 @@ Future<void> updateBridgeVersionDart({
 }) async {
   final filePath = p.join(p.dirname(appDir), 'sesori_bridge_foundation', 'lib', 'src', 'bridge_version.dart');
   final content = await readFile(path: filePath);
-  final updated = content.replaceFirst(
-    "const String bridgeVersion = '$oldVersion';",
-    "const String bridgeVersion = '$newVersion';",
-  );
+  final oldLine = "const String bridgeVersion = '$oldVersion';";
+  if (!content.contains(oldLine)) {
+    throw StateError('Could not find "$oldLine" in $filePath');
+  }
+  final updated = content.replaceFirst(oldLine, "const String bridgeVersion = '$newVersion';");
   await writeFile(path: filePath, content: updated);
 }
 
@@ -127,9 +128,10 @@ Future<void> main(List<String> args) async {
   }
 
   try {
-    // Update all 9 files
-    await updatePubspec(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
+    // Update all 9 files. bridge_version.dart goes first so a missing old
+    // constant stops the bump before any file is written.
     await updateBridgeVersionDart(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
+    await updatePubspec(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
 
     // Update wrapper package.json
     await updatePackageJson(
