@@ -13,7 +13,6 @@ final class const AntigravityCallbackRejected({required final int statusCode}) e
 
 class const AntigravityAuthenticationException({
   required final String message,
-  // ignore: no_slop_linter/prefer_specific_type, retain boundary failures without exposing their OAuth payloads
   required final Object? cause,
 }) implements Exception {
   @override

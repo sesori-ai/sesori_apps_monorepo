@@ -25,10 +25,8 @@ class const BridgeSseGlobalDisposed() extends BridgeSseEvent;
 /// Signals that the emitting plugin's process-wide command catalog changed.
 class const BridgeSseCommandCatalogUpdated() extends BridgeSseEvent;
 
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionCreated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionUpdated({required final Map<String, dynamic> info, required final bool titleChanged})
     extends BridgeSseEvent;
 
@@ -54,7 +52,6 @@ class const BridgeSseSessionPromptDefaultsChanged({
   required final PluginAgentModel? model,
 }) extends BridgeSseEvent;
 
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionDeleted({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
 class const BridgeSseSessionDiff({required final String sessionID}) extends BridgeSseEvent;

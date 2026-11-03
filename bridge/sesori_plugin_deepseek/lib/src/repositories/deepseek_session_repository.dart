@@ -9,9 +9,7 @@ class const DeepSeekSessionRepository({required final DeepSeekAcpApi api}) {
   SemanticVersion? parseInitializeAdapterVersion(AcpInitializeResult initializeResult) {
     final metadata = initializeResult.raw["_meta"];
     final deepSeekMetadata = metadata is Map ? metadata[DeepSeekAcpApi.initializeMetadataKey] : null;
-    // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
     if (deepSeekMetadata is! Map) throw const FormatException("DeepSeek initialize metadata is missing");
-    // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
     final parsed = api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
     return SemanticVersion.tryParse(value: parsed.adapterVersion);
   }

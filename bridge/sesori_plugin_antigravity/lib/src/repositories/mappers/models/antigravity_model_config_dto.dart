@@ -37,9 +37,7 @@ sealed class AntigravityModelGroupDto with _$AntigravityModelGroupDto {
 }
 
 // ACP select entries are either values or one-level groups, without a wire discriminator.
-// ignore: no_slop_linter/prefer_specific_type, raw JSON union entries stop at generated value/group decoders
 List<AntigravityModelOptionDto> _modelOptionsFromJson(List<dynamic> entries) => [
-  // ignore: no_slop_linter/prefer_specific_type, generated DTO factories consume the external JSON object
   for (final entry in entries.cast<Map<String, dynamic>>())
     if (entry.containsKey("value"))
       AntigravityModelOptionDto.fromJson(entry)

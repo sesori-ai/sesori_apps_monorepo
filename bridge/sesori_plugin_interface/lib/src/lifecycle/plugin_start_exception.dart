@@ -10,7 +10,6 @@ class const PluginStartException(
   final String message, {
 
   /// The underlying error, when one exists.
-  // ignore: no_slop_linter/prefer_specific_type, caught errors are opaque
   required final Object? cause,
 }) implements Exception {
   @override

@@ -20,7 +20,6 @@ class const AntigravityBrowserPreflightResult({
 
 class const AntigravityProfileException({
   required final String message,
-  // ignore: no_slop_linter/prefer_specific_type, preserve the original storage/process failure
   required final Object? cause,
 }) implements Exception {
   @override

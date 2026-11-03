@@ -88,7 +88,6 @@ class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
     );
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, standard ACP config options are heterogeneous JSON objects
   static Map<String, dynamic>? _findConfig({
     required AcpNewSessionResult result,
     required CopilotConfigOptionKind kind,
@@ -98,7 +97,6 @@ class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
     id: null,
   );
 
-  // ignore: no_slop_linter/prefer_specific_type, standard ACP config options are heterogeneous JSON objects
   static List<CopilotCatalogOption> _options({required Map<String, dynamic>? config}) {
     return [
       for (final option in AcpConfigOptionParser.flattenedOptions(config: config))
@@ -117,6 +115,5 @@ class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
     ];
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, the value comes from a heterogeneous ACP JSON object
   static Object? _optionValue({required Map<String, dynamic> option}) => option["value"];
 }

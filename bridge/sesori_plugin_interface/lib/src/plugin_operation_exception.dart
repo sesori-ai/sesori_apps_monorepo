@@ -12,7 +12,6 @@ class PluginOperationException implements Exception {
   final int? statusCode;
 
   final String? message;
-  // ignore: no_slop_linter/prefer_specific_type, caught errors are opaque
   final Object? cause;
 
   const new(

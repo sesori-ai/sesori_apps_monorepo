@@ -92,7 +92,6 @@ class GrokAcpApi({
     if (raw is! Map || !raw.keys.every((key) => key is String)) {
       throw const FormatException("Grok sub-agent cancellation returned a non-object response");
     }
-    // ignore: no_slop_linter/prefer_specific_type, generated DTO accepts JSON maps
     final envelope = GrokSubagentCancelResponseEnvelopeDto.fromJson(raw.cast<String, dynamic>());
     final response = envelope.result;
     if (response.subagentId != subagentId) {

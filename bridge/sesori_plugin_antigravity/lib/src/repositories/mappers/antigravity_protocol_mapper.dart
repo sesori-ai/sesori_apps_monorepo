@@ -1,7 +1,3 @@
-// ACP raw tool payloads are arbitrary JSON. Known native fields use generated
-// DTOs; only this boundary walks untyped payloads.
-// ignore_for_file: no_slop_linter/prefer_specific_type
-
 import "package:acp_plugin/acp_plugin.dart";
 import "package:json_annotation/json_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";

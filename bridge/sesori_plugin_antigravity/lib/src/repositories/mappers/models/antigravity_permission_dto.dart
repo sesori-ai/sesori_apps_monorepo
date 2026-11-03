@@ -74,13 +74,10 @@ sealed class AntigravityPermissionMetadataDto with _$AntigravityPermissionMetada
 }
 
 // Warning contents are opaque and never rendered; only their presence matters.
-// ignore: no_slop_linter/prefer_specific_type, external warning payload has no fixed value shape
 bool _warningPresent(Object? value) => value != null;
 
 // Bound the external list before generated parsing allocates all option DTOs.
-// ignore: no_slop_linter/prefer_specific_type, JSON array boundary passed to generated decoders
 List<AntigravityPermissionOptionDto> _optionsFromJson(List<dynamic> entries) {
   if (entries.length > 32) throw const FormatException("Too many Antigravity permission options");
-  // ignore: no_slop_linter/prefer_specific_type, each JSON object is immediately decoded by the generated factory
   return entries.cast<Map<String, dynamic>>().map(AntigravityPermissionOptionDto.fromJson).toList(growable: false);
 }

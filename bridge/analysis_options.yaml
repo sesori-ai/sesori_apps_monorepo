@@ -3,3 +3,8 @@ include: app/analysis_options.yaml
 plugins:
   no_slop_linter:
     path: ../shared/no_slop_linter
+    # The bridge enforces the written code rules only. These two stay on in the
+    # client, which keeps every rule.
+    diagnostics:
+      prefer_specific_type: false
+      avoid_implicit_tostring: false

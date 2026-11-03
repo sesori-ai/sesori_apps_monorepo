@@ -5,13 +5,11 @@ part "deepseek_protocol_dto.g.dart";
 
 const String deepSeekExtensionMetadataKey = "sesori.ai/deepseek";
 
-// ignore: no_slop_linter/prefer_specific_type, json_serializable converter input is heterogeneous
 int _integer(Object? value) {
   if (value is! int) throw const FormatException("Expected integer");
   return value;
 }
 
-// ignore: no_slop_linter/prefer_specific_type, json_serializable converter input is heterogeneous
 int? _nullableInteger(Object? value) => value == null ? null : _integer(value);
 
 enum DeepSeekSubagentMode() {
@@ -222,7 +220,6 @@ class const DeepSeekTerminalHistoryResponseDto({
 class const DeepSeekSessionUpdateEnvelopeDto({
   @JsonKey(name: "_meta") required final DeepSeekEnvelopeMetadataDto? metadata,
   required final String sessionId,
-  // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
   required final Map<String, dynamic> update,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionUpdateEnvelopeDtoFromJson(json);
@@ -232,7 +229,6 @@ class const DeepSeekSessionUpdateEnvelopeDto({
 /// Typed view of DeepSeek's member inside the open ACP `_meta` container while
 /// retaining every original entry for shared and forward-compatible replay.
 class const DeepSeekEnvelopeMetadataDto({
-  // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
   required final Map<String, dynamic> raw,
   required final DeepSeekEnvelopeDeepSeekMetadataDto? deepSeek,
 }) {
@@ -241,7 +237,6 @@ class const DeepSeekEnvelopeMetadataDto({
       return DeepSeekEnvelopeMetadataDto(raw: Map.unmodifiable(json), deepSeek: null);
     }
     final value = json[deepSeekExtensionMetadataKey];
-    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
     if (value is! Map<String, dynamic>) {
       throw const FormatException("Invalid DeepSeek history metadata");
     }
@@ -264,7 +259,6 @@ class const DeepSeekEnvelopeDeepSeekMetadataDto({
       throw const FormatException("Invalid DeepSeek history metadata");
     }
     final subagent = json["subagent"];
-    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
     if (json.containsKey("subagent") && subagent is! Map<String, dynamic>) {
       throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
     }
@@ -332,7 +326,6 @@ class const DeepSeekSubagentReplayDto({
       throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
     }
     final ended = json["ended"];
-    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
     if (json.containsKey("ended") && ended is! Map<String, dynamic>) {
       throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
     }

@@ -249,13 +249,11 @@ final class CodexFormSchema._({
       .firstWhere((entry) => entry.value == value, orElse: () => throw const FormatException("Invalid form default"))
       .key;
 
-  // ignore: no_slop_linter/prefer_specific_type, native JSON schema boundary
   static Map<String, Object?> _object({required Object? value}) {
     if (value is! Map || value.keys.any((key) => key is! String)) throw const FormatException("Invalid form object");
     return value.cast<String, Object?>();
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, native JSON schema boundary
   static List<String> _strings({required Object? value}) {
     if (value is! List || value.any((item) => item is! String)) throw const FormatException("Invalid form list");
     return value.cast<String>();

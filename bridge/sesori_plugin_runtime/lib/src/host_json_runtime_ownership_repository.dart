@@ -69,23 +69,19 @@ class HostJsonRuntimeOwnershipRepository<R>({
     return parsed.records;
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, parse failures retain their opaque original error
   ({Map<String, R> records, Object? invalidError}) _parseRecords({required String? contents}) {
     if (contents == null || contents.trim().isEmpty) {
       return (records: <String, R>{}, invalidError: null);
     }
 
     try {
-      // ignore: no_slop_linter/prefer_specific_type, JSON decoding produces dynamic values at this boundary.
       final dynamic decoded = jsonDecode(contents);
-      // ignore: no_slop_linter/prefer_specific_type, JSON objects contain heterogeneous values
       if (decoded is! Map<String, dynamic>) {
         throw const FormatException("Runtime ownership root must be an object");
       }
       final records = <String, R>{};
       for (final entry in decoded.entries) {
         final value = entry.value;
-        // ignore: no_slop_linter/prefer_specific_type, JSON objects contain heterogeneous values
         if (value is! Map<String, dynamic>) {
           throw const FormatException("Runtime ownership record must be an object");
         }
@@ -128,9 +124,7 @@ class HostJsonRuntimeOwnershipRepository<R>({
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires dynamic values at this boundary.
   Map<String, dynamic> _recordsToJson({required Map<String, R> records}) {
-    // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires dynamic values at this boundary.
     return <String, dynamic>{
       for (final MapEntry<String, R> entry in records.entries) entry.key: _mapper.toJson(record: entry.value),
     };

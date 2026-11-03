@@ -345,7 +345,6 @@ abstract class AcpPlugin({
   void validateInitializeResult(AcpInitializeResult result) {}
 
   /// Translate only initialization failures; ordinary turn failures never use this hook.
-  // ignore: no_slop_linter/prefer_specific_type, initialization errors retain their original typed identity
   Object mapInitializationFailure({required Object error}) => error;
 
   /// Captures initialize-owned state only for the live connection. Replay uses
