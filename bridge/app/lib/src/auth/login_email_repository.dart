@@ -22,8 +22,8 @@ class LoginEmailRepository({
         Console.message('Login successful!');
       }
       return tokens;
-    } on EmailLoginException catch (e) {
-      Log.e('Email login failed: ${e.message}');
+    } on EmailLoginException catch (e, stackTrace) {
+      Log.e('Email login failed: ${e.message}', e.cause, stackTrace);
       rethrow;
     }
   }

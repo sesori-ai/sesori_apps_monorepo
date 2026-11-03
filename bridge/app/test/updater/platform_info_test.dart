@@ -231,12 +231,18 @@ void main() {
 
     test('treats permission, access and read-only filesystem codes as denials', () {
       for (final code in const [1, 5, 13, 30]) {
-        expect(isUpdatePermissionDenied(error: failure(code)), isTrue, reason: 'errno $code');
+        expect(isUpdatePermissionDeniedOn(error: failure(code), isWindows: false), isTrue, reason: 'errno $code');
+      }
+      for (final code in const [5, 19]) {
+        expect(isUpdatePermissionDeniedOn(error: failure(code), isWindows: true), isTrue, reason: 'Windows $code');
       }
     });
 
-    test('does not treat a missing file as a denial', () {
-      expect(isUpdatePermissionDenied(error: failure(2)), isFalse);
+    test("does not treat a missing file or the other platform's code as a denial", () {
+      expect(isUpdatePermissionDeniedOn(error: failure(2), isWindows: false), isFalse);
+      // 30 is ERROR_READ_FAULT on Windows, and 19 is ENODEV on POSIX.
+      expect(isUpdatePermissionDeniedOn(error: failure(30), isWindows: true), isFalse);
+      expect(isUpdatePermissionDeniedOn(error: failure(19), isWindows: false), isFalse);
     });
   });
 

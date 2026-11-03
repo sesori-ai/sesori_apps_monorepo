@@ -15,7 +15,7 @@ lib/
 ├── sesori_shared.dart   Barrel export of the public API
 └── src/
     ├── crypto/          RelayCryptoService (X25519, HKDF, XChaCha20), SessionEncryptor, SHA-256
-    ├── protocol/        Relay framing, RelayMessage and RelayNoticeMessage, close codes,
+    ├── protocol/        Relay framing, RelayMessage, RelayNoticeMessage and RelayControlMessage, close codes,
     │                    desktop↔bridge ControlMessage, BridgeSupervisedExitCode
     ├── models/
     │   ├── auth/        Auth-server API models (login, account, bridge registration, …)
