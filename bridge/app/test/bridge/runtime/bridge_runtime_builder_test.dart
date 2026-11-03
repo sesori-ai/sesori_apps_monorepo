@@ -13,7 +13,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/plugin_lifecycle_test_support.dart";
-import "../../helpers/restart_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
@@ -26,7 +25,6 @@ void main() {
     final httpClient = http.Client();
     final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
     final failureReporter = FakeFailureReporter();
-    final restartService = buildTestRestartService();
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
       connectionNotificationPolicies: const Stream.empty(),
@@ -56,7 +54,6 @@ void main() {
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
-      restartService: restartService,
       filesystemAccessOk: true,
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
@@ -80,7 +77,7 @@ void main() {
       ),
     );
     expect(dispatch, isA<RoutedRequestAccepted>());
-    final routed = (await (dispatch as RoutedRequestAccepted).pendingRequest.completion).response;
+    final routed = await (dispatch as RoutedRequestAccepted).pendingRequest.completion;
     expect(routed.status, 404);
     expect(routed.headers, containsPair("content-type", "application/json"));
     expect(

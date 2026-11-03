@@ -176,7 +176,6 @@ class _FakeProcessRunner({required final Map<String, _FakeResult> results}) impl
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) async {
     throw UnimplementedError();
   }

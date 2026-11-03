@@ -119,8 +119,7 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
 
   Future<RelayResponse> routeForTest(RelayRequest request) async {
     final targetParams = extractTargetParams(target: Uri.parse(request.path));
-    final outcome = await routeInternal(request: request, targetParams: targetParams);
-    return outcome.response;
+    return await routeInternal(request: request, targetParams: targetParams);
   }
 }
 

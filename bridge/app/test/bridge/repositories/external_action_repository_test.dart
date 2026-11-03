@@ -166,8 +166,8 @@ void main() {
       request: makeRequest("POST", "/external-action/reply", body: jsonEncode(accept.toJson())),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
-    expect(outcome.response.status, 409);
-    final rejection = SessionArchivedRejection.fromJson(jsonDecodeMap(outcome.response.body!));
+    expect(outcome.status, 409);
+    final rejection = SessionArchivedRejection.fromJson(jsonDecodeMap(outcome.body!));
     expect(rejection.sessionId, "child");
     expect(rejection.reason, SessionArchivedReason.archivedReadOnly);
     expect(plugin.reads, isZero);

@@ -21,8 +21,8 @@ import 'update_install_service.dart';
 ///
 /// On start (and every 4h) it checks for a newer eligible release, stages it via
 /// [UpdateInstallService], and delegates the in-place swap to [UpdateApplyService].
-/// It never relaunches — the swapped binary takes effect on the next launch
-/// (or an explicit phone-triggered restart). Benign conditions (no newer
+/// It never relaunches — the swapped binary takes effect on the next launch.
+/// Benign conditions (no newer
 /// release, offline, rate-limited, disabled) stay quiet; genuine failures are
 /// surfaced on stderr (branded, not gated by `--log-level`) and the durable
 /// update log.

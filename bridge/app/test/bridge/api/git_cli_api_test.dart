@@ -260,7 +260,6 @@ class _RecordingProcessRunner({
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) {
     throw UnimplementedError();
   }

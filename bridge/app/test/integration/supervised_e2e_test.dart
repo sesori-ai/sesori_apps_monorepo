@@ -13,7 +13,7 @@ const Duration _operationTimeout = Duration(seconds: 45);
 
 void main() {
   test(
-    'supervised helper handshakes, restarts, and unregisters against local fakes',
+    'supervised helper handshakes, restarts by stop and start on the same data directory, and unregisters against local fakes',
     () async {
       final String? executable = _resolveBridgeExecutable();
       if (executable == null) {
@@ -43,7 +43,6 @@ void main() {
       _ControlHost? secondControl;
       _HelperProcess? firstHelper;
       _HelperProcess? secondHelper;
-      final httpClient = HttpClient();
       try {
         firstControl = await _ControlHost.start(generation: 1);
         firstHelper = await _HelperProcess.start(
@@ -69,16 +68,10 @@ void main() {
         expect(firstControl.tokenRequestCount, greaterThan(0));
         expect(File(p.join(data.path, 'bridge_id')).readAsStringSync(), _bridgeId);
 
-        final Uri debugUrl = await firstHelper.debugUrl;
-        final Uri restartUrl = debugUrl.replace(path: '/global/restart');
-        final HttpClientRequest restartRequest = await httpClient.postUrl(restartUrl);
-        final HttpClientResponse restartResponse = await restartRequest.close().timeout(_operationTimeout);
-        final String restartBody = await restartResponse.transform(utf8.decoder).join();
-        expect(restartResponse.statusCode, HttpStatus.ok);
-        expect(jsonDecodeMap(restartBody)['restarting'], isTrue);
-
+        await firstHelper.debugUrl;
+        firstControl.send(const ControlMessage.shutdown());
         final int firstExitCode = await firstHelper.process.exitCode.timeout(_operationTimeout);
-        expect(firstExitCode, BridgeSupervisedExitCode.restart.code);
+        expect(firstExitCode, BridgeSupervisedExitCode.cleanStop.code);
         expect(firstControl.protocolError, isNull);
         final String firstSecret = firstControl.secret;
         await firstControl.close();
@@ -132,7 +125,6 @@ void main() {
         await secondControl?.close();
         await auth.close();
         await relay.close();
-        httpClient.close(force: true);
         await root.delete(recursive: true);
       }
     },

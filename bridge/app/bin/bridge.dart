@@ -41,7 +41,6 @@ import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
-import 'package:sesori_bridge/src/server/services/windows_restart_successor_launcher.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/updater/formatters/terminal_download_progress_listener.dart';
@@ -248,7 +247,6 @@ class LogoutCommand() extends cli.Command<void> {
       processRunner: processRunner,
       clock: const ServerClock(),
       isWindows: Platform.isWindows,
-      inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: Platform.isWindows,
@@ -707,31 +705,6 @@ class UpdateCommand() extends cli.Command<void> {
 }
 
 Future<void> main(List<String> args) async {
-  try {
-    final restartLauncher = WindowsRestartSuccessorLauncher(
-      isWindows: Platform.isWindows,
-      environment: Platform.environment,
-      executable: Platform.resolvedExecutable,
-      start:
-          ({required executable, required arguments, required environment, required includeParentEnvironment}) async {
-            await Process.start(
-              executable,
-              arguments,
-              environment: environment,
-              includeParentEnvironment: includeParentEnvironment,
-              mode: ProcessStartMode.inheritStdio,
-            );
-          },
-      exitLauncher: ({required code}) => exit(code),
-    );
-    final launchedRestartSuccessor = await restartLauncher.launchIfRequested(arguments: args);
-    if (launchedRestartSuccessor) return;
-  } on Object catch (error, stackTrace) {
-    Log.e('Failed to launch the Windows restart successor', error, stackTrace);
-    exitCode = 1;
-    return;
-  }
-
   // A browser command must succeed silently, even after its parent cancels.
   if (BrowserNoop.matches(arguments: args)) return;
 

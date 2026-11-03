@@ -39,7 +39,6 @@ class _FailingProcessRunner() implements ProcessRunner {
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) async {
     throw UnsupportedError("FakeGitCliApi never starts processes");
   }

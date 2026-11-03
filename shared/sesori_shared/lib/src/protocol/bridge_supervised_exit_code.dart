@@ -11,9 +11,6 @@ enum BridgeSupervisedExitCode({required final int code}) {
   /// The local control-channel owner disappeared past its grace period.
   controlChannelLost(code: 1),
 
-  /// An intentional restart handoff requires an immediate replacement helper.
-  restart(code: 86),
-
   /// The GUI could not supply bootstrap authentication.
   authRequired(code: 87),
 

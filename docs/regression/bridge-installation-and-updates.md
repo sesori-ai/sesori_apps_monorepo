@@ -103,14 +103,6 @@ client's update steps shown wherever a feature needs a newer bridge.
   (closing the window may not quit it), install the new version and reopen it, with
   no terminal commands. The CLI steps show for a `cli` bridge, and before any bridge
   has reported health or after an explicit disconnect or sign-out.
-- A standalone restart spawns a successor carrying the predecessor PID and waits before
-  enforcing single-live-bridge ownership. On Windows, the predecessor waits for a marked
-  one-shot launcher to start the real successor with inherited stdio, inherit the native
-  environment while overriding only its launch marker with an inert value, and exit successfully
-  before committing to shutdown. This acknowledged exit breaks the
-  ancestry chain so the successor can terminate the predecessor with tree-aware `taskkill`
-  without killing itself or abandoning the predecessor's other children; launcher spawn or
-  non-zero exit failure leaves the predecessor running.
 
 ## Regression Levels
 
@@ -169,11 +161,6 @@ after apply. Use a throwaway machine when mutating an install root.
 - An old-bridge notice without a way to the update steps, the session notice
   sending an old bridge to Harness Settings, a missing or collapsed reinstall fallback,
   or a copy button copying anything but its own command.
-- A Windows restart launcher recursively launching, staying alive with the real successor,
-  losing inherited stdio or non-ASCII inherited environment entries, allowing predecessor
-  shutdown before successful child creation, being killed with the predecessor tree, or forcing
-  predecessor-only termination that leaves
-  bridge-owned descendants behind.
 
 ## Automatic macOS signing boundary
 
@@ -225,8 +212,6 @@ macOS signing are material failures.
   `client/app/{ios,android}/fastlane/Fastfile`
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
-- `bridge/app/lib/src/server/services/{bridge_restart_service,windows_restart_successor_launcher}.dart`,
-  `bridge/app/lib/src/server/api/system_process_api.dart`, and their focused tests
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)
 - Client update steps: `client/module_app_ui/lib/src/widgets/bridge_update_sheet.dart`,

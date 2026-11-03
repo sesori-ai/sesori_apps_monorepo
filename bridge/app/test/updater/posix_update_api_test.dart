@@ -28,7 +28,6 @@ class _FakeProcessRunner({final int chmodExitCode = 0}) implements ProcessRunner
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) async {
     throw UnimplementedError();
   }

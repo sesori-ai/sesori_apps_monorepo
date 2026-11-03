@@ -313,39 +313,6 @@ void main() {
       expect(status, equals(BridgeInstanceResolutionStatus.declined));
       expect(processRepository.signalRequests, equals(<String>['graceful:308', 'force:308']));
     });
-
-    group('awaitPredecessorBridgeExit', () {
-      test('polls until the predecessor exits, then returns', () async {
-        processRepository.matchSnapshots[909] = <ProcessMatch?>[
-          _match(pid: 909, startMarker: 'a'),
-          _match(pid: 909, startMarker: 'a'),
-          null, // the predecessor has exited
-        ];
-
-        await service.awaitPredecessorBridgeExit(
-          predecessorPid: 909,
-          timeout: const Duration(seconds: 30),
-        );
-
-        // Two 250ms waits before the exit was observed.
-        expect(
-          clock.delays,
-          equals(<Duration>[const Duration(milliseconds: 250), const Duration(milliseconds: 250)]),
-        );
-      });
-
-      test('proceeds immediately (no wait) when process inspection fails', () async {
-        processRepository.throwInspectMatch = true;
-
-        await service.awaitPredecessorBridgeExit(
-          predecessorPid: 911,
-          timeout: const Duration(seconds: 30),
-        );
-
-        // A transient inspection error must not hang startup — it returns at once.
-        expect(clock.delays, isEmpty);
-      });
-    });
   });
 
   // The supervised contention path end-to-end: the same BridgeInstanceService
@@ -544,7 +511,6 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   final Map<int, List<ProcessMatch?>> matchSnapshots = <int, List<ProcessMatch?>>{};
   bool throwGraceful = false;
   bool throwForce = false;
-  bool throwInspectMatch = false;
 
   @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
@@ -553,9 +519,6 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
 
   @override
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) async {
-    if (throwInspectMatch) {
-      throw StateError('inspect failed');
-    }
     final snapshots = matchSnapshots[pid];
     if (snapshots == null || snapshots.isEmpty) {
       return null;

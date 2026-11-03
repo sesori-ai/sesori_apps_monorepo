@@ -27,7 +27,6 @@ class NoopProcessRunner() implements ProcessRunner {
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) async {
     throw UnimplementedError("NoopProcessRunner must not start processes");
   }
@@ -91,7 +90,6 @@ final class RecordingProcessRunner({
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
   }) async {
     throw UnimplementedError("RecordingProcessRunner only records run calls");
   }
