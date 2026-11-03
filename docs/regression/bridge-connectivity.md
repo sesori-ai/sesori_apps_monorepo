@@ -4,8 +4,7 @@
 
 The live link between a client and a bridge: registration, the authenticated relay
 socket and its reconnect policy, encrypted key exchange, several live bridges per
-account and per-bridge ownership, explicit restart, and the connection states the app
-presents.
+account and per-bridge ownership, and the connection states the app presents.
 
 ## Required Behavior
 
@@ -163,7 +162,7 @@ presents.
 - In supervised mode, the authenticated local control channel answers helper token
   pulls, reports aggregate status, resolves prompts, unregisters, and accepts clean
   shutdown; loss of its owner exits after the grace period without orphaning backend
-  processes. Restart intent is authoritative only through the child exit sentinel.
+  processes.
   The desktop persists the registered bridge ID with its account owner, restores it
   before supervision, and performs idempotent GUI-side deletion only after owner
   verification; token-only local sessions are verified through `/auth/me` when
@@ -220,8 +219,8 @@ presents.
 
 Vary how the connection breaks: process kill, network drop, relay-side close,
 backgrounding, token expiry, competing bridge. Vary whether a client is connected before
-the bridge starts, how many clients and bridges are present, whether the bridges share
-an id, and whether restart is explicit.
+the bridge starts, how many clients and bridges are present, and whether the bridges share
+an id.
 
 ## Failure Signals
 
