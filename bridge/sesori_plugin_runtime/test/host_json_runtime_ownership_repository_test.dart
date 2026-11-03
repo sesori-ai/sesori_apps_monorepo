@@ -254,9 +254,7 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
   String? runtimeExecutablePathOf({required _TestRecord record}) => record.openCodeExecutablePath;
 
   @override
-  String runtimeCommandLineOf({required _TestRecord record}) {
-    return <String>[record.openCodeCommand, ...record.openCodeArgs].join(" ");
-  }
+  List<String> runtimeArgsOf({required _TestRecord record}) => record.openCodeArgs;
 
   @override
   int bridgePidOf({required _TestRecord record}) => record.bridgePid;

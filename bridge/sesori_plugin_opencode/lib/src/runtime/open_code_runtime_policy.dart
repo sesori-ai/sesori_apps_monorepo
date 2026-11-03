@@ -392,14 +392,13 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraf
   if (executablePath == null) {
     throw StateError("The spawned OpenCode process ${draft.runtimeIdentity.pid} has no executable path");
   }
-  final args = <String>["serve", "--port", "${draft.port}", "--hostname", bindHost];
   return OpenCodeOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     openCodePid: draft.runtimeIdentity.pid,
     openCodeStartMarker: draft.runtimeIdentity.startMarker,
     openCodeExecutablePath: executablePath,
-    openCodeCommand: draft.runtimeCommandFor(args: args) ?? executablePath,
-    openCodeArgs: args,
+    openCodeCommand: executablePath,
+    openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", bindHost],
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,
     bridgeStartMarker: draft.bridgeIdentity.startMarker,

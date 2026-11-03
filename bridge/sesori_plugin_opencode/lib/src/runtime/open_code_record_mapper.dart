@@ -31,8 +31,7 @@ class const OpenCodeRecordMapper() implements RuntimeRecordMapper<OpenCodeOwners
   String? runtimeExecutablePathOf({required OpenCodeOwnershipRecord record}) => record.openCodeExecutablePath;
 
   @override
-  String runtimeCommandLineOf({required OpenCodeOwnershipRecord record}) =>
-      <String>[record.openCodeCommand, ...record.openCodeArgs].join(" ");
+  List<String> runtimeArgsOf({required OpenCodeOwnershipRecord record}) => record.openCodeArgs;
 
   @override
   int bridgePidOf({required OpenCodeOwnershipRecord record}) => record.bridgePid;

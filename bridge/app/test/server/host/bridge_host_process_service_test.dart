@@ -134,6 +134,21 @@ void main() {
       expect(spawned.identity.startMarker, 'Mon Jun  1 09:00:00 2026');
     });
 
+    test('spawn upgrades the identity of a launcher that already execed its native binary in the same pid', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      final inspected = _identity(
+        pid: 7001,
+        startMarker: 'Mon Jun  1 09:00:00 2026',
+        executablePath: '/opt/vendor/agent-native',
+        commandLine: '/opt/vendor/agent-native --stdio',
+      );
+      processRepository.inspectResults[7001] = <ProcessIdentity?>[inspected];
+
+      final spawned = await spawnAgent();
+
+      expect(spawned.identity, same(inspected));
+    });
+
     test('spawn falls back when inspection throws instead of failing the spawn', () async {
       starter.process = _FakeProcess(pidValue: 7001);
       processRepository.inspectError = const ProcessException('ps', <String>['-p', '7001']);

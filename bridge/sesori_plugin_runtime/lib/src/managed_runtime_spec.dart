@@ -33,24 +33,7 @@ class const RuntimeRecordDraft({
   required final ProcessIdentity bridgeIdentity,
     /// When the runtime was started (host clock).
   required final DateTime startedAt,
-}) {
-  /// The command [runtimeIdentity]'s command line runs [args] with, or null
-  /// when that line does not end with [args] (Windows reports only the image
-  /// name).
-  ///
-  /// Usually the executable, but `ps` reports an interpreter shim such as a
-  /// `#!/usr/bin/env node` script as `node /path/to/shim`. Stop and stale
-  /// cleanup match a record against the live command line, so the record must
-  /// keep that whole prefix, not only the executable.
-  String? runtimeCommandFor({required List<String> args}) {
-    final argsSuffix = " ${args.join(" ")}";
-    final commandLine = runtimeIdentity.commandLine;
-    if (!commandLine.endsWith(argsSuffix)) {
-      return null;
-    }
-    return commandLine.substring(0, commandLine.length - argsSuffix.length);
-  }
-}
+  });
 
 /// How the supervisor paces health confirmation after a spawn: probe every
 /// [pollInterval] until healthy or until [deadline] elapses (host clock).

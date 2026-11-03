@@ -137,14 +137,13 @@ CodexOwnershipRecord buildCodexOwnershipRecord({required RuntimeRecordDraft draf
   if (executablePath == null) {
     throw StateError("The spawned Codex process ${draft.runtimeIdentity.pid} has no executable path");
   }
-  final args = codexAppServerArgs(port: draft.port);
   return CodexOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     codexPid: draft.runtimeIdentity.pid,
     codexStartMarker: draft.runtimeIdentity.startMarker,
     codexExecutablePath: executablePath,
-    codexCommand: draft.runtimeCommandFor(args: args) ?? executablePath,
-    codexArgs: args,
+    codexCommand: executablePath,
+    codexArgs: codexAppServerArgs(port: draft.port),
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,
     bridgeStartMarker: draft.bridgeIdentity.startMarker,
