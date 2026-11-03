@@ -61,7 +61,8 @@ PluginMessageWithParts assistant({required bool retry}) => messages.mapMessage(
 )!;
 
 void main() {
-  test("maps execution status without treating shutdown or an unknown reason as idle", () {
+  test("ends a turn with session idle, but not on shutdown or an unknown interrupt reason", () {
+    final idle = isA<BridgeSseSessionIdle>().having((event) => event.sessionID, "sessionID", "s");
     expect(
       (mapper
                   .map(
@@ -72,13 +73,21 @@ void main() {
           .status,
       const PluginSessionStatus.busy(),
     );
+    expect(
+      mapper
+          .map(
+            envelope: frame(type: "session.execution.succeeded", data: {"sessionID": "s"}),
+          )
+          .single,
+      idle,
+    );
     for (final reason in ["user", "superseded", "inactivity", "shutdown", "future-reason"]) {
       final event = frame(type: "session.execution.interrupted", data: {"sessionID": "s", "reason": reason});
       final result = mapper.map(envelope: event);
       if (reason == "shutdown" || reason == "future-reason") {
         expect(result, isEmpty);
       } else {
-        expect((result.single as BridgeSseSessionStatus).status, const PluginSessionStatus.idle());
+        expect(result.single, idle);
       }
       if (reason == "future-reason") {
         expect((event.data as V2SessionExecutionInterrupted).reason, V2ExecutionInterruptReason.unknown);
@@ -93,7 +102,8 @@ void main() {
         },
       ),
     );
-    expect((failed.first as BridgeSseSessionStatus).status, const PluginSessionStatus.idle());
+    expect(failed.first, idle);
+    expect(failed.whereType<BridgeSseSessionStatus>(), isEmpty);
     expect(failed.whereType<BridgeSseTuiToastShow>().single.message, "Native failure");
   });
 

@@ -263,7 +263,8 @@ void _emitVariant(
   final deprecatedMsg = ev['deprecated_message'] as String?;
 
   // Class header.
-  // COMPATIBILITY 2026-05-18 (v0.7.0): Deprecated manifest events remain generated for older OpenCode runtimes. Remove deprecated-event generation when those runtimes are unsupported.
+  // Deprecated manifest events stay generated: OpenCode v1 still emits the
+  // deprecated session.idle at every turn end, and it drives turn completion.
   if (isDeprecated) {
     final msg = deprecatedMsg ?? 'Deprecated event.';
     out.writeln('/// Deprecated event. $msg');
