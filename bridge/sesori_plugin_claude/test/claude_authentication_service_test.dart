@@ -339,6 +339,7 @@ final class _LoginProcesses() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     if (spawnError case final error?) throw error;
     final process = _LoginProcess(pid: 100 + spawned.length);

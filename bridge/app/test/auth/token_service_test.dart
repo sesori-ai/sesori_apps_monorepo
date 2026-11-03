@@ -172,10 +172,10 @@ void main() {
 
       await manager.getAccessToken();
 
-      expect(savedTokens, isNotNull);
-      expect(savedTokens!.accessToken, "new-access-token");
-      expect(savedTokens!.refreshToken, "new-refresh-token");
-      expect(savedTokens!.lastProvider, AuthProvider.github);
+      final saved = savedTokens ?? fail("expected saved tokens");
+      expect(saved.accessToken, "new-access-token");
+      expect(saved.refreshToken, "new-refresh-token");
+      expect(saved.lastProvider, AuthProvider.github);
     });
 
     test("refresh repairs a corrupt token file by persisting the response tokens", () async {
@@ -206,10 +206,10 @@ void main() {
       final token = await manager.getAccessToken();
 
       expect(token, "new-access-token");
-      expect(savedTokens, isNotNull);
-      expect(savedTokens!.accessToken, "new-access-token");
-      expect(savedTokens!.refreshToken, "new-refresh-token");
-      expect(savedTokens!.lastProvider, AuthProvider.github);
+      final saved = savedTokens ?? fail("expected saved tokens");
+      expect(saved.accessToken, "new-access-token");
+      expect(saved.refreshToken, "new-refresh-token");
+      expect(saved.lastProvider, AuthProvider.github);
     });
 
     test("refresh does not recreate a token file deleted mid-refresh", () async {
@@ -472,7 +472,7 @@ class _AbortAwareClient() extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final abortable = request as http.Abortable;
-    await abortable.abortTrigger!;
+    await (abortable.abortTrigger ?? fail("request has no abort trigger"));
     _abortObserved.complete();
     throw http.RequestAbortedException(request.url);
   }

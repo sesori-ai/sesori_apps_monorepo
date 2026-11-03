@@ -19,13 +19,11 @@ sealed class McpEntryTarget with _$McpEntryTarget {
 
   factory fromJson(Map<String, dynamic> json) => _$McpEntryTargetFromJson(json);
 
-  // ignore: no_slop_linter/prefer_specific_type, decoded JSON target boundary
   static McpServerTarget serverFromJson(Map<String, dynamic> json) => switch (McpEntryTarget.fromJson(json)) {
     final McpServerTarget target => target,
     McpConnectorOfferTarget() => throw const FormatException("Expected an MCP server target."),
   };
 
-  // ignore: no_slop_linter/prefer_specific_type, decoded JSON target boundary
   static McpConnectorOfferTarget connectorOfferFromJson(Map<String, dynamic> json) =>
       switch (McpEntryTarget.fromJson(json)) {
         final McpConnectorOfferTarget target => target,

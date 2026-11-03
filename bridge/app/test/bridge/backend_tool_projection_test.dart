@@ -42,16 +42,17 @@ void main() {
         input: block.input,
       );
       final outcome = "😀" * (maxToolOutputLength + 2);
-      final livePart = tracker
-          .complete(
+      final completed =
+          tracker.complete(
             sessionId: "s",
             toolId: block.id,
             output: outcome,
             isError: failed,
             attachments: const [],
             result: ClaudeToolUseResult.parse({"status": "completed", "agentId": "child"}),
-          )!
-          .toPart()!;
+          ) ??
+          fail("the tracker did not complete the task tool");
+      final livePart = completed.toPart() ?? fail("the completed task tool has no part");
       final part = MessagePart.fromJson(livePart.toShared(sessionId: "stable").toJson()) as MessagePartSubtask;
       final replayPart = const ClaudeHistoryMapper(content: ClaudeContentMapper())
           .map(
@@ -105,9 +106,10 @@ void main() {
       expect(part.prompt, "😀" * maxToolOutputLength);
       expect(part.description, "Explore");
       expect(part.agent, "explore");
-      expect(part.taskState!.status, failed ? ToolStatus.error : ToolStatus.completed);
-      final taskState = part.taskState! as ToolStateFull;
-      expect(failed ? taskState.error : taskState.output, "😀" * maxToolOutputLength);
+      final taskState = part.taskState ?? fail("the subtask has no task state");
+      expect(taskState.status, failed ? ToolStatus.error : ToolStatus.completed);
+      final fullState = taskState as ToolStateFull;
+      expect(failed ? fullState.error : fullState.output, "😀" * maxToolOutputLength);
     });
     for (final shell in [false, true]) {
       test("Claude backend content live tracker/history projection shell=$shell failed=$failed", () {
@@ -137,16 +139,17 @@ void main() {
                     )
                     .single
                 as ClaudeMappedToolResultContentBlock;
-        final live = tracker
-            .complete(
+        final completed =
+            tracker.complete(
               sessionId: "s",
               toolId: "c",
               output: result.output,
               isError: failed,
               attachments: const [],
               result: const ClaudeToolUseResultAbsent(),
-            )!
-            .toPart()!;
+            ) ??
+            fail("the tracker did not complete the tool");
+        final live = completed.toPart() ?? fail("the completed tool has no part");
         final history = const ClaudeHistoryMapper(content: ClaudeContentMapper())
             .map(
               sessionId: "s",

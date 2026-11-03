@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
+import "package:sesori_bridge/src/server/api/windows_job_object_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -13,6 +14,7 @@ void main() {
       api = _FakeSystemProcessApi();
       repository = ProcessRepository(
         api: api,
+        windowsJobObjectApi: WindowsJobObjectApi(),
         currentUser: ProcessUser.fromRawUser("alex"),
       );
     });
@@ -31,8 +33,8 @@ void main() {
       final identity = await repository.inspectProcess(pid: 321);
 
       expect(api.inspectPid, equals(321));
-      expect(identity, isNotNull);
-      expect(identity!.pid, equals(321));
+      if (identity == null) fail("expected a process identity");
+      expect(identity.pid, equals(321));
       expect(identity.startMarker, equals("Fri May 15 11:30:00 2026"));
       expect(identity.executablePath, equals("/usr/local/bin/opencode"));
       expect(identity.commandLine, contains("opencode serve"));
@@ -52,8 +54,8 @@ void main() {
 
       final bridgeMatch = await repository.inspectProcessMatch(pid: 10);
 
-      expect(bridgeMatch, isNotNull);
-      expect(bridgeMatch!.kind, equals(ProcessMatchKind.sesoriBridge));
+      if (bridgeMatch == null) fail("expected a bridge process match");
+      expect(bridgeMatch.kind, equals(ProcessMatchKind.sesoriBridge));
       expect(bridgeMatch.isCurrentUserProcess, isTrue);
       expect(bridgeMatch.identity.pid, equals(10));
 
@@ -68,8 +70,8 @@ void main() {
 
       final unknownMatch = await repository.inspectProcessMatch(pid: 12);
 
-      expect(unknownMatch, isNotNull);
-      expect(unknownMatch!.kind, equals(ProcessMatchKind.unknown));
+      if (unknownMatch == null) fail("expected an unknown process match");
+      expect(unknownMatch.kind, equals(ProcessMatchKind.unknown));
       expect(unknownMatch.isCurrentUserProcess, isFalse);
       expect(unknownMatch.identity.startMarker, isNull);
     });
@@ -117,12 +119,12 @@ class _FakeSystemProcessApi() implements SystemProcessApi {
   @override
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add("force:$pid");
-    return forceResult!;
+    return forceResult ?? fail("no force signal result configured");
   }
 
   @override
   Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add("graceful:$pid");
-    return gracefulResult!;
+    return gracefulResult ?? fail("no graceful signal result configured");
   }
 }

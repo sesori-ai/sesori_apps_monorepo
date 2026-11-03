@@ -62,7 +62,6 @@ final class const CatalogScenario({
   required final CatalogButtonState state,
   required final CatalogButtonContent content,
 }) {
-  // ignore: no_slop_linter/prefer_specific_type, JSON-compatible recursive value boundary
   Map<String, Object?> toJson() {
     final contentJson = switch (content) {
       CatalogButtonLabelContent(:final fullWidth, :final leadingIcon, :final trailingIcon) => (

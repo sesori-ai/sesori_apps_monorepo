@@ -208,7 +208,7 @@ void main() {
         expect(request.path, "/session/attachment");
         expect(request.acceptsDeflatedResponse, isFalse);
         expect(
-          SessionAttachmentRequest.fromJson(jsonDecodeMap(request.body!)),
+          SessionAttachmentRequest.fromJson(jsonDecodeMap(request.body ?? fail("no request body"))),
           const SessionAttachmentRequest(
             sessionId: "session-1",
             attachmentId: "attachment-1",

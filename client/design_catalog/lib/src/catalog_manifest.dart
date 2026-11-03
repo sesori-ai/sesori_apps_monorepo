@@ -5,7 +5,6 @@ const catalogScenarioSourcePath = "client/design_catalog/lib/src/catalog_scenari
 const catalogComponentSourcePath = "client/module_prego/lib/components/buttons/prego_buttons_solid.dart";
 
 /// Agent-readable design graph generated from the same registry as Widgetbook.
-// ignore: no_slop_linter/prefer_specific_type, JSON-compatible recursive value boundary
 Map<String, Object?> buildCatalogManifest() => {
   "schemaVersion": 1,
   "catalog": "Sesori Flutter design catalog",

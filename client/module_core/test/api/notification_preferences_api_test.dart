@@ -17,7 +17,6 @@ final class _RecordingAuthenticatedClient() extends Mock implements Authenticate
   String? lastBody;
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
   Future<ApiResponse<T>> getForUser<T>({
     required Uri url,
     required String userId,
@@ -31,7 +30,6 @@ final class _RecordingAuthenticatedClient() extends Mock implements Authenticate
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, inherited JSON callback
   Future<ApiResponse<T>> patchForUser<T>({
     required Uri url,
     required String userId,
@@ -94,7 +92,7 @@ void main() {
 
     expect(client.lastUrl?.path, "/auth/settings/$_deviceId");
     expect(client.lastUserId, _userId);
-    expect(jsonDecode(client.lastBody!), {
+    expect(jsonDecode(client.lastBody ?? fail("no request body")), {
       "notifications": {"sessionMessage": false},
     });
     expect(record.notifications.sessionMessage, isFalse);

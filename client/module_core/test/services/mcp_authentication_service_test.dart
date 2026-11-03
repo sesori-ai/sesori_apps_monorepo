@@ -150,7 +150,7 @@ void main() {
     when(() => repository.continueAuthentication(request: any(named: "request")))
         .thenAnswer((_) => continuation.future);
     when(() => repository.browserChallenge(state: any(named: "state"))).thenAnswer((invocation) {
-      final state = invocation.namedArguments[#state]! as McpAuthenticationCallbackChallenge;
+      final state = invocation.namedArguments[#state] as McpAuthenticationCallbackChallenge;
       return PluginAuthenticationBrowserChallenge(
         authorizationUri: Uri.parse(state.authorizationUrl),
         expectedCallbackUri: Uri.parse(state.expectedCallbackUrl),
@@ -167,11 +167,11 @@ void main() {
         onDetachedFailure: any(named: "onDetachedFailure"),
       ),
     ).thenAnswer((invocation) {
-      owners.add(invocation.namedArguments[#owner]! as PluginAuthenticationBrowserOwner);
-      challenges.add(invocation.namedArguments[#challenge]! as PluginAuthenticationBrowserChallenge);
-      reuse.add(invocation.namedArguments[#reuseActiveListener]! as bool);
+      owners.add(invocation.namedArguments[#owner] as PluginAuthenticationBrowserOwner);
+      challenges.add(invocation.namedArguments[#challenge] as PluginAuthenticationBrowserChallenge);
+      reuse.add(invocation.namedArguments[#reuseActiveListener] as bool);
       if (browserResult is! PluginAuthenticationBrowserBusy) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
       }

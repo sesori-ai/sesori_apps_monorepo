@@ -3,16 +3,32 @@ import "dart:io";
 import "../process/process_identity.dart";
 import "../process/signal_result.dart";
 
-/// Process management offered by the bridge to plugins.
-///
-/// Backed by the bridge's platform-aware process layer: identity capture
-/// uses the POSIX `ps` start-time marker where available, with documented
-/// Windows fallbacks (no start marker, image-name-only command lines).
 enum ProcessSpawnOutcome() {
   succeeded,
   failed,
 }
 
+/// Whether a process spawned through [HostProcessService.spawn] may outlive
+/// the bridge.
+enum ProcessLifetime() {
+  /// The process should end with the bridge. On Windows the host best-effort
+  /// binds it and its descendants to a kill-on-close job object, so a bound
+  /// process ends even when the bridge crashes; a failed bind is logged and
+  /// leaves it unbound. Other hosts bind nothing and keep their existing stop
+  /// and stale cleanup, without crash-time binding.
+  endsWithBridge,
+
+  /// The process, or something it starts, may keep running after the bridge
+  /// exits. Short commands use this: `opencode service start` detaches a
+  /// shared service that must survive the bridge.
+  mayOutliveBridge,
+}
+
+/// Process management offered by the bridge to plugins.
+///
+/// Backed by the bridge's platform-aware process layer: identity capture
+/// uses the POSIX `ps` start-time marker where available, with documented
+/// Windows fallbacks (no start marker, image-name-only command lines).
 abstract class HostProcessService() {
   /// Spawns a child process and captures its identity.
   ///
@@ -24,6 +40,7 @@ abstract class HostProcessService() {
   ///
   /// [includeParentEnvironment] explicitly chooses whether [environment] is
   /// merged over the OS parent environment or is the child's entire environment.
+  /// [lifetime] declares whether the child may outlive the bridge.
   Future<SpawnedProcess> spawn({
     required String executable,
     required List<String> arguments,
@@ -31,6 +48,7 @@ abstract class HostProcessService() {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   });
 
   /// Captures the identity of the process [pid], or `null` when no such

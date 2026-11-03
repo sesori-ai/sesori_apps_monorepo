@@ -165,6 +165,7 @@ class _Processes({final List<_Output> outputs = const []}) implements HostProces
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     executables.add(executable);
     if (_index >= outputs.length) throw ProcessException(executable, arguments, "missing", 2);

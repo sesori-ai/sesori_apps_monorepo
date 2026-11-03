@@ -209,7 +209,6 @@ final class RealtimeVoiceSession._({
 
   void _onSocketDone() => _endForConnectionLoss(cause: null);
 
-  // ignore: no_slop_linter/prefer_specific_type, socket errors can be any object
   void _endForConnectionLoss({required Object? cause}) {
     if (_phase == _SessionPhase.ended) return;
     final exception = RealtimeVoiceConnectionException(

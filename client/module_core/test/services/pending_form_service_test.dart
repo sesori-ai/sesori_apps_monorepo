@@ -100,9 +100,9 @@ void main() {
   test("defaults preserve omission, empty text, zero, false and opaque choices", () async {
     final drafts = service.initialDrafts(form: form);
     expect(drafts.containsKey("optional"), isFalse);
-    expect((drafts["text"]! as FormInputDraft).text, "");
-    expect((drafts["integer"]! as FormInputDraft).text, "0");
-    expect((drafts["boolean"]! as FormBooleanDraft).value, isFalse);
+    expect(drafts["text"], isA<FormInputDraft>().having((draft) => draft.text, "text", ""));
+    expect(drafts["integer"], isA<FormInputDraft>().having((draft) => draft.text, "text", "0"));
+    expect(drafts["boolean"], isA<FormBooleanDraft>().having((draft) => draft.value, "value", isFalse));
     expect(drafts.clear, throwsUnsupportedError);
     expect(const FormInputDraft(text: "private-fixture").toString(), isNot(contains("private-fixture")));
     expect(await service.submit(form: form, drafts: drafts), isA<FormReplyAccepted>());
@@ -135,7 +135,7 @@ void main() {
         },
       ),
     );
-    expect((drafts["integer"]! as FormInputDraft).text, "1.5");
+    expect(drafts["integer"], isA<FormInputDraft>().having((draft) => draft.text, "text", "1.5"));
     verifyNever(() => repository.replyToForm(request: any(named: "request")));
   });
 

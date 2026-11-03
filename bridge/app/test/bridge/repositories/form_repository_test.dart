@@ -75,7 +75,7 @@ void main() {
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
     expect(result.status, 200);
-    final form = PendingFormsResponse.fromJson(jsonDecodeMap(result.body!)).data.single;
+    final form = PendingFormsResponse.fromJson(jsonDecodeMap(result.body ?? fail("missing body"))).data.single;
     expect(form.sessionID, "child");
     expect(form.displaySessionId, "root");
     expect(form.fields.map((field) => field.schema.runtimeType), [
@@ -105,16 +105,19 @@ void main() {
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
     expect(result.status, 200);
-    expect(FormReplyResult.fromJson(jsonDecodeMap(result.body!)), isA<FormReplyAccepted>());
+    expect(FormReplyResult.fromJson(jsonDecodeMap(result.body ?? fail("missing body"))), isA<FormReplyAccepted>());
     final native = plugin.replies.single;
     expect(native.sessionId, "child-native");
     expect(native.requestId, "request");
-    expect((native.values["text"]! as PluginFormTextValue).value, "");
-    expect((native.values["integer"]! as PluginFormIntegerValue).value, 0);
-    expect((native.values["number"]! as PluginFormNumberValue).value, 1.5);
-    expect((native.values["boolean"]! as PluginFormBooleanValue).value, isFalse);
-    expect((native.values["choice"]! as PluginFormChoiceValue).optionId, "option-b");
-    expect((native.values["choices"]! as PluginFormChoicesValue).optionIds, ["option-a"]);
+    expect(native.values["text"], isA<PluginFormTextValue>().having((v) => v.value, "value", ""));
+    expect(native.values["integer"], isA<PluginFormIntegerValue>().having((v) => v.value, "value", 0));
+    expect(native.values["number"], isA<PluginFormNumberValue>().having((v) => v.value, "value", 1.5));
+    expect(native.values["boolean"], isA<PluginFormBooleanValue>().having((v) => v.value, "value", isFalse));
+    expect(native.values["choice"], isA<PluginFormChoiceValue>().having((v) => v.optionId, "optionId", "option-b"));
+    expect(
+      native.values["choices"],
+      isA<PluginFormChoicesValue>().having((v) => v.optionIds, "optionIds", ["option-a"]),
+    );
     expect(native.values.containsKey("optional"), isFalse);
     expect(await service.replyToForm(request: reply), isA<FormAlreadySettled>());
     expect(plugin.replies, hasLength(1));
@@ -133,7 +136,7 @@ void main() {
     );
     expect(result.status, 200);
     expect(
-      FormReplyResult.fromJson(jsonDecodeMap(result.body!)),
+      FormReplyResult.fromJson(jsonDecodeMap(result.body ?? fail("missing body"))),
       const FormValidationFailed(
         fieldErrors: {
           "integer": FormValidationIssue.outOfRange,
@@ -182,7 +185,7 @@ void main() {
         targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
       );
       expect(result.status, 200);
-      expect(FormReplyResult.fromJson(jsonDecodeMap(result.body!)), isA<FormReplyAccepted>());
+      expect(FormReplyResult.fromJson(jsonDecodeMap(result.body ?? fail("missing body"))), isA<FormReplyAccepted>());
       expect(plugin.dismissals.single.sessionId, "child-native");
       expect(plugin.dismissals.single.choice.name, choice.name);
     });
@@ -248,7 +251,7 @@ void main() {
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
     );
     expect(result.status, 409);
-    expect(SessionArchivedRejection.fromJson(jsonDecodeMap(result.body!)).sessionId, "child");
+    expect(SessionArchivedRejection.fromJson(jsonDecodeMap(result.body ?? fail("missing body"))).sessionId, "child");
     final dismissal = await DeclineFormHandler(service: service).routeInternal(
       request: makeRequest("POST", "/form/decline", body: jsonEncode(cancel.toJson())),
       targetParams: const (pathParams: <String, String>{}, queryParams: <String, String>{}),
@@ -269,12 +272,13 @@ void main() {
   });
 
   test("concurrent submission and cancellation share existing session ordering", () async {
-    plugin.replyGate = Completer<PluginFormSubmissionResult>();
+    final replyGate = Completer<PluginFormSubmissionResult>();
+    plugin.replyGate = replyGate;
     final first = service.replyToForm(request: reply);
     await plugin.replyStarted.future;
     final second = service.declineForm(request: cancel);
     expect(plugin.dismissals, isEmpty);
-    plugin.replyGate!.complete(const PluginFormAccepted());
+    replyGate.complete(const PluginFormAccepted());
     expect(await first, isA<FormReplyAccepted>());
     expect(await second, isA<FormAlreadySettled>());
     expect(plugin.replies, hasLength(1));

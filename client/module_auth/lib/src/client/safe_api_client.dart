@@ -16,7 +16,6 @@ abstract class SafeApiClient() {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> get<T>(
     Uri url, {
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
     ContentType? contentType,
@@ -26,7 +25,6 @@ abstract class SafeApiClient() {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> post<T>(
     Uri url, {
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
@@ -38,7 +36,6 @@ abstract class SafeApiClient() {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> put<T>({
     required Uri url,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
@@ -50,7 +47,6 @@ abstract class SafeApiClient() {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> patch<T>(
     Uri url, {
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
@@ -62,7 +58,6 @@ abstract class SafeApiClient() {
   /// DELETE sends no body. A null [contentType] adds no Content-Type header.
   Future<ApiResponse<T>> delete<T>(
     Uri url, {
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
     ContentType? contentType,

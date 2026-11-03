@@ -78,7 +78,7 @@ void main() {
 
       expect(connectedUri.toString(), "wss://api.sesori.com/voice/realtime");
       expect(connectedHeaders, {"Authorization": "Bearer secret-token"});
-      expect(jsonDecode(channel.outbound.single! as String), {
+      expect(jsonDecode(channel.outbound.single as String? ?? fail("no outbound start frame")), {
         "type": "start",
         "protocolVersion": 1,
         "projectKey": null,
@@ -330,7 +330,7 @@ void main() {
         isA<RealtimeVoiceCompleteEvent>(),
       ]);
       expect(authorization, "Bearer secret-token");
-      expect(jsonDecode(received[0]! as String), containsPair("type", "start"));
+      expect(jsonDecode(received[0] as String? ?? fail("no start frame received")), containsPair("type", "start"));
       expect(received[1], [1, 2, 3, 4]);
       expect(received[2], [5, 6]);
       expect(received[3], realtimeVoiceFinishFrame);

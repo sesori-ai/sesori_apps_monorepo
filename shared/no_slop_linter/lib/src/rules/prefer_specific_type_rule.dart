@@ -11,10 +11,6 @@ import 'package:analyzer/error/error.dart';
 /// Using `Object` or `dynamic` defeats the purpose of Dart's type system and can hide bugs.
 /// All variables, parameters, and return types should have explicit types.
 ///
-/// Exceptions for JSON serialization patterns:
-/// - `fromJson` methods/factories accepting `Map<String, dynamic>` parameter
-/// - `toJson` methods returning `Map<String, dynamic>`
-///
 /// Examples that trigger this rule:
 /// - `dynamic foo;` - dynamic variable
 /// - `void bar(dynamic x) {}` - dynamic parameter
@@ -22,13 +18,19 @@ import 'package:analyzer/error/error.dart';
 /// - `Map<dynamic, String> map;` - dynamic as key type
 /// - `Object foo;` - untyped Object usage
 /// - `List<Object?> items;` - Object? in generic
+/// - `Map<String, Object> values;` - non-nullable Object map value
 ///
 /// Valid examples (exceptions):
-/// - `factory Foo.fromJson(Map<String, dynamic> json)` - fromJson factory
-/// - `static Foo fromJson(Map<String, dynamic> json)` - fromJson static method
-/// - `Map<String, dynamic> toJson()` - toJson method return type
+/// - `Map<String, dynamic>` and `Map<String, Object?>` - JSON maps, anywhere
+/// - `T Function(dynamic json)`, `Foo parse(Object? json)` - JSON decode
+///   callback parameters, recognised by the parameter name `json`
+/// - `Object error`, `Object? cause`, `final Object innerError` - error values
+///   whose name contains `error` or `cause` (not `dynamic`)
+/// - `on Object catch (e)` - catch-all clauses
 /// - `external dynamic foo();` - external declarations (JS interop)
 /// - `@override void foo(dynamic x)` - parameters in overridden methods
+/// - `(dynamic arg) => ...` passed as an argument - callback signatures
+/// - `T extends Object?` - generic bounds
 class PreferSpecificTypeRule extends NoSlopRule {
   PreferSpecificTypeRule({required super.ignoreTestFiles})
     : super(
@@ -53,76 +55,52 @@ class PreferSpecificTypeRule extends NoSlopRule {
     registry.addNamedType(this, _Visitor(this));
   }
 
-  /// Checks if this dynamic usage is allowed.
-  bool _isAllowedDynamic(NamedType dynamicNode) {
-    if (_isInExternalDeclaration(dynamicNode)) return true;
-    if (_isInOverriddenMethod(dynamicNode)) return true;
-    if (_isInFunctionArgument(dynamicNode)) return true;
+  bool _isAllowedDynamic(NamedType node) {
+    if (_isInExternalDeclaration(node)) return true;
+    if (_isInOverriddenMethod(node)) return true;
+    if (_isInFunctionArgument(node)) return true;
+    if (_isJsonMapValueType(node)) return true;
+    if (_isJsonDecodeCallbackParameter(node)) return true;
+    return false;
+  }
 
-    final typeArgumentList = dynamicNode.parent;
+  bool _isAllowedObject(NamedType node) {
+    if (_isInExternalDeclaration(node)) return true;
+    if (_isInOverriddenMethod(node)) return true;
+    if (_isInCatchClause(node)) return true;
+    if (_isInFunctionArgument(node)) return true;
+    if (_isInGenericBound(node)) return true;
+    if (_isErrorValue(node)) return true;
+    final isNullable = node.question != null;
+    if (isNullable && _isJsonMapValueType(node)) return true;
+    if (isNullable && _isJsonDecodeCallbackParameter(node)) return true;
+    return false;
+  }
+
+  /// The value type of a `Map<String, ...>` type or map literal: decoded JSON
+  /// objects have heterogeneous values, so `Map<String, dynamic>` and
+  /// `Map<String, Object?>` are the honest types for them.
+  bool _isJsonMapValueType(NamedType node) {
+    final typeArgumentList = node.parent;
     if (typeArgumentList is! TypeArgumentList) return false;
 
     final typeArguments = typeArgumentList.arguments;
     if (typeArguments.length != 2) return false;
-    if (typeArguments[1] != dynamicNode) return false;
+    if (typeArguments[1] != node) return false;
 
-    final firstArg = typeArguments[0];
-    if (firstArg is! NamedType || firstArg.name.lexeme != 'String') {
-      return false;
-    }
+    final keyType = typeArguments[0];
+    if (keyType is! NamedType || keyType.name.lexeme != 'String') return false;
 
-    final mapType = typeArgumentList.parent;
-    if (mapType is! NamedType || mapType.name.lexeme != 'Map') return false;
-
-    final parameter = _findAncestorOfType<FormalParameter>(mapType);
-    if (parameter != null && _isInFromJsonMethod(parameter)) {
-      return true;
-    }
-
-    if (_isToJsonReturnType(mapType)) {
-      return true;
-    }
-
-    return false;
+    final owner = typeArgumentList.parent;
+    if (owner is SetOrMapLiteral) return true;
+    return owner is NamedType && owner.name.lexeme == 'Map';
   }
 
-  bool _isToJsonReturnType(NamedType mapType) {
-    final method = _findAncestorOfType<MethodDeclaration>(mapType);
-    if (method != null && method.returnType == mapType && method.name.lexeme == 'toJson') {
-      return true;
-    }
-
-    final function = _findAncestorOfType<FunctionDeclaration>(mapType);
-    if (function != null && function.returnType == mapType && function.name.lexeme == 'toJson') {
-      return true;
-    }
-
-    return false;
-  }
-
-  bool _isInFromJsonMethod(FormalParameter parameter) {
-    final constructor = _findAncestorOfType<ConstructorDeclaration>(parameter);
-    if (constructor != null) {
-      if (constructor.factoryKeyword != null && constructor.name?.lexeme == 'fromJson') {
-        return true;
-      }
-    }
-
-    final method = _findAncestorOfType<MethodDeclaration>(parameter);
-    if (method != null) {
-      if (method.name.lexeme == 'fromJson') {
-        return true;
-      }
-    }
-
-    final function = _findAncestorOfType<FunctionDeclaration>(parameter);
-    if (function != null) {
-      if (function.name.lexeme == 'fromJson') {
-        return true;
-      }
-    }
-
-    return false;
+  /// A parameter named `json` takes decoded JSON whose shape the callback
+  /// checks itself, as in `T Function(dynamic json) fromJson`.
+  bool _isJsonDecodeCallbackParameter(NamedType node) {
+    final parameter = node.parent;
+    return parameter is RegularFormalParameter && parameter.name?.lexeme == 'json';
   }
 
   bool _isInExternalDeclaration(AstNode node) {
@@ -178,23 +156,19 @@ class PreferSpecificTypeRule extends NoSlopRule {
     return _findAncestorOfType<TypeParameter>(node) != null;
   }
 
-  /// When the variable or parameter name contains "error" (case-insensitive),
-  /// `Object` is acceptable because error values are often truly opaque.
+  /// Errors and their causes are opaque: Dart can throw any object, and the
+  /// original is kept in an `error`, `cause` or `innerError` value. `Object`
+  /// is acceptable for a parameter, field or variable whose name says so.
   /// `dynamic` is NOT allowed here.
-  bool _isErrorNamed(NamedType node) {
+  bool _isErrorValue(NamedType node) {
     AstNode? current = node.parent;
     while (current != null) {
       if (current is FormalParameter) {
-        return current.name?.lexeme.toLowerCase().contains('error') ?? false;
+        return _isErrorName(current.name?.lexeme);
       }
 
       if (current is VariableDeclarationList) {
-        for (final variable in current.variables) {
-          if (variable.name.lexeme.toLowerCase().contains('error')) {
-            return true;
-          }
-        }
-        return false;
+        return current.variables.any((variable) => _isErrorName(variable.name.lexeme));
       }
 
       // Stop at declaration boundaries
@@ -208,6 +182,12 @@ class PreferSpecificTypeRule extends NoSlopRule {
       current = current.parent;
     }
     return false;
+  }
+
+  bool _isErrorName(String? name) {
+    if (name == null) return false;
+    final lowerCaseName = name.toLowerCase();
+    return lowerCaseName.contains('error') || lowerCaseName.contains('cause');
   }
 
   bool _hasOverrideAnnotation(MethodDeclaration method) {
@@ -242,12 +222,7 @@ class _Visitor extends SimpleAstVisitor<void> {
       if (rule._isAllowedDynamic(node)) return;
       rule.reportAtNode(node);
     } else if (name == 'Object') {
-      if (rule._isInExternalDeclaration(node)) return;
-      if (rule._isInOverriddenMethod(node)) return;
-      if (rule._isInCatchClause(node)) return;
-      if (rule._isInFunctionArgument(node)) return;
-      if (rule._isInGenericBound(node)) return;
-      if (rule._isErrorNamed(node)) return;
+      if (rule._isAllowedObject(node)) return;
       rule.reportAtNode(node);
     }
   }

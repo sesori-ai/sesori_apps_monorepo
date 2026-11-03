@@ -181,7 +181,8 @@ void main() {
   test("reports only after the owning route is visible and the app is resumed", () async {
     currentSessionState = _nonEmptyState;
     lifecycleSource.states.add(LifecycleState.paused);
-    listener = buildListener(initialRouteVisible: false);
+    final routeListener = buildListener(initialRouteVisible: false);
+    listener = routeListener;
     await settle();
     verifyNever(
       () => analyticsService.logEvent(
@@ -190,7 +191,7 @@ void main() {
       ),
     );
 
-    listener!.setRouteVisible(isVisible: true);
+    routeListener.setRouteVisible(isVisible: true);
     await settle();
     verifyNever(
       () => analyticsService.logEvent(
@@ -257,7 +258,8 @@ void main() {
     ).thenAnswer((_) async => result);
     currentAnalyticsState = ProductAnalyticsState.initial;
     analyticsStates.add(currentAnalyticsState);
-    listener = buildListener(initialRouteVisible: true);
+    final routeListener = buildListener(initialRouteVisible: true);
+    listener = routeListener;
     await settle();
 
     result = AnalyticsDeliveryResult.acceptedBySdk;
@@ -270,8 +272,8 @@ void main() {
     sessionStates.add(currentSessionState);
     await settle();
     sessionStates.add(currentSessionState);
-    listener!.setRouteVisible(isVisible: false);
-    listener!.setRouteVisible(isVisible: true);
+    routeListener.setRouteVisible(isVisible: false);
+    routeListener.setRouteVisible(isVisible: true);
     await settle();
 
     final events = verify(

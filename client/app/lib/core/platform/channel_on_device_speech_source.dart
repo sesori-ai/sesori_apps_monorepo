@@ -105,7 +105,6 @@ final class _ChannelOnDeviceSpeechSession({
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, causes can be any object
   void _fail({required Object cause}) {
     if (_closed) return;
     _events.add(OnDeviceSpeechFailed(cause: cause));

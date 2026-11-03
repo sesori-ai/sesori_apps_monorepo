@@ -17,7 +17,6 @@ class AuthenticatedHttpApiClient(
   final AuthManager _authManager,
 ) implements SafeApiClient {
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> get<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -42,7 +41,6 @@ class AuthenticatedHttpApiClient(
   Future<ApiResponse<T>> getForUser<T>({
     required Uri url,
     required String userId,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
   }) {
     return _withAuth(
@@ -56,7 +54,6 @@ class AuthenticatedHttpApiClient(
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> post<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -83,7 +80,6 @@ class AuthenticatedHttpApiClient(
   Future<ApiResponse<T>> postForUser<T>({
     required Uri url,
     required String userId,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required String body,
   }) {
@@ -99,7 +95,6 @@ class AuthenticatedHttpApiClient(
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> put<T>({
     required Uri url,
     required T Function(dynamic json) fromJson,
@@ -126,7 +121,6 @@ class AuthenticatedHttpApiClient(
   Future<ApiResponse<T>> putForUser<T>({
     required Uri url,
     required String userId,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required String body,
   }) {
@@ -144,7 +138,6 @@ class AuthenticatedHttpApiClient(
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> patch<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -171,7 +164,6 @@ class AuthenticatedHttpApiClient(
   Future<ApiResponse<T>> patchForUser<T>({
     required Uri url,
     required String userId,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required String body,
   }) {
@@ -189,7 +181,6 @@ class AuthenticatedHttpApiClient(
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> delete<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -212,7 +203,6 @@ class AuthenticatedHttpApiClient(
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> postMultipart<T>(
     Uri url, {
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required Future<List<http.MultipartFile>> Function() createFiles,
     Map<String, String>? headers,

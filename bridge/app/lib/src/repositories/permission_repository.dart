@@ -42,7 +42,7 @@ class PermissionRepository({
           pluginId: plugin.id,
           permissions: [
             for (final permission in permissions)
-              if (_isVisible(permission, tombstones)) permission,
+              if (_isVisible(permission: permission, tombstoned: tombstones)) permission,
           ],
         );
       },
@@ -52,11 +52,12 @@ class PermissionRepository({
     return pending ?? const [];
   }
 
-  bool _isVisible(PluginPendingPermission permission, Set<String> tombstoned) => _pendingSupport.isVisible(
-    sessionId: permission.sessionID,
-    displaySessionId: permission.displaySessionId,
-    tombstones: tombstoned,
-  );
+  bool _isVisible({required PluginPendingPermission permission, required Set<String> tombstoned}) =>
+      _pendingSupport.isVisible(
+        sessionId: permission.sessionID,
+        displaySessionId: permission.displaySessionId,
+        tombstones: tombstoned,
+      );
 
   Future<void> replyToPermission({
     required String requestId,

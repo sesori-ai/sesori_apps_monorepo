@@ -636,6 +636,7 @@ class _FakeHostProcessService() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) async {
     throw UnimplementedError();
   }

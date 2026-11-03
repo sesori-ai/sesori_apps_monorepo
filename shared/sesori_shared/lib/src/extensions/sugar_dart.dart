@@ -7,7 +7,6 @@ Map<String, dynamic> jsonCastMap(dynamic value) {
   throw FormatException("Invalid JSON Object (not a Map)", value);
 }
 
-// ignore: no_slop_linter/prefer_specific_type, JSON decoding
 Map<String, dynamic> jsonDecodeMap(String source) {
   return jsonCastMap(jsonDecode(source));
 }
@@ -18,7 +17,6 @@ Map<String, dynamic>? asStringKeyedMap({required Object? value}) => value is Map
 // ignore: no_slop_linter/prefer_specific_type, decoded JSON boundary
 String? nonEmptyString({required Object? value}) => value is String && value.isNotEmpty ? value : null;
 
-// ignore: no_slop_linter/prefer_specific_type, JSON decoding
 List<Map<String, dynamic>> jsonDecodeListMap(String source) {
   final result = jsonDecode(source);
 

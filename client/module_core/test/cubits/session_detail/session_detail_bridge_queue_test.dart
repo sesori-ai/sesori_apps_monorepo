@@ -565,7 +565,7 @@ void main() {
         ),
       ).thenAnswer((invocation) async {
         sendCount++;
-        promptIds.add(invocation.namedArguments[#promptId]! as String);
+        promptIds.add(invocation.namedArguments[#promptId] as String);
         return sendCount == 1 ? ApiResponse.error(staleError) : ApiResponse.success(null);
       });
       final cubit = await createLoadedCubit(
@@ -1349,7 +1349,7 @@ void main() {
             inputMode: ComposerInputMode.typed,
             attachments: [attachment],
           );
-          final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
+          final promptId = _requireSendingOf(state: cubit.state as SessionDetailLoaded).promptId;
           if (acceptedFirst) {
             send.complete(ApiResponse.success(null));
             await sending;
@@ -1381,7 +1381,7 @@ void main() {
           expect(_sendingOf(state: state), isNull);
           expect(state.queuedMessages, isEmpty);
           expect(state.awaitingBridgeSubmissions, isEmpty);
-          expect(state.bridgePromptAttachments[promptId]!.single, same(attachment));
+          expect(state.bridgePromptAttachments[promptId]?.single, same(attachment));
 
           final settled = cubit.stream.firstWhere(
             (state) => state is SessionDetailLoaded && state.bridgeQueuedPrompts.isEmpty,
@@ -1518,7 +1518,7 @@ void main() {
         ),
       );
       await _awaitCondition(() => sends.length == 1);
-      final firstPromptId = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
+      final firstPromptId = _requireSendingOf(state: cubit.state as SessionDetailLoaded).promptId;
       unawaited(
         cubit.sendMessage(
           text: "next",
@@ -1567,8 +1567,8 @@ void main() {
       sends.first.complete(ApiResponse.success(null));
       await _awaitCondition(() => sends.length == 2);
       state = cubit.state as SessionDetailLoaded;
-      final secondPromptId = _sendingOf(state: state)!.promptId;
-      expect(_sendingOf(state: state)!.text, "next");
+      final secondPromptId = _requireSendingOf(state: state).promptId;
+      expect(_requireSendingOf(state: state).text, "next");
 
       sends.last.complete(ApiResponse.success(null));
       await Future<void>.delayed(Duration.zero);
@@ -1599,7 +1599,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
+      final promptId = _requireSendingOf(state: cubit.state as SessionDetailLoaded).promptId;
 
       // An immediately dispatched steering send: the bridge consumed the entry
       // and published the resulting queue before the acceptance response
@@ -1790,7 +1790,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final inFlight = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
+      final inFlight = _requireSendingOf(state: cubit.state as SessionDetailLoaded).promptId;
 
       // A queue-less harness echoes at acceptance, so the stamped message can
       // land before the acceptance response completes.
@@ -2240,7 +2240,7 @@ void main() {
       ).thenAnswer((invocation) {
         sendCalls++;
         if (sendCalls == 1) return firstSend.future;
-        laterSends.add(invocation.namedArguments[#text]! as String);
+        laterSends.add(invocation.namedArguments[#text] as String);
         return Future.value(ApiResponse.success(null));
       });
       final cubit = await createLoadedCubit();
@@ -2365,7 +2365,7 @@ void main() {
       ).thenAnswer((invocation) {
         sendCalls++;
         if (sendCalls == 1) return firstSend.future;
-        laterSends.add(invocation.namedArguments[#text]! as String);
+        laterSends.add(invocation.namedArguments[#text] as String);
         return Future.value(ApiResponse.success(null));
       });
       final cubit = await createLoadedCubit();
@@ -3083,6 +3083,9 @@ QueuedSessionSubmission? _sendingOf({required SessionDetailLoaded state}) => swi
   LocalSendSending(:final submission) => submission,
   LocalSendIdle() || LocalSendFailed() => null,
 };
+
+QueuedSessionSubmission _requireSendingOf({required SessionDetailLoaded state}) =>
+    _sendingOf(state: state) ?? fail("no prompt is sending");
 
 QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => switch (state.localSend) {
   LocalSendFailed(:final submission) => submission,

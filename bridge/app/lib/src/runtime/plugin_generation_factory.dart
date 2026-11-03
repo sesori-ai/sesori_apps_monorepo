@@ -7,7 +7,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../server/api/loopback_port_api.dart";
 import "../server/host/bridge_host_info_impl.dart";
 import "../server/host/bridge_host_port_service.dart";
-import "../server/host/bridge_host_process_service.dart";
 import "../server/host/bridge_plugin_host_impl.dart";
 import "../server/host/plugin_state_directory.dart";
 import "../server/repositories/process_repository.dart";
@@ -53,7 +52,10 @@ class PluginGenerationFactory({
   required final ProcessRepository _processRepository,
   required final ServerClock _clock,
   required Map<String, String> environment,
-  required final ProcessUser? _currentUser,
+
+  /// The bridge's one process service, shared by every generation so all
+  /// runtimes land in the same Windows job object.
+  required final HostProcessService _processes,
 
   /// Resolves the currently configured idle timeout for a plugin, in minutes.
   /// Read live at each [PluginHost.pluginIdleTimeout] access so runtime
@@ -222,7 +224,7 @@ class PluginGenerationFactory({
       await for (final event in request.registration.descriptor.ensureRuntime(host: host)) {
         request.controller.add(PluginGenerationProvisionProgress(event: event));
         if (event case ProvisionReady(:final binaryPath)) {
-          host.provisionedRuntimePath = binaryPath;
+          host.recordProvisionedRuntimePath(path: binaryPath);
         }
       }
       final plugin = await request.registration.descriptor.start(host);
@@ -284,13 +286,7 @@ class PluginGenerationFactory({
         terminatedBridgeIdentities: resolution.terminatedBridges,
         processRepository: _processRepository,
       ),
-      processes: BridgeHostProcessService(
-        processStarter: io.Process.start,
-        processRepository: _processRepository,
-        clock: _clock,
-        currentUser: _currentUser,
-        isWindows: io.Platform.isWindows,
-      ),
+      processes: _processes,
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
       store: request.registration.store,
       resolveIdleTimeout: () => _idleTimeoutForPlugin(

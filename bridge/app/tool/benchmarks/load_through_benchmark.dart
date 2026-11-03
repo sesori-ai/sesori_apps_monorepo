@@ -67,15 +67,13 @@ Future<void> main() async {
       label: "App inflate and decode",
       operation: () async {
         final envelope = RelayMessage.fromJson(
-          jsonDecode(utf8.decode(ZLibDecoder(raw: true).convert(deflated))) as Map<String, dynamic>,
+          jsonDecodeMap(utf8.decode(ZLibDecoder(raw: true).convert(deflated))),
         );
-        final body = switch (envelope) {
-          RelayResponse(:final String body) => body,
-          _ => throw StateError("Expected a response envelope with a body"),
-        };
-        decodedMessages = MessageWithPartsResponse.fromJson(
-          jsonDecode(body) as Map<String, dynamic>,
-        ).messages.length;
+        if (envelope case RelayResponse(:final String body)) {
+          decodedMessages = MessageWithPartsResponse.fromJson(jsonDecodeMap(body)).messages.length;
+          return;
+        }
+        throw StateError("Expected a response envelope with a body");
       },
     );
     stdout.writeln("The app decoded $decodedMessages messages.");

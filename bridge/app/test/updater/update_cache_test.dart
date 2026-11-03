@@ -47,8 +47,8 @@ void main() {
       // Read
       final cached = await cache.read(ttl: const Duration(hours: 1));
 
-      expect(cached, isNotNull);
-      expect(cached!.latestVersion, equals('1.2.3'));
+      if (cached == null) fail('expected a cached update check');
+      expect(cached.latestVersion, equals('1.2.3'));
       expect(cached.downloadUrl, equals('https://example.com/download/1.2.3'));
       expect(cached.checksumsUrl, equals('https://example.com/checksums/1.2.3'));
       expect(cached.assetName, equals('sesori-bridge-macos-arm64.tar.gz'));
@@ -92,8 +92,8 @@ void main() {
 
       final cached = await cache.read(ttl: const Duration(hours: 1));
 
-      expect(cached, isNotNull);
-      expect(cached!.track, equals(ReleaseTrack.stable));
+      if (cached == null) fail('expected a cached update check');
+      expect(cached.track, equals(ReleaseTrack.stable));
       expect(cached.latestVersion, equals('1.2.3'));
     });
 
@@ -160,8 +160,8 @@ void main() {
 
       // Read should return data
       final cached = await freshCache.read(ttl: ttl);
-      expect(cached, isNotNull);
-      expect(cached!.latestVersion, equals('1.2.3'));
+      if (cached == null) fail('expected a cached update check');
+      expect(cached.latestVersion, equals('1.2.3'));
     });
 
     test('corrupt: garbage in file returns null', () async {
@@ -286,8 +286,8 @@ void main() {
 
       // Read should return latest
       final cached = await cache.read(ttl: const Duration(hours: 1));
-      expect(cached, isNotNull);
-      expect(cached!.latestVersion, equals('2.0.0'));
+      if (cached == null) fail('expected a cached update check');
+      expect(cached.latestVersion, equals('2.0.0'));
     });
 
     test('write error: propagates filesystem exception', () async {

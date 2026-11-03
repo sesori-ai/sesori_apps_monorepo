@@ -33,7 +33,7 @@ void main() {
   });
 
   test("disconnected startup reaches loaded automatically once connection becomes available", () async {
-    final mockSessionService = MockSessionRepository();
+    final mockSourceRepository = MockSessionRepository();
     final mockSessionApi = MockSessionApi();
     final mockSessionRepository = MockSessionRepository();
     final mockConnectionService = MockConnectionService();
@@ -71,11 +71,11 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
     delegateSessionRepository(
       repository: mockSessionRepository,
-      source: mockSessionService,
+      source: mockSourceRepository,
       optionsSource: mockSessionApi,
     );
     stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: _sessionId);
-    _stubLoadApis(mockSessionService, optionsApi: mockSessionApi);
+    _stubLoadApis(mockSourceRepository, optionsApi: mockSessionApi);
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
@@ -111,7 +111,7 @@ void main() {
 
     expect(cubit.state, isA<SessionDetailLoaded>());
     verify(
-      () => mockSessionService.getMessages(
+      () => mockSourceRepository.getMessages(
         sessionId: _sessionId,
         limit: any(named: "limit"),
         before: any(named: "before"),
@@ -235,9 +235,9 @@ void main() {
   });
 }
 
-void _stubLoadApis(MockSessionRepository service, {required MockSessionApi optionsApi}) {
+void _stubLoadApis(MockSessionRepository sourceRepository, {required MockSessionApi optionsApi}) {
   when(
-    () => service.getMessages(
+    () => sourceRepository.getMessages(
       sessionId: _sessionId,
       limit: any(named: "limit"),
       before: any(named: "before"),
@@ -255,15 +255,15 @@ void _stubLoadApis(MockSessionRepository service, {required MockSessionApi optio
     ),
   );
   when(
-    () => service.getPendingQuestions(sessionId: _sessionId),
+    () => sourceRepository.getPendingQuestions(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
   when(
-    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
+    () => sourceRepository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
   when(
-    () => service.getChildren(sessionId: _sessionId),
+    () => sourceRepository.getChildren(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
-  when(() => service.getSessionStatuses()).thenAnswer(
+  when(() => sourceRepository.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
   when(

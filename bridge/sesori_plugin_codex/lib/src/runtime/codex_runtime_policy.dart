@@ -1,7 +1,7 @@
 import "dart:io" as io;
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, ProcessLifetime, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "codex_ownership_record.dart";
@@ -103,6 +103,7 @@ Future<SpawnedProcess> spawnCodexProcess({
     environment: host.environment,
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
+    lifetime: ProcessLifetime.endsWithBridge,
   );
   return DrainingSpawnedProcess(inner: process);
 }

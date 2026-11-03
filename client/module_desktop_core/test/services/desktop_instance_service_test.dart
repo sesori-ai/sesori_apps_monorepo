@@ -102,7 +102,7 @@ void main() {
     BridgeProcessDesiredState? persisted;
     when(repository.readBridgeDesiredState).thenAnswer((_) async => persisted);
     when(() => repository.writeBridgeDesiredState(state: any(named: "state"))).thenAnswer((invocation) async {
-      persisted = invocation.namedArguments[#state]! as BridgeProcessDesiredState;
+      persisted = invocation.namedArguments[#state] as BridgeProcessDesiredState;
     });
     expect(await Future.wait([service.initializeFirstRunBridgeState(), service.initializeFirstRunBridgeState()]), [
       true,
@@ -147,7 +147,7 @@ void main() {
     final writes = <BridgeProcessDesiredState>[];
     when(repository.readBridgeDesiredState).thenAnswer((_) async => null);
     when(() => repository.writeBridgeDesiredState(state: any(named: "state"))).thenAnswer((invocation) async {
-      final state = invocation.namedArguments[#state]! as BridgeProcessDesiredState;
+      final state = invocation.namedArguments[#state] as BridgeProcessDesiredState;
       writes.add(state);
       if (state == BridgeProcessDesiredState.on) await write.future;
     });
@@ -172,7 +172,7 @@ void main() {
     final Completer<void> onWrite = Completer<void>();
     final List<BridgeProcessDesiredState> writes = <BridgeProcessDesiredState>[];
     when(() => repository.writeBridgeDesiredState(state: any(named: "state"))).thenAnswer((invocation) {
-      final BridgeProcessDesiredState state = invocation.namedArguments[#state]! as BridgeProcessDesiredState;
+      final BridgeProcessDesiredState state = invocation.namedArguments[#state] as BridgeProcessDesiredState;
       writes.add(state);
       return state == BridgeProcessDesiredState.on ? onWrite.future : Future<void>.value();
     });

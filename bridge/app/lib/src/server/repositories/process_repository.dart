@@ -2,12 +2,17 @@ import "package:path/path.dart" as path;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/system_process_api.dart";
+import "../api/windows_job_object_api.dart";
 import "../foundation/process_match.dart";
 
 class ProcessRepository({
   required final SystemProcessApi _api,
+  required final WindowsJobObjectApi _windowsJobObjectApi,
   required final ProcessUser? _currentUser,
 }) {
+  /// Windows only: [pid] and its descendants end when the bridge exits.
+  void bindToBridgeLifetime({required int pid}) => _windowsJobObjectApi.bindToBridgeLifetime(pid: pid);
+
   Future<ProcessIdentity?> inspectProcess({required int pid}) => _api.inspectProcess(pid: pid);
 
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) async {

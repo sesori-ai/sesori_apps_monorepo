@@ -74,7 +74,6 @@ final class BoundedJsonEncoder({
         await output.addByte(0x5D);
         return;
       }
-      // ignore: no_slop_linter/prefer_specific_type
       if (current is Map<String, Object?>) {
         await output.addByte(0x7B);
         var first = true;

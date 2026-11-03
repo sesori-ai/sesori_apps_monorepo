@@ -70,6 +70,7 @@ import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
 import "../server/api/terminal_prompt_api.dart";
+import "../server/api/windows_job_object_api.dart";
 import "../server/foundation/bridge_replace_prompt.dart";
 import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_process_service.dart";
@@ -260,6 +261,7 @@ class const BridgeRuntimeRunner._() {
     );
     final processRepository = ProcessRepository(
       api: systemProcessApi,
+      windowsJobObjectApi: WindowsJobObjectApi(),
       currentUser: currentUser,
     );
     final startupMutexRepository = StartupMutexRepository(
@@ -607,7 +609,7 @@ class const BridgeRuntimeRunner._() {
         processRepository: processRepository,
         clock: serverClock,
         environment: environment,
-        currentUser: currentUser,
+        processes: hostProcessService,
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
         settingsChanges: bridgeSettingsRepository.settingsChanges,
@@ -1285,6 +1287,8 @@ class const BridgeRuntimeRunner._() {
         executable: "/usr/sbin/scutil",
         arguments: const ["--get", "LocalHostName"],
         timeout: const Duration(seconds: 2),
+        workingDirectory: null,
+        environment: null,
       );
       final stableName = result.stdout.toString().trim();
       if (result.exitCode == 0 && stableName.isNotEmpty) return stableName;

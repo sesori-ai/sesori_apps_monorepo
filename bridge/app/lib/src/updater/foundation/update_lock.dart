@@ -37,7 +37,7 @@ class UpdateLock({
     required File lockFile,
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
-    Duration? staleLockMaxAge,
+    required Duration? staleLockMaxAge,
   }) async {
     final LockAcquireResult lockResult = await _acquireLock(
       lockFile: lockFile,
@@ -201,6 +201,8 @@ class UpdateLock({
           '-Command',
           '(Get-Process -Id $pidToCheck -ErrorAction SilentlyContinue).StartTime.ToUniversalTime().ToString("o")',
         ],
+        workingDirectory: null,
+        environment: null,
       );
       if (result.exitCode != 0) {
         return null;
@@ -212,6 +214,8 @@ class UpdateLock({
     final ProcessResult result = await _processRunner.run(
       executable: 'ps',
       arguments: ['-o', 'lstart=', '-p', '$pidToCheck'],
+      workingDirectory: null,
+      environment: null,
     );
     if (result.exitCode != 0) {
       return null;
@@ -236,6 +240,8 @@ class UpdateLock({
       final ProcessResult result = await _processRunner.run(
         executable: 'tasklist',
         arguments: ['/FI', 'PID eq $pidToCheck', '/NH'],
+        workingDirectory: null,
+        environment: null,
       );
       if (result.exitCode != 0) {
         return false;
@@ -247,6 +253,8 @@ class UpdateLock({
     final ProcessResult result = await _processRunner.run(
       executable: 'kill',
       arguments: ['-0', '$pidToCheck'],
+      workingDirectory: null,
+      environment: null,
     );
     return result.exitCode == 0;
   }

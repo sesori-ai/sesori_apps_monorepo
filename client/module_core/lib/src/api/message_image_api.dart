@@ -15,7 +15,6 @@ final class const MessageImageApiTooLarge() extends MessageImageApiResult;
 final class const MessageImageApiInvalidRedirect() extends MessageImageApiResult;
 
 final class const MessageImageApiNetworkFailure({
-  // ignore: no_slop_linter/prefer_specific_type, caught Dart failures can be Error or Exception
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends MessageImageApiResult;

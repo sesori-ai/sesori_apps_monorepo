@@ -62,7 +62,10 @@ void main() {
 
         expect(response.intervalSeconds, intervalSeconds);
         expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, intervalSeconds);
-        expect(jsonDecodeMap(api.config!)["pullRequestRefreshIntervalSeconds"], intervalSeconds);
+        expect(
+          jsonDecodeMap(api.config ?? fail("no config written"))["pullRequestRefreshIntervalSeconds"],
+          intervalSeconds,
+        );
       }
     });
 

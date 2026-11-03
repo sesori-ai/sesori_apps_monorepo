@@ -57,7 +57,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> get<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -75,7 +74,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> post<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -95,7 +93,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> put<T>({
     required Uri url,
     required T Function(dynamic json) fromJson,
@@ -115,7 +112,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> patch<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -135,7 +131,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, json parsing function
   Future<ApiResponse<T>> delete<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -156,7 +151,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> postMultipart<T>(
     Uri url, {
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required List<http.MultipartFile> files,
     Map<String, String>? headers,
@@ -182,7 +176,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   Future<ApiResponse<T>> _execute<T>({
     required HttpMethod method,
     required Uri url,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
     // ignore: no_slop_linter/prefer_specific_type
@@ -235,7 +228,6 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
   /// under [operation]. Non-2xx responses keep their status and raw body.
   ApiResponse<T> _toApiResponse<T>({
     required http.Response response,
-    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required String operation,
   }) {
@@ -248,11 +240,9 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
       );
     }
     if (response.body.isEmpty) {
-      // ignore: no_slop_linter/prefer_specific_type, json parsing
       return ApiResponse.success(fromJson(null));
     }
     try {
-      // ignore: no_slop_linter/prefer_specific_type, json decoding
       final json = jsonDecode(response.body);
       return ApiResponse.success(fromJson(json));
     } on Object catch (error, stackTrace) {

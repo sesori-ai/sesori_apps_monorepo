@@ -1344,7 +1344,7 @@ void main() {
     await _waitUntil(
       () => events.where((event) => event.event is BridgeSsePermissionReplied).length == 3,
     );
-    sentinel.terminalHandoffConsumed!.complete();
+    (sentinel.terminalHandoffConsumed ?? fail("sentinel carries no terminal handoff")).complete();
     expect(await stopping, isA<PluginRuntimeCommandApplied>());
 
     expect(
@@ -1409,7 +1409,7 @@ void main() {
 
     expect(factory.startCount, 1);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.restarting);
-    handoff.terminalHandoffConsumed!.complete();
+    (handoff.terminalHandoffConsumed ?? fail("event carries no terminal handoff")).complete();
     expect(await restarting, isA<PluginRuntimeCommandApplied>());
     expect(factory.startCount, 2);
     expect(runtime.snapshot.single.generation, 2);
@@ -2727,5 +2727,6 @@ class const _UnusedHostProcessService() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
     required bool includeParentEnvironment,
+    required ProcessLifetime lifetime,
   }) => throw UnsupportedError("unused");
 }

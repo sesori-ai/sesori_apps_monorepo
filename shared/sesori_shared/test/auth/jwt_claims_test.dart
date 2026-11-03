@@ -54,7 +54,8 @@ void main() {
       final result = parseJwtExpiry(token);
 
       expect(result, isNotNull);
-      expect(result!.isUtc, isTrue);
+      if (result == null) fail("no expiry was parsed");
+      expect(result.isUtc, isTrue);
       expect(result.millisecondsSinceEpoch, equals(1700000000 * 1000));
     });
 

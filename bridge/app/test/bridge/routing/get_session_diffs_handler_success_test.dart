@@ -139,7 +139,7 @@ void main() {
       );
 
       expect(response.status, equals(200));
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };
@@ -224,7 +224,7 @@ void main() {
         ),
       );
 
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };
@@ -288,7 +288,7 @@ void main() {
         ),
       );
 
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };
@@ -354,7 +354,7 @@ void main() {
         ),
       );
 
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };
@@ -420,7 +420,7 @@ void main() {
         ),
       );
 
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };
@@ -484,7 +484,7 @@ void main() {
         ),
       );
 
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };
@@ -542,7 +542,7 @@ void main() {
         ),
       );
 
-      final body = switch (jsonDecode(response.body!)) {
+      final body = switch (jsonDecode(response.body ?? fail("missing body"))) {
         {"diffs": final List<dynamic> list} => list,
         _ => throw StateError("expected JSON object with diffs"),
       };

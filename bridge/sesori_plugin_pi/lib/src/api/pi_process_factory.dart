@@ -42,6 +42,7 @@ final class HostPiProcessFactory({required final HostProcessService _processes})
         environment: spec.environment,
         workingDirectory: spec.workingDirectory,
         runInShell: io.Platform.isWindows,
+        lifetime: ProcessLifetime.endsWithBridge,
       );
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);
       return _HostPiProcessHandle(process: process, processes: _processes);

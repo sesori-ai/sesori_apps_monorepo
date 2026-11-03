@@ -89,9 +89,9 @@ void main() {
 
       expect(result.data, hasLength(3));
       final byName = {for (final s in result.data) s.name: s};
-      expect(byName["plain"]!.isGitRepo, isFalse);
-      expect(byName["with_git"]!.isGitRepo, isTrue);
-      expect(byName["worktree"]!.isGitRepo, isTrue);
+      expect(byName["plain"]?.isGitRepo, isFalse);
+      expect(byName["with_git"]?.isGitRepo, isTrue);
+      expect(byName["worktree"]?.isGitRepo, isTrue);
     });
 
     test("defaultBrowsePath skips empty environment values", () {

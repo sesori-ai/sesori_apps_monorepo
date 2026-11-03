@@ -72,35 +72,26 @@ class Foo {
     );
   }
 
-  void test_reportForMapStringDynamicOutsideFromJson() async {
-    await assertDiagnostics(
-      r'''
+  void test_noErrorForMapStringDynamicOutsideFromJson() async {
+    await assertNoDiagnostics(r'''
 void foo(Map<String, dynamic> json) {}
-''',
-      [lint(21, 7)],
-    );
+''');
   }
 
-  void test_reportForMapStringDynamicInRegularConstructor() async {
-    await assertDiagnostics(
-      r'''
+  void test_noErrorForMapStringDynamicInRegularConstructor() async {
+    await assertNoDiagnostics(r'''
 class Foo {
   Foo(Map<String, dynamic> json);
 }
-''',
-      [lint(30, 7)],
-    );
+''');
   }
 
-  void test_reportForMapStringDynamicInRegularMethod() async {
-    await assertDiagnostics(
-      r'''
+  void test_noErrorForMapStringDynamicInRegularMethod() async {
+    await assertNoDiagnostics(r'''
 class Foo {
   static Foo parseJson(Map<String, dynamic> json) => Foo();
 }
-''',
-      [lint(47, 7)],
-    );
+''');
   }
 
   void test_reportForNestedDynamicType() async {
@@ -112,14 +103,61 @@ List<List<dynamic>> nestedList = [];
     );
   }
 
-  void test_reportForMapStringDynamicReturnTypeInNonToJson() async {
-    await assertDiagnostics(
-      r'''
+  void test_noErrorForMapStringDynamicReturnTypeInNonToJson() async {
+    await assertNoDiagnostics(r'''
 class Foo {
   Map<String, dynamic> serialize() => {};
 }
+''');
+  }
+
+  void test_noErrorForJsonMapTypesAndLiterals() async {
+    await assertNoDiagnostics(r'''
+typedef JsonMap = Map<String, Object?>;
+
+Map<String, Object?> encode() => <String, Object?>{'a': 1, 'b': <String, dynamic>{}};
+
+bool isJsonObject(Object? json) => json is Map<String, dynamic>;
+
+List<Map<String, Object?>> rows = [];
+''');
+  }
+
+  void test_reportForNonNullableObjectMapValue() async {
+    await assertDiagnostics(
+      r'''
+Map<String, Object> values = {};
 ''',
-      [lint(26, 7)],
+      [lint(12, 6)],
+    );
+  }
+
+  void test_reportForNonStringKeyedMap() async {
+    await assertDiagnostics(
+      r'''
+Map<Object?, Object?> values = {};
+Map<int, dynamic> other = {};
+''',
+      [lint(4, 7), lint(13, 7), lint(44, 7)],
+    );
+  }
+
+  void test_noErrorForJsonDecodeCallbackParameters() async {
+    await assertNoDiagnostics(r'''
+Future<T> get<T>({required T Function(dynamic json) fromJson}) async => fromJson(null);
+
+String parseName(dynamic json) => json is String ? json : '';
+
+String? parseOptionalName(Object? json) => json is String ? json : null;
+''');
+  }
+
+  void test_reportForDynamicParameterNotNamedJson() async {
+    await assertDiagnostics(
+      r'''
+String parseName(dynamic payload) => '';
+''',
+      [lint(17, 7)],
     );
   }
 
@@ -371,6 +409,39 @@ void foo(dynamic error) {}
 void foo(Object value) {}
 ''',
       [lint(9, 6)],
+    );
+  }
+
+  void test_noErrorForObjectNamedCause() async {
+    await assertNoDiagnostics(r'''
+class Failure {
+  Failure({required this.cause, required this.innerError, required this.rootCause});
+
+  final Object cause;
+  final Object innerError;
+  final Object? rootCause;
+}
+
+void fail({required Object cause}) {}
+''');
+  }
+
+  void test_noErrorForErrorAndStackTraceHandler() async {
+    await assertNoDiagnostics(r'''
+class Listener {
+  void _onStreamError(Object error, StackTrace stackTrace) {}
+}
+
+typedef ErrorHandler = void Function(Object error, StackTrace stackTrace);
+''');
+  }
+
+  void test_reportForDynamicNamedCause() async {
+    await assertDiagnostics(
+      r'''
+void foo(dynamic cause) {}
+''',
+      [lint(9, 7)],
     );
   }
 }

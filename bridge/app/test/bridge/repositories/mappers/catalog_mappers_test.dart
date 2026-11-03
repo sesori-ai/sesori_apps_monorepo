@@ -16,6 +16,7 @@ void main() {
       createdAt: 10,
       updatedAt: 20,
       projectionUpdatedAt: 20,
+      baseBranch: null,
     );
 
     expect(
@@ -60,6 +61,7 @@ void main() {
       createdAt: 10,
       updatedAt: 20,
       projectionUpdatedAt: 20,
+      baseBranch: null,
     );
 
     expect(

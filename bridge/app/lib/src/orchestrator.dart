@@ -1829,7 +1829,45 @@ class OrchestratorSession._({
     final event = delivery.inlineEvent;
     final upsertSessionId = switch (event) {
       SesoriSessionCreated(:final info) || SesoriSessionUpdated(:final info) => info.id,
-      _ => null,
+      SesoriServerConnected() ||
+      SesoriServerHeartbeat() ||
+      SesoriServerInstanceDisposed() ||
+      SesoriGlobalDisposed() ||
+      SesoriCatalogImportProgress() ||
+      SesoriPluginManagementChanged() ||
+      SesoriMcpInventoryChanged() ||
+      SesoriMcpAuthenticationChanged() ||
+      SesoriPluginInstallProgress() ||
+      SesoriPluginAuthenticationProgress() ||
+      SesoriSessionOptionsUpdated() ||
+      SesoriSessionDeleted() ||
+      SesoriSessionDiff() ||
+      SesoriSessionError() ||
+      SesoriSessionCompacted() ||
+      SesoriSessionPromptSettled() ||
+      SesoriSessionPromptDefaultsChanged() ||
+      SesoriSessionStatus() ||
+      SesoriCommandExecuted() ||
+      SesoriSessionQueuedPrompts() ||
+      SesoriMessageUpdated() ||
+      SesoriMessageRemoved() ||
+      SesoriMessagePartUpdated() ||
+      SesoriMessagePartDelta() ||
+      SesoriMessagePartRemoved() ||
+      SesoriPermissionAsked() ||
+      SesoriPermissionReplied() ||
+      SesoriPermissionUpdated() ||
+      SesoriQuestionAsked() ||
+      SesoriQuestionReplied() ||
+      SesoriQuestionRejected() ||
+      SesoriTodoUpdated() ||
+      SesoriProjectsSummary() ||
+      SesoriProjectUpdated() ||
+      SesoriVcsBranchUpdated() ||
+      SesoriSessionUnseenChanged() ||
+      SesoriFileEdited() ||
+      SesoriInstallationUpdateAvailable() ||
+      SesoriTuiToastShow() => null,
     };
     if (upsertSessionId != null &&
         _sessionMutationDispatcher.shouldSuppressEventsForSession(sessionId: upsertSessionId)) {
@@ -2011,11 +2049,13 @@ class OrchestratorSession._({
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
           isUserMessage: false,
+          occurredAt: null,
         );
       case SesoriPermissionAsked(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
           isUserMessage: false,
+          occurredAt: null,
         );
       // Question replied/rejected and permission replied are all user responses
       // to a pending prompt, so they advance the user-interaction timestamp and
@@ -2024,18 +2064,53 @@ class OrchestratorSession._({
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
           isUserMessage: true,
+          occurredAt: null,
         );
       case SesoriQuestionRejected(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
           isUserMessage: true,
+          occurredAt: null,
         );
       case SesoriPermissionReplied(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
           isUserMessage: true,
+          occurredAt: null,
         );
-      default:
+      case SesoriServerConnected() ||
+          SesoriServerHeartbeat() ||
+          SesoriServerInstanceDisposed() ||
+          SesoriGlobalDisposed() ||
+          SesoriCatalogImportProgress() ||
+          SesoriPluginManagementChanged() ||
+          SesoriMcpInventoryChanged() ||
+          SesoriMcpAuthenticationChanged() ||
+          SesoriPluginInstallProgress() ||
+          SesoriPluginAuthenticationProgress() ||
+          SesoriSessionOptionsUpdated() ||
+          SesoriSessionUpdated() ||
+          SesoriSessionDiff() ||
+          SesoriSessionError() ||
+          SesoriSessionCompacted() ||
+          SesoriSessionPromptSettled() ||
+          SesoriSessionPromptDefaultsChanged() ||
+          SesoriSessionStatus() ||
+          SesoriCommandExecuted() ||
+          SesoriSessionQueuedPrompts() ||
+          SesoriMessageRemoved() ||
+          SesoriMessagePartUpdated() ||
+          SesoriMessagePartDelta() ||
+          SesoriMessagePartRemoved() ||
+          SesoriPermissionUpdated() ||
+          SesoriTodoUpdated() ||
+          SesoriProjectsSummary() ||
+          SesoriProjectUpdated() ||
+          SesoriVcsBranchUpdated() ||
+          SesoriSessionUnseenChanged() ||
+          SesoriFileEdited() ||
+          SesoriInstallationUpdateAvailable() ||
+          SesoriTuiToastShow():
         // Not an unseen-relevant event.
         break;
     }
@@ -2447,7 +2522,16 @@ class OrchestratorSession._({
       // effect. Remove once public apps older than v1.10.1 are unsupported.
       case RelayProjectView():
         break;
-      default:
+      case RelayResponse() ||
+          RelaySseEvent() ||
+          RelayKeyExchange() ||
+          RelayReady() ||
+          RelayResume() ||
+          RelayResumeAck() ||
+          RelayRekeyRequired() ||
+          RelayBridgeConnectionNotificationPolicy() ||
+          RelayBridgeConnectionObserved() ||
+          AuthRelayMessage():
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }
   }

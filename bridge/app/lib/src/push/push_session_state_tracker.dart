@@ -80,7 +80,34 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
         _clearPendingPermission(sessionId: sessionID, requestId: requestID, touchedAt: now);
       case SesoriProjectsSummary(:final projects):
         _applyProjectsSummaryChildLinks(projects: projects, touchedAt: now);
-      default:
+      case SesoriServerConnected() ||
+          SesoriServerHeartbeat() ||
+          SesoriServerInstanceDisposed() ||
+          SesoriGlobalDisposed() ||
+          SesoriCatalogImportProgress() ||
+          SesoriPluginManagementChanged() ||
+          SesoriMcpInventoryChanged() ||
+          SesoriMcpAuthenticationChanged() ||
+          SesoriPluginInstallProgress() ||
+          SesoriPluginAuthenticationProgress() ||
+          SesoriSessionOptionsUpdated() ||
+          SesoriSessionDiff() ||
+          SesoriSessionError() ||
+          SesoriSessionCompacted() ||
+          SesoriSessionPromptSettled() ||
+          SesoriSessionPromptDefaultsChanged() ||
+          SesoriCommandExecuted() ||
+          SesoriSessionQueuedPrompts() ||
+          SesoriMessagePartDelta() ||
+          SesoriMessagePartRemoved() ||
+          SesoriPermissionUpdated() ||
+          SesoriTodoUpdated() ||
+          SesoriProjectUpdated() ||
+          SesoriVcsBranchUpdated() ||
+          SesoriSessionUnseenChanged() ||
+          SesoriFileEdited() ||
+          SesoriInstallationUpdateAvailable() ||
+          SesoriTuiToastShow():
         break;
     }
   }
@@ -348,7 +375,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     return latestTouch;
   }
 
-  _PushTrackedSessionState _stateForSession({required String sessionId, DateTime? touchedAt}) {
+  _PushTrackedSessionState _stateForSession({required String sessionId, required DateTime? touchedAt}) {
     final sessionState = _sessions.putIfAbsent(sessionId, _PushTrackedSessionState.new);
     if (touchedAt != null) {
       sessionState.lastTouchedAt = touchedAt;
@@ -365,7 +392,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
   void _trackMessageForSession({
     required String sessionId,
     required String messageId,
-    DateTime? touchedAt,
+    required DateTime touchedAt,
   }) {
     _stateForSession(sessionId: sessionId, touchedAt: touchedAt).messageIds.add(messageId);
   }
@@ -385,7 +412,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     }
     if (messageRole.role != _PushMessageRole.assistant) return;
 
-    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text;
+    _stateForSession(sessionId: part.sessionID, touchedAt: null).latestAssistantText = part.text;
   }
 
   void _upsertSession({required Session session, required DateTime touchedAt}) {

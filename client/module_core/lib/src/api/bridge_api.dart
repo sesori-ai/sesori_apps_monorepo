@@ -33,18 +33,14 @@ class BridgeApi({required final AuthenticatedHttpApiClient _client}) {
     );
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, JSON parser callback signature requires dynamic input
   static BridgesListResponse _parseBridges(dynamic json) {
-    // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
     if (json is Map<String, dynamic>) {
       return BridgesListResponse.fromJson(json);
     }
     throw const FormatException("Unexpected /auth/bridges response shape");
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, JSON parser callback signature requires dynamic input
   static BridgeSummary _parseBridge(dynamic json) {
-    // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
     if (json is Map<String, dynamic>) {
       return BridgeSummary.fromJson(json);
     }
