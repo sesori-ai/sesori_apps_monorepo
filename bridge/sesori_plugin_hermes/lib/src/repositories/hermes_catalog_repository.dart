@@ -58,7 +58,7 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
         timeout: _cleanupTimeout(timeout: timeout, stopwatch: stopwatch),
       );
       processExited = true;
-      if (sessionId != null) {
+      if (sessionId != null && sessionId.isNotEmpty) {
         await _api.deletePersistedSession(
           sessionId: sessionId,
           timeout: _cleanupTimeout(timeout: timeout, stopwatch: stopwatch),

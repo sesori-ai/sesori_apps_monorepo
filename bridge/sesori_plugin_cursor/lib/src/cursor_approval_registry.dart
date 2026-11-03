@@ -91,7 +91,7 @@ class CursorApprovalRegistry({
       for (final option in options) {
         // An option without an id cannot be selected in the reply.
         final id = _str(option["id"]) ?? _str(option["value"]);
-        if (id == null) continue;
+        if (id == null || id.isEmpty) continue;
         var label = _str(option["label"]) ?? id;
         // The bridge round-trips the *label* the user picked, so duplicate
         // labels would collapse to one id and reply with the wrong option.
@@ -106,6 +106,8 @@ class CursorApprovalRegistry({
         labelToId[label] = id;
         pluginOptions.add(PluginQuestionOption(label: label, description: ""));
       }
+      // Nothing could be picked, so the question could never be answered.
+      if (pluginOptions.isEmpty) continue;
 
       pluginQuestions.add(
         PluginQuestionInfo(

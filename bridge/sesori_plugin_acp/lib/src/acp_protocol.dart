@@ -123,23 +123,24 @@ class const AcpAgentCapabilities({
 class const AcpInitializeResult({
   required final int protocolVersion,
   required final AcpAgentCapabilities agentCapabilities,
+  /// The advertised methods that have an id; malformed entries are skipped.
   required final List<AcpAuthMethod> authMethods,
+
+  /// True when the agent advertised any auth method, usable or not, so it
+  /// requires authentication before sessions can start.
+  required final bool requiresAuth,
   required final Map<String, dynamic> raw,
 }) {
-  /// True when the agent requires authentication before sessions can start.
-  bool get requiresAuth => authMethods.isNotEmpty;
-
   factory fromJson(Map<String, dynamic> json) {
     final rawCaps = json["agentCapabilities"];
     final caps = rawCaps is Map ? rawCaps.cast<String, dynamic>() : const <String, dynamic>{};
     final rawMethods = json["authMethods"];
-    final methods = rawMethods is List ? rawMethods : const <Object?>[];
+    final methods = (rawMethods is List ? rawMethods : const <Object?>[]).whereType<Map<dynamic, dynamic>>();
     return AcpInitializeResult(
       protocolVersion: (json["protocolVersion"] ?? acpProtocolVersion) as int,
       agentCapabilities: AcpAgentCapabilities.fromJson(caps),
-      authMethods: [
-        for (final method in methods.whereType<Map<dynamic, dynamic>>()) ?AcpAuthMethod.tryFromJson(method.cast()),
-      ],
+      authMethods: [for (final method in methods) ?AcpAuthMethod.tryFromJson(method.cast())],
+      requiresAuth: methods.isNotEmpty,
       raw: json,
     );
   }

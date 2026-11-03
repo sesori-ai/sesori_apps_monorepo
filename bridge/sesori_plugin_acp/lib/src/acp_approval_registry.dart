@@ -181,7 +181,8 @@ class AcpApprovalRegistry({
     if (rawSessionId != null && rawSessionId is! String) return null;
     final explicit = rawSessionId is String ? rawSessionId.trim() : null;
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    return _activeSessionResolver?.call();
+    final active = _activeSessionResolver?.call();
+    return active == null || active.isEmpty ? null : active;
   }
 
   /// Registers and emits a harness-specific pending question.

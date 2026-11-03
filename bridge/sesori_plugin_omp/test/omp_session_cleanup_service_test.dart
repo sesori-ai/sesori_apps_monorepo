@@ -104,6 +104,21 @@ void main() {
     );
   });
 
+  for (final (name, answer, matcher) in [
+    ("an echoed matching id resumes", const {"sessionId": "target"}, completes),
+    ("an echoed different id stops cleanup", const {"sessionId": "other"}, throwsStateError),
+    ("an answer without an echoed id stops cleanup", const <String, dynamic>{}, throwsStateError),
+  ]) {
+    test("cleanup repository: $name", () async {
+      final repository = OmpSessionCleanupRepository(api: _ResumeAnswerAcpApi(answer: answer));
+
+      await expectLater(
+        repository.resume(sessionId: "target", cwd: "/project", timeout: const Duration(seconds: 1)),
+        matcher,
+      );
+    });
+  }
+
   test("cleanup repository rejects a cancelled delete command", () async {
     final repository = OmpSessionCleanupRepository(
       api: _CancelledDeleteAcpApi(),
@@ -187,6 +202,18 @@ class _FakeCleanupRepository({required final List<OmpCleanupPage> pages}) implem
 
   @override
   Future<void> dispose() async {}
+}
+
+class _ResumeAnswerAcpApi({required final Map<String, dynamic> answer}) implements OmpAcpApi {
+  @override
+  Future<AcpNewSessionResult> resumeSession({
+    required String sessionId,
+    required String cwd,
+    required Duration timeout,
+  }) async => AcpNewSessionResult.forSession(sessionId: sessionId, json: answer);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _CancelledDeleteAcpApi() implements OmpAcpApi {

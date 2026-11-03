@@ -555,7 +555,8 @@ defaults and queued client sends coherent.
   stop-and-send, immediately cancelling the active turn and
   dispatching the queued input after cancellation settles. Further already-queued
   inputs retain FIFO order; natural-completion queueing is not valid production
-  behavior. Cursor, Hermes, DeepSeek, Copilot, Grok, and OMP use it. Their
+  behavior. Every ACP harness uses it: Antigravity, Cursor, Hermes, DeepSeek,
+  Copilot, Grok, and OMP. Their
   synthetic user transcript message is published only after its frame is
   synchronously admitted to the agent's stdin. The shared NDJSON transport
   relies on one IOSink's FIFO admission rather than per-request flushing, so
