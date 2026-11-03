@@ -433,6 +433,7 @@ T _namedArgument<T>({required Invocation invocation, required Symbol name}) {
 void delegateSessionRepository({
   required MockSessionRepository repository,
   required MockSessionRepository source,
+  required MockSessionApi optionsSource,
 }) {
   when(
     () => repository.abortSession(
@@ -509,40 +510,7 @@ void delegateSessionRepository({
     ),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => source.getSessionStatuses());
-  delegateSessionOptionsRepository(repository: repository, source: source);
-  when(
-    () => repository.listAgents(
-      projectId: any(named: "projectId"),
-      pluginId: any(named: "pluginId"),
-    ),
-  ).thenAnswer(
-    (invocation) => source.listAgents(
-      projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
-      pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
-    ),
-  );
-  when(
-    () => repository.listProviders(
-      projectId: any(named: "projectId"),
-      pluginId: any(named: "pluginId"),
-    ),
-  ).thenAnswer(
-    (invocation) => source.listProviders(
-      projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
-      pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
-    ),
-  );
-  when(
-    () => repository.listCommands(
-      projectId: any(named: "projectId"),
-      pluginId: any(named: "pluginId"),
-    ),
-  ).thenAnswer(
-    (invocation) => source.listCommands(
-      projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
-      pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
-    ),
-  );
+  delegateSessionOptionsRepository(repository: repository, source: optionsSource);
   when(
     () => repository.sendMessage(
       promptId: any(named: "promptId"),
@@ -570,11 +538,11 @@ void delegateSessionRepository({
   );
 }
 
-/// Adapts existing new-session tests that stub the three legacy service calls
-/// to the aggregate repository seam used by the modern client flow.
+/// Adapts tests that stub the three legacy option API calls to the aggregate
+/// repository seam used by the modern client flow.
 void delegateSessionOptionsRepository({
   required MockSessionRepository repository,
-  required MockSessionRepository source,
+  required MockSessionApi source,
 }) {
   Future<SessionOptionsRepositoryResult> loadOptions(Invocation invocation) async {
     final projectId = _namedArgument<String>(invocation: invocation, name: #projectId);

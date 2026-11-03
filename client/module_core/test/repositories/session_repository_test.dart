@@ -94,23 +94,6 @@ void main() {
       (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
     );
     when(
-      () => api.listAgents(
-        projectId: any(named: "projectId"),
-        pluginId: any(named: "pluginId"),
-      ),
-    ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-    when(
-      () => api.listProviders(
-        projectId: any(named: "projectId"),
-        pluginId: any(named: "pluginId"),
-      ),
-    ).thenAnswer(
-      (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
-    );
-    when(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
-      (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-    );
-    when(
       () => api.sendMessage(
         promptId: any(named: "promptId"),
         attachments: const [],
@@ -148,9 +131,6 @@ void main() {
     await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
     await repository.getSessionStatuses();
-    await repository.listAgents(projectId: "project-1", pluginId: "plugin-1");
-    await repository.listProviders(projectId: "project-1", pluginId: "plugin-1");
-    await repository.listCommands(projectId: "project-1", pluginId: "plugin-1");
     await repository.sendMessage(
       promptId: "prompt-1",
       attachments: const [],
@@ -187,9 +167,6 @@ void main() {
     verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
     verify(api.getSessionStatuses).called(1);
-    verify(() => api.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
-    verify(() => api.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
-    verify(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(
       () => api.sendMessage(
         promptId: "prompt-1",
@@ -236,21 +213,6 @@ void main() {
             .having((error) => error.innerError, "cause", same(apiFailure)),
       ),
     );
-  });
-
-  test("listProviders always delegates because the bridge owns option caching", () async {
-    final api = MockSessionApi();
-    final repository = SessionRepository(api: api);
-    when(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).thenAnswer(
-      (_) async => ApiResponse.success(
-        const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
-      ),
-    );
-
-    await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-    await repository.listProviders(projectId: "p1", pluginId: "plugin-1");
-
-    verify(() => api.listProviders(projectId: "p1", pluginId: "plugin-1")).called(2);
   });
 
   test("loadLegacySessionOptions calls all three APIs and maps their catalogs", () async {

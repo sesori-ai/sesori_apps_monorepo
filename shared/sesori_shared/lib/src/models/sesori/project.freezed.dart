@@ -438,12 +438,12 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true, @ProjectGlossaryKeyJsonConverter() required this.voiceGlossaryKey});
+  const _Project({required this.id, required this.name, required this.path, required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true, @ProjectGlossaryKeyJsonConverter() required this.voiceGlossaryKey});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
 @override final  String? name;
-@override@JsonKey() final  String path;
+@override final  String path;
 @override final  ProjectTime? time;
 @override@JsonKey() final  bool hasUnseenChanges;
 @override@JsonKey() final  bool directoryMissing;

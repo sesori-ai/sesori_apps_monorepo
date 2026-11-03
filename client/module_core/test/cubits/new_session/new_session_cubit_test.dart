@@ -39,6 +39,7 @@ import "new_session_state_matchers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionRepository mockSessionService;
+    late MockSessionApi mockSessionApi;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockPluginPreferenceRepository mockPluginPreferenceRepository;
@@ -63,6 +64,7 @@ void main() {
     setUp(() {
       lastProjectTracker = FakeLastNewSessionProjectTracker();
       mockSessionService = MockSessionRepository();
+      mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockPluginPreferenceRepository = MockPluginPreferenceRepository();
@@ -104,13 +106,13 @@ void main() {
       ).thenAnswer((_) async {});
 
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
       ).thenAnswer((_) async => ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -121,10 +123,10 @@ void main() {
       );
       delegateSessionOptionsRepository(
         repository: mockSessionRepository,
-        source: mockSessionService,
+        source: mockSessionApi,
       );
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -335,7 +337,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -907,7 +909,7 @@ void main() {
       var calls = 0;
       final command = testCommandInfo();
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -968,7 +970,7 @@ void main() {
       final repository = inMemoryComposerDraftRepository();
       final command = testCommandInfo();
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1132,7 +1134,7 @@ void main() {
       var createCalls = 0;
       final command = testCommandInfo();
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1292,7 +1294,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1311,7 +1313,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1382,7 +1384,7 @@ void main() {
       final providers = _providerResponseWithVariants(["high"]);
       final item = providers.items.single;
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1456,13 +1458,13 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["high", "xhigh"])));
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1517,7 +1519,7 @@ void main() {
     ]) {
       test("selectModel ignores ${invalidSelection.name}", () async {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1578,7 +1580,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1603,7 +1605,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1630,7 +1632,7 @@ void main() {
 
     test("selectModel resolves the new model's first variant when the previous one is unavailable", () async {
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1655,7 +1657,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1679,7 +1681,7 @@ void main() {
         modelId: "gpt-4",
       );
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1704,7 +1706,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1733,7 +1735,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1804,7 +1806,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1823,7 +1825,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -1875,7 +1877,7 @@ void main() {
 
     test("selectVariant ignores a variant absent from the current catalog", () async {
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1897,7 +1899,7 @@ void main() {
       final staleCommand = testCommandInfo(template: "/review {{stalePath}}");
       expect(identical(availableCommand, equivalentCommand), isFalse);
       when(
-        () => mockSessionService.listCommands(
+        () => mockSessionApi.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1917,7 +1919,7 @@ void main() {
 
     test("selectAgent persists only the deliberate agent dimension", () async {
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1942,7 +1944,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.listProviders(
+        () => mockSessionApi.listProviders(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -1964,13 +1966,13 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2010,7 +2012,7 @@ void main() {
       skip: 2,
       build: () {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2035,7 +2037,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2067,7 +2069,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2141,7 +2143,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2210,7 +2212,7 @@ void main() {
           selection: _selectionIntentFromSnapshot(agentName: "plan", agentModel: null),
         );
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2254,7 +2256,7 @@ void main() {
           selection: _selectionIntentFromSnapshot(agentName: "ghost", agentModel: null),
         );
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2295,7 +2297,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2314,7 +2316,7 @@ void main() {
           ),
         );
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2768,7 +2770,7 @@ void main() {
     test("createSession while options are still loading sends a null agent and model", () async {
       final agentsCompleter = Completer<ApiResponse<Agents>>();
       when(
-        () => mockSessionService.listAgents(
+        () => mockSessionApi.listAgents(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -2886,7 +2888,7 @@ void main() {
 
       void answerAgents({required String projectId, required Future<ApiResponse<Agents>> Function() answer}) {
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: projectId,
             pluginId: any(named: "pluginId"),
           ),
@@ -2904,7 +2906,7 @@ void main() {
 
       setUp(() {
         when(
-          () => mockSessionService.listProviders(
+          () => mockSessionApi.listProviders(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -2922,7 +2924,7 @@ void main() {
       test("keeps the picks, harness and staged command, refreshing the options in place", () async {
         final command = testCommandInfo();
         when(
-          () => mockSessionService.listCommands(
+          () => mockSessionApi.listCommands(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
@@ -3064,9 +3066,9 @@ void main() {
         await waitForComposer(cubit);
 
         expect(cubit.state.agentModelData?.plugin?.id, "plugin-1");
-        verify(() => mockSessionService.listAgents(projectId: "project-2", pluginId: "plugin-1")).called(1);
+        verify(() => mockSessionApi.listAgents(projectId: "project-2", pluginId: "plugin-1")).called(1);
         verifyNever(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: "project-1",
             pluginId: any(named: "pluginId"),
           ),
@@ -3274,7 +3276,7 @@ void main() {
           });
           var agentLoads = 0;
           when(
-            () => mockSessionService.listAgents(
+            () => mockSessionApi.listAgents(
               projectId: any(named: "projectId"),
               pluginId: any(named: "pluginId"),
             ),
@@ -3408,7 +3410,7 @@ void main() {
         final cutOffRefresh = Completer<ApiResponse<Agents>>();
         var agentLoads = 0;
         when(
-          () => mockSessionService.listAgents(
+          () => mockSessionApi.listAgents(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),

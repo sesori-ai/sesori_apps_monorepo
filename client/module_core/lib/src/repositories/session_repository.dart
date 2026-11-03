@@ -276,21 +276,6 @@ class SessionRepository({
     return _api.getSession(sessionId: sessionId);
   }
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
-    return _api.listAgents(projectId: projectId, pluginId: pluginId);
-  }
-
-  Future<ApiResponse<ProviderListResponse>> listProviders({
-    required String projectId,
-    required String pluginId,
-  }) {
-    return _api.listProviders(projectId: projectId, pluginId: pluginId);
-  }
-
-  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String pluginId}) {
-    return _api.listCommands(projectId: projectId, pluginId: pluginId);
-  }
-
   Future<LegacySessionOptionsRepositoryResult> loadLegacySessionOptions({
     required String projectId,
     required String pluginId,

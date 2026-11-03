@@ -111,14 +111,14 @@ void main() {
       expect(restored.path, equals("/moved/a"));
     });
 
-    test("fromJson without a path (older bridge) decodes to empty string", () {
+    test("normalizes an omitted path (older bridge) to the legacy path-shaped id", () {
       final project = Project.fromJson({
         "id": "/projects/a",
         "name": "A",
         "time": null,
       });
 
-      expect(project.path, isEmpty);
+      expect(project.path, "/projects/a");
     });
 
     test("fromJson without a worktree capability preserves the legacy visible behavior", () {
