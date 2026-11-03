@@ -3,7 +3,7 @@ import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show Pla
 import '../foundation/process_runner.dart';
 
 sealed class DefaultEditorApi {
-  Future<void> openFile(String filePath);
+  Future<void> openFile({required String filePath});
 
   factory forPlatform({
     required PlatformOs platform,
@@ -17,21 +17,21 @@ sealed class DefaultEditorApi {
 
 final class _MacosDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
   @override
-  Future<void> openFile(String filePath) async {
+  Future<void> openFile({required String filePath}) async {
     await _processRunner.startDetached(executable: 'open', arguments: [filePath]);
   }
 }
 
 final class _LinuxDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
   @override
-  Future<void> openFile(String filePath) async {
+  Future<void> openFile({required String filePath}) async {
     await _processRunner.startDetached(executable: 'xdg-open', arguments: [filePath]);
   }
 }
 
 final class _WindowsDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
   @override
-  Future<void> openFile(String filePath) async {
+  Future<void> openFile({required String filePath}) async {
     await _processRunner.startDetached(
       executable: 'rundll32',
       arguments: ['url.dll,FileProtocolHandler', filePath],

@@ -266,7 +266,7 @@ class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider
     if (failRefresh) {
       // Mirror the supervised service: a signed-out / mid-login GUI surfaces a
       // typed unavailable failure (the orchestrator defers reconnect on this).
-      throw const ControlTokenUnavailableException("signed out");
+      throw const ControlTokenUnavailableException(reason: "signed out");
     }
     if (transientFailRefresh) {
       // Mirror a standalone TokenService whose auth-refresh endpoint is

@@ -10,32 +10,32 @@ import "package:path/path.dart" as p;
 /// here — that belongs in [FilesystemRepository].
 class const FilesystemApi() {
   /// Returns the type of the entity at [path] (or [FileSystemEntityType.notFound]).
-  FileSystemEntityType entityType(String path) {
+  FileSystemEntityType entityType({required String path}) {
     return FileSystemEntity.typeSync(path, followLinks: false);
   }
 
   /// Whether a directory exists at [path].
-  bool directoryExists(String path) {
+  bool directoryExists({required String path}) {
     return Directory(path).existsSync();
   }
 
   /// The parent directory path of [path].
-  String parentPath(String path) {
+  String parentPath({required String path}) {
     return Directory(path).parent.path;
   }
 
   /// Creates the directory at [path] (non-recursive).
-  void createDirectory(String path) {
+  void createDirectory({required String path}) {
     Directory(path).createSync(recursive: false);
   }
 
   /// Lists the immediate child directories of [path].
-  List<Directory> listDirectories(String path) {
+  List<Directory> listDirectories({required String path}) {
     return Directory(path).listSync(followLinks: false).whereType<Directory>().toList();
   }
 
   /// Whether [directoryPath] contains a `.git` entry (a git working copy).
-  bool gitDirectoryExists(String directoryPath) {
+  bool gitDirectoryExists({required String directoryPath}) {
     final type = FileSystemEntity.typeSync(
       p.join(directoryPath, ".git"),
       followLinks: true,
@@ -45,7 +45,7 @@ class const FilesystemApi() {
 
   /// Asynchronous [directoryExists], for probes that may stall on a
   /// disconnected drive and must not block the isolate meanwhile.
-  Future<bool> directoryExistsAsync(String path) {
+  Future<bool> directoryExistsAsync({required String path}) {
     // The async call is the point: a stalled probe runs off the isolate.
     // ignore: avoid_slow_async_io
     return Directory(path).exists();
@@ -58,7 +58,7 @@ class const FilesystemApi() {
   String currentDirectoryPath() => Directory.current.path;
 
   /// Immediate entry names in [path].
-  List<String> listEntryNames(String path) {
+  List<String> listEntryNames({required String path}) {
     return Directory(path).listSync(followLinks: false).map((entry) => p.basename(entry.path)).toList();
   }
 
@@ -77,7 +77,7 @@ class const FilesystemApi() {
   }
 
   /// Deletes [path] and all descendants.
-  void deleteDirectoryRecursively(String path) {
+  void deleteDirectoryRecursively({required String path}) {
     Directory(path).deleteSync(recursive: true);
   }
 
@@ -100,11 +100,11 @@ class const FilesystemApi() {
     return directory.path;
   }
 
-  String resolveFilePath(String path) {
+  String resolveFilePath({required String path}) {
     return File(path).resolveSymbolicLinksSync();
   }
 
-  String resolveDirectoryPath(String path) {
+  String resolveDirectoryPath({required String path}) {
     return Directory(path).resolveSymbolicLinksSync();
   }
 

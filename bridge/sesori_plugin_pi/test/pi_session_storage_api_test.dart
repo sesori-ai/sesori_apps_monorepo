@@ -672,7 +672,7 @@ void main() {
   });
 
   group("history input", () {
-    test("returns typed header and append-order v1 entries without migration", () async {
+    test("chains v1 entries in append order under synthesized ids", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);
       final path = p.join(fixture.root.path, "v1.jsonl");
@@ -694,19 +694,27 @@ void main() {
           "content": "second",
           "display": true,
         },
+        {
+          "type": "message",
+          "timestamp": "2026-08-01T00:00:03Z",
+          "message": {"role": "hookMessage", "content": "third", "display": true, "timestamp": 3},
+        },
       ]);
 
       final history = await fixture.historyApi().readSessionHistory(path: path);
 
-      expect(history.header.id, "v1-session");
-      expect(history.header.version, isNull);
+      expect(history.leafId, "sesori-v1-3");
       expect(history.entries, [
-        isA<PiSessionFileMessageEntryDto>()
-            .having((entry) => entry.id, "id", isNull)
+        isA<PiMessageEntryDto>()
+            .having((entry) => entry.id, "id", "sesori-v1-1")
             .having((entry) => entry.parentId, "parentId", isNull),
-        isA<PiSessionFileCustomMessageEntryDto>()
-            .having((entry) => entry.id, "id", isNull)
-            .having((entry) => entry.parentId, "parentId", isNull),
+        isA<PiCustomMessageEntryDto>()
+            .having((entry) => entry.id, "id", "sesori-v1-2")
+            .having((entry) => entry.parentId, "parentId", "sesori-v1-1"),
+        isA<PiMessageEntryDto>()
+            .having((entry) => entry.id, "id", "sesori-v1-3")
+            .having((entry) => entry.parentId, "parentId", "sesori-v1-2")
+            .having((entry) => entry.message, "hookMessage read as custom", isA<PiCustomMessageDto>()),
       ]);
     });
 
@@ -731,8 +739,18 @@ void main() {
 
       final history = await fixture.historyApi().readSessionHistory(path: path);
 
-      final message = (history.entries.single as PiSessionFileMessageEntryDto).message as PiSessionFileUserMessageDto;
-      expect((message.content.single as PiImageContentDto).data, image);
+      expect(
+        history.entries.single,
+        isA<PiMessageEntryDto>().having(
+          (entry) => entry.message,
+          "message",
+          isA<PiUserMessageDto>().having(
+            (message) => message.content.single,
+            "content",
+            isA<PiImageContentDto>().having((content) => content.data, "data", image),
+          ),
+        ),
+      );
     });
 
     test("rejects a newline-free record beyond the history byte limit", () async {

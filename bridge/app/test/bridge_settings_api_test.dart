@@ -37,7 +37,7 @@ void main() {
     test('writeConfig creates the directory and writes raw contents', () async {
       final api = BridgeSettingsApi(homeDirectory: tempHome.path);
 
-      await api.writeConfig('{"sleepPrevention":"always"}');
+      await api.writeConfig(jsonContent: '{"sleepPrevention":"always"}');
 
       expect(Directory('${tempHome.path}/.config/sesori').existsSync(), isTrue);
       expect(File(api.configFilePath).existsSync(), isTrue);

@@ -463,7 +463,7 @@ void main() {
 class _PrefixFilesystemApi({required final List<int> bytes, required final FileSystemException? error})
     implements FilesystemApi {
   @override
-  FileSystemEntityType entityType(String path) => FileSystemEntityType.file;
+  FileSystemEntityType entityType({required String path}) => FileSystemEntityType.file;
 
   @override
   List<int> readFilePrefix({required String path, required int maxBytes}) {
@@ -481,10 +481,10 @@ class _PrefixFilesystemApi({required final List<int> bytes, required final FileS
 class _LookupFilesystemApi({required final FileSystemEntityType type, required final FileSystemException? resolveError})
     implements FilesystemApi {
   @override
-  FileSystemEntityType entityType(String path) => type;
+  FileSystemEntityType entityType({required String path}) => type;
 
   @override
-  String resolveFilePath(String path) {
+  String resolveFilePath({required String path}) {
     final failure = resolveError;
     if (failure != null) throw failure;
     return path;
@@ -503,7 +503,7 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   String currentDirectoryPath() => "/";
 
   @override
-  void deleteDirectoryRecursively(String path) {}
+  void deleteDirectoryRecursively({required String path}) {}
 
   @override
   Future<void> deleteDirectoryRecursivelyAsync({required String path}) => throw UnimplementedError();
@@ -516,33 +516,33 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
       throw UnimplementedError();
 
   @override
-  bool directoryExists(String path) => true;
+  bool directoryExists({required String path}) => true;
 
   @override
-  List<Directory> listDirectories(String path) {
+  List<Directory> listDirectories({required String path}) {
     throw FileSystemException("denied", path, const OSError("Permission denied", 13));
   }
 
   @override
-  FileSystemEntityType entityType(String path) => FileSystemEntityType.directory;
+  FileSystemEntityType entityType({required String path}) => FileSystemEntityType.directory;
 
   @override
-  String parentPath(String path) => "/";
+  String parentPath({required String path}) => "/";
 
   @override
-  void createDirectory(String path) {}
+  void createDirectory({required String path}) {}
 
   @override
-  bool gitDirectoryExists(String directoryPath) => false;
+  bool gitDirectoryExists({required String directoryPath}) => false;
 
   @override
   Map<String, String> get environment => const {};
 
   @override
-  Future<bool> directoryExistsAsync(String path) async => true;
+  Future<bool> directoryExistsAsync({required String path}) async => true;
 
   @override
-  List<String> listEntryNames(String path) => throw UnimplementedError();
+  List<String> listEntryNames({required String path}) => throw UnimplementedError();
 
   @override
   Future<List<String>> listEntryNamesBounded({required String path, required int maximumEntries}) =>
@@ -552,24 +552,24 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   List<int> readFilePrefix({required String path, required int maxBytes}) => throw UnimplementedError();
 
   @override
-  String resolveDirectoryPath(String path) => throw UnimplementedError();
+  String resolveDirectoryPath({required String path}) => throw UnimplementedError();
 
   @override
-  String resolveFilePath(String path) => throw UnimplementedError();
+  String resolveFilePath({required String path}) => throw UnimplementedError();
 }
 
 class _GrowingFilesystemApi() implements FilesystemApi {
   @override
-  FileSystemEntityType entityType(String path) => FileSystemEntityType.file;
+  FileSystemEntityType entityType({required String path}) => FileSystemEntityType.file;
 
   @override
   List<int> readFilePrefix({required String path, required int maxBytes}) => "123456".codeUnits;
 
   @override
-  String resolveDirectoryPath(String path) => path;
+  String resolveDirectoryPath({required String path}) => path;
 
   @override
-  String resolveFilePath(String path) => path;
+  String resolveFilePath({required String path}) => path;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -588,7 +588,7 @@ class _EnvironmentFilesystemApi({
 
 class _DriveFilesystemApi({required final Map<String, Future<bool>> _probes}) implements FilesystemApi {
   @override
-  Future<bool> directoryExistsAsync(String path) => _probes[path] ?? Future.value(false);
+  Future<bool> directoryExistsAsync({required String path}) => _probes[path] ?? Future.value(false);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
