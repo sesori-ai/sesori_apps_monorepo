@@ -5,27 +5,10 @@ import "support/claude_stream_client_test_factory.dart";
 
 void main() {
   group("ClaudeStreamMessage.parse", () {
-    test("reads the init handshake frame", () {
+    test("reads the init handshake frame's session id", () {
       final message = ClaudeStreamMessage.parse(sampleInit());
 
-      expect(message, isA<ClaudeInitMessage>());
-      final init = message as ClaudeInitMessage;
-      expect(init.sessionId, testSessionId);
-      expect(init.model, "test-model-large[1m]");
-      expect(init.permissionMode, ClaudePermissionMode.auto);
-      expect(init.tools, ["Read", "Write"]);
-      expect(init.slashCommands, ["review"]);
-      expect(init.cliVersion, "2.1.221");
-      expect(init.cwd, "/tmp/project");
-    });
-
-    test("exposes init capabilities for feature detection", () {
-      final init = ClaudeStreamMessage.parse(sampleInit()) as ClaudeInitMessage;
-
-      // Capability detection is how the plugin decides what a given CLI build
-      // supports, instead of comparing version strings.
-      expect(init.supports("interrupt_cancel_queued_v1"), isTrue);
-      expect(init.supports("some_future_capability"), isFalse);
+      expect(message, isA<ClaudeInitMessage>().having((init) => init.sessionId, "sessionId", testSessionId));
     });
 
     test("prefers the message model over the init model on an assistant frame", () {
@@ -93,13 +76,11 @@ void main() {
         "subtype": "success",
         "is_error": false,
         "result": "done",
-        "stop_reason": "end_turn",
         "terminal_reason": "completed",
       }) as ClaudeResultMessage;
 
       expect(message.subtype, ClaudeResultSubtype.success);
       expect(message.isError, isFalse);
-      expect(message.stopReason, "end_turn");
       expect(message.terminalReason, ClaudeTerminalReason.completed);
     });
 
@@ -116,10 +97,7 @@ void main() {
       }) as ClaudeApiRetryMessage;
 
       expect(message.attempt, 2);
-      expect(message.maxRetries, 4);
       expect(message.retryDelayMs, 1500);
-      expect(message.errorStatus, 429);
-      expect(message.error, ClaudeAssistantError.rateLimit);
       expect(message.rawError, "rate_limit");
     });
 
@@ -160,7 +138,7 @@ void main() {
       }) as ClaudeControlRequestMessage;
 
       expect(message.requestId, "req-uuid");
-      expect(message.subtype, "can_use_tool");
+      expect(message.subtype, ClaudeControlRequestSubtype.canUseTool);
       expect(message.request["tool_name"], "Write");
     });
 
@@ -180,107 +158,23 @@ void main() {
       expect(unknown.isSuccess, isFalse);
     });
 
-    test("reads the rate limit frame the research missed", () {
-      final message = ClaudeStreamMessage.parse({
-        "type": "rate_limit_event",
-        "rate_limit_info": {"status": "allowed", "rateLimitType": "five_hour"},
-      }) as ClaudeRateLimitMessage;
+    test("absorbs known frames nothing surfaces without logging them as unknown", () {
+      final frames = <Map<String, Object?>>[
+        {
+          "type": "rate_limit_event",
+          "rate_limit_info": <String, Object?>{"status": "allowed"},
+        },
+        {"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 512},
+        {"type": "system", "subtype": "task_progress", "task_id": "task-1"},
+        {"type": "tool_progress", "tool_use_id": "toolu_1", "elapsed_time_seconds": 2.5},
+        {"type": "system", "subtype": "hook_started", "hook_id": "hook-1"},
+        {"type": "system", "subtype": "hook_progress", "hook_id": "hook-1", "stdout": "formatting"},
+        {"type": "system", "subtype": "hook_response", "hook_id": "hook-1", "exit_code": 2},
+      ];
 
-      expect(message.status, "allowed");
-    });
-
-    test("reads thinking token estimates", () {
-      final message = ClaudeStreamMessage.parse({
-        "type": "system",
-        "subtype": "thinking_tokens",
-        "estimated_tokens": 512,
-        "estimated_tokens_delta": 64,
-      }) as ClaudeThinkingTokensMessage;
-
-      expect(message.estimatedTokens, 512);
-      expect(message.estimatedTokensDelta, 64);
-    });
-
-    test("reads subagent task progress including nested usage", () {
-      final message = ClaudeStreamMessage.parse({
-        "type": "system",
-        "subtype": "task_progress",
-        "task_id": "task-1",
-        "tool_use_id": "toolu_1",
-        "description": "Explore repo",
-        "subagent_type": "Explore",
-        "last_tool_name": "Grep",
-        "summary": "searching",
-        "usage": {"total_tokens": 1200, "tool_uses": 3, "duration_ms": 4500},
-      }) as ClaudeTaskProgressMessage;
-
-      expect(message.taskId, "task-1");
-      expect(message.toolUseId, "toolu_1");
-      expect(message.description, "Explore repo");
-      expect(message.subagentType, "Explore");
-      expect(message.lastToolName, "Grep");
-      expect(message.summary, "searching");
-      expect(message.totalTokens, 1200);
-      expect(message.toolUses, 3);
-      expect(message.durationMs, 4500);
-    });
-
-    test("reads top-level tool progress", () {
-      final message = ClaudeStreamMessage.parse({
-        "type": "tool_progress",
-        "tool_use_id": "toolu_1",
-        "tool_name": "Bash",
-        "parent_tool_use_id": "toolu_parent",
-        "elapsed_time_seconds": 2.5,
-        "task_id": "task-1",
-        "heartbeat": true,
-        "subagent_type": "Explore",
-      }) as ClaudeToolProgressMessage;
-
-      expect(message.toolUseId, "toolu_1");
-      expect(message.toolName, "Bash");
-      expect(message.parentToolUseId, "toolu_parent");
-      expect(message.elapsedTimeSeconds, 2.5);
-      expect(message.taskId, "task-1");
-      expect(message.heartbeat, isTrue);
-      expect(message.subagentType, "Explore");
-    });
-
-    test("reads hook start and hook output frames", () {
-      final started = ClaudeStreamMessage.parse({
-        "type": "system",
-        "subtype": "hook_started",
-        "hook_id": "hook-1",
-        "hook_name": "format",
-        "hook_event": "PostToolUse",
-      }) as ClaudeHookStartedMessage;
-
-      expect(started.hookId, "hook-1");
-      expect(started.hookName, "format");
-      expect(started.hookEvent, "PostToolUse");
-
-      final progress = ClaudeStreamMessage.parse({
-        "type": "system",
-        "subtype": "hook_progress",
-        "hook_id": "hook-1",
-        "stdout": "formatting",
-      }) as ClaudeHookOutputMessage;
-
-      expect(progress.phase, ClaudeHookPhase.progress);
-      expect(progress.stdout, "formatting");
-      expect(progress.exitCode, isNull);
-
-      final response = ClaudeStreamMessage.parse({
-        "type": "system",
-        "subtype": "hook_response",
-        "hook_id": "hook-1",
-        "stderr": "warning",
-        "exit_code": 2,
-      }) as ClaudeHookOutputMessage;
-
-      expect(response.phase, ClaudeHookPhase.response);
-      expect(response.stderr, "warning");
-      expect(response.exitCode, 2);
+      for (final frame in frames) {
+        expect(ClaudeStreamMessage.parse(frame), isA<ClaudeIgnoredMessage>(), reason: "$frame");
+      }
     });
 
     test("absorbs unknown types and unknown system subtypes", () {
@@ -306,7 +200,6 @@ void main() {
         "subtype": <Object?>[],
         "is_error": "false",
         "result": 2,
-        "stop_reason": true,
       }) as ClaudeResultMessage;
 
       expect(result.sessionId, isNull);
@@ -314,7 +207,6 @@ void main() {
       expect(result.subtype, ClaudeResultSubtype.unknown);
       expect(result.isError, isFalse);
       expect(result.result, isNull);
-      expect(result.stopReason, isNull);
       expect(result.terminalReason, ClaudeTerminalReason.unknown);
     });
 
@@ -325,20 +217,14 @@ void main() {
           ClaudeStreamMessage.parse({"type": "assistant", "message": "not-a-map"}) as ClaudeAssistantMessage;
       expect(assistant.message, isEmpty);
       expect(assistant.messageId, isNull);
-
-      final init = ClaudeStreamMessage.parse({
-        "type": "system",
-        "subtype": "init",
-        "capabilities": "not-a-list",
-        "tools": [1, "Read"],
-      }) as ClaudeInitMessage;
-      expect(init.capabilities, isEmpty);
-      expect(init.tools, ["Read"]);
     });
 
-    test("keeps the raw frame on every variant", () {
-      final json = {"type": "result", "subtype": "success", "custom_field": 42};
-      expect(ClaudeStreamMessage.parse(json).raw["custom_field"], 42);
+    test("reads the stdin replay mark on a user frame", () {
+      final replay = ClaudeStreamMessage.parse({"type": "user", "isReplay": true}) as ClaudeUserMessage;
+      final live = ClaudeStreamMessage.parse({"type": "user", "isReplay": "true"}) as ClaudeUserMessage;
+
+      expect(replay.isReplay, isTrue);
+      expect(live.isReplay, isFalse);
     });
   });
 }

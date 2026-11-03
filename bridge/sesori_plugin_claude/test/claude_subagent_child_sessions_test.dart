@@ -49,7 +49,7 @@ void main() {
       expect(child.cwd, "/workspace");
       expect(child.title, "Say hi");
       expect(child.updatedAt, isNotNull);
-      expect((await catalog.findSessionById(sessionId: _child))?.parentId, _root);
+      expect((await catalog.findSessionById(sessionId: _child))?.parentID, _root);
       expect(
         await catalog.findSessionById(sessionId: "agent-orphan"),
         isNull,

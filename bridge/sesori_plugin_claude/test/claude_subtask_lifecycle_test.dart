@@ -467,10 +467,7 @@ ClaudeTranscriptAssistantRecord _agentRecord() => const ClaudeTranscriptAssistan
   timestamp: null,
   isSidechain: false,
   agentId: null,
-  gitBranch: null,
-  version: null,
   sessionId: _session,
-  raw: {},
 );
 
 ClaudeTranscriptUserRecord _launchResultRecord() => _userRecord(
@@ -505,8 +502,5 @@ ClaudeTranscriptUserRecord _userRecord({
   timestamp: null,
   isSidechain: false,
   agentId: null,
-  gitBranch: null,
-  version: null,
   sessionId: _session,
-  raw: const {},
 );

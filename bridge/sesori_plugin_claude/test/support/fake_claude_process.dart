@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
-import "../api/claude_process_factory.dart";
+import "package:claude_plugin/claude_plugin.dart";
 
 /// In-memory [ClaudeProcessHandle] for transport and plugin tests.
 class FakeClaudeProcess({bool stdinCloseCompletes = true}) implements ClaudeProcessHandle {
@@ -128,9 +128,9 @@ class CapturingIOSink({bool closeCompletes = true}) implements IOSink {
       if (index < 0) break;
       final line = utf8.decode(_buffer.sublist(0, index));
       _buffer.removeRange(0, index + 1);
-      if (line.trim().isNotEmpty) {
-        frames.add((jsonDecode(line) as Map).cast<String, Object?>());
-      }
+      if (line.trim().isEmpty) continue;
+      final Object? decoded = jsonDecode(line);
+      if (decoded case final Map<String, Object?> frame) frames.add(frame);
     }
   }
 

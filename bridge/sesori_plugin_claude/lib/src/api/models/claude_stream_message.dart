@@ -1,6 +1,5 @@
 import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
-import "../../models/claude_permission_mode.dart";
 import "../../models/claude_task_notification.dart";
 import "../../models/claude_task_status.dart";
 import "../../models/claude_task_type.dart";
@@ -15,9 +14,6 @@ import "../../models/claude_tool_use_result.dart";
 /// notification and request envelopes; generated DTOs in this package are
 /// reserved for content shapes.
 ///
-/// Every variant keeps the raw frame so later mappers can reach fields this
-/// build does not model, and so an unrecognized frame is never lost.
-///
 /// Verified against Claude CLI 2.1.221 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 2.
 sealed class const ClaudeStreamMessage({
@@ -27,9 +23,6 @@ sealed class const ClaudeStreamMessage({
 
   /// The CLI's own id for this frame.
   required final String? uuid,
-
-  /// The undecoded frame.
-  required final Map<String, Object?> raw,
 }) {
   /// Parses one decoded stdout line.
   ///
@@ -41,36 +34,32 @@ sealed class const ClaudeStreamMessage({
     final uuid = _stringOrNull(json["uuid"]);
     final type = json["type"];
     if (type is! String) {
-      return ClaudeUnknownMessage(type: null, subtype: null, sessionId: sessionId, uuid: uuid, raw: json);
+      return ClaudeUnknownMessage(type: null, subtype: null, sessionId: sessionId, uuid: uuid);
     }
     final subtype = _stringOrNull(json["subtype"]);
 
     switch (type) {
       case "system":
         return switch (subtype) {
-          "init" => ClaudeInitMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
-          "api_retry" => ClaudeApiRetryMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "init" => ClaudeInitMessage(sessionId: sessionId, uuid: uuid),
+          "api_retry" => ClaudeApiRetryMessage(
+            attempt: _intOrNull(json["attempt"]),
+            retryDelayMs: _intOrNull(json["retry_delay_ms"]),
+            rawError: _stringOrNull(json["error"]),
+            sessionId: sessionId,
+            uuid: uuid,
+          ),
           "status" => ClaudeStatusMessage(
             isCompacting: json["status"] == "compacting",
             compactResult: ClaudeCompactResult.tryParse(raw: json["compact_result"]),
             compactError: _stringOrNull(json["compact_error"]),
             sessionId: sessionId,
             uuid: uuid,
-            raw: json,
           ),
-          "thinking_tokens" => ClaudeThinkingTokensMessage(
-            estimatedTokens: _intOrNull(json["estimated_tokens"]),
-            estimatedTokensDelta: _intOrNull(json["estimated_tokens_delta"]),
-            sessionId: sessionId,
-            uuid: uuid,
-            raw: json,
-          ),
-          "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           "compact_boundary" => ClaudeCompactBoundaryMessage(
             metadata: ClaudeCompactMetadata.fromJsonOrNull(json: json["compact_metadata"]),
             sessionId: sessionId,
             uuid: uuid,
-            raw: json,
           ),
           "task_started" => ClaudeTaskStartedMessage(
             taskId: _stringOrNull(json["task_id"]),
@@ -80,7 +69,6 @@ sealed class const ClaudeStreamMessage({
             ownedBySubAgent: json["owned_by_subagent"] == true,
             sessionId: sessionId,
             uuid: uuid,
-            raw: json,
           ),
           "task_notification" => ClaudeTaskNotificationMessage(
             taskId: _stringOrNull(json["task_id"]),
@@ -89,28 +77,16 @@ sealed class const ClaudeStreamMessage({
             summary: _stringOrNull(json["summary"]),
             sessionId: sessionId,
             uuid: uuid,
-            raw: json,
           ),
-          "hook_started" => ClaudeHookStartedMessage(
-            hookId: _stringOrNull(json["hook_id"]),
-            hookName: _stringOrNull(json["hook_name"]),
-            hookEvent: _stringOrNull(json["hook_event"]),
-            sessionId: sessionId,
-            uuid: uuid,
-            raw: json,
-          ),
-          // `hook_progress` shares the output shape and the same emitter, so it
-          // is modelled here rather than left to surface as a later unknown.
-          "hook_progress" || "hook_response" => ClaudeHookOutputMessage.fromJson(
-            json,
-            phase: subtype == "hook_progress" ? ClaudeHookPhase.progress : ClaudeHookPhase.response,
-            sessionId: sessionId,
-            uuid: uuid,
-          ),
-          _ => ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid, raw: json),
+          "thinking_tokens" ||
+          "task_progress" ||
+          "hook_started" ||
+          "hook_progress" ||
+          "hook_response" => ClaudeIgnoredMessage(sessionId: sessionId, uuid: uuid),
+          _ => ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid),
         };
-      case "tool_progress":
-        return ClaudeToolProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
+      case "tool_progress" || "rate_limit_event":
+        return ClaudeIgnoredMessage(sessionId: sessionId, uuid: uuid);
       case "assistant":
         return ClaudeAssistantMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "user":
@@ -124,10 +100,10 @@ sealed class const ClaudeStreamMessage({
           taskNotifications: _taskNotifications(message["content"]),
           originKind: ClaudeMessageOriginKind.parse(kind: _mapOrEmpty(json["origin"])["kind"]),
           isHarnessGenerated: json["isSynthetic"] == true || json["isMeta"] == true,
+          isReplay: json["isReplay"] == true,
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
-          raw: json,
         );
       case "stream_event":
         return ClaudeStreamEventMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
@@ -137,15 +113,8 @@ sealed class const ClaudeStreamMessage({
         return ClaudeControlRequestMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "control_response":
         return ClaudeControlResponseMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
-      case "rate_limit_event":
-        return ClaudeRateLimitMessage(
-          info: _mapOrEmpty(json["rate_limit_info"]),
-          sessionId: sessionId,
-          uuid: uuid,
-          raw: json,
-        );
       default:
-        return ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid, raw: json);
+        return ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid);
     }
   }
 }
@@ -153,10 +122,6 @@ sealed class const ClaudeStreamMessage({
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
-
-double? _doubleOrNull(Object? value) => value is num ? value.toDouble() : null;
-
-bool? _boolOrNull(Object? value) => value is bool ? value : null;
 
 DateTime? _dateTimeOrNull(Object? value) => value is String ? DateTime.tryParse(value) : null;
 
@@ -184,45 +149,12 @@ List<String> _stringList(Object? value) => value is List
       ]
     : const <String>[];
 
-/// `system`/`init` — the per-process handshake frame.
+/// `system`/`init` — the per-process handshake frame. Only its session id is
+/// read, to catch a CLI that started a different session than requested.
 final class const ClaudeInitMessage({
-  /// The selected model token, which carries a context-window suffix that the
-  /// per-message model does not — prefer the message's own model when stamping.
-  required final String? model,
-  required final ClaudePermissionMode? permissionMode,
-
-  /// Feature flags to detect against rather than sniffing versions, e.g.
-  /// `interrupt_cancel_queued_v1`.
-  required final List<String> capabilities,
-  required final List<String> tools,
-  required final List<String> slashCommands,
-  required final String? cliVersion,
-  required final String? cwd,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage {
-  factory fromJson(
-    Map<String, Object?> json, {
-    required String? sessionId,
-    required String? uuid,
-  }) {
-    return ClaudeInitMessage(
-      model: _stringOrNull(json["model"]),
-      permissionMode: ClaudePermissionMode.tryParse(_stringOrNull(json["permissionMode"])),
-      capabilities: _stringList(json["capabilities"]),
-      tools: _stringList(json["tools"]),
-      slashCommands: _stringList(json["slash_commands"]),
-      cliVersion: _stringOrNull(json["claude_code_version"]),
-      cwd: _stringOrNull(json["cwd"]),
-      sessionId: sessionId,
-      uuid: uuid,
-      raw: json,
-    );
-  }
-
-  bool supports(String capability) => capabilities.contains(capability);
-}
+}) extends ClaudeStreamMessage;
 
 /// `system`/`compact_boundary` — the CLI compacted the context. The next
 /// synthetic `user` frame carries the continuation summary.
@@ -231,7 +163,6 @@ final class const ClaudeCompactBoundaryMessage({
   required final ClaudeCompactMetadata? metadata,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage;
 
 /// `system`/`status` — a coarse work-state signal such as `requesting`.
@@ -249,7 +180,6 @@ final class const ClaudeStatusMessage({
   required final String? compactError,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage;
 
 /// How a compaction ended.
@@ -263,54 +193,6 @@ enum ClaudeCompactResult() {
     "failed" => failed,
     _ => null,
   };
-}
-
-/// `system`/`thinking_tokens` — a running estimate of the current thinking
-/// block's token count, emitted alongside thinking deltas.
-final class const ClaudeThinkingTokensMessage({
-  required final int? estimatedTokens,
-  required final int? estimatedTokensDelta,
-  required super.sessionId,
-  required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage;
-
-/// `system`/`task_progress` — periodic progress for a running subagent task.
-final class const ClaudeTaskProgressMessage({
-  required final String? taskId,
-  required final String? toolUseId,
-  required final String? description,
-  required final String? subagentType,
-  required final String? lastToolName,
-  required final String? summary,
-  required final int? totalTokens,
-  required final int? toolUses,
-  required final int? durationMs,
-  required super.sessionId,
-  required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage {
-  factory fromJson(
-    Map<String, Object?> json, {
-    required String? sessionId,
-    required String? uuid,
-  }) {
-    final usage = _mapOrEmpty(json["usage"]);
-    return ClaudeTaskProgressMessage(
-      taskId: _stringOrNull(json["task_id"]),
-      toolUseId: _stringOrNull(json["tool_use_id"]),
-      description: _stringOrNull(json["description"]),
-      subagentType: _stringOrNull(json["subagent_type"]),
-      lastToolName: _stringOrNull(json["last_tool_name"]),
-      summary: _stringOrNull(json["summary"]),
-      totalTokens: _intOrNull(usage["total_tokens"]),
-      toolUses: _intOrNull(usage["tool_uses"]),
-      durationMs: _intOrNull(usage["duration_ms"]),
-      sessionId: sessionId,
-      uuid: uuid,
-      raw: json,
-    );
-  }
 }
 
 /// `system`/`task_started` — a background task (sub-agent, shell, workflow)
@@ -327,7 +209,6 @@ final class const ClaudeTaskStartedMessage({
   required final bool ownedBySubAgent,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage;
 
 /// `system`/`task_notification` — a background task reached a terminal state.
@@ -339,89 +220,7 @@ final class const ClaudeTaskNotificationMessage({
   required final String? summary,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage;
-
-/// `tool_progress` — periodic elapsed-time progress for a running tool call.
-final class const ClaudeToolProgressMessage({
-  required final String? toolUseId,
-  required final String? toolName,
-  required final String? parentToolUseId,
-  required final double? elapsedTimeSeconds,
-  required final String? taskId,
-  required final bool? heartbeat,
-  required final String? subagentType,
-  required super.sessionId,
-  required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage {
-  factory fromJson(
-    Map<String, Object?> json, {
-    required String? sessionId,
-    required String? uuid,
-  }) => ClaudeToolProgressMessage(
-    toolUseId: _stringOrNull(json["tool_use_id"]),
-    toolName: _stringOrNull(json["tool_name"]),
-    parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
-    elapsedTimeSeconds: _doubleOrNull(json["elapsed_time_seconds"]),
-    taskId: _stringOrNull(json["task_id"]),
-    heartbeat: _boolOrNull(json["heartbeat"]),
-    subagentType: _stringOrNull(json["subagent_type"]),
-    sessionId: sessionId,
-    uuid: uuid,
-    raw: json,
-  );
-}
-
-/// `system`/`hook_started` — a hook began running for a lifecycle event.
-final class const ClaudeHookStartedMessage({
-  required final String? hookId,
-  required final String? hookName,
-
-  /// The lifecycle event that triggered the hook, e.g. `PreToolUse`.
-  required final String? hookEvent,
-  required super.sessionId,
-  required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage;
-
-enum ClaudeHookPhase() {
-  progress,
-  response,
-}
-
-/// `system`/`hook_progress` and `system`/`hook_response` — streamed and final
-/// output from a running hook. `exitCode` only arrives with the final frame.
-final class const ClaudeHookOutputMessage({
-  required final ClaudeHookPhase phase,
-  required final String? hookId,
-  required final String? hookName,
-  required final String? hookEvent,
-  required final String? stdout,
-  required final String? stderr,
-  required final int? exitCode,
-  required super.sessionId,
-  required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage {
-  factory fromJson(
-    Map<String, Object?> json, {
-    required ClaudeHookPhase phase,
-    required String? sessionId,
-    required String? uuid,
-  }) => ClaudeHookOutputMessage(
-    phase: phase,
-    hookId: _stringOrNull(json["hook_id"]),
-    hookName: _stringOrNull(json["hook_name"]),
-    hookEvent: _stringOrNull(json["hook_event"]),
-    stdout: _stringOrNull(json["stdout"]),
-    stderr: _stringOrNull(json["stderr"]),
-    exitCode: _intOrNull(json["exit_code"]),
-    sessionId: sessionId,
-    uuid: uuid,
-    raw: json,
-  );
-}
 
 enum ClaudeAssistantError() {
   none,
@@ -454,33 +253,13 @@ enum ClaudeAssistantError() {
 /// `system`/`api_retry` — a retryable API failure with a scheduled retry.
 final class const ClaudeApiRetryMessage({
   required final int? attempt,
-  required final int? maxRetries,
   required final int? retryDelayMs,
-  required final int? errorStatus,
-  required final ClaudeAssistantError error,
 
   /// The CLI-provided retry error, retained verbatim for user-facing status.
   required final String? rawError,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage {
-  factory fromJson(
-    Map<String, Object?> json, {
-    required String? sessionId,
-    required String? uuid,
-  }) => ClaudeApiRetryMessage(
-    attempt: _intOrNull(json["attempt"]),
-    maxRetries: _intOrNull(json["max_retries"]),
-    retryDelayMs: _intOrNull(json["retry_delay_ms"]),
-    errorStatus: _intOrNull(json["error_status"]),
-    error: ClaudeAssistantError.parse(json["error"]),
-    rawError: _stringOrNull(json["error"]),
-    sessionId: sessionId,
-    uuid: uuid,
-    raw: json,
-  );
-}
+}) extends ClaudeStreamMessage;
 
 /// A complete assistant message.
 ///
@@ -503,7 +282,6 @@ final class const ClaudeAssistantMessage({
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage {
   factory fromJson(
     Map<String, Object?> json, {
@@ -521,7 +299,6 @@ final class const ClaudeAssistantMessage({
       timestamp: _dateTimeOrNull(json["timestamp"]),
       sessionId: sessionId,
       uuid: uuid,
-      raw: json,
     );
   }
 }
@@ -550,10 +327,13 @@ final class const ClaudeUserMessage({
   /// from spells it `isMeta`; both are normalized here so the live dispatcher
   /// and the history mapper decide visibility on one meaning.
   required final bool isHarnessGenerated,
+
+  /// The CLI marked this frame as its echo of a user turn written to stdin.
+  /// Attachment echoes can omit the mark.
+  required final bool isReplay,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage;
 
 enum ClaudeStreamEventType() {
@@ -660,7 +440,6 @@ final class const ClaudeStreamEventMessage({
   required final String? parentToolUseId,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage {
   factory fromJson(
     Map<String, Object?> json, {
@@ -674,7 +453,6 @@ final class const ClaudeStreamEventMessage({
       parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
       sessionId: sessionId,
       uuid: uuid,
-      raw: json,
     );
   }
 
@@ -689,13 +467,11 @@ final class const ClaudeResultMessage({
   required final ClaudeResultSubtype subtype,
   required final bool isError,
   required final String? result,
-  required final String? stopReason,
   required final ClaudeTerminalReason terminalReason,
   required final List<String> errors,
   required final int? apiErrorStatus,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage {
   factory fromJson(
     Map<String, Object?> json, {
@@ -706,26 +482,35 @@ final class const ClaudeResultMessage({
       subtype: ClaudeResultSubtype.parse(json["subtype"]),
       isError: json["is_error"] == true,
       result: _stringOrNull(json["result"]),
-      stopReason: _stringOrNull(json["stop_reason"]),
       terminalReason: ClaudeTerminalReason.parse(json["terminal_reason"]),
       errors: _stringList(json["errors"]),
       apiErrorStatus: _intOrNull(json["api_error_status"]),
       sessionId: sessionId,
       uuid: uuid,
-      raw: json,
     );
   }
+}
+
+enum ClaudeControlRequestSubtype() {
+  canUseTool,
+  elicitation,
+  unknown;
+
+  static ClaudeControlRequestSubtype parse(Object? raw) => switch (raw) {
+    "can_use_tool" => canUseTool,
+    "elicitation" => elicitation,
+    _ => unknown,
+  };
 }
 
 /// A CLI-originated control request, notably `can_use_tool`.
 final class const ClaudeControlRequestMessage({
   /// Echo this when responding.
   required final String? requestId,
-  required final String? subtype,
+  required final ClaudeControlRequestSubtype subtype,
   required final Map<String, Object?> request,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage {
   factory fromJson(
     Map<String, Object?> json, {
@@ -735,11 +520,10 @@ final class const ClaudeControlRequestMessage({
     final request = _mapOrEmpty(json["request"]);
     return ClaudeControlRequestMessage(
       requestId: _stringOrNull(json["request_id"]),
-      subtype: _stringOrNull(request["subtype"]),
+      subtype: ClaudeControlRequestSubtype.parse(request["subtype"]),
       request: request,
       sessionId: sessionId,
       uuid: uuid,
-      raw: json,
     );
   }
 }
@@ -752,7 +536,6 @@ final class const ClaudeControlResponseMessage({
   required final String? error,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage {
   factory fromJson(
     Map<String, Object?> json, {
@@ -770,29 +553,22 @@ final class const ClaudeControlResponseMessage({
       error: _stringOrNull(response["error"]),
       sessionId: sessionId,
       uuid: uuid,
-      raw: json,
     );
   }
 }
 
-/// Rate-limit state pushed alongside a turn.
-final class const ClaudeRateLimitMessage({
-  required final Map<String, Object?> info,
+/// A known frame nothing surfaces: thinking-token estimates, task and tool
+/// progress, hook activity, and rate-limit state. Kept apart from
+/// [ClaudeUnknownMessage] so these frequent frames are not logged as unknown.
+final class const ClaudeIgnoredMessage({
   required super.sessionId,
   required super.uuid,
-  required super.raw,
-}) extends ClaudeStreamMessage {
-  String? get status => _stringOrNull(info["status"]);
-}
+}) extends ClaudeStreamMessage;
 
 /// Any frame this build does not model.
-///
-/// Absorbed deliberately: `rate_limit_event` and `system`/`status` were both
-/// absent from the protocol research and present in the first live capture.
 final class const ClaudeUnknownMessage({
   required final String? type,
   required final String? subtype,
   required super.sessionId,
   required super.uuid,
-  required super.raw,
 }) extends ClaudeStreamMessage;

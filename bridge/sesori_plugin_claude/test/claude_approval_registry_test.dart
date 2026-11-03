@@ -20,16 +20,10 @@ void main() {
       );
     });
 
-    bool handle({required String sessionId, required ClaudeControlRequestMessage message}) =>
-        registry.handle(sessionId: sessionId, message: message);
-
     test("native URL elicitation exposes only a typed cancel notice in broadcasts", () {
-      expect(
-        handle(
-          sessionId: "session-1",
-          message: _urlElicitation(),
-        ),
-        isTrue,
+      registry.handle(
+        sessionId: "session-1",
+        message: _urlElicitation(),
       );
       final notice = registry.pendingQuestionsForSession(sessionId: "session-1").single;
       expect(notice.interactionKind, PluginQuestionInteractionKind.externalAction);
@@ -44,7 +38,7 @@ void main() {
 
     for (final choice in PluginExternalActionChoice.values) {
       test("URL ${choice.name} preserves the native request and exact reply", () {
-        handle(sessionId: "session-1", message: _urlElicitation());
+        registry.handle(sessionId: "session-1", message: _urlElicitation());
         final pending = registry.pendingExternalActionsForSession(sessionId: "session-1").single;
         expect(pending.authorizationUrl, "https://fixture.example/setup?private=fixture-only");
         expect(pending.purpose, PluginExternalActionPurpose.authorization);
@@ -83,7 +77,7 @@ void main() {
           return true;
         },
       );
-      handle(sessionId: "session-1", message: _urlElicitation());
+      registry.handle(sessionId: "session-1", message: _urlElicitation());
       events.clear();
       expect(
         registry.replyExternalAction(id: "br-1", sessionId: "session-1", choice: PluginExternalActionChoice.accept),
@@ -101,7 +95,7 @@ void main() {
 
     for (final mode in [null, "form"]) {
       test("form mode $mode retains typed fields and only broadcasts a static notice", () {
-        handle(
+        registry.handle(
           sessionId: "session-1",
           message: _formElicitation(mode: mode),
         );
@@ -170,7 +164,7 @@ void main() {
           return true;
         },
       );
-      handle(
+      registry.handle(
         sessionId: "session-1",
         message: _formElicitation(mode: "form"),
       );
@@ -214,7 +208,7 @@ void main() {
 
     for (final choice in PluginFormDismissalChoice.values) {
       test("form ${choice.name} preserves the exact native negative response", () {
-        handle(
+        registry.handle(
           sessionId: "session-1",
           message: _formElicitation(mode: "form"),
         );
@@ -236,12 +230,9 @@ void main() {
     }
 
     test("unsupported native schemas are declined with a visible capability explanation", () {
-      expect(
-        handle(
-          sessionId: "session-1",
-          message: _request(requestId: "native-form", request: {"subtype": "elicitation", "mode": "form"}),
-        ),
-        isTrue,
+      registry.handle(
+        sessionId: "session-1",
+        message: _request(requestId: "native-form", request: {"subtype": "elicitation", "mode": "form"}),
       );
       expect(responses.single.payload, {"action": "decline"});
       expect(events.whereType<BridgeSseTuiToastShow>().single.message, contains("not supported"));
@@ -249,7 +240,7 @@ void main() {
     });
 
     test("verified MCP server context enriches permission detail without changing native grants", () {
-      handle(
+      registry.handle(
         sessionId: "session-1",
         message: _request(
           requestId: "permission",
@@ -269,20 +260,17 @@ void main() {
     });
 
     test("surfaces a permission with sanitized detail and capability", () {
-      expect(
-        handle(
-          sessionId: "session-1",
-          message: _request(
-            requestId: "request-1",
-            request: {
-              "tool_name": "Write",
-              "input": {"file_path": "a.dart"},
-              "decision_reason": "\u001b[31mReview this write\u001b[0m",
-              "suppress_always_allow_rule": true,
-            },
-          ),
+      registry.handle(
+        sessionId: "session-1",
+        message: _request(
+          requestId: "request-1",
+          request: {
+            "tool_name": "Write",
+            "input": {"file_path": "a.dart"},
+            "decision_reason": "\u001b[31mReview this write\u001b[0m",
+            "suppress_always_allow_rule": true,
+          },
         ),
-        isTrue,
       );
 
       final asked = events.whereType<BridgeSsePermissionAsked>().single;
@@ -296,7 +284,7 @@ void main() {
     });
 
     test("once allows only the current input", () {
-      handle(sessionId: "session-1", message: _permission());
+      registry.handle(sessionId: "session-1", message: _permission());
 
       expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isTrue);
 
@@ -308,7 +296,7 @@ void main() {
     });
 
     test("every approval transition invalidates the activity summary", () {
-      handle(sessionId: "session-1", message: _permission());
+      registry.handle(sessionId: "session-1", message: _permission());
       expect(events.whereType<BridgeSseProjectUpdated>(), hasLength(1));
 
       expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isTrue);
@@ -317,7 +305,7 @@ void main() {
     });
 
     test("always sends only session-scoped addRules suggestions", () {
-      handle(
+      registry.handle(
         sessionId: "session-1",
         message: _permission(
           suggestions: const [
@@ -362,7 +350,7 @@ void main() {
       {"type": "addRules", "destination": "cliArg"},
     ]) {
       test("always rejects ${suggestion["type"]}/${suggestion["destination"]}", () {
-        handle(
+        registry.handle(
           sessionId: "session-1",
           message: _permission(suggestions: [suggestion]),
         );
@@ -377,7 +365,7 @@ void main() {
     }
 
     test("suppressed always degrades safely even if an older client sends it", () {
-      handle(
+      registry.handle(
         sessionId: "session-1",
         message: _permission(
           suppressAlways: true,
@@ -403,7 +391,7 @@ void main() {
     });
 
     test("AskUserQuestion maps answers by full question text", () {
-      handle(
+      registry.handle(
         sessionId: "session-1",
         message: _request(
           requestId: "question-request",
@@ -449,7 +437,7 @@ void main() {
     });
 
     test("ExitPlanMode approval preserves the plan input", () {
-      handle(
+      registry.handle(
         sessionId: "session-1",
         message: _request(
           requestId: "plan-request",
@@ -476,8 +464,8 @@ void main() {
     });
 
     test("reject and teardown deny requests and emit clearing events", () {
-      handle(sessionId: "session-1", message: _permission());
-      handle(
+      registry.handle(sessionId: "session-1", message: _permission());
+      registry.handle(
         sessionId: "session-1",
         message: _request(
           requestId: "question-request",
@@ -498,8 +486,8 @@ void main() {
       expect(events.whereType<BridgeSsePermissionReplied>(), hasLength(1));
       expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
 
-      handle(sessionId: "session-1", message: _permission());
-      handle(
+      registry.handle(sessionId: "session-1", message: _permission());
+      registry.handle(
         sessionId: "session-1",
         message: _request(
           requestId: "question-request-2",
@@ -523,8 +511,8 @@ void main() {
     });
 
     test("dispose cancels pending requests across sessions", () {
-      handle(sessionId: "session-1", message: _permission());
-      handle(
+      registry.handle(sessionId: "session-1", message: _permission());
+      registry.handle(
         sessionId: "session-2",
         message: _request(
           requestId: "request-2",
@@ -544,7 +532,7 @@ void main() {
         emit: events.add,
         respond: ({required sessionId, required requestId, required payload}) => false,
       );
-      handle(sessionId: "session-1", message: _permission());
+      registry.handle(sessionId: "session-1", message: _permission());
       events.clear();
 
       expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isFalse);

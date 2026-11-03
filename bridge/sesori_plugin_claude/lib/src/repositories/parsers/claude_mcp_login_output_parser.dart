@@ -70,12 +70,13 @@ final class const ClaudeMcpLoginOutputParser() {
 
   ClaudeMcpLoginChallenge? parseLine({required String line}) {
     for (final match in _url.allMatches(stripAnsi(value: line))) {
-      final value = match.group(0)!;
+      final value = match.input.substring(match.start, match.end);
       if (value.length > 16384) throw const FormatException("MCP login URL exceeds the supported length");
       final uri = Uri.tryParse(value);
-      if (uri == null || !uri.queryParameters.containsKey("redirect_uri")) continue;
+      final redirectUri = uri?.queryParameters["redirect_uri"];
+      if (uri == null || redirectUri == null) continue;
       final state = uri.queryParameters["state"];
-      final callback = Uri.tryParse(uri.queryParameters["redirect_uri"]!);
+      final callback = Uri.tryParse(redirectUri);
       if (uri.host.isEmpty ||
           (uri.scheme == "http" && !const {"localhost", "127.0.0.1", "::1"}.contains(uri.host)) ||
           uri.userInfo.isNotEmpty ||
