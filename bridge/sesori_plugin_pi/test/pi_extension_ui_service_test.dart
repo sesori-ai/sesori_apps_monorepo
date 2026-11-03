@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
@@ -35,7 +36,7 @@ void main() {
       catalogRepository: PiSessionCatalogRepository(storageApi: storage),
       processRepository: processes.repository,
       tracker: PiExtensionUiTracker(),
-      editorTimeout: const Duration(milliseconds: 20),
+      editorTimeout: PiExtensionUiService.defaultEditorTimeout,
     );
     service.events.listen(events.add);
   });
@@ -207,48 +208,44 @@ void main() {
     );
   });
 
-  test("mirrors upstream timeout, owns editor expiry, and bounds notifications", () async {
-    await service.handleRequest(
-      ownerSessionId: "child",
-      processGeneration: processes.generation,
-      request: const PiInputDialogRequest(
-        id: "upstream-timeout",
-        title: null,
-        placeholder: null,
-        timeoutMs: 5,
-        raw: {},
-      ),
-    );
-    await service.handleRequest(
-      ownerSessionId: "child",
-      processGeneration: processes.generation,
-      request: const PiEditorDialogRequest(id: "editor-timeout", title: null, prefill: null, raw: {}),
-    );
-    await service.handleRequest(
-      ownerSessionId: "child",
-      processGeneration: processes.generation,
-      request: PiNotifyRequest(
-        id: "notify",
-        message: _repeat("n", 600),
-        notifyType: PiNotificationType.warning,
-        raw: const {},
-      ),
-    );
-    await service.handleRequest(
-      ownerSessionId: "child",
-      processGeneration: processes.generation,
-      request: const PiSetStatusRequest(id: "status", statusKey: "key", statusText: "secret", raw: {}),
-    );
+  test("mirrors upstream timeout, owns editor expiry, and bounds notifications", () {
+    // The service subtracts real catalog lookup time from each timeout, so
+    // both timeouts stay far above any lookup and only fake time expires them.
+    fakeAsync((async) {
+      void handle(PiExtensionUiRequest request) {
+        unawaited(
+          service.handleRequest(ownerSessionId: "child", processGeneration: processes.generation, request: request),
+        );
+        async.flushMicrotasks();
+      }
 
-    // Both timeouts run on real timers, so wait for their effect, not a set time.
-    while (events.whereType<PiExtensionUiQuestionRejected>().length < 2 || processes.replies.isEmpty) {
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-    }
+      handle(
+        const PiInputDialogRequest(id: "upstream-timeout", title: null, placeholder: null, timeoutMs: 60000, raw: {}),
+      );
+      handle(const PiEditorDialogRequest(id: "editor-timeout", title: null, prefill: null, raw: {}));
+      handle(
+        PiNotifyRequest(
+          id: "notify",
+          message: _repeat("n", 600),
+          notifyType: PiNotificationType.warning,
+          raw: const {},
+        ),
+      );
+      handle(const PiSetStatusRequest(id: "status", statusKey: "key", statusText: "secret", raw: {}));
+      expect(service.getPendingQuestions(sessionId: "child"), hasLength(2));
 
-    expect(service.getPendingQuestions(sessionId: "child"), isEmpty);
-    expect(processes.replies.map((reply) => reply.requestId), ["editor-timeout"]);
-    expect(processes.replies.single.reply, isA<PiExtensionUiCancelledReply>());
-    expect(events.whereType<PiExtensionUiQuestionRejected>(), hasLength(2));
+      async.elapse(const Duration(minutes: 1));
+      expect(service.getPendingQuestions(sessionId: "child").single.questions.single.header, "Editor");
+      expect(processes.replies, isEmpty);
+      expect(events.whereType<PiExtensionUiQuestionRejected>(), hasLength(1));
+
+      async.elapse(PiExtensionUiService.defaultEditorTimeout);
+      expect(service.getPendingQuestions(sessionId: "child"), isEmpty);
+      expect(processes.replies.map((reply) => reply.requestId), ["editor-timeout"]);
+      expect(processes.replies.single.reply, isA<PiExtensionUiCancelledReply>());
+      expect(events.whereType<PiExtensionUiQuestionRejected>(), hasLength(2));
+    });
+
     final toast = events.whereType<PiExtensionUiToast>().single;
     expect(toast.sessionId, "child");
     expect(toast.message.runes.length, PiExtensionUiService.maxTextLength);
