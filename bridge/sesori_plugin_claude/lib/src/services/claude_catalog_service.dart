@@ -1,6 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../models/claude_agent_selection.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
 
@@ -117,42 +116,5 @@ final class ClaudeCatalogService({
       Log.w("[claude] fast-mode availability unverified; offering it as available", error, stack);
       return handshake;
     }
-  }
-
-  Future<void> selectModel({
-    required String sessionId,
-    required String modelId,
-  }) async {
-    await _processes.sendControlRequest(
-      sessionId: sessionId,
-      subtype: "set_model",
-      params: {"model": modelId},
-    );
-    final applied = _processes.appliedSelection(sessionId: sessionId);
-    _processes.recordAppliedSelection(
-      sessionId: sessionId,
-      model: modelId,
-      effort: applied?.effort,
-      permissionMode: applied?.permissionMode,
-      fastMode: applied?.fastMode ?? false,
-    );
-  }
-
-  Future<void> selectAgent({required String sessionId, required String agent}) async {
-    final selection = ClaudeAgentSelection.tryParse(agent);
-    if (selection == null) throw ArgumentError.value(agent, "agent", "Unknown Claude agent");
-    await _processes.sendControlRequest(
-      sessionId: sessionId,
-      subtype: "set_permission_mode",
-      params: {"mode": selection.permissionMode.controlValue},
-    );
-    final applied = _processes.appliedSelection(sessionId: sessionId);
-    _processes.recordAppliedSelection(
-      sessionId: sessionId,
-      model: applied?.model,
-      effort: applied?.effort,
-      permissionMode: selection.permissionMode,
-      fastMode: applied?.fastMode ?? false,
-    );
   }
 }

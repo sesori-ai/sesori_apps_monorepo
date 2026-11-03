@@ -1,11 +1,11 @@
 import "dart:async";
 
 import "package:claude_plugin/claude_plugin.dart";
-import "package:claude_plugin/claude_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
+import "support/fake_claude_process.dart";
 
 void main() {
   group("ClaudeCatalogService", () {
@@ -150,80 +150,6 @@ void main() {
       );
     });
   });
-
-  group("ClaudeCatalogService live selections", () {
-    late FakeClaudeProcess process;
-    late ClaudeSessionProcessRepository processes;
-    late ClaudeCatalogService service;
-
-    setUp(() async {
-      process = FakeClaudeProcess();
-      processes = ClaudeSessionProcessRepository(
-        supportsMcpAuthentication: true,
-        processFactory: (_) async {
-          unawaited(_answerCatalogControls(process, commandName: "review"));
-          return process;
-        },
-        binaryPath: "claude",
-        environment: const {},
-      );
-      service = ClaudeCatalogService(
-        catalog: const ClaudeBackendCatalogRepository(),
-        processes: processes,
-        probeSessionId: otherTestSessionId,
-        discoveryDirectory: "/tmp/claude-state",
-      );
-      await processes.ensureResident(
-        sessionId: testSessionId,
-        directory: "/tmp/project",
-        createNew: true,
-        model: "small",
-        effort: ClaudeEffortLevel.low,
-        permissionMode: ClaudePermissionMode.standard,
-        fastMode: false,
-        allowedTools: const [],
-      );
-    });
-
-    tearDown(() async {
-      await processes.dispose();
-      await process.close();
-    });
-
-    test("switches model without changing the process launch effort", () async {
-      final selected = service.selectModel(sessionId: testSessionId, modelId: "large");
-      final request = await _waitForControl(process, "set_model");
-      expect(_request(request)["model"], "large");
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: const {});
-      await selected;
-
-      final applied = processes.appliedSelection(sessionId: testSessionId)!;
-      expect(applied.model, "large");
-      expect(applied.effort, ClaudeEffortLevel.low);
-      expect(applied.permissionMode, ClaudePermissionMode.standard);
-    });
-
-    test("maps Plan to the control protocol and preserves model selection", () async {
-      final selected = service.selectAgent(sessionId: testSessionId, agent: "Plan");
-      final request = await _waitForControl(process, "set_permission_mode");
-      expect(_request(request)["mode"], "plan");
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: const {});
-      await selected;
-
-      final applied = processes.appliedSelection(sessionId: testSessionId)!;
-      expect(applied.model, "small");
-      expect(applied.effort, ClaudeEffortLevel.low);
-      expect(applied.permissionMode, ClaudePermissionMode.plan);
-    });
-
-    test("rejects an unknown agent without sending a control request", () async {
-      await expectLater(
-        service.selectAgent(sessionId: testSessionId, agent: "Research"),
-        throwsArgumentError,
-      );
-      expect(_controlSubtypes(process), ["initialize"]);
-    });
-  });
 }
 
 Future<void> _answerCatalogControls(FakeClaudeProcess process, {required String commandName}) async {
@@ -291,13 +217,3 @@ Map<String, Object?> _request(Map<String, Object?> frame) => (frame["request"]! 
 Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
     .where((frame) => frame["type"] == "control_request")
     .map((frame) => _request(frame)["subtype"] as String?);
-
-Future<Map<String, Object?>> _waitForControl(FakeClaudeProcess process, String subtype) async {
-  for (var attempt = 0; attempt < 50; attempt++) {
-    for (final frame in process.written) {
-      if (frame["type"] == "control_request" && _request(frame)["subtype"] == subtype) return frame;
-    }
-    await pump();
-  }
-  throw StateError("no '$subtype' control request written");
-}

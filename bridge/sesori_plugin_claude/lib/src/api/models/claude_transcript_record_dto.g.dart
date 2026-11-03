@@ -14,8 +14,6 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       timestamp: _timestampOrNull(json['timestamp']),
       isSidechain: _boolOrNull(json['isSidechain']),
       agentId: _stringOrNull(json['agentId']),
-      gitBranch: _stringOrNull(json['gitBranch']),
-      version: _stringOrNull(json['version']),
       aiTitle: _stringOrNull(json['aiTitle']),
       customTitle: _stringOrNull(json['customTitle']),
       uuid: _stringOrNull(json['uuid']),

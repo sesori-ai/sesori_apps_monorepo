@@ -736,25 +736,8 @@ final class ClaudePlugin({
     return selection.permissionMode;
   }
 
-  Future<PluginSession?> _findSession(String sessionId) async {
-    final created = _createdSessions[sessionId];
-    if (created != null) return created;
-    final record = await _transcripts.findSessionById(sessionId: sessionId);
-    if (record == null) return null;
-    final directory = normalizeProjectDirectory(directory: record.cwd);
-    final createdAt = (record.createdAt ?? record.updatedAt)?.millisecondsSinceEpoch;
-    final updatedAt = (record.updatedAt ?? record.createdAt)?.millisecondsSinceEpoch;
-    return PluginSession(
-      id: record.id,
-      projectID: directory,
-      directory: directory,
-      parentID: record.parentId,
-      title: record.title,
-      time: createdAt == null || updatedAt == null
-          ? null
-          : PluginSessionTime(created: createdAt, updated: updatedAt, archived: null),
-    );
-  }
+  Future<PluginSession?> _findSession(String sessionId) async =>
+      _createdSessions[sessionId] ?? await _transcripts.findSessionById(sessionId: sessionId);
 
   Future<String?> _directoryForSession(String sessionId) async => (await _findSession(sessionId))?.directory;
 
