@@ -14,7 +14,6 @@
     "mcp.connect",
     "mcp.disconnect",
     "project.list",
-    "project.update",
     "project.current",
     "session.list",
     "session.create",

@@ -12,7 +12,6 @@
     "Session.Message.ToolState": "Session.Message.Assistant.Tool#/properties/state"
   },
   "operations": [
-    "server.info",
     "location.get",
     "mcp.list",
     "experimental.mcp.connect",
@@ -24,7 +23,6 @@
     "credential.remove",
     "debug.location.list",
     "project.list",
-    "project.update",
     "session.list",
     "session.create",
     "session.get",

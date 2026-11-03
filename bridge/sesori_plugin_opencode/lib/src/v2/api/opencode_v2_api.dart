@@ -21,7 +21,6 @@ import "../models/openapi/model_info.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
 import "../models/openapi/provider_info.g.dart";
-import "../models/openapi/server_info.g.dart";
 import "../models/openapi/session_active.g.dart";
 import "../models/openapi/session_inbox_compaction.g.dart";
 import "../models/openapi/session_inbox_synthetic.g.dart";
@@ -43,15 +42,6 @@ import "../models/v2_request_bodies.dart";
 /// remain owned by the shared raw client; only v2 wire shapes live here.
 class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   static const _jsonHeaders = {"content-type": "application/json"};
-
-  Future<ServerInfo> getServerInfo() async {
-    const path = "/api/info";
-    return _object<ServerInfo>(
-      response: await _response(request: _client.get(path: path)),
-      operation: path,
-      fromJson: ServerInfo.fromJson,
-    );
-  }
 
   Future<LocationPublicInfo> getLocation({required String directory}) async {
     const path = "/api/location";

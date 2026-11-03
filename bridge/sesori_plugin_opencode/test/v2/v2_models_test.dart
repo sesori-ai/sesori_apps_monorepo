@@ -8,7 +8,6 @@ import "package:opencode_plugin/src/v2/models/openapi/form_string_field.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_source.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/provider_info.g.dart";
-import "package:opencode_plugin/src/v2/models/openapi/server_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_inbox_compaction.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_assistant.g.dart";
@@ -139,18 +138,6 @@ void main() {
       () => PermissionSource.fromJson(const <String, dynamic>{"type": "tool"}),
       throwsA(isA<TypeError>()),
     );
-  });
-
-  test("requires the server identity version", () {
-    final payload = <String, dynamic>{
-      "version": "2.0.16",
-      "pid": 123,
-      "urls": <String>["http://127.0.0.1:4096"],
-      "paths": <String, dynamic>{"tmp": "/tmp/opencode-fixture"},
-    };
-    expect(ServerInfo.fromJson(payload).version, "2.0.16");
-    payload.remove("version");
-    expect(() => ServerInfo.fromJson(payload), throwsA(isA<TypeError>()));
   });
 
   test("decodes providers whose chunk timeout is disabled", () {
