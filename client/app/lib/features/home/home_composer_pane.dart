@@ -103,7 +103,10 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       // A list still loading may yet name a default, so the prompt waits.
       if (isLoading) return _empty();
       return _prompt(
-        onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
+        onProjectSelected: ({required projectId, required projectName}) {
+          context.read<AllSessionsCubit>().rememberNewSessionProject(projectId: projectId);
+          setState(() => _projectId = projectId);
+        },
       );
     }
     return BlocProvider(

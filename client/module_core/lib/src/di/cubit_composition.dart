@@ -16,6 +16,7 @@ import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/feedback_prompt_service.dart";
 import "../services/file_reference_open_service.dart";
+import "../services/last_new_session_project_tracker.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
@@ -100,6 +101,7 @@ NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessi
     productAnalyticsService: locator<ProductAnalyticsService>(),
     sessionLaunchService: locator<SessionLaunchService>(),
     dedicatedWorktreePreferenceStore: locator<DedicatedWorktreePreferenceStore>(),
+    lastProjectTracker: locator<LastNewSessionProjectTracker>(),
     project: project,
   );
 }
