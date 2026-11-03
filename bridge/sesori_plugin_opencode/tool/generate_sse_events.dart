@@ -31,6 +31,8 @@ import 'dart:convert';
 // `dart:io` is used for File/stdout/stderr below.
 import 'dart:io';
 
+import 'src/json_reads.dart';
+
 const _defaultManifestPath = 'tool/opencode_events_v1.json';
 const _defaultOutputPath = 'lib/src/models/sse_event_data.g.dart';
 
@@ -59,21 +61,21 @@ void main(List<String> args) {
     stderr.writeln('Missing $manifestPath — run from package root.');
     exit(1);
   }
-  final manifest = jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>;
-  final events = (manifest['events'] as List).cast<Map<String, dynamic>>();
-  final dart = manifest['dart'] as Map<String, dynamic>;
-  final baseClass = dart['baseClass'] as String;
-  final sessionClass = dart['sessionMarkerClass'] as String;
-  _classPrefix = dart['classPrefix'] as String;
-  final imports = (dart['imports'] as Map<String, dynamic>).cast<String, String>();
-  final envelope = dart['envelope'] as Map<String, dynamic>?;
+  final manifest = readObject(jsonDecode(manifestFile.readAsStringSync()));
+  final events = readList(manifest['events']).map(readObject).toList();
+  final dart = readObject(manifest['dart']);
+  final baseClass = readString(dart['baseClass']);
+  final sessionClass = readString(dart['sessionMarkerClass']);
+  _classPrefix = readString(dart['classPrefix']);
+  final imports = readObject(dart['imports']).map((key, value) => MapEntry(key, readString(value)));
+  final envelope = readObjectOrNull(dart['envelope']);
   final fieldOwners = [...events, ?envelope];
 
   // Validate every ref is in the import map.
   final missingImports = <String>{};
   for (final ev in fieldOwners) {
-    for (final f in (ev['fields'] as List).cast<Map<String, dynamic>>()) {
-      final ref = f['ref'] as String?;
+    for (final f in _fieldsOf(ev)) {
+      final ref = readStringOrNull(f['ref']);
       if (ref != null && !imports.containsKey(ref)) {
         missingImports.add(ref);
       }
@@ -89,8 +91,8 @@ void main(List<String> args) {
   // `directives_ordering`.
   final usedRefs = <String>[];
   for (final ev in fieldOwners) {
-    for (final f in (ev['fields'] as List).cast<Map<String, dynamic>>()) {
-      final ref = f['ref'] as String?;
+    for (final f in _fieldsOf(ev)) {
+      final ref = readStringOrNull(f['ref']);
       if (ref != null && !usedRefs.contains(ref)) usedRefs.add(ref);
     }
   }
@@ -136,16 +138,16 @@ void main(List<String> args) {
   out.writeln('  // classes can still construct events through the base class.');
   out.writeln('  // -------------------------------------------------------------------');
   for (final ev in events) {
-    final type = ev['type'] as String;
+    final type = readString(ev['type']);
     final className = _classNameFor(type);
     final factoryName = _factoryNameFor(type);
-    final fields = (ev['fields'] as List).cast<Map<String, dynamic>>();
+    final fields = _fieldsOf(ev);
     if (fields.isEmpty) {
       out.writeln('  const factory $baseClass.$factoryName() = $className;');
     } else {
       out.writeln('  const factory $baseClass.$factoryName({');
       for (final f in fields) {
-        final name = f['name'] as String;
+        final name = readString(f['name']);
         final required = f['required'] != false;
         final dartType = _dartType(f, required: required);
         if (required) {
@@ -161,7 +163,7 @@ void main(List<String> args) {
   out.writeln('  /// Every wire-format type discriminator this hierarchy decodes.');
   out.writeln('  static const Set<String> knownTypes = {');
   for (final ev in events) {
-    out.writeln('    ${_rawString(ev['type'] as String)},');
+    out.writeln('    ${_rawString(readString(ev['type']))},');
   }
   out.writeln('  };');
   out.writeln();
@@ -181,7 +183,7 @@ void main(List<String> args) {
   out.writeln('    }');
   out.writeln('    return switch (type) {');
   for (final ev in events) {
-    final type = ev['type'] as String;
+    final type = readString(ev['type']);
     final className = _classNameFor(type);
     final rawType = _rawString(type);
     out.writeln('      $rawType => $className.fromJson(json),');
@@ -194,7 +196,7 @@ void main(List<String> args) {
   out.writeln();
 
   for (final ev in events) {
-    _emitVariant(out, ev, baseClass: baseClass, sessionClass: sessionClass);
+    _emitVariant(out: out, ev: ev, baseClass: baseClass, sessionClass: sessionClass);
   }
   if (envelope != null) {
     _emitEnvelope(out: out, envelope: envelope, baseClass: baseClass);
@@ -215,8 +217,8 @@ void _emitEnvelope({
   required Map<String, dynamic> envelope,
   required String baseClass,
 }) {
-  final className = envelope['className'] as String;
-  final fields = (envelope['fields'] as List).cast<Map<String, dynamic>>();
+  final className = readString(envelope['className']);
+  final fields = _fieldsOf(envelope);
   out.writeln('class $className {');
   out.writeln('  const $className({');
   for (final field in fields) {
@@ -231,8 +233,8 @@ void _emitEnvelope({
   out.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
   out.writeln('    return $className(');
   for (final field in fields) {
-    final name = field['name'] as String;
-    out.writeln('      $name: ${_decodeField(name, field, field['required'] != false)},');
+    final name = readString(field['name']);
+    out.writeln('      $name: ${_decodeField(name: name, f: field, required: field['required'] != false)},');
   }
   // The outer discriminator is authoritative, even if a future payload happens
   // to contain its own field named type.
@@ -242,15 +244,15 @@ void _emitEnvelope({
   out.writeln('}');
 }
 
-void _emitVariant(
-  StringBuffer out,
-  Map<String, dynamic> ev, {
+void _emitVariant({
+  required StringBuffer out,
+  required Map<String, dynamic> ev,
   required String baseClass,
   required String sessionClass,
 }) {
-  final type = ev['type'] as String;
+  final type = readString(ev['type']);
   final className = _classNameFor(type);
-  final fields = (ev['fields'] as List).cast<Map<String, dynamic>>();
+  final fields = _fieldsOf(ev);
   // A variant is a session-scoped event either when it has a top-level
   // `sessionID` field, or when the manifest sets `session_marker: true`
   // explicitly (used when the session context is carried through a
@@ -260,7 +262,7 @@ void _emitVariant(
   final explicitMarker = ev['session_marker'] == true;
   final isSessionEvent = hasSessionID || explicitMarker;
   final isDeprecated = ev['deprecated'] == true;
-  final deprecatedMsg = ev['deprecated_message'] as String?;
+  final deprecatedMsg = readStringOrNull(ev['deprecated_message']);
 
   // Class header.
   // Deprecated manifest events stay generated: OpenCode v1 still emits the
@@ -292,7 +294,7 @@ void _emitVariant(
     }
     out.writeln('  const $className({');
     for (final f in fields) {
-      final name = f['name'] as String;
+      final name = readString(f['name']);
       final required = f['required'] != false; // default to required
       if (required) {
         out.writeln('    required this.$name,');
@@ -306,7 +308,7 @@ void _emitVariant(
 
   // Field declarations.
   for (final f in fields) {
-    final name = f['name'] as String;
+    final name = readString(f['name']);
     final required = f['required'] != false;
     final dartType = _dartType(f, required: required);
     out.writeln('  final $dartType $name;');
@@ -326,8 +328,8 @@ void _emitVariant(
     out.writeln('  Map<String, dynamic> toJson() => <String, dynamic>{');
     out.writeln('    "type": type,');
     for (final f in fields) {
-      final name = f['name'] as String;
-      final expr = _encodeField(name, f);
+      final name = readString(f['name']);
+      final expr = _encodeField(name: name, f: f);
       out.writeln('    ${_rawKey(name)}: $expr,');
     }
     out.writeln('  };');
@@ -349,9 +351,9 @@ void _emitVariant(
   } else {
     out.writeln('    return $className(');
     for (final f in fields) {
-      final name = f['name'] as String;
+      final name = readString(f['name']);
       final required = f['required'] != false;
-      final expr = _decodeField(name, f, required);
+      final expr = _decodeField(name: name, f: f, required: required);
       out.writeln('      $name: $expr,');
     }
     out.writeln('    );');
@@ -360,14 +362,16 @@ void _emitVariant(
   out.writeln('}');
 }
 
+List<Map<String, dynamic>> _fieldsOf(Map<String, dynamic> owner) => readList(owner['fields']).map(readObject).toList();
+
 String _dartType(Map<String, dynamic> f, {required bool required}) {
-  final ref = f['ref'] as String?;
+  final ref = readStringOrNull(f['ref']);
   final isList = f['list'] == true;
   if (ref != null) {
     final refType = isList ? 'List<$ref>' : ref;
     return required ? refType : '$refType?';
   }
-  final t = f['type'] as String;
+  final t = readString(f['type']);
   final base = _primitiveType(t);
   if (isList) {
     return required ? 'List<$base>' : 'List<$base>?';
@@ -375,8 +379,8 @@ String _dartType(Map<String, dynamic> f, {required bool required}) {
   return required ? base : (base == 'dynamic' ? 'dynamic' : '$base?');
 }
 
-String _encodeField(String name, Map<String, dynamic> f) {
-  final ref = f['ref'] as String?;
+String _encodeField({required String name, required Map<String, dynamic> f}) {
+  final ref = readStringOrNull(f['ref']);
   final isList = f['list'] == true;
   final access = f['required'] == false ? '$name?' : name;
   if (ref != null && isList) {
@@ -388,8 +392,8 @@ String _encodeField(String name, Map<String, dynamic> f) {
   return name;
 }
 
-String _decodeField(String name, Map<String, dynamic> f, bool required) {
-  final ref = f['ref'] as String?;
+String _decodeField({required String name, required Map<String, dynamic> f, required bool required}) {
+  final ref = readStringOrNull(f['ref']);
   final isList = f['list'] == true;
   final jsonName = _rawKey(name);
   if (ref != null) {
@@ -399,7 +403,7 @@ String _decodeField(String name, Map<String, dynamic> f, bool required) {
         : '$ref.fromJson(json[$jsonName] as $wireType)';
     return required ? refExpr : 'json[$jsonName] == null ? null : $refExpr';
   }
-  final t = f['type'] as String;
+  final t = readString(f['type']);
   if (isList) {
     final base = _primitiveType(t);
     final listExpr = base == 'dynamic'
@@ -412,9 +416,9 @@ String _decodeField(String name, Map<String, dynamic> f, bool required) {
   }
   final rawExpr = 'json[$jsonName]';
   if (!required) {
-    return '$rawExpr == null ? null : ${_castExpr(t, rawExpr)}';
+    return '$rawExpr == null ? null : ${_castExpr(t: t, expr: rawExpr)}';
   }
-  return _castExpr(t, rawExpr);
+  return _castExpr(t: t, expr: rawExpr);
 }
 
 String _primitiveType(String t) {
@@ -428,7 +432,7 @@ String _primitiveType(String t) {
   };
 }
 
-String _castExpr(String t, String expr) {
+String _castExpr({required String t, required String expr}) {
   return switch (t) {
     'string' => '$expr as String',
     'int' => '($expr as num).toInt()',
