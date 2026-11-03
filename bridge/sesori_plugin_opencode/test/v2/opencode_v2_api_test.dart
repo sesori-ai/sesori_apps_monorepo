@@ -30,17 +30,11 @@ OpenCodeV2Api makeApi({required Future<http.Response> Function(http.Request) han
 }
 
 void main() {
-  test("reads direct server/location responses with shared authentication", () async {
+  test("reads direct location responses with shared authentication", () async {
     final api = makeApi(
       handler: (request) async {
         expect(request.headers["Authorization"], "Basic ${base64.encode(utf8.encode("opencode:fixture"))}");
         final body = switch (request.url.path) {
-          "/api/info" => <String, dynamic>{
-            "version": "2.0.16",
-            "pid": 42,
-            "urls": <String>[],
-            "paths": <String, dynamic>{"tmp": "/fixture/tmp"},
-          },
           "/api/location" => v2LocationFixture,
           "/api/debug/location" => [
             <String, String>{"directory": "/fixture/project"},
@@ -54,7 +48,6 @@ void main() {
         return http.Response(jsonEncode(body), 200);
       },
     );
-    expect((await api.getServerInfo()).version, "2.0.16");
     expect((await api.getLocation(directory: "/fixture/project")).project.id, "project-fixture");
     expect((await api.listLoadedLocations()).single.directory, "/fixture/project");
   });
@@ -209,17 +202,17 @@ void main() {
   test("connection failures retain their cause without reflecting transport details", () async {
     final cause = http.ClientException(
       "socket fixture diagnostics",
-      Uri.parse("http://localhost/api/info?scope=fixture"),
+      Uri.parse("http://localhost/api/location?scope=fixture"),
     );
     final api = makeApi(handler: (_) async => throw cause);
     await expectLater(
-      api.getServerInfo(),
+      api.getLocation(directory: "/fixture/project"),
       throwsA(
         isA<PluginOperationException>()
-            .having((error) => error.operation, "operation", "/api/info")
+            .having((error) => error.operation, "operation", "/api/location")
             .having((error) => error.statusCode, "status defaults to upstream 502", isNull)
             .having((error) => error.cause, "cause", same(cause))
-            .having((error) => error.toString(), "presentation", "OpenCode v2 request failed: /api/info"),
+            .having((error) => error.toString(), "presentation", "OpenCode v2 request failed: /api/location"),
       ),
     );
   });
@@ -483,7 +476,7 @@ void main() {
   test("retains decode causes without presenting response payloads", () async {
     final api = makeApi(handler: (_) async => http.Response("private prompt fixture", 200));
     await expectLater(
-      api.getServerInfo(),
+      api.getLocation(directory: "/fixture/project"),
       throwsA(
         isA<V2DecodeException>()
             .having((error) => error.innerError, "cause", isA<FormatException>())
@@ -492,7 +485,7 @@ void main() {
     );
     final failed = makeApi(handler: (_) async => http.Response("backend unavailable", 503));
     await expectLater(
-      failed.getServerInfo(),
+      failed.getLocation(directory: "/fixture/project"),
       throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 503)),
     );
   });
