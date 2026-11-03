@@ -77,12 +77,21 @@ class AntigravityInteractionService({
     final allows = safe.where((option) => option.kind == AntigravityPermissionKind.allowOnce).toList();
     final rejects = safe.where((option) => option.kind == AntigravityPermissionKind.rejectOnce).toList();
     if (allows.length != 1 || rejects.length > 1) throw const FormatException("No unambiguous once-only permission");
+    final kind = input.toolCall.kind;
     return AntigravityPermission(
       requestId: requestId,
       sessionId: input.sessionId,
-      tool: switch (input.toolCall.kind) {
+      tool: switch (kind) {
         null || AntigravityPermissionToolKind.unknown => "tool",
-        final kind => kind.name,
+        AntigravityPermissionToolKind.read ||
+        AntigravityPermissionToolKind.edit ||
+        AntigravityPermissionToolKind.delete ||
+        AntigravityPermissionToolKind.move ||
+        AntigravityPermissionToolKind.search ||
+        AntigravityPermissionToolKind.execute ||
+        AntigravityPermissionToolKind.think ||
+        AntigravityPermissionToolKind.fetch ||
+        AntigravityPermissionToolKind.other => kind.name,
       },
       description: input.toolCall.title,
       allowOptionId: allows.single.optionId,

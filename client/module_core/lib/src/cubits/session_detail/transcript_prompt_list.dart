@@ -221,32 +221,32 @@ class const TranscriptPromptListBuilder() {
       final ownDay = createdAt == null ? null : _dayOf(createdAt: createdAt);
       final turnIndex = turns.turnIndexByMessageId[id];
       // Before the first prompt there is no turn to be a child of.
-      switch (turnIndex == null ? null : turns.turns[turnIndex]) {
-        case TranscriptPromptTurn(:final opener) when opener.info.id != id:
-          entries.add(
-            TranscriptPromptFollowUp(
-              messageId: id,
-              text: text,
-              source: source,
-              createdAt: createdAt,
-              // An undated follow-up belongs to its turn's day.
-              dayKey: ownDay ?? dayKeyByOpenerId[opener.info.id],
-              number: number,
-              openerMessageId: opener.info.id,
-            ),
-          );
-        case _:
-          dayKeyByOpenerId[id] = ownDay;
-          entries.add(
-            TranscriptPromptOpener(
-              messageId: id,
-              text: text,
-              source: source,
-              createdAt: createdAt,
-              dayKey: ownDay,
-              number: number,
-            ),
-          );
+      final turn = turnIndex == null ? null : turns.turns[turnIndex];
+      if (turn case TranscriptPromptTurn(:final opener) when opener.info.id != id) {
+        entries.add(
+          TranscriptPromptFollowUp(
+            messageId: id,
+            text: text,
+            source: source,
+            createdAt: createdAt,
+            // An undated follow-up belongs to its turn's day.
+            dayKey: ownDay ?? dayKeyByOpenerId[opener.info.id],
+            number: number,
+            openerMessageId: opener.info.id,
+          ),
+        );
+      } else {
+        dayKeyByOpenerId[id] = ownDay;
+        entries.add(
+          TranscriptPromptOpener(
+            messageId: id,
+            text: text,
+            source: source,
+            createdAt: createdAt,
+            dayKey: ownDay,
+            number: number,
+          ),
+        );
       }
     }
     return entries;

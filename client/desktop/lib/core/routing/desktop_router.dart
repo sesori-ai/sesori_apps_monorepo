@@ -286,36 +286,15 @@ class const _PageFade({@override required final Duration transitionDuration}) ex
 }
 
 AppRouteNewSession _decodeNewSessionRoute({required GoRouterState state}) {
-  return switch (AppRoute.fromDef(
-    def: AppRouteDef.newSession,
-    pathParams: state.pathParameters,
-    queryParams: state.uri.queryParameters,
-  )) {
-    final AppRouteNewSession route => route,
-    final route => throw StateError("Route ${route.def.name} is not a new-session route"),
-  };
+  return AppRouteNewSession.fromParams(queryParams: state.uri.queryParameters);
 }
 
 AppRouteSessionDetail _decodeSessionDetailRoute({required GoRouterState state}) {
-  return switch (AppRoute.fromDef(
-    def: AppRouteDef.sessionDetail,
-    pathParams: state.pathParameters,
-    queryParams: state.uri.queryParameters,
-  )) {
-    final AppRouteSessionDetail route => route,
-    final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
-  };
+  return AppRouteSessionDetail.fromParams(pathParams: state.pathParameters, queryParams: state.uri.queryParameters);
 }
 
 AppRouteSessionDiffs _decodeSessionDiffsRoute({required GoRouterState state}) {
-  return switch (AppRoute.fromDef(
-    def: AppRouteDef.sessionDiffs,
-    pathParams: state.pathParameters,
-    queryParams: state.uri.queryParameters,
-  )) {
-    final AppRouteSessionDiffs route => route,
-    final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
-  };
+  return AppRouteSessionDiffs.fromParams(pathParams: state.pathParameters, queryParams: state.uri.queryParameters);
 }
 
 void _openSettings({required BuildContext context, required DesktopSettingsTab initialTab}) {

@@ -728,7 +728,12 @@ class PluginLifecycleService({
             percent: null,
             message: "The runtime could not be installed. Check the bridge logs for details.",
           );
-        case _:
+        case null ||
+            ProvisionResolving() ||
+            ProvisionDownloading() ||
+            ProvisionExtracting() ||
+            ProvisionVerifying() ||
+            ProvisionNotice():
           _emitInstallProgress(
             pluginId: pluginId,
             phase: PluginInstallPhase.failed,

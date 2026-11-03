@@ -197,7 +197,7 @@ class const AntigravityProtocolMapper() {
       return switch (AntigravityToolContentDto.fromJson(entry)) {
         AntigravityWrappedToolContentDto(content: AntigravityTextToolContentDto(:final text)) ||
         AntigravityTextToolContentDto(:final text) => text,
-        AntigravityToolContentDto() => null,
+        AntigravityWrappedToolContentDto() || AntigravityUnknownToolContentDto() => null,
       };
     } on Object catch (error, stackTrace) {
       Log.w("[antigravity] malformed tool content; retaining standard ACP degradation", error, stackTrace);

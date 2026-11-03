@@ -571,9 +571,11 @@ class PluginManagementCubit({
         challenge: challenge,
         browserState: _service.authenticationBrowserStates.valueOrNull?[entry.key],
       ),
-      final PluginAuthenticationChallenge challenge => PluginAuthenticationPresentationState.challenge(
+      PluginAuthenticationDeviceCodeChallenge() ||
+      PluginAuthenticationPastedCodeChallenge() ||
+      PluginAuthenticationUnsupportedChallenge() => PluginAuthenticationPresentationState.challenge(
         pluginId: entry.key,
-        challenge: _presentationForChallenge(challenge),
+        challenge: _presentationForChallenge(entry.value),
       ),
     };
   }

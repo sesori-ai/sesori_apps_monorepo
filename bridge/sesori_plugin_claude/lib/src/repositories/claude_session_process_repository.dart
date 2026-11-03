@@ -646,7 +646,16 @@ final class ClaudeSessionProcessRepository({
         }
         _removeSettledReplays(process: process);
         process.turnActive = false;
-      case ClaudeStreamMessage():
+      case ClaudeInitMessage() ||
+          ClaudeCompactBoundaryMessage() ||
+          ClaudeStatusMessage() ||
+          ClaudeTaskStartedMessage() ||
+          ClaudeTaskNotificationMessage() ||
+          ClaudeApiRetryMessage() ||
+          ClaudeUserMessage() ||
+          ClaudeControlResponseMessage() ||
+          ClaudeIgnoredMessage() ||
+          ClaudeUnknownMessage():
         break;
     }
     return null;
@@ -746,5 +755,13 @@ bool _startsNewTurn(ClaudeStreamMessage message) => switch (message) {
   ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage() => true,
   ClaudeTaskNotificationMessage() => true,
   ClaudeUserMessage(:final taskNotifications) => taskNotifications.isNotEmpty,
-  ClaudeStreamMessage() => false,
+  ClaudeInitMessage() ||
+  ClaudeCompactBoundaryMessage() ||
+  ClaudeStatusMessage() ||
+  ClaudeTaskStartedMessage() ||
+  ClaudeApiRetryMessage() ||
+  ClaudeResultMessage() ||
+  ClaudeControlResponseMessage() ||
+  ClaudeIgnoredMessage() ||
+  ClaudeUnknownMessage() => false,
 };
