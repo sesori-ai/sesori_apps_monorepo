@@ -92,7 +92,7 @@ void main() {
       expect(inSidebar(find.text("Session One")), findsOneWidget);
       expect(inSidebar(find.byKey(const Key("home-new-session"))), findsOneWidget);
       expect(inContent(find.byType(NewSessionView)), findsOneWidget);
-      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "p1");
+      expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id, "p1");
       expect(tester.widget<SessionTile>(inSidebar(find.byType(SessionTile))).selected, isFalse);
     });
 
@@ -117,7 +117,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NewSessionProjectPrompt), findsNothing);
-      expect(tester.widget<NewSessionView>(inContent(find.byType(NewSessionView))).projectId, "p1");
+      expect(tester.element(inContent(find.byType(NewSessionView))).read<NewSessionCubit>().state.project.id, "p1");
     });
 
     testWidgets("collapse slides the sidebar out and the pane's restore button brings it back", (tester) async {

@@ -209,7 +209,7 @@ void main() {
           ],
           child: DesktopHomeStart(
             projects: [project],
-            createNewSessionCubit: ({required projectId, required projectName, required projectKind}) =>
+            createNewSessionCubit: ({required project}) =>
                 NewSessionCubit(
                   connectionService: connection,
                   newSessionPluginService: pluginService,
@@ -227,9 +227,7 @@ void main() {
                     authSession: FakeAuthSession(initialState: const AuthState.initial()),
                   ),
                   dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
-                  projectId: projectId,
-                  projectName: projectName,
-                  projectKind: projectKind,
+                  project: project,
                 ),
             onOpenSession: ({required context, required project, required displayName, required session}) {},
             onOpenHarnessSettings: () {},

@@ -11,12 +11,12 @@ import "../../core/widgets/mobile_composer_presentation_scope.dart";
 class const NewSessionScreen({
   super.key,
 
-  /// Null asks for a project first.
+  /// The project the page opens in; null asks for a project first. Choosing
+  /// another project in the page moves its composer there, keeping the route.
   required final String? projectId,
   required final String? projectName,
 
-  /// How the page opened. Choosing another project replaces the page in place
-  /// and keeps it, so the page still leaves the way it came in.
+  /// How the page opened, so it still leaves the way it came in.
   required final NewSessionEntry entry,
 }) extends StatelessWidget {
   @override
@@ -33,38 +33,35 @@ class const NewSessionScreen({
       );
     }
     return BlocProvider(
-      // Replacing the route keeps its page, so the project keys the provider:
-      // another project gets a fresh cubit and never the one that was left.
-      key: ValueKey(projectId),
       create: (context) => createNewSessionCubit(
         locator: getIt,
-        projectId: projectId,
-        projectName: projectName,
-        projectKind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        project: NewSessionProject(
+          id: projectId,
+          name: projectName,
+          kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        ),
       ),
-      child: Builder(
-        builder: (context) => _build(context: context, projectId: projectId),
-      ),
+      child: Builder(builder: (context) => _build(context: context)),
     );
   }
 
-  Widget _build({required BuildContext context, required String projectId}) {
+  Widget _build({required BuildContext context}) {
     return NewSessionView(
-      projectId: projectId,
-      projectName: projectName,
-      // A different project is a different page: the route builds a fresh
-      // cubit for it.
-      onProjectSelected: ({required projectId, required projectName}) => context.replaceRoute(
-        AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry),
+      onProjectSelected: ({required projectId, required projectName}) => context.read<NewSessionCubit>().selectProject(
+        project: NewSessionProject(
+          id: projectId,
+          name: projectName,
+          kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        ),
       ),
       onBack: context.pop,
       onOpenHarnessSettings: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
       ),
-      onSessionCreated: ({required session}) => context.replaceRoute(
+      onSessionCreated: ({required session, required project}) => context.replaceRoute(
         AppRoute.sessionDetail(
-          projectId: projectId,
-          projectName: projectName,
+          projectId: project.id,
+          projectName: project.name,
           sessionId: session.id,
           sessionTitle: session.title,
           readOnly: false,
@@ -72,7 +69,7 @@ class const NewSessionScreen({
           fromLaunch: true,
         ),
       ),
-      composerScopeBuilder: ({required child}) {
+      composerScopeBuilder: ({required projectId, required child}) {
         return BlocProvider(
           create: (_) {
             final service = getIt<VoiceTranscriptionService>();

@@ -47,19 +47,14 @@ class NewSessionCubit({
   required final ProductAnalyticsService _productAnalyticsService,
   required final SessionLaunchService _sessionLaunchService,
   required final DedicatedWorktreePreferenceStore _dedicatedWorktreePreferenceStore,
-  required final String _projectId,
 
-  /// The project as the composer names it, for an alert about a creation
-  /// that fails after the user left; null when the composer has no name.
-  required final String? _projectName,
-
-  /// Whether the session starts in a folder project or in "No project", for
-  /// the creation analytics.
-  required final ProjectKind _projectKind,
+  /// The project the composer opens in; [selectProject] moves it.
+  required NewSessionProject project,
 }) extends Cubit<NewSessionState> {
   this
     : super(
         NewSessionState.composing(
+          project: project,
           config: NewSessionComposeConfig(
             availablePlugins: null,
             selectedPlugin: null,
@@ -81,7 +76,7 @@ class NewSessionCubit({
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
 
-  ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession(projectId: _projectId);
+  ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession();
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<SessionLaunchOutcome> _launchOutcomeSubscription;
   StreamSubscription<List<LaunchFollowUp>>? _followUpsSubscription;
@@ -97,6 +92,10 @@ class NewSessionCubit({
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
   ({int generation, NewSessionOptionsData? startedFrom, Future<void> refresh})? _silentRefresh;
+
+  /// The options load the bridge is still answering, so a project switch that
+  /// drops its answer can ask the new project the same way.
+  ({int generation, NewSessionOptionsLoadMode mode})? _optionsLoad;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
@@ -312,8 +311,9 @@ class NewSessionCubit({
         projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
       );
     }
+    final projectId = state.project.id;
     try {
-      final response = await _projectRepository.getProject(projectId: _projectId);
+      final response = await _projectRepository.getProject(projectId: projectId);
       if (isClosed || generation != _projectLoadGeneration || state is NewSessionCreated) return;
       switch (response) {
         case SuccessResponse(:final data):
@@ -326,7 +326,7 @@ class NewSessionCubit({
                 : NewSessionProjectWorktreeCapability.unsupported,
           );
         case ErrorResponse(:final error):
-          loge("New session: failed to load project $_projectId", error);
+          loge("New session: failed to load project $projectId", error);
           _emitStateUpdate(
             options: null,
             backendScope: null,
@@ -336,7 +336,7 @@ class NewSessionCubit({
       }
     } on Object catch (error, stackTrace) {
       if (isClosed || generation != _projectLoadGeneration) return;
-      loge("New session: failed to load project $_projectId", error, stackTrace);
+      loge("New session: failed to load project $projectId", error, stackTrace);
       _emitStateUpdate(
         options: null,
         backendScope: null,
@@ -344,6 +344,87 @@ class NewSessionCubit({
         projectWorktreeCapability: NewSessionProjectWorktreeCapability.unavailable,
       );
     }
+  }
+
+  /// Moves the composer to [project]. What the user wrote, staged and picked
+  /// stays; only what the project decides is asked again. The harnesses are
+  /// the bridge's, so they stay too, and the options on screen refresh in
+  /// place for the same harness: picks the project does not offer give way to
+  /// its defaults and come back with a project that does.
+  void selectProject({required NewSessionProject project}) {
+    final current = state;
+    if (current is! NewSessionComposing ||
+        current.phase is NewSessionPhaseSending ||
+        current.project.id == project.id) {
+      return;
+    }
+    // The old project's worktree answer is not this one's, so the row holds
+    // its place while the new one is checked.
+    emit(
+      current.copyWith(
+        project: project,
+        config: current.config.copyWith(projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading),
+      ),
+    );
+    unawaited(_loadProjectCapability());
+
+    final data = current.config.agentModelData;
+    // Discovery still running loads the options of the harness it lands on,
+    // for the project the composer holds by then: this one.
+    if (data.isPluginDiscoveryInFlight) return;
+    final pending = _optionsLoad;
+    final superseded = pending != null && pending.generation == _loadGeneration ? pending : null;
+    // Whatever is still on its way for the old project no longer applies.
+    final generation = ++_loadGeneration;
+    final plugin = data.plugin;
+    final source = data.optionsState.source;
+    // A harness with no options, or one the user loads on demand, stays as it
+    // is: neither is the project's. So does a login card, unless its recheck
+    // was on its way: the new project answers it instead. Options the last
+    // project had none of, or failed to give, are this one's to answer.
+    final reloads = switch (data.optionsState) {
+      NewSessionOptionsLoadingState() ||
+      NewSessionOptionsRefreshingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() => true,
+      NewSessionOptionsAuthenticationRequiredUnavailableState() ||
+      NewSessionOptionsAuthenticationRequiredRetainedState() => superseded != null,
+      NewSessionOptionsUnsupportedState() => false,
+    };
+    if (plugin == null || !plugin.isRoutable || source == null || !data.backendScope.isVerified || !reloads) return;
+    _emitStateUpdate(
+      options: _loadingState(previous: data.optionsState, source: source),
+      backendScope: null,
+      isPluginDiscoveryInFlight: false,
+      projectWorktreeCapability: null,
+    );
+    unawaited(
+      _loadOptions(
+        pluginId: plugin.id,
+        generation: generation,
+        // A bridge without a session-options catalog serves options only when
+        // asked to load them, which the user already did for the last project.
+        // A recheck or retry still on its way is asked again as it was.
+        mode: source == NewSessionOptionsSource.legacy || superseded?.mode == NewSessionOptionsLoadMode.forcedRefresh
+            ? NewSessionOptionsLoadMode.forcedRefresh
+            : NewSessionOptionsLoadMode.dynamicLoad,
+        // Carries the staged command, which stays if the project has it.
+        previousOptions: data.optionsState.data,
+        source: source,
+      ),
+    );
+  }
+
+  /// Names [projectId] as the project list does, for a composer opened before
+  /// the list knew it: the failure alert and the session's title carry it.
+  void nameProject({required String projectId, required String name}) {
+    final current = state;
+    if (current is! NewSessionComposing || current.project.id != projectId || current.project.name == name) return;
+    emit(current.copyWith(project: current.project.copyWith(name: name)));
   }
 
   void selectPlugin({required String pluginId}) {
@@ -488,13 +569,15 @@ class NewSessionCubit({
     required NewSessionOptionsSource source,
   }) async {
     final NewSessionOptionsLoadResult result;
+    final load = (generation: generation, mode: mode);
+    _optionsLoad = load;
     try {
       result = await _newSessionOptionsService.load(
-        projectId: _projectId,
+        projectId: state.project.id,
         pluginId: pluginId,
         source: source,
         mode: mode,
-        restoredSelection: _selectionTracker.read(projectId: _projectId, pluginId: pluginId),
+        restoredSelection: _selectionTracker.read(pluginId: pluginId),
         previousOptions: previousOptions,
       );
     } on Object catch (error, stackTrace) {
@@ -515,6 +598,8 @@ class NewSessionCubit({
         projectWorktreeCapability: null,
       );
       return;
+    } finally {
+      if (_optionsLoad == load) _optionsLoad = null;
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
@@ -655,7 +740,9 @@ class NewSessionCubit({
 
   /// Whether a session can start now. Options are not waited for: a session
   /// sent before they arrive runs on the harness' defaults. The project check
-  /// is, since it decides whether the requested worktree can be honoured.
+  /// is, since it decides whether the requested worktree can be honoured, and
+  /// so are options being asked again: the picks on screen may be another
+  /// project's until the answer reconciles them.
   bool get canCreateSession {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
@@ -664,6 +751,7 @@ class NewSessionCubit({
         (data.plugin?.isRoutable ?? false) &&
         data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.loading &&
         data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
+        data.optionsState is! NewSessionOptionsRefreshingState &&
         !data.optionsState.authenticationRequired;
   }
 
@@ -835,7 +923,7 @@ class NewSessionCubit({
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     final pluginId = _selectedPluginId;
-    final selectionIntent = pluginId == null ? null : _selectionTracker.read(projectId: _projectId, pluginId: pluginId);
+    final selectionIntent = pluginId == null ? null : _selectionTracker.read(pluginId: pluginId);
     final selected = _newSessionOptionsService.selectAgent(
       options: options,
       agent: agent,
@@ -844,7 +932,7 @@ class NewSessionCubit({
     if (selected == null) return;
     _replaceOptionsData(options: selected);
     if (pluginId != null) {
-      _selectionTracker.recordAgent(projectId: _projectId, pluginId: pluginId, agentName: agent);
+      _selectionTracker.recordAgent(pluginId: pluginId, agentName: agent);
     }
   }
 
@@ -853,9 +941,7 @@ class NewSessionCubit({
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     final pluginId = _selectedPluginId;
-    final variantIntent = pluginId == null
-        ? null
-        : _selectionTracker.read(projectId: _projectId, pluginId: pluginId)?.variant;
+    final variantIntent = pluginId == null ? null : _selectionTracker.read(pluginId: pluginId)?.variant;
     final selected = _newSessionOptionsService.selectModel(
       options: options,
       providerId: providerID,
@@ -865,12 +951,7 @@ class NewSessionCubit({
     if (selected == null) return;
     _replaceOptionsData(options: selected);
     if (pluginId != null) {
-      _selectionTracker.recordModel(
-        projectId: _projectId,
-        pluginId: pluginId,
-        providerId: providerID,
-        modelId: modelID,
-      );
+      _selectionTracker.recordModel(pluginId: pluginId, providerId: providerID, modelId: modelID);
     }
   }
 
@@ -884,7 +965,6 @@ class NewSessionCubit({
     final pluginId = _selectedPluginId;
     if (pluginId != null) {
       _selectionTracker.recordVariant(
-        projectId: _projectId,
         pluginId: pluginId,
         variant: NewSessionVariantIntent(id: variant.id),
       );
@@ -915,7 +995,7 @@ class NewSessionCubit({
     );
     final pluginId = _selectedPluginId;
     if (pluginId != null) {
-      _selectionTracker.recordFastMode(projectId: _projectId, pluginId: pluginId, fastMode: fastMode);
+      _selectionTracker.recordFastMode(pluginId: pluginId, fastMode: fastMode);
     }
   }
 
@@ -996,10 +1076,12 @@ class NewSessionCubit({
     final usesDedicatedWorktree =
         dedicatedWorktree && config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported;
     final pluginId = selectedPlugin.id;
+    final project = state.project;
     final launchId = _generateLaunchId();
     final startedAt = DateTime.now();
     emit(
       NewSessionState.composing(
+        project: project,
         config: NewSessionComposeConfig(
           availablePlugins: config.plugins,
           selectedPlugin: selectedPlugin,
@@ -1035,11 +1117,11 @@ class NewSessionCubit({
     // [_onLaunchOutcome] only while the composer is still open.
     await _sessionLaunchService.launch(
       launchId: launchId,
-      projectId: _projectId,
+      projectId: project.id,
       pluginId: pluginId,
       startedAt: startedAt,
-      projectName: _projectName,
-      projectKind: _projectKind,
+      projectName: project.name,
+      projectKind: project.kind,
       submission: submission,
       agent: options?.selectedAgent,
       model: selectedAgentModel == null
@@ -1126,8 +1208,8 @@ class NewSessionCubit({
   }
 
   /// Passes the composer to the session screen about to replace this one, and
-  /// forgets its text here so the next new session for the project starts
-  /// empty instead of showing it again.
+  /// forgets its text here so the next new session starts empty instead of
+  /// showing it again.
   void _handOverComposer({required String launchId, required AgentModelData data}) {
     _sessionLaunchService.handOverComposer(
       launchId: launchId,
@@ -1165,7 +1247,7 @@ class NewSessionCubit({
     switch (outcome) {
       case SessionLaunchSucceeded(:final session):
         _handOverComposer(launchId: phase.launchId, data: current.config.agentModelData);
-        emit(NewSessionState.created(session: session, launchId: phase.launchId));
+        emit(NewSessionState.created(project: current.project, session: session, launchId: phase.launchId));
       case SessionLaunchFailedWhileComposing(:final reason, :final followUps):
         // The follow-ups and whatever the composer still holds go into the
         // restored draft, and the composer holds one command: the first
@@ -1184,7 +1266,7 @@ class NewSessionCubit({
     final latest = state.agentModelData;
     if (latest == null) return;
     _composerDraft = submission.draft;
-    _composerDraftRepository.saveForNewSession(projectId: _projectId, draft: submission.draft);
+    _composerDraftRepository.saveForNewSession(draft: submission.draft);
     final restoredOptions = switch (submission) {
       NewSessionTextSubmissionSnapshot() => latest.optionsState,
       NewSessionCommandSubmissionSnapshot(:final command) => _restoreStagedCommand(
@@ -1194,6 +1276,7 @@ class NewSessionCubit({
     };
     emit(
       NewSessionState.composing(
+        project: state.project,
         config: NewSessionComposeConfig(
           availablePlugins: latest.plugins,
           selectedPlugin: latest.plugin,
@@ -1262,8 +1345,6 @@ class NewSessionCubit({
 
   ComposerDraft get composerDraft => _composerDraft;
 
-  ProjectKind get projectKind => _projectKind;
-
   /// Whether the composer has work in flight whose result lands in it later.
   /// A creation that lands meanwhile waits for it to settle.
   void setComposerBusy({required bool busy}) {
@@ -1276,13 +1357,13 @@ class NewSessionCubit({
 
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;
-    _composerDraftRepository.saveForNewSession(projectId: _projectId, draft: draft);
+    _composerDraftRepository.saveForNewSession(draft: draft);
   }
 
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
     _composerSelection = null;
-    _composerDraftRepository.clearForNewSession(projectId: _projectId);
+    _composerDraftRepository.clearForNewSession();
   }
 
   /// The images the composer has staged, which live only in the composer, so

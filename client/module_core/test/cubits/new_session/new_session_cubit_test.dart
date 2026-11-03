@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/new_session_subm
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/dedicated_worktree_preference_store.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
@@ -172,9 +173,7 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: dedicatedWorktreePreferenceStore ?? FakeDedicatedWorktreePreferenceStore(),
-      projectId: "project-1",
-      projectName: null,
-      projectKind: ProjectKind.folder,
+      project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
     );
 
     Future<void> waitForComposer(NewSessionCubit cubit) async {
@@ -195,6 +194,7 @@ void main() {
 
     test("option payloads participate in structural NewSessionState equality", () {
       NewSessionState buildState() => const NewSessionState.composing(
+        project: NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
         config: NewSessionComposeConfig(
           availablePlugins: [defaultPlugin],
           selectedPlugin: defaultPlugin,
@@ -605,9 +605,7 @@ void main() {
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
           dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
-          projectId: "project-1",
-          projectName: null,
-          projectKind: ProjectKind.folder,
+          project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
         );
       },
       act: (cubit) async {
@@ -805,7 +803,7 @@ void main() {
       final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
       expect(restoring.submission, same(snapshot));
       expect(cubit.composerDraft, same(draft));
-      expect(repository.readForNewSession(projectId: "project-1"), same(draft));
+      expect(repository.readForNewSession(), same(draft));
       expect(restoring.submission.draft.voiceSpans, draft.voiceSpans);
 
       cubit.acknowledgeRestoredSubmission(submission: snapshot);
@@ -894,7 +892,7 @@ void main() {
       expect(restored.draft.voiceSpans, [VoiceOriginSpan(start: 6, end: 11)]);
       expect(restored.attachments, [same(firstImage), same(followUpImage)]);
       expect(cubit.composerDraft, restored.draft);
-      expect(draftRepository.readForNewSession(projectId: "project-1"), restored.draft);
+      expect(draftRepository.readForNewSession(), restored.draft);
     });
 
     test("failed command submission restores staged command and next submit clears warning", () async {
@@ -1000,7 +998,7 @@ void main() {
       response.complete(ApiResponse.error(ApiError.generic()));
       await pending;
 
-      expect(repository.readForNewSession(projectId: "project-1").text, isEmpty);
+      expect(repository.readForNewSession().text, isEmpty);
       expect(cubit.state.stagedCommand, isNull);
     });
 
@@ -1423,7 +1421,7 @@ void main() {
 
       cubit.setFastMode(true);
       expect(cubit.state.agentModelData?.fastModeControl, FastModeControl.on);
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.fastMode, isTrue);
+      expect(selectionTracker.read(pluginId: "plugin-1")?.fastMode, isTrue);
 
       await cubit.submit(
         attachments: const [],
@@ -1565,7 +1563,7 @@ void main() {
         );
 
         expect(cubit.state.agentModelData?.agentModel, selectionBefore);
-        expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+        expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
       });
     }
 
@@ -1670,7 +1668,6 @@ void main() {
 
     test("selectAgent preserves an independent explicit model intent", () async {
       selectionTracker.recordModel(
-        projectId: "project-1",
         pluginId: "plugin-1",
         providerId: "openai",
         modelId: "gpt-4",
@@ -1718,7 +1715,7 @@ void main() {
         const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
       );
       expect(
-        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.model,
+        selectionTracker.read(pluginId: "plugin-1")?.model,
         isA<NewSessionModelIntent>()
             .having((intent) => intent.providerId, "providerId", "openai")
             .having((intent) => intent.modelId, "modelId", "gpt-4"),
@@ -1885,7 +1882,7 @@ void main() {
       cubit.selectVariant(const SessionVariant(id: "stale"));
 
       expect(cubit.state.agentModelData?.agentModel, selectionBefore);
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+      expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
     });
 
     test("stageCommand accepts an equivalent current command and rejects a stale one", () async {
@@ -1950,7 +1947,7 @@ void main() {
 
       cubit.selectAgent("plan");
 
-      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = selectionTracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, "plan");
       expect(saved?.model, isNull);
       expect(saved?.variant, isNull);
@@ -1992,7 +1989,7 @@ void main() {
         cubit.selectVariant(const SessionVariant(id: "xhigh"));
       },
       verify: (_) {
-        final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+        final saved = selectionTracker.read(pluginId: "plugin-1");
         expect(saved?.agentName, isNull);
         expect(saved?.model, isNull);
         expect(
@@ -2044,7 +2041,7 @@ void main() {
         cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
       },
       verify: (_) {
-        final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+        final saved = selectionTracker.read(pluginId: "plugin-1");
         expect(saved?.agentName, isNull);
         expect(saved?.model?.providerId, "anthropic");
         expect(saved?.model?.modelId, "claude-3");
@@ -2057,7 +2054,6 @@ void main() {
       skip: 2,
       build: () {
         selectionTracker.write(
-          projectId: "project-1",
           pluginId: "plugin-1",
           selection: _selectionIntentFromSnapshot(
             agentName: null,
@@ -2132,7 +2128,6 @@ void main() {
         // saved model entirely would surface openai/gpt-4 and fail this test —
         // i.e. it genuinely exercises variant-dropping, not full fallback.
         selectionTracker.write(
-          projectId: "project-1",
           pluginId: "plugin-1",
           selection: _selectionIntentFromSnapshot(
             agentName: null,
@@ -2205,7 +2200,6 @@ void main() {
       skip: 2,
       build: () {
         selectionTracker.write(
-          projectId: "project-1",
           pluginId: "plugin-1",
           selection: _selectionIntentFromSnapshot(agentName: "plan", agentModel: null),
         );
@@ -2250,7 +2244,6 @@ void main() {
       skip: 2,
       build: () {
         selectionTracker.write(
-          projectId: "project-1",
           pluginId: "plugin-1",
           selection: _selectionIntentFromSnapshot(agentName: "ghost", agentModel: null),
         );
@@ -2289,7 +2282,6 @@ void main() {
       skip: 2,
       build: () {
         selectionTracker.write(
-          projectId: "project-1",
           pluginId: "plugin-1",
           selection: _selectionIntentFromSnapshot(
             agentName: null,
@@ -2336,14 +2328,8 @@ void main() {
       "clears the persisted selection once the session is created",
       skip: 2,
       build: () {
-        selectionTracker.write(
-          projectId: "project-1",
-          pluginId: "plugin-1",
-          selection: _selectionIntentFromSnapshot(
-            agentName: "build",
-            agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
-          ),
-        );
+        // A pick the session starts with; one it could not apply would stay.
+        selectionTracker.recordFastMode(pluginId: "plugin-1", fastMode: false);
         when(
           () => mockSessionService.createSessionWithMessage(
             attachments: const [],
@@ -2370,7 +2356,7 @@ void main() {
         );
       },
       verify: (_) {
-        expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+        expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
       },
     );
 
@@ -2420,6 +2406,7 @@ void main() {
         expect(
           cubit.state,
           NewSessionState.created(
+            project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
             session: testSession(id: "s-1"),
             launchId: sending.launchId,
           ),
@@ -2523,7 +2510,7 @@ void main() {
           expect(composer?.unsent?.selection, (base: 0, extent: 4));
           expect(composer?.unsent?.attachments, [same(image)]);
           expect(cubit.composerDraft.text, isEmpty);
-          expect(draftRepository.readForNewSession(projectId: "project-1").text, isEmpty);
+          expect(draftRepository.readForNewSession().text, isEmpty);
         });
 
         test("a creation landing while the composer is busy waits for it, then hands over its draft", () async {
@@ -2628,14 +2615,8 @@ void main() {
     });
 
     test("clears the persisted selection on success even when the cubit was closed mid-send", () async {
-      selectionTracker.write(
-        projectId: "project-1",
-        pluginId: "plugin-1",
-        selection: _selectionIntentFromSnapshot(
-          agentName: "build",
-          agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
-        ),
-      );
+      // A pick the session starts with; one it could not apply would stay.
+      selectionTracker.recordFastMode(pluginId: "plugin-1", fastMode: false);
       final completer = Completer<ApiResponse<Session>>();
       when(
         () => mockSessionService.createSessionWithMessage(
@@ -2667,7 +2648,7 @@ void main() {
       completer.complete(ApiResponse.success(testSession(id: "s-bg")));
       await pending;
 
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+      expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
     });
 
     test("a late background success only clears the snapshot it was sent with, not a newer one", () async {
@@ -2689,7 +2670,6 @@ void main() {
 
       // The in-flight request was sent with selection V1.
       selectionTracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: _selectionIntentFromSnapshot(
           agentName: "build",
@@ -2709,7 +2689,6 @@ void main() {
       // A reopened composer writes a newer selection V2 for the same project
       // while the first request is still in flight.
       selectionTracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: _selectionIntentFromSnapshot(
           agentName: "build",
@@ -2721,7 +2700,7 @@ void main() {
       await pending;
 
       // V2 must survive — the late success only owned V1.
-      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = selectionTracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, "build");
       expect(saved?.model?.providerId, "openai");
       expect(saved?.model?.modelId, "gpt-4");
@@ -2750,7 +2729,6 @@ void main() {
 
       const model = AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low");
       selectionTracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: _selectionIntentFromSnapshot(agentName: "build", agentModel: model),
       );
@@ -2765,14 +2743,13 @@ void main() {
       await cubit.close();
 
       selectionTracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: _selectionIntentFromSnapshot(agentName: "build", agentModel: model),
       );
       completer.complete(ApiResponse.success(testSession(id: "s-late-equal")));
       await pending;
 
-      final saved = selectionTracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = selectionTracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, "build");
       expect(saved?.model?.providerId, model.providerID);
       expect(saved?.model?.modelId, model.modelID);
@@ -2884,6 +2861,269 @@ void main() {
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
       );
+    });
+
+    group("selectProject", () {
+      const projectTwo = NewSessionProject(id: "project-2", name: "Two", kind: ProjectKind.folder);
+      const build = AgentInfo(
+        name: "build",
+        description: "Build",
+        model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+        mode: AgentMode.primary,
+      );
+      const plan = AgentInfo(
+        name: "plan",
+        description: "Plan",
+        model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+        mode: AgentMode.primary,
+      );
+
+      void answerAgents({required String projectId, required Future<ApiResponse<Agents>> Function() answer}) {
+        when(
+          () => mockSessionService.listAgents(
+            projectId: projectId,
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) => answer());
+      }
+
+      Project project({required String id, required bool supportsWorktrees}) => Project(
+        id: id,
+        name: id,
+        path: "/$id",
+        time: null,
+        supportsDedicatedWorktrees: supportsWorktrees,
+        voiceGlossaryKey: null,
+      );
+
+      setUp(() {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
+        answerAgents(
+          projectId: "project-1",
+          answer: () async => ApiResponse.success(const Agents(agents: [build, plan])),
+        );
+        answerAgents(
+          projectId: "project-2",
+          answer: () async => ApiResponse.success(const Agents(agents: [build, plan])),
+        );
+      });
+
+      test("keeps the picks, harness and staged command, refreshing the options in place", () async {
+        final command = testCommandInfo();
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        cubit.selectAgent("plan");
+        cubit.stageCommand(command);
+        final twoAgents = Completer<ApiResponse<Agents>>();
+        answerAgents(projectId: "project-2", answer: () => twoAgents.future);
+
+        cubit.selectProject(project: projectTwo);
+
+        // The pills keep what they show while the new project answers.
+        expect(cubit.state.project, projectTwo);
+        expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshingState>());
+        expect(cubit.state.agentModelData?.agent, "plan");
+        expect(cubit.state.agentModelData?.stagedCommand, command);
+        expect(
+          cubit.state.agentModelData?.projectWorktreeCapability,
+          NewSessionProjectWorktreeCapability.loading,
+        );
+
+        // The project check answers first; Send still waits for the options,
+        // whose picks on screen are the last project's until then.
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          cubit.state.agentModelData?.projectWorktreeCapability,
+          NewSessionProjectWorktreeCapability.supported,
+        );
+        expect(cubit.canCreateSession, isFalse);
+
+        twoAgents.complete(ApiResponse.success(const Agents(agents: [build, plan])));
+        await waitForComposer(cubit);
+        expect(cubit.canCreateSession, isTrue);
+
+        expect(cubit.state.agentModelData?.plugin?.id, "plugin-1");
+        expect(cubit.state.agentModelData?.agent, "plan");
+        expect(
+          cubit.state.agentModelData?.agentModel,
+          const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+        );
+        expect(cubit.state.agentModelData?.stagedCommand, command);
+        expect(
+          cubit.state.agentModelData?.projectWorktreeCapability,
+          NewSessionProjectWorktreeCapability.supported,
+        );
+        verify(() => mockProjectRepository.getProject(projectId: "project-2")).called(1);
+      });
+
+      test("a pick the project lacks gives way to its default and returns with a project that has it", () async {
+        answerAgents(
+          projectId: "project-2",
+          answer: () async => ApiResponse.success(const Agents(agents: [build])),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        cubit.selectAgent("plan");
+
+        cubit.selectProject(project: projectTwo);
+        await waitForComposer(cubit);
+        expect(cubit.state.agentModelData?.agent, "build");
+
+        cubit.selectProject(
+          project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+        );
+        await waitForComposer(cubit);
+        expect(cubit.state.agentModelData?.agent, "plan");
+      });
+
+      test("drops what the old project answers late", () async {
+        final oneAgents = Completer<ApiResponse<Agents>>();
+        final oneProject = Completer<ApiResponse<Project>>();
+        answerAgents(projectId: "project-1", answer: () => oneAgents.future);
+        when(() => mockProjectRepository.getProject(projectId: "project-1")).thenAnswer((_) => oneProject.future);
+        when(() => mockProjectRepository.getProject(projectId: "project-2")).thenAnswer(
+          (_) async => ApiResponse.success(project(id: "project-2", supportsWorktrees: true)),
+        );
+        answerAgents(
+          projectId: "project-2",
+          answer: () async => ApiResponse.success(const Agents(agents: [build])),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        // Discovery has landed; project-1's options and capability are on their way.
+        while (cubit.state.agentModelData?.optionsState.source == null) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        cubit.selectProject(project: projectTwo);
+        await waitForComposer(cubit);
+        expect(cubit.state.agentModelData?.agents.map((agent) => agent.name), ["build"]);
+
+        oneAgents.complete(ApiResponse.success(const Agents(agents: [plan])));
+        oneProject.complete(ApiResponse.success(project(id: "project-1", supportsWorktrees: false)));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.state.project, projectTwo);
+        expect(cubit.state.agentModelData?.agents.map((agent) => agent.name), ["build"]);
+        expect(
+          cubit.state.agentModelData?.projectWorktreeCapability,
+          NewSessionProjectWorktreeCapability.supported,
+        );
+      });
+
+      test("while discovery runs, the options it lands on are the new project's", () async {
+        final discovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+        when(mockPluginRepository.listPlugins).thenAnswer((_) => discovery.future);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        expect(cubit.state.agentModelData?.isPluginDiscoveryInFlight, isTrue);
+
+        cubit.selectProject(project: projectTwo);
+        discovery.complete(
+          ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: true,
+              plugins: const [defaultPlugin],
+            ),
+          ),
+        );
+        await waitForComposer(cubit);
+
+        expect(cubit.state.agentModelData?.plugin?.id, "plugin-1");
+        verify(() => mockSessionService.listAgents(projectId: "project-2", pluginId: "plugin-1")).called(1);
+        verifyNever(
+          () => mockSessionService.listAgents(
+            projectId: "project-1",
+            pluginId: any(named: "pluginId"),
+          ),
+        );
+        verify(mockPluginRepository.listPlugins).called(1);
+      });
+
+      test("a login recheck the switch overtakes is asked again of the new project", () async {
+        const loginRequired = SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally.");
+        void answerProjectOne({required Future<SessionOptionsRepositoryResult> Function() answer}) => when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) => answer());
+        answerProjectOne(answer: () async => loginRequired);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+
+        // The user signed in and pressed Recheck; the bridge has yet to answer.
+        final recheck = Completer<SessionOptionsRepositoryResult>();
+        answerProjectOne(answer: () => recheck.future);
+        unawaited(cubit.refreshOptions());
+        await Future<void>.delayed(Duration.zero);
+
+        cubit.selectProject(project: projectTwo);
+        recheck.complete(loginRequired);
+        await waitForComposer(cubit);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        verify(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-2",
+            pluginId: "plugin-1",
+            mode: SessionOptionsRequestMode.forceRefresh,
+          ),
+        ).called(1);
+      });
+
+      test("options the last project could not give are asked of the new one", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsUnavailableState>());
+
+        cubit.selectProject(project: projectTwo);
+        await waitForComposer(cubit);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+      });
+
+      test("stays put for the project it is in", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        final before = cubit.state;
+
+        cubit.selectProject(
+          project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+        );
+
+        expect(cubit.state, same(before));
+        verify(() => mockProjectRepository.getProject(projectId: "project-1")).called(1);
+      });
     });
 
     group("composerPresentation", () {

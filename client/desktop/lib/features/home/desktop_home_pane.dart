@@ -97,13 +97,7 @@ class _DesktopHomePaneState() extends State<DesktopHomePane> {
         return DesktopHomeStart(
           key: const Key("desktop-home-ready"),
           projects: projects,
-          createNewSessionCubit: ({required projectId, required projectName, required projectKind}) =>
-              createNewSessionCubit(
-                locator: getIt,
-                projectId: projectId,
-                projectName: projectName,
-                projectKind: projectKind,
-              ),
+          createNewSessionCubit: ({required project}) => createNewSessionCubit(locator: getIt, project: project),
           onOpenSession: widget.onOpenSession,
           onOpenHarnessSettings: widget.onOpenHarnessSettings,
         );
@@ -372,17 +366,12 @@ class const DesktopBridgeRecoveryView({
 ///
 /// The project holds once a default lands, so a session elsewhere turning
 /// newest never moves a draft; choosing another filter, or another project in
-/// the header, moves it.
+/// the header, moves the composer there with what it holds.
 @visibleForTesting
 class const DesktopHomeStart({
   super.key,
   required final List<ProjectSummary> projects,
-  required final NewSessionCubit Function({
-    required String projectId,
-    required String? projectName,
-    required ProjectKind projectKind,
-  })
-  createNewSessionCubit,
+  required final NewSessionCubit Function({required NewSessionProject project}) createNewSessionCubit,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
@@ -391,7 +380,8 @@ class const DesktopHomeStart({
 }
 
 class _DesktopHomeStartState() extends State<DesktopHomeStart> {
-  /// The draft's project, or null until a default lands or one is chosen.
+  /// The project the composer starts in, or null until a default lands or one
+  /// is chosen. Once the composer is up, it owns its project.
   String? _projectId;
 
   @override
@@ -400,33 +390,49 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
     _projectId = context.read<AllSessionsCubit>().state.defaultProjectId;
   }
 
-  void _select({required String projectId}) => setState(() => _projectId = projectId);
+  /// [projectId] as the composer names it.
+  NewSessionProject _project({required String projectId}) {
+    final project = widget.projects.where((project) => project.id == projectId).firstOrNull;
+    return NewSessionProject(
+      id: projectId,
+      name: project == null ? null : projectDisplayName(loc: context.loc, project: project),
+      kind: project?.kind ?? ProjectKind.folder,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final project = widget.projects.where((project) => project.id == _projectId).firstOrNull;
+    final projectId = _projectId;
     final isLoading = context.select((AllSessionsCubit cubit) => cubit.state.isLoading);
-    final Widget pane = switch (project) {
-      final project? => _composer(project: project),
+    final Widget pane = switch (projectId) {
+      final projectId? => BlocProvider(
+        key: const Key("desktop-home-new-session"),
+        create: (_) => widget.createNewSessionCubit(project: _project(projectId: projectId)),
+        child: BlocListener<AllSessionsCubit, AllSessionsState>(
+          // Another filter moves the composer to its default.
+          listenWhen: (previous, current) => previous.projectId != current.projectId,
+          listener: (context, state) {
+            final projectId = state.defaultProjectId;
+            if (projectId == null) return;
+            context.read<NewSessionCubit>().selectProject(project: _project(projectId: projectId));
+          },
+          child: Builder(
+            builder: (context) => _listedComposer(context: context, isLoading: isLoading),
+          ),
+        ),
+      ),
       // A list still loading may yet name a default, so the prompt waits.
       null when isLoading => const SizedBox.expand(key: Key("desktop-home-waiting")),
-      null => NewSessionProjectPrompt(
-        key: const Key("desktop-home-prompt"),
-        onProjectSelected: ({required projectId, required projectName}) => _select(projectId: projectId),
-        onBack: null,
-        // The desktop root owns its single connection banner.
-        banner: null,
-        // Nobody asked for it yet, so the picker waits for a click.
-        opensPicker: false,
-        topBar: const SafeArea(bottom: false, child: DesktopFileAccessCard()),
+      null => _prompt(
+        onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
       ),
     };
     return BlocListener<AllSessionsCubit, AllSessionsState>(
-      // Another filter moves the draft to its default; until the draft has a
-      // project, the first default to land is taken up.
+      // Until the composer is up, the first default to land, or another
+      // filter's, is where it starts.
       listenWhen: (previous, current) =>
-          previous.projectId != current.projectId ||
-          (_projectId == null && previous.defaultProjectId != current.defaultProjectId),
+          _projectId == null &&
+          (previous.projectId != current.projectId || previous.defaultProjectId != current.defaultProjectId),
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
       child: AnimatedSwitcher(
         duration: _homeMotionDuration,
@@ -435,36 +441,58 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
     );
   }
 
-  Widget _composer({required ProjectSummary project}) {
-    final displayName = projectDisplayName(loc: context.loc, project: project);
-    // Keyed by project: a new pick gets its own cubit and draft, as the new
-    // session page does when its route changes project.
-    return BlocProvider(
-      key: ValueKey("desktop-home-new-session-${project.id}"),
-      create: (_) =>
-          widget.createNewSessionCubit(projectId: project.id, projectName: displayName, projectKind: project.kind),
-      child: NewSessionView(
-        projectId: project.id,
-        projectName: displayName,
-        onProjectSelected: ({required projectId, required projectName}) => _select(projectId: projectId),
-        // The home is where Back would lead; there is nothing to leave.
-        onBack: null,
-        onOpenHarnessSettings: widget.onOpenHarnessSettings,
-        onSessionCreated: ({required session}) =>
-            widget.onOpenSession(context: context, project: project, displayName: displayName, session: session),
-        composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(
-          child: DesktopVoiceInputScope(projectId: project.id, child: child),
+  Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
+    key: const Key("desktop-home-prompt"),
+    onProjectSelected: onProjectSelected,
+    onBack: null,
+    // The desktop root owns its single connection banner.
+    banner: null,
+    // Nobody asked for it yet, so the picker waits for a click.
+    opensPicker: false,
+    topBar: const SafeArea(bottom: false, child: DesktopFileAccessCard()),
+  );
+
+  /// The composer while its project is listed, and otherwise the prompt,
+  /// which moves the same composer to the project chosen.
+  Widget _listedComposer({required BuildContext context, required bool isLoading}) {
+    final projectId = context.select((NewSessionCubit cubit) => cubit.state.project.id);
+    final listed = widget.projects.where((project) => project.id == projectId).firstOrNull;
+    void select({required String projectId, required String projectName}) =>
+        context.read<NewSessionCubit>().selectProject(project: _project(projectId: projectId));
+    return AnimatedSwitcher(
+      duration: _homeMotionDuration,
+      child: switch (listed) {
+        final listed? => NewSessionView(
+          key: const Key("desktop-home-composer"),
+          onProjectSelected: select,
+          // The home is where Back would lead; there is nothing to leave.
+          onBack: null,
+          onOpenHarnessSettings: widget.onOpenHarnessSettings,
+          // Sending holds the composer's project, so the session's is the one
+          // listed here.
+          onSessionCreated: ({required session, required project}) => widget.onOpenSession(
+            context: context,
+            project: listed,
+            displayName: projectDisplayName(loc: context.loc, project: listed),
+            session: session,
+          ),
+          composerScopeBuilder: ({required projectId, required child}) => DesktopComposerPresentationScope(
+            child: DesktopVoiceInputScope(projectId: projectId, child: child),
+          ),
+          // The desktop root owns its single connection banner.
+          banner: null,
+          pageChrome: const NewSessionPageChrome(
+            maxContentWidth: 760,
+            transcriptWidth: desktopTranscriptWidth,
+            topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
+            // The pane paints the background, beneath the bodies it cross-fades.
+            backgroundColor: Colors.transparent,
+          ),
         ),
-        // The desktop root owns its single connection banner.
-        banner: null,
-        pageChrome: const NewSessionPageChrome(
-          maxContentWidth: 760,
-          transcriptWidth: desktopTranscriptWidth,
-          topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
-          // The pane paints the background, beneath the bodies it cross-fades.
-          backgroundColor: Colors.transparent,
-        ),
-      ),
+        // A list still loading may yet name it.
+        null when isLoading => const SizedBox.expand(key: Key("desktop-home-waiting")),
+        null => _prompt(onProjectSelected: select),
+      },
     );
   }
 }

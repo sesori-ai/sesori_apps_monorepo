@@ -26,6 +26,9 @@ class VoiceInputCubit({
 
   Stream<double> get amplitudeStream => _service.amplitudeStream(session: _session);
 
+  /// Moves dictation to [projectId], for a composer whose project changed.
+  void setProject({required String? projectId}) => _service.setProject(session: _session, projectId: projectId);
+
   Future<void> startRecording() async {
     if (state is! VoiceInputIdle) return;
     emit(const VoiceInputState.starting());

@@ -62,7 +62,7 @@ void main() {
     addTearDown(subscription.cancel);
   });
 
-  Future<void> launch({ProjectKind projectKind = ProjectKind.folder}) => service.launch(
+  Future<void> launch({ProjectKind projectKind = ProjectKind.folder, String? agent}) => service.launch(
     launchId: "launch-1",
     projectId: "project-1",
     pluginId: "plugin-1",
@@ -70,7 +70,7 @@ void main() {
     projectName: null,
     projectKind: projectKind,
     submission: submission,
-    agent: null,
+    agent: agent,
     model: null,
     variant: null,
     fastMode: false,
@@ -78,8 +78,8 @@ void main() {
   );
 
   test("a launch whose composer left mid-create still finishes everything it owes", () async {
-    selectionTracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
-    final pending = launch();
+    selectionTracker.recordAgent(pluginId: "plugin-1", agentName: "build");
+    final pending = launch(agent: "build");
     // The composer closes before the bridge answers.
     service.releaseHandoff(launchId: "launch-1");
 
@@ -93,7 +93,7 @@ void main() {
         session: testSession(id: "session-1"),
       ),
     ]);
-    expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+    expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
     expect(feedbackPromptService.positiveInteractions, 1);
     verify(
       () => productAnalyticsService.logEvent(
@@ -148,22 +148,33 @@ void main() {
   });
 
   test("success keeps a selection the user changed while the session was being created", () async {
-    selectionTracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
-    final pending = launch();
-    selectionTracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "plan");
+    selectionTracker.recordAgent(pluginId: "plugin-1", agentName: "build");
+    final pending = launch(agent: "build");
+    selectionTracker.recordAgent(pluginId: "plugin-1", agentName: "plan");
 
     response.complete(ApiResponse.success(testSession(id: "session-1")));
     await pending;
 
-    expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentName, "plan");
+    expect(selectionTracker.read(pluginId: "plugin-1")?.agentName, "plan");
+  });
+
+  test("success keeps a pick the project could not apply, for a project that can", () async {
+    selectionTracker.recordAgent(pluginId: "plugin-1", agentName: "plan");
+    // The project lacks "plan", so the session started on its default.
+    final pending = launch(agent: "build");
+
+    response.complete(ApiResponse.success(testSession(id: "session-1")));
+    await pending;
+
+    expect(selectionTracker.read(pluginId: "plugin-1")?.agentName, "plan");
   });
 
   test("a failed create publishes its reason, reports it and logs the original error", () async {
     final records = <LogRecord>[];
     setLogSink(sink: _RecordingSink(records: records));
     addTearDown(() => setLogSink(sink: const StdoutLogSink()));
-    selectionTracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
-    final pending = launch();
+    selectionTracker.recordAgent(pluginId: "plugin-1", agentName: "build");
+    final pending = launch(agent: "build");
 
     response.complete(ApiResponse.error(ApiError.generic()));
     await pending;
@@ -188,7 +199,7 @@ void main() {
         occurredAtUtc: any(named: "occurredAtUtc"),
       ),
     ).called(1);
-    expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNotNull);
+    expect(selectionTracker.read(pluginId: "plugin-1"), isNotNull);
     expect(storage.readAll(), isEmpty);
   });
 

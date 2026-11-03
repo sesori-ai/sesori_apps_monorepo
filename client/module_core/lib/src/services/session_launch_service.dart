@@ -21,6 +21,7 @@ import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/session_launch_repository.dart";
 import "../repositories/session_repository.dart";
 import "feedback_prompt_service.dart";
+import "models/new_session_selection_intent.dart";
 import "new_session_selection_tracker.dart";
 import "product_analytics_service.dart";
 
@@ -103,7 +104,8 @@ class SessionLaunchService({
   /// Success clears the composer selection captured here at Send, whether or
   /// not the composer is still open, so a deliberately chosen option is not
   /// reapplied to the next new session. A selection changed while creating is
-  /// kept.
+  /// kept, and so is one the project could not apply: it returns with a
+  /// project that offers it.
   Future<void> launch({
     required String launchId,
     required String projectId,
@@ -118,7 +120,12 @@ class SessionLaunchService({
     required bool fastMode,
     required bool dedicatedWorktree,
   }) async {
-    final selectionRevision = _selectionTracker.currentRevision(projectId: projectId, pluginId: pluginId);
+    final selection = _selectionTracker.read(pluginId: pluginId);
+    final selectionRevision =
+        selection != null &&
+            _applies(selection: selection, agent: agent, model: model, variant: variant, fastMode: fastMode)
+        ? _selectionTracker.currentRevision(pluginId: pluginId)
+        : null;
     _launchRepository.start(
       launchId: launchId,
       projectId: projectId,
@@ -148,7 +155,9 @@ class SessionLaunchService({
 
     switch (response) {
       case SuccessResponse(data: final session):
-        _selectionTracker.clearIfRevision(projectId: projectId, pluginId: pluginId, revision: selectionRevision);
+        if (selectionRevision != null) {
+          _selectionTracker.clearIfRevision(pluginId: pluginId, revision: selectionRevision);
+        }
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: _analyticsSubmission(submission: submission),
@@ -261,6 +270,24 @@ class SessionLaunchService({
     RemoteFailureReason.badResponse => AnalyticsSessionCreationFailureReason.badResponse,
     RemoteFailureReason.unknown => AnalyticsSessionCreationFailureReason.unknown,
   };
+
+  /// Whether the launch sent every choice [selection] holds.
+  static bool _applies({
+    required NewSessionSelectionIntent selection,
+    required String? agent,
+    required PromptModel? model,
+    required SessionVariant? variant,
+    required bool fastMode,
+  }) {
+    final pickedModel = selection.model;
+    final pickedVariant = selection.variant;
+    final pickedFastMode = selection.fastMode;
+    return (selection.agentName == null || selection.agentName == agent) &&
+        (pickedModel == null ||
+            (model?.providerID == pickedModel.providerId && model?.modelID == pickedModel.modelId)) &&
+        (pickedVariant == null || variant?.id == pickedVariant.id) &&
+        (pickedFastMode == null || pickedFastMode == fastMode);
+  }
 
   void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(

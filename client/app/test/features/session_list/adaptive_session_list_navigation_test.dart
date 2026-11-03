@@ -385,7 +385,7 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
     final switcher = find.byKey(const Key("home-sidebar-switcher"));
-    String draftProject() => tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId;
+    String draftProject() => tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id;
     Future<void> pick({required Finder trigger, required String option}) async {
       await tester.tap(trigger);
       await tester.pumpAndSettle();

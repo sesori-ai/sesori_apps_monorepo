@@ -1291,32 +1291,224 @@ as RemoteFailureReason,
 }
 
 /// @nodoc
-mixin _$NewSessionState {
+mixin _$NewSessionProject {
 
-
+ String get id;/// The project as the composer names it, for an alert about a creation
+/// that fails after the user left; null when the composer has no name.
+ String? get name;/// Whether the session starts in a folder project or in "No project".
+ ProjectKind get kind;
+/// Create a copy of NewSessionProject
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionProjectCopyWith<NewSessionProject> get copyWith => _$NewSessionProjectCopyWithImpl<NewSessionProject>(this as NewSessionProject, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionState);
+  final _this = this as NewSessionProject;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionProject&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.kind, _this.kind) || other.kind == _this.kind));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode {
+  final _this = this as NewSessionProject;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.kind);
+}
 
 @override
 String toString() {
-    return 'NewSessionState()';
+  final _this = this as NewSessionProject;
+  return 'NewSessionProject(id: ${_this.id}, name: ${_this.name}, kind: ${_this.kind})';
 }
 
 
 }
 
 /// @nodoc
-class $NewSessionStateCopyWith<$Res>  {
-$NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
+abstract mixin class $NewSessionProjectCopyWith<$Res>  {
+  factory $NewSessionProjectCopyWith(NewSessionProject value, $Res Function(NewSessionProject) _then) = _$NewSessionProjectCopyWithImpl;
+@useResult
+$Res call({
+ String id, String? name, ProjectKind kind
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionProjectCopyWithImpl<$Res>
+    implements $NewSessionProjectCopyWith<$Res> {
+  _$NewSessionProjectCopyWithImpl(this._self, this._then);
+
+  final NewSessionProject _self;
+  final $Res Function(NewSessionProject) _then;
+
+/// Create a copy of NewSessionProject
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? kind = null,}) {
+  return _then(NewSessionProject(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as ProjectKind,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+
+
+class _NewSessionProject implements NewSessionProject {
+  const _NewSessionProject({required this.id, required this.name, required this.kind});
+  
+
+@override final  String id;
+/// The project as the composer names it, for an alert about a creation
+/// that fails after the user left; null when the composer has no name.
+@override final  String? name;
+/// Whether the session starts in a folder project or in "No project".
+@override final  ProjectKind kind;
+
+/// Create a copy of NewSessionProject
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$NewSessionProjectCopyWith<_NewSessionProject> get copyWith => __$NewSessionProjectCopyWithImpl<_NewSessionProject>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.kind, kind) || other.kind == kind));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,name,kind);
+}
+
+@override
+String toString() {
+    return 'NewSessionProject(id: $id, name: $name, kind: $kind)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$NewSessionProjectCopyWith<$Res> implements $NewSessionProjectCopyWith<$Res> {
+  factory _$NewSessionProjectCopyWith(_NewSessionProject value, $Res Function(_NewSessionProject) _then) = __$NewSessionProjectCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String? name, ProjectKind kind
+});
+
+
+
+
+}
+/// @nodoc
+class __$NewSessionProjectCopyWithImpl<$Res>
+    implements _$NewSessionProjectCopyWith<$Res> {
+  __$NewSessionProjectCopyWithImpl(this._self, this._then);
+
+  final _NewSessionProject _self;
+  final $Res Function(_NewSessionProject) _then;
+
+/// Create a copy of NewSessionProject
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? kind = null,}) {
+  return _then(_NewSessionProject(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as ProjectKind,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$NewSessionState {
+
+ NewSessionProject get project;
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionStateCopyWith<NewSessionState> get copyWith => _$NewSessionStateCopyWithImpl<NewSessionState>(this as NewSessionState, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as NewSessionState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionState&&(identical(other.project, _this.project) || other.project == _this.project));
+}
+
+
+@override
+int get hashCode {
+  final _this = this as NewSessionState;
+  return Object.hash(runtimeType,_this.project);
+}
+
+@override
+String toString() {
+  final _this = this as NewSessionState;
+  return 'NewSessionState(project: ${_this.project})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionStateCopyWith<$Res>  {
+  factory $NewSessionStateCopyWith(NewSessionState value, $Res Function(NewSessionState) _then) = _$NewSessionStateCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionProject project
+});
+
+
+$NewSessionProjectCopyWith<$Res> get project;
+
+}
+/// @nodoc
+class _$NewSessionStateCopyWithImpl<$Res>
+    implements $NewSessionStateCopyWith<$Res> {
+  _$NewSessionStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionState _self;
+  final $Res Function(NewSessionState) _then;
+
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? project = null,}) {
+  return _then(_self.copyWith(
+project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
+as NewSessionProject,
+  ));
+}
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionProjectCopyWith<$Res> get project {
+  
+  return $NewSessionProjectCopyWith<$Res>(_self.project, (value) {
+    return _then(_self.copyWith(project: value));
+  });
+}
 }
 
 
@@ -1325,15 +1517,16 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionComposing implements NewSessionState {
-  const NewSessionComposing({required this.config, required this.phase});
+  const NewSessionComposing({required this.project, required this.config, required this.phase});
   
 
+@override final  NewSessionProject project;
  final  NewSessionComposeConfig config;
  final  NewSessionPhase phase;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $NewSessionComposingCopyWith<NewSessionComposing> get copyWith => _$NewSessionComposingCopyWithImpl<NewSessionComposing>(this, _$identity);
 
@@ -1341,18 +1534,18 @@ $NewSessionComposingCopyWith<NewSessionComposing> get copyWith => _$NewSessionCo
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposing&&(identical(other.config, config) || other.config == config)&&(identical(other.phase, phase) || other.phase == phase));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposing&&(identical(other.project, project) || other.project == project)&&(identical(other.config, config) || other.config == config)&&(identical(other.phase, phase) || other.phase == phase));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,config,phase);
+    return Object.hash(runtimeType,project,config,phase);
 }
 
 @override
 String toString() {
-    return 'NewSessionState.composing(config: $config, phase: $phase)';
+    return 'NewSessionState.composing(project: $project, config: $config, phase: $phase)';
 }
 
 
@@ -1361,13 +1554,13 @@ String toString() {
 /// @nodoc
 abstract mixin class $NewSessionComposingCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
   factory $NewSessionComposingCopyWith(NewSessionComposing value, $Res Function(NewSessionComposing) _then) = _$NewSessionComposingCopyWithImpl;
-@useResult
+@override @useResult
 $Res call({
- NewSessionComposeConfig config, NewSessionPhase phase
+ NewSessionProject project, NewSessionComposeConfig config, NewSessionPhase phase
 });
 
 
-$NewSessionComposeConfigCopyWith<$Res> get config;$NewSessionPhaseCopyWith<$Res> get phase;
+@override $NewSessionProjectCopyWith<$Res> get project;$NewSessionComposeConfigCopyWith<$Res> get config;$NewSessionPhaseCopyWith<$Res> get phase;
 
 }
 /// @nodoc
@@ -1380,15 +1573,25 @@ class _$NewSessionComposingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? config = null,Object? phase = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? project = null,Object? config = null,Object? phase = null,}) {
   return _then(NewSessionComposing(
-config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
+project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
+as NewSessionProject,config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
 as NewSessionComposeConfig,phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to_non_nullable
 as NewSessionPhase,
   ));
 }
 
 /// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionProjectCopyWith<$Res> get project {
+  
+  return $NewSessionProjectCopyWith<$Res>(_self.project, (value) {
+    return _then(_self.copyWith(project: value));
+  });
+}/// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -1413,15 +1616,16 @@ $NewSessionPhaseCopyWith<$Res> get phase {
 
 
 class NewSessionCreated implements NewSessionState {
-  const NewSessionCreated({required this.session, required this.launchId});
+  const NewSessionCreated({required this.project, required this.session, required this.launchId});
   
 
+@override final  NewSessionProject project;
  final  Session session;
  final  String launchId;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $NewSessionCreatedCopyWith<NewSessionCreated> get copyWith => _$NewSessionCreatedCopyWithImpl<NewSessionCreated>(this, _$identity);
 
@@ -1429,18 +1633,18 @@ $NewSessionCreatedCopyWith<NewSessionCreated> get copyWith => _$NewSessionCreate
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreated&&(identical(other.session, session) || other.session == session)&&(identical(other.launchId, launchId) || other.launchId == launchId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreated&&(identical(other.project, project) || other.project == project)&&(identical(other.session, session) || other.session == session)&&(identical(other.launchId, launchId) || other.launchId == launchId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,session,launchId);
+    return Object.hash(runtimeType,project,session,launchId);
 }
 
 @override
 String toString() {
-    return 'NewSessionState.created(session: $session, launchId: $launchId)';
+    return 'NewSessionState.created(project: $project, session: $session, launchId: $launchId)';
 }
 
 
@@ -1449,13 +1653,13 @@ String toString() {
 /// @nodoc
 abstract mixin class $NewSessionCreatedCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
   factory $NewSessionCreatedCopyWith(NewSessionCreated value, $Res Function(NewSessionCreated) _then) = _$NewSessionCreatedCopyWithImpl;
-@useResult
+@override @useResult
 $Res call({
- Session session, String launchId
+ NewSessionProject project, Session session, String launchId
 });
 
 
-$SessionCopyWith<$Res> get session;
+@override $NewSessionProjectCopyWith<$Res> get project;$SessionCopyWith<$Res> get session;
 
 }
 /// @nodoc
@@ -1468,15 +1672,25 @@ class _$NewSessionCreatedCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? session = null,Object? launchId = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? project = null,Object? session = null,Object? launchId = null,}) {
   return _then(NewSessionCreated(
-session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
+project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
+as NewSessionProject,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
 
 /// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionProjectCopyWith<$Res> get project {
+  
+  return $NewSessionProjectCopyWith<$Res>(_self.project, (value) {
+    return _then(_self.copyWith(project: value));
+  });
+}/// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')

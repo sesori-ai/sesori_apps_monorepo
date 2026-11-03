@@ -175,26 +175,15 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           final route = _decodeNewSessionRoute(state: state);
           final projectId = route.projectId ?? (throw StateError("A new session without a project redirects home"));
           return DesktopNewSessionScreen(
-            // Replacing the route reuses the page, so the key is what gives
-            // another project its own cubit.
-            key: ValueKey("desktop-new-session-$projectId"),
-            onProjectSelected: ({required projectId, required projectName}) => _replaceRoute(
-              context: context,
-              route: AppRoute.newSession(
-                projectId: projectId,
-                projectName: projectName,
-                entry: const NewSessionEntry.platform(),
-              ),
-            ),
             projectId: projectId,
             projectName: route.projectName,
             onBack: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
             onOpenHarnessSettings: () => _openHarnessSettings(context: context),
-            onSessionCreated: ({required session}) => _replaceRoute(
+            onSessionCreated: ({required session, required project}) => _replaceRoute(
               context: context,
               route: AppRoute.sessionDetail(
-                projectId: projectId,
-                projectName: route.projectName,
+                projectId: project.id,
+                projectName: project.name,
                 sessionId: session.id,
                 sessionTitle: session.title,
                 readOnly: false,
