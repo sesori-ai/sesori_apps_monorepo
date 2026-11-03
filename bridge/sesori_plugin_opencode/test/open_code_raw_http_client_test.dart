@@ -212,8 +212,7 @@ void main() {
         // A read with no explicit timeout must abort at the 30s default.
         async.elapse(const Duration(seconds: 31));
 
-        expect(error, isA<OpenCodeApiException>());
-        expect((error! as OpenCodeApiException).statusCode, equals(504));
+        expect(error, isA<OpenCodeApiException>().having((e) => e.statusCode, "statusCode", 504));
       });
     });
 

@@ -335,36 +335,41 @@ class _ProbeHarness({
         final id = frame["id"] as String?;
         if (id == null || !answered.add(id)) continue;
         final type = frame["type"] as String?;
+        if (type == null) continue;
         switch (type) {
           case "get_state":
             if (emitDialogs) _dialogs(process);
             process.emitResponse(
               id: id,
-              command: type!,
+              command: type,
               data: {if (stateModel != null) "model": stateModel},
             );
           case "get_available_models":
             if (exitOnModels) {
               process.exit(code: 7);
             } else if (!ignoreModels) {
-              process.emitResponse(id: id, command: type!, data: {"models": models});
+              process.emitResponse(id: id, command: type, data: {"models": models});
             }
           case "set_model":
-            selected.add((frame["provider"]! as String, frame["modelId"]! as String));
-            process.emitResponse(id: id, command: type!);
+            if (frame case {"provider": final String provider, "modelId": final String modelId}) {
+              selected.add((provider, modelId));
+            } else {
+              fail("set_model frame lacks a provider and model id: $frame");
+            }
+            process.emitResponse(id: id, command: type);
           case "get_available_thinking_levels":
             if (ignoreThinking) {
               continue;
             } else if (failThinking) {
-              process.emitFailure(id: id, command: type!, error: "thinking unavailable");
+              process.emitFailure(id: id, command: type, error: "thinking unavailable");
             } else {
-              process.emitResponse(id: id, command: type!, data: {"levels": thinking});
+              process.emitResponse(id: id, command: type, data: {"levels": thinking});
             }
           case "get_commands":
             if (failCommands) {
-              process.emitFailure(id: id, command: type!, error: "commands unavailable");
+              process.emitFailure(id: id, command: type, error: "commands unavailable");
             } else {
-              process.emitResponse(id: id, command: type!, data: {"commands": commands});
+              process.emitResponse(id: id, command: type, data: {"commands": commands});
             }
         }
       }

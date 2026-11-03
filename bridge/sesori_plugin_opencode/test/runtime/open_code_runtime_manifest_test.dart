@@ -15,11 +15,12 @@ void main() {
     test("pins a sha256 asset for every supported platform target", () {
       for (final os in PlatformOs.values) {
         for (final arch in PlatformArch.values) {
-          final asset = manifest.assetFor(
-            target: PlatformTarget(os: os, arch: arch),
-          );
-          expect(asset, isNotNull, reason: "missing asset for $os/$arch");
-          expect(asset!.sha256, matches(RegExp(r"^[0-9a-f]{64}$")), reason: "$os/$arch sha256");
+          final asset =
+              manifest.assetFor(
+                target: PlatformTarget(os: os, arch: arch),
+              ) ??
+              fail("missing asset for $os/$arch");
+          expect(asset.sha256, matches(RegExp(r"^[0-9a-f]{64}$")), reason: "$os/$arch sha256");
           expect(asset.assetName, isNotEmpty);
         }
       }
@@ -29,11 +30,10 @@ void main() {
       var count = 0;
       for (final os in PlatformOs.values) {
         for (final arch in PlatformArch.values) {
-          final asset =
-              manifest.assetFor(
-                    target: PlatformTarget(os: os, arch: arch),
-                  )!
-                  as ArchiveRuntimeAsset;
+          final asset = manifest.assetFor(
+            target: PlatformTarget(os: os, arch: arch),
+          );
+          if (asset is! ArchiveRuntimeAsset) fail("expected an archive asset for $os/$arch");
           final platform = switch (os) {
             PlatformOs.macos => "darwin",
             PlatformOs.linux => "linux",
@@ -53,9 +53,11 @@ void main() {
     });
 
     test("download URL pins the npm version rather than a moving latest alias", () {
-      final asset = manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-      )!;
+      final asset =
+          manifest.assetFor(
+            target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+          ) ??
+          fail("missing the macOS arm64 asset");
       expect(
         manifest.downloadUrlFor(asset: asset),
         equals("https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.1.4.tgz"),

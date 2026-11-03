@@ -56,8 +56,8 @@ final class PiExtensionUiTracker() {
 
   void add({required PiTrackedExtensionDialog dialog}) {
     _byQuestionId[dialog.questionId] = dialog;
-    _index(_byOwner, dialog.ownerSessionId, dialog.questionId);
-    _index(_byDisplaySession, dialog.displaySessionId, dialog.questionId);
+    _index(_byOwner, key: dialog.ownerSessionId, questionId: dialog.questionId);
+    _index(_byDisplaySession, key: dialog.displaySessionId, questionId: dialog.questionId);
   }
 
   PiTrackedExtensionDialog? find({required String questionId}) => _byQuestionId[questionId];
@@ -67,8 +67,8 @@ final class PiExtensionUiTracker() {
   PiTrackedExtensionDialog? take({required String questionId}) {
     final dialog = _byQuestionId.remove(questionId);
     if (dialog == null) return null;
-    _unindex(_byOwner, dialog.ownerSessionId, questionId);
-    _unindex(_byDisplaySession, dialog.displaySessionId, questionId);
+    _unindex(_byOwner, key: dialog.ownerSessionId, questionId: questionId);
+    _unindex(_byDisplaySession, key: dialog.displaySessionId, questionId: questionId);
     return dialog;
   }
 
@@ -117,10 +117,10 @@ PluginPendingQuestion _pending(PiTrackedExtensionDialog dialog) => PluginPending
   questions: [dialog.question],
 );
 
-void _index(Map<String, Set<String>> index, String key, String questionId) =>
+void _index(Map<String, Set<String>> index, {required String key, required String questionId}) =>
     index.putIfAbsent(key, () => {}).add(questionId);
 
-void _unindex(Map<String, Set<String>> index, String key, String questionId) {
+void _unindex(Map<String, Set<String>> index, {required String key, required String questionId}) {
   final ids = index[key];
   ids?.remove(questionId);
   if (ids?.isEmpty ?? false) index.remove(key);

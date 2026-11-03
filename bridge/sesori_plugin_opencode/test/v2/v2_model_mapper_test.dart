@@ -36,12 +36,13 @@ void main() {
     });
     final session = mapper.mapSession(session: raw, projectId: "/fixture/project");
     expect(session.parentID, "parent");
-    expect(session.time!.created, raw.time.created.toInt());
+    expect((session.time ?? fail("expected a session time")).created, raw.time.created.toInt());
     final details = mapper.mapSessionDetails(session: raw, projectId: "/fixture/project", agentNames: names);
     expect(details.pluginId, "fixture-plugin");
     expect(details.projectID, "/fixture/project");
-    expect(details.promptDefaults!.agent, "Build");
-    expect(details.promptDefaults!.model!.modelID, "model");
+    final promptDefaults = details.promptDefaults ?? fail("expected prompt defaults");
+    expect(promptDefaults.agent, "Build");
+    expect((promptDefaults.model ?? fail("expected a default model")).modelID, "model");
     expect(details.approvalOverride, isNull);
     expect(Session.fromJson(details.toJson()), details);
     expect(details.toJson(), isNot(contains("location")));
@@ -77,7 +78,10 @@ void main() {
     expect(provider.defaultModelID, model.id);
     expect(provider.models.single.variants, <String>["high", "low"]);
     expect(provider.models.single.defaultVariant, "low");
-    expect(provider.models.single.releaseDate!.millisecondsSinceEpoch, model.time.released.toInt());
+    expect(
+      (provider.models.single.releaseDate ?? fail("expected a release date")).millisecondsSinceEpoch,
+      model.time.released.toInt(),
+    );
     expect(provider.models.single.isAvailable, isTrue);
     final unavailable = ModelInfo.fromJson(<String, dynamic>{...native(key: "model"), "status": "deprecated"});
     expect(
@@ -143,7 +147,7 @@ void main() {
         },
       ],
     });
-    final question = mapper.mapForm(form: form, displaySessionId: "root")!;
+    final question = mapper.mapForm(form: form, displaySessionId: "root") ?? fail("expected a mapped form");
     expect(question.displaySessionId, "root");
     expect(question.questions.map((field) => field.header), <String>[
       "Environment",

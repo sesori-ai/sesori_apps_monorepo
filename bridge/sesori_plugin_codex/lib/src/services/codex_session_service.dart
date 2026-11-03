@@ -467,11 +467,9 @@ class CodexSessionService({
     ];
   }
 
-  bool _isSessionIdleEvent({required BridgeSseEvent event, required String sessionId}) => switch (event) {
-    BridgeSseSessionIdle(sessionID: final eventSessionId) => eventSessionId == sessionId,
-    BridgeSseSessionStatus(sessionID: final eventSessionId) => eventSessionId == sessionId,
-    _ => false,
-  };
+  bool _isSessionIdleEvent({required BridgeSseEvent event, required String sessionId}) =>
+      (event is BridgeSseSessionIdle && event.sessionID == sessionId) ||
+      (event is BridgeSseSessionStatus && event.sessionID == sessionId);
 
   List<BridgeSseEvent> _rootIdleEvents({required String rootId}) => [
     BridgeSseSessionStatus(

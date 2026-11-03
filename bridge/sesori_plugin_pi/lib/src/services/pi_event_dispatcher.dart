@@ -65,7 +65,7 @@ final class PiEventDispatcher({
     _tools.forgetSession(sessionId: sessionId);
   }
 
-  PluginSessionStatus? sessionStatusFor({required PiEvent event, DateTime? now}) => switch (event) {
+  PluginSessionStatus? sessionStatusFor({required PiEvent event, required DateTime now}) => switch (event) {
     PiAgentStartEvent() ||
     PiAutoRetryEndEvent(success: true) ||
     PiSummarizationRetryAttemptStartEvent() ||
@@ -75,18 +75,40 @@ final class PiEventDispatcher({
       attempt: attempt,
       delayMs: delayMs,
       errorMessage: errorMessage,
-      now: now ?? DateTime.now(),
+      now: now,
     ),
     PiSummarizationRetryScheduledEvent(:final attempt, :final delayMs, :final errorMessage) => _retryStatus(
       attempt: attempt,
       delayMs: delayMs,
       errorMessage: errorMessage,
-      now: now ?? DateTime.now(),
+      now: now,
     ),
-    _ => null,
+    PiAgentEndEvent() ||
+    PiTurnStartEvent() ||
+    PiTurnEndEvent() ||
+    PiMessageStartEvent() ||
+    PiMessageUpdateEvent() ||
+    PiMessageEndEvent() ||
+    PiToolExecutionStartEvent() ||
+    PiToolExecutionUpdateEvent() ||
+    PiToolExecutionEndEvent() ||
+    PiBashExecutionUpdateEvent() ||
+    PiQueueUpdateEvent() ||
+    PiCompactionEndEvent() ||
+    PiEntryAppendedEvent() ||
+    PiSessionInfoChangedEvent() ||
+    PiThinkingLevelChangedEvent() ||
+    PiAutoRetryEndEvent() ||
+    PiSummarizationRetryFinishedEvent() ||
+    PiExtensionErrorEvent() ||
+    PiUnknownEvent() => null,
   };
 
-  List<BridgeSseEvent> map({required String sessionId, required PiEvent event, DateTime? now}) => switch (event) {
+  List<BridgeSseEvent> map({
+    required String sessionId,
+    required PiEvent event,
+    required DateTime now,
+  }) => switch (event) {
     PiAgentStartEvent() => _status(sessionId: sessionId, event: event, now: now),
     PiAgentSettledEvent() => [
       ..._status(sessionId: sessionId, event: event, now: now),
@@ -628,7 +650,7 @@ final class PiEventDispatcher({
     return const [];
   }
 
-  List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime? now}) {
+  List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime now}) {
     final status = sessionStatusFor(event: event, now: now);
     if (status == null) return const [];
     return [BridgeSseSessionStatus(sessionID: sessionId, status: status)];
@@ -637,14 +659,14 @@ final class PiEventDispatcher({
   List<BridgeSseEvent> _compactionStart({
     required String sessionId,
     required PiCompactionStartEvent event,
-    required DateTime? now,
+    required DateTime now,
   }) {
     final state = _session(sessionId);
     // A retried attempt keeps the first start's ID and stamp, so its timer
     // does not restart.
     final compaction = state.compaction ??= (
       messageId: state.identities.reserveCompaction(),
-      startedAtMs: (now ?? DateTime.now()).millisecondsSinceEpoch,
+      startedAtMs: now.millisecondsSinceEpoch,
     );
     final mapped = _historyMapper.mapRunningCompaction(
       sessionId: sessionId,
@@ -820,7 +842,17 @@ PluginMessagePart _textPart({
     messageID: messageId,
     text: text,
   ),
-  _ => throw ArgumentError.value(type, "type"),
+  PluginMessagePartType.tool ||
+  PluginMessagePartType.subtask ||
+  PluginMessagePartType.stepStart ||
+  PluginMessagePartType.stepFinish ||
+  PluginMessagePartType.file ||
+  PluginMessagePartType.snapshot ||
+  PluginMessagePartType.patch ||
+  PluginMessagePartType.agent ||
+  PluginMessagePartType.retry ||
+  PluginMessagePartType.compaction ||
+  PluginMessagePartType.unknown => throw ArgumentError.value(type, "type"),
 };
 
 PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool tool}) => PluginMessagePart.fromTool(

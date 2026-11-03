@@ -185,12 +185,13 @@ void main() {
         candidates: const [],
         exhaustive: true,
       );
-      repository.listGate = Completer<void>();
+      final listGate = Completer<void>();
+      repository.listGate = listGate;
 
       final launch = service.ensureCatalog(scope: "/launch");
       final project = service.ensureCatalog(scope: "/project");
       await Future<void>.delayed(Duration.zero);
-      repository.listGate!.complete();
+      listGate.complete();
       await Future.wait([launch, project]);
 
       expect(repository.listedScopes, ["/launch", "/project"]);
@@ -202,13 +203,14 @@ void main() {
         candidates: const [],
         exhaustive: false,
       );
-      repository.listGate = Completer<void>();
+      final listGate = Completer<void>();
+      repository.listGate = listGate;
 
       final first = service.ensureCatalog(scope: "/project");
       final second = service.ensureCatalog(scope: "/project");
       final third = service.ensureCatalog(scope: "/project");
       await Future<void>.delayed(Duration.zero);
-      repository.listGate!.complete();
+      listGate.complete();
       await Future.wait([first, second, third]);
       await service.ensureCatalog(scope: "/project");
 
@@ -238,11 +240,13 @@ void main() {
       repository.onOpen = () {
         stagedCommandTracker.consume(_commandUpdate("fresh-command"));
       };
-      repository.resetStarted = Completer<void>();
-      repository.resetGate = Completer<void>();
+      final resetStarted = Completer<void>();
+      final resetGate = Completer<void>();
+      repository.resetStarted = resetStarted;
+      repository.resetGate = resetGate;
 
       final first = service.ensureCatalog(scope: "/project");
-      await repository.resetStarted!.future;
+      await resetStarted.future;
       var secondCompleted = false;
       final second = service.ensureCatalog(scope: "/project").whenComplete(() {
         secondCompleted = true;
@@ -252,7 +256,7 @@ void main() {
       expect(secondCompleted, isFalse);
       expect(commandTracker.commands.single.name, "old-command");
 
-      repository.resetGate!.complete();
+      resetGate.complete();
       await Future.wait([first, second]);
       expect(commandTracker.commands.single.name, "fresh-command");
     });
@@ -278,13 +282,15 @@ void main() {
       repository.onOpen = () {
         stagedCommandTracker.consume(_commandUpdate("probe-command"));
       };
-      repository.resetStarted = Completer<void>();
-      repository.resetGate = Completer<void>();
+      final resetStarted = Completer<void>();
+      final resetGate = Completer<void>();
+      repository.resetStarted = resetStarted;
+      repository.resetGate = resetGate;
 
       final loading = service.ensureCatalog(scope: "/project");
-      await repository.resetStarted!.future;
+      await resetStarted.future;
       commandTracker.consume(_commandUpdate("live-command"));
-      repository.resetGate!.complete();
+      resetGate.complete();
       await loading;
 
       expect(commandTracker.commands.single.name, "live-command");
@@ -335,7 +341,8 @@ void main() {
       repository.onOpen = () {
         stagedCommandTracker.consume(_commandUpdate("probe-command"));
       };
-      repository.listGate = Completer<void>();
+      final listGate = Completer<void>();
+      repository.listGate = listGate;
 
       final loading = service.ensureCatalog(scope: "/project");
       while (repository.listedScopes.isEmpty) {
@@ -363,7 +370,7 @@ void main() {
         thoughtLevelModelId: null,
         captureThoughtLevelDefault: true,
       );
-      repository.listGate!.complete();
+      listGate.complete();
       await loading;
 
       expect(tracker.models.single.value, "live-model");
@@ -452,11 +459,13 @@ void main() {
       repository.onOpen = () {
         stagedCommandTracker.consume(_commandUpdate("probe-command"));
       };
-      repository.resetStarted = Completer<void>();
-      repository.resetGate = Completer<void>();
+      final resetStarted = Completer<void>();
+      final resetGate = Completer<void>();
+      repository.resetStarted = resetStarted;
+      repository.resetGate = resetGate;
 
       final refreshing = service.refreshCatalog(scope: "/project");
-      await repository.resetStarted!.future;
+      await resetStarted.future;
       tracker.applySnapshot(
         snapshot: CursorCatalogSnapshot(
           modelConfigId: "model-picker",
@@ -479,7 +488,7 @@ void main() {
         thoughtLevelModelId: null,
         captureThoughtLevelDefault: true,
       );
-      repository.resetGate!.complete();
+      resetGate.complete();
 
       expect(await refreshing, isTrue);
       expect(tracker.models.single.value, "live-model");
@@ -543,11 +552,13 @@ void main() {
           ),
         },
       );
-      repository.resetStarted = Completer<void>();
-      repository.resetGate = Completer<void>();
+      final resetStarted = Completer<void>();
+      final resetGate = Completer<void>();
+      repository.resetStarted = resetStarted;
+      repository.resetGate = resetGate;
 
       final refreshing = service.refreshCatalog(scope: "/project");
-      await repository.resetStarted!.future;
+      await resetStarted.future;
       tracker.applySnapshot(
         snapshot: CursorCatalogSnapshot(
           modelConfigId: "model-picker",
@@ -564,7 +575,7 @@ void main() {
         thoughtLevelModelId: null,
         captureThoughtLevelDefault: true,
       );
-      repository.resetGate!.complete();
+      resetGate.complete();
       expect(await refreshing, isTrue);
       expect(tracker.isComplete, isFalse);
 
@@ -626,14 +637,15 @@ void main() {
     });
 
     test("concurrent forced discovery callers join one bounded probe", () async {
-      repository.openGate = Completer<void>();
+      final openGate = Completer<void>();
+      repository.openGate = openGate;
 
       final first = service.refreshCatalog(scope: "/project");
       final second = service.refreshCatalog(scope: "/other");
       await Future<void>.delayed(Duration.zero);
 
       expect(repository.openCount, 1);
-      repository.openGate!.complete();
+      openGate.complete();
       expect(await Future.wait([first, second]), everyElement(isTrue));
       expect(repository.openCount, 1);
       expect(repository.resetCount, 1);

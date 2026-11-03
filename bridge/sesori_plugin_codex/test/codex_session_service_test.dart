@@ -355,7 +355,7 @@ void main() {
     expect(
       service.getSessionMessages(
         sessionId: "session-1",
-        read: (await service.prepareSessionMessageRead(sessionId: "session-1"))!,
+        read: await service.prepareSessionMessageRead(sessionId: "session-1") ?? fail("message read was not prepared"),
         sessionStatus: const PluginSessionStatus.idle(),
       ),
       isEmpty,
@@ -373,9 +373,11 @@ void main() {
       catalogRepository: _FixedPathCatalogRepository(),
       messageRepository: messageRepository,
     );
-    final read = await service.prepareSessionMessageRead(
-      sessionId: "session-1",
-    );
+    final read =
+        await service.prepareSessionMessageRead(
+          sessionId: "session-1",
+        ) ??
+        fail("message read was not prepared");
 
     for (final status in const [
       PluginSessionStatus.busy(),
@@ -383,7 +385,7 @@ void main() {
     ]) {
       service.getSessionMessages(
         sessionId: "session-1",
-        read: read!,
+        read: read,
         sessionStatus: status,
       );
       expect(
@@ -445,12 +447,12 @@ void main() {
     );
     await outcomes.readStarted.future;
     outcomes.allowRead.complete();
-    final read = await readFuture;
+    final read = await readFuture ?? fail("message read was not prepared");
     expect(messageRepository.prepareCount, 1);
     sessionStatus = const PluginSessionStatus.busy();
     service.getSessionMessages(
       sessionId: "session-1",
-      read: read!,
+      read: read,
       sessionStatus: sessionStatus,
     );
 

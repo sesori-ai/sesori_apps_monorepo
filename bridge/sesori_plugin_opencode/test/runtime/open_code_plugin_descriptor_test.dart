@@ -478,16 +478,16 @@ void main() {
       final plugin = await descriptor().start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(int.parse(plugin.describe().details["port"]!), equals(51000));
+      expect(int.parse(plugin.describe().details["port"] ?? fail("expected a port detail")), equals(51000));
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       expect(plugin.describe().details["mode"], equals("managed"));
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
-      expect(apiRecorder.last!.initializeCalled, isTrue);
-      expect(apiRecorder.last!.onConnected, isNotNull);
+      final api = apiRecorder.last ?? fail("expected an OpenCode API");
+      expect(api.initializeCalled, isTrue);
+      expect(api.onConnected, isNotNull);
 
-      final record = host.ownershipRecord("owner-current");
-      expect(record, isNotNull);
-      expect(record!["status"], equals("ready"));
+      final record = host.ownershipRecord("owner-current") ?? fail("expected an ownership record");
+      expect(record["status"], equals("ready"));
       expect(record["port"], equals(51000));
       expect(record["openCodePid"], equals(4242));
 
@@ -515,9 +515,9 @@ void main() {
       // 0.0.0.0 is not a connectable target, so the bridge dials loopback.
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       // ...while OpenCode is actually told to bind the wildcard.
-      final record = wildcardHost.ownershipRecord("owner-current");
+      final record = wildcardHost.ownershipRecord("owner-current") ?? fail("expected an ownership record");
       expect(
-        record!["openCodeArgs"],
+        record["openCodeArgs"],
         equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]),
       );
 
@@ -567,9 +567,9 @@ void main() {
 
       // :: resolves to ::1 (same address family), bracketed in the URL.
       expect(plugin.describe().endpoint, equals("http://[::1]:51000"));
-      final record = wildcardHost.ownershipRecord("owner-current");
+      final record = wildcardHost.ownershipRecord("owner-current") ?? fail("expected an ownership record");
       expect(
-        record!["openCodeArgs"],
+        record["openCodeArgs"],
         equals(<String>["serve", "--port", "51000", "--hostname", "::"]),
       );
 
@@ -619,9 +619,9 @@ void main() {
 
       // Trimmed to the wildcard, which resolves to the loopback connect host.
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
-      final record = paddedHost.ownershipRecord("owner-current");
+      final record = paddedHost.ownershipRecord("owner-current") ?? fail("expected an ownership record");
       expect(
-        record!["openCodeArgs"],
+        record["openCodeArgs"],
         equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]),
       );
 
@@ -646,11 +646,10 @@ void main() {
       final plugin = await descriptor().start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(apiRecorder.last!.password, isNull);
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, isNull);
       expect(host.processes.spawnedProcesses, hasLength(1));
-      final environment = host.processes.spawnEnvironments.single;
-      expect(environment, isNotNull);
-      expect(environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
+      final environment = host.processes.spawnEnvironments.single ?? fail("expected a spawn environment");
+      expect(environment.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
 
       await plugin.shutdown(budget: null);
     });
@@ -676,8 +675,8 @@ void main() {
 
       expect(host.processes.spawnedProcesses, hasLength(2), reason: "the monitor must respawn the child");
       expect(plugin.currentStatus, isA<PluginReady>());
-      final record = host.ownershipRecord("owner-current");
-      expect(record!["port"], equals(51000), reason: "restart is pinned to the original port");
+      final record = host.ownershipRecord("owner-current") ?? fail("expected an ownership record");
+      expect(record["port"], equals(51000), reason: "restart is pinned to the original port");
       expect(record["status"], equals("ready"));
 
       await plugin.shutdown(budget: null);
@@ -791,7 +790,7 @@ void main() {
       await plugin.shutdown(budget: null);
       await plugin.shutdown(budget: null);
 
-      expect(apiRecorder.last!.disposeCount, equals(1));
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).disposeCount, equals(1));
       expect(plugin.currentStatus, isA<PluginStopped>());
       // The owned runtime was stopped: its ownership record is gone.
       expect(host.ownershipRecord("owner-current"), isNull);
@@ -825,7 +824,7 @@ void main() {
 
       // The api (and its SSE transport) was torn down and the owned child was
       // stopped: its ownership record is gone.
-      expect(apiRecorder.last!.disposeCount, equals(1));
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).disposeCount, equals(1));
       expect(host.ownershipRecord("owner-current"), isNull);
     });
 
@@ -927,7 +926,7 @@ void main() {
       final plugin = await descriptor.start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(int.parse(plugin.describe().details["port"]!), equals(4096));
+      expect(int.parse(plugin.describe().details["port"] ?? fail("expected a port detail")), equals(4096));
       expect(plugin.describe().details["mode"], equals("attached"));
       expect(host.ownershipRecord("owner-current"), isNull);
       expect(host.processes.spawnedProcesses, isEmpty);
@@ -1059,7 +1058,7 @@ void main() {
       final plugin = await descriptor.start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(apiRecorder.last!.password, isNull);
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, isNull);
 
       await plugin.shutdown(budget: null);
     });
@@ -1108,7 +1107,7 @@ void main() {
         ),
       );
       final trimmedPlugin = await descriptor.start(trimmedHost);
-      expect(apiRecorder.last!.password, equals("secret"));
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, equals("secret"));
       await trimmedPlugin.shutdown(budget: null);
 
       final blankHost = _FakeHost(
@@ -1124,7 +1123,7 @@ void main() {
         ),
       );
       final blankPlugin = await descriptor.start(blankHost);
-      expect(apiRecorder.last!.password, isNull);
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, isNull);
       await blankPlugin.shutdown(budget: null);
     });
 
@@ -1169,7 +1168,7 @@ void main() {
       final plugin = await descriptor.start(host).timeout(const Duration(seconds: 5));
 
       expect(plugin.currentStatus, isA<PluginDegraded>());
-      expect(apiRecorder.last!.initializeCalled, isTrue);
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).initializeCalled, isTrue);
 
       await plugin.shutdown(budget: null);
     });
@@ -1244,9 +1243,8 @@ void main() {
       expect(plugin.describe().details["mode"], equals("shared"));
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:49374"));
       expect(plugin.describe().details.values, isNot(contains(sharedPassword)));
-      expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
-      expect((apiRecorder.protocol! as OpenCodeProtocolV2).version.raw, equals("2.0.25"));
-      expect(apiRecorder.last!.password, equals(sharedPassword));
+      expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>().having((p) => p.version.raw, "version", "2.0.25"));
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, equals(sharedPassword));
       expect(
         requests.map((request) => request.headers["Authorization"]).toSet(),
         equals({"Basic ${base64Encode(utf8.encode("opencode:$sharedPassword"))}"}),

@@ -61,10 +61,11 @@ void main() {
   test("returns the registered server when it answers for the registered pid", () async {
     register(stateRoot: root.path, registration: registration());
 
-    final endpoint = await repository(handler: info).discover(environment: {"XDG_STATE_HOME": root.path});
+    final endpoint =
+        await repository(handler: info).discover(environment: {"XDG_STATE_HOME": root.path}) ??
+        fail("expected a shared server endpoint");
 
-    expect(endpoint, isNotNull);
-    expect(endpoint!.url, equals("http://127.0.0.1:49374"));
+    expect(endpoint.url, equals("http://127.0.0.1:49374"));
     expect(endpoint.password, equals(_password));
     expect(endpoint.version.raw, equals("2.0.25"));
     expect(requests.single.url.path, equals("/api/info"));

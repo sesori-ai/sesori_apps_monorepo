@@ -270,11 +270,11 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
 
   final options = (
     cache: cache,
-    projects: values["projects"]!,
-    samples: values["samples"]!,
-    sessions: values["sessions"]!,
-    transcriptBytes: values["transcript-bytes"]!,
-    warmup: values["warmup"]!,
+    projects: values["projects"] ?? _defaultOptions.projects,
+    samples: values["samples"] ?? _defaultOptions.samples,
+    sessions: values["sessions"] ?? _defaultOptions.sessions,
+    transcriptBytes: values["transcript-bytes"] ?? _defaultOptions.transcriptBytes,
+    warmup: values["warmup"] ?? _defaultOptions.warmup,
   );
   if (options.sessions <= 0) {
     throw const FormatException("--sessions must be greater than zero");

@@ -211,7 +211,7 @@ void main() {
     final directories = <String>[];
     final service = _service(
       handler: (request) async {
-        directories.add(Uri.decodeFull(request.headers["x-opencode-directory"]!));
+        directories.add(Uri.decodeFull(request.headers["x-opencode-directory"] ?? fail("missing directory header")));
         if (request.method == "GET") return _inventory(status: "connected");
         return http.Response("true", 200);
       },

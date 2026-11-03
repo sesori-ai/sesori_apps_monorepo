@@ -63,8 +63,8 @@ void main() {
           final asset = manifest.assetFor(
             target: PlatformTarget(os: osEntry.key, arch: archEntry.key),
           );
-          expect(asset, isA<ArchiveRuntimeAsset>(), reason: "${osEntry.key}/${archEntry.key} asset type");
-          final archive = asset! as ArchiveRuntimeAsset;
+          if (asset is! ArchiveRuntimeAsset) fail("${osEntry.key}/${archEntry.key} asset type: $asset");
+          final archive = asset;
           expect(archive.assetName, archEntry.value.assetName);
           expect(archive.sha256, archEntry.value.sha256);
           expect(archive.format, ArchiveFormat.tarGz);
@@ -78,9 +78,11 @@ void main() {
     });
 
     test("download URL embeds the rust-v bundled tag and asset name", () {
-      final asset = manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-      )!;
+      final asset =
+          manifest.assetFor(
+            target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+          ) ??
+          fail("macOS arm64 asset is missing");
       expect(
         manifest.downloadUrlFor(asset: asset),
         equals(

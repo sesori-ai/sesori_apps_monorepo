@@ -266,9 +266,9 @@ void main() {
           final modelsById = <String, PluginModel>{
             for (final m in mapped.providers.single.models) m.id: m,
           };
-          expect(modelsById["kimi-k2-thinking"]!.releaseDate, equals(DateTime(2025, 11, 1)));
-          expect(modelsById["k2p5"]!.releaseDate, equals(DateTime(2026, 1, 1)));
-          expect(modelsById["k2p6"]!.releaseDate, equals(DateTime(2026, 4, 1)));
+          expect(modelsById["kimi-k2-thinking"]?.releaseDate, equals(DateTime(2025, 11, 1)));
+          expect(modelsById["k2p5"]?.releaseDate, equals(DateTime(2026, 1, 1)));
+          expect(modelsById["k2p6"]?.releaseDate, equals(DateTime(2026, 4, 1)));
         },
       );
 

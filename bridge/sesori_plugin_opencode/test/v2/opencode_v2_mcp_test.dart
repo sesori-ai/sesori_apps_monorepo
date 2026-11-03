@@ -263,7 +263,7 @@ void main() {
     final directories = <String>[];
     final service = _service(
       handler: (request) async {
-        directories.add(request.url.queryParameters["location[directory]"]!);
+        directories.add(request.url.queryParameters["location[directory]"] ?? fail("missing location directory"));
         return _inventory(status: "connected");
       },
     );

@@ -307,43 +307,45 @@ class const CursorPluginDescriptor({
           : "Install the Cursor CLI from Sesori, or install it locally and retry setup detection.";
     }
 
-    if (selection is ManagedRuntimeNotSelected) {
-      if (selection is ManagedRuntimePathNotSelected) {
-        return switch (selection.primaryRejection) {
-          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
-            actionHint:
-                "Update the global Cursor CLI installation to "
-                "${const CursorRuntimeManifest().minPathVersion.raw} or newer.",
-            runtimeVersion: version.raw,
-          ),
-          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-            actionHint:
-                "The global Cursor CLI installation could not be verified. Check it locally and retry setup detection.",
-          ),
-        };
-      }
-      if (explicitBin != null) {
-        return switch (selection.primaryRejection) {
-          ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
-            actionHint: "Fix the configured Cursor CLI path, then restart the bridge.",
-          ),
-          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
-            actionHint: "The configured Cursor CLI is too old. Update it and restart the bridge.",
-          ),
-          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-            actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
-          ),
-        };
-      }
-      if (selection.primaryRejection
-          case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected()) {
-        return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-      }
-      return const PluginSetupUnknown(
-        actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
-      );
+    final ManagedRuntimeSelected selected;
+    switch (selection) {
+      case ManagedRuntimeSelected():
+        selected = selection;
+      case ManagedRuntimeNotSelected():
+        if (selection is ManagedRuntimePathNotSelected) {
+          return switch (selection.primaryRejection) {
+            ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+              actionHint:
+                  "Update the global Cursor CLI installation to "
+                  "${const CursorRuntimeManifest().minPathVersion.raw} or newer.",
+              runtimeVersion: version.raw,
+            ),
+            ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+              actionHint: "The global Cursor CLI installation could not be verified. Check it locally and retry setup detection.",
+            ),
+          };
+        }
+        if (explicitBin != null) {
+          return switch (selection.primaryRejection) {
+            ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
+              actionHint: "Fix the configured Cursor CLI path, then restart the bridge.",
+            ),
+            ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+              actionHint: "The configured Cursor CLI is too old. Update it and restart the bridge.",
+            ),
+            ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+              actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
+            ),
+          };
+        }
+        if (selection.primaryRejection
+            case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected()) {
+          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
+        }
+        return const PluginSetupUnknown(
+          actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
+        );
     }
-    final selected = selection as ManagedRuntimeSelected;
     final executablePath = selected.binaryPath;
     final runtimeVersion = selected.version.raw;
     Log.d("[cursor] available: '$executablePath --version' -> $runtimeVersion");

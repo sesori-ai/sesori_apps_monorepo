@@ -47,9 +47,10 @@ void main() {
           environment: {"LOCALAPPDATA": localAppData.path},
           os: PlatformOs.windows,
         ),
-        statSync: (path) => modificationTimes[path] == null
-            ? FileStat.statSync(path)
-            : _FakeFileStat(modified: modificationTimes[path]!),
+        statSync: (path) => switch (modificationTimes[path]) {
+          null => FileStat.statSync(path),
+          final modified => _FakeFileStat(modified: modified),
+        },
       );
 
       expect(candidates, [

@@ -319,7 +319,7 @@ class _ProbeProcessService({final Object? spawnError, final _ProbeProcess? proce
     if (error != null) {
       throw error;
     }
-    return process!;
+    return process ?? fail("no fake process is configured");
   }
 
   @override

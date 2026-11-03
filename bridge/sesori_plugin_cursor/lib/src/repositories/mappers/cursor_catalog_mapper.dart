@@ -48,6 +48,7 @@ abstract final class CursorCatalogMapper() {
     final modelConfig = _findConfig(result: result, category: "model");
     final modeConfig = _findConfig(result: result, category: "mode");
     final thoughtConfig = _findThoughtLevelConfig(result: result);
+    final thoughtConfigId = _configId(config: thoughtConfig);
 
     return CursorCatalogSnapshot(
       modelConfigId: _configId(config: modelConfig),
@@ -56,10 +57,10 @@ abstract final class CursorCatalogMapper() {
       modeConfigId: _configId(config: modeConfig),
       modes: _options(config: modeConfig),
       loadedModeId: _currentValue(config: modeConfig),
-      thoughtLevel: thoughtConfig == null
+      thoughtLevel: thoughtConfig == null || thoughtConfigId == null
           ? null
           : CursorThoughtLevelSnapshot(
-              configId: thoughtConfig["id"] as String,
+              configId: thoughtConfigId,
               variants: _orderedValues(config: thoughtConfig),
               defaultValue: _currentValue(config: thoughtConfig),
             ),

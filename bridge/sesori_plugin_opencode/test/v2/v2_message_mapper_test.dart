@@ -27,7 +27,8 @@ Map<String, dynamic> image() => <String, dynamic>{
 };
 
 PluginMessageWithParts mapped({required Map<String, dynamic> json}) =>
-    mapper.mapMessage(sessionId: "session", message: SessionMessageInfo.fromJson(json), agentNames: names)!;
+    mapper.mapMessage(sessionId: "session", message: SessionMessageInfo.fromJson(json), agentNames: names) ??
+    fail("expected a mapped message");
 
 void main() {
   test("keeps content ordinals and native tool IDs stable", () {
@@ -59,11 +60,11 @@ void main() {
     expect(info.sender, PluginMessageSender.agent);
     expect(info.agent, "Build");
     expect(info.variant, "high");
-    expect(info.time!.completed, 2);
+    expect((info.time ?? fail("expected a message time")).completed, 2);
     final tool = result.parts.last.asTool;
     expect(tool.state.title, "Fixture command");
     expect(tool.state.shellCommand, "printf fixture");
-    expect(tool.state.output!.length, maxToolOutputLength);
+    expect((tool.state.output ?? fail("expected tool output")).length, maxToolOutputLength);
   });
 
   test("truncates tool output by Unicode scalar without splitting surrogate pairs", () {
@@ -83,7 +84,7 @@ void main() {
         }),
       );
       expect(result.output, expected);
-      expect(result.output!.runes.length, maxToolOutputLength);
+      expect((result.output ?? fail("expected tool output")).runes.length, maxToolOutputLength);
     }
   });
 
@@ -125,7 +126,7 @@ void main() {
     final info = result.info as PluginMessageAssistant;
     expect(info.sender, PluginMessageSender.system);
     expect(info.agent, isNull);
-    expect(info.time!.completed, 42);
+    expect((info.time ?? fail("expected a message time")).completed, 42);
     expect(result.parts.single.id, "switch:0");
     expect(result.parts.single.agentName, "Explore");
   });

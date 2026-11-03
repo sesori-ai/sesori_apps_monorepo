@@ -375,16 +375,16 @@ void main() {
       );
       final process = await harness.nextSessionProcess();
       final prompt = await waitForCommand(process: process, type: "prompt");
-      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emitResponse(id: prompt.requestId, command: "prompt");
       final state = await waitForCommand(process: process, type: "get_state");
       process.emitResponse(
-        id: state["id"]! as String,
+        id: state.requestId,
         command: "get_state",
         data: const {"isStreaming": false, "pendingMessageCount": 0},
       );
       final confirmedState = await waitForNthCommand(process: process, type: "get_state", count: 2);
       process.emitResponse(
-        id: confirmedState["id"]! as String,
+        id: confirmedState.requestId,
         command: "get_state",
         data: const {"isStreaming": false, "pendingMessageCount": 0},
       );
@@ -453,7 +453,7 @@ void main() {
 
       final idle = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
       process.emit(frame: {"type": "compaction_end", "reason": "manual", "aborted": false, "willRetry": false});
-      process.emitResponse(id: request["id"]! as String, command: "compact", data: const {});
+      process.emitResponse(id: request.requestId, command: "compact", data: const {});
       await idle;
 
       expect(events.whereType<BridgeSseSessionCompacted>(), hasLength(1));
@@ -627,16 +627,16 @@ void main() {
       final prompt = await waitForCommand(process: process, type: "prompt");
       expect(prompt["message"], "/compact custom");
       expect(process.written.where((frame) => frame["type"] == "compact"), isEmpty);
-      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emitResponse(id: prompt.requestId, command: "prompt");
       final state = await waitForCommand(process: process, type: "get_state");
       process.emitResponse(
-        id: state["id"]! as String,
+        id: state.requestId,
         command: "get_state",
         data: const {"isStreaming": false, "pendingMessageCount": 0},
       );
       final confirmedState = await waitForNthCommand(process: process, type: "get_state", count: 2);
       process.emitResponse(
-        id: confirmedState["id"]! as String,
+        id: confirmedState.requestId,
         command: "get_state",
         data: const {"isStreaming": false, "pendingMessageCount": 0},
       );
@@ -667,7 +667,7 @@ void main() {
       );
       final process = await harness.nextSessionProcess();
       final prompt = await waitForCommand(process: process, type: "prompt");
-      process.emitFailure(id: prompt["id"]! as String, command: "prompt", error: "failed");
+      process.emitFailure(id: prompt.requestId, command: "prompt", error: "failed");
 
       try {
         await command;
@@ -977,7 +977,8 @@ Future<void> _answerProcess({
     for (final command in process.written.toList()) {
       final id = command["id"] as String?;
       if (id == null || !answered.add(id)) continue;
-      final type = command["type"]! as String;
+      final type = command["type"];
+      if (type is! String) fail("expected a string command type, got $type");
       switch (type) {
         case "get_entries":
           process.emitResponse(

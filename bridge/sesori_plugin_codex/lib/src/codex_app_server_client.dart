@@ -33,6 +33,14 @@ class CodexRpcException({
 /// a free-form `params` object. We keep the raw map here and let endpoint APIs
 /// decode typed notifications where Codex exposes structured payloads.
 class const CodexServerNotification({required final String method, required final Map<String, dynamic> params}) {
+  /// The thread most notifications name. Another type is a protocol violation
+  /// that fails the notification, which the plugin logs and drops.
+  String? get threadId => switch (params["threadId"]) {
+    null => null,
+    final String threadId => threadId,
+    _ => throw const FormatException("Codex notification threadId is not a string"),
+  };
+
   @override
   String toString() => "CodexServerNotification($method)";
 }
@@ -132,7 +140,7 @@ class CodexAppServerClient({
 
     _subscription = channel.stream.listen(
       _handleIncoming,
-      onError: _handleSocketError,
+      onError: (Object error, StackTrace stack) => _handleSocketError(error: error, stack: stack),
       onDone: _handleSocketDone,
       cancelOnError: false,
     );
@@ -269,7 +277,11 @@ class CodexAppServerClient({
       if (decoded is! Map) return;
       final map = decoded.cast<String, dynamic>();
       final Object? id = map["id"];
-      final method = map["method"] as String?;
+      final method = switch (map["method"]) {
+        null => null,
+        final String method => method,
+        _ => throw const FormatException("Codex frame method is not a string"),
+      };
 
       if (id != null && method == null) {
         // Response to one of our requests.
@@ -298,7 +310,7 @@ class CodexAppServerClient({
 
       if (id != null && method != null) {
         // Server-originated request.
-        final params = (map["params"] as Map?)?.cast<String, dynamic>() ?? {};
+        final params = _frameParams(frame: map);
         _serverRequests.add(
           CodexServerRequest(id: id, method: method, params: params),
         );
@@ -307,7 +319,7 @@ class CodexAppServerClient({
 
       if (method != null) {
         // Notification.
-        final params = (map["params"] as Map?)?.cast<String, dynamic>() ?? {};
+        final params = _frameParams(frame: map);
         _notifications.add(
           CodexServerNotification(method: method, params: params),
         );
@@ -322,6 +334,14 @@ class CodexAppServerClient({
     }
   }
 
+  /// A frame's `params` object; absent params are empty. Another type fails the
+  /// frame, which [_handleIncoming] logs and drops.
+  static Map<String, dynamic> _frameParams({required Map<String, dynamic> frame}) => switch (frame["params"]) {
+    null => <String, dynamic>{},
+    final Map<dynamic, dynamic> params => params.cast<String, dynamic>(),
+    _ => throw const FormatException("Codex frame params is not an object"),
+  };
+
   /// Masks JSON-style secret values before logging a raw frame. Matches
   /// case-insensitively on the usual credential keys and replaces the value
   /// with `"***"` while leaving the rest of the frame intact for diagnostics.
@@ -334,7 +354,7 @@ class CodexAppServerClient({
 
   String _redactForLog({required String frame}) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
 
-  void _handleSocketError(Object error, StackTrace stack) {
+  void _handleSocketError({required Object error, required StackTrace stack}) {
     Log.w("[codex][ws] socket error: ${_redactForLog(frame: "$error")}");
     _failPending(error: error, stack: stack);
     _tearDownDeadTransport();

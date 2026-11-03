@@ -46,13 +46,14 @@ void main() {
   });
 
   test("shares initialization and buffers the hydrated baseline for the first listener", () async {
-    server.snapshotGate = Completer<void>();
+    final snapshotGate = Completer<void>();
+    server.snapshotGate = snapshotGate;
     final first = plugin.initialize();
     expect(plugin.initialize(), same(first));
     await server.snapshotEntered.future;
     expect(plugin.currentWorkState, PluginWorkState.unknown);
     expect(server.streams, isEmpty);
-    server.snapshotGate!.complete();
+    snapshotGate.complete();
     await first;
     await _next<BridgeSseProjectUpdated>(plugin: plugin);
     expect(server.snapshotReads, 1);
@@ -79,7 +80,8 @@ void main() {
     final events = <BridgeSseEvent>[];
     final subscription = plugin.events.listen(events.add);
     addTearDown(subscription.cancel);
-    server.agentGate = Completer<void>();
+    final agentGate = Completer<void>();
+    server.agentGate = agentGate;
     final delta = _next<BridgeSseMessagePartDelta>(plugin: plugin);
     await server.emit(
       type: "session.step.started",
@@ -97,7 +99,7 @@ void main() {
       data: {"assistantMessageID": "assistant", "ordinal": 0, "delta": "Fixture"},
     );
     expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
-    server.agentGate!.complete();
+    agentGate.complete();
     expect((await delta).delta, "Fixture");
     expect(events.whereType<BridgeSseMessageUpdated>().single.info.agent, "Build");
     expect(
@@ -108,19 +110,21 @@ void main() {
 
   test("cold-start failure is observable and first-connect recovery restores trust", () async {
     server.failFirstSnapshot = true;
-    server.snapshotGate = Completer<void>();
+    final snapshotGate = Completer<void>();
+    server.snapshotGate = snapshotGate;
     await expectLater(plugin.initialize(), throwsA(isA<PluginOperationException>()));
     await server.secondSnapshotEntered.future.timeout(const Duration(seconds: 5));
     expect(plugin.currentWorkState, PluginWorkState.unknown);
     final recovered = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
-    server.snapshotGate!.complete();
+    snapshotGate.complete();
     await recovered.timeout(const Duration(seconds: 5));
     expect(server.streams, hasLength(1));
   });
 
   test("reconnect refresh holds new frames until the complete snapshot replaces state", () async {
     await plugin.initialize();
-    server.snapshotGate = Completer<void>();
+    final snapshotGate = Completer<void>();
+    server.snapshotGate = snapshotGate;
     final events = <BridgeSseEvent>[];
     final subscription = plugin.events.listen(events.add);
     addTearDown(subscription.cancel);
@@ -133,7 +137,7 @@ void main() {
       data: {"assistantMessageID": "assistant", "ordinal": 0, "delta": "After refresh"},
     );
     expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
-    server.snapshotGate!.complete();
+    snapshotGate.complete();
     expect((await delta).delta, "After refresh");
     expect(plugin.currentWorkState, PluginWorkState.idle);
   });
@@ -143,7 +147,8 @@ void main() {
     final events = <BridgeSseEvent>[];
     final closed = Completer<void>();
     plugin.events.listen(events.add, onDone: closed.complete);
-    server.agentGate = Completer<void>();
+    final agentGate = Completer<void>();
+    server.agentGate = agentGate;
     await server.emit(
       type: "session.step.started",
       data: {
@@ -157,7 +162,7 @@ void main() {
     server.allowClosedResponse = true;
     await plugin.dispose();
     await closed.future;
-    server.agentGate!.complete();
+    agentGate.complete();
     await server.agentAnswered.future;
     await pumpEventQueue();
     expect(events.whereType<BridgeSseMessageUpdated>(), isEmpty);
@@ -165,7 +170,8 @@ void main() {
 
   test("correlates prompt delivery and history without resurrecting busy on a late ACK", () async {
     await plugin.initialize();
-    server.promptGate = Completer<void>();
+    final promptGate = Completer<void>();
+    server.promptGate = promptGate;
     final sending = plugin.sendPrompt(
       sessionId: _sessionId,
       promptId: "fixture-prompt",
@@ -176,7 +182,7 @@ void main() {
       model: null,
     );
     await server.promptEntered.future;
-    final nativeId = server.promptBody!["id"]! as String;
+    final nativeId = (server.promptBody ?? fail("expected a prompt body"))["id"] as String;
     expect(nativeId, matches(RegExp(r"^msg_[0-9a-f]{12}[0-9A-Za-z]{14}_sesori_fixture-prompt$")));
     final busy = plugin.workState.firstWhere((state) => state == PluginWorkState.busy);
     await server.emit(type: "session.execution.started", data: {});
@@ -187,7 +193,7 @@ void main() {
     final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
     await server.emit(type: "session.execution.succeeded", data: {});
     await idle;
-    server.promptGate!.complete();
+    promptGate.complete();
     await sending;
     expect(plugin.currentWorkState, PluginWorkState.idle);
     final history = await plugin.getSessionMessages(_sessionId);
@@ -276,12 +282,13 @@ void main() {
 
   test("cold start asks many loaded folders for pending input without exceeding the socket cap", () async {
     server.extraDirectories = [for (var index = 0; index < 20; index++) "/fixture/folder-$index"];
-    server.pendingInputGate = Completer<void>();
+    final pendingInputGate = Completer<void>();
+    server.pendingInputGate = pendingInputGate;
     final initializing = plugin.initialize();
     await server.pendingInputSaturated.future.timeout(const Duration(seconds: 5));
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(server.maxPendingInputInFlight, openCodeMaxConnectionsPerHost);
-    server.pendingInputGate!.complete();
+    pendingInputGate.complete();
     await initializing;
     expect(plugin.currentWorkState, PluginWorkState.idle);
   });
@@ -340,12 +347,15 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
     _subscription = server.listen(_handle);
   }
   String get url => "http://127.0.0.1:${server.port}";
-  Map<String, Object?> get user => {
-    "id": promptBody!["id"],
-    "type": "user",
-    "text": promptBody!["text"],
-    "time": {"created": 1},
-  };
+  Map<String, Object?> get user {
+    final body = promptBody ?? fail("no prompt was sent");
+    return {
+      "id": body["id"],
+      "type": "user",
+      "text": body["text"],
+      "time": {"created": 1},
+    };
+  }
 
   Future<void> raw({required String data}) async {
     streams.last.write("data: $data\n\n");
@@ -410,17 +420,18 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
         createBody = jsonDecodeMap(await utf8.decoder.bind(request).join());
         request.response.write(jsonEncode({"data": v2SessionFixture}));
       } else if (path.endsWith("/prompt")) {
-        promptBody = jsonDecodeMap(await utf8.decoder.bind(request).join());
+        final body = jsonDecodeMap(await utf8.decoder.bind(request).join());
+        promptBody = body;
         promptEntered.complete();
         await promptGate?.future;
         request.response.write(
           jsonEncode({
             "data": {
-              "id": promptBody!["id"],
+              "id": body["id"],
               "sessionID": _sessionId,
               "time": {"created": 1},
               "delivery": "queue",
-              "payload": {"text": promptBody!["text"]},
+              "payload": {"text": body["text"]},
             },
           }),
         );
