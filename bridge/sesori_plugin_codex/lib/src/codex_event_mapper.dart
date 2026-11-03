@@ -423,34 +423,6 @@ class CodexEventMapper({
 
     final imageBearingItem = _imageBearingItemParser.parse(item: item);
     switch (imageBearingItem) {
-      case CodexImageGenerationItemDto(
-        :final status,
-        :final result,
-        :final savedPath,
-      ):
-        final toolStatus = _imageGenerationToolStatus(
-          status: status,
-          completed: completed,
-        );
-        return _toolItemEvents(
-          threadId: threadId,
-          itemId: itemId,
-          tool: "image_generation",
-          shellCommand: null,
-          status: toolStatus,
-          time: time,
-          attachments: toolStatus == PluginToolStatus.completed
-              ? _imageAttachmentMapper.map(
-                  candidates: [
-                    CodexImageAttachmentCandidate.base64(
-                      data: result,
-                      mime: "image/png",
-                      filenameHint: savedPath,
-                    ),
-                  ],
-                )
-              : const [],
-        );
       case CodexMcpToolCallItemDto(
         :final server,
         :final tool,
@@ -510,7 +482,9 @@ class CodexEventMapper({
             ],
           ),
         );
-      case CodexUnknownImageBearingItemDto() || null:
+      // The tool lifecycle tracker projects every image generation before the
+      // plugin reaches this mapper.
+      case CodexImageGenerationItemDto() || CodexUnknownImageBearingItemDto() || null:
         break;
     }
 
@@ -642,18 +616,6 @@ class CodexEventMapper({
       CodexToolCallStatus.completed => PluginToolStatus.completed,
       CodexToolCallStatus.failed || CodexToolCallStatus.declined => PluginToolStatus.error,
       CodexToolCallStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
-    };
-  }
-
-  PluginToolStatus _imageGenerationToolStatus({
-    required CodexImageGenerationStatus status,
-    required bool completed,
-  }) {
-    return switch (status) {
-      CodexImageGenerationStatus.inProgress => PluginToolStatus.running,
-      CodexImageGenerationStatus.completed => PluginToolStatus.completed,
-      CodexImageGenerationStatus.failed => PluginToolStatus.error,
-      CodexImageGenerationStatus.unknown => completed ? PluginToolStatus.completed : PluginToolStatus.running,
     };
   }
 
