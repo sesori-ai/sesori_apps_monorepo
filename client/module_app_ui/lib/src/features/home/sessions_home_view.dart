@@ -143,6 +143,7 @@ class const SessionsHomeView({
         actionDispatcher: actionDispatcher,
         createActions: createActions,
         selectedSessionId: selectedSessionId,
+        showsLoadFailure: true,
         disconnectedBuilder: disconnectedBuilder,
         emptyState: projects is ProjectListLoaded && projects.projects.isEmpty
             ? SafeArea(top: false, child: noProjectsState)
