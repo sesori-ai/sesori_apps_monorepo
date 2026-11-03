@@ -83,6 +83,67 @@ void foo(dynamic context) {
 ''', [lint(190, 25), lint(190, 40)]);
   }
 
+  void test_reportForGoRouterVariable() async {
+    await assertDiagnostics(r'''
+class GoRouter {
+  void go(String path) {}
+}
+
+void foo(GoRouter router) {
+  router.go('/path');
+}
+''', [lint(76, 18)]);
+  }
+
+  void test_reportForBuildContextSubtype() async {
+    await assertDiagnostics(r'''
+class BuildContext {}
+class Element implements BuildContext {}
+extension _ on BuildContext {
+  void replace(String path) {}
+}
+
+void foo(Element element) {
+  element.replace('/path');
+}
+''', [lint(157, 24)]);
+  }
+
+  void test_reportForNavigatorStatePush() async {
+    await assertDiagnostics(r'''
+class NavigatorState {
+  void push(Object route) {}
+}
+
+void foo(NavigatorState navigator) {
+  navigator.push(Object());
+}
+''', [lint(94, 24)]);
+  }
+
+  void test_noErrorForSameNamedMethodsOnOtherTypes() async {
+    await assertNoDiagnostics(r'''
+class DeleteStatement {
+  Future<int> go() async => 0;
+}
+
+class Database {
+  DeleteStatement delete(Object table) => DeleteStatement();
+}
+
+class Tracker {
+  void replace(String id) {}
+  void push(String id) {}
+}
+
+void foo(Database db, Tracker tracker) {
+  db.delete(Object()).go();
+  tracker.replace('id');
+  tracker.push('id');
+}
+''');
+  }
+
   void test_noErrorForContextPop() async {
     await assertNoDiagnostics(r'''
 class BuildContext {}
