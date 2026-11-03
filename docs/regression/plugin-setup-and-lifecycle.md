@@ -359,8 +359,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
   When the graceful stop request of an owned Codex or OpenCode runtime fails, as Windows
-  `taskkill` without `/F` does for a windowless console process, the stop still escalates
-  to a forced stop once the runtime outlives the grace period.
+  `taskkill` without `/F` does for a windowless console process, the stop skips the
+  grace wait and goes straight to a forced stop of the still-running runtime.
   On macOS and Linux, an owned Codex or OpenCode runtime is stopped on shutdown and
   reclaimed by stale cleanup after a crash in every launch shape: a native binary, an
   npm `#!/usr/bin/env node` shim (`ps` shows `node <shim> <args>`), and a launcher
