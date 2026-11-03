@@ -207,7 +207,6 @@ import "services/yolo_settings_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_event_delivery.dart";
 import "sse/sse_manager.dart";
-import "version.dart";
 
 typedef OrchestratorComposition = ({
   OrchestratorSession session,
@@ -449,7 +448,7 @@ class Orchestrator({
       pendingSupport: pendingInteractionSupport,
     );
     final healthRepository = HealthRepository(
-      bridgeVersion: appVersion,
+      bridgeVersion: bridgeVersion,
       filesystemAccessOk: _filesystemAccessOk,
       bridgeKind: _bridgeKind,
     );

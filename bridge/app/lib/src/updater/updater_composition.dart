@@ -4,12 +4,11 @@ import 'dart:io';
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart'
-    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, DownloadProgress;
+    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, DownloadProgress, bridgeVersion;
 
 import '../foundation/filesystem_cleaner.dart';
 import '../foundation/process_runner.dart';
 import '../foundation/process_runner_command_executor.dart';
-import '../version.dart';
 import 'api/checksum_manifest_api.dart';
 import 'api/github_releases_api.dart';
 import 'api/managed_runtime_manifest_api.dart';
@@ -81,7 +80,7 @@ composeUpdater({
     releaseRepository: ReleaseRepository(
       api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
       cache: UpdateCacheApi(cacheDirectory: managedRuntimePaths.cacheDirectory, clock: clock),
-      currentVersion: appVersion,
+      currentVersion: bridgeVersion,
       target: distributionTarget,
       track: releaseTrack,
     ),
@@ -106,7 +105,7 @@ composeUpdater({
       updateLock: updateLock,
       filesystemCleaner: filesystemCleaner,
       clock: clock,
-      currentVersion: appVersion,
+      currentVersion: bridgeVersion,
       installRoot: installRoot,
     ),
     logRepository: logRepository,

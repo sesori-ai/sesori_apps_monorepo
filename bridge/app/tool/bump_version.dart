@@ -39,17 +39,18 @@ Future<void> updatePubspec({
   await writeFile(path: filePath, content: updated);
 }
 
-/// Updates the version in lib/src/version.dart.
-Future<void> updateVersionDart({
+/// Updates the version constant in sesori_bridge_foundation's
+/// lib/src/bridge_version.dart, the sibling package of [appDir].
+Future<void> updateBridgeVersionDart({
   required String appDir,
   required String oldVersion,
   required String newVersion,
 }) async {
-  final filePath = p.join(appDir, 'lib', 'src', 'version.dart');
+  final filePath = p.join(p.dirname(appDir), 'sesori_bridge_foundation', 'lib', 'src', 'bridge_version.dart');
   final content = await readFile(path: filePath);
   final updated = content.replaceFirst(
-    "const String appVersion = '$oldVersion';",
-    "const String appVersion = '$newVersion';",
+    "const String bridgeVersion = '$oldVersion';",
+    "const String bridgeVersion = '$newVersion';",
   );
   await writeFile(path: filePath, content: updated);
 }
@@ -128,7 +129,7 @@ Future<void> main(List<String> args) async {
   try {
     // Update all 9 files
     await updatePubspec(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
-    await updateVersionDart(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
+    await updateBridgeVersionDart(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
 
     // Update wrapper package.json
     await updatePackageJson(
@@ -174,7 +175,7 @@ Future<void> main(List<String> args) async {
     stdout.writeln('');
     stdout.writeln('Updated files:');
     stdout.writeln('  1. pubspec.yaml');
-    stdout.writeln('  2. lib/src/version.dart');
+    stdout.writeln('  2. ../sesori_bridge_foundation/lib/src/bridge_version.dart');
     stdout.writeln('  3. npm/sesori-bridge/package.json');
     stdout.writeln('  4. npm/sesori-bridge-darwin-arm64/package.json');
     stdout.writeln('  5. npm/sesori-bridge-darwin-x64/package.json');
