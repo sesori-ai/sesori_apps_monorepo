@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Attach verified desktop assets to the shared release; never create/promote a release.
 
-The caller owns platform admission and production approval. Existing assets are
+The caller owns production approval. Existing assets are
 immutable, including on partial-upload retries. No private evidence is published.
 """
 import argparse

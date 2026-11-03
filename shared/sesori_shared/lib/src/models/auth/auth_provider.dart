@@ -38,7 +38,6 @@ sealed class const AuthProvider._() {
 
 sealed class const OAuthProvider._() extends AuthProvider {
   this : super._();
-  String get apiCallbackPath => "$apiAuthPath/callback";
 }
 
 @immutable

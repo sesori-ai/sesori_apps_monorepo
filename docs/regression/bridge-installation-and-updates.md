@@ -22,8 +22,8 @@ client's update steps shown wherever a feature needs a newer bridge.
   build-number queries or mobile uploads so the main-only macOS signing environment
   cannot leave partial store uploads. Release tags, serialized release concurrency and
   mobile/bridge success requirements stay unchanged. Native macOS desktop builds share
-  the resolved source/build, but their failure does not alter core finalization. Once
-  separately admitted, desktop assets attach afterward without replacing bridge archives,
+  the resolved source/build, but their failure does not alter core finalization.
+  Desktop assets attach afterward without replacing bridge archives,
   `checksums.txt`, tags, prerelease status or Latest. Production uses the existing
   `store-production` approval; explicit `bridge-only` remains CLI-only.
 - Bridge archives use `dart build cli` on six parallel native OS/architecture
