@@ -66,7 +66,7 @@ PluginManagementService _pluginManagementService({
       onDetachedFailure: any(named: "onDetachedFailure"),
     ),
   ).thenAnswer((invocation) {
-    (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+    (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
       PluginAuthenticationBrowserPhase.opening,
     );
     return Completer<PluginAuthenticationBrowserFlowResult>().future;
@@ -110,7 +110,7 @@ void main() {
         occurredAtUtc: any(named: "occurredAtUtc"),
       ),
     ).thenAnswer((invocation) async {
-      reportedEvents.add(invocation.namedArguments[#event]! as ProductAnalyticsEvent);
+      reportedEvents.add(invocation.namedArguments[#event] as ProductAnalyticsEvent);
       return AnalyticsDeliveryResult.acceptedBySdk;
     });
   });
@@ -139,7 +139,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return Completer<PluginAuthenticationBrowserFlowResult>().future;
@@ -185,7 +185,7 @@ void main() {
       final cancelledOwners = <PluginAuthenticationBrowserOwner>[];
       var starts = 0;
       when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((invocation) async {
-        cancelledOwners.add(invocation.namedArguments[#owner]! as PluginAuthenticationBrowserOwner);
+        cancelledOwners.add(invocation.namedArguments[#owner] as PluginAuthenticationBrowserOwner);
         return null;
       });
       when(
@@ -199,9 +199,9 @@ void main() {
         ),
       ).thenAnswer((invocation) {
         if (++starts == 2) return Future.value(const PluginAuthenticationBrowserBusy());
-        acceptedOwners.add(invocation.namedArguments[#owner]! as PluginAuthenticationBrowserOwner);
-        retryModes.add(invocation.namedArguments[#reuseActiveListener]! as bool);
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        acceptedOwners.add(invocation.namedArguments[#owner] as PluginAuthenticationBrowserOwner);
+        retryModes.add(invocation.namedArguments[#reuseActiveListener] as bool);
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return starts == 1 ? firstReturn.future : Future.value(const PluginAuthenticationBrowserDirect());
@@ -262,7 +262,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return browserResult.future;
@@ -312,7 +312,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return browserResult.future;
@@ -377,7 +377,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) async {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return calls++ == 0 ? failure : const PluginAuthenticationBrowserDirect();
@@ -452,7 +452,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) async {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return failure;
@@ -546,7 +546,7 @@ void main() {
             onDetachedFailure: any(named: "onDetachedFailure"),
           ),
         ).thenAnswer((invocation) async {
-          (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
             PluginAuthenticationBrowserPhase.opening,
           );
           return diagnostic.failure;
@@ -606,7 +606,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return browserResult.future;
@@ -713,7 +713,7 @@ void main() {
             onDetachedFailure: any(named: "onDetachedFailure"),
           ),
         ).thenAnswer((invocation) {
-          (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
             PluginAuthenticationBrowserPhase.opening,
           );
           return browser.future;
@@ -784,7 +784,7 @@ void main() {
             onDetachedFailure: any(named: "onDetachedFailure"),
           ),
         ).thenAnswer((invocation) async {
-          (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
             PluginAuthenticationBrowserPhase.opening,
           );
           return const PluginAuthenticationBrowserFlowCancelled();
@@ -1029,7 +1029,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return callback.future;
@@ -1106,7 +1106,7 @@ void main() {
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
       ).thenAnswer((invocation) {
-        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+        (invocation.namedArguments[#onPhase] as void Function(PluginAuthenticationBrowserPhase))(
           PluginAuthenticationBrowserPhase.opening,
         );
         return callback.future;

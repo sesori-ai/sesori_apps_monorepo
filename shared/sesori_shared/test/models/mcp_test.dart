@@ -295,8 +295,8 @@ void main() {
       'tools': {'type': 'future'},
     }) as McpServerSnapshot;
     expect(server.authorization, McpAuthorizationState.unknown);
-    expect(server.configuration!.scope, McpConfigurationScope.unknown);
-    expect(server.configuration!.mutability, McpConfigurationMutability.unknown);
+    expect(server.configuration?.scope, McpConfigurationScope.unknown);
+    expect(server.configuration?.mutability, McpConfigurationMutability.unknown);
     final offer = McpInventoryEntry.fromJson({
       'type': 'connectorOffer',
       'target': {

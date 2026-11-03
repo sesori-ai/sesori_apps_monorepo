@@ -44,6 +44,12 @@ class _FakeAttachmentThumbnailStorage() implements AttachmentThumbnailStorage {
   Completer<void>? deleteScopeGate;
   DateTime clock = DateTime.utc(2026);
 
+  Map<String, Uint8List> entriesIn({required String scope}) =>
+      entries[scope] ?? fail("no thumbnails stored in scope $scope");
+
+  Map<String, DateTime> modifiedAtIn({required String scope}) =>
+      modifiedAt[scope] ?? fail("no modification times stored in scope $scope");
+
   @override
   Future<Uint8List?> read({required String scope, required String key}) async {
     reads.add((scope: scope, key: key));
@@ -72,7 +78,7 @@ class _FakeAttachmentThumbnailStorage() implements AttachmentThumbnailStorage {
         AttachmentThumbnailMetadata(
           key: entry.key,
           sizeBytes: sizeOverrides[entry.key] ?? entry.value.length,
-          modifiedAt: modifiedAt[scope]![entry.key]!,
+          modifiedAt: modifiedAt[scope]?[entry.key] ?? fail("no modification time for ${entry.key}"),
         ),
     ];
   }
@@ -674,7 +680,7 @@ void main() {
       rendition: SessionAttachmentRendition.thumbnail,
     );
     final stored = thumbnailStorage.writes.single;
-    thumbnailStorage.entries[stored.scope]![stored.key] = Uint8List.fromList([1, 2, 3]);
+    thumbnailStorage.entriesIn(scope: stored.scope)[stored.key] = Uint8List.fromList([1, 2, 3]);
 
     final restartedRepository = MessageImageRepository(
       api: MessageImageApi(client: MockClient((_) async => http.Response("unexpected", 500))),
@@ -921,8 +927,8 @@ void main() {
       rendition: SessionAttachmentRendition.thumbnail,
     );
     final stored = thumbnailStorage.writes.single;
-    final scopeEntries = thumbnailStorage.entries[stored.scope]!;
-    final scopeTimes = thumbnailStorage.modifiedAt[stored.scope]!;
+    final scopeEntries = thumbnailStorage.entriesIn(scope: stored.scope);
+    final scopeTimes = thumbnailStorage.modifiedAtIn(scope: stored.scope);
     final oldTime = DateTime.utc(2025);
     final tiedTime = DateTime.utc(2025, 1, 2);
     scopeEntries
@@ -995,7 +1001,7 @@ void main() {
     thumbnailStorage.listFailure = null;
 
     final stored = thumbnailStorage.writes.last;
-    thumbnailStorage.entries[stored.scope]![stored.key] = Uint8List.fromList([1]);
+    thumbnailStorage.entriesIn(scope: stored.scope)[stored.key] = Uint8List.fromList([1]);
     thumbnailStorage.deleteFailure = StateError("delete");
     expect(
       await repository.load(
@@ -1129,7 +1135,7 @@ void main() {
       rendition: SessionAttachmentRendition.thumbnail,
     );
     final stored = thumbnailStorage.writes.single;
-    thumbnailStorage.entries[stored.scope]![stored.key] = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47]);
+    thumbnailStorage.entriesIn(scope: stored.scope)[stored.key] = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47]);
     thumbnailStorage.deleteScopeFailure = StateError("cleanup");
 
     session.emit(const AuthState.unauthenticated());

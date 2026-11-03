@@ -30,9 +30,9 @@ void main() {
         ),
       );
 
-      final attachment = await dispatcher.pickImage();
+      final attachment = await dispatcher.pickImage() ?? fail("no image picked");
 
-      expect(attachment!.mime, "image/jpeg");
+      expect(attachment.mime, "image/jpeg");
       expect(attachment.bytes, same(bytes));
       expect(attachment.filename, "photo.jpg");
     });

@@ -43,7 +43,7 @@ void main() {
         body: any(named: "body"),
       ),
     ).thenAnswer((invocation) async {
-      final parse = invocation.namedArguments[#fromJson]! as Session Function(Map<String, dynamic>);
+      final parse = invocation.namedArguments[#fromJson] as Session Function(Map<String, dynamic>);
       return ApiResponse.success(parse(session.toJson()));
     });
     expect(await service.setEnabled(sessionId: "session-1", enabled: true), session);

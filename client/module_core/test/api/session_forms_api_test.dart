@@ -66,7 +66,7 @@ void main() {
       request: const DeclineFormRequest(requestId: "request", sessionId: "owner", choice: FormDismissalChoice.cancel),
     );
     expect(requests.map((r) => r.path), ["/session/forms", "/form/reply", "/form/decline"]);
-    expect(jsonDecode(requests[1].body!), {
+    expect(jsonDecode(requests[1].body ?? fail("no request body")), {
       "requestId": "request",
       "sessionId": "owner",
       "values": {
@@ -74,7 +74,11 @@ void main() {
         "integer": {"type": "integer", "value": 0},
       },
     });
-    expect(jsonDecode(requests.last.body!), {"requestId": "request", "sessionId": "owner", "choice": "cancel"});
+    expect(jsonDecode(requests.last.body ?? fail("no request body")), {
+      "requestId": "request",
+      "sessionId": "owner",
+      "choice": "cancel",
+    });
   });
 
   for (final path in ["/session/forms", "/form/reply", "/form/decline"]) {

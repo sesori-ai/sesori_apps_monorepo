@@ -65,7 +65,10 @@ void main() {
       // Abandoning the future alone would leave the connection open, so a
       // retry after a timeout would stack another hung request on top.
       expect(transport.aborted, isTrue);
-      expect((response! as ErrorResponse<String>).error, isA<DartHttpClientError>());
+      expect(
+        ((response ?? fail("getText did not complete")) as ErrorResponse<String>).error,
+        isA<DartHttpClientError>(),
+      );
     });
   });
 }

@@ -81,7 +81,7 @@ final class _AggregateTestOptionsService({required MockSessionRepository session
 
 void main() {
   group("NewSessionCubit plugin selection", () {
-    late MockSessionRepository sessionService;
+    late MockSessionRepository launchSessionRepository;
     late MockSessionApi sessionApi;
     late MockSessionRepository sessionRepository;
     late MockPluginRepository pluginRepository;
@@ -94,7 +94,7 @@ void main() {
     setUpAll(registerAllFallbackValues);
 
     setUp(() {
-      sessionService = MockSessionRepository();
+      launchSessionRepository = MockSessionRepository();
       sessionApi = MockSessionApi();
       sessionRepository = MockSessionRepository();
       pluginRepository = MockPluginRepository();
@@ -149,7 +149,7 @@ void main() {
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
       sessionLaunchService: SessionLaunchService(
-        sessionRepository: sessionService,
+        sessionRepository: launchSessionRepository,
         launchRepository: inMemorySessionLaunchRepository(),
         feedbackPromptService: FakeFeedbackPromptService(),
         productAnalyticsService: stubbedProductAnalyticsService(),
@@ -219,7 +219,7 @@ void main() {
       await _waitForComposer(cubit);
       cubit.selectVariant(const SessionVariant(id: "high"));
       cubit.stageCommand(command);
-      final beforeRefresh = cubit.state.agentModelData!;
+      final beforeRefresh = cubit.state.agentModelData ?? fail("no agent and model data");
 
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
@@ -230,7 +230,7 @@ void main() {
       });
 
       final state = cubit.state as NewSessionComposing;
-      final afterRefresh = state.agentModelData!;
+      final afterRefresh = state.agentModelData ?? fail("no agent and model data");
       expect((state.phase as NewSessionPhaseDiscoveryError).reason, RemoteFailureReason.serverRejected);
       expect(afterRefresh.plugins, beforeRefresh.plugins);
       expect(afterRefresh.plugin, beforeRefresh.plugin);
@@ -527,7 +527,7 @@ void main() {
           mode: any(named: "mode"),
         ),
       ).thenAnswer((invocation) async {
-        modes.add(invocation.namedArguments[#mode]! as SessionOptionsRequestMode);
+        modes.add(invocation.namedArguments[#mode] as SessionOptionsRequestMode);
         return modes.length == 1
             ? _optionsCatalog(agentName: "stale-agent", providers: const [], isStale: true)
             : await refreshed.future;
@@ -1234,7 +1234,7 @@ void main() {
         zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
       );
 
-      final afterRefresh = cubit.state.agentModelData!;
+      final afterRefresh = cubit.state.agentModelData ?? fail("no agent and model data");
       expect(afterRefresh.optionsState, isA<NewSessionOptionsRefreshFailureUnavailableState>());
       expect(afterRefresh.providers, isEmpty);
       expect(afterRefresh.agentModel, isNull);
@@ -1472,7 +1472,7 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [degraded])),
       );
       when(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1500,7 +1500,7 @@ void main() {
       verify(() => sessionApi.listProviders(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(() => sessionApi.listCommands(projectId: "project-1", pluginId: "degraded")).called(1);
       verify(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: "project-1",
           pluginId: "degraded",
@@ -1553,7 +1553,7 @@ void main() {
       expect((cubit.state as NewSessionComposing).config.selectedPlugin, unavailable);
       _verifyNoComposerCalls(sessionApi: sessionApi);
       verifyNever(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1742,7 +1742,7 @@ void main() {
         ..recordFastMode(pluginId: "plugin-a", fastMode: false)
         ..recordAgent(pluginId: "plugin-b", agentName: "agent-b");
       when(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1775,7 +1775,7 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB])),
       );
       when(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1848,7 +1848,7 @@ void main() {
         ..add(connectedStatus);
       await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
 
-      final data = cubit.state.agentModelData!;
+      final data = cubit.state.agentModelData ?? fail("no agent and model data");
       expect(data.plugin, pluginA);
       expect(data.stagedCommand, isNull);
       expect(data.commands, isEmpty);
@@ -1893,7 +1893,7 @@ void main() {
       });
       final createCompleter = Completer<ApiResponse<Session>>();
       when(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1940,7 +1940,7 @@ void main() {
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
       when(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -1991,7 +1991,7 @@ void main() {
       );
       expect(cubit.canCreateSession, isFalse);
       verifyNever(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
@@ -2011,7 +2011,7 @@ void main() {
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])),
       );
       when(
-        () => sessionService.createSessionWithMessage(
+        () => launchSessionRepository.createSessionWithMessage(
           attachments: const [],
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),

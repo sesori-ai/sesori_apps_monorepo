@@ -122,7 +122,8 @@ void main() {
       verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isNotNull);
       expect(result?.token, accessToken);
-      expect(result!.validityLeft, greaterThan(Duration.zero));
+      if (result == null) fail("no access token was returned");
+      expect(result.validityLeft, greaterThan(Duration.zero));
       expect(result.validityLeft, lessThanOrEqualTo(const Duration(minutes: 10)));
     });
 

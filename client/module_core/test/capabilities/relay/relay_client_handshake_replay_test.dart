@@ -14,6 +14,11 @@ import "package:web_socket_channel/web_socket_channel.dart";
 
 class _MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 
+Uint8List _currentFrame({required StreamIterator<Object?> outgoing}) => switch (outgoing.current) {
+  final List<int> bytes => Uint8List.fromList(bytes),
+  final other => fail("expected a binary frame, got ${other.runtimeType.toString()}"),
+};
+
 void main() {
   test("disconnect closes an active SSE stream without encryption errors", () async {
     final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
@@ -84,7 +89,7 @@ void main() {
     final firstFrameReady = outgoing.moveNext();
     final connectFuture = client.connect();
     expect(await firstFrameReady.timeout(const Duration(seconds: 1)), isTrue);
-    final firstFrame = Uint8List.fromList(outgoing.current! as List<int>);
+    final firstFrame = _currentFrame(outgoing: outgoing);
 
     // An older relay names no bridge; a newer relay adds the bridge id.
     socket.serverSink.add('{"type":"bridge_connected"}');
@@ -93,7 +98,7 @@ void main() {
     final replayReady = outgoing.moveNext();
     socket.serverSink.add('{"type":"bridge_connected","bridgeId":"br_test1234"}');
     expect(await replayReady.timeout(const Duration(seconds: 1)), isTrue);
-    final replayedFrame = Uint8List.fromList(outgoing.current! as List<int>);
+    final replayedFrame = _currentFrame(outgoing: outgoing);
     expect(replayedFrame, firstFrame);
 
     final encryptor = RelayCryptoService().createSessionEncryptor(SecretKey(roomKey));
@@ -204,7 +209,7 @@ void main() {
     expect(client.pendingRequestCount, 0);
     serializationGate.complete();
     expect(await frameReady.timeout(const Duration(seconds: 1)), isTrue);
-    final plaintext = await unframe(Uint8List.fromList(outgoing.current! as List<int>), encryptor: encryptor);
+    final plaintext = await unframe(_currentFrame(outgoing: outgoing), encryptor: encryptor);
     expect(plaintext, expected);
     expect(yields, (expected.length - 1) ~/ 16);
     socket.serverSink.add(
@@ -437,7 +442,7 @@ void main() {
 
     client.subscribeSse("/event");
     expect(await outgoing.moveNext().timeout(const Duration(seconds: 1)), isTrue);
-    final payload = await unframe(Uint8List.fromList(outgoing.current! as List<int>), encryptor: encryptor);
+    final payload = await unframe(_currentFrame(outgoing: outgoing), encryptor: encryptor);
     final message = RelayMessage.fromJson(jsonDecode(utf8.decode(payload)) as Map<String, dynamic>);
 
     expect(
@@ -453,7 +458,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       },
       (error, _) => uncaughtErrors.add(error),
-    )!;
+    );
     expect(uncaughtErrors, isEmpty);
   });
 }

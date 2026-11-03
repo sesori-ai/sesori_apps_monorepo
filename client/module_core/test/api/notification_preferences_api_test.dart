@@ -92,7 +92,7 @@ void main() {
 
     expect(client.lastUrl?.path, "/auth/settings/$_deviceId");
     expect(client.lastUserId, _userId);
-    expect(jsonDecode(client.lastBody!), {
+    expect(jsonDecode(client.lastBody ?? fail("no request body")), {
       "notifications": {"sessionMessage": false},
     });
     expect(record.notifications.sessionMessage, isFalse);
