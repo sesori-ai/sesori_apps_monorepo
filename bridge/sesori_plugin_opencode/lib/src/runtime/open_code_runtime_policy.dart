@@ -383,13 +383,14 @@ Future<({int statusCode, OpenCodeProbeResponse? body})> _getOpenCodeJson({
 
 /// Builds the "starting" ownership record from the post-spawn facts.
 OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraft draft, required String bindHost}) {
+  final args = <String>["serve", "--port", "${draft.port}", "--hostname", bindHost];
   return OpenCodeOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     openCodePid: draft.runtimeIdentity.pid,
     openCodeStartMarker: draft.runtimeIdentity.startMarker,
     openCodeExecutablePath: draft.runtimeIdentity.executablePath ?? "",
-    openCodeCommand: draft.runtimeIdentity.executablePath ?? "opencode",
-    openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", bindHost],
+    openCodeCommand: draft.runtimeCommandFor(args: args) ?? draft.runtimeIdentity.executablePath ?? "opencode",
+    openCodeArgs: args,
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,
     bridgeStartMarker: draft.bridgeIdentity.startMarker,

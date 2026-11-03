@@ -128,13 +128,14 @@ Future<RuntimeHealthProbe> probeCodexHealth({
 /// mirror [codexAppServerArgs] so the persisted command line matches the live
 /// process for supervisor identity matching.
 CodexOwnershipRecord buildCodexOwnershipRecord({required RuntimeRecordDraft draft}) {
+  final args = codexAppServerArgs(port: draft.port);
   return CodexOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     codexPid: draft.runtimeIdentity.pid,
     codexStartMarker: draft.runtimeIdentity.startMarker,
     codexExecutablePath: draft.runtimeIdentity.executablePath ?? "",
-    codexCommand: draft.runtimeIdentity.executablePath ?? "codex",
-    codexArgs: codexAppServerArgs(port: draft.port),
+    codexCommand: draft.runtimeCommandFor(args: args) ?? draft.runtimeIdentity.executablePath ?? "codex",
+    codexArgs: args,
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,
     bridgeStartMarker: draft.bridgeIdentity.startMarker,

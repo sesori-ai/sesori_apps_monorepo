@@ -358,6 +358,10 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   its transport directly. Stdio transports close child stdin before graceful termination
   and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
+  An owned Codex or OpenCode runtime launched through an interpreter shim (an npm
+  `#!/usr/bin/env node` script, which `ps` reports as `node <shim> <args>`) is still
+  stopped on shutdown and reclaimed by stale cleanup after a crash, never left running
+  with its port.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed

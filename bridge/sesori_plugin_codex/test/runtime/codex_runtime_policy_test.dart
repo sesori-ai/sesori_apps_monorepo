@@ -2,6 +2,7 @@ import "dart:io";
 import "dart:math";
 
 import "package:codex_plugin/src/runtime/codex_ownership_record.dart";
+import "package:codex_plugin/src/runtime/codex_record_mapper.dart";
 import "package:codex_plugin/src/runtime/codex_runtime_policy.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -103,6 +104,33 @@ void main() {
       );
       expect(record.codexExecutablePath, equals(""));
       expect(record.codexCommand, equals("codex"));
+    });
+
+    test("rebuilds the live identity of an interpreter-shim child, which stop and stale cleanup match on", () {
+      // `ps` reports a `#!/usr/bin/env node` codex as `node <our spawn command>`.
+      final shim = ProcessIdentity(
+        pid: 4242,
+        startMarker: "marker",
+        executablePath: "node",
+        commandLine: "node /opt/homebrew/bin/codex app-server --listen ws://127.0.0.1:51000",
+        ownerUser: null,
+        capturedAt: DateTime.utc(2026, 6, 1),
+      );
+      final record = buildCodexOwnershipRecord(
+        draft: RuntimeRecordDraft(
+          ownerSessionId: "owner-1",
+          runtimeIdentity: shim,
+          port: 51000,
+          bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: "bridge-marker"),
+          startedAt: DateTime.utc(2026, 6, 1, 9, 30),
+        ),
+      );
+
+      const mapper = CodexRecordMapper();
+      expect(mapper.runtimeStartMarkerOf(record: record), equals(shim.startMarker));
+      expect(mapper.runtimeExecutablePathOf(record: record), equals(shim.executablePath));
+      expect(mapper.runtimeCommandLineOf(record: record), equals(shim.commandLine));
+      expect(record.codexArgs, equals(codexAppServerArgs(port: 51000)));
     });
   });
 
