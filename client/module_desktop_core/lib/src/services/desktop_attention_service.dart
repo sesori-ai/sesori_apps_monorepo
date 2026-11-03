@@ -581,26 +581,12 @@ class DesktopAttentionService({
       return;
     }
 
-    final sessionDetail = AppRouteSessionDetail(
-      projectId: request.projectId,
-      projectName: null,
-      sessionId: request.sessionId,
-      sessionTitle: request.sessionTitle,
-      readOnly: false,
-      fromLaunch: false,
-    );
     _routeDispatcher.dismissPopups();
-    final currentLocation = _routeSource.currentLocation;
-    if (currentLocation != null && sessionDetail.showsEditableLocation(location: Uri.parse(currentLocation))) {
-      return;
-    }
-    _routeDispatcher.replaceStack(
-      stack: RouteStack(
-        paths: <AppRoute>[
-          const AppRoute.home(),
-          sessionDetail,
-        ].map((route) => route.buildPath()).toList(growable: false),
-      ),
+    openNotificationSession(
+      request: request,
+      routeDispatcher: _routeDispatcher,
+      routeSource: _routeSource,
+      keepIfAlreadyShown: true,
     );
   }
 

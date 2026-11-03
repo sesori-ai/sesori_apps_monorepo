@@ -87,9 +87,11 @@ class CursorCatalogTracker() {
   String? resolveModeId({required String? agent}) {
     if (agent == null || agent.isEmpty) return null;
     // COMPATIBILITY 2026-09-21 (v1.9.0): Only the default mode is advertised, but
-    // catalogs captured before this date are served for up to 30 days, so a
-    // client can still name another mode. It is honoured rather than run in the
-    // default. Match only the default once no such catalog can be served.
+    // stored session and new-session defaults can still name another mode, and
+    // public apps older than v1.8.3 send a stored agent without checking the
+    // catalog. It is honoured rather than run in the default. Match only the
+    // default once those apps are unsupported and no stored default can still
+    // name another mode.
     if (hasModeOption(modeId: agent)) return agent;
     for (final mode in _modes) {
       if (mode.name == agent) return mode.value;

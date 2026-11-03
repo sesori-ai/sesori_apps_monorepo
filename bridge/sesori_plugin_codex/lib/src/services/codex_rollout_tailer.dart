@@ -14,12 +14,11 @@ class const CodexRolloutAppend({
 
 /// Streams complete records appended to rollouts for turns active in this
 /// bridge process.
-///
-/// COMPATIBILITY 2026-07-23 (Codex app-server 0.144.x): stable item events do
-/// not expose every response-item call (notably code-mode `exec` and `wait`),
-/// and experimental raw events are disabled when a thread is resumed. Remove
-/// this tailer when a stable app-server stream covers raw calls and outputs for
-/// both newly started and resumed threads.
+// COMPATIBILITY 2026-11-03 (v1.12.0): Codex app-server 0.144.x stable item
+// events do not expose every response-item call (notably code-mode `exec` and
+// `wait`), and experimental raw events are disabled when a thread is resumed.
+// Remove this tailer when a stable app-server stream covers raw calls and
+// outputs for both newly started and resumed threads.
 class CodexRolloutTailer({
   required final CodexRolloutApi _rolloutApi,
   required final CodexCatalogRepository _catalogRepository,
@@ -204,10 +203,10 @@ class _CodexRolloutCursor({
   required var String? path,
   required var int offset,
   required var List<int> trailingBytes,
+  // COMPATIBILITY 2026-11-03 (v1.12.0): For the Codex JSONL writer, a non-null
+  // path at EOF does not prove the current turn is flushed; Codex may append
+  // its first bytes just after turn/completed. Remove with the live rollout
+  // tail workaround.
   required var bool hasObservedAppend,
   required var CodexRolloutLineDto? previousLine,
-}) {
-  // COMPATIBILITY 2026-07-23 (Codex JSONL writer): a non-null path at EOF does
-  // not prove the current turn is flushed; Codex may append its first bytes
-  // just after turn/completed. Remove with the live rollout tail workaround.
-}
+});

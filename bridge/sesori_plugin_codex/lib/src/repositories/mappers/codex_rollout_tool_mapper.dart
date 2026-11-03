@@ -521,11 +521,11 @@ class const CodexRolloutToolMapper({
 
   /// Removes the launcher added by app-server so the provisional live title
   /// matches the logical `cmd` persisted in the rollout.
-  ///
-  /// COMPATIBILITY 2026-07-23 (Codex app-server 0.144.x): commandExecution
-  /// wraps commands as `<shell> -lc <command>`, while response-item arguments
-  /// retain the original command. Remove this normalization when app-server's
-  /// stable item title carries the original command itself.
+  // COMPATIBILITY 2026-11-03 (v1.12.0): Codex app-server 0.144.x
+  // commandExecution wraps commands as `<shell> -lc <command>`, while
+  // response-item arguments retain the original command. Remove this
+  // normalization when app-server's stable item title carries the original
+  // command itself.
   String? logicalCommandTitle({required String? command}) {
     final value = _usefulText(value: command);
     if (value == null) return null;
@@ -575,11 +575,10 @@ class const CodexRolloutToolMapper({
   /// Derives process failure from the executor envelope retained in rollout
   /// output. Merely receiving a tool-output record means the tool returned; it
   /// does not mean the process it observed exited successfully.
-  ///
-  /// COMPATIBILITY 2026-07-23 (Codex rollout 0.144.x): process exit status is
-  /// encoded in human-readable tool output instead of a structured field.
-  /// Replace this parser with the structured value once response-item output
-  /// exposes one, while continuing to read these strings for old histories.
+  // COMPATIBILITY 2026-11-03 (v1.12.0): Codex 0.144.x rollouts encode process
+  // exit status in human-readable tool output instead of a structured field.
+  // Replace this parser with the structured value once response-item output
+  // exposes one, while continuing to read these strings for old histories.
   bool _toolOutputFailed({
     required List<CodexRolloutContentDto> content,
   }) {

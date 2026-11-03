@@ -223,10 +223,10 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
       }
       return CodexRolloutTailPosition(
         offset: length,
-        // COMPATIBILITY 2026-07-23 (Codex JSONL writer): tailing starts at
-        // logical EOF but must retain an already-written partial final record.
-        // Otherwise its later newline would be decoded without the skipped
-        // prefix. Remove with the live JSONL tail workaround itself.
+        // COMPATIBILITY 2026-11-03 (v1.12.0): The Codex JSONL writer can leave
+        // a partial final record. Tailing starts at logical EOF but must retain
+        // it, or its later newline would be decoded without the skipped prefix.
+        // Remove with the live JSONL tail workaround itself.
         trailingBytes: [
           for (final chunk in reverseSuffixChunks.reversed) ...chunk,
         ],
@@ -293,10 +293,11 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
           malformedWarning: "[codex] skipping malformed live rollout transcript record",
         ),
         nextOffset: length,
-        // COMPATIBILITY 2026-07-23 (Codex JSONL writer): an observer can read
-        // between the record bytes and their terminating newline. Retain that
-        // suffix without warning; remove only if Codex exposes atomic appended
-        // records instead of a concurrently-written JSONL file.
+        // COMPATIBILITY 2026-11-03 (v1.12.0): With the Codex JSONL writer, an
+        // observer can read between the record bytes and their terminating
+        // newline. Retain that suffix without warning; remove only if Codex
+        // exposes atomic appended records instead of a concurrently-written
+        // JSONL file.
         trailingBytes: remainingBytes,
       );
     } finally {

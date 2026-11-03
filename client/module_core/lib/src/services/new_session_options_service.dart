@@ -94,6 +94,9 @@ class NewSessionOptionsService({
     required NewSessionSelectionIntent? restoredSelection,
     required NewSessionOptionsData? previousOptions,
   }) async {
+    // COMPATIBILITY 2026-11-03 (v1.12.0): Bridges older than v1.7.0 do not
+    // expose /session/options. Remove this branch and _loadLegacy once public
+    // bridges older than v1.7.0 are unsupported.
     if (source == NewSessionOptionsSource.legacy) {
       if (mode == NewSessionOptionsLoadMode.dynamicLoad) {
         return previousOptions == null

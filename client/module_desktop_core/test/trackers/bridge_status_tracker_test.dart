@@ -67,20 +67,6 @@ void main() {
     expect(tracker.status.bridgeId, "bridge-1");
   });
 
-  test("unknown enum values from a newer helper are stored untouched", () {
-    tracker.markHelperConnected();
-    tracker.applyStatus(
-      status: const ControlStatus(
-        startup: ControlStartupState.ready,
-        relay: ControlRelayConnectionState.unknown,
-        unhealthyPlugins: [],
-        activeSessionCount: 0,
-      ),
-    );
-
-    expect(tracker.status.relay, ControlRelayConnectionState.unknown);
-  });
-
   test("a stale status frame processed after disconnect is ignored", () {
     tracker.markHelperConnected();
     tracker.markHelperDisconnected();

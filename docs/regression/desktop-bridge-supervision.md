@@ -329,7 +329,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   operation context, not URI path/query/fragment payloads, including debug-level messages.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
-  a takeover starts a restart war or approves a non-replacement prompt, crash
+  a takeover starts a restart war, crash
   diagnostics are inaccessible, Open Logs fails to prepare/open the logs directory, or a
   supervised Full Disk Access warning tells the user to authorize only
   Terminal instead of the process running the bridge.

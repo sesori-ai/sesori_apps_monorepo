@@ -122,6 +122,7 @@ desktop main-pane transitions distinct.
 - `client/app/test/features/session_detail/adaptive_session_detail_routing_test.dart`
 - `client/app/test/features/session_list/archived_sessions_navigation_test.dart`
 - `client/module_core/test/routing/notification_open_dispatcher_test.dart`
+- `client/module_core/test/routing/notification_session_route_test.dart`
 - `client/module_core/test/routing/computer_switch_dispatcher_test.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/desktop/test/core/routing/desktop_router_test.dart`

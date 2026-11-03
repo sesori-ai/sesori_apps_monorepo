@@ -18,5 +18,6 @@ enum Harness() {
   antigravity,
 }
 
-// COMPATIBILITY 2026-07-13 (v1.5.0): Old peers omit pluginId and mean OpenCode. Remove constant/export with defaults.
+// COMPATIBILITY 2026-07-13 (v1.5.0): Old peers omit pluginId and mean OpenCode. Remove this constant and its export
+// with the pluginId defaults once public apps and bridges older than v1.5.1 are unsupported.
 const String legacyMissingPluginId = "opencode";

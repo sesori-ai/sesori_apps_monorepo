@@ -910,7 +910,7 @@ class CodexMessageRepository({
   }) {
     final persisted = persistedId?.trim();
     if (persisted != null && persisted.isNotEmpty) return persisted;
-    // COMPATIBILITY 2026-07-23 (legacy Codex rollouts): older response-item
+    // COMPATIBILITY 2026-11-03 (v1.12.0): In older Codex rollouts, response-item
     // messages can omit `payload.id`. Keep a deterministic replay-local id so
     // those histories remain visible. Remove after histories without persisted
     // response-item ids are no longer supported.

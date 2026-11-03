@@ -330,11 +330,11 @@ as String,
 @JsonSerializable()
 
 class ControlStatus implements ControlMessage {
-  const ControlStatus({required this.startup, @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, required  List<ControlUnhealthyPlugin> unhealthyPlugins, this.activeSessionCount = 0,  String? $type}): _unhealthyPlugins = unhealthyPlugins,$type = $type ?? 'status';
+  const ControlStatus({required this.startup, required this.relay, required  List<ControlUnhealthyPlugin> unhealthyPlugins, this.activeSessionCount = 0,  String? $type}): _unhealthyPlugins = unhealthyPlugins,$type = $type ?? 'status';
   factory ControlStatus.fromJson(Map<String, dynamic> json) => _$ControlStatusFromJson(json);
 
  final  ControlStartupState startup;
-@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) final  ControlRelayConnectionState relay;
+ final  ControlRelayConnectionState relay;
  final  List<ControlUnhealthyPlugin> _unhealthyPlugins;
  List<ControlUnhealthyPlugin> get unhealthyPlugins {
   if (_unhealthyPlugins is EqualUnmodifiableListView) return _unhealthyPlugins;
@@ -383,7 +383,7 @@ abstract mixin class $ControlStatusCopyWith<$Res> implements $ControlMessageCopy
   factory $ControlStatusCopyWith(ControlStatus value, $Res Function(ControlStatus) _then) = _$ControlStatusCopyWithImpl;
 @useResult
 $Res call({
- ControlStartupState startup,@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) ControlRelayConnectionState relay, List<ControlUnhealthyPlugin> unhealthyPlugins, int activeSessionCount
+ ControlStartupState startup, ControlRelayConnectionState relay, List<ControlUnhealthyPlugin> unhealthyPlugins, int activeSessionCount
 });
 
 
@@ -417,11 +417,10 @@ as int,
 @JsonSerializable()
 
 class ControlPromptRequest implements ControlMessage {
-  const ControlPromptRequest({required this.id, @JsonKey(unknownEnumValue: ControlPromptKind.unknown) required this.kind, required this.message,  String? $type}): $type = $type ?? 'prompt_request';
+  const ControlPromptRequest({required this.id, required this.message,  String? $type}): $type = $type ?? 'prompt_request';
   factory ControlPromptRequest.fromJson(Map<String, dynamic> json) => _$ControlPromptRequestFromJson(json);
 
  final  String id;
-@JsonKey(unknownEnumValue: ControlPromptKind.unknown) final  ControlPromptKind kind;
  final  String? message;
 
 @JsonKey(name: 'type')
@@ -441,18 +440,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlPromptRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlPromptRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,kind,message);
+    return Object.hash(runtimeType,id,message);
 }
 
 @override
 String toString() {
-    return 'ControlMessage.promptRequest(id: $id, kind: $kind, message: $message)';
+    return 'ControlMessage.promptRequest(id: $id, message: $message)';
 }
 
 
@@ -463,7 +462,7 @@ abstract mixin class $ControlPromptRequestCopyWith<$Res> implements $ControlMess
   factory $ControlPromptRequestCopyWith(ControlPromptRequest value, $Res Function(ControlPromptRequest) _then) = _$ControlPromptRequestCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(unknownEnumValue: ControlPromptKind.unknown) ControlPromptKind kind, String? message
+ String id, String? message
 });
 
 
@@ -480,11 +479,10 @@ class _$ControlPromptRequestCopyWithImpl<$Res>
 
 /// Create a copy of ControlMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? kind = null,Object? message = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? message = freezed,}) {
   return _then(ControlPromptRequest(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
-as ControlPromptKind,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

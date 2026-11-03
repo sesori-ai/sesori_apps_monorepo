@@ -12,10 +12,11 @@ enum ClaudeAgentSelection({
     description: "Executes tasks and asks before sensitive operations",
     permissionMode: ClaudePermissionMode.standard,
   ),
-  // COMPATIBILITY 2026-09-21 (v1.9.0): Plan was advertised as an agent, and catalogs
-  // captured then are served for up to 30 days, so a client can still send it.
-  // It is honoured rather than run in the editing default. Remove once no
-  // catalog captured before this date can still be served.
+  // COMPATIBILITY 2026-09-21 (v1.9.0): Plan is no longer advertised as an agent,
+  // but stored session and new-session defaults can still name it, and public
+  // apps older than v1.8.3 send a stored agent without checking the catalog. It
+  // is honoured rather than run in the editing default. Remove once those apps
+  // are unsupported and no stored default can still name Plan.
   plan(
     displayName: "Plan",
     description: "Researches without making changes and creates an implementation plan",

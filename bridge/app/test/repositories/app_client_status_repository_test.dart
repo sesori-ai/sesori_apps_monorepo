@@ -21,22 +21,6 @@ void main() {
       expect(api.accessTokens, equals(["token", "token"]));
     });
 
-    test("maps legacy endpoint omission statuses to unavailable", () async {
-      for (final statusCode in [404, 405]) {
-        final api = _FakeSesoriServerApi()
-          ..error = SesoriServerApiException(
-            method: "GET",
-            statusCode: statusCode,
-            uri: Uri.parse("https://auth.example.test/auth/app-clients/status"),
-          );
-        final result = await AppClientStatusRepository(
-          api: api,
-        ).getStatus(accessToken: "token");
-
-        expect(result, isA<AppClientStatusUnavailable>());
-      }
-    });
-
     test("maps transport and malformed-response failures to unavailable", () async {
       const error = FormatException("bad body");
       final api = _FakeSesoriServerApi()..error = error;

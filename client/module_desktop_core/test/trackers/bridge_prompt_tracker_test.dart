@@ -4,15 +4,10 @@ import "package:test/test.dart";
 
 const ControlPromptRequest _replacePrompt = ControlPromptRequest(
   id: "p1",
-  kind: ControlPromptKind.replaceBridge,
   message: "Another Sesori bridge is already running. Kill it and start fresh?",
 );
 
-const ControlPromptRequest _loginPrompt = ControlPromptRequest(
-  id: "p2",
-  kind: ControlPromptKind.loginNeeded,
-  message: null,
-);
+const ControlPromptRequest _startingPrompt = ControlPromptRequest(id: "p2", message: null);
 
 void main() {
   late BridgePromptTracker tracker;
@@ -28,18 +23,14 @@ void main() {
 
   test("addPrompt records prompts in arrival order", () {
     tracker.addPrompt(prompt: _replacePrompt);
-    tracker.addPrompt(prompt: _loginPrompt);
+    tracker.addPrompt(prompt: _startingPrompt);
 
-    expect(tracker.prompts, [_replacePrompt, _loginPrompt]);
+    expect(tracker.prompts, [_replacePrompt, _startingPrompt]);
   });
 
   test("a resent prompt id replaces the original", () {
     tracker.addPrompt(prompt: _replacePrompt);
-    const ControlPromptRequest resent = ControlPromptRequest(
-      id: "p1",
-      kind: ControlPromptKind.replaceBridge,
-      message: "resent",
-    );
+    const ControlPromptRequest resent = ControlPromptRequest(id: "p1", message: "resent");
 
     tracker.addPrompt(prompt: resent);
 
@@ -48,11 +39,11 @@ void main() {
 
   test("removePrompt drops only the answered prompt", () {
     tracker.addPrompt(prompt: _replacePrompt);
-    tracker.addPrompt(prompt: _loginPrompt);
+    tracker.addPrompt(prompt: _startingPrompt);
 
     tracker.removePrompt(id: "p1");
 
-    expect(tracker.prompts, [_loginPrompt]);
+    expect(tracker.prompts, [_startingPrompt]);
   });
 
   test("removePrompt for an unknown id emits nothing", () async {
@@ -69,7 +60,7 @@ void main() {
 
   test("clear drops all pending prompts on helper disconnect", () {
     tracker.addPrompt(prompt: _replacePrompt);
-    tracker.addPrompt(prompt: _loginPrompt);
+    tracker.addPrompt(prompt: _startingPrompt);
 
     tracker.clear();
 

@@ -118,9 +118,7 @@ class const BridgeControlState({
     return switch (controlStatus.relay) {
       ControlRelayConnectionState.connected => SystemTrayStatus.connected,
       ControlRelayConnectionState.takenOver => SystemTrayStatus.failed,
-      ControlRelayConnectionState.connecting ||
-      ControlRelayConnectionState.disconnected ||
-      ControlRelayConnectionState.unknown => SystemTrayStatus.connecting,
+      ControlRelayConnectionState.connecting || ControlRelayConnectionState.disconnected => SystemTrayStatus.connecting,
     };
   }
 }

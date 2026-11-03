@@ -62,7 +62,7 @@ typedef OpenCodeCatalogSnapshotReader = Future<PluginCatalogSnapshotResult> Func
   required PluginCatalogCancellationSignal cancellation,
 });
 
-OpenCodeManagedApi _defaultBuildApi({
+OpenCodeManagedApi _buildProductionApi({
   required OpenCodeProtocol protocol,
   required String serverUrl,
   required String? password,
@@ -93,24 +93,31 @@ OpenCodeManagedApi _defaultBuildApi({
 /// child exits treated as authoritative failure, and bounded restart pinned to
 /// the original port.
 ///
-/// Optional constructor parameters are test seams (and random/candidate sources
-/// the supervisor needs). Production registration uses [production].
+/// Production registration uses [production]; tests pass fakes for the API,
+/// probe client and catalog, and fixed port and random sources.
 class const OpenCodePluginDescriptor({
-  final OpenCodeManagedApiFactory? _buildApi,
-  final http.Client Function()? _probeClientFactory,
-  final Iterable<int>? _candidatePorts,
-  final Random? _random,
-  final Duration _degradedDebounce = const Duration(seconds: 5),
-  final Duration _coldStartBudget = openCodeColdStartBudget,
-  final Duration _versionProbeTimeout = openCodeVersionProbeTimeout,
-  required final OpenCodeCatalogSnapshotReader _catalogSnapshotReader,
+  required final OpenCodeManagedApiFactory _buildApi,
+  required final http.Client Function() _probeClientFactory,
 
-  /// Test seam for existing-runtime resolution. Production builds a default in
-  /// [ensureRuntime] from the host's process service.
-  final ManagedRuntimeProvisionService? _provisionService,
+  /// Dynamic port candidates to try. Production passes null and draws random
+  /// ports from the dynamic range.
+  required final Iterable<int>? _candidatePorts,
+
+  /// Source for port draws and generated passwords. Production passes null,
+  /// which uses [Random.secure].
+  required final Random? _random,
+  required final Duration _coldStartBudget,
+  required final OpenCodeCatalogSnapshotReader _catalogSnapshotReader,
 }) extends BridgePluginDescriptor {
   static OpenCodePluginDescriptor production() {
-    return const OpenCodePluginDescriptor(catalogSnapshotReader: _readProductionCatalogSnapshot);
+    return const OpenCodePluginDescriptor(
+      buildApi: _buildProductionApi,
+      probeClientFactory: http.Client.new,
+      candidatePorts: null,
+      random: null,
+      coldStartBudget: openCodeColdStartBudget,
+      catalogSnapshotReader: _readProductionCatalogSnapshot,
+    );
   }
 
   static Future<PluginCatalogSnapshotResult> _readProductionCatalogSnapshot({
@@ -343,7 +350,6 @@ class const OpenCodePluginDescriptor({
   Future<OpenCodeSharedServerEndpoint?> _acquireSharedServer({
     required PluginHost host,
     required ManagedProcessService<OpenCodeOwnershipRecord> service,
-    required http.Client Function() probeClientFactory,
   }) async {
     await service.cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities);
     return await OpenCodeSharedServerService(
@@ -357,7 +363,7 @@ class const OpenCodePluginDescriptor({
             maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
           ),
         ),
-        probeClientFactory: probeClientFactory,
+        probeClientFactory: _probeClientFactory,
       ),
     ).acquire(binary: host.provisionedRuntimePath, environment: host.environment, startAborted: host.startAborted);
   }
@@ -403,7 +409,7 @@ class const OpenCodePluginDescriptor({
           versionValidator: RuntimeVersionValidator(
             commandExecutor: executor,
             manifest: manifest,
-            probeTimeout: _versionProbeTimeout,
+            probeTimeout: openCodeVersionProbeTimeout,
             executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
         )
@@ -434,7 +440,7 @@ class const OpenCodePluginDescriptor({
         maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
       ),
       manifest: manifest,
-      probeTimeout: _versionProbeTimeout,
+      probeTimeout: openCodeVersionProbeTimeout,
       executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
     final httpClient = http.Client();
@@ -446,7 +452,7 @@ class const OpenCodePluginDescriptor({
         candidateValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
+          probeTimeout: openCodeVersionProbeTimeout,
           executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
         ),
         pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
@@ -502,7 +508,7 @@ class const OpenCodePluginDescriptor({
           versionValidator: RuntimeVersionValidator(
             commandExecutor: executor,
             manifest: manifest,
-            probeTimeout: _versionProbeTimeout,
+            probeTimeout: openCodeVersionProbeTimeout,
             executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
           inventory: const ManagedRuntimeInventory(manifest: manifest),
@@ -590,18 +596,12 @@ class const OpenCodePluginDescriptor({
       return;
     }
 
-    final injected = _provisionService;
-    if (injected != null) {
-      yield* injected.provision(host: host, explicitExecutablePath: null);
-      return;
-    }
-
-    yield* _buildDefaultProvisionService(host: host).provision(host: host, explicitExecutablePath: null);
+    yield* _buildProvisionService(host: host).provision(host: host, explicitExecutablePath: null);
   }
 
-  /// Assembles the production resolver from the host's process service so
-  /// helper commands go through the host, never a raw spawn.
-  ManagedRuntimeProvisionService _buildDefaultProvisionService({
+  /// Assembles the resolver from the host's process service so helper
+  /// commands go through the host, never a raw spawn.
+  ManagedRuntimeProvisionService _buildProvisionService({
     required PluginHost host,
   }) {
     const manifest = OpenCodeRuntimeManifest();
@@ -616,7 +616,7 @@ class const OpenCodePluginDescriptor({
       versionValidator: RuntimeVersionValidator(
         commandExecutor: commandExecutor,
         manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
+        probeTimeout: openCodeVersionProbeTimeout,
         executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ),
       // OpenCode has no desktop app bundling a CLI.
@@ -647,7 +647,6 @@ class const OpenCodePluginDescriptor({
     final bindHost = (config.value(_OpenCodeConfigKey.host) ?? openCodeLoopbackHost).trim();
     final connectHost = resolveOpenCodeConnectHost(bindHost: bindHost);
 
-    final probeClientFactory = _probeClientFactory ?? http.Client.new;
     const mapper = OpenCodeRecordMapper();
 
     final service = ManagedProcessService<OpenCodeOwnershipRecord>(
@@ -667,9 +666,7 @@ class const OpenCodePluginDescriptor({
     );
 
     // OpenCode 2's shared server when it applies; otherwise a private server below.
-    final sharedEndpoint = _sharesServer(config)
-        ? await _acquireSharedServer(host: host, service: service, probeClientFactory: probeClientFactory)
-        : null;
+    final sharedEndpoint = _sharesServer(config) ? await _acquireSharedServer(host: host, service: service) : null;
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }
@@ -694,7 +691,7 @@ class const OpenCodePluginDescriptor({
         executablePath: null,
         password: noPassword ? null : providedPassword,
         portPolicy: ExplicitPortPolicy(port: attachPort),
-        probeClientFactory: probeClientFactory,
+        probeClientFactory: _probeClientFactory,
         bindHost: bindHost,
         connectHost: connectHost,
       );
@@ -724,7 +721,7 @@ class const OpenCodePluginDescriptor({
         executablePath: null,
         password: sharedEndpoint.password,
         portPolicy: ExplicitPortPolicy(port: port),
-        probeClientFactory: probeClientFactory,
+        probeClientFactory: _probeClientFactory,
         bindHost: sharedEndpoint.host,
         connectHost: sharedEndpoint.host,
       );
@@ -771,7 +768,7 @@ class const OpenCodePluginDescriptor({
           executablePath: null,
           password: serverPassword,
           portPolicy: ExplicitPortPolicy(port: port),
-          probeClientFactory: probeClientFactory,
+          probeClientFactory: _probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,
         );
@@ -795,7 +792,7 @@ class const OpenCodePluginDescriptor({
           executablePath: executablePath,
           password: serverPassword,
           portPolicy: portPolicy,
-          probeClientFactory: probeClientFactory,
+          probeClientFactory: _probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,
         );
@@ -826,8 +823,9 @@ class const OpenCodePluginDescriptor({
       null => await probeOpenCodeProtocol(
         port: port,
         password: apiPassword,
-        clientFactory: probeClientFactory,
+        clientFactory: _probeClientFactory,
         host: connectHost,
+        timeout: openCodeProbeTimeout,
       ),
     };
 
@@ -855,7 +853,7 @@ class const OpenCodePluginDescriptor({
     final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
-      degradedDebounce: _degradedDebounce,
+      degradedDebounce: openCodeDegradedDebounce,
       // A shared service can restart or move; failing lets the next request
       // run discovery again. Attach and managed servers cannot be re-found, so
       // they keep retrying the same address.
@@ -880,7 +878,7 @@ class const OpenCodePluginDescriptor({
       monitor.arm(handle);
     }
 
-    final api = (_buildApi ?? _defaultBuildApi)(
+    final api = _buildApi(
       protocol: protocol,
       serverUrl: serverUrl,
       password: apiPassword,

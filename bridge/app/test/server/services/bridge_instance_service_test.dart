@@ -8,8 +8,7 @@ import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/control_prompt_service.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
-import 'package:sesori_shared/sesori_shared.dart'
-    show ControlMessage, ControlPromptKind, ControlPromptRequest, jsonDecodeMap;
+import 'package:sesori_shared/sesori_shared.dart' show ControlMessage, ControlPromptRequest, jsonDecodeMap;
 import 'package:test/test.dart';
 
 import '../../helpers/fake_control_channel_client.dart';
@@ -357,7 +356,6 @@ void main() {
       await pumpEventQueue();
 
       final request = _decodePromptRequest(client.sentFrames.single);
-      expect(request.kind, equals(ControlPromptKind.replaceBridge));
       promptService.handlePromptResponse(id: request.id, accepted: true);
 
       final result = await resultFuture;

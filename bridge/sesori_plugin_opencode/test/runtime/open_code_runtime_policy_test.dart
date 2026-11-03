@@ -30,7 +30,7 @@ void main() {
 
   group("openCodeDynamicCandidates", () {
     test("draws maxAttempts distinct in-range ports excluding the reserved port", () {
-      final ports = openCodeDynamicCandidates(random: Random(7)).toList();
+      final ports = openCodeDynamicCandidates(candidates: null, random: Random(7)).toList();
       expect(ports, hasLength(dynamicOpenCodeMaxAttempts));
       expect(ports.toSet(), hasLength(dynamicOpenCodeMaxAttempts));
       for (final port in ports) {
@@ -42,6 +42,7 @@ void main() {
     test("filters supplied candidates by the reserved/in-range rule, preserving order", () {
       final ports = openCodeDynamicCandidates(
         candidates: <int>[openCodeDefaultPort, 49152, 80, 49153, 70000],
+        random: null,
       ).toList();
       expect(ports, equals(<int>[49152, 49153]));
     });
@@ -55,13 +56,14 @@ void main() {
 
       // Would hang (and fail via the test timeout) if the supplied path were not
       // capped at dynamicOpenCodeMaxAttempts.
-      final ports = openCodeDynamicCandidates(candidates: infiniteInvalid()).toList();
+      final ports = openCodeDynamicCandidates(candidates: infiniteInvalid(), random: null).toList();
       expect(ports, isEmpty);
     });
 
     test("caps the supplied candidates examined at dynamicOpenCodeMaxAttempts", () {
       final ports = openCodeDynamicCandidates(
         candidates: <int>[49152, 49153, 49154, 49155, 49156, 49157, 49158],
+        random: null,
       ).toList();
       expect(ports, hasLength(dynamicOpenCodeMaxAttempts));
       expect(ports, equals(<int>[49152, 49153, 49154, 49155, 49156]));
@@ -154,6 +156,7 @@ void main() {
           captured = request;
           return http.Response(_v1HealthBody, 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -175,6 +178,7 @@ void main() {
           captured = request;
           return http.Response(_v1HealthBody, 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -191,6 +195,7 @@ void main() {
           captured = request;
           return http.Response(_v1HealthBody, 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -207,6 +212,7 @@ void main() {
           captured = request;
           return http.Response(_v1HealthBody, 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -223,6 +229,7 @@ void main() {
           captured = request;
           return http.Response(_v1HealthBody, 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -235,6 +242,7 @@ void main() {
         password: "secret",
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async => http.Response("nope", 503)),
+        timeout: openCodeProbeTimeout,
       );
       expect(probe.healthy, isFalse);
       expect(probe.error, isNotNull);
@@ -246,6 +254,7 @@ void main() {
         password: "secret",
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async => throw const SocketException("refused")),
+        timeout: openCodeProbeTimeout,
       );
       expect(probe.healthy, isFalse);
       expect(probe.error, isA<SocketException>());
@@ -263,6 +272,7 @@ void main() {
               ? http.Response('{"version":"2.0.11","pid":1}', 200)
               : http.Response("<!doctype html>", 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -275,6 +285,7 @@ void main() {
         password: "secret",
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async => http.Response("<!doctype html>", 200)),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isFalse);
@@ -290,6 +301,7 @@ void main() {
         password: null,
         host: "127.0.0.1",
         clientFactory: () => MockClient((_) async => http.Response(body, 200)),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(utf8.encode(body), hasLength(openCodeProbeMaxBodyBytes));
@@ -319,6 +331,7 @@ void main() {
           paths.add(request.url.path);
           return http.StreamedResponse(oversizedBody(), 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isFalse);
@@ -339,6 +352,7 @@ void main() {
             200,
           );
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isTrue);
@@ -354,6 +368,7 @@ void main() {
               ? http.Response("booting", 503)
               : http.Response("<!doctype html>", 200);
         }),
+        timeout: openCodeProbeTimeout,
       );
 
       expect(probe.healthy, isFalse);
@@ -382,6 +397,7 @@ void main() {
         password: "secret",
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async => respond(request)),
+        timeout: openCodeProbeTimeout,
       );
     }
 

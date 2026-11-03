@@ -36,7 +36,8 @@ sealed class SessionListRequest with _$SessionListRequest {
 sealed class Session with _$Session {
   const factory({
     required String id,
-    // COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
+    // COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove the default and require
+    // pluginId once public bridges older than v1.5.1 are unsupported.
     @Default(legacyMissingPluginId) String pluginId,
     required String projectID,
     required String directory,
@@ -48,6 +49,8 @@ sealed class Session with _$Session {
     // Null means the bridge created none: the session has no dedicated
     // worktree, its worktree started on a detached HEAD, or it came from a
     // bridge that predates branch reporting.
+    // COMPATIBILITY 2026-11-03 (v1.12.0): Apps v1.6.0 to v1.9.1 show this branch on session rows; current apps no
+    // longer read it. Remove once public apps older than v1.10.1 are unsupported.
     required String? branchName,
     @Default(false) bool hasWorktree,
     // Whether this session has unseen activity (new changes the user has not

@@ -7,7 +7,7 @@ import "../helpers/fake_control_channel_client.dart";
 
 void main() {
   group("ControlPromptService", () {
-    test("askReplaceExistingBridge sends a replace_bridge prompt and maps accepted to replace", () async {
+    test("askReplaceExistingBridge sends a replace prompt and maps accepted to replace", () async {
       final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
@@ -16,7 +16,6 @@ void main() {
       await pumpEventQueue();
 
       final request = _decode(client.sentFrames.single) as ControlPromptRequest;
-      expect(request.kind, equals(ControlPromptKind.replaceBridge));
       expect(request.message, contains("already running"));
 
       service.handlePromptResponse(id: request.id, accepted: true);
@@ -32,7 +31,6 @@ void main() {
       await pumpEventQueue();
 
       final request = _decode(client.sentFrames.single) as ControlPromptRequest;
-      expect(request.kind, equals(ControlPromptKind.replaceBridge));
       expect(request.message, contains("4242"));
 
       service.handlePromptResponse(id: request.id, accepted: false);
@@ -110,35 +108,6 @@ void main() {
         await service.askReplaceExistingBridge(bridgeCount: 1),
         equals(TerminalPromptDecision.nonInteractive),
       );
-      expect(client.sentFrames, isEmpty);
-    });
-
-    test("announceLoginNeeded sends a login_needed prompt without awaiting an answer", () async {
-      final client = FakeControlChannelClient();
-      final service = ControlPromptService(client: client);
-      addTearDown(service.dispose);
-
-      service.announceLoginNeeded();
-
-      final request = _decode(client.sentFrames.single) as ControlPromptRequest;
-      expect(request.kind, equals(ControlPromptKind.loginNeeded));
-    });
-
-    test("announceLoginNeeded is best-effort — a disconnected channel does not throw", () {
-      final client = FakeControlChannelClient()..throwOnSend = true;
-      final service = ControlPromptService(client: client);
-      addTearDown(service.dispose);
-
-      expect(service.announceLoginNeeded, returnsNormally);
-      expect(client.sentFrames, isEmpty);
-    });
-
-    test("announceLoginNeeded is best-effort — an unexpected transport failure does not throw", () {
-      final client = FakeControlChannelClient()..sendError = StateError("sink is closed");
-      final service = ControlPromptService(client: client);
-      addTearDown(service.dispose);
-
-      expect(service.announceLoginNeeded, returnsNormally);
       expect(client.sentFrames, isEmpty);
     });
   });
