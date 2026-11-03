@@ -10,7 +10,7 @@ authorization, tool permission and connector setup are independent facts.
 | Adapter | Inventory scope | Existing-server controls | Native sign-in / forgetting | Offered connectors |
 |---|---|---|---|---|
 | Claude Code | Live resident session | Reconnect, enable, disable; session effect | Configured HTTP OAuth / native credentials | Not implemented |
-| Codex | Exact live session or attached harness | Native per-server controls unavailable | Native OAuth / forgetting unsupported | Native paginated catalog and explicit setup handoff |
+| Codex | Exact live session or attached harness | Native per-server controls unavailable | Native OAuth; forgetting unsupported | Native paginated catalog and explicit setup handoff |
 | OpenCode v2 | Project or exact native session location | Reconnect, enable, disable; project effect | Eligible native integration / credential IDs | Not supported by the native seam |
 | OpenCode v1 | Project or exact native session directory | Reconnect, enable, disable; project effect | Remote OAuth with eligible URL/callback / native credentials | Not supported by the native seam |
 | Pi and ACP adapters | Structured inventory unavailable | Structured controls unavailable | Structured management unavailable | Structured catalog unavailable |
@@ -236,7 +236,8 @@ native plugin boundary used by the headless attempt owner and shared client cont
   inventory and decode capability availability as unknown. Exact released
   v1.9.1 MCP codecs accept the added fields without losing existing inventory
   or server-control tags. Preserve both directions of this wire compatibility.
-- macOS arm64 is qualified with both pins. Linux qualification, Windows terminal
+- macOS arm64 was qualified on Claude 2.1.221 and 2.1.291 and Codex 0.139.0 and
+  0.160.1, not on later targets. Linux qualification, Windows terminal
   integration and SSE authentication remain pending; retain explicit unavailable
   results until those boundaries land and pass their native checks.
 

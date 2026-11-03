@@ -1134,4 +1134,4 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - Product shells: `client/app/lib/features/session_detail/` and
   `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
 - Plans (discovery only): `.plan/completed/relay-request-concurrency`,
-  `internal-chat-history`, `.plan/active/session-refresh-reconnects`
+  `internal-chat-history`, `session-refresh-reconnects`

@@ -3,8 +3,7 @@
 > A **dependency-ordered** suggestion for the order to build toward `VISION.md` —
 > *not* a calendar and *not* a commitment (horizon is ≥ ~1 year, funding/team
 > dependent). The *what / why* lives in `VISION.md`; the *how* (layer rules) in
-> `AGENTS.md`; desktop implementation in `.plan/active/desktop-app/PLAN.md`
-> and distribution in `.plan/active/desktop-distribution/PLAN.md`.
+> `AGENTS.md`; desktop distribution in `.plan/active/desktop-distribution/PLAN.md`.
 >
 > **Use it like this:** pick the earliest stage whose dependencies are met;
 > stages can overlap. Every stage still goes through `architecture-plan-review`
@@ -29,28 +28,21 @@
 - Multi-bridge **seam** on the client (`bridge_api` / `bridge_repository` /
   `registered_bridges_store`).
 
-## Stage A — Desktop app (multi-surface) — *in progress*
+## Stage A — Desktop app (multi-surface) — *macOS and Linux shipped; Windows pending*
 
 - **Outcome:** a desktop app that supervises the headless bridge (tray +
   window) and renders the full client cockpit (shared adaptive UI split into
-  `module_app_ui` + per-surface shells). Distribution (packaging, signing,
-  updates, all six native OS/CPU targets) is planned in
-  `.plan/active/desktop-distribution/PLAN.md`, starting with macOS.
-- **Detail:** `.plan/active/desktop-app/PLAN.md` retains its pending implementation
-  closeout; `.plan/active/desktop-distribution/PLAN.md` owns distribution decisions
-  and platform ship gates. Planning began early at the user's request; it does
-  not waive the parent verification. The parallel release-readiness UX overhaul
-  (two-pane sidebar cockpit, settings modal, bridge popover, autostart defaults,
-  app log files) is recorded in `.plan/completed/desktop-ux/PLAN.md`, phase 1 of several.
-  Its 2026-09-19 retirement accepts native/live coverage gaps; it does not qualify a native release.
-  Its visual follow-up (Activity that only lists sessions in motion, a floating sidebar panel, a unified
-  macOS title bar, pointer-sized pages and menus) is recorded in `.plan/completed/desktop-ui-polish/PLAN.md`.
-  Its 2026-09-22 retirement accepts unexecuted live, device and Windows/Linux visual checks.
-  The cross-surface hierarchy series after it (one title ladder, readable greys, one meaning per colour,
-  a grouped live transcript, phone search and a desktop command palette) is recorded in
-  `.plan/completed/visual-hierarchy/PLAN.md`. Its 2026-09-25 retirement accepts unexecuted live, device
-  and Windows/Linux visual checks. Turn navigation and the desktop sign-in rebuild left that series
-  and become their own plans once the user picks a direction.
+  `module_app_ui` + per-surface shells), distributed for all six native OS/CPU
+  targets with updates.
+- **Status:** macOS has been public since v1.9.1 and Linux since v1.10.1.
+  `.plan/active/desktop-distribution/PLAN.md` owns the remaining Windows
+  distribution (blocked on signing) and the platform ship gates.
+- **Detail:** implementation in `.plan/completed/desktop-app/PLAN.md` (retired
+  2026-11-02 with accepted coverage gaps); the desktop UX, UI polish, visual
+  hierarchy, turn navigation, sign-in and auto-update work in their own
+  `.plan/completed/` plans (`desktop-ux`, `desktop-ui-polish`,
+  `visual-hierarchy`, `turn-navigation`, `desktop-sign-in`,
+  `desktop-auto-update`).
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
@@ -80,57 +72,29 @@
   non-goal).
 - **Invariants:** I1 (plugin boundary; capabilities declared, not special-cased).
 
-## Stage B2 — Setup-aware transient plugin lifecycle — *planned next; bridge onboarding complete*
+## Stage B2 — Setup-aware transient plugin lifecycle — *complete*
 
-- **Outcome:** registered plugins report bounded read-only setup readiness;
-  setup-ready plugins are selected automatically when no explicit policy exists;
-  enabled plugins wake for concrete operations, stop after their effective idle
-  policy, and can be enabled/started, disabled/stopped, or restarted independently
-  through the headless bridge API and mobile UI. The bridge and durable catalog
-  remain online with zero active plugins.
-- **Resource policy:** idle configuration is per-plugin-capable
-  (`suspendAfter(duration)` or `alwaysOn`) with a ten-minute inherited default.
-  Headless callers may set overrides; the first mobile UI intentionally exposes
-  only one apply-to-all control, including `Never`/always-on.
-- **Authority:** a deliberate phone selection becomes durable and wins across
-  bridge restarts until a local reset returns authority to CLI/settings/automatic
-  selection.
-- **Delivery:** four value-bearing, independently releasable stages cover setup
-  detection/automatic mode, transient activation, headless hot control, and
-  mobile control. Any internal migration PR preserves eager behavior until the
-  complete acquisition cutover is safe to activate.
-- **Dependency status:** B is complete and bridge-app-onboarding W02 merged in
-  PR #504. The detailed plan re-audited its `BridgeRuntimeRunner` checkpoint and
-  names the exact zero-plugin integration delta before provisioning and start.
-- **Detail:** `.plan/active/setup-aware-plugin-lifecycle/PLAN.md`.
-- **Unlocks:** scaling to many plugins without resident CPU/memory cost and the
-  later phone-driven backend setup stage.
+- **Outcome:** plugins report setup readiness, setup-ready plugins are selected
+  automatically, enabled plugins wake on demand and stop after their idle
+  policy, and each can be controlled from the headless API and the clients. See
+  `.plan/completed/setup-aware-plugin-lifecycle/PLAN.md` and
+  `docs/regression/plugin-setup-and-lifecycle.md`.
 - **Invariants:** I1 (plugin boundary), I4 (headless-first), I9 (eligibility is
   not residency).
 
-## Stage B3 — Phone-driven backend installation and login — *later, not yet planned*
+## Stage B3 — Phone-driven backend installation and login — *complete*
 
-- **Outcome:** from the phone, a user can initiate installation/provisioning of
-  the backend runtime for a registered plugin and complete a plugin-owned login
-  flow, with progress and failures surviving normal relay reconnects.
-- **Boundary:** this installs backend runtimes for trusted registered
-  descriptors; it does not download arbitrary plugin implementation code.
-- **Depends on:** B2 setup states, zero-plugin bridge operation, dynamic
-  activation, progress/status APIs, durable remote authority, and mobile plugin
-  management.
-- **Planning:** authentication UX, secret handling, OAuth/device-code behavior,
-  cancellation, and per-plugin installation capabilities require a separate
-  future architecture plan when implementation is near.
+- **Outcome:** from the phone, a user can install a registered plugin's backend
+  runtime and complete a plugin-owned login where the harness supports it. See
+  `.plan/completed/phone-harness-install/`, `claude-code-login/` and
+  `codex-mobile-login/`, and `docs/regression/plugin-runtime-installation.md`.
 - **Invariants:** I1, I4, I6, I9.
 
-## Stage C — Multi-bridge addressing
+## Stage C — Multi-bridge addressing — *complete*
 
-- **Outcome:** a user can enumerate and choose among *their* bridges (laptop,
-  desktop, later a VM); the client aggregates sessions across bridges; relay +
-  auth route to a specific bridge.
-- **Depends on:** little new plumbing — multi-client per bridge already works and
-  the client seam exists; this is mostly addressing/selection + relay/auth
-  routing by bridge identity. Independent of Stage B.
+- **Outcome:** a user can enumerate and choose among *their* bridges, and relay
+  and auth route to a specific bridge. See `.plan/completed/multi-computer/` and
+  `docs/regression/multi-computer.md`.
 - **Unlocks:** the cockpit across machines; **prerequisite for managed VMs** (a
   VM is "just another bridge").
 - **Invariants:** I2 (bridge is one of many), I3.
@@ -184,20 +148,10 @@
 
 ## Notes on ordering
 
-- **B (multi-plugin)** implemented its production path in parallel with A and
-  passed all fixed-host release gates.
-- **B2 (transient lifecycle)** is now unblocked after bridge-app-onboarding W02.
-  Session PR-monitoring work may continue independently, but each B2 PR assesses
-  drift in shared orchestrator/session/client paths before implementation.
-- **B3 (phone setup)** follows B2 and is intentionally not part of the current
-  lifecycle plan.
-- **C (multi-bridge)** can follow or overlap B; the two are independent.
-- **F** should not start before **C** is real (it depends on the bridge being
-  "one of many" and fully headless).
-- The desktop workstream resumed on 2026-08-28 under
-  `.plan/active/desktop-app/` (superseding the earlier `docs/desktop/` plan);
-  distribution planning began on 2026-09-15 under
-  `.plan/active/desktop-distribution/`, before parent retirement at the user's
-  request. Public distribution retains the parent closeout prerequisite.
+- Stages B, B2, B3 and C are complete. Stage A's remaining work is Windows
+  distribution, blocked on signing.
+- **D**, **E** and **G** build on the completed plugin and multi-session stages;
+  **G** also needs **E**.
+- **F** depends on **C**, which is complete, and on a fully headless bridge.
 - Nothing here is approved to build ahead of need — each stage earns its design
   at `architecture-plan-review` time, against the then-current code.

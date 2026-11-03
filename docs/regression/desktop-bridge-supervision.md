@@ -410,4 +410,4 @@ verify the actual relocated helper, not merely the presence of its binary.
 - `client/module_app_ui/lib/src/features/session_list/`
 - `client/module_app_ui/lib/src/features/session_detail/`
 - `client/module_app_ui/lib/src/features/settings/`
-- `.plan/active/desktop-app/PLAN.md`
+- `.plan/completed/desktop-app/PLAN.md`

@@ -6,14 +6,13 @@ Desktop Settings → General includes app-update controls, separate from bridge 
 supervision. macOS (Sparkle), Windows and AppImage (Velopack) builds update in place (below).
 On `https://sesori.com/desktop/`, unshipped sections explicitly contain no public download; they never link private CI artifacts or infer desktop assets from Latest.
 The website preserves all eight macOS/Windows channel/CPU anchors and `linux-package-managers`,
-plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors; the website step adds the
-`<channel>-linux-<x64|arm64>-appimage` anchors. Every generated app fragment
+plus `<stable|internal>-linux-<x64|arm64>-<deb|rpm|appimage>` anchors. Every generated app fragment
 lands on its own section; Linux preview navigation opens its channel and platform.
 The repository download document is a content/anchor specification, not an alternate
 user-facing destination. Source builds show development guidance; Linux packages show
 package-manager guidance.
 
-The deployed website resolves completed public macOS stable/internal and Linux internal
+The deployed website resolves completed public macOS and Linux stable/internal
 releases independently. It follows all release pages on the fixed GitHub repository
 endpoint under one five-second timeout. A five-minute cache coalesces lookups and logged
 failures; no credentials, background polling or persistent release pointer is used.
@@ -123,10 +122,10 @@ master item. Replacement must preserve both; file sentinels alone do not prove
 that secrets decrypt or local auth restores. Plaintext preference operations must
 not acquire native authorization. See [client persistence](client-persistence.md).
 
-No production desktop release exists yet. Published internal build 987 predates this
-cutover. An old per-value-native build requires explicit sign-out before replacement
-and one new sign-in, not a migration/compatibility promise for internal previews.
-New-format N→N+1 preservation needs two shared-store builds.
+An internal preview from before the shared-store cutover stored each value natively; it
+requires explicit sign-out before replacement and one new sign-in, with no migration.
+New-format N→N+1 preservation needs two shared-store builds; pre-cutover package evidence
+does not prove shared-store roundtrip, cold reopen, replacement or authorization.
 
 ## Private Windows installer qualification
 
@@ -256,15 +255,8 @@ Main-only native runs establish production-key access separately. These fixtures
 not run the real application. Historical unsigned package runs remain unsigned
 proof; new tooling alone does not relabel them. Public repositories and
 N→N+1/desktop-session checks remain separate from internal-preview publication.
-See [key setup and backup guidance](../desktop/linux-signing.md).
-
-Signed native run `38372268594` qualified x64 and arm64 at source
-`de53cafb2483d76e9350a28d014b4d3906ee0fe0`, private build `1.9.1+147`, using the
-configured production signing key. All six distribution fixtures passed. Independent
-archive/package-file hashes, source identities, empty source patches and public-key-pinned
-checksum signatures matched. This establishes real credential access and signed
-package mechanics, not public repositories, GUI/account behavior or N→N+1 updates.
 The manual workflow's build number is not the shared release sequence.
+See [key setup and backup guidance](../desktop/linux-signing.md).
 
 ## Signed Linux repository preparation
 
@@ -465,9 +457,9 @@ must not conceal it as a warning-free run.
 
 Accept only successful post-merge native results from both CPUs. Mocked contracts,
 fixture analysis or a green PR do not qualify account restoration. These virtual
-Ubuntu sessions do not establish actual OS-login/autostart, unavailable Secret Service,
-KWallet or other nominated distro coverage. Same-source packages establish replacement
-and persistence, not code/schema migration. Those gates and stable admission stay open.
+Ubuntu sessions do not cover OS-login autostart, unavailable Secret Service or other
+distros (the credential-free `linux-session` rows above do), nor KWallet. Same-source
+packages establish replacement and persistence, not code/schema migration.
 No OAuth/browser/MFA login-flow qualification is claimed.
 
 ### Private interactive Linux diagnostics
@@ -531,15 +523,6 @@ Native GUI/login/keyring/tray and N→N+1 upgrades were qualified on earlier sig
 not per release; the manifest's `proofBoundary` says so. Fixture tests alone do not
 establish production-key access or public retrieval.
 
-Public acceptance on 2026-10-13 used native producer `38438783418` for aligned
-`1.9.1+1013` and publisher `38443588001`. Both compiled internal identities and all six
-package fixtures passed. Independent anonymous retrieval authenticated both checksum
-signatures against the separately known primary and all four package hashes. Existing
-13 core/macOS asset identities, release identity/content/channel, tag and Latest were preserved; original
-core/macOS checksum and manifest bytes also matched. No store dispatch or local app
-installation occurred. Exact sources, trees and hashes live in the distribution plan's
-[step 9](../../.plan/active/desktop-distribution/steps/step-09.md).
-
 ## Shared release cycle and private preparation
 
 Private `macos-packaging` and `linux-packaging` accept immutable `source_sha` and `build_number`
@@ -554,10 +537,7 @@ with the same source commit and resolved build number. Desktop-only product chan
 now qualify for that cycle. Native x64 and arm64 signing, notarization, extracted-helper
 and GUI-fixture checks remain required. Stable submissions rebuild the selected source
 with the stable channel rather than relabeling an internal binary. Beta and explicit
-`bridge-only` submissions retain their scope. Scheduled run `36175398399` exercised
-this internal flow end to end for `1.9.1+983`, with desktop publication skipped and
-read-only shared-producer preparation accepted separately. This does not establish
-stable production attachment or public desktop retrieval.
+`bridge-only` submissions retain their scope.
 
 Reusable native-desktop callers
 must grant `contents: read`, `actions: read` and `pull-requests: read`: GitHub validates
@@ -627,13 +607,11 @@ then invokes `Quit Sesori` only inside the
 accepted menu. The probe rejects relaunch or
 orphan processes, replaces the complete app from the current DMG and repeats while
 preserving bounded desktop, shared CLI-data, attachment and valid login-registration
-sentinels. Cleanup removes only probe-owned paths. Main-only run `36175102660`
-accepted `1.8.4+24 → 1.9.1+981` on native x64 and arm64. Both prior/current helper
-observations on both CPUs record `NO_INSTALLED_HELPER`; all 11 report checks are true,
-including `helperAbsentBeforeQuit`. Exact artifacts, hashes and historical investigation
-remain in [the step evidence](../../.plan/active/desktop-distribution/steps/step-06.md).
+sentinels. Cleanup removes only probe-owned paths. Acceptance requires every report
+check true on both CPUs, including `helperAbsentBeforeQuit` with no installed helper
+observed before each Quit.
 
-The recorded authenticated replacement evidence below predates the shared-store
+The recorded authenticated replacement evidence predates the shared-store
 cutover and applies only to its named sources. The current authenticated fixture
 still seeds per-value Keychain entries; do not run that seed path against a
 shared-store candidate or treat the old passes as shared-store qualification.
@@ -690,53 +668,18 @@ and relay-serving readiness before each real tray Quit. It then verifies Keychai
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
 responses, token values, bridge/app output and authenticated screenshots. The tooling
 alone is not accepted helper-On evidence; both CPUs must pass from merged `main`.
-Run `36174286284` accepts the same `1.8.4+24 → 1.9.1+981` pair on native x64 and arm64:
-all 15 checks are true, each prior/current launch has an exact live authenticated helper
-and relay readiness, and both final phase records confirm completion and cleanup.
-Artifact digests and bounded records were verified, not just job conclusions. This does
-not prove failed-stop refusal, interactive browser/login/TCC, minimum-OS support, arbitrary
-user-history preservation, public retrieval or release readiness. Read-only preparation
-`36171714173` separately regenerated stable build-981 metadata/checksums from package
-run `36168531963`; it is not publication or permission to ship. Internal build 983's
-shared-cycle success is separate evidence, not authenticated replacement acceptance
-for that different source/channel.
+A pass does not prove failed-stop refusal, interactive browser/login/TCC, minimum-OS
+support, arbitrary user-history preservation, public retrieval or release readiness.
 
-## Current evidence boundary
+## Evidence records
 
-Private package mechanics are qualified for both native CPUs on all three desktop
-platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
-app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
-construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
-six native package-manager fixtures on Linux. Separate signed Linux qualification and
-public internal delivery are recorded above. macOS and Linux installers are public on
-both channels; Windows availability is not implied.
-Exact accepted sources, runs, hashes and proof limits stay
-in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
-[Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
-[Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
-
-On 2026-09-26 the user retired the remaining macOS/parent Gate C QA requirements with
-coverage gaps accepted. Minimum-OS execution, remaining phone/live-harness scenarios
-and candidate-specific manual attribution are not newly passing evidence and do not
-block macOS publication. Existing shutdown tests are not native fault injection.
-
-Internal `1.9.1+987` installers were published from a successful shared producer. All
-four payloads, desktop checksums and the last-uploaded manifest passed anonymous public
-hash verification. Both CPUs' apps/DMGs passed independent Developer ID, stapled-ticket
-and Gatekeeper checks without local app execution. Bridge assets and Latest stable
-were unchanged. Ordinary shared run `36230719108` then completed automatic desktop
-attachment for `1.9.1+991`; this was not another local bootstrap or scheduler no-op.
-Website PR `sesori-ai/landingpage#111` merged and automatically deployed. Live browser
-verification on 2026-09-26 selected `1.9.1+993`, exercised all nine anchors and preview
-navigation, and confirmed both anonymous links/sizes and manifest/checksum agreement.
-Stable schema/platform boundaries, mobile width and zero browser exceptions were checked.
-Those checks do not claim new full-byte hashing, Apple trust or native execution.
-Stable production attachment remains separate. Windows signed N→N+1 and Linux
-signed-repository N→N+1 requirements remain open. No automatic N→N+1 update has run yet
-on any platform; the first internal cycle after the updaters merged is its first real feed.
-Shared-store native roundtrip, cold reopen, replacement and authorization remain
-unproved by pre-cutover package evidence; the retired gate does not relabel that
-historical evidence as shared-store qualification.
+macOS and Linux installers are public on both channels; Windows availability is not
+implied. Exact accepted sources, runs, hashes, open gates and proof limits live in the
+distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
+[Windows](../../.plan/active/desktop-distribution/steps/step-07.md) and
+[Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence, not here.
+The retired macOS QA gate leaves minimum-OS execution and remaining phone/live-harness
+scenarios uncovered; existing shutdown tests are not native fault injection.
 
 ## Coverage
 
@@ -787,7 +730,7 @@ historical evidence as shared-store qualification.
   and anonymous link/metadata agreement only, not native Settings dispatch or installation.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
-OS or publication. Published internal macOS and Linux assets have separate recorded trust proof;
+OS or publication. Published macOS and Linux assets have separate recorded trust proof;
 unshipped platforms/channels remain unavailable. A merged index alone is not a release.
 See [packaging](desktop-macos-packaging.md), [supervision](desktop-bridge-supervision.md)
 and [download instructions](../desktop/downloads.md).

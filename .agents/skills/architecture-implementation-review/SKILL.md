@@ -392,6 +392,9 @@ client/desktop ───────────→ module_app_ui ─┐
      │                         │
      │                         └→ sesori_shared
      └→ module_prego
+
+module_core ──────────→ module_persistence ←────────── module_auth
+client/app, client/desktop ────┘
 ```
 
 **Dependency rules:**
@@ -401,8 +404,10 @@ client/desktop ───────────→ module_app_ui ─┐
 - Dependencies NEVER flow upward. A lower layer must NEVER know about a higher layer.
 - `client/app` and `client/desktop` may have `module_auth` as a pubspec dependency solely for DI wiring (`configureAuthDependencies(getIt)`). Beyond that single DI call, product shells MUST NOT import or reference `module_auth` types in source code. All auth functionality is accessed through `module_core` interfaces.
 - `module_core` MUST NOT depend on `module_desktop_core`; mobile must not inherit desktop tray/process/bundled-helper concerns.
+- `module_persistence` is the shared storage foundation below auth and core and MUST NOT depend on `module_auth`, `module_core`, `module_desktop_core`, or Flutter. `module_auth` and `module_core` consume its typed repositories and keep their own domain keys and serialization; product shells use it only for DI wiring (`configurePersistenceDependencies`) and their native `MasterKeyStore`/`PersistenceDirectory` adapters.
 - Product shells may import `module_prego` directly for shell-owned presentation.
 - `module_app_ui` may depend on `module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It MUST NOT import `client/app`, `client/desktop`, or `module_desktop_core`.
+- A Flutter implementation of a `module_core` platform interface that both shells use unchanged may live in `module_app_ui/lib/src/platform/` with the platform plugins it needs, exported only as a composition entry point. Shells still own its DI registration and any shell-specific native code.
 
 **Hard constraints:**
 
@@ -419,13 +424,14 @@ client/desktop ───────────→ module_app_ui ─┐
 | `module_core` (pure Dart) | Business logic, services, cubits, API clients, platform interfaces        | Import Flutter, contain UI code, know about platform specifics |
 | `module_desktop_core` (pure Dart) | Desktop-specific process/control business logic, services, repositories, trackers, cubits, platform interfaces | Import Flutter, contain product-shell UI code, depend upward on `desktop` |
 | `module_auth` (pure Dart) | Token lifecycle, OAuth flow, authenticated HTTP client                    | Import module_core, know about relay/sessions/projects         |
+| `module_persistence` (pure Dart) | Drift schema and APIs, storage cryptography, typed `PersisterRepository`/`SecureStorageRepository`, `MasterKeyStore`/`PersistenceDirectory` interfaces | Import auth, core, desktop-core, or Flutter; own domain keys or serialization |
 
 **B-C3. `module_auth` — Internal Layer Architecture**
 
 ```
 Layer 0 — Foundation
 └─ Models: AuthState (sealed class)
-└─ Platform abstractions: SecureStorage (abstract interface)
+└─ Platform abstractions: OAuthDeviceDescriptorProvider (abstract interface)
 └─ Interfaces (exported API): AuthTokenProvider, OAuthFlowProvider, AuthSession
 └─ No cross-dependency between items in this layer
 └─ No business logic — only type definitions and contracts
@@ -434,8 +440,8 @@ Layer 0 — Foundation
         ▲ consumed by
 
 Layer 1 — Data Access
-└─ TokenStorageService — persists access/refresh tokens (→ SecureStorage)
-└─ OAuthStorageService — persists PKCE verifier during OAuth flow (→ SecureStorage)
+└─ TokenStorageService — persists access/refresh tokens (→ SecureStorageRepository from module_persistence)
+└─ OAuthStorageService — persists PKCE verifier during OAuth flow (→ SecureStorageRepository)
 └─ HttpApiClient — base HTTP client for auth server calls
 └─ NO cross-dependency: storage services and HTTP client are independent of each other
 └─ Base classes: HttpApiClient is a base class used by AuthenticatedHttpApiClient (Layer 2) — this is acceptable
@@ -463,28 +469,19 @@ Key rules:
 
 **B-C4. `module_core` — Internal Layer Architecture**
 
+The "Package Structure" map in `client/module_core/AGENTS.md` is the single
+source for which directory holds each layer; check changed file locations
+against it. This section states only the layer rules.
+
 ```
-Layer 0 — Foundation (transport primitives + platform abstractions)
+Layer 0 — Foundation (transport, platform interfaces, logging)
 └─ HOW we communicate and what platform capabilities exist. No business logic.
-└─ Sub-groups (NO cross-dependency between them):
-│
-├─ Platform interfaces: UrlLauncher, DeepLinkSource, LifecycleSource, RouteSource, NotificationCanceller
-│  └─ Location: lib/src/foundation/platform/
-│
-├─ Transport stack (internal vertical ordering: RelayClient → ConnectionService → RelayHttpApiClient):
-│  ├─ RelayClient — raw WebSocket wrapper (connect, send, receive frames)
-│  ├─ RoomKeyStorage — E2E encryption key persistence (→ SecureStorage)
-│  ├─ ConnectionService — relay lifecycle: connect, reconnect with backoff, auth handshake,
-│  │   app lifecycle handling (→ RelayClient, RoomKeyStorage, AuthTokenProvider, LifecycleSource)
-│  └─ RelayHttpApiClient — tunnels HTTP request/response through relay (→ ConnectionService)
-│  └─ This vertical dep within the transport stack is acceptable (single transport pipeline)
-│  └─ ConnectionService also exposes observable streams (connection status, SSE events) —
-│     higher layers may LISTEN to these streams (push-based), but must not call transport
-│     methods directly
-│  └─ Location: lib/src/foundation/transport/
-│
-└─ Utilities: logging (logd/logw/loge), concurrency primitives, Dart extensions
-   └─ Location: lib/src/foundation/{logging,concurrency,extensions}/
+└─ Sub-groups (platform interfaces, transport, utilities) have NO cross-dependency.
+└─ Transport stack: RelayClient → ConnectionService → RelayHttpApiClient. This
+   vertical dep within the transport stack is acceptable (single transport pipeline).
+└─ ConnectionService also exposes observable streams (connection status, SSE events) —
+   higher layers may LISTEN to these streams (push-based), but must not call transport
+   methods directly
 
         ▲ consumed by
 
@@ -492,16 +489,9 @@ Layer 1 — API (data sources)
 └─ Dumb classes that call endpoints and return results. No decision-making.
 └─ Each API class maps to one data source. Parses JSON to Freezed models.
 └─ All external data enters/exits through this layer.
-└─ API classes:
-   ├─ SessionApi — session CRUD endpoints (→ RelayHttpApiClient)
-   ├─ ProjectApi — project CRUD endpoints (→ RelayHttpApiClient)
-   ├─ VoiceApi — audio upload for transcription (→ AuthenticatedHttpApiClient)
-   ├─ NotificationApi — FCM token registration (→ AuthenticatedHttpApiClient)
-   └─ NotificationPreferencesApi — local notification preferences (→ SecureStorage)
 └─ Transport choice: APIs that talk to the bridge use RelayHttpApiClient;
    APIs that talk to the auth server use AuthenticatedHttpApiClient (from module_auth)
 └─ NO cross-dependency between API classes
-└─ Location: lib/src/api/
 
         ▲ consumed by
 
@@ -509,28 +499,15 @@ Layer 2 — Repositories (data aggregation + mapping)
 └─ Combines data from one or more Layer 1 API sources.
 └─ Maps API response models to internal module_core models where applicable.
 └─ MANDATORY even when only one data source exists — just delegates the call.
-└─ Repositories:
-   ├─ SessionRepository — wraps SessionApi (+ future SSE event enrichment)
-   ├─ ProjectRepository — wraps ProjectApi
-   ├─ VoiceRepository — wraps VoiceApi
-   ├─ NotificationRepository — wraps NotificationApi
-   └─ NotificationPreferencesRepository — wraps NotificationPreferencesApi
 └─ NO cross-dependency between repositories
-└─ Location: lib/src/repositories/
 
         ▲ consumed by
 
 Layer 3 — Services (business logic)
 └─ Decision-making, coordination, orchestration.
 └─ MUST use Repositories (Layer 2). MUST NOT call APIs (Layer 1) directly.
-└─ Services:
-   ├─ SseEventService — processes real-time events from ConnectionService streams,
-   │   builds activity summaries, tracks session state
-   └─ (other services as business logic demands — currently thin because most
-       operations are straightforward CRUD that repositories handle)
 └─ Avoid cross-dependency between services. If coordination is needed between
    multiple data sources, it belongs here — NOT in a cubit.
-└─ Location: lib/src/services/
 
         ▲ consumed by
 
@@ -543,36 +520,13 @@ Layer 4 — State Management
    ├─ Layer 0 ConnectionService streams (for reactive connection/event state — push-based only)
    └─ Layer 0 platform interfaces (UrlLauncher, RouteSource, etc.)
 └─ Cubits MUST NOT: import from api/, call transport methods, or depend on other cubits
-└─ Also in this layer: AuthRedirectService (routing orchestration), AppRoute (route enum)
-└─ Location: lib/src/cubits/, lib/src/routing/
+└─ Also in this layer: routing/ (AppRoute definitions, route listeners and dispatchers)
 ```
 
-**Directory structure** — mirrors layers so violations are visible in import paths:
-
-```
-module_core/lib/src/
-├── foundation/          # Layer 0
-│   ├── platform/        # UrlLauncher, DeepLinkSource, etc.
-│   ├── transport/       # RelayClient, ConnectionService, RelayHttpApiClient
-│   ├── logging/
-│   ├── concurrency/
-│   └── extensions/
-├── api/                 # Layer 1
-│   ├── session_api.dart
-│   ├── project_api.dart
-│   ├── voice_api.dart
-│   └── notification_api.dart
-├── repositories/        # Layer 2
-│   ├── session_repository.dart
-│   ├── project_repository.dart
-│   └── ...
-├── services/            # Layer 3
-│   └── sse_event_service.dart
-├── cubits/              # Layer 4
-└── routing/             # Layer 4
-```
-
-When reviewing imports: if a file in `services/` imports from `api/`, that is a violation. If a file in `cubits/` imports from `api/`, that is a violation. The directory structure makes this trivially visible.
+When reviewing imports: if a file in `services/` or `cubits/` imports a Layer 1
+API class (anything in `api/`, or an `*_api.dart` under `capabilities/` such as
+`VoiceApi`), that is a violation. The directory structure makes this trivially
+visible.
 
 **B-C5. Product Flutter Shells (`app` and `desktop`) — Internal Layer Architecture**
 
@@ -582,18 +536,19 @@ Layer 0 — Platform Implementations
 └─ One implementation per interface per product/platform — no alternatives or
    factories inside a single shell. Mobile and desktop may each provide their
    own adapter for shared module_core interfaces.
-└─ Examples: FlutterSecureStorageAdapter, FlutterUrlLauncher, AppLifecycleObserver,
-   AppLinksDeepLinkSource, GoRouterRouteSource, CrashlyticsFailureReporter
+└─ Examples: FlutterUrlLauncher, AppLifecycleObserver, AppLinksDeepLinkSource,
+   GoRouterRouteSource, CrashlyticsFailureReporter
 └─ No cross-dependency between implementations
 └─ Location: lib/core/platform/
 
         ▲ registered in DI, consumed by module_core via interfaces
 
 Layer 1 — Infrastructure
-└─ DI wiring: mobile uses 3-phase init (platform → auth → core). Desktop adds
-   desktop-core after core (platform → auth → core → desktop-core). This layer is
-   the ONLY shell place that calls configureAuthDependencies,
-   configureCoreDependencies, and configureDesktopCoreDependencies.
+└─ DI wiring: mobile inits platform → persistence → auth → core. Desktop adds
+   desktop-core after core (platform → persistence → auth → core → desktop-core).
+   This layer is the ONLY shell place that calls configurePersistenceDependencies,
+   configureAuthDependencies, configureCoreDependencies, and
+   configureDesktopCoreDependencies.
 └─ Routing: GoRouter configuration using AppRoute definitions from module_core
 └─ No business logic — only wiring and navigation configuration
 └─ Location: lib/core/{di,routing}/
@@ -630,13 +585,13 @@ repositories, services, or cubits; those belong in `module_desktop_core`.
 
 **B-C7. DI**
 
-Mobile initialization order: platform adapters → auth → core. Desktop initialization order: platform adapters → auth → core → desktop core. Changes must respect this order when adding new dependencies.
+Mobile initialization order: platform adapters → persistence → auth → core. Desktop initialization order: platform adapters → persistence → auth → core → desktop core. Changes must respect this order when adding new dependencies.
 
 **B-C8. Platform Abstraction**
 
-- Shared/mobile platform interfaces are defined in `module_core/lib/src/foundation/platform/`; concrete mobile implementations live in `app/lib/core/platform/`.
+- Shared/mobile platform interfaces are defined in `module_core/lib/src/platform/` or `module_core/lib/src/foundation/platform/`; concrete mobile implementations live in `app/lib/core/platform/`.
 - Desktop-only platform interfaces are defined in `module_desktop_core/lib/src/foundation/platform/`; concrete desktop implementations live in `desktop/lib/core/platform/`.
-- New platform capabilities must define the interface in the owning pure Dart module and implement it in the product shell.
+- New platform capabilities must define the interface in the owning pure Dart module and implement it in the product shell, except for an implementation both shells use unchanged, which may live in `module_app_ui/lib/src/platform/` (see B-C1).
 
 **B-C9. `module_desktop_core` and `module_app_ui`**
 
@@ -645,16 +600,18 @@ process APIs/repositories/services, control-channel orchestration, status/prompt
 trackers, update-apply orchestration (`DesktopUpdateService`), desktop cubits,
 and desktop platform interfaces. It may depend on `module_core` and
 `sesori_shared`; `module_core` must not depend on it. Platform adapters such as
-`AppUpdater` remain dumb Layer-0 boundaries behind Layer-1 APIs such as
-`AppUpdateApi` and repositories such as `AppUpdateRepository`;
-helper-stop/apply/restore policy belongs in `DesktopUpdateService`, which must
-depend only on lower-layer collaborators.
+`SparkleUpdateEngine` remain dumb Layer-0 boundaries; `DesktopUpdateRepository`
+combines them with Layer-1 APIs such as `DesktopUpdateFeedApi` and
+`VelopackUpdateApi`; helper-stop/apply/restore policy belongs in
+`DesktopUpdateService`, which must depend only on lower-layer collaborators.
 
 `module_app_ui` is a shared Flutter UI package. It may depend on `module_core`,
 `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It must not import
 `client/app`, `client/desktop`, or `module_desktop_core`; product-specific
 behavior enters through constructor parameters/callback strategies composed by
-the product shell.
+the product shell. The one exception is a platform implementation both shells
+use unchanged (see B-C1), which lives in `module_app_ui/lib/src/platform/` and
+is still registered in DI by each shell.
 
 ---
 

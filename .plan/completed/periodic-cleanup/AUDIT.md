@@ -87,7 +87,7 @@ or modal side effects. Whole-list preservation was rejected because it would
 also discard useful fetched changes; the diagnostic explicitly expects both.
 See the plan for pagination ownership and the limits of unversioned snapshots.
 
-The existing [session-refresh-reconnects plan](../../active/session-refresh-reconnects/PLAN.md)
+The existing [session-refresh-reconnects plan](../session-refresh-reconnects/PLAN.md)
 already identified both risks but left behavioral changes pending diagnostics.
 The new tests provide the intended-refresh evidence it requested. Some older
 trigger descriptions are stale: current code ignores `sessions.updated` for

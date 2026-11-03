@@ -16,7 +16,7 @@ Only these types are exported. Everything else is internal (`lib/src/`).
 
 - `AuthTokenProvider` — read-only access to a fresh token (`getFreshAccessToken()`). Injected by consumers that need a raw token string (e.g. relay WebSocket auth).
 - `OAuthFlowProvider` — drives OAuth login: PKCE generation, auth URL fetch, code exchange. Injected by `LoginCubit`.
-- `AuthSession` — auth state stream, getCurrentUser, logout. Injected by `AuthRedirectService`, `ConnectionOverlayCubit`.
+- `AuthSession` — auth state stream, getCurrentUser, logout. Injected by `ConnectionService`, `SplashCubit`, `SettingsCubit`.
 
 ### Classes
 

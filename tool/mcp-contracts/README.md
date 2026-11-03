@@ -32,7 +32,7 @@ Workflow CI runs. HTTP fixtures advertise only the echo tool; form/URL elicitati
 exercised through stdio.
 
 Versioned results and the remaining qualification boundaries are in
-[the contract evidence](../../.plan/active/mcp-management/evidence/native-contracts.md).
+[the contract evidence](../../.plan/completed/mcp-management/evidence/native-contracts.md).
 
 Codex App Server intentionally omits the JSON-RPC version marker on JSONL
 requests, responses, and notifications, as described in the

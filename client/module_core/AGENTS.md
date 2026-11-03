@@ -24,7 +24,7 @@ lib/src/
 │                  RouteSource, NotificationCanceller, …); Flutter adapters live in
 │                  the product shell, mostly under app/lib/core/platform/
 ├── repositories/     API mapping and domain-facing data operations
-├── routing/          AppRoute enum, AuthRedirectService
+├── routing/          AppRoute/AppRouteDef, route analytics, computer-switch and notification-open dispatchers
 └── services/         Cross-repository orchestration and lifecycle owners, including per-composer voice sessions
 ```
 
