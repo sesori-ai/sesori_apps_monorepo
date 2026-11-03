@@ -422,7 +422,14 @@ List<_PiScanDiagnostics> _clearPendingMarkers({
 enum _PiHistoryEntryIds() {
   /// Version 1 files predate entry ids, so entries get ids chained in file order.
   synthesized,
-  persisted,
+  persisted;
+
+  /// Throws when the file's first record is not a session header with an id.
+  static _PiHistoryEntryIds fromHeader({required PiSessionMetadataDto header}) => switch (header) {
+    PiSessionHeaderDto(id: String(), :final int version) when version >= 2 => persisted,
+    PiSessionHeaderDto(id: String()) => synthesized,
+    _ => throw const FormatException("Expected session header"),
+  };
 }
 
 /// The role older session files use for what RPC history reports as `custom`.
@@ -475,16 +482,12 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
           final headerIds = ids;
           if (headerIds == null) {
             if (invalidFirstParsedRecord) return;
-            final type = json["type"];
-            final id = json["id"];
-            if (type != "session" || id is! String) {
+            try {
+              ids = _PiHistoryEntryIds.fromHeader(header: PiSessionMetadataDto.fromJson(json));
+            } on Object {
               invalidFirstParsedRecord = true;
-              throw const FormatException("Expected session header");
+              rethrow;
             }
-            ids = switch (json["version"]) {
-              final num version when version.isFinite && version.toInt() >= 2 => _PiHistoryEntryIds.persisted,
-              _ => _PiHistoryEntryIds.synthesized,
-            };
             return;
           }
           final entry = _decodeHistoryEntry(
