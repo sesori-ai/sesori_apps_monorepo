@@ -45,11 +45,7 @@ class const SessionDetailScreen({
         ),
         // Lazy: only the live page's menu actions run on it.
         BlocProvider(
-          create: (_) => createSessionListCubit(
-            locator: getIt,
-            projectId: projectId,
-            sessions: const [],
-          ),
+          create: (context) => createSessionActionsCubit(locator: getIt, window: context.read<SessionWindowService>()),
         ),
       ],
       child: SessionDetailActivityOwner(
@@ -169,7 +165,7 @@ class const _MobileSessionDetailBody({
               ),
         pageChrome: null,
         // Audit views retain read-only inventory without session mutations.
-        menuEntriesBuilder: ({required context, required session}) => [
+        menuEntriesBuilder: ({required context, required session, required isBusy}) => [
           PregoMenuItem(
             leadingIcon: TablerRegular.plug,
             title: context.loc.mcpMenuLabel,
@@ -198,9 +194,10 @@ class const _MobileSessionDetailBody({
           if (!auditView && session.parentID == null)
             ..._sessionActions.sessionMenuEntries(
               context: context,
-              cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+              actions: context.read<SessionActionsCubit>(),
               session: session,
-              readEntry: SessionReadMenuEntry.markUnread,
+              isRunning: isBusy,
+              readEntry: const SessionReadMenuMarkUnread(),
             ),
         ],
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>

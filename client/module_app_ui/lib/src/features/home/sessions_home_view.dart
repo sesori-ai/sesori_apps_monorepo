@@ -62,7 +62,7 @@ class const SessionsHomeView({
   required final SessionsHomePresentation presentation,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
-  required final ActionSessionListCubitFactory createActionCubit,
+  required final SessionActionsCubitFactory createActions,
 
   /// Opens a new session in the list's default project, or with none chosen.
   required final HomeNewSessionCallback onNewSession,
@@ -141,7 +141,7 @@ class const SessionsHomeView({
       AllSessionsList(
         onSessionTap: onSessionTap,
         actionDispatcher: actionDispatcher,
-        createActionCubit: createActionCubit,
+        createActions: createActions,
         selectedSessionId: selectedSessionId,
         disconnectedBuilder: disconnectedBuilder,
         emptyState: projects is ProjectListLoaded && projects.projects.isEmpty

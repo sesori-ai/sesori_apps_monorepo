@@ -640,11 +640,7 @@ ShellRoute buildArchivedSessionsRoute() {
             onSessionDeleted: closeDeletedArchivedSessionRoute,
             onSessionMarkedUnread: null,
           ),
-          createActionCubit: ({required projectId, required session}) => createSessionListCubit(
-            locator: getIt,
-            projectId: projectId,
-            sessions: [session],
-          ),
+          createActions: ({required window}) => createSessionActionsCubit(locator: getIt, window: window),
         ),
         routes: [
           GoRoute(

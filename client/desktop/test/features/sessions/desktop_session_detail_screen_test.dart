@@ -18,7 +18,7 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
@@ -396,7 +396,7 @@ void main() {
 
   group("page", () {
     late _MockSessionDetailCubit cubit;
-    late _MockSessionListCubit listCubit;
+    late _MockSessionActionsCubit actions;
     late List<Session> markedUnread;
     late int leftPage;
     late List<String> openedParents;
@@ -419,13 +419,10 @@ void main() {
       when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
       when(cubit.clearNotifications).thenReturn(null);
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-      listCubit = _MockSessionListCubit();
+      actions = _MockSessionActionsCubit();
       when(
-        () => listCubit.state,
-      ).thenReturn(const SessionListState(sessions: [], activeSessionIds: {}, unseenBySessionId: {}));
-      when(listCubit.retainActionScope).thenReturn(() {});
-      when(
-        () => listCubit.markSessionSeen(
+        () => actions.markSessionSeen(
+          projectId: any(named: "projectId"),
           sessionId: any(named: "sessionId"),
           read: any(named: "read"),
         ),
@@ -440,7 +437,7 @@ void main() {
         MultiBlocProvider(
           providers: [
             BlocProvider<SessionDetailCubit>.value(value: cubit),
-            BlocProvider<SessionListCubit>.value(value: listCubit),
+            BlocProvider<SessionActionsCubit>.value(value: actions),
           ],
           // The desktop is a pointer surface: its menus draw shortcut labels.
           child: PregoInteractionScope(
@@ -615,7 +612,13 @@ void main() {
       await tester.tap(find.text("Mark as unread"));
       await tester.pumpAndSettle();
 
-      verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
+      verify(
+        () => actions.markSessionSeen(
+          projectId: any(named: "projectId"),
+          sessionId: "session-1",
+          read: false,
+        ),
+      ).called(1);
       expect(markedUnread, [_session]);
       expect(leftPage, 1);
     });
@@ -631,7 +634,13 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
 
-      verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
+      verify(
+        () => actions.markSessionSeen(
+          projectId: any(named: "projectId"),
+          sessionId: "session-1",
+          read: false,
+        ),
+      ).called(1);
       expect(leftPage, 1);
     });
 
@@ -753,17 +762,35 @@ void main() {
         }
 
         await markUnread();
-        verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
+        verify(
+          () => actions.markSessionSeen(
+            projectId: any(named: "projectId"),
+            sessionId: "session-1",
+            read: false,
+          ),
+        ).called(1);
 
         // Focus that left the page, as to the sidebar, returns with a click in it.
         FocusManager.instance.primaryFocus?.unfocus();
         await tester.pump();
         await markUnread();
-        verifyNever(() => listCubit.markSessionSeen(sessionId: "session-1", read: false));
+        verifyNever(
+          () => actions.markSessionSeen(
+            projectId: any(named: "projectId"),
+            sessionId: "session-1",
+            read: false,
+          ),
+        );
         await tester.tapAt(tester.getCenter(find.byType(Scaffold).last));
         await tester.pump();
         await markUnread();
-        verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
+        verify(
+          () => actions.markSessionSeen(
+            projectId: any(named: "projectId"),
+            sessionId: "session-1",
+            read: false,
+          ),
+        ).called(1);
       },
       variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.linux}),
     );
@@ -774,7 +801,6 @@ void main() {
       await tester.tap(find.byKey(const Key("desktop-session-page-more")));
       await tester.pumpAndSettle();
 
-      verify(() => listCubit.updateActionSession(session: _session)).called(1);
       expect(find.text("Rename"), findsOneWidget);
       expect(find.text("Archive"), findsOneWidget);
       expect(find.text("Delete"), findsOneWidget);

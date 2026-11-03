@@ -8,6 +8,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -30,11 +31,14 @@ class MockPermissionRepository() extends Mock implements PermissionRepository;
 
 class MockMcpService() extends Mock implements McpService;
 
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
+
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      RepositoryProvider<SessionWindowService>.value(value: _MockSessionWindowService()),
     ],
     child: MaterialApp(
       navigatorKey: navigatorKey,
@@ -184,14 +188,15 @@ void _registerDependencies({
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
-  // The page's own action cubit runs its menu actions.
-  final projectRepository = MockProjectRepository();
-  getIt.registerSingleton<ProjectRepository>(projectRepository);
-  getIt.registerSingleton<SessionListService>(
-    SessionListService(),
+  // The page's own action service runs its menu actions.
+  getIt.registerSingleton<SessionActionService>(
+    SessionActionService(
+      sessionRepository: promptDispatcher,
+      sessionCleanupService: SessionCleanupService(repository: promptDispatcher),
+      sessionUnseenTracker: FakeSessionUnseenTracker(),
+      failureReporter: failureReporter,
+    ),
   );
-  getIt.registerSingleton<SessionCleanupService>(SessionCleanupService(repository: promptDispatcher));
-  getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
 }
 
 void main() {

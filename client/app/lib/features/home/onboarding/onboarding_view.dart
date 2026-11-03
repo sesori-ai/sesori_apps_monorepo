@@ -293,7 +293,6 @@ class const NeedHelpMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 200,
-      acquireOpenLease: null,
       triggerBuilder: (context, toggle) => PregoButtonsSolid(
         leadingIcon: quiet ? null : TablerRegular.help,
         label: loc.projectsOnboardingNeedHelp,

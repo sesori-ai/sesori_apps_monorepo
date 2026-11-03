@@ -109,11 +109,8 @@ class const DesktopSidebar({
                             session: row.session,
                           ),
                           actionDispatcher: sessionActions,
-                          createActionCubit: ({required projectId, required session}) => createSessionListCubit(
-                            locator: getIt,
-                            projectId: projectId,
-                            sessions: [session],
-                          ),
+                          createActions: ({required window}) =>
+                              createSessionActionsCubit(locator: getIt, window: window),
                           selectedSessionId: selectedSessionId,
                           // The footer's recovery card says so, unless this
                           // computer's bridge is still starting: that is the
@@ -387,7 +384,6 @@ class const _SidebarComputerRow({
     };
     return PregoAnchorMenu(
       flat: true,
-      acquireOpenLease: null,
       menuWidth: 300,
       triggerBuilder: (context, toggle) => _SidebarButton(
         key: const Key("desktop-sidebar-computer"),

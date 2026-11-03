@@ -56,13 +56,9 @@ class const DesktopSessionDetailScreen({
           ),
         ),
         // The toolbar's session actions run through the same dispatcher as a
-        // row's menu, on a throwaway list that holds only this session.
-        BlocProvider<SessionListCubit>(
-          create: (_) => createSessionListCubit(
-            locator: getIt,
-            projectId: projectId,
-            sessions: const [],
-          ),
+        // row's menu.
+        BlocProvider(
+          create: (context) => createSessionActionsCubit(locator: getIt, window: context.read<SessionWindowService>()),
         ),
       ],
       child: DesktopComposerPresentationScope(
@@ -203,7 +199,7 @@ class const DesktopSessionDetailView({
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(
       context: context,
-      cubit: context.read<SessionListCubit>(),
+      actions: context.read<SessionActionsCubit>(),
       session: session,
     );
     onMarkedUnread();
@@ -281,7 +277,6 @@ class const DesktopSessionDetailView({
             PregoAnchorMenu(
               flat: true,
               menuWidth: 220,
-              acquireOpenLease: () => context.read<SessionListCubit>().retainActionScope(),
               entriesBuilder: () => session == null
                   ? const []
                   : [
@@ -320,9 +315,10 @@ class const DesktopSessionDetailView({
                       ),
                       ...sessionActions.sessionMenuEntries(
                         context: context,
-                        cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+                        actions: context.read<SessionActionsCubit>(),
                         session: session,
-                        readEntry: SessionReadMenuEntry.none,
+                        isRunning: isBusy,
+                        readEntry: const SessionReadMenuNone(),
                       ),
                     ],
               triggerBuilder: (context, openMenu) => IconButton(

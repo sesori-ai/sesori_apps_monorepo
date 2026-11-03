@@ -174,7 +174,6 @@ class const _ProjectRow({
     // secondary click anywhere on the row drops this one from the pointer.
     return PregoAnchorMenu(
       flat: true,
-      acquireOpenLease: null,
       menuWidth: _menuWidth,
       entriesBuilder: entries,
       triggerBuilder: (context, openRowMenu) => GestureDetector(
@@ -192,7 +191,6 @@ class const _ProjectRow({
           trailing: PregoAnchorMenu(
             flat: true,
             placement: PregoMenuPlacement.belowRightAligned,
-            acquireOpenLease: null,
             menuWidth: _menuWidth,
             entriesBuilder: entries,
             triggerBuilder: (context, openMenu) => PregoButtonsSolid.iconOnly(

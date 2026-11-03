@@ -13,7 +13,7 @@ part of "session_list_action_dispatcher.dart";
 /// unexpected branch, which only older bridges report.
 Future<void> _showForceDialog({
   required BuildContext context,
-  required SessionListCubit cubit,
+  required SessionActionsCubit actions,
   required String sessionId,
   required bool deleteSessionFolder,
   required SessionCleanupRejection rejection,
@@ -70,17 +70,16 @@ Future<void> _showForceDialog({
               fullWidth: true,
               onPressed: () {
                 sheetContext.pop();
-                final release = cubit.retainActionScope();
                 unawaited(
                   _deleteSession(
                     context: context,
-                    cubit: cubit,
+                    actions: actions,
                     sessionId: sessionId,
                     deleteWorktree: true,
                     deleteSessionFolder: deleteSessionFolder,
                     force: true,
                     onSessionDeleted: onSessionDeleted,
-                  ).whenComplete(release),
+                  ),
                 );
               },
             ),
