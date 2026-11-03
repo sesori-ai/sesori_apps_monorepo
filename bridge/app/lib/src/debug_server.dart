@@ -222,16 +222,15 @@ class DebugServer({
       );
 
       await disconnected.future;
-    } catch (error) {
-      // Only a client whose connection is already unusable fails here; the
-      // finally block drops it.
-      Log.d("debug SSE client connection failed (${error.runtimeType}); dropping the client");
+    } catch (error, stackTrace) {
+      // The finally block drops the client.
+      _logSseClientFailure(failure: "debug SSE client connection failed", error: error, stackTrace: stackTrace);
     } finally {
       _removeSseClient(response);
       try {
         await response.close();
-      } catch (error) {
-        Log.d("debug SSE client close failed (${error.runtimeType}); the client is already dropped");
+      } catch (error, stackTrace) {
+        _logSseClientFailure(failure: "debug SSE client close failed", error: error, stackTrace: stackTrace);
       }
     }
   }
@@ -242,17 +241,29 @@ class DebugServer({
       try {
         client.add(utf8.encode("data: $eventData\n\n"));
         await client.flush();
-      } catch (error) {
-        // A failed write means this client's connection is unusable, usually
-        // because it disconnected. Drop it; the other clients keep receiving.
-        Log.d("debug SSE event write failed (${error.runtimeType}); dropping the client");
+      } catch (error, stackTrace) {
+        // A failed write leaves this client's connection unusable. Drop it; the
+        // other clients keep receiving.
+        _logSseClientFailure(failure: "debug SSE event write failed", error: error, stackTrace: stackTrace);
         _removeSseClient(client);
         try {
           await client.close();
-        } catch (error) {
-          Log.d("debug SSE client close failed (${error.runtimeType}); the client is already dropped");
+        } catch (error, stackTrace) {
+          _logSseClientFailure(failure: "debug SSE client close failed", error: error, stackTrace: stackTrace);
         }
       }
+    }
+  }
+
+  /// A client that disconnects mid-write is routine: dart:io reports it as an
+  /// [IOException], or as a [StateError] when the response was closed while a
+  /// write was still pending. Anything else is unexpected and keeps its error
+  /// and stack trace.
+  void _logSseClientFailure({required String failure, required Object error, required StackTrace stackTrace}) {
+    if (error is IOException || error is StateError) {
+      Log.d("$failure because the client disconnected; dropping it");
+    } else {
+      Log.w("$failure; dropping the client", error, stackTrace);
     }
   }
 
