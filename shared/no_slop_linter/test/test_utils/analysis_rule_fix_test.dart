@@ -27,8 +27,7 @@ abstract class AnalysisRuleFixTest extends AnalysisRuleTest {
       orElse: () => fail('No diagnostic found for rule "${rule.name}"'),
     );
 
-    final libraryResult =
-        await result.session.getResolvedLibrary(result.path) as ResolvedLibraryResult;
+    final libraryResult = await result.session.getResolvedLibrary(result.path) as ResolvedLibraryResult;
 
     final context = CorrectionProducerContext.createResolved(
       libraryResult: libraryResult,

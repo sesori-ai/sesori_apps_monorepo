@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/repositories/notification_repository.dart";
 import "package:sesori_dart_core/src/services/notification_registration_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {

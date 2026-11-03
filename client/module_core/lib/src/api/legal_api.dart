@@ -10,7 +10,7 @@ enum LegalDocument(
   final String path,
 ) {
   terms("/terms"),
-  privacy("/privacy");
+  privacy("/privacy"),
 }
 
 /// API layer for the public legal documents on the auth server.

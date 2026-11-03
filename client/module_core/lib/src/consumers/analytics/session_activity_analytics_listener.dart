@@ -13,7 +13,11 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../services/models/product_analytics_state.dart";
 import "../../services/product_analytics_service.dart";
 
-enum _ActivityAnalyticsGuard() { ready, inFlight, consumed }
+enum _ActivityAnalyticsGuard() {
+  ready,
+  inFlight,
+  consumed,
+}
 
 /// Reports bounded session activity only while its owning detail route is
 /// current and the app is foregrounded.
@@ -21,12 +25,12 @@ enum _ActivityAnalyticsGuard() { ready, inFlight, consumed }
 /// Route visibility is supplied by the Flutter owner so this pure-Dart
 /// listener never mistakes a covered detail route for the active route.
 class SessionActivityAnalyticsListener._({
-    required final SessionDetailCubit _sessionDetailCubit,
-    required final LifecycleSource _lifecycleSource,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required bool initialRouteVisible,
-    required final DateTime Function() _nowUtc,
-  }) {
+  required final SessionDetailCubit _sessionDetailCubit,
+  required final LifecycleSource _lifecycleSource,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required bool initialRouteVisible,
+  required final DateTime Function() _nowUtc,
+}) {
   late final StreamSubscription<SessionDetailState> _sessionStateSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamSubscription<ProductAnalyticsState> _analyticsStateSubscription;

@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
@@ -22,7 +23,8 @@ import 'package:analyzer/error/error.dart';
 /// - `TextAlign.justify` - symmetric, no RTL issue
 /// - Switch case patterns matching TextAlign values (exhaustive matching)
 class PreferTextAlignDirectionalRule extends NoSlopRule {
-  PreferTextAlignDirectionalRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Enforces TextAlign.start/end for RTL support.');
+  PreferTextAlignDirectionalRule({required super.ignoreTestFiles})
+    : super(name: code.lowerCaseName, description: 'Enforces TextAlign.start/end for RTL support.');
 
   static const code = LintCode(
     'prefer_text_align_directional',
@@ -59,9 +61,7 @@ class _Visitor extends SimpleAstVisitor<void> {
   bool _isInSwitchPattern(AstNode node) {
     AstNode? current = node.parent;
     while (current != null) {
-      if (current is SwitchExpressionCase ||
-          current is SwitchPatternCase ||
-          current is ConstantPattern) {
+      if (current is SwitchExpressionCase || current is SwitchPatternCase || current is ConstantPattern) {
         return true;
       }
       current = current.parent;

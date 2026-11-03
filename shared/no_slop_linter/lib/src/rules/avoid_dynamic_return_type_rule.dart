@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
@@ -23,7 +24,8 @@ import 'package:analyzer/error/error.dart';
 /// - `set value(x) => _v = x;` - setters are skipped (implicitly void)
 /// - `external dynamic foo();` - external functions (JS interop) are skipped
 class AvoidDynamicReturnTypeRule extends NoSlopRule {
-  AvoidDynamicReturnTypeRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Requires explicit non-dynamic return types.');
+  AvoidDynamicReturnTypeRule({required super.ignoreTestFiles})
+    : super(name: code.lowerCaseName, description: 'Requires explicit non-dynamic return types.');
 
   static const code = LintCode(
     'avoid_dynamic_return_type',

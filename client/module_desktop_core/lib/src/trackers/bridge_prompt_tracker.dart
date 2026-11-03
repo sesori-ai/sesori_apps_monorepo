@@ -10,8 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 /// loss), so the dispatcher clears the tracker on helper disconnect.
 @lazySingleton
 class BridgePromptTracker() {
-  final BehaviorSubject<List<ControlPromptRequest>> _prompts =
-      BehaviorSubject.seeded(const <ControlPromptRequest>[]);
+  final BehaviorSubject<List<ControlPromptRequest>> _prompts = BehaviorSubject.seeded(const <ControlPromptRequest>[]);
 
   ValueStream<List<ControlPromptRequest>> get promptsStream => _prompts.stream;
 

@@ -4,7 +4,10 @@ part "session_attachment.freezed.dart";
 part "session_attachment.g.dart";
 
 @JsonEnum()
-enum SessionAttachmentRendition() { thumbnail, original }
+enum SessionAttachmentRendition() {
+  thumbnail,
+  original,
+}
 
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionAttachmentRequest with _$SessionAttachmentRequest {

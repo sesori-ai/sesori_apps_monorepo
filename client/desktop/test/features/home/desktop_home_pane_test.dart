@@ -844,7 +844,9 @@ void main() {
     late List<({String projectId, String sessionId})> opened;
     late _MockChatInputModeCubit inputMode;
 
-    setUpAll(() => registerFallbackValue(const NewSessionProject(id: "fallback", name: null, kind: ProjectKind.folder)));
+    setUpAll(
+      () => registerFallbackValue(const NewSessionProject(id: "fallback", name: null, kind: ProjectKind.folder)),
+    );
 
     /// A composer opened in [project] that moves where it is asked to, as the
     /// real one does: to the project picked, its worktree support unchecked.
@@ -949,7 +951,8 @@ void main() {
       await tester.pump();
     }
 
-    String shownProject(WidgetTester tester) => tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id;
+    String shownProject(WidgetTester tester) =>
+        tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id;
 
     testWidgets("starts a new session in the list's default project", (tester) async {
       await pumpStart(

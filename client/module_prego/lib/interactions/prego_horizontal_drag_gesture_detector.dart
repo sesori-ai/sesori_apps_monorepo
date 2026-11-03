@@ -8,7 +8,7 @@ const double _systemBackGestureExclusionFraction = 0.1;
 enum PregoHorizontalDragDirection() {
   both,
   left,
-  right;
+  right,
 }
 
 /// A horizontal drag detector that stays out of platform system-back edges.

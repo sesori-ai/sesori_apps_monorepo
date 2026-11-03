@@ -11,7 +11,6 @@ class MockRealtimeVoiceClient() extends Mock implements RealtimeVoiceClient;
 
 class MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
 
-
 void main() {
   late MockVoiceApi api;
   late VoiceRepository repository;

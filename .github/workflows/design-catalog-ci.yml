@@ -15,6 +15,7 @@ on:
       - '.tool-versions'
       - '.github/actions/resolve-flutter-dart-version/**'
       - '.github/workflows/design-catalog-ci.yml'
+      - 'tool/dart_format.sh'
   pull_request:
     paths: *paths
 
@@ -43,3 +44,6 @@ jobs:
           FLUTTER_BIN=$(command -v flutter)
           FLUTTER_SDK_ROOT=$(dirname "$(dirname "$FLUTTER_BIN")")
           make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" catalog-check
+
+      - name: Check catalog formatting
+        run: tool/dart_format.sh --check client/design_catalog

@@ -17,38 +17,50 @@ class AvoidDynamicReturnTypeTest extends AnalysisRuleTest {
   }
 
   void test_reportForImplicitReturnType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 foo() {
   return 'hello';
 }
-''', [lint(0, 27)]);
+''',
+      [lint(0, 27)],
+    );
   }
 
   void test_reportForExplicitDynamicReturnType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 dynamic bar() {
   return 42;
 }
-''', [lint(0, 7)]);
+''',
+      [lint(0, 7)],
+    );
   }
 
   void test_reportForMethodWithImplicitReturnType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class TestClass {
   getValue() {
     return 'value';
   }
 }
-''', [lint(20, 36)]);
+''',
+      [lint(20, 36)],
+    );
   }
 
   void test_reportForGetterWithImplicitReturnType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class TestClass {
   final String _value = 'test';
   get value => _value;
 }
-''', [lint(52, 20)]);
+''',
+      [lint(52, 20)],
+    );
   }
 
   void test_noErrorForVoidReturnType() async {

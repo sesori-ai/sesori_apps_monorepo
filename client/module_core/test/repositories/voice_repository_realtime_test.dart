@@ -23,7 +23,6 @@ class _ThrowingTokenProvider({required final Exception failure}) implements Auth
 
 class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
 
-
 void main() {
   late FakeRealtimeVoiceChannel channel;
 

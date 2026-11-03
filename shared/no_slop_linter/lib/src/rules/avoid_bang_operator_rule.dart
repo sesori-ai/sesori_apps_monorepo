@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
@@ -17,7 +18,8 @@ import 'package:analyzer/error/error.dart';
 /// - The `??` operator for default values
 /// - Pattern matching with `case` statements
 class AvoidBangOperatorRule extends NoSlopRule {
-  AvoidBangOperatorRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Detects usage of the bang operator.');
+  AvoidBangOperatorRule({required super.ignoreTestFiles})
+    : super(name: code.lowerCaseName, description: 'Detects usage of the bang operator.');
 
   static const code = LintCode(
     'avoid_bang_operator',

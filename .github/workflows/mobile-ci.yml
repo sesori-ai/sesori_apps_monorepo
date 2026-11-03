@@ -21,6 +21,7 @@ on:
       - '.github/actions/resolve-flutter-dart-version/**'
       - '.github/workflows/mobile-ci.yml'
       - '.github/scripts/run_test_shard.sh'
+      - 'tool/dart_format.sh'
   pull_request:
     paths: *paths
 
@@ -63,6 +64,12 @@ jobs:
       - name: Analyze client workspace
         run: dart analyze --fatal-infos
         working-directory: client
+
+      # Like the analysis, this covers the whole workspace. Desktop CI and
+      # Design Catalog CI check their own packages for changes that skip this
+      # workflow.
+      - name: Check client formatting
+        run: tool/dart_format.sh --check client
 
   # One job per package, and two for the largest, so the slowest shard, not
   # the sum, sets the wall time.

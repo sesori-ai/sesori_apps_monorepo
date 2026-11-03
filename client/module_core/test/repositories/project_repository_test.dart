@@ -84,7 +84,7 @@ void main() {
       final repository = ProjectRepository(
         api: MockProjectApi(),
         filesystemApi: MockFilesystemApi(),
-        );
+      );
 
       expect(repository.parentHostPath(path: "/home/dev/projects"), "/home/dev");
       expect(repository.parentHostPath(path: "/"), isNull);

@@ -17,20 +17,26 @@ class AvoidMutableClassFieldsTest extends AnalysisRuleTest {
   }
 
   void test_reportForPublicNonFinalField() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   String name;
   Foo(this.name);
 }
-''', [lint(14, 12)]);
+''',
+      [lint(14, 12)],
+    );
   }
 
   void test_reportForPublicLateNonFinalField() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   late String name;
 }
-''', [lint(14, 17)]);
+''',
+      [lint(14, 17)],
+    );
   }
 
   void test_noErrorForFinalField() async {

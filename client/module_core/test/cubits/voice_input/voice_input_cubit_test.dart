@@ -427,11 +427,13 @@ void main() {
       build: () => VoiceInputCubit(service: service, session: session),
       act: (cubit) async {
         await cubit.startRecording();
-        liveEvents.add(const VoiceLiveEnded(
+        liveEvents.add(
+          const VoiceLiveEnded(
             transcript: "cut",
             outcome: VoiceDictationOutcome.interrupted,
             mode: VoiceDictationMode.live,
-          ));
+          ),
+        );
       },
       skip: 2,
       expect: () => const [
@@ -504,11 +506,13 @@ void main() {
         liveEvents
           ..add(const VoiceLiveWordsChanged(words: hello))
           ..add(const VoiceLiveFellBack())
-          ..add(const VoiceLiveEnded(
+          ..add(
+            const VoiceLiveEnded(
               transcript: "late",
               outcome: VoiceDictationOutcome.finished,
               mode: VoiceDictationMode.live,
-            ))
+            ),
+          )
           ..add(VoiceLiveFailed(error: VoiceTranscriptionError.emptyTranscript()));
       },
       expect: () => [

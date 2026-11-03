@@ -305,9 +305,15 @@ class BridgeProcessRepository.forTesting({
   }
 }
 
-enum _BridgeStopMode() { ordinary, afterCommand }
+enum _BridgeStopMode() {
+  ordinary,
+  afterCommand,
+}
 
-enum _AfterCommandStopTrigger() { exited, shutdownRequested }
+enum _AfterCommandStopTrigger() {
+  exited,
+  shutdownRequested,
+}
 
 class _ActiveBridgeProcess({required final BridgeProcessApiHandle handle}) {
   bool expected = false;

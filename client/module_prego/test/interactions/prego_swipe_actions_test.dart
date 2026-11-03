@@ -128,8 +128,7 @@ Future<void> _swipeFrom(WidgetTester tester, {required Offset origin, required d
 }
 
 /// The primary action's tappable rect for [label]'s row.
-Rect _primaryRect(WidgetTester tester, String label) =>
-    tester.getRect(find.widgetWithText(TextButton, 'Hide $label'));
+Rect _primaryRect(WidgetTester tester, String label) => tester.getRect(find.widgetWithText(TextButton, 'Hide $label'));
 
 /// The leading action's tappable rect for [label]'s row.
 Rect _leadingRect(WidgetTester tester, String label) =>
@@ -167,7 +166,11 @@ Future<void> _moveInSteps(
 void main() {
   testWidgets('rests closed: actions off-row, content tappable, none of the callbacks fired', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     // A row at rest builds no strips.
     expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
@@ -183,7 +186,11 @@ void main() {
   testWidgets('while closed the actions are excluded from semantics', (tester) async {
     final handle = tester.ensureSemantics();
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     expect(find.bySemanticsLabel('Hide A'), findsNothing);
 
@@ -195,7 +202,11 @@ void main() {
 
   testWidgets('a short drag springs back closed', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     // ~62px after slop — under the 102px settle-open threshold.
     await _swipe(tester, label: 'A', dx: -80);
@@ -205,7 +216,11 @@ void main() {
 
   testWidgets('a drag past half the reveal settles open with the actions in place and tappable', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     await _swipe(tester, label: 'A', dx: -150);
 
@@ -230,7 +245,9 @@ void main() {
   testWidgets("the reveal geometry follows the primary action's natural width", (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 100)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, primaryWidth: 100)],
+      ),
     );
 
     await _swipe(tester, label: 'A', dx: -150);
@@ -246,7 +263,11 @@ void main() {
 
   testWidgets('an action can close the row through the builder callback', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, closeOnAction: true)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, closeOnAction: true)],
+      ),
+    );
 
     await _swipe(tester, label: 'A', dx: -150);
     await tester.tap(find.text('Hide A'));
@@ -258,7 +279,11 @@ void main() {
 
   testWidgets('tapping the open row closes it without activating the content, which works again after', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     await _swipe(tester, label: 'A', dx: -150);
     // The tap intentionally lands on the close-catcher covering the content.
@@ -277,7 +302,12 @@ void main() {
     final counters = _Counters();
     final other = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters), _row(label: 'B', counters: other)]),
+      _harness(
+        rows: [
+          _row(label: 'A', counters: counters),
+          _row(label: 'B', counters: other),
+        ],
+      ),
     );
 
     await _swipe(tester, label: 'A', dx: -150);
@@ -290,7 +320,14 @@ void main() {
   testWidgets('opening a second row closes the first', (tester) async {
     final a = _Counters();
     final b = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: a), _row(label: 'B', counters: b)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [
+          _row(label: 'A', counters: a),
+          _row(label: 'B', counters: b),
+        ],
+      ),
+    );
 
     await _swipe(tester, label: 'A', dx: -150);
     await _swipe(tester, label: 'B', dx: -150);
@@ -304,7 +341,10 @@ void main() {
     final scrollController = ScrollController();
     addTearDown(scrollController.dispose);
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters)], scrollController: scrollController),
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+        scrollController: scrollController,
+      ),
     );
 
     await _swipe(tester, label: 'A', dx: -150);
@@ -320,7 +360,11 @@ void main() {
 
   testWidgets('a full swipe past the commit threshold fires onFullSwipe once and closes', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     // ~502px after slop — past the 480px commit threshold.
     await _swipe(tester, label: 'A', dx: -520);
@@ -332,7 +376,11 @@ void main() {
 
   testWidgets('the primary action stretches during the overdrag, trailing edge pinned to the row end', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     // 8 steps of -70; the first step is spent winning the arena, leaving
     // ~490px of extent — past the 480px commit threshold.
@@ -350,7 +398,11 @@ void main() {
 
   testWidgets('a strip wider than the commit fraction keeps a reachable open state', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 500)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, primaryWidth: 500)],
+      ),
+    );
 
     // Reveal: 6 + 40 + 6 + 500 + 16 = 568 — past the 480px fractional
     // threshold, as happens with long labels, large text scales or narrow
@@ -385,9 +437,15 @@ void main() {
     expect(counters.fullSwipes, 1);
   });
 
-  testWidgets('a strip whose reveal crowds the row still opens, and still commits at the full-width drag', (tester) async {
+  testWidgets('a strip whose reveal crowds the row still opens, and still commits at the full-width drag', (
+    tester,
+  ) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 700)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, primaryWidth: 700)],
+      ),
+    );
 
     // Reveal: 6 + 40 + 6 + 700 + 16 = 768, so reveal plus the 64px clearance
     // is 832 — beyond the 800px row, which is as far as the drag can reach.
@@ -422,9 +480,15 @@ void main() {
     expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
-  testWidgets('re-grabbing the row while a committed swipe settles shut does not fire the commit again', (tester) async {
+  testWidgets('re-grabbing the row while a committed swipe settles shut does not fire the commit again', (
+    tester,
+  ) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     // A full swipe deep past the 480px threshold: the commit fires on release
     // and the row starts settling shut from a still-past-threshold extent.
@@ -454,7 +518,11 @@ void main() {
 
   testWidgets('dragging past the threshold and back before releasing does not commit', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
     await _moveInSteps(tester, gesture, total: const Offset(-560, 0));
@@ -557,7 +625,10 @@ void main() {
   testWidgets('reveals with a start-edge drag under RTL', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters)], textDirection: TextDirection.rtl),
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+        textDirection: TextDirection.rtl,
+      ),
     );
 
     // In RTL the actions live past the left edge and a rightward drag reveals.
@@ -575,7 +646,11 @@ void main() {
 
   testWidgets('an end-ward drag on a row with no leading action stays closed', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     final before = tester.getTopLeft(find.text('A content'));
     await _swipe(tester, label: 'A', dx: 150);
@@ -590,7 +665,9 @@ void main() {
   testWidgets('rests with the leading action off-row; a drag past half its reveal settles it open', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     // The leading strip is laid out past the row's start edge, clipped out of
@@ -618,7 +695,9 @@ void main() {
   testWidgets('tapping the row open on its leading action closes it without activating the content', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     await _swipe(tester, label: 'A', dx: 120);
@@ -633,7 +712,9 @@ void main() {
   testWidgets('a full end-ward swipe commits the leading action once and closes', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     // ~502px after slop — past the 480px commit threshold.
@@ -648,7 +729,9 @@ void main() {
   testWidgets('the leading action stretches during the overdrag, leading edge pinned to the row start', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     // 8 steps of 70; the first step is spent winning the arena, leaving
@@ -668,7 +751,9 @@ void main() {
   testWidgets('one drag can carry an open trailing row across to its leading side', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     await _swipe(tester, label: 'A', dx: -150);
@@ -694,10 +779,14 @@ void main() {
     expect(counters.leadingFullSwipes, 0);
   });
 
-  testWidgets('a closing fling that overshoots past zero settles closed instead of opening the other side', (tester) async {
+  testWidgets('a closing fling that overshoots past zero settles closed instead of opening the other side', (
+    tester,
+  ) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     await _swipe(tester, label: 'A', dx: -150);
@@ -726,7 +815,9 @@ void main() {
   testWidgets('a flick whose whole delta is spent winning the arena still opens the flicked side', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     // Every event lands before or at arena acceptance, so the accepted drag
@@ -785,7 +876,9 @@ void main() {
     final handle = tester.ensureSemantics();
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     expect(find.bySemanticsLabel('Unread A'), findsNothing);
@@ -801,7 +894,9 @@ void main() {
   testWidgets("a closed side's action pills are excluded from focus traversal", (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
-      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+      ),
     );
 
     FocusNode nodeOf(String label) => Focus.of(tester.element(find.text(label)));
@@ -825,13 +920,21 @@ void main() {
         ((widget.decoration as BoxDecoration).border as Border?)?.bottom ==
             const BorderSide(color: PregoColorsLight.borderTertiary, width: 0);
 
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
     expect(
       find.descendant(of: find.byType(PregoSwipeActions), matching: find.byWidgetPredicate(hairline)),
       findsNothing,
     );
 
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, bottomHairline: true)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, bottomHairline: true)],
+      ),
+    );
     expect(
       find.descendant(of: find.byType(PregoSwipeActions), matching: find.byWidgetPredicate(hairline)),
       findsOneWidget,
@@ -840,17 +943,19 @@ void main() {
 
   testWidgets('a close settle keeps rendering the strip captured when the close began', (tester) async {
     Widget rowWith({required String primaryLabel}) {
-      return _harness(rows: [
-        PregoSwipeActions(
-          actionsBuilder: (context, close) => const [SizedBox(width: 40, height: 40)],
-          primaryActionBuilder: (context, close) => SizedBox(
-            width: _primaryWidth,
-            child: TextButton(onPressed: close, child: Text(primaryLabel)),
+      return _harness(
+        rows: [
+          PregoSwipeActions(
+            actionsBuilder: (context, close) => const [SizedBox(width: 40, height: 40)],
+            primaryActionBuilder: (context, close) => SizedBox(
+              width: _primaryWidth,
+              child: TextButton(onPressed: close, child: Text(primaryLabel)),
+            ),
+            onFullSwipe: () {},
+            child: const SizedBox(height: 96, child: Center(child: Text('A content'))),
           ),
-          onFullSwipe: () {},
-          child: const SizedBox(height: 96, child: Center(child: Text('A content'))),
-        ),
-      ]);
+        ],
+      );
     }
 
     await tester.pumpWidget(rowWith(primaryLabel: 'Mark unread'));
@@ -880,17 +985,19 @@ void main() {
   testWidgets('the close callback is safe to call after the row is unmounted', (tester) async {
     late VoidCallback close;
     await tester.pumpWidget(
-      _harness(rows: [
-        PregoSwipeActions(
-          actionsBuilder: (context, c) {
-            close = c;
-            return const [SizedBox(width: 40, height: 40)];
-          },
-          primaryActionBuilder: (context, _) => const SizedBox(width: _primaryWidth),
-          onFullSwipe: () {},
-          child: const SizedBox(height: 96, child: Center(child: Text('A content'))),
-        ),
-      ]),
+      _harness(
+        rows: [
+          PregoSwipeActions(
+            actionsBuilder: (context, c) {
+              close = c;
+              return const [SizedBox(width: 40, height: 40)];
+            },
+            primaryActionBuilder: (context, _) => const SizedBox(width: _primaryWidth),
+            onFullSwipe: () {},
+            child: const SizedBox(height: 96, child: Center(child: Text('A content'))),
+          ),
+        ],
+      ),
     );
     await _swipe(tester, label: 'A', dx: -150);
 
@@ -903,7 +1010,11 @@ void main() {
 
   testWidgets('disposing mid-settle does not throw', (tester) async {
     final counters = _Counters();
-    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters)],
+      ),
+    );
 
     await tester.drag(find.text('A content'), const Offset(-150, 0));
     await tester.pump();

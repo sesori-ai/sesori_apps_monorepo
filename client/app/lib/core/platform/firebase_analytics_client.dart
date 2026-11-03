@@ -13,8 +13,7 @@ class FirebaseAnalyticsClient({
   required final FirebaseAnalyticsStartup _startup,
 }) implements AnalyticsClient {
   @override
-  Future<void> activateAfterInteractiveAuthentication() =>
-      _startup.activateAfterInteractiveAuthentication();
+  Future<void> activateAfterInteractiveAuthentication() => _startup.activateAfterInteractiveAuthentication();
 
   @override
   Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) async {

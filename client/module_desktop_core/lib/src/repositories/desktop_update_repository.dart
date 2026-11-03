@@ -60,7 +60,6 @@ class DesktopUpdateRepository._create({
     _ => initialState(),
   };
 
-
   Future<void> relaunchInstalledPackage() => _relaunchApi.relaunchInstalledPackage();
 
   /// Ready for each update Sparkle has downloaded and verified.

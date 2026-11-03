@@ -1,0 +1,5 @@
+# The standalone scripts in this directory belong to no package; this gives
+# them the repository's formatter settings.
+formatter:
+  page_width: 120
+  trailing_commas: preserve

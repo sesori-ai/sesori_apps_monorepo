@@ -26,7 +26,10 @@ class LastNewSessionProjectStore({required final PersisterRepository _persister}
   /// rather than surfaced.
   Future<void> write({required String bridgeId, required String projectId}) async {
     try {
-      await _persister.writeString(key: LastProjectPreferenceKey(bridgeId: bridgeId), value: projectId);
+      await _persister.writeString(
+        key: LastProjectPreferenceKey(bridgeId: bridgeId),
+        value: projectId,
+      );
     } on Object catch (error, stackTrace) {
       logw("Failed to persist the last new-session project for bridge $bridgeId", error, stackTrace);
     }

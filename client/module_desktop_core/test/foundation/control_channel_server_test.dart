@@ -125,14 +125,18 @@ void main() {
     final List<WebSocket> connected = <WebSocket>[];
     // Fire both connects in the same event-loop turn so their upgrades race.
     final List<Object?> results = await Future.wait(<Future<Object?>>[
-      connectHelper(server).then<Object?>((socket) {
-        connected.add(socket);
-        return socket;
-      }).catchError((Object error) => error),
-      connectHelper(server).then<Object?>((socket) {
-        connected.add(socket);
-        return socket;
-      }).catchError((Object error) => error),
+      connectHelper(server)
+          .then<Object?>((socket) {
+            connected.add(socket);
+            return socket;
+          })
+          .catchError((Object error) => error),
+      connectHelper(server)
+          .then<Object?>((socket) {
+            connected.add(socket);
+            return socket;
+          })
+          .catchError((Object error) => error),
     ]);
     for (final WebSocket socket in connected) {
       addTearDown(socket.close);

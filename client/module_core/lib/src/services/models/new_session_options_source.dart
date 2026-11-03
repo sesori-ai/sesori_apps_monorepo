@@ -1,1 +1,4 @@
-enum NewSessionOptionsSource() { aggregate, legacy }
+enum NewSessionOptionsSource() {
+  aggregate,
+  legacy,
+}

@@ -19,7 +19,11 @@ const int _pcmChannels = 1;
 
 /// Warms the native audio session ahead of the first recording. Only a shell
 /// with a native prewarm channel supplies one.
-typedef RecorderPrewarm = Future<void> Function({required int sampleRate, required int bitRate, required int numChannels});
+typedef RecorderPrewarm = Future<void> Function({
+  required int sampleRate,
+  required int bitRate,
+  required int numChannels,
+});
 
 /// Builds the shared `record`-backed [VoiceCapture] for a product shell's DI.
 VoiceCapture createFlutterVoiceCapture({

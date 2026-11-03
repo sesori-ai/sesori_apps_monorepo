@@ -1,1 +1,5 @@
-enum SessionOptionsRequestMode() { dynamic, cacheOnly, forceRefresh }
+enum SessionOptionsRequestMode() {
+  dynamic,
+  cacheOnly,
+  forceRefresh,
+}

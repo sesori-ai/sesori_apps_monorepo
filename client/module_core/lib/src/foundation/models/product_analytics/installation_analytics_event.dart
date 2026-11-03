@@ -4,7 +4,7 @@ enum AnalyticsLoginProvider({required final String wireValue}) {
   github(wireValue: "github"),
   google(wireValue: "google"),
   apple(wireValue: "apple"),
-  email(wireValue: "email");
+  email(wireValue: "email"),
 }
 
 enum AnalyticsLoginFailureKind({required final String wireValue}) {
@@ -12,7 +12,7 @@ enum AnalyticsLoginFailureKind({required final String wireValue}) {
   launch(wireValue: "launch"),
   cancelled(wireValue: "cancelled"),
   timeout(wireValue: "timeout"),
-  unknown(wireValue: "unknown");
+  unknown(wireValue: "unknown"),
 }
 
 @immutable

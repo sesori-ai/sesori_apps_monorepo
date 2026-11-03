@@ -16,7 +16,10 @@ void main() {
       ),
     );
 
-    expect(tester.getSize(find.byKey(const Key("secondary"))).width, tester.getSize(find.byKey(const Key("primary"))).width);
+    expect(
+      tester.getSize(find.byKey(const Key("secondary"))).width,
+      tester.getSize(find.byKey(const Key("primary"))).width,
+    );
     expect(
       tester.getTopLeft(find.byKey(const Key("primary"))).dx -
           tester.getTopRight(find.byKey(const Key("secondary"))).dx,

@@ -72,7 +72,10 @@ void main() {
     session.sendAudio(frame: Uint8List.fromList([1, 2]));
     await pumpEventQueue();
 
-    expect(events.single, isA<OnDeviceSpeechFailed>().having((event) => event.cause, "cause", isA<PlatformException>()));
+    expect(
+      events.single,
+      isA<OnDeviceSpeechFailed>().having((event) => event.cause, "cause", isA<PlatformException>()),
+    );
   });
 
   test("refuses a second session until the first has ended", () async {

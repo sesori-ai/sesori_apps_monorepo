@@ -17,21 +17,27 @@ class PreferEdgeInsetsDirectionalTest extends AnalysisRuleTest {
   }
 
   void test_reportForEdgeInsetsOnly() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class EdgeInsets {
   const EdgeInsets.only({double? left});
 }
 final padding = EdgeInsets.only(left: 8);
-''', [lint(78, 24)]);
+''',
+      [lint(78, 24)],
+    );
   }
 
   void test_reportForEdgeInsetsFromLTRB() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class EdgeInsets {
   const EdgeInsets.fromLTRB(double l, double t, double r, double b);
 }
 final padding = EdgeInsets.fromLTRB(8, 0, 8, 0);
-''', [lint(106, 31)]);
+''',
+      [lint(106, 31)],
+    );
   }
 
   void test_noErrorForEdgeInsetsAll() async {

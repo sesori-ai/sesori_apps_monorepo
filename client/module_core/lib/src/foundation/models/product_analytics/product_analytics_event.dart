@@ -3,24 +3,24 @@ import "package:meta/meta.dart";
 enum SupportChannel({required final String wireValue}) {
   email(wireValue: "email"),
   discord(wireValue: "discord"),
-  x(wireValue: "x");
+  x(wireValue: "x"),
 }
 
 enum OnboardingSurface({required final String wireValue}) {
   connectSetup(wireValue: "connect_setup"),
-  bridgeOffline(wireValue: "bridge_offline");
+  bridgeOffline(wireValue: "bridge_offline"),
 }
 
 enum BridgeInstallMethod({required final String wireValue}) {
   curl(wireValue: "curl"),
   powershell(wireValue: "powershell"),
   npm(wireValue: "npm"),
-  bun(wireValue: "bun");
+  bun(wireValue: "bun"),
 }
 
 enum BridgeInstallOs({required final String wireValue}) {
   unix(wireValue: "unix"),
-  windows(wireValue: "windows");
+  windows(wireValue: "windows"),
 }
 
 enum AnalyticsScreen({required final String wireValue}) {
@@ -32,27 +32,27 @@ enum AnalyticsScreen({required final String wireValue}) {
   sessions(wireValue: "sessions"),
   newSession(wireValue: "new_session"),
   sessionDetail(wireValue: "session_detail"),
-  sessionDiffs(wireValue: "session_diffs");
+  sessionDiffs(wireValue: "session_diffs"),
 }
 
 enum AnalyticsInputMode({required final String wireValue}) {
   typed(wireValue: "typed"),
-  voiceAssisted(wireValue: "voice_assisted");
+  voiceAssisted(wireValue: "voice_assisted"),
 }
 
 enum AnalyticsInventoryState({required final String wireValue}) {
   empty(wireValue: "empty"),
-  nonEmpty(wireValue: "non_empty");
+  nonEmpty(wireValue: "non_empty"),
 }
 
 enum AnalyticsActivityState({required final String wireValue}) {
   empty(wireValue: "empty"),
-  nonEmpty(wireValue: "non_empty");
+  nonEmpty(wireValue: "non_empty"),
 }
 
 enum AnalyticsSubmissionKind({required final String wireValue}) {
   text(wireValue: "text"),
-  command(wireValue: "command");
+  command(wireValue: "command"),
 }
 
 @immutable
@@ -81,7 +81,7 @@ final class const AnalyticsCommandSubmission() extends AnalyticsSubmission {
 enum AnalyticsWorkspaceKind({required final String wireValue}) {
   project(wireValue: "project"),
   dedicatedWorktree(wireValue: "dedicated_worktree"),
-  noProject(wireValue: "no_project");
+  noProject(wireValue: "no_project"),
 }
 
 enum AnalyticsSessionCreationFailureReason({required final String wireValue}) {
@@ -89,36 +89,36 @@ enum AnalyticsSessionCreationFailureReason({required final String wireValue}) {
   serverRejected(wireValue: "server_rejected"),
   networkDown(wireValue: "network_down"),
   badResponse(wireValue: "bad_response"),
-  unknown(wireValue: "unknown");
+  unknown(wireValue: "unknown"),
 }
 
 enum AnalyticsPermissionDecision({required final String wireValue}) {
   once(wireValue: "once"),
   always(wireValue: "always"),
-  reject(wireValue: "reject");
+  reject(wireValue: "reject"),
 }
 
 /// Outcome of a client-triggered managed harness runtime install. Bounded on
 /// purpose: the harness identity and any failure text stay off the wire.
 enum AnalyticsHarnessInstallOutcome({required final String wireValue}) {
   completed(wireValue: "completed"),
-  failed(wireValue: "failed");
+  failed(wireValue: "failed"),
 }
 
 enum AnalyticsChangeState({required final String wireValue}) {
   empty(wireValue: "empty"),
-  nonEmpty(wireValue: "non_empty");
+  nonEmpty(wireValue: "non_empty"),
 }
 
 /// What opened the Prompts screen.
 enum AnalyticsPromptsEntry({required final String wireValue}) {
   sessionBar(wireValue: "session_bar"),
-  pinch(wireValue: "pinch");
+  pinch(wireValue: "pinch"),
 }
 
 enum AnalyticsFeedbackSource({required final String wireValue}) {
   automatic(wireValue: "automatic"),
-  settings(wireValue: "settings");
+  settings(wireValue: "settings"),
 }
 
 /// How one rating sheet ended. Both love values are a positive answer; they
@@ -127,7 +127,7 @@ enum AnalyticsFeedbackAnswer({required final String wireValue}) {
   loveReviewRequested(wireValue: "love_review_requested"),
   loveNoReview(wireValue: "love_no_review"),
   couldBeBetter(wireValue: "could_be_better"),
-  dismissed(wireValue: "dismissed");
+  dismissed(wireValue: "dismissed"),
 }
 
 /// What private feedback carried: a message, typed or with a dictated
@@ -136,7 +136,7 @@ enum AnalyticsFeedbackInput({required final String wireValue}) {
   typed(wireValue: "typed"),
   voiceAssisted(wireValue: "voice_assisted"),
   issuesOnly(wireValue: "issues_only"),
-  empty(wireValue: "empty");
+  empty(wireValue: "empty"),
 }
 
 /// Where a switch to another computer started.
@@ -147,26 +147,26 @@ enum ComputerSwitchSource({required final String wireValue}) {
   alert(wireValue: "alert"),
   notification(wireValue: "notification"),
   computersPage(wireValue: "computers_page"),
-  commandPalette(wireValue: "command_palette");
+  commandPalette(wireValue: "command_palette"),
 }
 
 /// What the user did to a computer from the Computers page.
 enum ComputerManageAction({required final String wireValue}) {
   renamed(wireValue: "renamed"),
-  removed(wireValue: "removed");
+  removed(wireValue: "removed"),
 }
 
 /// Where the CEO call invitation was shown or acted on.
 enum FounderCallSurface({required final String wireValue}) {
   computerConnectedSheet(wireValue: "computer_connected_sheet"),
-  settings(wireValue: "settings");
+  settings(wireValue: "settings"),
 }
 
 /// What became of a dictation's words.
 enum AnalyticsVoiceFinish({required final String wireValue}) {
   sent(wireValue: "sent"),
   edited(wireValue: "edited"),
-  cutOff(wireValue: "cut_off");
+  cutOff(wireValue: "cut_off"),
 }
 
 /// How a dictation actually ran, so a fallback reports [afterRecording].
@@ -175,7 +175,7 @@ enum AnalyticsVoiceMode({required final String wireValue}) {
   afterRecording(wireValue: "after_recording"),
 
   /// The device's own engine, whether or not the words showed.
-  onDevice(wireValue: "on_device");
+  onDevice(wireValue: "on_device"),
 }
 
 @immutable

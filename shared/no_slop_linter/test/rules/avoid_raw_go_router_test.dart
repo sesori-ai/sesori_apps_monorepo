@@ -17,7 +17,8 @@ class AvoidRawGoRouterTest extends AnalysisRuleTest {
   }
 
   void test_reportForContextGo() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class BuildContext {}
 extension _ on BuildContext {
   void go(String path) {}
@@ -26,11 +27,14 @@ extension _ on BuildContext {
 void foo(BuildContext context) {
   context.go('/path');
 }
-''', [lint(116, 19)]);
+''',
+      [lint(116, 19)],
+    );
   }
 
   void test_reportForContextPush() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class BuildContext {}
 extension _ on BuildContext {
   void push(String path) {}
@@ -39,11 +43,14 @@ extension _ on BuildContext {
 void foo(BuildContext context) {
   context.push('/path');
 }
-''', [lint(118, 21)]);
+''',
+      [lint(118, 21)],
+    );
   }
 
   void test_reportForContextGoNamed() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class BuildContext {}
 extension _ on BuildContext {
   void goNamed(String name) {}
@@ -52,11 +59,14 @@ extension _ on BuildContext {
 void foo(BuildContext context) {
   context.goNamed('route');
 }
-''', [lint(121, 24)]);
+''',
+      [lint(121, 24)],
+    );
   }
 
   void test_reportForGoRouterOfGo() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class GoRouter {
   static GoRouter of(dynamic context) => GoRouter();
   static GoRouter? maybeOf(dynamic context) => GoRouter();
@@ -66,11 +76,14 @@ class GoRouter {
 void foo(dynamic context) {
   GoRouter.of(context).go('/path');
 }
-''', [lint(188, 20), lint(188, 32)]);
+''',
+      [lint(188, 20), lint(188, 32)],
+    );
   }
 
   void test_reportForGoRouterMaybeOfPush() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class GoRouter {
   static GoRouter of(dynamic context) => GoRouter();
   static GoRouter? maybeOf(dynamic context) => GoRouter();
@@ -80,11 +93,14 @@ class GoRouter {
 void foo(dynamic context) {
   GoRouter.maybeOf(context)?.push('/path');
 }
-''', [lint(190, 25), lint(190, 40)]);
+''',
+      [lint(190, 25), lint(190, 40)],
+    );
   }
 
   void test_reportForGoRouterVariable() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class GoRouter {
   void go(String path) {}
 }
@@ -92,11 +108,14 @@ class GoRouter {
 void foo(GoRouter router) {
   router.go('/path');
 }
-''', [lint(76, 18)]);
+''',
+      [lint(76, 18)],
+    );
   }
 
   void test_reportForBuildContextSubtype() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class BuildContext {}
 class Element implements BuildContext {}
 extension _ on BuildContext {
@@ -106,11 +125,14 @@ extension _ on BuildContext {
 void foo(Element element) {
   element.replace('/path');
 }
-''', [lint(157, 24)]);
+''',
+      [lint(157, 24)],
+    );
   }
 
   void test_reportForNavigatorStatePush() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class NavigatorState {
   void push(Object route) {}
 }
@@ -118,7 +140,9 @@ class NavigatorState {
 void foo(NavigatorState navigator) {
   navigator.push(Object());
 }
-''', [lint(94, 24)]);
+''',
+      [lint(94, 24)],
+    );
   }
 
   void test_noErrorForSameNamedMethodsOnOtherTypes() async {

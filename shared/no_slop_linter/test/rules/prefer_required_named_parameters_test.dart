@@ -17,45 +17,63 @@ class PreferRequiredNamedParametersTest extends AnalysisRuleTest {
   }
 
   void test_reportForMultiplePositionalParameters() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(String a, int b) {}
-''', [lint(8, 17)]);
+''',
+      [lint(8, 17)],
+    );
   }
 
   void test_reportForThreePositionalParametersInMethod() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   void bar(String a, int b, bool c) {}
 }
-''', [lint(22, 25)]);
+''',
+      [lint(22, 25)],
+    );
   }
 
   void test_reportForMultiplePositionalInConstructor() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   Foo(String a, int b);
 }
-''', [lint(17, 17)]);
+''',
+      [lint(17, 17)],
+    );
   }
 
   void test_reportForNamedParamWithoutRequiredAndNoDefault() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(String a, {int? b}) {}
-''', [lint(8, 20)]);
+''',
+      [lint(8, 20)],
+    );
   }
 
   void test_reportForMixedRequiredAndNotRequired() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo({required String a, int? b}) {}
-''', [lint(8, 29)]);
+''',
+      [lint(8, 29)],
+    );
   }
 
   void test_reportForAbstractMethodWithNullableNamedParams() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 abstract interface class Encrypter {
   String encrypt({String? data, String? key});
 }
-''', [lint(53, 29)]);
+''',
+      [lint(53, 29)],
+    );
   }
 
   void test_noErrorForSinglePositionalParameter() async {

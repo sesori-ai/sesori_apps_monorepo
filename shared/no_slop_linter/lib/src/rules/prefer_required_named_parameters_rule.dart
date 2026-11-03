@@ -2,6 +2,7 @@ import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 
 import '../utils/no_slop_rule.dart';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
@@ -33,10 +34,11 @@ import 'package:analyzer/error/error.dart';
 /// - Parameters with @QueryParam() annotation (route params) are OK
 /// - Functions with @pragma annotations (compiler hints) are skipped
 class PreferRequiredNamedParametersRule extends NoSlopMultiRule {
-  PreferRequiredNamedParametersRule({required super.ignoreTestFiles}) : super(
-          name: codePositionalParams.lowerCaseName,
-          description: 'Enforces required named parameters for multi-argument functions.',
-        );
+  PreferRequiredNamedParametersRule({required super.ignoreTestFiles})
+    : super(
+        name: codePositionalParams.lowerCaseName,
+        description: 'Enforces required named parameters for multi-argument functions.',
+      );
 
   static const codePositionalParams = LintCode(
     'prefer_required_named_parameters',

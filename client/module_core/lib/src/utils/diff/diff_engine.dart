@@ -1,29 +1,33 @@
 import "package:diff_match_patch/diff_match_patch.dart" as dmp;
 
-enum DiffLineType() { added, removed, context }
+enum DiffLineType() {
+  added,
+  removed,
+  context,
+}
 
 class const DiffLine({
-    required final DiffLineType type,
-    final int? oldLineNumber,
-    final int? newLineNumber,
-    required final String content,
-  });
+  required final DiffLineType type,
+  final int? oldLineNumber,
+  final int? newLineNumber,
+  required final String content,
+});
 
 class const DiffHunk({
-    required final int oldStart,
-    required final int oldCount,
-    required final int newStart,
-    required final int newCount,
-    required final List<DiffLine> lines,
-  }) {
+  required final int oldStart,
+  required final int oldCount,
+  required final int newStart,
+  required final int newCount,
+  required final List<DiffLine> lines,
+}) {
   String get header => "@@ -$oldStart,$oldCount +$newStart,$newCount @@";
 }
 
 class const DiffFileResult({
-    required final List<DiffHunk> hunks,
-    required final int additions,
-    required final int deletions,
-  });
+  required final List<DiffHunk> hunks,
+  required final int additions,
+  required final int deletions,
+});
 
 class DiffEngine() {
   static const int _contextLines = 3;

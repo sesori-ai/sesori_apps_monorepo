@@ -17,29 +17,37 @@ import "room_key_storage.dart";
 /// Transport state of the relay WebSocket. This is deliberately about the
 /// socket only — it carries no notion of bridge presence or plugin status,
 /// which are tracked separately ([BridgeStatus] / the session encryptor).
-enum RelayClientConnectionState() { disconnected, connecting, connected, disconnecting }
+enum RelayClientConnectionState() {
+  disconnected,
+  connecting,
+  connected,
+  disconnecting,
+}
 
 /// Represents whether the bridge (desktop process) is reachable via the relay.
-enum BridgeStatus() { online, offline }
+enum BridgeStatus() {
+  online,
+  offline,
+}
 
 final class const RelayMessageTooLargeException({
-    required final int plaintextBytes,
-    required final int maxPlaintextBytes,
-  }) implements Exception {
+  required final int plaintextBytes,
+  required final int maxPlaintextBytes,
+}) implements Exception {
   @override
   String toString() => "Relay message is too large ($plaintextBytes bytes; maximum $maxPlaintextBytes bytes)";
 }
 
 class RelayClient._({
-    required final String relayHost,
-    required final RelayCryptoService _cryptoService,
-    required final RoomKeyStorage _roomKeyStorage,
-    required final String? authToken,
-    required final String? bridgeId,
-    required final WebSocketChannel Function(Uri uri) _channelConnector,
-    required final BoundedJsonEncoder _boundedJsonEncoder,
-    required final int _maxPlaintextMessageBytes,
-  }) {
+  required final String relayHost,
+  required final RelayCryptoService _cryptoService,
+  required final RoomKeyStorage _roomKeyStorage,
+  required final String? authToken,
+  required final String? bridgeId,
+  required final WebSocketChannel Function(Uri uri) _channelConnector,
+  required final BoundedJsonEncoder _boundedJsonEncoder,
+  required final int _maxPlaintextMessageBytes,
+}) {
   WebSocketChannel? _channel;
   StreamSubscription<void>? _channelSubscription;
   SessionEncryptor? _sessionEncryptor;
@@ -105,20 +113,20 @@ class RelayClient._({
     required BoundedJsonEncoder? boundedJsonEncoder,
     required int maxPlaintextMessageBytes,
   }) : this._(
-          relayHost: relayHost,
-          cryptoService: cryptoService,
-          roomKeyStorage: roomKeyStorage,
-          authToken: authToken,
-          bridgeId: bridgeId,
-          channelConnector: channelConnector,
-          boundedJsonEncoder:
-              boundedJsonEncoder ??
-              BoundedJsonEncoder(
-                chunkSize: BoundedJsonEncoder.defaultChunkSize,
-                yieldTurn: BoundedJsonEncoder.eventLoopTurn,
-              ),
-          maxPlaintextMessageBytes: maxPlaintextMessageBytes,
-        );
+         relayHost: relayHost,
+         cryptoService: cryptoService,
+         roomKeyStorage: roomKeyStorage,
+         authToken: authToken,
+         bridgeId: bridgeId,
+         channelConnector: channelConnector,
+         boundedJsonEncoder:
+             boundedJsonEncoder ??
+             BoundedJsonEncoder(
+               chunkSize: BoundedJsonEncoder.defaultChunkSize,
+               yieldTurn: BoundedJsonEncoder.eventLoopTurn,
+             ),
+         maxPlaintextMessageBytes: maxPlaintextMessageBytes,
+       );
 
   static WebSocketChannel _connectWithPingInterval(Uri uri) =>
       IOWebSocketChannel.connect(uri, pingInterval: _pingInterval);

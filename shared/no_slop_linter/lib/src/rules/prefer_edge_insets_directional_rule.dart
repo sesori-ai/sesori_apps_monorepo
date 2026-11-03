@@ -22,7 +22,8 @@ import '../utils/no_slop_rule.dart';
 /// - `EdgeInsets.symmetric(horizontal: 8)` - symmetric, no RTL issue
 /// - When parameter type is specifically `EdgeInsets` (not `EdgeInsetsGeometry`)
 class PreferEdgeInsetsDirectionalRule extends NoSlopRule {
-  PreferEdgeInsetsDirectionalRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Enforces EdgeInsetsDirectional for RTL support.');
+  PreferEdgeInsetsDirectionalRule({required super.ignoreTestFiles})
+    : super(name: code.lowerCaseName, description: 'Enforces EdgeInsetsDirectional for RTL support.');
 
   static const code = LintCode(
     'prefer_edge_insets_directional',

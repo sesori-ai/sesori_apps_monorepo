@@ -17,21 +17,27 @@ class AvoidStringLiteralsInWidgetsTest extends AnalysisRuleTest {
   }
 
   void test_reportForTextWithHardcodedString() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Text {
   const Text(String data);
 }
 final widget = Text('Hello World');
-''', [lint(62, 13)]);
+''',
+      [lint(62, 13)],
+    );
   }
 
   void test_reportForTextWithDoubleQuotedString() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Text {
   const Text(String data);
 }
 final widget = Text("Welcome back!");
-''', [lint(62, 15)]);
+''',
+      [lint(62, 15)],
+    );
   }
 
   void test_noErrorForTextWithVariable() async {
