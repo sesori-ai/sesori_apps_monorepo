@@ -87,7 +87,10 @@ class OmpSessionOptionsService({
     final requestedModel = model?.modelID;
     if (requestedModel != null && requestedModel.isNotEmpty) {
       final configId = current?.modelConfigId ?? catalog?.modelConfigId;
-      final models = current?.models.isNotEmpty ?? false ? current!.models : catalog?.models ?? const [];
+      final models = switch (current?.models) {
+        final models? when models.isNotEmpty => models,
+        _ => catalog?.models ?? const [],
+      };
       if (configId == null || !models.any((entry) => entry.value == requestedModel)) {
         throw const PluginOperationException(
           "session/set_config_option",
@@ -260,7 +263,10 @@ class OmpSessionOptionsService({
     required OmpSessionConfigSnapshot? snapshot,
     required OmpProjectCatalog? catalog,
   }) {
-    final modes = snapshot?.modes.isNotEmpty ?? false ? snapshot!.modes : catalog?.modes ?? const [];
+    final modes = switch (snapshot?.modes) {
+      final modes? when modes.isNotEmpty => modes,
+      _ => catalog?.modes ?? const [],
+    };
     // COMPATIBILITY 2026-09-21 (v1.9.0): Only the default mode is advertised, but
     // catalogs captured before this date are served for up to 30 days, so a
     // client can still name another mode. It is honoured rather than run in the

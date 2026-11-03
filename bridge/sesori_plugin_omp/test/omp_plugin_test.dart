@@ -17,7 +17,9 @@ void main() {
       fake = FakeAcpProcess();
       events = [];
       plugin = OmpPlugin(
+        binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
+        scratchDirectory: null,
         processFactory: (spec) async {
           launchSpec = spec;
           return fake;
@@ -648,7 +650,9 @@ void main() {
       final processes = <FakeAcpProcess>[];
       final specs = <AcpLaunchSpec>[];
       plugin = OmpPlugin(
+        binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
+        scratchDirectory: null,
         processFactory: (spec) async {
           specs.add(spec);
           final process = FakeAcpProcess();

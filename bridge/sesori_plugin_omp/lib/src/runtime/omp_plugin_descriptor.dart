@@ -16,8 +16,6 @@ import "../repositories/omp_runtime_asset_repository.dart";
 import "../services/omp_runtime_asset_service.dart";
 import "omp_runtime_manifest.dart";
 
-const int _setupProbeOutputLimit = 64 * 1024;
-
 typedef OmpPluginFactory = OmpPlugin Function({
   required String binaryPath,
   required String launchDirectory,
@@ -157,12 +155,7 @@ final class const OmpPluginDescriptor({
     required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = OmpRuntimeManifest();
-    final commandExecutor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    );
+    final commandExecutor = _commandExecutor(processes: processes);
     final runtimeAssetService = _buildRuntimeAssetService(
       commandExecutor: commandExecutor,
       probeTimeout: _versionProbeTimeout,
@@ -213,51 +206,19 @@ final class const OmpPluginDescriptor({
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
         );
-    if (selection case ManagedRuntimeSelected(:final binaryPath, :final version)) {
-      return await _inspectAuthentication(
+    return switch (selection) {
+      ManagedRuntimeSelected(:final binaryPath, :final version) => await _inspectAuthentication(
         binaryPath: binaryPath,
         processes: processes,
         environment: environment,
         runtimeVersion: version.raw,
-      );
-    }
-    final notSelected = selection as ManagedRuntimeNotSelected;
-    if (notSelected is ManagedRuntimePathNotSelected) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
-          actionHint: "Update the global Oh My Pi installation to ${manifest.minPathVersion.raw} or newer.",
-          runtimeVersion: version.raw,
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint:
-              "The global Oh My Pi installation could not be verified. Check it locally and retry setup detection.",
-        ),
-      };
-    }
-    if (explicitBin != null) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
-          actionHint: "Fix the configured Oh My Pi CLI path, then restart the bridge.",
-        ),
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
-          actionHint: "Update the configured Oh My Pi CLI, then restart the bridge.",
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "Oh My Pi setup could not be determined. Verify the configured CLI and retry.",
-        ),
-      };
-    }
-    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
-      return const PluginSetupUnknown(
-        actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
-      );
-    }
-    return PluginSetupRuntimeMissing(
-      actionHint: _supportsManagedInstall()
-          ? "Install Oh My Pi from Sesori, or install it locally and retry setup detection."
-          : "Install Oh My Pi locally, then retry setup detection.",
-    );
+      ),
+      ManagedRuntimeNotSelected() => const ManagedRuntimeSetupStatusMapper().map(
+        manifest: manifest,
+        notSelected: selection,
+        supportsManagedInstall: _supportsManagedInstall(),
+      ),
+    };
   }
 
   /// Asks Oh My Pi which models it can actually use.
@@ -274,11 +235,8 @@ final class const OmpPluginDescriptor({
   }) async {
     final CommandResult result;
     try {
-      result = await HostProcessCommandExecutor(
-        includeParentEnvironment: true,
+      result = await _commandExecutor(
         processes: processes,
-        runInShell: io.Platform.isWindows,
-        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
       ).run(binaryPath, const ["models", "--json"], environment: environment, timeout: _versionProbeTimeout);
     } on Object catch (error, stackTrace) {
       Log.w(
@@ -319,13 +277,6 @@ final class const OmpPluginDescriptor({
     };
   }
 
-  bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
-    return switch (rejection) {
-      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
-      ManagedRuntimeProbeRejected() => true,
-    };
-  }
-
   bool _supportsManagedInstall() {
     try {
       return const OmpRuntimeManifest().supportsManagedInstallOn(target: PlatformTarget.current());
@@ -335,13 +286,15 @@ final class const OmpPluginDescriptor({
     }
   }
 
+  HostProcessCommandExecutor _commandExecutor({required HostProcessService processes}) => HostProcessCommandExecutor(
+    includeParentEnvironment: true,
+    processes: processes,
+    runInShell: io.Platform.isWindows,
+    maxCapturedOutputCharactersPerStream: 64 * 1024,
+  );
+
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
-    commandExecutor: HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    ),
+    commandExecutor: _commandExecutor(processes: processes),
     manifest: const OmpRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
     executableLocator: const IoHostExecutableLocator(platformIsWindows: null),

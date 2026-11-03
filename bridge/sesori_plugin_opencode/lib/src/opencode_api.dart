@@ -29,13 +29,13 @@ const _directoryOpenCodeHeader = "x-opencode-directory";
 /// Far above any real session count; the server applies no cap of its own.
 const _catalogSessionLimit = 1000000;
 
+String? _directoryHeaderValue(String? directory) => directory == null ? null : _encodedDirectory(directory);
+
 /// HTTP header values must be ASCII, so a non-ASCII directory is
 /// percent-encoded; OpenCode `decodeURIComponent`s this header, like its own SDK
 /// sends it. ASCII paths stay raw so they reach older servers byte-for-byte.
-String? _directoryHeaderValue(String? directory) {
-  if (directory == null || directory.codeUnits.every((unit) => unit < 0x80)) return directory;
-  return Uri.encodeFull(directory);
-}
+String _encodedDirectory(String directory) =>
+    directory.codeUnits.every((unit) => unit < 0x80) ? directory : Uri.encodeFull(directory);
 
 /// Typed facade over the OpenCode REST API.
 ///
@@ -48,7 +48,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<OpenCodeMcpConfigurationDto> getMcpConfiguration({required String directory}) async {
     final response = await _client.get(
       path: "/config",
-      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      headers: {_directoryOpenCodeHeader: _encodedDirectory(directory)},
     );
     return _decodeMcp<OpenCodeMcpConfigurationDto>(
       body: response.body,
@@ -64,7 +64,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client
         .post(
           path: "/mcp/${Uri.encodeComponent(name)}/auth",
-          headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+          headers: {_directoryOpenCodeHeader: _encodedDirectory(directory)},
         )
         .onError<OpenCodeApiException>((error, stackTrace) {
           if (error.statusCode < 400 || error.statusCode >= 500) Error.throwWithStackTrace(error, stackTrace);
@@ -84,7 +84,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   }) async {
     final response = await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/auth/callback",
-      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!, "content-type": "application/json"},
+      headers: {_directoryOpenCodeHeader: _encodedDirectory(directory), "content-type": "application/json"},
       body: jsonEncode({"code": code}),
     );
     return _decodeMcp<MCPStatus>(
@@ -97,7 +97,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<void> forgetMcpAuthentication({required String directory, required String name}) async {
     await _client.delete(
       path: "/mcp/${Uri.encodeComponent(name)}/auth",
-      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      headers: {_directoryOpenCodeHeader: _encodedDirectory(directory)},
     );
   }
 
@@ -116,7 +116,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<Map<String, MCPStatus>> getMcpStatus({required String directory}) async {
     final response = await _client.get(
       path: "/mcp",
-      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      headers: {_directoryOpenCodeHeader: _encodedDirectory(directory)},
     );
     try {
       return jsonDecodeMap(response.body).map((name, value) => MapEntry(name, MCPStatus.fromJson(value as Object)));
@@ -128,14 +128,14 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   Future<void> connectMcpServer({required String directory, required String name}) async {
     await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/connect",
-      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      headers: {_directoryOpenCodeHeader: _encodedDirectory(directory)},
     );
   }
 
   Future<void> disconnectMcpServer({required String directory, required String name}) async {
     await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/disconnect",
-      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      headers: {_directoryOpenCodeHeader: _encodedDirectory(directory)},
     );
   }
 
@@ -156,7 +156,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     return decoded.map(Session.fromJson).toList();
   }
 
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async {
+  Future<List<Session>> listSessions({required String? directory, required bool roots}) async {
     final response = await _client.get(
       path: "/session",
       queryParameters: {
@@ -292,19 +292,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
 
     final decoded = jsonDecodeListMap(response.body);
     return decoded.map(Session.fromJson).toList();
-  }
-
-  Future<Session> forkSession({
-    required String sessionId,
-    required String directory,
-  }) async {
-    final response = await _client.post(
-      path: "/session/$sessionId/fork",
-      headers: {
-        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
-      },
-    );
-    return Session.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<List<SessionMessagesResponseItem>> getMessages({

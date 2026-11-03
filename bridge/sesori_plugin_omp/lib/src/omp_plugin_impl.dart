@@ -1,5 +1,3 @@
-import "dart:io" show Directory;
-
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -32,15 +30,14 @@ class OmpPlugin._({
   required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
-    String binaryPath = OmpBinary.defaultBinary,
-    String? launchDirectory,
-    String? scratchDirectory,
+    required String binaryPath,
+    required String launchDirectory,
+    required String? scratchDirectory,
     required AcpProcessFactory processFactory,
   }) {
-    final cwd = launchDirectory ?? Directory.current.path;
     final launchSpec = OmpBinary.launchSpec(
       binary: binaryPath,
-      cwd: cwd,
+      cwd: launchDirectory,
       sessionDirectory: null,
     );
     final configurationTracker = AcpSessionConfigurationTracker();
@@ -65,7 +62,7 @@ class OmpPlugin._({
       tracker: catalogTracker,
       repository: catalogRepository,
       configurationTracker: configurationTracker,
-      launchDirectory: cwd,
+      launchDirectory: launchDirectory,
     );
     final cleanupService = OmpSessionCleanupService(
       repository: OmpSessionCleanupRepository(
@@ -77,16 +74,16 @@ class OmpPlugin._({
           scratchParent: scratchDirectory,
         ),
       ),
-      launchDirectory: cwd,
+      launchDirectory: launchDirectory,
       totalTimeout: const Duration(seconds: 20),
       maxPages: 50,
     );
     return OmpPlugin._(
       launchSpec: launchSpec,
-      launchDirectory: cwd,
+      launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,
       eventMapper: AcpEventMapper(
-        launchDirectory: cwd,
+        launchDirectory: launchDirectory,
         pluginId: OmpPluginIdentity.id,
         configurationTracker: configurationTracker,
         childSessions: childSessionTracker,

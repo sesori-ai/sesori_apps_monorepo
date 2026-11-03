@@ -15,7 +15,7 @@ void main() {
       final results = parser.parse(const []);
       expect(results["opencode-no-auto-start"], isFalse);
       expect(results["opencode-port"], isNull);
-      expect(results["opencode-password"], "");
+      expect(results["opencode-password"], isNull);
       expect(results["opencode-bin"], "opencode");
     });
 
@@ -56,7 +56,7 @@ void main() {
       final config = mapper.parse(results: results, options: _options);
       expect(config.intValue("port"), 4096);
       expect(config.flag("no-auto-start"), isTrue);
-      expect(config.value("password"), "");
+      expect(config.value("password"), isNull);
       expect(config.value("bin"), "opencode");
     });
 
@@ -102,7 +102,7 @@ const List<PluginOption> _options = [
   PluginValueOption(
     name: "password",
     help: "Override server password (auto-generated if not set)",
-    defaultsTo: "",
+    defaultsTo: null,
     allowedValues: null,
     valueHelp: null,
     validate: null,

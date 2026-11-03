@@ -143,7 +143,8 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       );
     }
     final oauth = config.oauth;
-    if (config.transport != OpenCodeMcpTransport.remote || oauth is! OpenCodeMcpOAuthEnabled || config.url == null) {
+    final url = config.url;
+    if (config.transport != OpenCodeMcpTransport.remote || oauth is! OpenCodeMcpOAuthEnabled || url == null) {
       throw const PluginMcpAuthenticationUnavailableException(
         reason: PluginMcpAuthenticationUnavailableReason.notSupported,
       );
@@ -152,7 +153,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       target: OpenCodeMcpAuthenticationTarget(directory: directory, name: name),
       status: status,
       oauth: oauth.parameters,
-      url: config.url!,
+      url: url,
     );
   }
 
@@ -192,18 +193,20 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     required OpenCodeMcpLoginChallenge challenge,
     required Uri callbackUri,
   }) async {
+    final String code;
     try {
       challenge.validateCallback(callback: callbackUri);
-      if (callbackUri.queryParameters.containsKey("error")) {
-        throw const FormatException("Native OpenCode v1 cannot safely settle a provider-denial callback");
-      }
+      // A validated callback carries exactly one of a code or a provider error.
+      code =
+          callbackUri.queryParameters["code"] ??
+          (throw const FormatException("Native OpenCode v1 cannot safely settle a provider-denial callback"));
     } on FormatException catch (error, stackTrace) {
       Error.throwWithStackTrace(PluginMcpAuthenticationCallbackRejectedException(innerError: error), stackTrace);
     }
     final status = await _api.completeMcpAuthentication(
       directory: target.directory,
       name: target.name,
-      code: callbackUri.queryParameters["code"]!,
+      code: code,
     );
     switch (status) {
       case MCPStatusConnected() || MCPStatusDisabled():

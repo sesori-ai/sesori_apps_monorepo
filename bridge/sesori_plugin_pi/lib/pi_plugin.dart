@@ -1,7 +1,5 @@
-/// Protocol primitives for the Pi Agent Harness bridge plugin.
-///
-/// The package is intentionally not registered with the bridge app until the
-/// complete plugin is available.
+/// Pi Agent Harness backend for the Sesori bridge. The bridge registers its
+/// descriptor in its plugin registry.
 library;
 
 export "src/api/models/pi_assistant_delta.dart";

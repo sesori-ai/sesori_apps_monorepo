@@ -92,9 +92,9 @@ final class PiEventDispatcher({
       ..._status(sessionId: sessionId, event: event, now: now),
       BridgeSseSessionIdle(sessionID: sessionId),
     ],
-    PiMessageStartEvent(:final message) => _messageStart(sessionId: sessionId, raw: message),
+    PiMessageStartEvent(:final message) => _messageStart(sessionId: sessionId, message: message),
     PiMessageUpdateEvent(:final delta) => _messageUpdate(sessionId: sessionId, delta: delta),
-    PiMessageEndEvent(:final message) => _messageEnd(sessionId: sessionId, raw: message),
+    PiMessageEndEvent(:final message) => _messageEnd(sessionId: sessionId, message: message),
     PiToolExecutionStartEvent(:final toolCallId, :final toolName) => _toolRunning(
       sessionId: sessionId,
       toolCallId: toolCallId,
@@ -138,7 +138,7 @@ final class PiEventDispatcher({
       operation: operation,
       error: error,
     ),
-    PiEntryAppendedEvent(:final entry) => _entryAppended(sessionId: sessionId, raw: entry),
+    PiEntryAppendedEvent(:final entry) => _entryAppended(sessionId: sessionId, entry: entry),
     PiTurnStartEvent() => _turnStart(sessionId: sessionId),
     PiAgentEndEvent() ||
     PiTurnEndEvent() ||
@@ -150,9 +150,8 @@ final class PiEventDispatcher({
     PiUnknownEvent() => const [],
   };
 
-  List<BridgeSseEvent> _messageStart({required String sessionId, required Map<String, Object?> raw}) {
-    final message = _historyMapper.decodeAssistantMessage(raw: raw);
-    if (message == null) return const [];
+  List<BridgeSseEvent> _messageStart({required String sessionId, required PiAgentMessageDto? message}) {
+    if (message is! PiAssistantMessageDto) return const [];
     final state = _session(sessionId);
     state.clearMessage();
     state
@@ -162,9 +161,8 @@ final class PiEventDispatcher({
     return const [];
   }
 
-  List<BridgeSseEvent> _entryAppended({required String sessionId, required Map<String, Object?> raw}) {
-    final entry = _historyMapper.decodeCustomMessageEntry(raw: raw);
-    if (entry == null) return const [];
+  List<BridgeSseEvent> _entryAppended({required String sessionId, required PiSessionEntryDto? entry}) {
+    if (entry is! PiCustomMessageEntryDto) return const [];
     final state = _session(sessionId);
     final messageId = state.identities.nextTopLevelCustomMessage();
     final mapped = _historyMapper.mapCustomMessageEntry(
@@ -246,13 +244,20 @@ final class PiEventDispatcher({
     };
   }
 
-  List<BridgeSseEvent> _messageEnd({required String sessionId, required Map<String, Object?> raw}) {
-    final message = _historyMapper.decodeAssistantMessage(raw: raw);
-    if (message == null) {
-      return raw["role"] == "assistant"
-          ? _dropMalformedAssistantEnd(sessionId: sessionId)
-          : _nonAssistantEnd(sessionId: sessionId, raw: raw);
-    }
+  List<BridgeSseEvent> _messageEnd({required String sessionId, required PiAgentMessageDto? message}) =>
+      switch (message) {
+        PiAssistantMessageDto() => _assistantEnd(sessionId: sessionId, message: message),
+        PiUserMessageDto() => _userEnd(sessionId: sessionId, message: message),
+        PiBashExecutionMessageDto() => _bashEnd(sessionId: sessionId, message: message),
+        PiCustomMessageDto() => _customEnd(sessionId: sessionId, message: message),
+        null => _dropMalformedAssistantEnd(sessionId: sessionId),
+        PiToolResultMessageDto() ||
+        PiBranchSummaryMessageDto() ||
+        PiCompactionSummaryMessageDto() ||
+        PiUnknownMessageDto() => const [],
+      };
+
+  List<BridgeSseEvent> _assistantEnd({required String sessionId, required PiAssistantMessageDto message}) {
     final state = _session(sessionId);
     final messageId =
         state.messageId ?? state.identities.next(role: PiMessageIdentityRole.assistant, timestamp: message.timestamp);
@@ -316,20 +321,19 @@ final class PiEventDispatcher({
     ];
   }
 
+  /// Pi never interleaves message events, so an undecodable end belongs to the
+  /// in-flight assistant message, if there is one.
   List<BridgeSseEvent> _dropMalformedAssistantEnd({required String sessionId}) {
     final state = _sessions[sessionId];
     final messageId = state?.messageId;
-    final announced = state?.announced ?? false;
+    if (state == null || messageId == null) return const [];
+    final announced = state.announced;
     _tools.beginTurn(sessionId: sessionId);
-    state?.clearMessage();
-    return announced && messageId != null
-        ? [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)]
-        : const [];
+    state.clearMessage();
+    return announced ? [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)] : const [];
   }
 
-  List<BridgeSseEvent> _bashEnd({required String sessionId, required Map<String, Object?> raw}) {
-    final message = _historyMapper.decodeBashExecutionMessage(raw: raw);
-    if (message == null) return const [];
+  List<BridgeSseEvent> _bashEnd({required String sessionId, required PiBashExecutionMessageDto message}) {
     final state = _session(sessionId);
     final messageId = state.identities.next(
       role: PiMessageIdentityRole.bashExecution,
@@ -342,16 +346,7 @@ final class PiEventDispatcher({
     ];
   }
 
-  List<BridgeSseEvent> _nonAssistantEnd({required String sessionId, required Map<String, Object?> raw}) {
-    final user = _userEnd(sessionId: sessionId, raw: raw);
-    if (user.isNotEmpty) return user;
-    final bash = _bashEnd(sessionId: sessionId, raw: raw);
-    return bash.isNotEmpty ? bash : _customEnd(sessionId: sessionId, raw: raw);
-  }
-
-  List<BridgeSseEvent> _userEnd({required String sessionId, required Map<String, Object?> raw}) {
-    final message = _historyMapper.decodeUserMessage(raw: raw);
-    if (message == null) return const [];
+  List<BridgeSseEvent> _userEnd({required String sessionId, required PiUserMessageDto message}) {
     final state = _session(sessionId);
     final text = message.content.whereType<PiTextContentDto>().singleOrNull?.text;
     final promptText = text == null ? null : const PiPersistedUserTextCodec().stripImageHints(text: text);
@@ -379,9 +374,7 @@ final class PiEventDispatcher({
     ];
   }
 
-  List<BridgeSseEvent> _customEnd({required String sessionId, required Map<String, Object?> raw}) {
-    final message = _historyMapper.decodeCustomMessage(raw: raw);
-    if (message == null) return const [];
+  List<BridgeSseEvent> _customEnd({required String sessionId, required PiCustomMessageDto message}) {
     final state = _session(sessionId);
     final messageId = state.identities.next(
       role: PiMessageIdentityRole.custom,

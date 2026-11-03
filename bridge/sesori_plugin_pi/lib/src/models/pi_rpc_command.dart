@@ -10,7 +10,6 @@ enum PiRpcCommand(final String wireValue) {
   getAvailableThinkingLevels("get_available_thinking_levels"),
   getCommands("get_commands"),
   getEntries("get_entries"),
-  getTree("get_tree"),
   setSessionName("set_session_name");
 
   static PiRpcCommand? tryParse({required String? value}) {

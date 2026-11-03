@@ -457,9 +457,10 @@ class PiRpcClient({
       return "${value.substring(0, authorization.start)}${authorization.group(1)}***";
     }
     for (final match in _diagnosticKey.allMatches(value)) {
-      if (!_isCredentialKey(match.group(1)!)) continue;
-      final quoted = match.end < value.length && value.codeUnitAt(match.end) == 0x22;
-      return "${value.substring(0, match.end)}${quoted ? '"***"' : '***'}";
+      if (match.group(1) case final key? when _isCredentialKey(key)) {
+        final quoted = match.end < value.length && value.codeUnitAt(match.end) == 0x22;
+        return "${value.substring(0, match.end)}${quoted ? '"***"' : '***'}";
+      }
     }
     return value;
   }

@@ -1,7 +1,8 @@
 import "dart:async";
 
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
+
+import "fake_pi_process.dart";
 
 /// Yields to the event loop so stream events queued by the fake are delivered.
 Future<void> pump([int times = 4]) async {

@@ -12,7 +12,7 @@ import "support/fake_pi_session_storage_api.dart";
 void main() {
   group("PiSessionCatalogRepository", () {
     test("maps metadata, normalizes projects, and sorts newest first", () async {
-      final api = FakePiCatalogSessionStorageApi(
+      final api = FakePiSessionStorageApi(
         initialSessions: [
           _metadata(id: "older", cwd: "/repo/./app", updated: 10, created: 5),
           _metadata(id: "newer", cwd: "/repo/app/", updated: 20, created: null, title: "Named"),
@@ -32,7 +32,7 @@ void main() {
 
     test("filters by normalized project", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: FakePiCatalogSessionStorageApi(
+        storageApi: FakePiSessionStorageApi(
           initialSessions: [
             _metadata(id: "other", cwd: "/repo/other", updated: 40),
             _metadata(id: "third", cwd: "/repo/app", updated: 30),
@@ -50,7 +50,7 @@ void main() {
 
     test("lists direct children using resolved parent ids", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: FakePiCatalogSessionStorageApi(
+        storageApi: FakePiSessionStorageApi(
           initialSessions: [
             _metadata(id: "root", cwd: "/repo", updated: 30),
             _metadata(id: "child", cwd: "/repo", updated: 20, parentId: "root"),
@@ -64,7 +64,7 @@ void main() {
 
     test("resolves the top imported parent", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: FakePiCatalogSessionStorageApi(
+        storageApi: FakePiSessionStorageApi(
           initialSessions: [
             _metadata(id: "root", cwd: "/repo", updated: 30),
             _metadata(id: "child", cwd: "/repo/worktree", updated: 20, parentId: "root"),
@@ -78,7 +78,7 @@ void main() {
     });
 
     test("retains primed attribution as a scan root after metadata appears", () async {
-      final api = FakePiCatalogSessionStorageApi(initialSessions: const []);
+      final api = FakePiSessionStorageApi(initialSessions: const []);
       final repository = PiSessionCatalogRepository(storageApi: api);
       repository.primeSessionDirectory(sessionId: "pending", directory: "/repo/new/.");
 
@@ -98,7 +98,7 @@ void main() {
 
     test("directory priming preserves pending parent lineage", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: FakePiCatalogSessionStorageApi(initialSessions: const []),
+        storageApi: FakePiSessionStorageApi(initialSessions: const []),
       );
       repository.recordPendingSession(
         sessionId: "child",
@@ -115,7 +115,7 @@ void main() {
 
     test("propagates storage failures instead of returning an empty catalog", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: FakePiCatalogSessionStorageApi(initialSessions: const [], listError: StateError("scan failed")),
+        storageApi: FakePiSessionStorageApi(initialSessions: const [], listError: StateError("scan failed")),
       );
 
       await expectLater(

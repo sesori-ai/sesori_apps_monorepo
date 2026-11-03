@@ -66,7 +66,8 @@ class OmpCatalogService({
       );
       sessionId = created.sessionId;
       final initial = created.snapshot;
-      if (initial.models.isEmpty || initial.modelConfigId == null) {
+      final modelConfigId = initial.modelConfigId;
+      if (initial.models.isEmpty || modelConfigId == null) {
         return const OmpCatalogNoModels();
       }
 
@@ -77,7 +78,7 @@ class OmpCatalogService({
         try {
           final snapshot = await _repository.selectModel(
             sessionId: sessionId,
-            configId: initial.modelConfigId!,
+            configId: modelConfigId,
             modelValue: model.value,
             timeout: _remaining(stopwatch),
           );
@@ -95,7 +96,7 @@ class OmpCatalogService({
       await _repository.waitForCommandSnapshot(timeout: _remaining(stopwatch));
       final complete = thinkingByModel.length == initial.models.length && _repository.hasCommandSnapshot;
       final catalog = OmpProjectCatalog(
-        modelConfigId: initial.modelConfigId!,
+        modelConfigId: modelConfigId,
         models: initial.models,
         defaultModelValue: initial.currentModelValue,
         modeConfigId: initial.modeConfigId,

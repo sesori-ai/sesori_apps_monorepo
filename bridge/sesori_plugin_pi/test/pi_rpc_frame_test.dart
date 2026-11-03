@@ -1,6 +1,7 @@
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
 import "package:test/test.dart";
+
+import "support/pi_protocol_fixtures.dart";
 
 PiRpcFrame parseFrame(Map<String, Object?> json) => PiRpcFrame.parse(json: json);
 

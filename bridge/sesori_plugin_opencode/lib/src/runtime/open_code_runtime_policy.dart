@@ -39,8 +39,7 @@ const int dynamicOpenCodeMaxAttempts = 5;
 /// How long a graceful (SIGTERM) stop waits before escalating to SIGKILL.
 const Duration openCodeGracefulShutdownWait = Duration(seconds: 5);
 
-/// Total budget for the post-spawn health confirmation (the flip's deadline
-/// pacing, replacing the legacy five 500 ms attempts), probed every
+/// Total budget for the post-spawn health confirmation, probed every
 /// [openCodeHealthPollInterval].
 const Duration openCodeHealthDeadline = Duration(seconds: 30);
 
@@ -145,8 +144,8 @@ const Duration openCodeRestartPortReleaseTimeout = Duration(seconds: 10);
 /// How often the pinned port is re-probed while waiting for it to free.
 const Duration openCodeRestartPortReleasePollInterval = Duration(milliseconds: 500);
 
-/// Bounded crash-restart pacing for the exit monitor, active since the flip
-/// (PR 12): restart on the pinned port with exponential backoff, surfacing
+/// Bounded crash-restart pacing for the exit monitor: restart on the pinned
+/// port with exponential backoff, surfacing
 /// `PluginFailed` only when the attempts are exhausted or the port never
 /// frees. Clean shutdowns disarm the monitor first and never restart.
 RuntimeRestartPolicy buildOpenCodeRestartPolicy() {
@@ -192,8 +191,7 @@ Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? rand
 /// moment of spawn: the supervisor's exit
 /// monitor only attaches *after* `start()` has confirmed health, so without an
 /// immediate drain a verbose `opencode serve` could fill the OS pipe buffer and
-/// block before it ever answers the health probe. The legacy path drained both
-/// streams immediately after spawning; this preserves that.
+/// block before it ever answers the health probe.
 Future<SpawnedProcess> spawnOpenCodeProcess({
   required PluginHost host,
   required String executablePath,
@@ -375,9 +373,7 @@ Future<({int statusCode, OpenCodeProbeResponse? body})> _getOpenCodeJson({
   }().timeout(timeout);
 }
 
-/// Builds the "starting" ownership record from the post-spawn facts, mirroring
-/// the legacy `_buildRecord` field-for-field so the persisted bytes are
-/// identical.
+/// Builds the "starting" ownership record from the post-spawn facts.
 OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraft draft, required String bindHost}) {
   return OpenCodeOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
@@ -395,14 +391,17 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraf
 }
 
 /// Assembles the [ManagedRuntimeSpec] for OpenCode with the **hardened** policy
-/// knobs active since the flip (PR 12): deadline-paced health confirmation
+/// knobs: deadline-paced health confirmation
 /// ([openCodeHealthDeadline] probed every [openCodeHealthPollInterval]) and a
 /// child exit before the first healthy probe treated as authoritative failure
 /// (a healthy response after our child died would be an unrelated process
 /// squatting the port).
+///
+/// [executablePath] is null in the modes that never spawn a child: attached,
+/// shared, and degraded without a runtime. Their monitor is never armed.
 ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required PluginHost host,
-  required String executablePath,
+  required String? executablePath,
   required String? password,
   required RuntimePortPolicy portPolicy,
   required http.Client Function() probeClientFactory,
@@ -410,13 +409,16 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required String connectHost,
 }) {
   return ManagedRuntimeSpec<OpenCodeOwnershipRecord>(
-    spawn: ({required int port}) => spawnOpenCodeProcess(
-      host: host,
-      executablePath: executablePath,
-      port: port,
-      password: password,
-      bindHost: bindHost,
-    ),
+    spawn: ({required int port}) => switch (executablePath) {
+      final executablePath? => spawnOpenCodeProcess(
+        host: host,
+        executablePath: executablePath,
+        port: port,
+        password: password,
+        bindHost: bindHost,
+      ),
+      null => throw StateError("OpenCode has no executable to spawn in this mode"),
+    },
     probeHealth: ({required int port}) =>
         probeOpenCodeHealth(port: port, password: password, clientFactory: probeClientFactory, host: connectHost),
     probePortBindable: ({required int port}) =>

@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/models/pi_event.dart";
 import "../api/models/pi_extension_ui_request.dart";
 import "../api/models/pi_rpc_frame.dart";
+import "../api/models/pi_session_history_dto.dart";
 import "../api/pi_rpc_client.dart";
 import "../repositories/mappers/pi_quota_interruption_mapper.dart";
 import "../repositories/pi_session_catalog_repository.dart";
@@ -1082,18 +1083,17 @@ final class PiSessionService({
 
   void _emitMissingUserMessage({required String sessionId, required _PiTurn turn}) {
     final now = _clock.now();
-    final message = <String, Object?>{
-      "role": "user",
-      "content": <Object?>[
-        if (turn.payload.message.isNotEmpty) {"type": "text", "text": turn.payload.message},
-        ...turn.payload.images,
+    final message = PiAgentMessageDto.user(
+      content: [
+        if (turn.payload.message.isNotEmpty) PiContentDto.text(text: turn.payload.message),
+        ...turn.payload.images.map(PiContentDto.fromJson),
       ],
-      "timestamp": now.millisecondsSinceEpoch,
-    };
-    final raw = <String, Object?>{"type": "message_end", "message": message};
+      timestamp: now.millisecondsSinceEpoch,
+    );
+    // Synthesized locally, so there is no Pi frame to keep as raw.
     final mappedEvents = _dispatcher.map(
       sessionId: sessionId,
-      event: PiMessageEndEvent(message: message, raw: raw),
+      event: PiMessageEndEvent(message: message, raw: const {}),
       now: now,
     );
     mappedEvents.forEach(_emit);

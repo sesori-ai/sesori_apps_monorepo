@@ -3,11 +3,11 @@ import "dart:convert";
 import "dart:io";
 
 import "package:pi_plugin/pi_plugin.dart";
-import "package:pi_plugin/pi_testing.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_pi_process.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
@@ -37,10 +37,14 @@ void main() {
       expect(await harness.plugin.getSessionMessages(session.id), isEmpty);
 
       final events = <BridgeSseEvent>[];
-      final subscription = harness.plugin.events.listen(events.add);
-      for (var attempt = 0; attempt < 50 && events.isEmpty; attempt++) {
-        await pump();
-      }
+      final created = Completer<void>();
+      // Buffered events reach only the first listener, so wait inside it.
+      final subscription = harness.plugin.events.listen((event) {
+        events.add(event);
+        if (event is BridgeSseSessionCreated) created.complete();
+      });
+      await created.future;
+      await pump();
       expect(events.single, isA<BridgeSseSessionCreated>());
       await subscription.cancel();
     });
@@ -690,6 +694,8 @@ void main() {
       final process = await harness.nextSessionProcess();
       await waitForCommand(process: process, type: "prompt");
       final projectUpdatesBeforeQuestion = events.whereType<BridgeSseProjectUpdated>().length;
+      final asked = harness.plugin.events.firstWhere((event) => event is BridgeSseQuestionAsked);
+      final toastShown = harness.plugin.events.firstWhere((event) => event is BridgeSseTuiToastShow);
       process.emit(
         frame: {
           "type": "extension_ui_request",
@@ -707,14 +713,9 @@ void main() {
           "notifyType": "warning",
         },
       );
-      for (
-        var attempt = 0;
-        attempt < 50 &&
-            (events.whereType<BridgeSseQuestionAsked>().isEmpty || events.whereType<BridgeSseTuiToastShow>().isEmpty);
-        attempt++
-      ) {
-        await pump();
-      }
+      await (asked, toastShown).wait;
+      // Let the project update emitted with the question reach `events`.
+      await pump();
 
       expect(events.whereType<BridgeSseQuestionAsked>().single.sessionID, session.id);
       final toast = events.whereType<BridgeSseTuiToastShow>().single;
@@ -893,6 +894,7 @@ final class _Harness({
       processFactory: ({required spec}) async {
         final process = FakePiProcess(stdinCloseCompletes: stdinCloseCompletes);
         processes.add((spec: spec, process: process));
+        if (spec.launch is! PiNoSession) _sessionProcessStarted.add(process);
         unawaited(
           _answerProcess(
             process: process,
@@ -922,16 +924,14 @@ final class _Harness({
   late final Directory sessions;
   late final PiPlugin plugin;
   final List<({PiLaunchSpec spec, FakePiProcess process})> processes = [];
+  final StreamController<FakePiProcess> _sessionProcessStarted = StreamController.broadcast();
   bool catalogModelReasoning = true;
   bool failThinkingDiscovery = false;
 
   Future<FakePiProcess> nextSessionProcess() async {
-    for (var attempt = 0; attempt < 100; attempt++) {
-      final sessions = processes.where((entry) => entry.spec.launch is! PiNoSession);
-      if (sessions.isNotEmpty) return sessions.last.process;
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-    }
-    throw StateError("Pi session process was not started");
+    final sessions = processes.where((entry) => entry.spec.launch is! PiNoSession);
+    if (sessions.isNotEmpty) return sessions.last.process;
+    return await _sessionProcessStarted.stream.first;
   }
 
   String sessionPath(String id) => "${sessions.path}/$id.jsonl";
@@ -951,6 +951,7 @@ final class _Harness({
 
   Future<void> dispose() async {
     await plugin.dispose();
+    await _sessionProcessStarted.close();
     for (final entry in processes) {
       await entry.process.close();
     }

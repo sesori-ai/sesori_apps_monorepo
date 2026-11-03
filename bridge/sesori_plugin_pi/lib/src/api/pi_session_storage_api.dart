@@ -162,15 +162,6 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     }
   }
 
-  Future<String?> resolveEffectiveSessionDirectory({required String directory}) async {
-    final environment = _environment;
-    final result = await Isolate.run(
-      () => _resolveEffectiveSessionDirectory(environment: environment, directory: directory),
-    );
-    _logDiagnostics(result.diagnostics);
-    return result.path;
-  }
-
   Future<void> writePendingNewSession({
     required String sessionId,
     required String cwd,
@@ -1302,7 +1293,7 @@ final class const _PiInvalidSessionHeaderException({required final String reason
 
 final class _PiMetadataLineScanner() {
   final List<int> _prefix = [];
-  List<int>? _metadataBytes;
+  final List<int> _metadataBytes = [];
   _PiLineClassification _classification = _PiLineClassification.pending;
   bool _oversized = false;
   bool _sawByte = false;
@@ -1319,31 +1310,30 @@ final class _PiMetadataLineScanner() {
       _prefix.add(byte);
       _classification = _classifyPrefix(_prefix);
       if (_classification == _PiLineClassification.metadata) {
-        _metadataBytes = List<int>.of(_prefix);
+        _metadataBytes.addAll(_prefix);
       }
       return;
     }
     if (_classification != _PiLineClassification.metadata || _oversized) return;
-    final metadataBytes = _metadataBytes!;
-    if (metadataBytes.length == PiSessionStorageApi.metadataRecordByteLimit) {
+    if (_metadataBytes.length == PiSessionStorageApi.metadataRecordByteLimit) {
       _oversized = true;
-      _metadataBytes = null;
+      _metadataBytes.clear();
       return;
     }
-    metadataBytes.add(byte);
+    _metadataBytes.add(byte);
   }
 
   _PiScannedLine finish() {
     final result = switch ((_classification, _oversized)) {
       (_, true) => const _PiScannedLineOversizedMetadata(),
       (_PiLineClassification.metadata, false) => _PiScannedLineMetadata(
-          bytes: List<int>.unmodifiable(_metadataBytes!),
+          bytes: List<int>.unmodifiable(_metadataBytes),
         ),
       (_PiLineClassification.nonMetadata, false) => const _PiScannedLineNonMetadata(),
       (_PiLineClassification.pending || _PiLineClassification.ignored, false) => const _PiScannedLineIgnored(),
     };
     _prefix.clear();
-    _metadataBytes = null;
+    _metadataBytes.clear();
     _classification = _PiLineClassification.pending;
     _oversized = false;
     _sawByte = false;

@@ -610,19 +610,21 @@ class OpenCodeV2Service({
   List<PluginProjectActivitySummary> buildSummary() {
     // Match the bridge's root + direct-child activity contract, including an
     // input-only child while the root itself is idle.
-    final groups = <String, Set<String>>{};
+    final groups = <String, ({String firstMemberProjectId, Set<String> members})>{};
     for (final id in _tracker.workingSessionIds) {
       final session = _tracker.session(sessionId: id);
       if (session == null) continue;
-      groups.putIfAbsent(session.parentID ?? id, () => {}).add(id);
+      groups
+          .putIfAbsent(session.parentID ?? id, () => (firstMemberProjectId: session.projectID, members: {}))
+          .members
+          .add(id);
     }
     final projects = <String, List<PluginActiveSession>>{};
-    for (final root in groups.keys.toList()..sort()) {
-      final members = groups[root]!;
-      final session = _tracker.session(sessionId: root) ?? _tracker.session(sessionId: members.first)!;
+    final byRoot = groups.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    for (final MapEntry(key: root, value: (:firstMemberProjectId, :members)) in byRoot) {
       final children = members.where((id) => id != root).toList()..sort();
       projects
-          .putIfAbsent(session.projectID, () => [])
+          .putIfAbsent(_tracker.session(sessionId: root)?.projectID ?? firstMemberProjectId, () => [])
           .add(
             PluginActiveSession(
               id: root,
@@ -637,9 +639,10 @@ class OpenCodeV2Service({
             ),
           );
     }
+    final byProject = projects.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
     return [
-      for (final id in projects.keys.toList()..sort())
-        PluginProjectActivitySummary(id: id, activeSessions: projects[id]!),
+      for (final MapEntry(key: id, value: activeSessions) in byProject)
+        PluginProjectActivitySummary(id: id, activeSessions: activeSessions),
     ];
   }
 }

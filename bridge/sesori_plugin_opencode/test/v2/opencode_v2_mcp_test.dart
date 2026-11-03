@@ -303,7 +303,7 @@ void main() {
       ) as PluginMcpInventoryReadFailed;
       if (status == 200) {
         expect(result.cause, isA<V2DecodeException>());
-        expect((result.cause as V2DecodeException).innerError, isA<TypeError>());
+        expect((result.cause as V2DecodeException).innerError, isA<FormatException>());
       } else {
         expect((result.cause as OpenCodeApiException).statusCode, 500);
         expect((result.cause as OpenCodeApiException).responseBody, body);
