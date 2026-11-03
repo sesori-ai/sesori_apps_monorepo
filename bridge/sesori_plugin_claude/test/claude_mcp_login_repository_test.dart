@@ -18,14 +18,17 @@ void main() {
     test("extracts only OAuth challenges and keeps presentation private", () {
       const parser = ClaudeMcpLoginOutputParser();
       expect(parser.parseLine(line: "See https://docs.example/mcp"), isNull);
-      final challenge = parser.parseLine(line: "\x1b]8;;$_authorization\x07$_authorization\x1b]8;;\x07")!;
+      final challenge =
+          parser.parseLine(line: "\x1b]8;;$_authorization\x07$_authorization\x1b]8;;\x07") ??
+          fail("challenge was not parsed");
       expect(challenge.authorizationUri, _authorization);
       expect(challenge.validateCallback(value: _callback).queryParameters["code"], "fixture-code");
       expect(challenge.toString(), isNot(contains("fixture-state")));
     });
 
     test("rejects mismatched state, destination and multiline input", () {
-      final challenge = const ClaudeMcpLoginOutputParser().parseLine(line: "$_authorization")!;
+      final challenge =
+          const ClaudeMcpLoginOutputParser().parseLine(line: "$_authorization") ?? fail("challenge was not parsed");
       for (final value in [
         "code",
         _callback.replaceAll("fixture-state", "other-state"),
@@ -38,7 +41,8 @@ void main() {
     });
 
     test("rejects ambiguous OAuth challenge and callback parameters", () {
-      final challenge = const ClaudeMcpLoginOutputParser().parseLine(line: "$_authorization")!;
+      final challenge =
+          const ClaudeMcpLoginOutputParser().parseLine(line: "$_authorization") ?? fail("challenge was not parsed");
       for (final value in [
         "$_callback&state=fixture-state",
         "$_callback&code=other-code",
@@ -127,13 +131,14 @@ void main() {
     });
 
     test("cancellation during spawn waits for and stops the owned child", () async {
-      host.spawnGate = Completer<void>();
+      final spawnGate = Completer<void>();
+      host.spawnGate = spawnGate;
       final challenge = repository.start();
       final failed = expectLater(challenge, throwsA(isA<ClaudeMcpCommandExitedException>()));
       final disposal = repository.dispose();
       await _pump();
       expect(host.signals, isEmpty);
-      host.spawnGate!.complete();
+      spawnGate.complete();
       await disposal;
       await failed;
       expect(host.signals, [ShutdownSignal.graceful]);

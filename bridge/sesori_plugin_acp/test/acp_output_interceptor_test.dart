@@ -215,7 +215,7 @@ void main() {
         stderrInterceptor: interceptor,
       );
       await client.connect();
-      final response = client.request(method: "initialize");
+      final response = client.request(method: "initialize", params: null);
       process.out.add([255, ...utf8.encode("private-secret\n")]);
       process.err.add([255, ...utf8.encode("private-secret\n")]);
       process.err.add(utf8.encode("useful diagnostic\n"));
@@ -254,10 +254,10 @@ void main() {
         (stderr ? failed.err : failed.out).add(callbackFails ? utf8.encode("private secret\n") : List.filled(65, 112));
         await exit;
         expect(client.isConnected, isFalse);
-        await expectLater(client.request(method: "initialize"), throwsStateError);
+        await expectLater(client.request(method: "initialize", params: null), throwsStateError);
         await client.reset(gracefulTimeout: Duration.zero);
         await client.connect();
-        final response = client.request(method: "initialize");
+        final response = client.request(method: "initialize", params: null);
         replacement.out.add(utf8.encode('{"jsonrpc":"2.0","id":2,"result":true}\n'));
         expect(await response, isTrue);
         expect(client.isConnected, isTrue);
@@ -278,7 +278,10 @@ void main() {
       stdoutInterceptor: AcpOutputInterceptor(maxLineBytes: 4, consumeLine: ({required line}) => false),
     );
     await client.connect();
-    final assertion = expectLater(client.request(method: "initialize"), throwsA(isA<AcpOutputInterceptionException>()));
+    final assertion = expectLater(
+      client.request(method: "initialize", params: null),
+      throwsA(isA<AcpOutputInterceptionException>()),
+    );
     process.out.add(utf8.encode("oversize private secret"));
     await assertion;
     await client.dispose();

@@ -422,7 +422,7 @@ class _StopHarness() {
       },
     );
     expect(await connecting, isTrue);
-    plugin.mapper.setSessionProject("root", "/repo");
+    plugin.mapper.setSessionProject(sessionId: "root", directory: "/repo");
   }
 
   Future<Map<String, dynamic>> prompt({required String sessionId}) async {

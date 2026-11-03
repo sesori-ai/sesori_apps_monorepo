@@ -1567,7 +1567,7 @@ List<PluginMessagePart> _materializedLiveParts({
       field: "text",
       :final delta,
     )) {
-      final prior = parts[partID]!;
+      final prior = parts[partID] ?? fail("text delta for unknown part $partID");
       parts[partID] = switch (prior) {
         PluginMessagePartText(:final text) => prior.copyWith(text: "$text$delta"),
         PluginMessagePartReasoning(:final text) => prior.copyWith(text: "$text$delta"),

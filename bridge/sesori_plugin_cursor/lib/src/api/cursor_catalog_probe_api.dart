@@ -61,6 +61,7 @@ class CursorCatalogProbeApi({required final AcpStdioClient _client}) {
   Future<CursorAvailableModelsDto> listAvailableModels({required Duration timeout}) async {
     final raw = await _initializedApi().client.request(
       method: _listAvailableModelsMethod,
+      params: null,
       timeout: timeout,
     );
     return CursorAvailableModelsDto.fromJson(

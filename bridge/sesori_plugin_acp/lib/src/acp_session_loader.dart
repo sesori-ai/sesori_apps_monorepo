@@ -110,12 +110,14 @@ class AcpReplayCollector({
         final id = _toolCallId(value: update["toolCallId"]);
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
-        final draft = _findTool(id);
+        final owner = _draftForTool(id);
+        final draft = owner?.tools[id];
         _retainTime(
-          draft: draft == null ? _assistantForTool(toolCallId: id) : _draftForTool(id)!,
+          draft: owner ?? _assistantForTool(toolCallId: id),
           time: time,
         );
-        final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
+        final kind = update["kind"];
+        final hasKind = kind is String && kind.isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         final suppressed = toolPartSuppression?.call(update: update) ?? false;
         if (draft == null) {
@@ -151,12 +153,14 @@ class AcpReplayCollector({
         final id = _toolCallId(value: update["toolCallId"]);
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
-        final draft = _findTool(id);
+        final owner = _draftForTool(id);
+        final draft = owner?.tools[id];
         _retainTime(
-          draft: draft == null ? _assistantForTool(toolCallId: id) : _draftForTool(id)!,
+          draft: owner ?? _assistantForTool(toolCallId: id),
           time: time,
         );
-        final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
+        final kind = update["kind"];
+        final hasKind = kind is String && kind.isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         final suppressed = toolPartSuppression?.call(update: update) ?? false;
         if (draft == null) {
@@ -392,10 +396,10 @@ class AcpReplayCollector({
     }
     final parts = <PluginMessagePart>[];
     if (draft.reasoning.isNotEmpty) {
-      parts.add(_textPart(draft, "reasoning", PluginMessagePartType.reasoning, draft.reasoning.toString()));
+      parts.add(_reasoningPart(draft: draft, text: draft.reasoning.toString()));
     }
     if (draft.text.isNotEmpty) {
-      parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
+      parts.add(_textPart(draft: draft, suffix: "text", text: draft.text.toString()));
     }
     parts.addAll(
       _chronologicalAssistantParts(
@@ -442,14 +446,7 @@ class AcpReplayCollector({
       final suffix = textPartIdSuffix;
       final buffer = textBuffer;
       if (suffix != null && buffer != null) {
-        parts.add(
-          _textPart(
-            draft,
-            suffix,
-            PluginMessagePartType.text,
-            buffer.toString(),
-          ),
-        );
+        parts.add(_textPart(draft: draft, suffix: suffix, text: buffer.toString()));
       }
       textPartIdSuffix = null;
       textBuffer = null;
@@ -460,12 +457,13 @@ class AcpReplayCollector({
         case _AssistantContentEntry(:final mutation):
           switch (mutation) {
             case AcpTextDeltaMutation(:final partIdSuffix, :final delta):
-              if (textPartIdSuffix != partIdSuffix) {
+              var buffer = textBuffer;
+              if (buffer == null || textPartIdSuffix != partIdSuffix) {
                 flushText();
                 textPartIdSuffix = partIdSuffix;
-                textBuffer = StringBuffer();
+                buffer = textBuffer = StringBuffer();
               }
-              textBuffer!.write(delta);
+              buffer.write(delta);
             case AcpImageMutation(:final partIdSuffix, :final attachment):
               flushText();
               parts.add(
@@ -513,27 +511,22 @@ class AcpReplayCollector({
     );
   }
 
-  PluginMessagePart _textPart(
-    _Draft draft,
-    String suffix,
-    PluginMessagePartType type,
-    String text,
-  ) {
-    return switch (type) {
-      PluginMessagePartType.text => PluginMessagePart.text(
-        id: "${draft.id}-$suffix",
-        sessionID: sessionId,
-        messageID: draft.id,
-        text: text,
-      ),
-      PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
-        id: "${draft.id}-$suffix",
-        sessionID: sessionId,
-        messageID: draft.id,
-        text: text,
-      ),
-      _ => throw StateError("ACP text part cannot use $type"),
-    };
+  PluginMessagePart _textPart({required _Draft draft, required String suffix, required String text}) {
+    return PluginMessagePart.text(
+      id: "${draft.id}-$suffix",
+      sessionID: sessionId,
+      messageID: draft.id,
+      text: text,
+    );
+  }
+
+  PluginMessagePart _reasoningPart({required _Draft draft, required String text}) {
+    return PluginMessagePart.reasoning(
+      id: "${draft.id}-reasoning",
+      sessionID: sessionId,
+      messageID: draft.id,
+      text: text,
+    );
   }
 
   PluginMessagePart _attachmentPart({
@@ -578,7 +571,8 @@ class AcpReplayCollector({
   }
 
   void _retainTime({required _Draft draft, required PluginMessageTime? time}) {
-    if (time != null && (draft.time == null || time.created < draft.time!.created)) {
+    final current = draft.time;
+    if (time != null && (current == null || time.created < current.created)) {
       draft.time = time;
     }
   }
@@ -653,7 +647,8 @@ class AcpReplayCollector({
     final defaultId =
         overrideId ??
         (messageId != null && messageId.isNotEmpty ? "$sessionId-m$messageId-$role" : "$sessionId-h${_seq++}-$role");
-    final identity = isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId;
+    final initialId = initialUserMessageId;
+    final identity = isFirstUser && initialId != null ? initialId : defaultId;
     final occurrence = (_draftIdOccurrences[identity] ?? 0) + 1;
     _draftIdOccurrences[identity] = occurrence;
     final draft = _Draft(
@@ -672,8 +667,6 @@ class AcpReplayCollector({
     final id = update["messageId"];
     return id is String && id.isNotEmpty ? id : null;
   }
-
-  _ToolDraft? _findTool(String toolId) => _draftForTool(toolId)?.tools[toolId];
 
   _Draft? _draftForTool(String toolId) {
     for (final draft in _drafts.reversed) {
@@ -705,8 +698,10 @@ class AcpReplayCollector({
   /// Fail-soft tool title: a non-string value (schema drift / malformed agent
   /// data) renders as null rather than throwing mid-replay, which would fail
   /// the whole `/session/messages` history load.
-  static String? _toolTitle(Map<String, dynamic> update) =>
-      update["title"] is String ? update["title"] as String? : null;
+  static String? _toolTitle(Map<String, dynamic> update) => switch (update["title"]) {
+    final String title => title,
+    _ => null,
+  };
 }
 
 sealed class _ReplayEntry();

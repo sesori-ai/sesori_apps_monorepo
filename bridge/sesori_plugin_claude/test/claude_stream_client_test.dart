@@ -14,14 +14,14 @@ void main() {
       addTearDown(connected.client.dispose);
 
       final request = await waitForFrame(connected.fake, "control_request");
-      expect((request["request"]! as Map)["subtype"], "initialize");
-      expect((request["request"]! as Map)["elicitation"], isEmpty);
+      expect(request.field<Map<String, Object?>>("request")["subtype"], "initialize");
+      expect(request.field<Map<String, Object?>>("request")["elicitation"], isEmpty);
 
       // One handshake yields commands, agents and models together, which is
       // why the catalog service needs no separate startup probes.
       expect(connected.client.handshake, isNotNull);
-      expect(connected.client.handshake!["models"], hasLength(3));
-      expect(connected.client.handshake!["commands"], hasLength(1));
+      expect(connected.client.handshake?["models"], hasLength(3));
+      expect(connected.client.handshake?["commands"], hasLength(1));
     });
 
     test("tears down and rethrows when the handshake fails", () async {
@@ -35,7 +35,7 @@ void main() {
 
       final connecting = client.connect();
       final request = await waitForFrame(fake, "control_request");
-      fake.emitControlError(requestId: request["request_id"]! as String, error: "boom");
+      fake.emitControlError(requestId: request.field<String>("request_id"), error: "boom");
 
       // Continuing without the catalog would surface an empty model and command
       // list as if the backend genuinely had none.
@@ -162,7 +162,7 @@ void main() {
         subtype: "list_models",
       );
       final frames = connected.fake.written.where((frame) => frame["type"] == "control_request").toList();
-      final requestId = frames.last["request_id"]! as String;
+      final requestId = frames.last.field<String>("request_id");
       expect(requestId, isNot("sesori-1"), reason: "the handshake already used the first id");
 
       connected.fake.emitControlResponse(requestId: requestId, payload: {"models": <Object?>[]});
@@ -181,7 +181,7 @@ void main() {
       await pump();
 
       final frame = connected.fake.written.last;
-      final request = frame["request"]! as Map;
+      final request = frame.field<Map<String, Object?>>("request");
       expect(request["subtype"], "set_model");
       expect(request["model"], "small");
     });
@@ -200,7 +200,7 @@ void main() {
       );
       await pump();
 
-      final request = connected.fake.written.last["request"]! as Map;
+      final request = connected.fake.written.last.field<Map<String, Object?>>("request");
       expect(request["subtype"], "set_model");
       expect(request["model"], "small");
     });
@@ -286,9 +286,9 @@ void main() {
       expect(frame["session_id"], otherTestSessionId);
       expect(frame["uuid"], "prompt-uuid-1");
       expect(frame["priority"], "next");
-      final message = frame["message"]! as Map;
+      final message = frame.field<Map<String, Object?>>("message");
       expect(message["role"], "user");
-      expect((message["content"]! as List).single, {"type": "text", "text": "hello"});
+      expect(message.field<List<Object?>>("content").single, {"type": "text", "text": "hello"});
     });
 
     test("fails a user turn after the process exits", () async {
@@ -313,7 +313,7 @@ void main() {
       );
       final frame = await waitForFrame(connected.fake, "control_response");
 
-      final response = frame["response"]! as Map;
+      final response = frame.field<Map<String, Object?>>("response");
       expect(response["subtype"], "success");
       expect(response["request_id"], "ask-1");
       expect(response["response"], {"behavior": "allow"});

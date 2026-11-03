@@ -136,11 +136,11 @@ void main() {
       process.emit(_result());
 
       final model = await _waitForControlSubtype(process, "set_model");
-      expect((model["request"]! as Map)["model"], "sonnet");
-      process.emitControlResponse(requestId: model["request_id"]! as String, payload: const {});
+      expect(model.field<Map<String, Object?>>("request")["model"], "sonnet");
+      process.emitControlResponse(requestId: model.field<String>("request_id"), payload: const {});
       final permission = await _waitForControlSubtype(process, "set_permission_mode");
-      expect((permission["request"]! as Map)["mode"], "plan");
-      process.emitControlResponse(requestId: permission["request_id"]! as String, payload: const {});
+      expect(permission.field<Map<String, Object?>>("request")["mode"], "plan");
+      process.emitControlResponse(requestId: permission.field<String>("request_id"), payload: const {});
       await _waitForUserFrames(process, 2);
       process.emit(_replayOf(_userFrames(process).last, uuid: "replay-second"));
       process.emit(_result());
@@ -152,9 +152,9 @@ void main() {
       final process = await harness.firstProcess;
 
       final fast = await _waitForControlSubtype(process, "apply_flag_settings");
-      expect((fast["request"]! as Map)["settings"], {"fastMode": true});
+      expect(fast.field<Map<String, Object?>>("request")["settings"], {"fastMode": true});
       expect(_userFrames(process), isEmpty, reason: "the turn waits for the setting to apply");
-      process.emitControlResponse(requestId: fast["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: fast.field<String>("request_id"), payload: const {});
       await _waitForUserFrames(process, 1);
       expect(harness.repository.appliedSelection(sessionId: testSessionId)?.fastMode, isTrue);
       process.emit(_replayOf(_userFrames(process).single, uuid: "replay-first"));
@@ -182,8 +182,8 @@ void main() {
       process.emit(_result());
 
       final fast = await _waitForControlSubtype(process, "apply_flag_settings");
-      expect((fast["request"]! as Map)["settings"], {"fastMode": true});
-      process.emitControlResponse(requestId: fast["request_id"]! as String, payload: const {});
+      expect(fast.field<Map<String, Object?>>("request")["settings"], {"fastMode": true});
+      process.emitControlResponse(requestId: fast.field<String>("request_id"), payload: const {});
       await _waitForUserFrames(process, 3);
       process.emit(_replayOf(_userFrames(process).last, uuid: "replay-third"));
       process.emit(_result());
@@ -201,7 +201,7 @@ void main() {
       unawaited(harness.enqueue("first", fastMode: true));
       final process = await harness.firstProcess;
       final fast = await _waitForControlSubtype(process, "apply_flag_settings");
-      process.emitControlError(requestId: fast["request_id"]! as String, error: "fast mode unavailable");
+      process.emitControlError(requestId: fast.field<String>("request_id"), error: "fast mode unavailable");
       await harness.waitForIdle();
 
       expect(_userFrames(process), isEmpty);
@@ -223,7 +223,7 @@ void main() {
       );
       final process = await harness.firstProcess;
       final fast = await _waitForControlSubtype(process, "apply_flag_settings");
-      process.emitControlError(requestId: fast["request_id"]! as String, error: "fast mode unavailable");
+      process.emitControlError(requestId: fast.field<String>("request_id"), error: "fast mode unavailable");
 
       await expectLater(
         acceptance,
@@ -241,7 +241,7 @@ void main() {
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       process.emit(_result());
       await harness.waitForIdle();
@@ -261,7 +261,7 @@ void main() {
       await pump();
 
       expect(_userFrames(first), hasLength(1));
-      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       final second = await harness.processAt(1);
       await waitForFrame(second, "user");
@@ -278,7 +278,7 @@ void main() {
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(first, "interrupt");
-      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       await harness.waitForIdle();
 
@@ -312,7 +312,7 @@ void main() {
         budget: const Duration(seconds: 1),
       );
       final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       process.emit(_result());
 
       expect(await interruption, {testSessionId});
@@ -542,7 +542,7 @@ void main() {
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       await harness.waitForIdle();
 
@@ -728,7 +728,7 @@ void main() {
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       process.emit(_result());
       await harness.waitForIdle();
@@ -1027,7 +1027,7 @@ void main() {
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       await abort;
       await harness.waitForIdle();
 
@@ -1062,7 +1062,9 @@ void main() {
       expect(afterTurn, isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentRunning, "main", isFalse));
       expect(
         process.written.any(
-          (frame) => frame["type"] == "control_request" && (frame["request"]! as Map)["subtype"] == "interrupt",
+          (frame) =>
+              frame["type"] == "control_request" &&
+              frame.field<Map<String, Object?>>("request")["subtype"] == "interrupt",
         ),
         isFalse,
       );
@@ -1131,7 +1133,7 @@ void main() {
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
       expect(await abort, isA<PluginAbortAccepted>());
       await harness.waitForIdle();
 
@@ -1208,10 +1210,10 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     processes.add(process);
     unawaited(() async {
       final request = await waitForFrame(process, "control_request");
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: sampleHandshake);
+      process.emitControlResponse(requestId: request.field<String>("request_id"), payload: sampleHandshake);
       if (failInterrupt) {
         final interrupt = await _waitForControlSubtype(process, "interrupt");
-        process.emitControlError(requestId: interrupt["request_id"]! as String, error: "interrupt failed");
+        process.emitControlError(requestId: interrupt.field<String>("request_id"), error: "interrupt failed");
       }
     }());
     return process;
@@ -1298,9 +1300,9 @@ List<Map<String, Object?>> _userFrames(FakeClaudeProcess process) =>
     process.written.where((frame) => frame["type"] == "user").toList(growable: false);
 
 String? _userText(FakeClaudeProcess process, int index) {
-  final message = _userFrames(process)[index]["message"]! as Map<String, Object?>;
-  final content = message["content"]! as List<Object?>;
-  return (content.single! as Map<String, Object?>)["text"] as String?;
+  final message = _userFrames(process)[index].field<Map<String, Object?>>("message");
+  final content = message.field<List<Object?>>("content");
+  return expectType<Map<String, Object?>>(content.single)["text"] as String?;
 }
 
 Future<void> _waitForUserFrames(FakeClaudeProcess process, int count) async {
@@ -1343,7 +1345,8 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "isReplay": true,
 };
 
-Future<PluginSessionStatus> _status(_ServiceHarness harness) async => harness.service.sessionStatuses[testSessionId]!;
+Future<PluginSessionStatus> _status(_ServiceHarness harness) async =>
+    harness.service.sessionStatuses[testSessionId] ?? fail("missing session status");
 
 Map<String, Object?> _taskStartedFrame() => {
   "type": "system",
@@ -1407,4 +1410,4 @@ int _frameSequence = 0;
 
 Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
     .where((frame) => frame["type"] == "control_request")
-    .map((frame) => (frame["request"]! as Map)["subtype"] as String?);
+    .map((frame) => frame.field<Map<String, Object?>>("request")["subtype"] as String?);

@@ -91,16 +91,19 @@ final class ClaudePlugin({
   Future<List<PluginSession>> getSessions({required String projectId}) async {
     final persisted = await _transcripts.getSessions(projectId: projectId);
     final target = normalizeProjectDirectory(directory: projectId);
-    return _mergeSessions(persisted, [
-      for (final session in _createdSessions.values)
-        if (session.directory == target) session,
-    ]);
+    return _mergeSessions(
+      persisted: persisted,
+      created: [
+        for (final session in _createdSessions.values)
+          if (session.directory == target) session,
+      ],
+    );
   }
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => _mergeSessions(
-    await _transcripts.listAllSessions(knownDirectories: knownDirectories),
-    _createdSessions.values,
+    persisted: await _transcripts.listAllSessions(knownDirectories: knownDirectories),
+    created: _createdSessions.values,
   );
 
   @override
@@ -790,7 +793,7 @@ final class ClaudePlugin({
         _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId);
         return;
       }
-      _eventDispatcher.map(message: message).forEach(_eventBuffer.add);
+      _eventDispatcher.map(message: message, now: null).forEach(_eventBuffer.add);
       if (message is ClaudeResultMessage) _eventDispatcher.completeTurn(sessionId: event.sessionId);
       // `claude auth status` still reports logged in when the stored OAuth
       // session can no longer refresh; only the turn reveals it.
@@ -869,7 +872,10 @@ void _requireTurn({required List<PluginPromptPart> parts, required String operat
   }
 }
 
-List<PluginSession> _mergeSessions(Iterable<PluginSession> persisted, Iterable<PluginSession> created) {
+List<PluginSession> _mergeSessions({
+  required Iterable<PluginSession> persisted,
+  required Iterable<PluginSession> created,
+}) {
   final byId = {for (final session in persisted) session.id: session};
   for (final session in created) {
     byId.putIfAbsent(session.id, () => session);

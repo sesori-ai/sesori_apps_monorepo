@@ -44,7 +44,7 @@ void main() {
   List<BridgeSseEvent> mapLive({required List<Map<String, Object?>> frames}) {
     var events = const <BridgeSseEvent>[];
     for (final frame in frames) {
-      events = live.map(message: ClaudeStreamMessage.parse(frame));
+      events = live.map(message: ClaudeStreamMessage.parse(frame), now: null);
     }
     return events;
   }

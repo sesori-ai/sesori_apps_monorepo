@@ -455,13 +455,11 @@ final class const AcpContentMapper() {
       );
     }
     return AcpMappedInlineImageContentBlock(
-      attachment:
-          PluginMessageAttachment.inlineImage(
-                mime: normalizedMime,
-                base64: normalized,
-                filename: filename,
-              )
-              as PluginMessageAttachmentInlineImage,
+      attachment: PluginMessageAttachmentInlineImage(
+        mime: normalizedMime,
+        base64: normalized,
+        filename: filename,
+      ),
       decodedBytes: decodedBytes,
     );
   }
@@ -475,12 +473,10 @@ final class const AcpContentMapper() {
     required AcpImageDegradationReason reason,
   }) {
     return AcpMappedMetadataImageContentBlock(
-      attachment:
-          PluginMessageAttachment.metadata(
-                mime: mime,
-                filename: filename,
-              )
-              as PluginMessageAttachmentMetadata,
+      attachment: PluginMessageAttachmentMetadata(
+        mime: mime,
+        filename: filename,
+      ),
       reason: reason,
     );
   }

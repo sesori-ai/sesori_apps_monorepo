@@ -41,8 +41,10 @@ sealed class ClaudeCompactMetadata with _$ClaudeCompactMetadata {
       json is Map ? ClaudeCompactMetadata.fromJson(json.cast<String, dynamic>()) : null;
 }
 
+// ignore: no_slop_linter/prefer_required_named_parameters, json_serializable readValue signature
 Object? _readPreTokens(Map<dynamic, dynamic> json, String _) => json["preTokens"] ?? json["pre_tokens"];
 
+// ignore: no_slop_linter/prefer_required_named_parameters, json_serializable readValue signature
 Object? _readPostTokens(Map<dynamic, dynamic> json, String _) => json["postTokens"] ?? json["post_tokens"];
 
 ClaudeCompactTrigger? _triggerOrNull(Object? value) => ClaudeCompactTrigger.tryParse(raw: value);

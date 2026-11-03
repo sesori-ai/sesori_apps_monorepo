@@ -25,7 +25,9 @@ void main() {
   );
 
   test("observed Sofia quota keeps the visible error ID and original UTC time", () {
-    final interruption = map(text: "You've hit your session limit · resets 6:30pm (Europe/Sofia)", fields: const {})!;
+    final interruption =
+        map(text: "You've hit your session limit · resets 6:30pm (Europe/Sofia)", fields: const {}) ??
+        fail("quota interruption was not mapped");
     expect(interruption.errorMessageId, "visible-error-id");
     expect(interruption.observedAt, observedAt);
     expect((interruption.reset as PluginQuotaResetKnown).resetAt, DateTime.utc(2026, 9, 23, 15, 30));
@@ -34,10 +36,12 @@ void main() {
   test("whole-hour and 12-hour notation use the named zone", () {
     for (final (time, hour) in [("6pm", 15), ("12pm", 9), ("12am", 21)]) {
       final timestamp = time == "12am" ? "2026-09-22T20:00:00Z" : "2026-09-23T08:00:00Z";
-      final reset = map(
+      final interruption = map(
         text: "You've hit your session limit · resets $time (Europe/Sofia)",
         fields: {"timestamp": timestamp},
-      )!.reset;
+      );
+      if (interruption == null) fail("quota interruption was not mapped");
+      final reset = interruption.reset;
       // A date-less midnight already passed on the observed local date.
       if (time == "12am") {
         expect(reset, isA<PluginQuotaResetUnknown>());
@@ -56,14 +60,14 @@ void main() {
       " · resets 6:80pm (Europe/Sofia)",
       " · resets 6pm (Unknown/Zone)",
     ]) {
-      expect(map(text: "You've hit your session limit$reset", fields: const {})!.reset, isA<PluginQuotaResetUnknown>());
+      expect(map(text: "You've hit your session limit$reset", fields: const {})?.reset, isA<PluginQuotaResetUnknown>());
     }
     for (final timestamp in ["2026-03-29T00:00:00Z", "2026-10-25T00:00:00Z"]) {
       expect(
         map(
           text: "You've hit your session limit · resets 3:30am (Europe/Sofia)",
           fields: {"timestamp": timestamp},
-        )!.reset,
+        )?.reset,
         isA<PluginQuotaResetUnknown>(),
       );
     }

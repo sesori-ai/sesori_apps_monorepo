@@ -33,7 +33,8 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child"),
         directory: "/repo",
-      )!;
+      );
+      if (result == null) fail("the spawn produced no result");
       expect(result.renderSessionId, "root");
       expect(result.messageId, "root-subagent-child");
       expect(result.opensMessage, isFalse, reason: "no prompt yet: session events only");
@@ -49,9 +50,11 @@ void main() {
       expect(tracker.busyChildIds(sessionId: "root"), {"child"});
       expect(tracker.runningChildren(sessionId: "root").single.isBackground, isFalse);
 
-      final first = tracker.appendPrompt(childSessionId: "child", delta: "do the ");
-      expect(first?.opensMessage, isTrue);
-      final tile = _subtaskPart(first!.events.single);
+      final first =
+          tracker.appendPrompt(childSessionId: "child", delta: "do the ") ??
+          fail("the first prompt delta rendered nothing");
+      expect(first.opensMessage, isTrue);
+      final tile = _subtaskPart(first.events.single);
       expect(tile.id, "root-subagent-child-subtask");
       expect(tile.messageID, "root-subagent-child");
       expect(tile.sessionID, "root");
@@ -59,9 +62,11 @@ void main() {
       expect(tile.childSessionID, "child");
       expect(tile.taskState?.status, PluginToolStatus.running);
 
-      final second = tracker.appendPrompt(childSessionId: "child", delta: "thing");
-      expect(second?.opensMessage, isFalse);
-      expect(_subtaskPart(second!.events.single).prompt, "do the thing");
+      final second =
+          tracker.appendPrompt(childSessionId: "child", delta: "thing") ??
+          fail("the second prompt delta rendered nothing");
+      expect(second.opensMessage, isFalse);
+      expect(_subtaskPart(second.events.single).prompt, "do the thing");
       expect(tracker.appendPrompt(childSessionId: "ghost", delta: "x"), isNull);
       expect(tracker.appendPrompt(childSessionId: "child", delta: ""), isNull);
     });
@@ -71,7 +76,8 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child", prompt: "p", isBackground: true),
         directory: "/r",
-      )!;
+      );
+      if (result == null) fail("the spawn produced no result");
       expect(result.opensMessage, isTrue);
       expect(result.events, hasLength(3));
       expect(_subtaskPart(result.events[2]).prompt, "p");
@@ -261,7 +267,8 @@ void main() {
         sessionId: "child",
         spawn: _spawn(childId: "grandchild", prompt: "nested"),
         directory: "/r",
-      )!;
+      );
+      if (nested == null) fail("the nested spawn produced no result");
       expect(nested.renderSessionId, "child");
       expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "child");
       final tile = _subtaskPart(nested.events.last);
@@ -348,7 +355,8 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child"),
         directory: "/r",
-      )!;
+      );
+      if (again == null) fail("the repeated spawn produced no result");
       expect(again.events, isEmpty);
       expect(again.opensMessage, isFalse);
       expect(tracker.childStatuses.keys, ["child"]);

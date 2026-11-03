@@ -79,7 +79,7 @@ Future<ConnectedClient> connectTestClient({
   final connected = client.connect();
   final request = await waitForFrame(fake, "control_request");
   fake.emitControlResponse(
-    requestId: request["request_id"]! as String,
+    requestId: request.field<String>("request_id"),
     payload: handshake,
   );
   await connected;

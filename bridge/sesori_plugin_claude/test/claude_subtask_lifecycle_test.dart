@@ -412,7 +412,7 @@ ClaudeTrackedTool _upsertAgent(ClaudeToolTracker tracker) => tracker.upsertCompl
 );
 
 List<BridgeSseEvent> _map(ClaudeEventDispatcher dispatcher, Map<String, Object?> frame) =>
-    dispatcher.map(message: ClaudeStreamMessage.parse(frame));
+    dispatcher.map(message: ClaudeStreamMessage.parse(frame), now: null);
 
 PluginMessagePartSubtask _subtask(List<BridgeSseEvent> events) =>
     events.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartSubtask;

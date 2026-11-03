@@ -83,7 +83,11 @@ class const ClaudeMcpMapper() {
       },
       authorization: switch (server.status) {
         ClaudeMcpStatus.needsAuth => PluginMcpAuthorizationState.required,
-        _ => PluginMcpAuthorizationState.unknown,
+        ClaudeMcpStatus.unknown ||
+        ClaudeMcpStatus.pending ||
+        ClaudeMcpStatus.connected ||
+        ClaudeMcpStatus.disabled ||
+        ClaudeMcpStatus.failed => PluginMcpAuthorizationState.unknown,
       },
       configuration: _configuration(scope: server.scope),
       tools: switch ((server.tools, server.status)) {

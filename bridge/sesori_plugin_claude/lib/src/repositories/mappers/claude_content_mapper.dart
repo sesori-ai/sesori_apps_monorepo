@@ -147,7 +147,12 @@ final class const ClaudeContentMapper() {
         (block) => switch (block) {
           ClaudeMappedTaskNotificationContentBlock() => true,
           ClaudeMappedTextContentBlock(:final text) => ClaudeTaskNotification.isEnvelope(text),
-          _ => false,
+          ClaudeMappedThinkingContentBlock() ||
+          ClaudeMappedToolUseContentBlock() ||
+          ClaudeMappedToolResultContentBlock() ||
+          ClaudeMappedImageContentBlock() ||
+          ClaudeMappedUnsupportedContentBlock() ||
+          ClaudeMappedUnknownContentBlock() => false,
         },
       );
 
@@ -278,7 +283,7 @@ final class const ClaudeContentMapper() {
     ].join("\n\n").trim();
     final freedTokens = switch (metadata) {
       ClaudeCompactMetadata(preTokens: final pre?, postTokens: final post?) when pre > post => pre - post,
-      _ => null,
+      ClaudeCompactMetadata() || null => null,
     };
     return PluginMessageWithParts(
       info: _compactionInfo(sessionId: sessionId, messageId: messageId, time: time),
@@ -398,11 +403,13 @@ final class const ClaudeContentMapper() {
     ];
   }
 
-  ClaudeMappedToolUseContentBlock? _toolUse({required ClaudeContentBlockDto? dto}) => switch (dto) {
-    ClaudeToolUseContentBlockDto(:final id?, :final name?, :final input) when id.isNotEmpty && name.isNotEmpty =>
-      ClaudeMappedToolUseContentBlock(id: id, name: name, input: input),
-    _ => null,
-  };
+  ClaudeMappedToolUseContentBlock? _toolUse({required ClaudeContentBlockDto? dto}) {
+    if (dto case ClaudeToolUseContentBlockDto(:final id?, :final name?, :final input)
+        when id.isNotEmpty && name.isNotEmpty) {
+      return ClaudeMappedToolUseContentBlock(id: id, name: name, input: input);
+    }
+    return null;
+  }
 
   ClaudeContentBlockDto? _decode({required Map<Object?, Object?> block}) {
     try {

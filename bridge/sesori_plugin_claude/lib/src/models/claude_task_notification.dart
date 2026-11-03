@@ -27,19 +27,19 @@ final class const ClaudeTaskNotification({
 
   static ClaudeTaskNotification? tryParse(String text) {
     if (!isEnvelope(text)) return null;
-    final taskId = _tag(text, "task-id");
-    final status = _tag(text, "status");
+    final taskId = _tag(text: text, name: "task-id");
+    final status = _tag(text: text, name: "status");
     if (taskId == null || status == null) return null;
     return ClaudeTaskNotification(
       taskId: taskId,
-      toolUseId: _tag(text, "tool-use-id"),
+      toolUseId: _tag(text: text, name: "tool-use-id"),
       status: ClaudeTaskStatus.parse(status),
-      summary: _tag(text, "summary"),
-      result: _tag(text, "result"),
+      summary: _tag(text: text, name: "summary"),
+      result: _tag(text: text, name: "result"),
     );
   }
 
-  static String? _tag(String text, String name) {
+  static String? _tag({required String text, required String name}) {
     final match = RegExp("<$name>(.*?)</$name>", dotAll: true).firstMatch(text);
     final value = match?.group(1)?.trim();
     return value == null || value.isEmpty ? null : value;

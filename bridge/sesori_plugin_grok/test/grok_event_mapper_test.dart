@@ -41,7 +41,7 @@ void main() {
         pluginId: "grok",
         configurationTracker: configuration,
         childSessions: tracker,
-      )..setSessionProject(_root, "/project");
+      )..setSessionProject(sessionId: _root, directory: "/project");
       mapper.beginTurn(sessionId: _root, messageId: null);
     });
 

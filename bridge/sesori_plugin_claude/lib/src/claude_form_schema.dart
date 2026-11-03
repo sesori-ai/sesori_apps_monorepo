@@ -70,15 +70,23 @@ final class ClaudeFormSchema._({
   /// Only call after validation; native names and option values stay here.
   Map<String, Object?> encode({required Map<String, PluginFormValue> values}) => {
     for (final entry in values.entries)
-      _nativeKeys[entry.key]!: switch (entry.value) {
+      _nativeKey(fieldId: entry.key): switch (entry.value) {
         PluginFormTextValue(:final value) => value,
         PluginFormIntegerValue(:final value) => value,
         PluginFormNumberValue(:final value) => value,
         PluginFormBooleanValue(:final value) => value,
-        PluginFormChoiceValue(:final optionId) => _nativeOptions[entry.key]![optionId]!,
-        PluginFormChoicesValue(:final optionIds) => [for (final id in optionIds) _nativeOptions[entry.key]![id]!],
+        PluginFormChoiceValue(:final optionId) => _nativeOption(fieldId: entry.key, optionId: optionId),
+        PluginFormChoicesValue(:final optionIds) => [
+          for (final id in optionIds) _nativeOption(fieldId: entry.key, optionId: id),
+        ],
       },
   };
+
+  String _nativeKey({required String fieldId}) =>
+      _nativeKeys[fieldId] ?? (throw StateError("Form field $fieldId was not validated"));
+
+  String _nativeOption({required String fieldId, required String optionId}) =>
+      _nativeOptions[fieldId]?[optionId] ?? (throw StateError("Form option $optionId of $fieldId was not validated"));
 
   static PluginFormSchema _field({required Map<String, Object?> schema, required Map<String, String> nativeOptions}) {
     const metadata = {"type", "title", "description", "default"};

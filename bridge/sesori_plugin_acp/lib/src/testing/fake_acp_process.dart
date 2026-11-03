@@ -75,8 +75,12 @@ class CapturingIOSink() implements IOSink {
   final List<int> _buffer = [];
   final List<Map<String, dynamic>> frames = [];
 
+  /// The transport only ever writes UTF-8 bytes through [add].
   @override
-  Encoding encoding = utf8;
+  Encoding get encoding => utf8;
+
+  @override
+  set encoding(Encoding _) {}
 
   @override
   void add(List<int> data) {
@@ -87,7 +91,10 @@ class CapturingIOSink() implements IOSink {
       final line = utf8.decode(_buffer.sublist(0, idx));
       _buffer.removeRange(0, idx + 1);
       if (line.trim().isNotEmpty) {
-        frames.add((jsonDecode(line) as Map).cast<String, dynamic>());
+        frames.add(switch (jsonDecode(line)) {
+          final Map<dynamic, dynamic> frame => frame.cast<String, dynamic>(),
+          final other => throw FormatException("stdin frame is not a JSON object: ${other.runtimeType}"),
+        });
       }
     }
   }

@@ -187,7 +187,7 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
       case final _CachedChild entry:
         final root = switch (_transcripts[_pathsById[_rootIdOfChildPath(path)]]) {
           _CachedRoot(:final record) => record,
-          _ => null,
+          _CachedChild() || _CachedUnreadableChild() || null => null,
         };
         return _childRecord(path: path, entry: entry, root: root);
       case _CachedUnreadableChild() || null:

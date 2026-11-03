@@ -178,7 +178,7 @@ final class ClaudeEventDispatcher({
     );
   }
 
-  List<BridgeSseEvent> map({required ClaudeStreamMessage message, DateTime? now}) {
+  List<BridgeSseEvent> map({required ClaudeStreamMessage message, required DateTime? now}) {
     if (message.sessionId case final sessionId? when sessionId.isNotEmpty) {
       // A forwarded sub-agent frame renders in that sub-agent's child session,
       // resolved from the launching task; before the task knows its sub-agent
@@ -194,7 +194,17 @@ final class ClaudeEventDispatcher({
           ClaudeStreamEventMessage() => _mapStream(sessionId: childId, message: message),
           ClaudeAssistantMessage() => _mapAssistant(sessionId: childId, message: message),
           ClaudeUserMessage() => _mapUser(sessionId: childId, message: message, promptId: null),
-          _ => const [],
+          ClaudeApiRetryMessage() ||
+          ClaudeResultMessage() ||
+          ClaudeTaskStartedMessage() ||
+          ClaudeTaskNotificationMessage() ||
+          ClaudeStatusMessage() ||
+          ClaudeCompactBoundaryMessage() ||
+          ClaudeInitMessage() ||
+          ClaudeControlRequestMessage() ||
+          ClaudeControlResponseMessage() ||
+          ClaudeIgnoredMessage() ||
+          ClaudeUnknownMessage() => const [],
         };
       }
       return switch (message) {
@@ -429,7 +439,13 @@ final class ClaudeEventDispatcher({
                 input: input,
               )
               .toPart(),
-        _ => parts[offset],
+        ClaudeMappedTextContentBlock() ||
+        ClaudeMappedTaskNotificationContentBlock() ||
+        ClaudeMappedThinkingContentBlock() ||
+        ClaudeMappedToolResultContentBlock() ||
+        ClaudeMappedImageContentBlock() ||
+        ClaudeMappedUnsupportedContentBlock() ||
+        ClaudeMappedUnknownContentBlock() => parts[offset],
       };
       if (part == null) continue;
       if (_streamedBlocks[messageId]?.contains(index) ?? false) {
@@ -698,7 +714,7 @@ final class ClaudeEventDispatcher({
   PluginMessage _assistantMessage({
     required String sessionId,
     required String messageId,
-    PluginMessageTime? time,
+    required PluginMessageTime? time,
   }) => PluginMessage.assistant(
     id: messageId,
     sessionID: sessionId,
@@ -715,7 +731,7 @@ final class ClaudeEventDispatcher({
     _announcedMessageIds[sessionId] = messageId;
     return [
       BridgeSseMessageUpdated(
-        info: _assistantMessage(sessionId: sessionId, messageId: messageId),
+        info: _assistantMessage(sessionId: sessionId, messageId: messageId, time: null),
       ),
     ];
   }
@@ -811,7 +827,17 @@ PluginMessagePart _textPart({
     messageID: messageId,
     text: text,
   ),
-  _ => throw ArgumentError.value(type, "type"),
+  PluginMessagePartType.tool ||
+  PluginMessagePartType.subtask ||
+  PluginMessagePartType.stepStart ||
+  PluginMessagePartType.stepFinish ||
+  PluginMessagePartType.file ||
+  PluginMessagePartType.snapshot ||
+  PluginMessagePartType.patch ||
+  PluginMessagePartType.agent ||
+  PluginMessagePartType.retry ||
+  PluginMessagePartType.compaction ||
+  PluginMessagePartType.unknown => throw ArgumentError.value(type, "type"),
 };
 
 BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
@@ -885,6 +911,20 @@ String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Clau
       name: "prompt_too_long",
       message: "The prompt is too long for Claude Code.",
     ),
-    _ => (name: "claude_error", message: "Claude Code could not complete the request."),
+    ClaudeTerminalReason.blockingLimit ||
+    ClaudeTerminalReason.rapidRefillBreaker ||
+    ClaudeTerminalReason.imageError ||
+    ClaudeTerminalReason.modelError ||
+    ClaudeTerminalReason.malformedToolUseExhausted ||
+    ClaudeTerminalReason.abortedStreaming ||
+    ClaudeTerminalReason.abortedTools ||
+    ClaudeTerminalReason.stopHookPrevented ||
+    ClaudeTerminalReason.hookStopped ||
+    ClaudeTerminalReason.toolDeferred ||
+    ClaudeTerminalReason.backgroundRequested ||
+    ClaudeTerminalReason.completed ||
+    ClaudeTerminalReason.toolDeferredUnavailable ||
+    ClaudeTerminalReason.turnSetupFailed ||
+    ClaudeTerminalReason.unknown => (name: "claude_error", message: "Claude Code could not complete the request."),
   };
 }

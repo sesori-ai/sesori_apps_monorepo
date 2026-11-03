@@ -1201,7 +1201,7 @@ void main() {
       // A session opened outside the launch cwd: its title update must carry
       // that project's id, or the mobile session list (which drops updates whose
       // projectID != the active project) ignores it.
-      mapper.setSessionProject("s1", "/repo/opened-elsewhere");
+      mapper.setSessionProject(sessionId: "s1", directory: "/repo/opened-elsewhere");
       final events = mapper.map(
         update({
           "sessionUpdate": "session_info_update",
@@ -1214,8 +1214,8 @@ void main() {
     });
 
     test("clearing a session's project reverts to the launch cwd", () {
-      mapper.setSessionProject("s1", "/repo/opened-elsewhere");
-      mapper.setSessionProject("s1", null);
+      mapper.setSessionProject(sessionId: "s1", directory: "/repo/opened-elsewhere");
+      mapper.setSessionProject(sessionId: "s1", directory: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "session_info_update",

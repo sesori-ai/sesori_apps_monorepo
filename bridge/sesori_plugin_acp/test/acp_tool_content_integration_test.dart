@@ -147,8 +147,9 @@ void main() {
         }
 
         final replayPart = collector.build().single.parts.single;
-        expect(replayPart.tool, livePart!.tool);
-        expect(replayPart.state, livePart.state);
+        final mappedLivePart = livePart ?? fail("no live tool part was mapped");
+        expect(replayPart.tool, mappedLivePart.tool);
+        expect(replayPart.state, mappedLivePart.state);
         expect(replayPart.state.attachments, isNotEmpty);
       });
     }

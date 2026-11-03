@@ -336,16 +336,18 @@ final class ClaudeSessionService({
     required int generation,
     required _TurnMode mode,
   }) async {
-    if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+    if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
+        _isCancelled(mode: mode, state: state)) {
       mode.settleUnaccepted();
-      return _finish(sessionId, state, null);
+      return _finish(sessionId: sessionId, state: state, outcome: null);
     }
     try {
       final aborting = state.aborting?.future;
       if (aborting != null) await aborting;
-      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
+          _isCancelled(mode: mode, state: state)) {
         mode.settleUnaccepted();
-        return _finish(sessionId, state, null);
+        return _finish(sessionId: sessionId, state: state, outcome: null);
       }
       if (_requiresTurnBoundary(
         sessionId: sessionId,
@@ -361,9 +363,10 @@ final class ClaudeSessionService({
           ?selfStartedTurn,
         ]);
       }
-      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
+          _isCancelled(mode: mode, state: state)) {
         mode.settleUnaccepted();
-        return _finish(sessionId, state, null);
+        return _finish(sessionId: sessionId, state: state, outcome: null);
       }
       await _processes.ensureResident(
         sessionId: sessionId,
@@ -375,9 +378,10 @@ final class ClaudeSessionService({
         fastMode: fastMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
-      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
+          _isCancelled(mode: mode, state: state)) {
         mode.settleUnaccepted();
-        return _finish(sessionId, state, null);
+        return _finish(sessionId: sessionId, state: state, outcome: null);
       }
       final dispatch = _processes.sendTurn(
         sessionId: sessionId,
@@ -457,9 +461,9 @@ final class ClaudeSessionService({
       final settled = await outcome;
       _settleQueuedEntry(sessionId: sessionId, state: state, mode: mode);
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
-        return _finish(sessionId, state, null);
+        return _finish(sessionId: sessionId, state: state, outcome: null);
       }
-      _finish(sessionId, state, settled);
+      _finish(sessionId: sessionId, state: state, outcome: settled);
     } on Object catch (error, stack) {
       _failTurn(
         sessionId: sessionId,
@@ -480,19 +484,19 @@ final class ClaudeSessionService({
     required Object error,
     required StackTrace stack,
   }) {
-    mode.settleError(error, stack);
+    mode.settleError(error: error, stack: stack);
     _settleQueuedEntry(sessionId: sessionId, state: state, mode: mode);
     if (_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
       Log.w("[claude] queued turn failed for $sessionId", error, stack);
-      _finish(sessionId, state, const ClaudeTurnFailed());
+      _finish(sessionId: sessionId, state: state, outcome: const ClaudeTurnFailed());
     } else {
-      _finish(sessionId, state, null);
+      _finish(sessionId: sessionId, state: state, outcome: null);
     }
   }
 
   /// A cancelled queued entry was already removed from the queue; its chained
   /// link must settle without dispatching.
-  bool _isCancelled(_TurnMode mode, _SessionTurnState state) =>
+  bool _isCancelled({required _TurnMode mode, required _SessionTurnState state}) =>
       mode is _QueuedTurnMode && !state.queue.contains(mode.entry) && !mode.entry.dispatched;
 
   /// Removes a queued entry that never became a visible message (interrupt or
@@ -650,7 +654,7 @@ final class ClaudeSessionService({
   bool _isCurrent({required String sessionId, required _SessionTurnState state, required int generation}) =>
       !_disposed && identical(_turns[sessionId], state) && state.generation == generation;
 
-  void _finish(String sessionId, _SessionTurnState state, ClaudeTurnOutcome? outcome) {
+  void _finish({required String sessionId, required _SessionTurnState state, required ClaudeTurnOutcome? outcome}) {
     _retryStatuses.remove(sessionId);
     if (state.pending > 0) state.pending--;
     if (!identical(_turns[sessionId], state)) return;
@@ -945,7 +949,7 @@ sealed class const _TurnMode() {
   void settleUnaccepted();
 
   /// Settles a turn whose dispatch threw.
-  void settleError(Object error, StackTrace stack);
+  void settleError({required Object error, required StackTrace stack});
 }
 
 /// A queued-entry turn accepted before dispatch.
@@ -957,7 +961,7 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
   void settleUnaccepted() {}
 
   @override
-  void settleError(Object error, StackTrace stack) {}
+  void settleError({required Object error, required StackTrace stack}) {}
 }
 
 /// The blocking initial turn: acceptance completes only at dispatch.
@@ -973,7 +977,7 @@ final class const _BlockingTurnMode({required final Completer<void> acceptance})
   }
 
   @override
-  void settleError(Object error, StackTrace stack) {
+  void settleError({required Object error, required StackTrace stack}) {
     if (!acceptance.isCompleted) acceptance.completeError(error, stack);
   }
 }

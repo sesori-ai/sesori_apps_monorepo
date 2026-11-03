@@ -35,10 +35,10 @@ final class const ClaudeSessionProcessMessage({
   required final bool interrupted,
   required final String? promptId,
 }) extends ClaudeSessionProcessEvent {
-  ClaudeControlRequestMessage? get controlRequest => switch (message) {
-    final ClaudeControlRequestMessage request => request,
-    _ => null,
-  };
+  ClaudeControlRequestMessage? get controlRequest {
+    if (message case final ClaudeControlRequestMessage request) return request;
+    return null;
+  }
 }
 
 final class const ClaudeSessionProcessExited({required super.sessionId, required final bool interrupted})
@@ -617,7 +617,7 @@ final class ClaudeSessionProcessRepository({
           if (pending.replayObserved ||
               replayContent == null ||
               (!message.isReplay && !_containsImageContent(replayContent)) ||
-              !_samePromptContent(replayContent, message.message["content"])) {
+              !_samePromptContent(expected: replayContent, actual: message.message["content"])) {
             continue;
           }
           pending.replayObserved = true;
@@ -690,14 +690,14 @@ String _newMessageId() {
 /// block in the same position; text and block order keep exact JSON matching.
 /// Claude can also echo a single text block as plain string content (seen on
 /// 2.1.316 for prompts starting with an absolute path), which matches its text.
-bool _samePromptContent(Object? expected, Object? actual) {
+bool _samePromptContent({required Object? expected, required Object? actual}) {
   if (expected case [{"type": "text", "text": final String text}] when actual is String) {
     return text == actual;
   }
   if (expected is List && actual is List) {
     if (expected.length != actual.length) return false;
     for (var index = 0; index < expected.length; index++) {
-      if (!_samePromptContent(expected[index], actual[index])) return false;
+      if (!_samePromptContent(expected: expected[index], actual: actual[index])) return false;
     }
     return true;
   }
@@ -707,7 +707,9 @@ bool _samePromptContent(Object? expected, Object? actual) {
     }
     if (expected.length != actual.length) return false;
     for (final entry in expected.entries) {
-      if (!actual.containsKey(entry.key) || !_samePromptContent(entry.value, actual[entry.key])) return false;
+      if (!actual.containsKey(entry.key) || !_samePromptContent(expected: entry.value, actual: actual[entry.key])) {
+        return false;
+      }
     }
     return true;
   }

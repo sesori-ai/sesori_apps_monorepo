@@ -36,7 +36,8 @@ void main() {
           },
         },
       },
-    )!;
+    );
+    if (schema == null) fail("schema did not parse");
     expect(schema.fields.map((field) => field.id), List.generate(6, (index) => "field-$index"));
     expect(schema.fields.first.label, "Note");
     expect(schema.fields.first.description, "Fixture");
@@ -71,7 +72,7 @@ void main() {
     expect(schema.encode(values: {"field-3": const PluginFormBooleanValue(value: false)}), {"native-boolean": false});
     expect(schema.fields.clear, throwsUnsupportedError);
     expect(choice.options.clear, throwsUnsupportedError);
-    expect(() => array.defaultOptionIds!.clear(), throwsUnsupportedError);
+    expect(() => array.defaultOptionIds?.clear(), throwsUnsupportedError);
     expect(schema.toString(), isNot(contains("native-text")));
   });
 
@@ -89,7 +90,8 @@ void main() {
           },
         },
       },
-    )!;
+    );
+    if (schema == null) fail("schema did not parse");
     final choice = schema.fields.single.schema as PluginFormChoiceSchema;
     expect(choice.options.map((option) => option.label), ["Plan — Basic tier", "Plan — Professional tier"]);
     expect(schema.encode(values: {schema.fields.single.id: PluginFormChoiceValue(optionId: choice.options.last.id)}), {
@@ -121,7 +123,8 @@ void main() {
           },
         },
       },
-    )!;
+    );
+    if (schema == null) fail("schema did not parse");
     expect(schema.validate(values: {}), {"field-0": PluginFormValidationIssue.required});
     expect(
       schema.validate(

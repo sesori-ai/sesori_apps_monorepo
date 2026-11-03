@@ -123,8 +123,8 @@ void main() {
     });
 
     test("announces the child once and follows repeated running and terminal transitions", () {
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      final launched = dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      final launched = dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
 
       expect(launched.map((event) => event.runtimeType), [
         BridgeSseSessionCreated,
@@ -144,11 +144,15 @@ void main() {
       expect(dispatcher.busyChildSessionIds(sessionId: _root), [_child]);
 
       dispatcher.completeTurn(sessionId: _root);
-      final started = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: _toolUseId)));
+      final started = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: _toolUseId)),
+        now: null,
+      );
       expect(started.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated], reason: "already announced");
 
       final finished = dispatcher.map(
         message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)),
+        now: null,
       );
       expect(finished.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
       final idle = finished.last as BridgeSseSessionStatus;
@@ -157,7 +161,10 @@ void main() {
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
 
-      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: _toolUseId)));
+      final resumed = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: _toolUseId)),
+        now: null,
+      );
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
       expect(
         (resumed.first as BridgeSseSessionStatus).status,
@@ -170,6 +177,7 @@ void main() {
 
       final finishedAgain = dispatcher.map(
         message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)),
+        now: null,
       );
       expect(finishedAgain.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
@@ -179,13 +187,16 @@ void main() {
       // Claude Code 2.1.310 registers a SendMessage-resumed agent under the
       // SendMessage call, so its task frames carry that tool-use id.
       const sendToolUseId = "toolu-send";
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
       dispatcher.completeTurn(sessionId: _root);
-      dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)), now: null);
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
 
-      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)));
+      final resumed = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)),
+        now: null,
+      );
 
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
       final busy = resumed.first as BridgeSseSessionStatus;
@@ -199,6 +210,7 @@ void main() {
 
       final finished = dispatcher.map(
         message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: sendToolUseId)),
+        now: null,
       );
 
       expect(finished.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
@@ -208,7 +220,10 @@ void main() {
 
       // The wake-up envelope names the SendMessage call too. It stays its own
       // Automation row, as on replay, instead of rewriting the tile.
-      final envelope = dispatcher.map(message: ClaudeStreamMessage.parse(_envelopeFrame(toolUseId: sendToolUseId)));
+      final envelope = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_envelopeFrame(toolUseId: sendToolUseId)),
+        now: null,
+      );
       expect(envelope.whereType<BridgeSseMessageUpdated>(), hasLength(1));
       expect(
         envelope.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.id),
@@ -219,15 +234,18 @@ void main() {
 
     test("a sub-agent resumed after its process exited runs as its child, leaving the old tile alone", () {
       const sendToolUseId = "toolu-send";
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)), now: null);
       // The process exits (idle shutdown, stop, respawn) and drops its tasks;
       // the next turn runs in a new process that resumes the agent.
       dispatcher.cancelTasks(sessionId: _root);
       dispatcher.beginTurn(sessionId: _root, directory: "/workspace", model: null, variant: null);
 
-      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)));
+      final resumed = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)),
+        now: null,
+      );
 
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus], reason: "no tile, no re-announce");
       expect((resumed.single as BridgeSseSessionStatus).sessionID, _child);
@@ -238,17 +256,21 @@ void main() {
 
       final finished = dispatcher.map(
         message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: sendToolUseId)),
+        now: null,
       );
       expect(finished.map((event) => event.runtimeType), [BridgeSseSessionStatus]);
       expect((finished.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
 
-      final envelope = dispatcher.map(message: ClaudeStreamMessage.parse(_envelopeFrame(toolUseId: sendToolUseId)));
+      final envelope = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_envelopeFrame(toolUseId: sendToolUseId)),
+        now: null,
+      );
       expect(envelope.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "its own Automation step");
       expect(envelope.whereType<BridgeSseSessionStatus>(), isEmpty);
 
       // A resumed run still running when its process exits ends with it.
-      dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)), now: null);
       final cancelled = dispatcher.cancelTasks(sessionId: _root);
       expect(cancelled.map((event) => event.runtimeType), [BridgeSseSessionStatus]);
       expect((cancelled.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
@@ -256,7 +278,10 @@ void main() {
     });
 
     test("after a bridge restart a resumed sub-agent re-announces its child with its own title", () {
-      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: "toolu-send")));
+      final resumed = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: "toolu-send")),
+        now: null,
+      );
 
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionCreated, BridgeSseSessionStatus]);
       final created = (resumed.first as BridgeSseSessionCreated).info;
@@ -268,12 +293,12 @@ void main() {
     });
 
     test("routes forwarded sub-agent frames into the child session once its id is known", () {
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      final early = dispatcher.map(message: ClaudeStreamMessage.parse(_childTextFrame(text: "too early")));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      final early = dispatcher.map(message: ClaudeStreamMessage.parse(_childTextFrame(text: "too early")), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
       dispatcher.completeTurn(sessionId: _root);
 
-      final routed = dispatcher.map(message: ClaudeStreamMessage.parse(_childTextFrame(text: "hi")));
+      final routed = dispatcher.map(message: ClaudeStreamMessage.parse(_childTextFrame(text: "hi")), now: null);
 
       expect(early, isEmpty, reason: "no child session exists before the sub-agent id is known");
       expect(routed.map((event) => event.runtimeType), [BridgeSseMessageUpdated, BridgeSseMessagePartUpdated]);
@@ -285,8 +310,8 @@ void main() {
     });
 
     test("a nested Agent call inside a child binds through the root's task frames and flattens under the root", () {
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
       dispatcher.map(
         message: ClaudeStreamMessage.parse({
           "type": "assistant",
@@ -305,6 +330,7 @@ void main() {
             ],
           },
         }),
+        now: null,
       );
 
       final started = dispatcher.map(
@@ -316,6 +342,7 @@ void main() {
           "tool_use_id": "toolu-nested",
           "task_type": "local_agent",
         }),
+        now: null,
       );
 
       expect(started.map((event) => event.runtimeType), [
@@ -336,8 +363,8 @@ void main() {
     });
 
     test("cancelTasks idles the announced child and forgetSession drops it", () {
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
       dispatcher.completeTurn(sessionId: _root);
 
       final cancelled = dispatcher.cancelTasks(sessionId: _root);
@@ -349,8 +376,8 @@ void main() {
     });
 
     test("forgetting a deleted child removes it from its root's statuses", () {
-      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
-      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()), now: null);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()), now: null);
 
       dispatcher.forgetSession(sessionId: _child);
 

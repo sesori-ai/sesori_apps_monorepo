@@ -3,6 +3,15 @@ import "dart:convert";
 import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
+import "package:test/test.dart" show fail;
+
+/// Typed read of a decoded frame value; a missing or mistyped value fails the test.
+T expectType<T extends Object>(Object? value) => value is T ? value : fail("Expected $T, got $value");
+
+/// Typed read of a map entry, such as a written frame field or a session status.
+extension MapField on Map<Object?, Object?> {
+  T field<T extends Object>(Object key) => expectType<T>(this[key]);
+}
 
 /// In-memory [ClaudeProcessHandle] for transport and plugin tests.
 class FakeClaudeProcess({bool stdinCloseCompletes = true}) implements ClaudeProcessHandle {
