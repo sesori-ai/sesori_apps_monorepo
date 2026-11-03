@@ -10,12 +10,11 @@ void main() {
     setUp(() => tracker = NewSessionSelectionTracker());
 
     test("read returns null when nothing saved", () {
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+      expect(tracker.read(pluginId: "plugin-1"), isNull);
     });
 
-    test("write then read round-trips explicit intents per project", () {
+    test("write then read round-trips explicit intents per plugin", () {
       tracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: const NewSessionSelectionIntent(
           agentName: "build",
@@ -25,8 +24,7 @@ void main() {
         ),
       );
       tracker.write(
-        projectId: "project-2",
-        pluginId: "plugin-1",
+        pluginId: "plugin-2",
         selection: const NewSessionSelectionIntent(
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
@@ -35,7 +33,7 @@ void main() {
         ),
       );
 
-      final first = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final first = tracker.read(pluginId: "plugin-1");
       expect(first?.agentName, "build");
       expect(first?.model?.providerId, "openai");
       expect(first?.model?.modelId, "gpt-4");
@@ -44,7 +42,7 @@ void main() {
         isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "fast"),
       );
 
-      final second = tracker.read(projectId: "project-2", pluginId: "plugin-1");
+      final second = tracker.read(pluginId: "plugin-2");
       expect(second?.agentName, "plan");
       expect(second?.model?.providerId, "anthropic");
       expect(second?.model?.modelId, "claude-3");
@@ -52,9 +50,9 @@ void main() {
     });
 
     test("recordAgent does not write model or variant defaults", () {
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
+      tracker.recordAgent(pluginId: "plugin-1", agentName: "build");
 
-      final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = tracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, "build");
       expect(saved?.model, isNull);
       expect(saved?.variant, isNull);
@@ -62,13 +60,12 @@ void main() {
 
     test("recordModel does not write agent or variant defaults", () {
       tracker.recordModel(
-        projectId: "project-1",
         pluginId: "plugin-1",
         providerId: "openai",
         modelId: "gpt-4",
       );
 
-      final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = tracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, isNull);
       expect(saved?.model?.providerId, "openai");
       expect(saved?.model?.modelId, "gpt-4");
@@ -77,12 +74,11 @@ void main() {
 
     test("recordVariant does not write agent or model defaults", () {
       tracker.recordVariant(
-        projectId: "project-1",
         pluginId: "plugin-1",
         variant: const NewSessionVariantIntent(id: "fast"),
       );
 
-      final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = tracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, isNull);
       expect(saved?.model, isNull);
       expect(
@@ -92,51 +88,46 @@ void main() {
     });
 
     test("record actions preserve the other deliberate dimensions", () {
-      tracker.recordFastMode(projectId: "project-1", pluginId: "plugin-1", fastMode: true);
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
+      tracker.recordFastMode(pluginId: "plugin-1", fastMode: true);
+      tracker.recordAgent(pluginId: "plugin-1", agentName: "build");
       tracker.recordModel(
-        projectId: "project-1",
         pluginId: "plugin-1",
         providerId: "openai",
         modelId: "gpt-4",
       );
       tracker.recordVariant(
-        projectId: "project-1",
         pluginId: "plugin-1",
         variant: const NewSessionVariantIntent(id: "fast"),
       );
 
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "plan");
+      tracker.recordAgent(pluginId: "plugin-1", agentName: "plan");
       tracker.recordModel(
-        projectId: "project-1",
         pluginId: "plugin-1",
         providerId: "anthropic",
         modelId: "claude-3",
       );
       tracker.recordVariant(
-        projectId: "project-1",
         pluginId: "plugin-1",
         variant: const NewSessionVariantIntent(id: "slow"),
       );
 
-      final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = tracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, "plan");
       expect(saved?.model?.providerId, "anthropic");
       expect(saved?.model?.modelId, "claude-3");
       expect(saved?.variant, isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "slow"));
       expect(saved?.fastMode, isTrue);
 
-      tracker.recordFastMode(projectId: "project-1", pluginId: "plugin-1", fastMode: false);
-      final afterFastMode = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      tracker.recordFastMode(pluginId: "plugin-1", fastMode: false);
+      final afterFastMode = tracker.read(pluginId: "plugin-1");
       expect(afterFastMode?.fastMode, isFalse);
       expect(afterFastMode?.agentName, "plan");
       expect(afterFastMode?.model?.modelId, "claude-3");
       expect(afterFastMode?.variant?.id, "slow");
     });
 
-    test("write overwrites the previous selection for a project", () {
+    test("write overwrites the previous selection for a plugin", () {
       tracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: const NewSessionSelectionIntent(
           agentName: "build",
@@ -146,7 +137,6 @@ void main() {
         ),
       );
       tracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: const NewSessionSelectionIntent(
           agentName: "plan",
@@ -156,7 +146,7 @@ void main() {
         ),
       );
 
-      final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = tracker.read(pluginId: "plugin-1");
       expect(saved?.agentName, "plan");
       expect(saved?.model?.providerId, "anthropic");
       expect(saved?.model?.modelId, "claude-3");
@@ -167,64 +157,52 @@ void main() {
     });
 
     test("conditional clear does not remove an equal selection from a newer write", () {
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
-      final revision = tracker.currentRevision(projectId: "project-1", pluginId: "plugin-1");
+      tracker.recordAgent(pluginId: "plugin-1", agentName: "build");
+      final revision = tracker.currentRevision(pluginId: "plugin-1");
 
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
+      tracker.recordAgent(pluginId: "plugin-1", agentName: "build");
       tracker.clearIfRevision(
-        projectId: "project-1",
         pluginId: "plugin-1",
         revision: revision,
       );
 
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentName, "build");
+      expect(tracker.read(pluginId: "plugin-1")?.agentName, "build");
     });
 
     test("conditional clear removes the revision it owns", () {
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
-      final revision = tracker.currentRevision(projectId: "project-1", pluginId: "plugin-1");
+      tracker.recordAgent(pluginId: "plugin-1", agentName: "build");
+      final revision = tracker.currentRevision(pluginId: "plugin-1");
 
       tracker.clearIfRevision(
-        projectId: "project-1",
         pluginId: "plugin-1",
         revision: revision,
       );
 
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
-    });
-
-    test("clear removes a saved selection", () {
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
-      tracker.clear(projectId: "project-1", pluginId: "plugin-1");
-
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+      expect(tracker.read(pluginId: "plugin-1"), isNull);
     });
 
     test("stores an explicit empty selection faithfully", () {
       tracker.write(
-        projectId: "project-1",
         pluginId: "plugin-1",
         selection: const NewSessionSelectionIntent.empty(),
       );
 
-      final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      final saved = tracker.read(pluginId: "plugin-1");
       expect(saved, isNotNull);
       expect(saved?.agentName, isNull);
       expect(saved?.model, isNull);
       expect(saved?.variant, isNull);
     });
 
-    test("isolates backend-local choices by project and plugin", () {
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
+    test("isolates backend-local choices by plugin", () {
+      tracker.recordAgent(pluginId: "plugin-a", agentName: "agent-a");
+      tracker.recordAgent(pluginId: "plugin-b", agentName: "agent-b");
+      final revision = tracker.currentRevision(pluginId: "plugin-a");
 
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a")?.agentName, "agent-a");
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-b")?.agentName, "agent-b");
+      tracker.clearIfRevision(pluginId: "plugin-a", revision: revision);
 
-      tracker.clear(projectId: "project-1", pluginId: "plugin-a");
-
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-b")?.agentName, "agent-b");
+      expect(tracker.read(pluginId: "plugin-a"), isNull);
+      expect(tracker.read(pluginId: "plugin-b")?.agentName, "agent-b");
     });
 
     test("clears backend-local choices when the bridge scope changes", () {
@@ -232,12 +210,12 @@ void main() {
         lastIdentifiedBridgeId: null,
       ).transitionToDiscovered(bridgeId: "bridge-a");
       tracker.applyBackendScopeTransition(transition: bridgeA);
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
+      tracker.recordAgent(pluginId: "plugin-a", agentName: "agent-a");
 
       final bridgeB = bridgeA.scope.invalidate().transitionToDiscovered(bridgeId: "bridge-b");
       tracker.applyBackendScopeTransition(transition: bridgeB);
 
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
+      expect(tracker.read(pluginId: "plugin-a"), isNull);
     });
 
     test("preserves choices when the same bridge scope is re-established", () {
@@ -245,12 +223,12 @@ void main() {
         lastIdentifiedBridgeId: null,
       ).transitionToDiscovered(bridgeId: "bridge-a");
       tracker.applyBackendScopeTransition(transition: initial);
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
+      tracker.recordAgent(pluginId: "plugin-a", agentName: "agent-a");
 
       final reconnect = initial.scope.invalidate().transitionToDiscovered(bridgeId: "bridge-a");
       tracker.applyBackendScopeTransition(transition: reconnect);
 
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a")?.agentName, "agent-a");
+      expect(tracker.read(pluginId: "plugin-a")?.agentName, "agent-a");
     });
 
     test("clears choices when an unidentified bridge scope is re-established", () {
@@ -258,12 +236,12 @@ void main() {
         lastIdentifiedBridgeId: null,
       ).transitionToDiscovered(bridgeId: null);
       tracker.applyBackendScopeTransition(transition: initial);
-      tracker.recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a");
+      tracker.recordAgent(pluginId: "plugin-a", agentName: "agent-a");
 
       final reconnect = initial.scope.invalidate().transitionToDiscovered(bridgeId: null);
       tracker.applyBackendScopeTransition(transition: reconnect);
 
-      expect(tracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
+      expect(tracker.read(pluginId: "plugin-a"), isNull);
     });
   });
 }

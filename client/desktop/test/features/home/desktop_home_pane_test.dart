@@ -796,7 +796,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 230));
       expect(loader, findsNothing);
       expect(opacityOf(tester: tester, finder: composer), 1);
-      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, project.id);
+      expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id, project.id);
     });
   });
 
@@ -839,16 +839,32 @@ void main() {
     const two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
     late List<String> createdFor;
     late List<ProjectKind> createdKinds;
+    late List<String> selected;
     late List<({String projectId, String sessionId})> opened;
     late _MockChatInputModeCubit inputMode;
 
+    setUpAll(() => registerFallbackValue(const NewSessionProject(id: "fallback", name: null, kind: ProjectKind.folder)));
+
+    /// A composer opened in [project] that moves where it is asked to, as the
+    /// real one does: to the project picked, its worktree support unchecked.
     _MockNewSessionCubit newSessionCubit({
-      required Stream<NewSessionState> states,
-      NewSessionState initialState = _composing,
-      ProjectKind projectKind = ProjectKind.folder,
+      required NewSessionProject project,
+      Stream<NewSessionState> states = const Stream.empty(),
+      NewSessionProjectWorktreeCapability capability = NewSessionProjectWorktreeCapability.supported,
     }) {
       final cubit = _MockNewSessionCubit();
-      whenListen(cubit, states, initialState: initialState);
+      final moves = StreamController<NewSessionState>();
+      addTearDown(moves.close);
+      whenListen(
+        cubit,
+        MergeStream([moves.stream, states]),
+        initialState: _composingIn(project: project, capability: capability),
+      );
+      when(() => cubit.selectProject(project: any(named: "project"))).thenAnswer((invocation) {
+        final next = invocation.namedArguments[#project] as NewSessionProject;
+        selected.add(next.id);
+        moves.add(_composingIn(project: next, capability: NewSessionProjectWorktreeCapability.loading));
+      });
       when(() => cubit.needsHarnessDiscovery).thenReturn(false);
       when(() => cubit.hasNoHarnesses).thenReturn(false);
       when(cubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
@@ -856,13 +872,13 @@ void main() {
       when(() => cubit.canRefreshOptions).thenReturn(false);
       when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-      when(() => cubit.projectKind).thenReturn(projectKind);
       return cubit;
     }
 
     setUp(() {
       createdFor = [];
       createdKinds = [];
+      selected = [];
       opened = [];
       inputMode = _MockChatInputModeCubit();
       whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
@@ -910,10 +926,10 @@ void main() {
             ],
             child: DesktopHomeStart(
               projects: projects,
-              createNewSessionCubit: ({required projectId, required projectName, required projectKind}) {
-                createdFor.add(projectId);
-                createdKinds.add(projectKind);
-                return cubits?.removeAt(0) ?? newSessionCubit(states: states);
+              createNewSessionCubit: ({required project}) {
+                createdFor.add(project.id);
+                createdKinds.add(project.kind);
+                return cubits?.removeAt(0) ?? newSessionCubit(project: project, states: states);
               },
               onOpenSession: ({required context, required project, required displayName, required session}) =>
                   opened.add((projectId: project.id, sessionId: session.id)),
@@ -933,7 +949,7 @@ void main() {
       await tester.pump();
     }
 
-    String shownProject(WidgetTester tester) => tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId;
+    String shownProject(WidgetTester tester) => tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id;
 
     testWidgets("starts a new session in the list's default project", (tester) async {
       await pumpStart(
@@ -1002,7 +1018,9 @@ void main() {
       updates.add(_list(projectId: "two", defaultProjectId: "two"));
       await tester.pump();
       await crossfade(tester);
-      expect(createdFor, ["one", "two"]);
+      // The same composer moves, with what it holds.
+      expect(createdFor, ["one"]);
+      expect(selected, ["two"]);
       expect(shownProject(tester), "two");
     });
 
@@ -1022,7 +1040,7 @@ void main() {
       expect(shownProject(tester), "two");
     });
 
-    testWidgets("picking another project gives it its own cubit", (tester) async {
+    testWidgets("picking another project moves the same composer there", (tester) async {
       await pumpStart(
         tester: tester,
         list: _list(defaultProjectId: "one"),
@@ -1035,7 +1053,8 @@ void main() {
       await tester.pump();
       await crossfade(tester);
 
-      expect(createdFor, ["one", "two"]);
+      expect(createdFor, ["one"]);
+      expect(selected, ["two"]);
       expect(shownProject(tester), "two");
     });
 
@@ -1047,24 +1066,19 @@ void main() {
         time: null,
         kind: ProjectKind.scratch,
       );
+      const inOne = NewSessionProject(id: "one", name: "One", kind: ProjectKind.folder);
       final oneAnswers = StreamController<NewSessionState>();
       addTearDown(oneAnswers.close);
-      final checking = _composingWith(capability: NewSessionProjectWorktreeCapability.loading);
       await pumpStart(
         tester: tester,
         list: _list(defaultProjectId: "one"),
         projects: const [one, scratch],
-        cubits: [
-          newSessionCubit(states: const Stream.empty()),
-          // The bridge's check never answers: No project needs none.
-          newSessionCubit(states: const Stream.empty(), initialState: checking, projectKind: ProjectKind.scratch),
-          newSessionCubit(states: oneAnswers.stream, initialState: checking),
-        ],
+        // The bridge never checks No project: it needs no answer.
+        cubits: [newSessionCubit(project: inOne, states: oneAnswers.stream)],
       );
-      // While the panes cross-fade the composer picked is the last one.
-      final options = find.byKey(const Key("new_session_options")).last;
+      final options = find.byKey(const Key("new_session_options"));
       double optionsHeight() => tester.getSize(options).height;
-      double composerTop() => tester.getTopLeft(find.byType(PromptInput).last).dy;
+      double composerTop() => tester.getTopLeft(find.byType(PromptInput)).dy;
       void select(String projectId) => tester
           .widget<NewSessionView>(find.byType(NewSessionView))
           .onProjectSelected
@@ -1089,18 +1103,15 @@ void main() {
       expect(composerTop(), withRow);
       expect(find.byType(PregoSwitch), findsOneWidget);
 
-      // No project never has the row, so the room it is left starts where it
-      // was, then folds as it fades without waiting for the bridge's check.
+      // No project never has the row, so the row on screen starts where it
+      // was, then fades as it folds without waiting for the bridge's check.
       select("scratch");
       await tester.pump();
       expect(optionsHeight(), rowHeight);
       expect(composerTop(), withRow);
-      expectNothingInTheRoom();
-      // The next frame starts the fold.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(optionsHeight(), allOf(greaterThan(0), lessThan(rowHeight)));
-      expectNothingInTheRoom();
       final foldingTop = composerTop();
       await tester.pump(const Duration(milliseconds: 200));
       expect(optionsHeight(), 0);
@@ -1114,7 +1125,7 @@ void main() {
       await pick("one");
       expect(optionsHeight(), 0);
       expect(composerTop(), withoutRow);
-      oneAnswers.add(_composingWith(capability: NewSessionProjectWorktreeCapability.supported));
+      oneAnswers.add(_composingIn(project: inOne, capability: NewSessionProjectWorktreeCapability.supported));
       // The answer lands, then the frame it builds starts the transition.
       await tester.pump();
       await tester.pump();
@@ -1147,7 +1158,13 @@ void main() {
       await pumpStart(
         tester: tester,
         list: _list(defaultProjectId: "one"),
-        states: Stream.value(NewSessionState.created(session: created, launchId: "launch-1")),
+        states: Stream.value(
+          NewSessionState.created(
+            project: const NewSessionProject(id: "one", name: "One", kind: ProjectKind.folder),
+            session: created,
+            launchId: "launch-1",
+          ),
+        ),
       );
       await tester.pump();
 
@@ -1225,19 +1242,11 @@ AllSessionsState _list({String? projectId, required String? defaultProjectId, bo
 
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
 
-const _composing = NewSessionState.composing(
-  config: NewSessionComposeConfig(
-    availablePlugins: [],
-    selectedPlugin: null,
-    options: NewSessionOptionsLoadState.unsupported(),
-    backendScope: NewSessionBackendScope.verified(bridgeId: null),
-    isPluginDiscoveryInFlight: false,
-    projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
-  ),
-  phase: NewSessionPhase.idle(),
-);
-
-NewSessionState _composingWith({required NewSessionProjectWorktreeCapability capability}) => NewSessionState.composing(
+NewSessionState _composingIn({
+  required NewSessionProject project,
+  required NewSessionProjectWorktreeCapability capability,
+}) => NewSessionState.composing(
+  project: project,
   config: NewSessionComposeConfig(
     availablePlugins: const [],
     selectedPlugin: null,

@@ -145,16 +145,37 @@ sealed class NewSessionPhase with _$NewSessionPhase {
   const factory discoveryError({required RemoteFailureReason reason}) = NewSessionPhaseDiscoveryError;
 }
 
+/// The project a new session starts in. The composer can move to another one
+/// while it composes; a session started takes the one it was sent in.
+@Freezed()
+sealed class NewSessionProject with _$NewSessionProject {
+  const factory({
+    required String id,
+
+    /// The project as the composer names it, for an alert about a creation
+    /// that fails after the user left; null when the composer has no name.
+    required String? name,
+
+    /// Whether the session starts in a folder project or in "No project".
+    required ProjectKind kind,
+  }) = _NewSessionProject;
+}
+
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
   const factory composing({
+    required NewSessionProject project,
     required NewSessionComposeConfig config,
     required NewSessionPhase phase,
   }) = NewSessionComposing;
 
   /// [launchId] names the launch whose handoff the session screen takes; the
   /// cubit releases it on close in case the view never navigated there.
-  const factory created({required Session session, required String launchId}) = NewSessionCreated;
+  const factory created({
+    required NewSessionProject project,
+    required Session session,
+    required String launchId,
+  }) = NewSessionCreated;
 }
 
 typedef AgentModelData = ({

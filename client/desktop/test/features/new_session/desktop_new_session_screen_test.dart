@@ -48,7 +48,10 @@ const _config = NewSessionComposeConfig(
   projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
 );
 
-const _state = NewSessionState.composing(config: _config, phase: NewSessionPhase.idle());
+// The route can lack the name; the loaded list supplies it.
+const _project = NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder);
+
+const _state = NewSessionState.composing(project: _project, config: _config, phase: NewSessionPhase.idle());
 
 void main() {
   setUp(() {
@@ -70,7 +73,6 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-    when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
 
@@ -86,12 +88,9 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: DesktopNewSessionView(
-            projectId: "project-1",
-            projectName: "Sesori",
             onBack: () {},
             onOpenHarnessSettings: () {},
-            onSessionCreated: ({required session}) {},
-            onProjectSelected: ({required projectId, required projectName}) {},
+            onSessionCreated: ({required session, required project}) {},
           ),
         ),
       ),
@@ -111,7 +110,7 @@ void main() {
     await tester.pump();
     expect(find.byType(EditableText), findsOneWidget);
   });
-  testWidgets("the page is one centred column under the toolbar, and choosing another project reports it", (
+  testWidgets("the page is one centred column under the toolbar, and choosing another project moves its composer", (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1400, 900);
@@ -128,11 +127,8 @@ void main() {
     when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-    when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
-    final selected = <String>[];
-
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
@@ -150,13 +146,9 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: DesktopNewSessionView(
-            projectId: "project-1",
-            // The route can lack the name; the loaded list supplies it.
-            projectName: null,
             onBack: () {},
             onOpenHarnessSettings: () {},
-            onSessionCreated: ({required session}) {},
-            onProjectSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
+            onSessionCreated: ({required session, required project}) {},
           ),
         ),
       ),
@@ -187,7 +179,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text("Landing"));
     await tester.pumpAndSettle();
-    expect(selected, ["project-2 Landing"]);
+    // The same page's composer moves there.
+    verify(
+      () => newSessionCubit.selectProject(
+        project: const NewSessionProject(id: "project-2", name: "Landing", kind: ProjectKind.folder),
+      ),
+    ).called(1);
   });
 
   testWidgets("at Send the page becomes the session, moving the same composer to the bottom edge", (tester) async {
@@ -195,6 +192,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final sending = NewSessionState.composing(
+      project: _project,
       config: _config,
       phase: NewSessionPhase.sending(
         submission: NewSessionSubmissionSnapshot.text(
@@ -217,7 +215,6 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-    when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
 
@@ -233,12 +230,9 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: DesktopNewSessionView(
-            projectId: "project-1",
-            projectName: "Sesori",
             onBack: () {},
             onOpenHarnessSettings: () {},
-            onSessionCreated: ({required session}) {},
-            onProjectSelected: ({required projectId, required projectName}) {},
+            onSessionCreated: ({required session, required project}) {},
           ),
         ),
       ),
@@ -287,6 +281,7 @@ void main() {
       actionHint: null,
     );
     const discovering = NewSessionState.composing(
+      project: _project,
       config: NewSessionComposeConfig(
         availablePlugins: [],
         selectedPlugin: null,
@@ -298,6 +293,7 @@ void main() {
       phase: NewSessionPhase.idle(),
     );
     NewSessionState failed({required RemoteFailureReason reason}) => NewSessionState.composing(
+      project: _project,
       config: const NewSessionComposeConfig(
         availablePlugins: [],
         selectedPlugin: null,
@@ -316,7 +312,7 @@ void main() {
       isPluginDiscoveryInFlight: false,
       projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
     );
-    const found = NewSessionState.composing(config: foundConfig, phase: NewSessionPhase.idle());
+    const found = NewSessionState.composing(project: _project, config: foundConfig, phase: NewSessionPhase.idle());
     const networkDown = "Connection failed — check your network and try again.";
     const serverRejected = "The server returned an error. Please try again.";
     final heading = find.text("What should we work on?");
@@ -349,7 +345,6 @@ void main() {
       when(cubit.readDedicatedWorktreePreference).thenAnswer((_) => worktreePreference ?? Future.value(true));
       when(() => cubit.canSubmit).thenReturn(false);
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-      when(() => cubit.projectKind).thenReturn(ProjectKind.folder);
       whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
       await tester.pumpWidget(
         MultiBlocProvider(
@@ -363,12 +358,9 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: DesktopNewSessionView(
-              projectId: "project-1",
-              projectName: "Sesori",
               onBack: () {},
               onOpenHarnessSettings: () {},
-              onSessionCreated: ({required session}) {},
-              onProjectSelected: ({required projectId, required projectName}) {},
+              onSessionCreated: ({required session, required project}) {},
             ),
           ),
         ),
@@ -522,6 +514,7 @@ void main() {
 
         states.add(
           NewSessionState.composing(
+            project: _project,
             config: foundConfig,
             phase: NewSessionPhase.sending(
               submission: NewSessionSubmissionSnapshot.text(
@@ -578,7 +571,6 @@ void main() {
       when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
-      when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {
         draft = invocation.namedArguments[#draft]! as ComposerDraft;
       });
@@ -663,16 +655,10 @@ void main() {
                 (route) => route.path == AppRouteDef.newSession.path,
               );
               final screen = route.builder!(context, state) as DesktopNewSessionScreen;
-              // Replacing the route reuses the page, so only this key gives
-              // another project its own cubit.
-              expect(screen.key, const ValueKey("desktop-new-session-p"));
               return DesktopNewSessionView(
-                projectId: "p",
-                projectName: "Project",
                 onBack: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,
-                onSessionCreated: ({required session}) {},
-                onProjectSelected: ({required projectId, required projectName}) {},
+                onSessionCreated: ({required session, required project}) {},
               );
             },
           ),

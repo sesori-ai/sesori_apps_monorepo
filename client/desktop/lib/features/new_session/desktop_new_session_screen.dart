@@ -11,32 +11,30 @@ import "../../core/widgets/desktop_transcript_width.dart";
 /// Desktop composition boundary for session creation.
 class const DesktopNewSessionScreen({
   super.key,
+
+  /// The project the page opens in. Choosing another project in the page
+  /// moves its composer there, keeping the route.
   required final String projectId,
   required final String? projectName,
   required final VoidCallback onBack,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
-
-  /// Replaces this page with the chosen project's. The route keys this screen
-  /// by project, so the switch builds a fresh cubit for that project.
-  required final NewSessionProjectSelected onProjectSelected,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => createNewSessionCubit(
         locator: getIt,
-        projectId: projectId,
-        projectName: projectName,
-        projectKind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        project: NewSessionProject(
+          id: projectId,
+          name: projectName,
+          kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        ),
       ),
       child: DesktopNewSessionView(
-        projectId: projectId,
-        projectName: projectName,
         onBack: onBack,
         onOpenHarnessSettings: onOpenHarnessSettings,
         onSessionCreated: onSessionCreated,
-        onProjectSelected: onProjectSelected,
       ),
     );
   }
@@ -45,25 +43,26 @@ class const DesktopNewSessionScreen({
 @visibleForTesting
 class const DesktopNewSessionView({
   super.key,
-  required final String projectId,
-  required final String? projectName,
   required final VoidCallback onBack,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
-  required final NewSessionProjectSelected onProjectSelected,
 }) extends StatelessWidget {
   static const double maxContentWidth = 760;
 
   @override
   Widget build(BuildContext context) {
     return NewSessionView(
-      projectId: projectId,
-      projectName: projectName,
-      onProjectSelected: onProjectSelected,
+      onProjectSelected: ({required projectId, required projectName}) => context.read<NewSessionCubit>().selectProject(
+        project: NewSessionProject(
+          id: projectId,
+          name: projectName,
+          kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        ),
+      ),
       onBack: onBack,
       onOpenHarnessSettings: onOpenHarnessSettings,
       onSessionCreated: onSessionCreated,
-      composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(
+      composerScopeBuilder: ({required projectId, required child}) => DesktopComposerPresentationScope(
         child: DesktopVoiceInputScope(projectId: projectId, child: child),
       ),
       // The desktop root owns its single connection banner.

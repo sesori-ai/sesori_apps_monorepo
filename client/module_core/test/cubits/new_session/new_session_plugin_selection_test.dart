@@ -155,9 +155,7 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
-      projectId: projectId ?? "project-1",
-      projectName: null,
-      projectKind: ProjectKind.folder,
+      project: NewSessionProject(id: projectId ?? "project-1", name: null, kind: ProjectKind.folder),
     );
 
     void establishSelectionScope({required String bridgeId}) {
@@ -1692,8 +1690,8 @@ void main() {
       );
       establishSelectionScope(bridgeId: "bridge-a");
       selectionTracker
-        ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
-        ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
+        ..recordAgent(pluginId: "plugin-a", agentName: "agent-a")
+        ..recordAgent(pluginId: "plugin-b", agentName: "agent-b");
       when(
         () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
@@ -1739,8 +1737,8 @@ void main() {
       );
       establishSelectionScope(bridgeId: "bridge-a");
       selectionTracker
-        ..recordAgent(projectId: "project-1", pluginId: "plugin-a", agentName: "agent-a")
-        ..recordAgent(projectId: "project-1", pluginId: "plugin-b", agentName: "agent-b");
+        ..recordAgent(pluginId: "plugin-a", agentName: "agent-a")
+        ..recordAgent(pluginId: "plugin-b", agentName: "agent-b");
       when(
         () => sessionService.createSessionWithMessage(
           attachments: const [],
@@ -1766,8 +1764,8 @@ void main() {
         command: null,
       );
 
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-a"), isNull);
-      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-b")?.agentName, "agent-b");
+      expect(selectionTracker.read(pluginId: "plugin-a"), isNull);
+      expect(selectionTracker.read(pluginId: "plugin-b")?.agentName, "agent-b");
     });
 
     test("records the submitted plugin against the discovery bridge only when sending", () async {

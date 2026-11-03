@@ -11,11 +11,12 @@ typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revisi
 ///
 /// Each dimension is independent so a user choosing one value never persists a
 /// service-computed default for another. Selections live only for the current
-/// app run and are cleared when the backend changes. The harness choice is
-/// shared by every project, so changing the project keeps it.
+/// app run and are cleared when the backend changes. They belong to the
+/// harness, not the project: a project that does not offer a pick falls back
+/// to its own default, and the pick returns with a project that does.
 @lazySingleton
 class NewSessionSelectionTracker() {
-  final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections = {};
+  final Map<String, _RevisionedSelection> _selections = {};
   int _nextRevision = 0;
   String? _selectedPluginId;
   NewSessionBackendScope _backendScope = const NewSessionBackendScope.unverified(
@@ -39,16 +40,13 @@ class NewSessionSelectionTracker() {
 
   void recordPlugin({required String pluginId}) => _selectedPluginId = pluginId;
 
-  NewSessionSelectionIntent? read({required String projectId, required String pluginId}) =>
-      _selections[(projectId: projectId, pluginId: pluginId)]?.selection;
+  NewSessionSelectionIntent? read({required String pluginId}) => _selections[pluginId]?.selection;
 
-  int? currentRevision({required String projectId, required String pluginId}) =>
-      _selections[(projectId: projectId, pluginId: pluginId)]?.revision;
+  int? currentRevision({required String pluginId}) => _selections[pluginId]?.revision;
 
-  void recordAgent({required String projectId, required String pluginId, required String agentName}) {
-    final current = read(projectId: projectId, pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
+  void recordAgent({required String pluginId, required String agentName}) {
+    final current = read(pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
     _write(
-      projectId: projectId,
       pluginId: pluginId,
       selection: NewSessionSelectionIntent(
         agentName: agentName,
@@ -59,15 +57,9 @@ class NewSessionSelectionTracker() {
     );
   }
 
-  void recordModel({
-    required String projectId,
-    required String pluginId,
-    required String providerId,
-    required String modelId,
-  }) {
-    final current = read(projectId: projectId, pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
+  void recordModel({required String pluginId, required String providerId, required String modelId}) {
+    final current = read(pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
     _write(
-      projectId: projectId,
       pluginId: pluginId,
       selection: NewSessionSelectionIntent(
         agentName: current.agentName,
@@ -78,14 +70,9 @@ class NewSessionSelectionTracker() {
     );
   }
 
-  void recordVariant({
-    required String projectId,
-    required String pluginId,
-    required NewSessionVariantIntent variant,
-  }) {
-    final current = read(projectId: projectId, pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
+  void recordVariant({required String pluginId, required NewSessionVariantIntent variant}) {
+    final current = read(pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
     _write(
-      projectId: projectId,
       pluginId: pluginId,
       selection: NewSessionSelectionIntent(
         agentName: current.agentName,
@@ -96,10 +83,9 @@ class NewSessionSelectionTracker() {
     );
   }
 
-  void recordFastMode({required String projectId, required String pluginId, required bool fastMode}) {
-    final current = read(projectId: projectId, pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
+  void recordFastMode({required String pluginId, required bool fastMode}) {
+    final current = read(pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
     _write(
-      projectId: projectId,
       pluginId: pluginId,
       selection: NewSessionSelectionIntent(
         agentName: current.agentName,
@@ -111,36 +97,17 @@ class NewSessionSelectionTracker() {
   }
 
   @visibleForTesting
-  void write({
-    required String projectId,
-    required String pluginId,
-    required NewSessionSelectionIntent selection,
-  }) {
-    _write(projectId: projectId, pluginId: pluginId, selection: selection);
+  void write({required String pluginId, required NewSessionSelectionIntent selection}) {
+    _write(pluginId: pluginId, selection: selection);
   }
 
-  void _write({
-    required String projectId,
-    required String pluginId,
-    required NewSessionSelectionIntent selection,
-  }) {
-    _selections[(projectId: projectId, pluginId: pluginId)] = (
-      selection: selection,
-      revision: ++_nextRevision,
-    );
+  void _write({required String pluginId, required NewSessionSelectionIntent selection}) {
+    _selections[pluginId] = (selection: selection, revision: ++_nextRevision);
   }
 
-  void clearIfRevision({
-    required String projectId,
-    required String pluginId,
-    required int? revision,
-  }) {
-    final key = (projectId: projectId, pluginId: pluginId);
-    if (_selections[key]?.revision == revision) {
-      _selections.remove(key);
+  void clearIfRevision({required String pluginId, required int? revision}) {
+    if (_selections[pluginId]?.revision == revision) {
+      _selections.remove(pluginId);
     }
   }
-
-  void clear({required String projectId, required String pluginId}) =>
-      _selections.remove((projectId: projectId, pluginId: pluginId));
 }

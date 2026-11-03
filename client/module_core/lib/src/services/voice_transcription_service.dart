@@ -50,6 +50,19 @@ class VoiceTranscriptionService({
     return session;
   }
 
+  /// Moves [session] to [projectId] for dictation started from now on: it drops
+  /// the old project's glossary key, and an answer still on its way for that
+  /// project, and asks for the new one's. A recording under way keeps the key
+  /// it started with.
+  void setProject({required VoiceTranscriptionSession session, required String? projectId}) {
+    final normalized = projectId == null || projectId.trim().isEmpty ? null : projectId;
+    if (normalized == session._projectId) return;
+    session._projectId = normalized;
+    session._projectGlossaryKey = _rememberedProjectGlossaryKey(projectId: normalized);
+    session._projectGlossaryKeyLoad = null;
+    _loadProjectGlossaryKeyIfIdle(session: session);
+  }
+
   /// Both answers can take seconds, so a hold never waits for them (D26). The
   /// support check spawns a process on Linux, so it runs only when live is on.
   Future<void> _loadLiveAvailability({required VoiceTranscriptionSession session}) async {
@@ -115,10 +128,11 @@ class VoiceTranscriptionService({
       if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) return;
       switch (response) {
         case SuccessResponse(data: Project(voiceGlossaryKey: final key?)):
-          session._projectGlossaryKey = key;
           if (computerId != null) {
             _rememberedProjectGlossaryKeys[(computerId: computerId, projectId: projectId)] = key;
           }
+          // The session may have moved to another project while this one answered.
+          if (session._projectId == projectId) session._projectGlossaryKey = key;
         case SuccessResponse():
           // No key in this answer, so whatever is already known stays.
           break;
@@ -729,7 +743,7 @@ class VoiceTranscriptionService({
 
 class VoiceTranscriptionSession._({
   required final VoiceCaptureSession _captureSession,
-  required final String? _projectId,
+  required var String? _projectId,
   required final bool _allowLive,
 }) {
   final StreamController<void> _maxDurationReachedController = StreamController<void>.broadcast();

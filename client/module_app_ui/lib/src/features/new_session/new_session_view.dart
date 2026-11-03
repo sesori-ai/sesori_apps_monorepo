@@ -24,8 +24,13 @@ import "new_session_header.dart";
 import "new_session_no_harness_notice.dart";
 import "new_session_plugin_chooser.dart";
 
-typedef NewSessionComposerScopeBuilder = Widget Function({required Widget child});
-typedef NewSessionCreatedCallback = void Function({required Session session});
+/// Wraps the composer in the shell's capabilities, with voice input for
+/// [projectId]. The scope is built once: a later project reaches its voice
+/// input through [VoiceInputCubit.setProject].
+typedef NewSessionComposerScopeBuilder = Widget Function({required String projectId, required Widget child});
+
+/// [project] is the one the session was started in.
+typedef NewSessionCreatedCallback = void Function({required Session session, required NewSessionProject project});
 
 /// A pointer surface's frame for the page: [topBar] replaces the glass bar, and
 /// the header, the options and the composer form one centred column no wider
@@ -46,11 +51,10 @@ class const NewSessionPageChrome({
 /// composer capabilities.
 class const NewSessionView({
   super.key,
-  required final String projectId,
-  required final String? projectName,
 
   /// Null names the project without a picker, for a page that is the
-  /// project's own.
+  /// project's own. The host moves the composer with
+  /// [NewSessionCubit.selectProject].
   required final NewSessionProjectSelected? onProjectSelected,
 
   /// Null where nothing lies behind the page, such as the home's content pane.
@@ -84,7 +88,7 @@ const double _optionsBottomPadding = PregoSpacing.md;
 const _sendingMotionDuration = Duration(milliseconds: 240);
 
 /// Where the page keeps whether its composer last showed options, for the
-/// composer of the next project picked in its place.
+/// composer built in its place after a session starts.
 const _optionsShownStorageId = "new_session_options_shown";
 
 class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProviderStateMixin {
@@ -95,6 +99,10 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   /// Whether the options showed when this composer last built; while the
   /// project is checked again they hold that place.
   late bool _optionsShown;
+
+  /// Whether a first build in "No project" still holds the room the last
+  /// composer's worktree row left, so it folds rather than snaps.
+  late bool _holdingFolderRoom;
 
   /// Whether the bridge last said this project supports worktrees. While it
   /// checks again after a reconnect the toggle stays rather than shimmering;
@@ -123,20 +131,21 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       duration: _sendingMotionDuration,
       value: context.read<NewSessionCubit>().state.phase is NewSessionPhaseSending ? 1 : 0,
     )..addStatusListener((_) => setState(() {}));
-    // Picking another project builds a new composer in this one's place, so
-    // it starts with the options where the last one left them. A page's
-    // first composer holds the worktree row's room for a folder, which most
-    // fill; "No project" never shows the row.
-    final projectKind = context.read<NewSessionCubit>().projectKind;
+    // A session started builds a new composer in this one's place, so it
+    // starts with the options where the last one left them. A page's first
+    // composer holds the worktree row's room for a folder, which most fill;
+    // "No project" never shows the row.
+    final projectKind = context.read<NewSessionCubit>().state.project.kind;
     _optionsShown = switch (PageStorage.maybeOf(context)?.readState(context, identifier: _optionsShownStorageId)) {
       final bool shown => shown,
       _ => projectKind == ProjectKind.folder,
     };
     // "No project" is known up front, so room a folder left it folds from the
     // next frame instead of waiting for the bridge's check.
-    if (projectKind == ProjectKind.scratch && _optionsShown) {
+    _holdingFolderRoom = projectKind == ProjectKind.scratch && _optionsShown;
+    if (_holdingFolderRoom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _optionsShown = false);
+        if (mounted) setState(() => _holdingFolderRoom = false);
       });
     }
     // The row stays hidden until the project's worktree support is known,
@@ -279,10 +288,10 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget? _buildOptions({required NewSessionCubit cubit, required AgentModelData? data}) {
     if (cubit.hasNoHarnesses) return NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings);
     if (cubit.needsHarnessDiscovery) return null;
-    // "No project" never has the row. Room a folder left it stays empty for
-    // the first frame only, so it folds rather than snaps.
-    if (cubit.projectKind == ProjectKind.scratch) {
-      return _optionsShown ? const SizedBox(height: _DedicatedWorkspaceRow.height) : null;
+    // "No project" never has the row: one on screen folds away. Room a folder
+    // left a first build stays empty for its first frame only.
+    if (cubit.state.project.kind == ProjectKind.scratch) {
+      return _holdingFolderRoom ? const SizedBox(height: _DedicatedWorkspaceRow.height) : null;
     }
     void choose(bool value) => setState(() => _chosenDedicatedWorktree = value);
     return switch (data?.projectWorktreeCapability) {
@@ -513,6 +522,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   }) {
     final cubit = context.read<NewSessionCubit>();
     return widget.composerScopeBuilder(
+      projectId: state.project.id,
       child: _ComposerSurfaceStyleOwner(
         initialDraft: cubit.composerDraft,
         stagedCommand: composerData?.stagedCommand,
@@ -522,7 +532,8 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           skipTraversal: true,
           onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
           child: PromptInput(
-            draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
+            // One draft whatever the project, so a project change keeps it.
+            draftIdentity: ComposerDraftRepository.newSessionIdentity,
             restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
             initialDraft: context.read<NewSessionCubit>().composerDraft,
             initialSelection: null,
@@ -674,8 +685,8 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       ),
     };
     final header = NewSessionHeader(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
+      projectId: state.project.id,
+      projectName: state.project.name,
       onProjectSelected: widget.onProjectSelected,
       harness: _buildHarnessPill(cubit: cubit, data: composerData),
     );
@@ -707,14 +718,14 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           NewSessionCubit.newlyRequiredLogin(previous: previous, current: current) != null,
       listener: (context, state) {
         if (widget.pageChrome != null) _onSendingChanged(sending: state.phase is NewSessionPhaseSending);
-        if (state case NewSessionCreated(:final session)) {
+        if (state case NewSessionCreated(:final session, :final project)) {
           // The user may have navigated elsewhere (e.g. opened another
           // session from the split-view list) while creation was in flight.
           // Replacing the route then would hijack their navigation — the
           // leave-time snackbar already told them the session continues.
           if (modalRoute != null && !modalRoute.isCurrent) return;
           _navigatingToCreatedSession = true;
-          widget.onSessionCreated(session: session);
+          widget.onSessionCreated(session: session, project: project);
           return;
         }
         // The harness logged out since it was last checked. The login card
@@ -808,7 +819,9 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   }
 }
 
-/// Owns composer-only presentation state below the shell's capability scope.
+/// Owns composer-only presentation state below the shell's capability scope,
+/// and moves the scope's voice input along when the composer's project
+/// changes, so a dictation started next uses that project's glossary.
 ///
 /// Keeping this owner inside the scope makes the initial style follow the
 /// effective platform input mode, while removing it with the composer still
@@ -852,7 +865,14 @@ class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(context: context, surfaceStyleController: _controller);
+    return BlocListener<NewSessionCubit, NewSessionState>(
+      listenWhen: (previous, current) => previous.project.id != current.project.id,
+      listener: (context, state) {
+        if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return;
+        context.read<VoiceInputCubit>().setProject(projectId: state.project.id);
+      },
+      child: widget.builder(context: context, surfaceStyleController: _controller),
+    );
   }
 }
 

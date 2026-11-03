@@ -509,7 +509,10 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                       DesktopNewSessionScreen() => [
                         button(
                           label: "created",
-                          action: () => screen.onSessionCreated(session: _session),
+                          action: () => screen.onSessionCreated(
+                            session: _session,
+                            project: NewSessionProject(id: screen.projectId, name: screen.projectName, kind: ProjectKind.folder),
+                          ),
                         ),
                         button(label: "back", action: screen.onBack),
                       ],

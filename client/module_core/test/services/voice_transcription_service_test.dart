@@ -293,6 +293,63 @@ void main() {
     });
   });
 
+  group("setProject", () {
+    final oneKey = ProjectGlossaryKey.parse(value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ");
+    final twoKey = ProjectGlossaryKey.parse(value: "prj_v1_2yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ");
+
+    ApiResponse<Project> answer({required String projectId, required ProjectGlossaryKey key}) => ApiResponse.success(
+      Project(id: projectId, name: projectId, path: "/$projectId", time: null, voiceGlossaryKey: key),
+    );
+
+    Future<ProjectGlossaryKey?> uploadedKey({required VoiceTranscriptionSession from}) async {
+      await service.start(session: from);
+      await service.stopAndTranscribe(session: from);
+      return verify(
+            () => repository.transcribe(
+              audioFilePath: artifact.path,
+              mimeType: artifact.mimeType,
+              projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+            ),
+          ).captured.single
+          as ProjectGlossaryKey?;
+    }
+
+    test("dictation next uses the new project's key", () async {
+      when(
+        () => projectRepository.getProject(projectId: "project-1"),
+      ).thenAnswer((_) async => answer(projectId: "project-1", key: oneKey));
+      when(
+        () => projectRepository.getProject(projectId: "project-2"),
+      ).thenAnswer((_) async => answer(projectId: "project-2", key: twoKey));
+      final moving = service.createSession(projectId: "project-1", allowLive: false);
+      await Future<void>.delayed(Duration.zero);
+
+      service.setProject(session: moving, projectId: "project-2");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(await uploadedKey(from: moving), twoKey);
+    });
+
+    test("the old project's late answer neither scopes the session nor blocks the new one's", () async {
+      final oneAnswer = Completer<ApiResponse<Project>>();
+      final twoAnswer = Completer<ApiResponse<Project>>();
+      when(() => projectRepository.getProject(projectId: "project-1")).thenAnswer((_) => oneAnswer.future);
+      when(() => projectRepository.getProject(projectId: "project-2")).thenAnswer((_) => twoAnswer.future);
+      final moving = service.createSession(projectId: "project-1", allowLive: false);
+
+      service.setProject(session: moving, projectId: "project-2");
+      verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
+      oneAnswer.complete(answer(projectId: "project-1", key: oneKey));
+      await Future<void>.delayed(Duration.zero);
+      expect(await uploadedKey(from: moving), isNull);
+
+      twoAnswer.complete(answer(projectId: "project-2", key: twoKey));
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(repository);
+      expect(await uploadedKey(from: moving), twoKey);
+    });
+  });
+
   test("a key that arrives during the recording reaches the upload", () async {
     final glossaryKey = ProjectGlossaryKey.parse(
       value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",

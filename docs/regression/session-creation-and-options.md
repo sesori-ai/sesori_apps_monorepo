@@ -50,10 +50,15 @@ variant, and worktree mode, and creating the session with its first input.
   "No project", so the selector, or the home's title when filtering, then reads "No project", and it carries the
   check while it is the choice.
   Search matches project names and paths; a path shows under a name only when another project shares that
-  name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
-  project's setup page, so a session is never created in the project that was left, and a draft stays with
-  the project it was typed in; choosing the current project only closes the picker. The desktop home's
-  composer uses the same picker and keeps its draft per picked project. On the phone the header sits above
+  name, shortened to the folders that tell them apart. Choosing another project moves the same composer there
+  and keeps the page: its text, staged images and command, harness, worktree toggle, and agent, model, effort
+  and fast-mode picks stay, and nothing on screen blanks, jumps or crossfades. Only the option pills refresh in
+  place, keeping what they show until the new project answers. A pick the new project doesn't offer gives way
+  to its default and comes back on switching to a project that offers it; a staged command it lacks is
+  dropped. Answers still on their way for the project left are dropped, and the session starts in the project
+  shown at Send. Choosing the current project only closes the picker. The new-session composer keeps one
+  draft whatever its project. The desktop home's composer uses the same picker and works the same way, and so
+  does another filter on either home. On the phone the header sits above
   the options and stays in place while the keyboard is open, the composer's or the picker's.
 - The composer shows the agent entry only when the harness advertises more than one selectable agent.
   Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer
@@ -517,7 +522,7 @@ variant, and worktree mode, and creating the session with its first input.
   (its start time while it streams), else the session's last update.
 - The choice is part of the session's prompt defaults. Reopening the session,
   or a `session.prompt_defaults_changed` event from another surface, restores
-  it. New Session remembers the last choice per project and plugin like the
+  it. New Session remembers the last choice per plugin like the
   variant, and seeds it from the plugin's last-used prompt defaults.
 - Codex sends the choice as the `priority` service tier (`default` when off) on
   every turn, and on `thread/start` for a session created fast. Claude applies

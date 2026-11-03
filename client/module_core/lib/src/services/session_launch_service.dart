@@ -118,7 +118,7 @@ class SessionLaunchService({
     required bool fastMode,
     required bool dedicatedWorktree,
   }) async {
-    final selectionRevision = _selectionTracker.currentRevision(projectId: projectId, pluginId: pluginId);
+    final selectionRevision = _selectionTracker.currentRevision(pluginId: pluginId);
     _launchRepository.start(
       launchId: launchId,
       projectId: projectId,
@@ -148,7 +148,7 @@ class SessionLaunchService({
 
     switch (response) {
       case SuccessResponse(data: final session):
-        _selectionTracker.clearIfRevision(projectId: projectId, pluginId: pluginId, revision: selectionRevision);
+        _selectionTracker.clearIfRevision(pluginId: pluginId, revision: selectionRevision);
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: _analyticsSubmission(submission: submission),
