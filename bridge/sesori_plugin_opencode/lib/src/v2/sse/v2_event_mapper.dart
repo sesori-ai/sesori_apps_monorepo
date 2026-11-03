@@ -41,7 +41,13 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     final event = envelope.data;
     return [
       if (status(event: event) case final projected?)
-        BridgeSseSessionStatus(sessionID: projected.sessionId, status: projected.status),
+        switch (projected.status) {
+          // An idle edge ends the turn. The bridge records its completion and
+          // finalizes stranded tools before delivering the idle to clients; an
+          // extra idle status would reach them twice, first ahead of that work.
+          PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: projected.sessionId),
+          final active => BridgeSseSessionStatus(sessionID: projected.sessionId, status: active),
+        },
       ...switch (event) {
         V2ServerConnected() => [const BridgeSseServerConnected()],
         V2ProjectUpdated() => [const BridgeSseProjectUpdated()],

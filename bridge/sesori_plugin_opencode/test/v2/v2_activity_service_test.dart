@@ -592,7 +592,7 @@ void main() {
     final settled = await service.handleEvent(
       envelope: frame(type: "session.execution.succeeded", data: {"sessionID": "child"}),
     );
-    expect(settled.whereType<BridgeSseSessionStatus>().single.status, const PluginSessionStatus.idle());
+    expect(settled.whereType<BridgeSseSessionIdle>().single.sessionID, "child");
     expect(service.workState, PluginWorkState.idle);
     expect(
       await service.handleEvent(

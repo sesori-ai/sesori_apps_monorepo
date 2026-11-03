@@ -119,7 +119,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         // can deliver; the event is dropped here instead of at the relay.
         null => null,
       },
-      // COMPATIBILITY 2026-05-18 (v0.7.0): Older OpenCode runtimes emit session.idle. Remove this branch and manifest variant when those runtimes are unsupported.
+      // OpenCode v1 emits session.idle at every turn end; it drives turn completion.
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
       SseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) => BridgeSseCommandExecuted(
         name: name,
