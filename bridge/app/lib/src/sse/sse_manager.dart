@@ -91,9 +91,10 @@ class SSEManager({
 
   /// Removes [connID] from active subscribers.
   ///
-  /// The queue is paused and retained as an orphan queue for replay during
-  /// [replayWindow]. If the phone reconnects within that window, the orphan
-  /// is resumed via [subscribePath] and all buffered events are delivered.
+  /// The queue's listener is detached and the queue is retained as an orphan
+  /// queue for replay during [replayWindow]. If the phone reconnects within
+  /// that window, [subscribePath] re-attaches the orphan and all buffered
+  /// events are delivered.
   void unsubscribe(int connID) {
     _subscriptionOwners.remove(connID);
     final subscriber = _subscribers.remove(connID);
@@ -107,9 +108,7 @@ class SSEManager({
     ));
   }
 
-  /// Alias for [unsubscribe].
-
-  /// Pauses all active subscriber queues and moves them to orphan state.
+  /// Detaches all active subscriber queues and moves them to orphan state.
   ///
   /// Use this when the relay connection drops but may recover. Orphan queues
   /// continue to buffer incoming events and will be replayed when phones

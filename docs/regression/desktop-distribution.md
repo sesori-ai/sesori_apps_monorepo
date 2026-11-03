@@ -104,7 +104,7 @@ an update prompt appears during a normal writable install, or Restart to update 
 `desktop-update-feed.yml` publishes the feeds the updaters read. The internal cycle
 (`release-all-platforms.yml`) and production `submit-release.yml` call it per platform after
 that platform's assets are public: Linux AppImage Velopack feeds after `publish-desktop-linux`,
-macOS appcasts after `publish-desktop` while `DESKTOP_MACOS_PUBLICATION_ENABLED` is `true`.
+macOS appcasts after `publish-desktop`.
 Windows feeds wait for public Windows releases. A `sign` job in the main-only
 `desktop-update-signing` environment is the only holder of the update key; it refuses a key
 that is not the compiled public key, a feed whose version is not the release's, and a Linux set
@@ -575,12 +575,11 @@ not persistent pointers or another release owner.
 Stable bridge/npm cleanup skips completed desktop previews even when stable desktop
 assets exist: an internal channel must not be forced onto stable. This also preserves
 previews during bridge-only production or pending/failed stable desktop attachment.
-`DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
-and it is now `true`. Linux internal previews were admitted on 2026-10-13. Stable Linux
-publication is wired through production without a separate variable; `v1.10.1` was its
-first live release. Windows remains unadmitted.
+macOS publication was admitted on 2026-09-26 and Linux internal previews on 2026-10-13.
+Both are wired through the internal cycle and production without a separate variable;
+`v1.10.1` was the first live stable Linux release. Windows remains unadmitted.
 
-Admitted macOS publication attaches four installers, `desktop-checksums.txt` and
+macOS publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
 changes Latest, or replaces bridge assets/checksums. Each asset is retrieved without
 authentication and hash-verified. Retries reuse identical assets and refuse conflicting

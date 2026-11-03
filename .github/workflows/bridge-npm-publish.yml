@@ -1,6 +1,6 @@
 name: Bridge npm Publish
 
-# Publishes the bridge npm packages (5 platform packages + the @sesori/bridge
+# Publishes the bridge npm packages (6 platform packages + the @sesori/bridge
 # wrapper) when a stable v<X.Y.Z> GitHub release goes LIVE, via two triggers:
 #
 #   - release [released]: fires when submit-release.yml publishes the release

@@ -46,8 +46,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
-        with:
-          include-submodules: 'false'
 
       - name: Setup Java
         uses: actions/setup-java@v4
