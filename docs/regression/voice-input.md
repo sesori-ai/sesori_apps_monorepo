@@ -184,7 +184,7 @@ the server. Desktop always uses the server.
   every 24 hours, 10 minutes after a failure, and shared by worktrees of one repository. Refreshes run one at a time and
   never delay the route response, recording, or transcription. A bridge restart allows one more refresh, and the bridge
   log records each refresh with its word counts, never the words.
-- Apps older than v1.10.0 still send `project_view`. The bridge decodes it, with a project id or null, and ignores it:
+- Apps older than v1.10.1 still send `project_view`. The bridge decodes it, with a project id or null, and ignores it:
   no reply, no warning, and later requests are still answered.
 - A current-project response carries the project's glossary key from its first load; a failed key lookup leaves it
   out without failing the route.
