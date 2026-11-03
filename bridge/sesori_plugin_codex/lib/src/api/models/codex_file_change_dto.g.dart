@@ -33,3 +33,9 @@ const _$CodexFileChangeItemTypeEnumMap = {
   CodexFileChangeItemType.fileChange: 'fileChange',
   CodexFileChangeItemType.unknown: 'unknown',
 };
+
+_CodexFileChangeEntryDto _$CodexFileChangeEntryDtoFromJson(Map json) =>
+    _CodexFileChangeEntryDto(
+      path: _stringOrNull(json['path']),
+      diff: _stringOrNull(json['diff']),
+    );

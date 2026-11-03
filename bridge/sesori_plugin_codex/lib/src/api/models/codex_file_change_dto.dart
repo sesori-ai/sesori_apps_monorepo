@@ -54,24 +54,28 @@ sealed class CodexFileChangeItemDto with _$CodexFileChangeItemDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeItemDtoFromJson(json);
 }
 
-/// One `{path, kind, diff}` entry of a `fileChange` item. An entry that is not
-/// an object still counts as a change, with neither a path nor a diff.
-final class const CodexFileChangeEntryDto({
-  required final String? path,
-  required final String? diff,
-});
+/// One `{path, kind, diff}` entry of a `fileChange` item.
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexFileChangeEntryDto with _$CodexFileChangeEntryDto {
+  const factory({
+    @JsonKey(fromJson: _stringOrNull) required String? path,
+    @JsonKey(fromJson: _stringOrNull) required String? diff,
+  }) = _CodexFileChangeEntryDto;
 
-List<CodexFileChangeEntryDto> _fileChangeEntriesFromJson(Object? value) {
-  if (value is! List) return const [];
-  return [for (final entry in value) _fileChangeEntryFromJson(entry)];
+  factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeEntryDtoFromJson(json);
 }
 
-CodexFileChangeEntryDto _fileChangeEntryFromJson(Object? entry) {
-  if (entry is! Map) return const CodexFileChangeEntryDto(path: null, diff: null);
-  final path = entry["path"];
-  final diff = entry["diff"];
-  return CodexFileChangeEntryDto(
-    path: path is String ? path : null,
-    diff: diff is String ? diff : null,
-  );
+String? _stringOrNull(Object? value) => value is String ? value : null;
+
+/// An entry that is not an object still counts as a change, with neither a
+/// path nor a diff.
+List<CodexFileChangeEntryDto> _fileChangeEntriesFromJson(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final Object? entry in value)
+      if (entry case final Map<String, dynamic> json)
+        CodexFileChangeEntryDto.fromJson(json)
+      else
+        const CodexFileChangeEntryDto(path: null, diff: null),
+  ];
 }
