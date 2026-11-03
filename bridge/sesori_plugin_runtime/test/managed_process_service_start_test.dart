@@ -371,6 +371,8 @@ void main() {
       );
 
       expect(fakes.processes.signalRequests, equals(<String>["graceful:231", "force:231"]));
+      // The graceful request never reached the child, so there is no grace wait.
+      expect(fakes.clock.delays, isEmpty);
       expect(fakes.ownership.records, isEmpty);
     });
   });

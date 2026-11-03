@@ -231,7 +231,8 @@ void main() {
       ).stopOwnedRuntime(record: record);
 
       expect(processService.signalRequests, equals(<String>["graceful:704", "force:704"]));
-      expect(clock.delays, equals(<Duration>[_gracefulShutdownWait]));
+      // The graceful request never reached the process, so there is no grace wait.
+      expect(clock.delays, isEmpty);
       expect(ownershipRepository.records, isEmpty);
     });
 
