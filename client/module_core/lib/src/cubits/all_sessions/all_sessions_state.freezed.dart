@@ -359,11 +359,14 @@ mixin _$AllSessionsState {
  RemoteFailureReason? get failure;/// Whether the project list or the sessions are still loading for the
 /// first time, or a retry after a failure has not answered yet.
  bool get isLoading;/// The bridge's "No project" project, or null on a bridge without one.
- String? get scratchProjectId;/// The new-session default: the filter, otherwise [scratchProjectId],
-/// otherwise the project of the newest session, otherwise null. The newest
-/// session is read only while nothing narrows the list, and kept through a
-/// search or a chip; until it is known the default stays null, so a
-/// consumer that holds the first default it sees never holds a guess.
+ String? get scratchProjectId;/// The new-session default: the filter, otherwise the listed project the
+/// user last picked in the composer or started a session in on this
+/// computer, otherwise [scratchProjectId], otherwise the project of the
+/// newest session, otherwise null. The newest session is read only while
+/// nothing narrows the list, and kept through a search or a chip; until
+/// the last project is read and the newest session known, the default
+/// stays null, so a consumer that holds the first default it sees never
+/// holds a guess.
  String? get defaultProjectId;
 /// Create a copy of AllSessionsState
 /// with the given fields replaced by the non-null parameter values.
@@ -478,11 +481,14 @@ class _AllSessionsState implements AllSessionsState {
 @override final  bool isLoading;
 /// The bridge's "No project" project, or null on a bridge without one.
 @override final  String? scratchProjectId;
-/// The new-session default: the filter, otherwise [scratchProjectId],
-/// otherwise the project of the newest session, otherwise null. The newest
-/// session is read only while nothing narrows the list, and kept through a
-/// search or a chip; until it is known the default stays null, so a
-/// consumer that holds the first default it sees never holds a guess.
+/// The new-session default: the filter, otherwise the listed project the
+/// user last picked in the composer or started a session in on this
+/// computer, otherwise [scratchProjectId], otherwise the project of the
+/// newest session, otherwise null. The newest session is read only while
+/// nothing narrows the list, and kept through a search or a chip; until
+/// the last project is read and the newest session known, the default
+/// stays null, so a consumer that holds the first default it sees never
+/// holds a guess.
 @override final  String? defaultProjectId;
 
 /// Create a copy of AllSessionsState

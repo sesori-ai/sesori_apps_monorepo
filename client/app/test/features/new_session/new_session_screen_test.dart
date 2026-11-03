@@ -487,6 +487,7 @@ void main() {
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
     GetIt.instance.registerSingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository());
     GetIt.instance.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+    GetIt.instance.registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
     GetIt.instance.registerSingleton<SessionLaunchService>(
       SessionLaunchService(
         sessionRepository: sessionService,

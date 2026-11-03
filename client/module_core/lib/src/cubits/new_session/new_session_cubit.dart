@@ -25,6 +25,7 @@ import "../../repositories/dedicated_worktree_preference_store.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/last_new_session_project_tracker.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -47,6 +48,7 @@ class NewSessionCubit({
   required final ProductAnalyticsService _productAnalyticsService,
   required final SessionLaunchService _sessionLaunchService,
   required final DedicatedWorktreePreferenceStore _dedicatedWorktreePreferenceStore,
+  required final LastNewSessionProjectTracker _lastProjectTracker,
 
   /// The project the composer opens in; [selectProject] moves it.
   required NewSessionProject project,
@@ -366,6 +368,9 @@ class NewSessionCubit({
         config: current.config.copyWith(projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading),
       ),
     );
+    // The next composer opens where the user went, a filter's project
+    // included: once the filter clears, that is where they were.
+    _lastProjectTracker.record(projectId: project.id);
     unawaited(_loadProjectCapability());
 
     final data = current.config.agentModelData;
@@ -1113,6 +1118,7 @@ class NewSessionCubit({
         plugin: selectedPlugin,
       ),
     );
+    _lastProjectTracker.record(projectId: project.id);
     // Only a choice the user could see is remembered.
     if (config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported) {
       unawaited(_dedicatedWorktreePreferenceStore.write(value: dedicatedWorktree));

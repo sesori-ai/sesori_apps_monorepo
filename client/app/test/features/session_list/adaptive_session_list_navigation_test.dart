@@ -399,12 +399,13 @@ void main() {
     await pick(trigger: switcher, option: "Project Two");
     expect(draftProject(), "p2");
 
+    // The filter's project is the last one the draft was in, so it stays.
     await pick(trigger: switcher, option: "All projects");
-    expect(draftProject(), "p1");
+    expect(draftProject(), "p2");
 
     // The header moves the draft and leaves the filter.
-    await pick(trigger: find.byKey(const Key("new_session_project")), option: "Project Two");
-    expect(draftProject(), "p2");
+    await pick(trigger: find.byKey(const Key("new_session_project")), option: "Project One");
+    expect(draftProject(), "p1");
     expect(find.descendant(of: switcher, matching: find.text("All projects")), findsOneWidget);
   });
 

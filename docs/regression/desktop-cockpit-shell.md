@@ -75,9 +75,10 @@ The main pane hosts one full-width routed page.
 - Each signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session row open New Session for the open project, else the
-  sidebar's filtered project, else the most recently active one; with no project yet they open the Add project
-  dialog. They do nothing until the project
-  inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
+  sidebar's filtered project, else the project last picked or started in on this computer, else "No project", else
+  the newest session's project, else the first listed one; with no project yet they open the Add project dialog.
+  They do nothing until the project inventory has loaded, and never substitute another project for an open one
+  that is missing from the inventory.
   Cmd/Ctrl+B toggles the saved sidebar choice except during automatic narrow-window collapse, where it does nothing
   like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
   focus remains usable and root popups own their focus. Hints use the platform modifier; the sidebar's New session row
@@ -187,9 +188,10 @@ The main pane hosts one full-width routed page.
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
-- Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project", else the
-  newest session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
-  filter or a header pick moves it with its own draft, a still-loading list keeps the loader up until it names the
+- Home is the new-session composer alone, in the sidebar list's default project (its filter, else the project last
+  picked or started in on this computer, else "No project", else the newest session's project), so returning from a
+  session or restarting lands on the last project, as `session-creation-and-options.md` details: the project holds
+  once it lands, another filter or a header pick moves it with its own draft, a still-loading list keeps the loader up until it names the
   project or finishes loading, and with no default the shared "Choose a project" prompt shows instead, offering only
   "Open folder…" when there are no projects; a bridge whose only project is "No project" still shows the composer, in
   "No project". After the bridge connects, the composer appears at its final layout at once, with the parts still

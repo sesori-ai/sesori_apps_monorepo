@@ -526,7 +526,8 @@ void main() {
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
         )
-        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore())
+        ..registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
       whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: project.id));
       updates = StreamController<ProjectListState>();
       addTearDown(updates.close);

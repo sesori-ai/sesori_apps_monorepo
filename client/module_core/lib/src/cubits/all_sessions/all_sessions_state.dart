@@ -76,11 +76,14 @@ sealed class AllSessionsState with _$AllSessionsState {
     /// The bridge's "No project" project, or null on a bridge without one.
     required String? scratchProjectId,
 
-    /// The new-session default: the filter, otherwise [scratchProjectId],
-    /// otherwise the project of the newest session, otherwise null. The newest
-    /// session is read only while nothing narrows the list, and kept through a
-    /// search or a chip; until it is known the default stays null, so a
-    /// consumer that holds the first default it sees never holds a guess.
+    /// The new-session default: the filter, otherwise the listed project the
+    /// user last picked in the composer or started a session in on this
+    /// computer, otherwise [scratchProjectId], otherwise the project of the
+    /// newest session, otherwise null. The newest session is read only while
+    /// nothing narrows the list, and kept through a search or a chip; until
+    /// the last project is read and the newest session known, the default
+    /// stays null, so a consumer that holds the first default it sees never
+    /// holds a guess.
     required String? defaultProjectId,
   }) = _AllSessionsState;
 }

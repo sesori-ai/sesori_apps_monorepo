@@ -26,6 +26,14 @@ final class const PluginPreferenceKey({required final String bridgeId}) implemen
   String get storageKey => "$prefix${Uri.encodeComponent(bridgeId)}";
 }
 
+/// The project a new session last opened in on one computer.
+final class const LastProjectPreferenceKey({required final String bridgeId}) implements StringPersistenceKey {
+  static const prefix = "new_session_last_project_v1_";
+
+  @override
+  String get storageKey => "$prefix${Uri.encodeComponent(bridgeId)}";
+}
+
 final class const ProductAnalyticsPreferenceKey({required final String userId}) implements StringPersistenceKey {
   static const prefix = "product_analytics_preference_v1:";
 

@@ -76,6 +76,7 @@ void main() {
   late BehaviorSubject<ConnectionStatus> status;
   late ProjectListService projectListService;
   late SessionListFilterTracker filterTracker;
+  late FakeLastNewSessionProjectTracker lastProject;
   late _FakeBridge bridge;
 
   setUpAll(() {
@@ -125,10 +126,12 @@ void main() {
     ).thenAnswer((invocation) => bridge.serve(invocation.namedArguments[#request] as SessionPageRequest));
     projectListService = ProjectListService(repository: MockProjectRepository());
     filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projectListService);
+    lastProject = FakeLastNewSessionProjectTracker();
   });
 
   tearDown(() async {
     await filterTracker.dispose();
+    await lastProject.dispose();
     await projectListService.dispose();
     await events.close();
     await status.close();
@@ -158,6 +161,7 @@ void main() {
       window: window,
       projectInventory: projectInventory,
       filterTracker: filterTracker,
+      lastProjectTracker: lastProject,
       sseEventTracker: activity,
       sessionUnseenTracker: unseen,
     );
@@ -286,6 +290,47 @@ void main() {
         ),
       );
       cubit.selectProject(projectId: null);
+      async.elapse(Duration.zero);
+      expect(cubit.state.defaultProjectId, "scratch");
+    });
+  });
+
+  test("the last project wins over No project and the newest session, and the filter wins over it", () {
+    bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two")];
+    lastProject.emit(project: const LastNewSessionProjectKnown(projectId: "one"));
+    withCubit((cubit, async) {
+      expect(cubit.state.defaultProjectId, "one");
+
+      cubit.selectProject(projectId: "two");
+      expect(cubit.state.defaultProjectId, "two");
+      cubit.selectProject(projectId: null);
+      expect(cubit.state.defaultProjectId, "one");
+
+      // A pick in the composer moves it.
+      lastProject.record(projectId: "scratch");
+      async.elapse(Duration.zero);
+      expect(cubit.state.defaultProjectId, "scratch");
+    });
+  });
+
+  test("a last project no longer listed gives way to No project", () {
+    lastProject.emit(project: const LastNewSessionProjectKnown(projectId: "gone"));
+    withCubit((cubit, async) {
+      expect(cubit.state.defaultProjectId, "scratch");
+    });
+  });
+
+  test("until the last project is read only the filter is a default", () {
+    lastProject.emit(project: const LastNewSessionProjectUnknown());
+    withCubit((cubit, async) {
+      expect(cubit.state.isLoading, isFalse);
+      expect(cubit.state.defaultProjectId, isNull);
+
+      cubit.selectProject(projectId: "two");
+      expect(cubit.state.defaultProjectId, "two");
+      cubit.selectProject(projectId: null);
+
+      lastProject.emit(project: const LastNewSessionProjectKnown(projectId: null));
       async.elapse(Duration.zero);
       expect(cubit.state.defaultProjectId, "scratch");
     });
