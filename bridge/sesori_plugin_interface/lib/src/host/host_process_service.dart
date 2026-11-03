@@ -11,9 +11,11 @@ enum ProcessSpawnOutcome() {
 /// Whether a process spawned through [HostProcessService.spawn] may outlive
 /// the bridge.
 enum ProcessLifetime() {
-  /// The process and its descendants end when the bridge exits, crash
-  /// included. On Windows the host binds them to a kill-on-close job object;
-  /// other hosts bind nothing and keep their existing stop and stale cleanup.
+  /// The process should end with the bridge. On Windows the host best-effort
+  /// binds it and its descendants to a kill-on-close job object, so a bound
+  /// process ends even when the bridge crashes; a failed bind is logged and
+  /// leaves it unbound. Other hosts bind nothing and keep their existing stop
+  /// and stale cleanup, without crash-time binding.
   endsWithBridge,
 
   /// The process, or something it starts, may keep running after the bridge
