@@ -5,6 +5,8 @@ import "package:sesori_bridge/src/control/control_channel_loss_listener.dart";
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:test/test.dart";
 
+const _exitCode = 7;
+
 void main() {
   group("ControlChannelLossListener", () {
     test("exits after the grace period when the channel stays disconnected", () {
@@ -15,6 +17,7 @@ void main() {
           connectionState: controller.stream,
           exitProcess: exitCodes.add,
           gracePeriod: const Duration(seconds: 5),
+          exitCode: _exitCode,
         ).start();
 
         controller.add(ControlChannelConnectionState.disconnected);
@@ -22,7 +25,7 @@ void main() {
         expect(exitCodes, isEmpty, reason: "grace period has not elapsed yet");
 
         async.elapse(const Duration(seconds: 2));
-        expect(exitCodes, equals([controlChannelLostExitCode]));
+        expect(exitCodes, equals([_exitCode]));
       });
     });
 
@@ -34,6 +37,7 @@ void main() {
           connectionState: controller.stream,
           exitProcess: exitCodes.add,
           gracePeriod: const Duration(seconds: 5),
+          exitCode: _exitCode,
         ).start();
 
         controller.add(ControlChannelConnectionState.disconnected);
@@ -53,6 +57,7 @@ void main() {
           connectionState: controller.stream,
           exitProcess: exitCodes.add,
           gracePeriod: const Duration(seconds: 5),
+          exitCode: _exitCode,
         ).start();
 
         controller.add(ControlChannelConnectionState.disconnected);
@@ -63,7 +68,7 @@ void main() {
 
         controller.add(ControlChannelConnectionState.disconnected);
         async.elapse(const Duration(seconds: 5));
-        expect(exitCodes, equals([controlChannelLostExitCode]));
+        expect(exitCodes, equals([_exitCode]));
       });
     });
 
@@ -75,6 +80,7 @@ void main() {
           connectionState: controller.stream,
           exitProcess: exitCodes.add,
           gracePeriod: const Duration(seconds: 5),
+          exitCode: _exitCode,
         )..start();
 
         controller.add(ControlChannelConnectionState.disconnected);
@@ -94,6 +100,7 @@ void main() {
           connectionState: controller.stream,
           exitProcess: exitCodes.add,
           gracePeriod: const Duration(seconds: 5),
+          exitCode: _exitCode,
         ).start();
 
         // A clean ControlChannelClient.dispose() closes the stream (done)

@@ -146,13 +146,12 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return await query.getSingleOrNull() != null;
   }
 
-  /// Inserts a session row with full worktree state. If a placeholder row
-  /// already exists for this id (e.g. a `session.created` SSE event raced ahead
-  /// of the `/session/create` flow and inserted an unseen-tracking placeholder
-  /// via [insertSessionsIfMissing]), this UPSERTs the worktree-bearing columns
-  /// onto that row instead of throwing a duplicate-key error. The unseen-tracking
-  /// timestamps and the original `created_at` set by the placeholder are left
-  /// untouched.
+  /// Inserts a session row with full worktree state. If a row already exists
+  /// for this id (e.g. one written for a `session.created` SSE event that raced
+  /// ahead of the `/session/create` flow), this UPSERTs the worktree-bearing
+  /// columns onto that row instead of throwing a duplicate-key error. The
+  /// unseen-tracking timestamps and the original `created_at` of that row are
+  /// left untouched.
   Future<void> insertSession({
     required String sessionId,
     required String backendSessionId,
@@ -197,17 +196,17 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       ),
       onConflict: DoUpdate(
         (_) => SessionTableCompanion(
-          // The create flow is authoritative for project_id: a placeholder row
-          // inserted by the unseen service from a live `session.created` may be
-          // keyed to the plugin-supplied (pre-canonicalization) worktree path,
-          // so adopt the create flow's canonical project id here — otherwise the
-          // session stays keyed to the wrong project and its unseen state would
-          // not count toward the original project's aggregate. The canonical
-          // project row is inserted in the same transaction, so the FK holds.
+          // The create flow is authoritative for project_id: a row written for
+          // a live `session.created` may be keyed to the plugin-supplied
+          // (pre-canonicalization) worktree path, so adopt the create flow's
+          // canonical project id here — otherwise the session stays keyed to
+          // the wrong project and its unseen state would not count toward the
+          // original project's aggregate. The canonical project row is
+          // inserted in the same transaction, so the FK holds.
           projectId: Value(projectId),
           directory: Value(directory),
           // Only the worktree/agent state the create flow owns — never clobber
-          // created_at or the unseen timestamps that a placeholder may have set.
+          // created_at or the unseen timestamps that the earlier row may have set.
           worktreePath: Value(worktreePath),
           branchName: const Value(null),
           isDedicated: Value(isDedicated),
@@ -742,63 +741,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
               t.worktreePath.equals(worktreePath),
         ))
         .get();
-  }
-
-  /// Inserts a placeholder session row if none exists for [sessionId].
-  /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
-  /// Placeholders are non-dedicated by default and have no worktree/branch state.
-  /// Use this to persist plugin-sourced sessions so FK constraints (post-v5) hold.
-  ///
-  /// [archivedAt] is written explicitly (including null) so that plugin-sourced
-  /// archive state is preserved on first insert. Existing rows are never updated.
-  Future<void> insertSessionsIfMissing({
-    required List<
-      ({
-        String sessionId,
-        String backendSessionId,
-        String projectId,
-        String directory,
-        int createdAt,
-        int? archivedAt,
-      })
-    >
-    sessions,
-    required String pluginId,
-  }) async {
-    if (sessions.isEmpty) return;
-    final projectIds = {for (final session in sessions) session.projectId};
-    final projects = await (select(projectsTable)..where((table) => table.projectId.isIn(projectIds))).get();
-    final knownProjectIds = {for (final project in projects) project.projectId};
-    final unknownProjectIds = projectIds.difference(knownProjectIds);
-    if (unknownProjectIds.isNotEmpty) {
-      throw StateError("Cannot insert sessions for unknown projects $unknownProjectIds");
-    }
-    await batch((b) {
-      b.insertAll(
-        sessionTable,
-        [
-          for (final s in sessions)
-            SessionTableCompanion(
-              sessionId: Value(s.sessionId),
-              backendSessionId: Value(s.backendSessionId),
-              projectId: Value(s.projectId),
-              parentSessionId: const Value(null),
-              directory: Value(s.directory),
-              // isDedicated hardcoded false — placeholders are non-dedicated by default.
-              // Callers (plugin-sourced sessions) never have meaningful worktree state.
-              isDedicated: const Value(false),
-              createdAt: Value(s.createdAt),
-              updatedAt: Value(s.createdAt),
-              projectionUpdatedAt: Value(s.createdAt),
-              archivedAt: Value(s.archivedAt),
-              pluginId: Value(pluginId),
-              // worktreePath, branchName, baseBranch, baseCommit intentionally
-              // omitted — they default to absent (null) via SessionTableCompanion
-            ),
-        ],
-        mode: InsertMode.insertOrIgnore,
-      );
-    });
   }
 
   Future<void> deleteSession({required String sessionId}) async {

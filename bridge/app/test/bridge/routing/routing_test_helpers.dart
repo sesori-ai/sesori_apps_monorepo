@@ -33,7 +33,7 @@ import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
-import "../../helpers/single_plugin_repository_test_support.dart";
+import "../../helpers/test_database.dart";
 
 export "../../helpers/fakes/fake_bridge_plugin.dart";
 export "../../helpers/fakes/fake_repository_fakes.dart";
