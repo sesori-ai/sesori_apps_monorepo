@@ -353,7 +353,7 @@ class ProductAnalyticsPreferenceRepository({
 
 final class const _ProductAnalyticsPreferenceStorageException({required final Object innerError}) implements Exception {
   @override
-  String toString() => "Product analytics preference storage operation failed";
+  String toString() => "Product analytics preference storage operation failed (${innerError.runtimeType.toString()})";
 }
 
 ProductAnalyticsPreferenceRecord _recordFromStored(StoredProductAnalyticsPreference stored) =>
