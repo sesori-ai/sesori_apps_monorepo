@@ -3,6 +3,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
+import "package:sesori_dart_core/src/services/models/session_delete_result.dart";
 import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
 import "package:sesori_dart_core/src/services/session_window_service.dart";
@@ -66,17 +67,19 @@ void main() {
       ),
     ).thenAnswer((_) => answer());
 
-    Future<SessionCleanupOutcome?> delete() =>
+    Future<SessionDeleteResult> delete() =>
         actions.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false);
 
     test("returns the outcome", () async {
       stubDelete(() async => ApiResponse<void>.success(null));
 
-      expect(await delete(), SessionCleanupOutcome.completed);
-      expect(actions.lastCleanupRejection, isNull);
+      expect(
+        await delete(),
+        isA<SessionDeleted>().having((r) => r.outcome, "outcome", SessionCleanupOutcome.completed),
+      );
     });
 
-    test("keeps a cleanup rejection for the force dialog", () async {
+    test("returns a cleanup rejection for the force dialog", () async {
       const issue = CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main");
       const rejection = SessionCleanupRejection(issues: [issue]);
       stubDelete(
@@ -86,15 +89,16 @@ void main() {
         ),
       );
 
-      expect(await delete(), isNull);
-      expect(actions.lastCleanupRejection?.issues.single, issue);
+      expect(
+        await delete(),
+        isA<SessionDeleteRejected>().having((r) => r.rejection.issues.single, "issue", issue),
+      );
     });
 
-    test("answers null when the request fails", () async {
+    test("reports a failed request", () async {
       stubDelete(() async => ApiResponse<void>.error(ApiError.generic()));
 
-      expect(await delete(), isNull);
-      expect(actions.lastCleanupRejection, isNull);
+      expect(await delete(), isA<SessionDeleteFailed>());
     });
   });
 

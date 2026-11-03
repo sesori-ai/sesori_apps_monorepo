@@ -49,7 +49,7 @@ Future<void> _deleteSession({
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) async {
   final loc = context.loc;
-  final outcome = await actions.deleteSession(
+  final result = await actions.deleteSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
     deleteSessionFolder: deleteSessionFolder,
@@ -57,36 +57,32 @@ Future<void> _deleteSession({
   );
   if (!context.mounted) return;
 
-  if (outcome != null) {
-    PregoPopupAlertPresenter.of(context).show(
-      title: loc.sessionListDeleted,
-      variant: PregoPopupAlertsNotificationsVariant.success,
-      content: switch (outcome) {
-        SessionCleanupOutcome.completed => const PregoPopupAlertContent(),
-        SessionCleanupOutcome.sharedWorktreeKept => PregoPopupAlertContent(
-          message: loc.sessionListCleanupWorktreeKept,
-        ),
-      },
-    );
-    onSessionDeleted?.call(context: context, sessionId: sessionId);
-    return;
-  }
-
-  // Check for cleanup rejection (409).
-  final rejection = actions.lastCleanupRejection;
-  if (rejection != null) {
-    await _showForceDialog(
-      context: context,
-      actions: actions,
-      sessionId: sessionId,
-      deleteSessionFolder: deleteSessionFolder,
-      rejection: rejection,
-      onSessionDeleted: onSessionDeleted,
-    );
-  } else {
-    PregoPopupAlertPresenter.of(context).show(
-      title: loc.sessionListDeleteFailed,
-      variant: PregoPopupAlertsNotificationsVariant.error,
-    );
+  switch (result) {
+    case SessionDeleted(:final outcome):
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.sessionListDeleted,
+        variant: PregoPopupAlertsNotificationsVariant.success,
+        content: switch (outcome) {
+          SessionCleanupOutcome.completed => const PregoPopupAlertContent(),
+          SessionCleanupOutcome.sharedWorktreeKept => PregoPopupAlertContent(
+            message: loc.sessionListCleanupWorktreeKept,
+          ),
+        },
+      );
+      onSessionDeleted?.call(context: context, sessionId: sessionId);
+    case SessionDeleteRejected(:final rejection):
+      await _showForceDialog(
+        context: context,
+        actions: actions,
+        sessionId: sessionId,
+        deleteSessionFolder: deleteSessionFolder,
+        rejection: rejection,
+        onSessionDeleted: onSessionDeleted,
+      );
+    case SessionDeleteFailed():
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.sessionListDeleteFailed,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
   }
 }

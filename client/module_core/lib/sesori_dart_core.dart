@@ -315,6 +315,7 @@ export "src/services/models/product_analytics_state.dart";
 export "src/services/models/project_list_state.dart";
 export "src/services/models/session_activity_info.dart";
 export "src/services/models/session_cleanup_outcome.dart";
+export "src/services/models/session_delete_result.dart";
 export "src/services/models/session_list_quick_filter.dart";
 export "src/services/models/session_window_state.dart";
 export "src/services/new_session_options_service.dart";

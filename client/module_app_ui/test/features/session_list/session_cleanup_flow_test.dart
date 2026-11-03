@@ -139,8 +139,8 @@ void main() {
     /// Renders a button that deletes [target] through [deleteConfirmation].
     ///
     /// Each entry of [rejections] answers one `deleteSession` call: a rejection
-    /// fails that call and is published as the service's last rejection, null lets
-    /// it complete. Calls past the end complete. [target] belongs to the
+    /// refuses that call, null lets it complete. Calls past the end complete.
+    /// [target] belongs to the
     /// bridge's "No project" project when [noProject].
     Future<void> pumpDeleteButton({
       required WidgetTester tester,
@@ -150,7 +150,6 @@ void main() {
       bool noProject = false,
     }) async {
       final pending = [...rejections];
-      SessionCleanupRejection? lastRejection;
       when(() => actions.projectId).thenReturn(noProject ? "scratch" : "folder");
       final projects = _MockProjectListCubit();
       const scratch = shared.ProjectSummary(
@@ -170,7 +169,6 @@ void main() {
           scratchProject: scratch,
         ),
       );
-      when(() => actions.lastCleanupRejection).thenAnswer((_) => lastRejection);
       when(
         () => actions.deleteSession(
           sessionId: any(named: "sessionId"),
@@ -178,10 +176,12 @@ void main() {
           deleteSessionFolder: any(named: "deleteSessionFolder"),
           force: any(named: "force"),
         ),
-      ).thenAnswer((_) async {
-        lastRejection = pending.isEmpty ? null : pending.removeAt(0);
-        return lastRejection == null ? SessionCleanupOutcome.completed : null;
-      });
+      ).thenAnswer(
+        (_) async => switch (pending.isEmpty ? null : pending.removeAt(0)) {
+          final rejection? => SessionDeleteRejected(rejection: rejection),
+          null => const SessionDeleted(outcome: SessionCleanupOutcome.completed),
+        },
+      );
 
       final dispatcher = SessionListActionDispatcher(
         deleteConfirmation: deleteConfirmation,
@@ -344,7 +344,7 @@ void main() {
       );
       when(
         () => actions.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false),
-      ).thenAnswer((_) async => SessionCleanupOutcome.sharedWorktreeKept);
+      ).thenAnswer((_) async => const SessionDeleted(outcome: SessionCleanupOutcome.sharedWorktreeKept));
       await confirmDelete(tester);
 
       expect(find.text("Delete anyway"), findsNothing);
