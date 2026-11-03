@@ -17,7 +17,7 @@
 // - `prefer_edge_insets_directional`: Enforces EdgeInsetsDirectional for RTL
 // - `prefer_exhaustive_switch`: Forbids default case in switch statements
 // - `prefer_required_named_parameters`: Enforces required named params for multi-arg functions
-// - `prefer_specific_type`: Forbids `Object` and `dynamic` (except fromJson/toJson maps and error values)
+// - `prefer_specific_type`: Forbids `Object` and `dynamic` outside JSON and error boundaries
 // - `prefer_text_align_directional`: Enforces TextAlign.start/end for RTL
 
 import 'package:analysis_server_plugin/plugin.dart';

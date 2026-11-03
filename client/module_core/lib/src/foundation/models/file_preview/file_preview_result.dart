@@ -21,7 +21,6 @@ final class const FilePreviewBridgeTooOld() extends FilePreviewResult;
 
 /// The request failed in transport or on the bridge, or its image did not decode.
 final class const FilePreviewFailed({
-  // ignore: no_slop_linter/prefer_specific_type, transport errors and decode failures share this path
   required final Object innerError,
   required final StackTrace stackTrace,
 }) extends FilePreviewResult;

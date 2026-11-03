@@ -29,7 +29,7 @@ class NotificationPreferencesService({
     _authSubscription = _authSession.authStateStream.listen(
       // ignore: no_slop_linter/prefer_required_named_parameters, Stream callback
       (state) => _onAuthStateChanged(state: state),
-      // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, Stream callback
+      // ignore: no_slop_linter/prefer_required_named_parameters, Stream callback
       onError: (Object error, StackTrace stackTrace) => _onAuthStateError(
         error: error,
         stackTrace: stackTrace,
@@ -90,7 +90,6 @@ class NotificationPreferencesService({
     _accountStatus.add(_statusFor(userId: nextUserId));
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, Stream error values are untyped
   void _onAuthStateError({required Object error, required StackTrace stackTrace}) {
     loge("Notification preferences auth stream failed", error, stackTrace);
   }

@@ -45,7 +45,6 @@ final class const PluginAuthenticationBrowserFlowCancelled() extends PluginAuthe
 
 final class const PluginAuthenticationBrowserFlowFailed({
   // The owner retains this cause for diagnostics. Presentation must never expose it.
-  // ignore: prefer_specific_type
   required final Object innerError,
   required final StackTrace stackTrace,
   required final bool retryableWithActiveListener,
