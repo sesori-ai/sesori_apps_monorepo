@@ -1164,9 +1164,6 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [];
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,
@@ -1423,9 +1420,6 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [];
 
   @override
   Future<void> replyToQuestion({

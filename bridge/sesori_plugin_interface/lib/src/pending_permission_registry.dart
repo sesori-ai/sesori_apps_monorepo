@@ -186,15 +186,6 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
       if (entry case _PendingPermissionEntry<TPayload>(:final snapshot) when snapshot.sessionID == sessionId) snapshot,
   ];
 
-  List<PluginPendingQuestion> pendingForProject({required Iterable<String> sessionIds}) {
-    final sessionIdSet = Set<String>.from(sessionIds);
-    return [
-      for (final entry in _pending.values)
-        if (entry case _PendingQuestionEntry<TPayload>(:final snapshot) when sessionIdSet.contains(snapshot.sessionID))
-          snapshot,
-    ];
-  }
-
   bool hasPendingInput({required String sessionId}) => _pending.values.any((entry) => entry.sessionId == sessionId);
 
   bool get hasAnyPendingInput => _pending.isNotEmpty;

@@ -30,7 +30,6 @@ enum SessionOperation() {
   updateObservedSessionProjection,
   recordSessionCompletion,
   insertObservedChild,
-  getProjectQuestions,
   setAutoContinuation,
   setApprovalOverride,
   observeQuotaInterruption,

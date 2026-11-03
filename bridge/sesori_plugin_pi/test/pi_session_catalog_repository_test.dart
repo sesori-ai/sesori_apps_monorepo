@@ -62,7 +62,7 @@ void main() {
       expect((await repository.getChildSessions(sessionId: "root")).map((session) => session.id), ["child"]);
     });
 
-    test("resolves the top imported parent and owning worktree project", () async {
+    test("resolves the top imported parent", () async {
       final repository = PiSessionCatalogRepository(
         storageApi: FakePiCatalogSessionStorageApi(
           initialSessions: [
@@ -73,11 +73,8 @@ void main() {
         ),
       );
 
-      final scope = await repository.resolveDisplayScope(sessionId: "leaf");
-
-      expect(scope?.displaySessionId, "root");
-      expect(scope?.projectId, normalizeProjectDirectory(directory: "/repo/worktree"));
-      expect(await repository.resolveDisplayScope(sessionId: "missing"), isNull);
+      expect(await repository.resolveDisplaySessionId(sessionId: "leaf"), "root");
+      expect(await repository.resolveDisplaySessionId(sessionId: "missing"), isNull);
     });
 
     test("retains primed attribution as a scan root after metadata appears", () async {

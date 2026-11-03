@@ -15,7 +15,7 @@ import "package:test/test.dart";
 void main() {
   group("AcpPlugin session enumeration", () {
     final fakes = <FakeAcpProcess>[];
-    late _RegistryCapturingAcpPlugin plugin;
+    late TestAcpPlugin plugin;
     const cwd = "/repo";
 
     setUp(() {
@@ -23,7 +23,7 @@ void main() {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
       final childSessionTracker = AcpChildSessionTracker();
-      plugin = _RegistryCapturingAcpPlugin(
+      plugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
@@ -820,81 +820,9 @@ void main() {
         reason: "enumeration must scan the launch CWD AND the requested project",
       );
     });
-
-    test("getProjectQuestions only reports sessions attributed to the project", () async {
-      await connect();
-      const opened = "/Users/x/kustos";
-
-      // One session per directory, both with a pending question.
-      Future<PluginSession> create(String directory, String sessionId) async {
-        final creating = plugin.createSession(
-          fastMode: false,
-          directory: directory,
-          parentSessionId: null,
-          parts: const [],
-          userVisibleText: null,
-          variant: null,
-          agent: null,
-          model: null,
-        );
-        await respond("session/new", {"sessionId": sessionId});
-        return await creating;
-      }
-
-      final inLaunch = await create(cwd, "s-launch");
-      final inOpened = await create(opened, "s-opened");
-
-      const question = PluginQuestionInfo(
-        question: "Proceed?",
-        header: "Plan",
-        options: [PluginQuestionOption(label: "Yes", description: "confirm")],
-        multiple: false,
-        custom: false,
-      );
-      for (final session in [inLaunch, inOpened]) {
-        plugin.registry!.addPendingQuestion(
-          acpId: "acp-${session.id}",
-          sessionId: session.id,
-          questions: const [question],
-          replyBuilder: (answers) => null,
-          resolutionBuilder: null,
-        );
-      }
-
-      final launchQuestions = await plugin.getProjectQuestions(projectId: cwd);
-      expect(launchQuestions.map((q) => q.sessionID).toSet(), {"s-launch"});
-      final openedQuestions = await plugin.getProjectQuestions(projectId: opened);
-      expect(openedQuestions.map((q) => q.sessionID).toSet(), {"s-opened"});
-    });
   });
 }
 
 Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
   throw StateError("replay process failed to start");
-}
-
-/// [AcpPlugin] that captures the approval registry built at connect so tests
-/// can register pending questions directly (the base registry only creates
-/// questions through harness extension handlers).
-class _RegistryCapturingAcpPlugin({
-  required super.id,
-  required super.agentDisplayName,
-  required super.launchSpec,
-  required super.launchDirectory,
-  required super.eventMapper,
-  required super.childSessionTracker,
-  required super.commandTracker,
-  required super.sessionOptionsService,
-  required super.processFactory,
-}) extends TestAcpPlugin {
-  AcpApprovalRegistry? registry;
-
-  @override
-  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) {
-    return registry = AcpApprovalRegistry.forClient(
-      client: client,
-      emit: emitActivityEvent,
-      activeSessionResolver: () => activeTurnSessionId,
-    );
-  }
 }

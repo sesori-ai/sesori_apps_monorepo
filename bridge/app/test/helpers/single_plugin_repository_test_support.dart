@@ -86,14 +86,10 @@ ProviderRepository singlePluginProviderRepository({
 QuestionRepository singlePluginQuestionRepository({
   required BridgePluginApi plugin,
   required SessionDao sessionDao,
-  required ProjectsDao projectsDao,
 }) {
   return QuestionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
     pendingSupport: PendingInteractionSupport(sessionDao: sessionDao),
-    sessionDao: sessionDao,
-    projectsDao: projectsDao,
-    aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
 

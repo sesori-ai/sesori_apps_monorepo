@@ -406,14 +406,6 @@ final class ClaudePlugin({
       _approvals.pendingPermissionsForSession(sessionId: sessionId);
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async {
-    final sessions = await getSessions(projectId: projectId);
-    return [
-      for (final session in sessions) ..._approvals.pendingQuestionsForSession(sessionId: session.id),
-    ];
-  }
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

@@ -1,7 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
-part "plugin_setup_response.freezed.dart";
-part "plugin_setup_response.g.dart";
+part "plugin_setup_metadata.freezed.dart";
+part "plugin_setup_metadata.g.dart";
 
 enum PluginSetupState() {
   notInspected,
@@ -27,13 +27,4 @@ sealed class PluginSetupMetadata with _$PluginSetupMetadata {
   }) = _PluginSetupMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginSetupMetadataFromJson(json);
-}
-
-@Freezed(fromJson: true, toJson: true)
-sealed class PluginSetupResponse with _$PluginSetupResponse {
-  const factory({
-    required List<PluginSetupMetadata> plugins,
-  }) = _PluginSetupResponse;
-
-  factory fromJson(Map<String, dynamic> json) => _$PluginSetupResponseFromJson(json);
 }

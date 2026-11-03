@@ -65,7 +65,7 @@ export "src/models/sesori/plugin_identity.dart";
 export "src/models/sesori/plugin_list_response.dart";
 export "src/models/sesori/plugin_management.dart";
 export "src/models/sesori/plugin_project_id_request.dart";
-export "src/models/sesori/plugin_setup_response.dart";
+export "src/models/sesori/plugin_setup_metadata.dart";
 export "src/models/sesori/project.dart";
 export "src/models/sesori/project_activity_summary.dart";
 export "src/models/sesori/project_kind.dart";

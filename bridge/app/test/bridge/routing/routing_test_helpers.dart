@@ -86,7 +86,6 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       questionRepository: singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
-        projectsDao: database.projectsDao,
       ),
       dispatcher: dispatcher,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),

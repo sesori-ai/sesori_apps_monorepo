@@ -1,15 +1,9 @@
-import "dart:async";
-import "dart:io";
-
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
-import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
-import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -23,28 +17,6 @@ void main() {
     tearDown(() async {
       await db.close();
     });
-
-    Future<void> recordWorktreeSession({
-      required String parent,
-      required String worktree,
-      required String sessionId,
-    }) async {
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
-      await db.sessionDao.insertSession(
-        fastMode: false,
-        sessionId: sessionId,
-        backendSessionId: sessionId,
-        projectId: parent,
-        isDedicated: true,
-        createdAt: 1,
-        worktreePath: worktree,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-        pluginId: "codex",
-      );
-    }
 
     Future<void> recordSession({
       required String stableId,
@@ -129,7 +101,6 @@ void main() {
       final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
       );
 
       final pending = (await repository.getPendingQuestions(sessionId: "stable-dialog")).single;
@@ -167,453 +138,6 @@ void main() {
       ]);
     });
 
-    test("getProjectQuestions surfaces a question raised in a worktree session under its parent", () async {
-      const parent = "/tmp/proj/alpha";
-      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
-      await recordWorktreeSession(parent: parent, worktree: worktree, sessionId: "w1");
-
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [
-          _session(parent, id: "s1"),
-          _session(worktree, id: "w1"),
-        ],
-        questionsBySession: {
-          "w1": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-w1",
-              sessionID: "w1",
-              displaySessionId: null,
-              questions: [
-                PluginQuestionInfo(
-                  question: "Run command?",
-                  header: "Approval",
-                  options: [PluginQuestionOption(label: "Yes", description: "Approve")],
-                  multiple: false,
-                  custom: false,
-                ),
-              ],
-            ),
-          ],
-        },
-      );
-      final repo = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repo.getProjectQuestions(projectId: parent);
-
-      expect(questions.map((q) => q.id), contains("q-w1"));
-      // It resolved the question by asking the worktree session, not the parent dir.
-      expect(plugin.queriedSessionIds, contains("w1"));
-    });
-
-    test("getProjectQuestions retains and dedupes a healthy source when other plugins fail", () async {
-      const parent = "/tmp/proj/alpha";
-      await recordSession(
-        stableId: "stable-s1",
-        backendId: "s1",
-        projectId: parent,
-        parentStableId: null,
-      );
-      const pendingQuestion = PluginPendingQuestion(
-        interactionKind: PluginQuestionInteractionKind.question,
-        id: "q-s1",
-        sessionID: "s1",
-        displaySessionId: null,
-        questions: [],
-      );
-      final healthyPlugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [_session(parent, id: "s1")],
-        questionsBySession: const {
-          "s1": [pendingQuestion],
-        },
-        ownProjectQuestions: const [pendingQuestion],
-      );
-      final throwingPlugin = _FakeNativeQuestionPlugin(
-        id: "throwing",
-        projectQuestions: () => Future.error(
-          StateError("question query failed"),
-          StackTrace.fromString("throwing-plugin-stack"),
-        ),
-      );
-      final timedOutPlugin = _FakeNativeQuestionPlugin(
-        id: "timed-out",
-        projectQuestions: () => Completer<List<PluginPendingQuestion>>().future,
-      );
-      final repository = QuestionRepository(
-        runtime: createTestPluginRuntime(plugins: [healthyPlugin, throwingPlugin, timedOutPlugin]),
-        pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        aggregateSourceDeadline: const Duration(milliseconds: 20),
-      );
-      final previousLogLevel = Log.level;
-      final logs = <String>[];
-      addTearDown(() {
-        Log.level = previousLogLevel;
-      });
-      Log.level = LogLevel.debug;
-
-      final questions = await IOOverrides.runZoned(
-        () => repository.getProjectQuestions(projectId: parent),
-        stderr: () => _CapturingStdout(logs),
-      );
-
-      expect(questions.map((question) => question.id), ["q-s1"]);
-      expect(
-        logs.join("\n"),
-        allOf(
-          contains("throwing"),
-          contains("question query failed"),
-          contains("throwing-plugin-stack"),
-          contains("timed-out"),
-          contains("TimeoutException"),
-        ),
-      );
-    });
-
-    test("getProjectQuestions treats a successful empty source as available", () async {
-      const projectId = "/tmp/proj/alpha";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-      final emptyPlugin = _FakeNativeQuestionPlugin(
-        id: "empty",
-        projectQuestions: () async => const [],
-      );
-      final failedPlugin = _FakeNativeQuestionPlugin(
-        id: "failed",
-        projectQuestions: () async => throw StateError("unavailable"),
-      );
-      final repository = QuestionRepository(
-        runtime: createTestPluginRuntime(plugins: [emptyPlugin, failedPlugin]),
-        pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        aggregateSourceDeadline: const Duration(milliseconds: 20),
-      );
-
-      expect(await repository.getProjectQuestions(projectId: projectId), isEmpty);
-    });
-
-    test("getProjectQuestions throws 503 when every operational plugin fails", () async {
-      const projectId = "/tmp/proj/alpha";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-      final throwingPlugin = _FakeNativeQuestionPlugin(
-        id: "throwing",
-        projectQuestions: () async => throw StateError("unavailable"),
-      );
-      final timedOutPlugin = _FakeNativeQuestionPlugin(
-        id: "timed-out",
-        projectQuestions: () => Completer<List<PluginPendingQuestion>>().future,
-      );
-      final repository = QuestionRepository(
-        runtime: createTestPluginRuntime(plugins: [throwingPlugin, timedOutPlugin]),
-        pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        aggregateSourceDeadline: const Duration(milliseconds: 20),
-      );
-
-      await expectLater(
-        repository.getProjectQuestions(projectId: projectId),
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.operation, "operation", "getProjectQuestions")
-              .having((error) => error.statusCode, "statusCode", 503),
-        ),
-      );
-    });
-
-    test("getProjectQuestions attributes derived worktrees by the resolved directory of a native-id row", () async {
-      const projectId = "native-project-id";
-      const parent = "/tmp/proj/alpha";
-      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
-      await db.projectsDao.recordOpenedProject(
-        projectId: projectId,
-        path: parent,
-        displayName: null,
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      await db.sessionDao.insertSession(
-        fastMode: false,
-        sessionId: "stable-w1",
-        backendSessionId: "w1",
-        projectId: projectId,
-        isDedicated: true,
-        createdAt: 1,
-        worktreePath: worktree,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-        pluginId: "codex",
-      );
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [_session(worktree, id: "w1")],
-        questionsBySession: {
-          "w1": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-w1",
-              sessionID: "w1",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-        },
-      );
-      final repository = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repository.getProjectQuestions(projectId: projectId);
-
-      expect(questions.map((question) => question.id), contains("q-w1"));
-      expect(questions.single.sessionID, "stable-w1");
-    });
-
-    test("getProjectQuestions skips tombstoned sessions", () async {
-      const parent = "/tmp/proj/alpha";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
-      // The backend still enumerates the deleted session (no session/delete):
-      // its questions must not surface — and must not be queried at all.
-      await db.sessionDao.insertSessionTombstone(
-        backendSessionId: "gone",
-        pluginId: "codex",
-        deletedAt: 1,
-      );
-
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [
-          _session(parent, id: "s1"),
-          _session(parent, id: "gone"),
-        ],
-        questionsBySession: {
-          "gone": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-gone",
-              sessionID: "gone",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-        },
-        ownProjectQuestions: const [
-          PluginPendingQuestion(
-            interactionKind: PluginQuestionInteractionKind.question,
-            id: "q-gone",
-            sessionID: "gone",
-            displaySessionId: null,
-            questions: [],
-          ),
-        ],
-      );
-      final repo = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repo.getProjectQuestions(projectId: parent);
-
-      expect(questions.map((q) => q.id), isNot(contains("q-gone")));
-      expect(plugin.queriedSessionIds, isNot(contains("gone")));
-    });
-
-    test("getProjectQuestions surfaces a question from a session only the plugin's live scoping knows", () async {
-      const parent = "/tmp/proj/alpha";
-      await recordSession(
-        stableId: "stable-s1",
-        backendId: "s1",
-        projectId: parent,
-        parentStableId: null,
-      );
-
-      // A freshly-created session may exist only in the backend's memory (not
-      // yet flushed to disk), so it is absent from listAllSessions — only the
-      // plugin's own project-scoped query can surface its question.
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [_session(parent, id: "s1")],
-        questionsBySession: {
-          "s1": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-s1",
-              sessionID: "s1",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-        },
-        ownProjectQuestions: const [
-          // Duplicated with the per-session aggregation — must appear once.
-          PluginPendingQuestion(
-            interactionKind: PluginQuestionInteractionKind.question,
-            id: "q-s1",
-            sessionID: "s1",
-            displaySessionId: null,
-            questions: [],
-          ),
-          // Known only to the plugin's live in-memory scoping.
-          PluginPendingQuestion(
-            interactionKind: PluginQuestionInteractionKind.question,
-            id: "q-fresh",
-            sessionID: "s-fresh",
-            displaySessionId: null,
-            questions: [],
-          ),
-        ],
-      );
-      final repo = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repo.getProjectQuestions(projectId: parent);
-
-      expect(questions.map((q) => q.id), ["q-s1"]);
-      expect(questions.single.sessionID, "stable-s1");
-    });
-
-    test("getProjectQuestions asks a stored-row session missing from listAllSessions", () async {
-      const parent = "/tmp/proj/alpha";
-      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
-      // A fresh worktree session the bridge recorded under its parent, whose
-      // rollout has not been flushed yet: the plugin cannot enumerate it and
-      // its own project scoping keys it to the worktree cwd, so only the
-      // stored attribution can reach its pending questions.
-      await recordWorktreeSession(parent: parent, worktree: worktree, sessionId: "w-fresh");
-
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: const [],
-        questionsBySession: {
-          "w-fresh": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-fresh",
-              sessionID: "w-fresh",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-        },
-      );
-      final repo = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repo.getProjectQuestions(projectId: parent);
-
-      expect(questions.map((q) => q.id), contains("q-fresh"));
-      expect(plugin.queriedSessionIds, contains("w-fresh"));
-    });
-
-    test("getProjectQuestions keeps distinct questions that reuse an id across sessions", () async {
-      const parent = "/tmp/proj/alpha";
-      await recordSession(
-        stableId: "stable-s1",
-        backendId: "s1",
-        projectId: parent,
-        parentStableId: null,
-      );
-      await recordSession(
-        stableId: "stable-s2",
-        backendId: "s2",
-        projectId: parent,
-        parentStableId: null,
-      );
-
-      // Question ids are only guaranteed unique within a session, so the merge
-      // must key by session id + question id rather than question id alone.
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [
-          _session(parent, id: "s1"),
-          _session(parent, id: "s2"),
-        ],
-        questionsBySession: {
-          "s1": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-1",
-              sessionID: "s1",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-          "s2": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-1",
-              sessionID: "s2",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-        },
-      );
-      final repo = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repo.getProjectQuestions(projectId: parent);
-
-      expect(questions.map((q) => q.sessionID).toSet(), {"stable-s1", "stable-s2"});
-      expect(questions, hasLength(2));
-    });
-
-    test("getProjectQuestions does not surface questions from a session in another project", () async {
-      const parent = "/tmp/proj/alpha";
-      const other = "/tmp/proj/beta";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent, other]);
-
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [
-          _session(parent, id: "s1"),
-          _session(other, id: "s2"),
-        ],
-        questionsBySession: {
-          "s2": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "q-s2",
-              sessionID: "s2",
-              displaySessionId: null,
-              questions: [],
-            ),
-          ],
-        },
-      );
-      final repo = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      final questions = await repo.getProjectQuestions(projectId: parent);
-
-      expect(questions, isEmpty);
-      expect(plugin.queriedSessionIds, isNot(contains("s2")));
-    });
-
     test("getPendingQuestions skips a tombstoned derived session", () async {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
@@ -638,7 +162,6 @@ void main() {
       final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
       );
 
       await expectLater(
@@ -709,7 +232,6 @@ void main() {
       final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
       );
 
       final questions = await repository.getPendingQuestions(sessionId: "stable-root");
@@ -743,7 +265,6 @@ void main() {
       final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
       );
 
       await expectLater(
@@ -781,7 +302,6 @@ void main() {
       final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
       );
 
       await expectLater(
@@ -793,48 +313,6 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       expect(plugin.questionMutationCalls, isZero);
-    });
-
-    test("getProjectQuestions filters display tombstones from both aggregation paths", () async {
-      const parent = "/repo";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
-      await db.sessionDao.insertSessionTombstone(
-        backendSessionId: "gone-root",
-        pluginId: "codex",
-        deletedAt: 1,
-      );
-      final plugin = _FakeDerivedQuestionPlugin(
-        launchDirectory: parent,
-        allSessions: [_session(parent, id: "s1")],
-        questionsBySession: {
-          "s1": const [
-            PluginPendingQuestion(
-              interactionKind: PluginQuestionInteractionKind.question,
-              id: "aggregated",
-              sessionID: "child-a",
-              displaySessionId: "gone-root",
-              questions: [],
-            ),
-          ],
-        },
-        ownProjectQuestions: const [
-          PluginPendingQuestion(
-            interactionKind: PluginQuestionInteractionKind.question,
-            id: "own",
-            sessionID: "child-b",
-            displaySessionId: "gone-root",
-            questions: [],
-          ),
-        ],
-      );
-      final repository = singlePluginQuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-
-      expect(await repository.getProjectQuestions(projectId: parent), isEmpty);
-      expect(plugin.queriedSessionIds, contains("s1"));
     });
   });
 }
@@ -848,16 +326,11 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
   time: const PluginSessionTime(created: 1, updated: 1, archived: null),
 );
 
-/// A derive-style plugin whose pending questions are keyed per session, so the
-/// repository must resolve the project's sessions (worktree-aware) and ask each.
+/// A derive-style plugin whose pending questions are keyed per session.
 class _FakeDerivedQuestionPlugin({
   required super.launchDirectory,
   required super.allSessions,
   required final Map<String, List<PluginPendingQuestion>> questionsBySession,
-
-  /// What the plugin's own project-scoped query returns — its live in-memory
-  /// view, which can know sessions that `listAllSessions` (disk) does not yet.
-  final List<PluginPendingQuestion> ownProjectQuestions = const [],
 }) extends FakeDerivedBridgePlugin {
   this : super(id: "codex");
 
@@ -870,9 +343,6 @@ class _FakeDerivedQuestionPlugin({
     queriedSessionIds.add(sessionId);
     return questionsBySession[sessionId] ?? const [];
   }
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => ownProjectQuestions;
 
   @override
   Future<void> replyToQuestion({
@@ -888,32 +358,4 @@ class _FakeDerivedQuestionPlugin({
   Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
     questionMutationCalls++;
   }
-}
-
-class _FakeNativeQuestionPlugin({
-  @override required final String id,
-  required final Future<List<PluginPendingQuestion>> Function() projectQuestions,
-}) implements NativeProjectsPluginApi {
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) => projectQuestions();
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _CapturingStdout(final List<String> output) implements Stdout {
-  @override
-  void write(Object? object) => output.add(object.toString());
-
-  @override
-  void writeln([Object? object = ""]) => output.add(object.toString());
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

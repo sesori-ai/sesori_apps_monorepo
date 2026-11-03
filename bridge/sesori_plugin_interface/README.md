@@ -89,7 +89,7 @@ The request surface (`lib/src/bridge_plugin.dart`), grouped:
 | Projects | `getProjects`, `getProject`, `deleteWorkspace` |
 | Sessions | `getSessions`, `getChildSessions`, `createSession`, `renameSession`, `deleteSession`, `archiveSession`, `getSessionStatuses`, `getSessionMessages`, `getActiveSessionsSummary` |
 | Prompting | `sendPrompt`, `sendCommand`, `abortSession`, `getCommands`, `getAgents`, `getProviders` |
-| Questions & permissions | `getPendingQuestions`, `getProjectQuestions`, `replyToQuestion`, `rejectQuestion`, `replyToPermission` |
+| Questions & permissions | `getPendingQuestions`, `replyToQuestion`, `rejectQuestion`, `replyToPermission` |
 
 Failures are signaled with `PluginOperationException` (transport-agnostic; optional `statusCode`) or its HTTP-flavored subclass `PluginApiException`. Use `PluginOperationException.notFound` so idempotent deletes work for non-HTTP plugins.
 

@@ -302,9 +302,6 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
-
-  @override
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
     lastGetPendingPermissionsSessionId = sessionId;
     return pendingPermissionsResult;

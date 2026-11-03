@@ -2431,22 +2431,6 @@ abstract class AcpPlugin({
   }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId: sessionId) ?? const [];
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({
-    required String projectId,
-  }) async {
-    final registry = _approvalRegistry;
-    if (registry == null) return const [];
-    // Scope to the sessions attributed to this project so a pending question
-    // in one project doesn't surface under every other. The bridge merges in
-    // this plugin's worktree sessions itself via its stored attribution rows.
-    final target = normalizeProjectDirectory(directory: projectId);
-    final sessionIds = _sessionStatuses.keys
-        .where((sessionId) => directoryForSession(sessionId: sessionId) == target)
-        .toList(growable: false);
-    return registry.pendingForProject(sessionIds: sessionIds);
-  }
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

@@ -455,10 +455,6 @@ final class PiPlugin._({
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => const [];
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async =>
-      _extensionUiService.getProjectQuestions(projectId: normalizeProjectDirectory(directory: projectId));
-
-  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,

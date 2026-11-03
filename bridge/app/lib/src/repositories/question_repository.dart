@@ -1,11 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../api/database/daos/projects_dao.dart";
-import "../api/database/daos/session_dao.dart";
 import "../runtime/plugin_runtime.dart";
-import "derived_session_builder.dart";
-import "models/project_not_found_exception.dart";
 import "models/session_operation.dart";
 import "pending_interaction_support.dart";
 
@@ -16,12 +12,7 @@ import "pending_interaction_support.dart";
 class QuestionRepository({
   required final PluginRuntime _runtime,
   required final PendingInteractionSupport _pendingSupport,
-  required final SessionDao _sessionDao,
-  required final ProjectsDao _projectsDao,
-  required final Duration _aggregateSourceDeadline,
 }) {
-  static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
-
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingQuestion>> getPendingQuestions({required String sessionId}) async {
@@ -56,121 +47,6 @@ class QuestionRepository({
     // Null means the backend is not running, which is indistinguishable from
     // "it has none" for this question.
     return pending ?? const [];
-  }
-
-  /// All pending questions for [projectId].
-  ///
-  /// A native plugin scopes questions to the project itself. A bridge-derived
-  /// plugin scopes only by a session's own cwd, so a question raised in a
-  /// session running in a dedicated worktree would never surface under the
-  /// project the user opened. For derived plugins the bridge owns the
-  /// session→project attribution, so we resolve the project's sessions via
-  /// [DerivedSessionBuilder] and aggregate each session's pending questions —
-  /// equivalent to the plugin's own project scoping, but worktree-aware.
-  ///
-  /// The plugin's own project-scoped result is merged in as well: a derived
-  /// backend can hold a freshly-created session only in memory (codex before
-  /// the rollout is flushed to disk), in which case the session is missing
-  /// from `listAllSessions()` and only the plugin's live scoping can surface
-  /// its questions. Merging is keyed by session id + question id — so a
-  /// question seen by both paths appears once, without assuming question ids
-  /// are globally unique across sessions.
-  Future<List<PendingQuestion>> getProjectQuestions({required String projectId}) async {
-    final directory = await _projectsDao.getResolvedPath(projectId: projectId);
-    if (directory == null) {
-      throw ProjectNotFoundException(projectId: projectId);
-    }
-    final pluginIds = _runtime.activePluginIds;
-    if (pluginIds.isEmpty) {
-      throw PluginOperationException(
-        SessionOperation.getProjectQuestions.name,
-        statusCode: 503,
-        message: "no plugins are running",
-      );
-    }
-    final sources = await Future.wait<List<PendingQuestion>?>(
-      pluginIds.map((pluginId) async {
-        try {
-          return await _runtime.useIfActive(
-            pluginId: pluginId,
-            operation: SessionOperation.getProjectQuestions,
-            body: (plugin, _) => _getPluginProjectQuestions(
-              plugin: plugin,
-              projectId: projectId,
-              directory: directory,
-            ).timeout(_aggregateSourceDeadline),
-          );
-        } on Object catch (error, stackTrace) {
-          Log.w("Could not read project questions from plugin $pluginId", error, stackTrace);
-          return null;
-        }
-      }),
-    );
-    if (sources.every((source) => source == null)) {
-      throw PluginOperationException(
-        SessionOperation.getProjectQuestions.name,
-        statusCode: 503,
-        message: "all running plugins failed to get project questions",
-      );
-    }
-    return [for (final source in sources) ...?source];
-  }
-
-  Future<List<PendingQuestion>> _getPluginProjectQuestions({
-    required BridgePluginApi plugin,
-    required String projectId,
-    required String directory,
-  }) async {
-    switch (plugin) {
-      case final NativeProjectsPluginApi plugin:
-        final pluginQuestions = await plugin.getProjectQuestions(projectId: directory);
-        return await _pendingSupport.mapQuestions(pluginId: plugin.id, questions: pluginQuestions);
-
-      case final BridgeDerivedProjectsPluginApi plugin:
-        final (sessionProjectPaths, tombstoned, ownScopedQuestions) = await (
-          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
-          _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
-          plugin.getProjectQuestions(projectId: directory),
-        ).wait;
-        final allSessions = await plugin.listAllSessions(
-          knownDirectories: {
-            directory,
-            for (final row in sessionProjectPaths) ...[
-              row.projectPath,
-              ?row.worktreePath,
-            ],
-          },
-        );
-        // Id-level scoping: includes stored-row attributions missing from the
-        // plugin enumeration, so a question raised in a fresh worktree session
-        // (attributed to this project by its row, but not yet in the backend's
-        // on-disk enumeration and scoped to its worktree cwd by the plugin's
-        // own query) still surfaces here. Tombstoned (deleted) sessions are
-        // excluded — a backend without session deletion still enumerates them.
-        final sessionIds = _derivedSessionBuilder.buildSessionIds(
-          projectId: directory,
-          sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
-          projectPathBySessionId: {
-            for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
-          },
-        );
-
-        final questionsByKey = <String, PluginPendingQuestion>{
-          for (final question in ownScopedQuestions)
-            if (_isVisible(question, tombstoned)) "${question.sessionID}:${question.id}": question,
-        };
-        for (final sessionId in sessionIds) {
-          final pluginQuestions = await plugin.getPendingQuestions(sessionId: sessionId);
-          for (final question in pluginQuestions) {
-            if (!_isVisible(question, tombstoned)) continue;
-            questionsByKey["${question.sessionID}:${question.id}"] = question;
-          }
-        }
-        return await _pendingSupport.mapQuestions(
-          pluginId: plugin.id,
-          questions: questionsByKey.values.toList(growable: false),
-        );
-    }
   }
 
   bool _isVisible(PluginPendingQuestion question, Set<String> tombstoned) => _pendingSupport.isVisible(

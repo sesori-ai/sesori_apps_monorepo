@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'plugin_setup_response.dart';
+part of 'plugin_setup_metadata.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
@@ -37,21 +37,4 @@ const _$PluginSetupStateEnumMap = {
   PluginSetupState.authenticationRequired: 'authenticationRequired',
   PluginSetupState.unavailable: 'unavailable',
   PluginSetupState.unknown: 'unknown',
-};
-
-_PluginSetupResponse _$PluginSetupResponseFromJson(Map json) =>
-    _PluginSetupResponse(
-      plugins: (json['plugins'] as List<dynamic>)
-          .map(
-            (e) => PluginSetupMetadata.fromJson(
-              Map<String, dynamic>.from(e as Map),
-            ),
-          )
-          .toList(),
-    );
-
-Map<String, dynamic> _$PluginSetupResponseToJson(
-  _PluginSetupResponse instance,
-) => <String, dynamic>{
-  'plugins': instance.plugins.map((e) => e.toJson()).toList(),
 };
