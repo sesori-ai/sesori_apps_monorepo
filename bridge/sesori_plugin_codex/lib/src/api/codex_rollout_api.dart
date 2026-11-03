@@ -331,7 +331,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
 
   List<CodexRolloutLineDto> _decodeRolloutLines({
     required Iterable<String> lines,
-    String? malformedWarning,
+    required String malformedWarning,
     bool ignoreMalformedLastLine = false,
   }) {
     final source = lines.toList(growable: false);
@@ -345,7 +345,7 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
         decoded.add(CodexRolloutLineDto.fromJson(json));
       } on Object catch (error) {
         final isExpectedPartialLine = ignoreMalformedLastLine && i == source.length - 1;
-        if (malformedWarning != null && !isExpectedPartialLine) {
+        if (!isExpectedPartialLine) {
           final schema = json != null ? _rolloutSchemaForLog(value: json) : "unparseable-json";
           Log.w(
             "$malformedWarning "

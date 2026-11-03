@@ -68,7 +68,7 @@ class CodexStdioAppServerClient({
         );
       }
       final result = CodexInitializeResult.fromJson(raw.cast<String, dynamic>());
-      _notify(method: "initialized");
+      _notify(method: "initialized", params: null);
       return result;
     } on Object {
       await _transport.reset(
@@ -104,7 +104,7 @@ class CodexStdioAppServerClient({
     return response["result"];
   }
 
-  void _notify({required String method, Object? params}) {
+  void _notify({required String method, required Object? params}) {
     final frame = <String, dynamic>{"method": method};
     if (params != null) frame["params"] = params;
     _transport.sendFrame(frame: frame);

@@ -11,6 +11,7 @@ import "package:test/test.dart";
 
 void main() {
   const sessionId = "session";
+  final now = DateTime.utc(2026);
   late PiHistoryMapper history;
   late PiEventDispatcher dispatcher;
   late PiMessageIdentityTracker identities;
@@ -37,19 +38,21 @@ void main() {
       stopReason: "toolUse",
     );
 
-    dispatcher.map(sessionId: sessionId, event: _event("message_start", {"message": start}));
+    dispatcher.map(sessionId: sessionId, event: _event("message_start", {"message": start}), now: now);
     final streamed = <BridgeSseEvent>[
       ...dispatcher.map(
         sessionId: sessionId,
         event: _event("message_update", {
           "assistantMessageEvent": {"type": "text_delta", "contentIndex": 1, "delta": "Ans"},
         }),
+        now: now,
       ),
       ...dispatcher.map(
         sessionId: sessionId,
         event: _event("message_update", {
           "assistantMessageEvent": {"type": "thinking_delta", "contentIndex": 0, "delta": "Rea"},
         }),
+        now: now,
       ),
       ...dispatcher.map(
         sessionId: sessionId,
@@ -60,11 +63,13 @@ void main() {
             "toolCall": {"id": "call-1", "name": "read", "arguments": <String, Object?>{}},
           },
         }),
+        now: now,
       ),
     ];
     final finalEvents = dispatcher.map(
       sessionId: sessionId,
       event: _event("message_end", {"message": finalMessage}),
+      now: now,
     );
 
     expect(streamed.whereType<BridgeSseMessageUpdated>(), hasLength(1));
@@ -95,6 +100,7 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 101)}),
+      now: now,
     );
 
     final started = dispatcher.map(
@@ -107,6 +113,7 @@ void main() {
           "toolName": "bash",
         },
       }),
+      now: now,
     );
     final part = started.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(started.whereType<BridgeSseMessageUpdated>(), hasLength(1));
@@ -127,6 +134,7 @@ void main() {
           },
         },
       }),
+      now: now,
     );
     expect(ended, isEmpty);
 
@@ -141,6 +149,7 @@ void main() {
           ],
         },
       }),
+      now: now,
     );
     final completedState = completed.whereType<BridgeSseMessagePartUpdated>().single.part.state;
     expect(completedState.shellCommand, "pwd");
@@ -151,6 +160,7 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 103)}),
+      now: now,
     );
 
     final started = dispatcher.map(
@@ -163,6 +173,7 @@ void main() {
           "toolName": "write",
         },
       }),
+      now: now,
     );
     expect(started.whereType<BridgeSseMessagePartUpdated>().single.part.id, "normalized-at-start");
 
@@ -175,6 +186,7 @@ void main() {
           "toolCall": {"id": "normalized-at-end", "name": "write", "arguments": <String, Object?>{}},
         },
       }),
+      now: now,
     );
     expect(ended, isEmpty);
   });
@@ -183,6 +195,7 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 102)}),
+      now: now,
     );
 
     expect(
@@ -191,6 +204,7 @@ void main() {
         event: _event("message_update", {
           "assistantMessageEvent": {"type": "toolcall_start", "contentIndex": 0},
         }),
+        now: now,
       ),
       isEmpty,
     );
@@ -204,6 +218,7 @@ void main() {
           "toolCall": {"id": "call-late", "name": "write", "arguments": <String, Object?>{}},
         },
       }),
+      now: now,
     );
     expect(ended.whereType<BridgeSseMessagePartUpdated>().single.part.tool, "write");
   });
@@ -226,16 +241,19 @@ void main() {
           "timestamp": 90,
         },
       }),
+      now: now,
     );
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 100)}),
+      now: now,
     );
     final beforeSteer = dispatcher.map(
       sessionId: sessionId,
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "before "},
       }),
+      now: now,
     );
 
     dispatcher.registerPrompt(
@@ -249,6 +267,7 @@ void main() {
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "after"},
       }),
+      now: now,
     );
     dispatcher.map(
       sessionId: sessionId,
@@ -261,6 +280,7 @@ void main() {
           stopReason: "stop",
         ),
       }),
+      now: now,
     );
     final steeringUser = dispatcher.map(
       sessionId: sessionId,
@@ -273,6 +293,7 @@ void main() {
           "timestamp": 110,
         },
       }),
+      now: now,
     );
 
     expect(((firstUser.first as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, "prompt-1");
@@ -306,6 +327,7 @@ void main() {
           "timestamp": 90,
         },
       }),
+      now: now,
     );
 
     expect(((user.first as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, "prompt-1");
@@ -321,7 +343,7 @@ void main() {
       "timestamp": 99,
     };
 
-    final live = dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": raw}));
+    final live = dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": raw}), now: now);
     final replay = history
         .map(
           sessionId: sessionId,
@@ -364,8 +386,8 @@ void main() {
       "display": true,
     };
 
-    expect(dispatcher.map(sessionId: sessionId, event: _event("entry_appended", {"entry": hidden})), isEmpty);
-    final live = dispatcher.map(sessionId: sessionId, event: _event("entry_appended", {"entry": visible}));
+    expect(dispatcher.map(sessionId: sessionId, event: _event("entry_appended", {"entry": hidden}), now: now), isEmpty);
+    final live = dispatcher.map(sessionId: sessionId, event: _event("entry_appended", {"entry": visible}), now: now);
     final replay = history
         .map(
           sessionId: sessionId,
@@ -384,7 +406,7 @@ void main() {
 
   test("authoritative final removes streamed parts before restoring final order", () {
     final start = _assistant(content: const [], timestamp: 101);
-    dispatcher.map(sessionId: sessionId, event: _event("message_start", {"message": start}));
+    dispatcher.map(sessionId: sessionId, event: _event("message_start", {"message": start}), now: now);
     for (final update in [
       {"type": "text_end", "contentIndex": 1, "content": "second"},
       {"type": "thinking_end", "contentIndex": 0, "content": "first"},
@@ -392,6 +414,7 @@ void main() {
       dispatcher.map(
         sessionId: sessionId,
         event: _event("message_update", {"assistantMessageEvent": update}),
+        now: now,
       );
     }
 
@@ -406,6 +429,7 @@ void main() {
           timestamp: 101,
         ),
       }),
+      now: now,
     );
 
     expect(
@@ -422,17 +446,20 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 102)}),
+      now: now,
     );
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "text_end", "contentIndex": 0, "content": "discard"},
       }),
+      now: now,
     );
 
     final events = dispatcher.map(
       sessionId: sessionId,
       event: _event("message_end", {"message": _assistant(content: const [], timestamp: 102)}),
+      now: now,
     );
 
     expect(events.whereType<BridgeSseMessageUpdated>(), isEmpty);
@@ -443,6 +470,7 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 103)}),
+      now: now,
     );
     dispatcher.map(
       sessionId: sessionId,
@@ -453,6 +481,7 @@ void main() {
           "toolCall": {"id": "orphan", "name": "read", "arguments": <String, Object?>{}},
         },
       }),
+      now: now,
     );
 
     final events = dispatcher.map(
@@ -460,6 +489,7 @@ void main() {
       event: _event("message_end", {
         "message": {"role": "assistant", "content": 123, "timestamp": 103},
       }),
+      now: now,
     );
 
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, "pi:session:assistant:103:1");
@@ -467,6 +497,7 @@ void main() {
       dispatcher.map(
         sessionId: sessionId,
         event: _event("tool_execution_start", {"toolCallId": "orphan", "toolName": "read"}),
+        now: now,
       ),
       isEmpty,
     );
@@ -483,8 +514,9 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: [], timestamp: 1)}),
+      now: now,
     );
-    dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": message}));
+    dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": message}), now: now);
 
     final first = dispatcher.map(
       sessionId: sessionId,
@@ -497,6 +529,7 @@ void main() {
           ],
         },
       }),
+      now: now,
     );
     final second = dispatcher.map(
       sessionId: sessionId,
@@ -509,6 +542,7 @@ void main() {
           ],
         },
       }),
+      now: now,
     );
     final completed = dispatcher.map(
       sessionId: sessionId,
@@ -521,6 +555,7 @@ void main() {
           ],
         },
       }),
+      now: now,
     );
     final duplicate = dispatcher.map(
       sessionId: sessionId,
@@ -533,6 +568,7 @@ void main() {
           ],
         },
       }),
+      now: now,
     );
 
     expect((first.single as BridgeSseMessagePartUpdated).part.state.output, "a");
@@ -559,6 +595,7 @@ void main() {
           stopReason: "toolUse",
         ),
       }),
+      now: now,
     );
 
     final completed = dispatcher.map(
@@ -572,6 +609,7 @@ void main() {
           ],
         },
       }),
+      now: now,
     );
 
     final state = completed.whereType<BridgeSseMessagePartUpdated>().single.part.state;
@@ -584,12 +622,14 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 101)}),
+      now: now,
     );
     final started = dispatcher.map(
       sessionId: sessionId,
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "toolcall_start", "contentIndex": 0, "id": "call-1", "toolName": "read"},
       }),
+      now: now,
     );
     expect(started.whereType<BridgeSseMessagePartUpdated>().single.part.state.title, isNull);
 
@@ -606,10 +646,12 @@ void main() {
           },
         },
       }),
+      now: now,
     );
     final running = dispatcher.map(
       sessionId: sessionId,
       event: _event("tool_execution_start", {"toolCallId": "call-1", "toolName": "read"}),
+      now: now,
     );
     final runningState = running.whereType<BridgeSseMessagePartUpdated>().single.part.state;
     expect(runningState.status, PluginToolStatus.running);
@@ -625,7 +667,7 @@ void main() {
       timestamp: 1,
       stopReason: "toolUse",
     );
-    dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": message}));
+    dispatcher.map(sessionId: sessionId, event: _event("message_end", {"message": message}), now: now);
 
     expect(
       dispatcher.map(
@@ -635,6 +677,7 @@ void main() {
           "toolName": "read",
           "partialResult": {"content": 7},
         }),
+        now: now,
       ),
       isEmpty,
     );
@@ -643,6 +686,7 @@ void main() {
           .map(
             sessionId: sessionId,
             event: _event("agent_settled"),
+            now: now,
           )
           .whereType<BridgeSseSessionIdle>(),
       hasLength(1),
@@ -660,6 +704,7 @@ void main() {
       final live = dispatcher.map(
         sessionId: sessionId,
         event: _event("message_end", {"message": message}),
+        now: now,
       );
       final replay = history
           .map(
@@ -691,6 +736,7 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: [], timestamp: 3)}),
+      now: now,
     );
     final pending = dispatcher.map(
       sessionId: sessionId,
@@ -705,6 +751,7 @@ void main() {
           },
         },
       }),
+      now: now,
     );
     final failed = dispatcher.map(
       sessionId: sessionId,
@@ -723,6 +770,7 @@ void main() {
           errorMessage: "provider failed",
         ),
       }),
+      now: now,
     );
 
     expect(pending.whereType<BridgeSseMessagePartUpdated>().single.part.state.status, PluginToolStatus.pending);
@@ -735,6 +783,7 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 4)}),
+      now: now,
     );
     final events = dispatcher.map(
       sessionId: sessionId,
@@ -745,6 +794,7 @@ void main() {
           "toolCall": {"type": "text", "id": "call", "name": "read"},
         },
       }),
+      now: now,
     );
 
     expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.tool, "read");
@@ -764,6 +814,7 @@ void main() {
           "timestamp": 5,
         },
       }),
+      now: now,
     );
 
     expect(events.whereType<BridgeSseMessageUpdated>().single.info.id, contains(":bashExecution:5:1"));
@@ -787,6 +838,7 @@ void main() {
             "timestamp": 6,
           },
         }),
+        now: now,
       ),
       isEmpty,
     );
@@ -802,6 +854,7 @@ void main() {
           "timestamp": 6,
         },
       }),
+      now: now,
     );
 
     expect(events.whereType<BridgeSseMessageUpdated>().single.info.id, "pi:session:custom:6:2");
@@ -821,14 +874,17 @@ void main() {
     final autoRetryResumed = dispatcher.map(
       sessionId: sessionId,
       event: _event("auto_retry_end", {"success": true, "attempt": 2}),
+      now: now,
     );
     final summarizationResumed = dispatcher.map(
       sessionId: sessionId,
       event: _event("summarization_retry_attempt_start", {"source": "branchSummary"}),
+      now: now,
     );
     final agentEnd = dispatcher.map(
       sessionId: sessionId,
       event: _event("agent_end", {"willRetry": false}),
+      now: now,
     );
     final compacting = dispatcher.map(
       sessionId: sessionId,
@@ -845,7 +901,7 @@ void main() {
       }),
       now: DateTime.fromMillisecondsSinceEpoch(9000),
     );
-    final settled = dispatcher.map(sessionId: sessionId, event: _event("agent_settled"));
+    final settled = dispatcher.map(sessionId: sessionId, event: _event("agent_settled"), now: now);
 
     expect(
       (retry.single as BridgeSseSessionStatus).status,
@@ -893,6 +949,7 @@ void main() {
         "aborted": false,
         "willRetry": true,
       }),
+      now: now,
     );
     final retried = dispatcher.map(
       sessionId: sessionId,
@@ -912,6 +969,7 @@ void main() {
     final compacting = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "overflow"}),
+      now: now,
     );
     final compacted = dispatcher.map(
       sessionId: sessionId,
@@ -920,6 +978,7 @@ void main() {
         "aborted": false,
         "willRetry": true,
       }),
+      now: now,
     );
 
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
@@ -936,10 +995,11 @@ void main() {
   });
 
   test("a manual compaction settles with the manual trigger", () {
-    dispatcher.map(sessionId: sessionId, event: _event("compaction_start", {"reason": "manual"}));
+    dispatcher.map(sessionId: sessionId, event: _event("compaction_start", {"reason": "manual"}), now: now);
     final compacted = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {"reason": "manual", "aborted": false, "willRetry": false}),
+      now: now,
     );
 
     expect(
@@ -984,10 +1044,11 @@ void main() {
       );
       final running = compacting.whereType<BridgeSseMessageUpdated>().single.info;
 
-      final failed = dispatcher.map(sessionId: sessionId, event: _event("compaction_end", end));
+      final failed = dispatcher.map(sessionId: sessionId, event: _event("compaction_end", end), now: now);
       final restarted = dispatcher.map(
         sessionId: sessionId,
         event: _event("compaction_start", {"reason": "threshold"}),
+        now: now,
       );
 
       expect(failed.whereType<BridgeSseSessionError>(), isEmpty);
@@ -1004,6 +1065,7 @@ void main() {
     final failed = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {"errorMessage": "provider detail", "aborted": false, "willRetry": false}),
+      now: now,
     );
 
     expect(failed, [isA<BridgeSseSessionError>()]);
@@ -1035,6 +1097,7 @@ void main() {
     final compacting = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "threshold"}),
+      now: now,
     );
     final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info.id;
     identities.hydrate<void>(sessionId: sessionId, map: (_) {});
@@ -1042,10 +1105,12 @@ void main() {
     final compacted = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {"aborted": false, "willRetry": false}),
+      now: now,
     );
     final next = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "threshold"}),
+      now: now,
     );
 
     expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, messageId);
@@ -1056,27 +1121,31 @@ void main() {
     dispatcher.map(
       sessionId: "one",
       event: _event("message_start", {"message": _assistant(content: [], timestamp: 1)}),
+      now: now,
     );
     dispatcher.map(
       sessionId: "two",
       event: _event("message_start", {"message": _assistant(content: [], timestamp: 2)}),
+      now: now,
     );
     final one = dispatcher.map(
       sessionId: "one",
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "one"},
       }),
+      now: now,
     );
     final two = dispatcher.map(
       sessionId: "two",
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "two"},
       }),
+      now: now,
     );
 
     expect(one.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:one:assistant:1:1");
     expect(two.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:two:assistant:2:1");
-    expect(dispatcher.map(sessionId: sessionId, event: _event("future_event")), isEmpty);
+    expect(dispatcher.map(sessionId: sessionId, event: _event("future_event"), now: now), isEmpty);
   });
 
   test("history hydration advances live identities and reconciles provisional parts", () {
@@ -1111,20 +1180,24 @@ void main() {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": hydrated}),
+      now: now,
     );
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_update", {
         "assistantMessageEvent": {"type": "thinking_delta", "contentIndex": 0, "delta": "discard"},
       }),
+      now: now,
     );
     final finalized = dispatcher.map(
       sessionId: sessionId,
       event: _event("message_end", {"message": hydrated}),
+      now: now,
     );
     final compacted = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {"aborted": false, "willRetry": false}),
+      now: now,
     );
 
     expect(finalized.whereType<BridgeSseMessageUpdated>().single.info.id, "pi:session:assistant:10:2");

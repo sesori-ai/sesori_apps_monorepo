@@ -103,6 +103,7 @@ void main() {
       handledFrameIds = {};
       plugin = CursorPlugin(
         launchDirectory: "/repo",
+        apiEndpoint: null,
         processFactory: (_) async => fake,
         sessionCleanupService: sessionCleanupService,
       );
@@ -298,7 +299,7 @@ void main() {
 
     test("the default binary is the stable Cursor CLI executable", () {
       expect(CursorBinary.defaultBinary, "cursor-agent");
-      final spec = CursorBinary.launchSpec(cwd: "/repo");
+      final spec = CursorBinary.launchSpec(cwd: "/repo", apiEndpoint: null);
       expect(spec.command, "cursor-agent");
       expect(spec.args, ["acp"]);
     });
@@ -1445,6 +1446,7 @@ void main() {
       fakes.clear();
       plugin = CursorPlugin(
         launchDirectory: cwd,
+        apiEndpoint: null,
         sessionCleanupService: _FakeCursorSessionCleanupService(),
         processFactory: (_) async {
           final fake = FakeAcpProcess();

@@ -286,7 +286,8 @@ void main() {
       );
 
       expect(threadRepository.readThreadIds, ["child-1"]);
-      final child = announcement!.child;
+      if (announcement == null) fail("child was not announced");
+      final child = announcement.child;
       expect(child.parentId, "root-1");
       expect(child.name, "Raman");
       expect(child.directory, "/repo/parent");
@@ -332,7 +333,8 @@ void main() {
         status: const PluginSessionStatus.idle(),
       );
 
-      final child = announcement!.child;
+      if (announcement == null) fail("child was not announced");
+      final child = announcement.child;
       expect(child.parentId, "root-1");
       expect(child.name, "/root/sleeper");
       expect(child.directory, "/repo/parent");
@@ -461,8 +463,8 @@ void main() {
         agentPath: "worker",
         status: const PluginSessionStatus.idle(),
       );
-      expect(announcement, isNotNull);
-      expect(announcement!.status, isA<PluginSessionStatusBusy>());
+      if (announcement == null) fail("child was not announced");
+      expect(announcement.status, isA<PluginSessionStatusBusy>());
       expect(
         await service.handleSubAgentStarted(
           childThreadId: "child-1",

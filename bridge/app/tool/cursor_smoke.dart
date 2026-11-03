@@ -16,6 +16,7 @@ Future<void> main(List<String> args) async {
   final cwd = Directory.current.path;
   final plugin = CursorPlugin(
     launchDirectory: cwd,
+    apiEndpoint: null,
     processFactory: defaultAcpProcessFactory,
     sessionCleanupService: CursorSessionCleanupService(
       repository: CursorSessionStorageRepository(

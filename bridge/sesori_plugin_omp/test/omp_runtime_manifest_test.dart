@@ -28,23 +28,26 @@ void main() {
   });
 
   test("maps all eight official direct binary assets", () {
-    final assets = <RuntimeAsset>[
-      manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-      )!,
-      manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
-      )!,
-      manifest.assetForLinux(arch: PlatformArch.arm64, libc: OmpLinuxLibc.glibc)!,
-      manifest.assetForLinux(arch: PlatformArch.x64, libc: OmpLinuxLibc.glibc)!,
-      manifest.assetForLinux(arch: PlatformArch.arm64, libc: OmpLinuxLibc.musl)!,
-      manifest.assetForLinux(arch: PlatformArch.x64, libc: OmpLinuxLibc.musl)!,
-      manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
-      )!,
-      manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
-      )!,
+    final assets = [
+      for (final asset in <RuntimeAsset?>[
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+        ),
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
+        ),
+        manifest.assetForLinux(arch: PlatformArch.arm64, libc: OmpLinuxLibc.glibc),
+        manifest.assetForLinux(arch: PlatformArch.x64, libc: OmpLinuxLibc.glibc),
+        manifest.assetForLinux(arch: PlatformArch.arm64, libc: OmpLinuxLibc.musl),
+        manifest.assetForLinux(arch: PlatformArch.x64, libc: OmpLinuxLibc.musl),
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
+        ),
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
+        ),
+      ])
+        asset ?? fail("missing an official direct binary asset"),
     ];
 
     expect(assets, everyElement(isA<DirectBinaryRuntimeAsset>()));
@@ -64,7 +67,7 @@ void main() {
 
   test("advertises the official Windows arm64 direct binary", () {
     const target = PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64);
-    final asset = manifest.assetFor(target: target)!;
+    final asset = manifest.assetFor(target: target) ?? fail("missing Windows arm64 asset");
 
     expect(manifest.supportsManagedInstallOn(target: target), isTrue);
     expect(asset, isA<DirectBinaryRuntimeAsset>());
@@ -77,9 +80,11 @@ void main() {
   });
 
   test("builds the official release URL with the v tag", () {
-    final asset = manifest.assetFor(
-      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-    )!;
+    final asset =
+        manifest.assetFor(
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+        ) ??
+        fail("missing macOS arm64 asset");
     expect(
       manifest.downloadUrlFor(asset: asset),
       "https://github.com/can1357/oh-my-pi/releases/download/v18.12.6/omp-darwin-arm64",

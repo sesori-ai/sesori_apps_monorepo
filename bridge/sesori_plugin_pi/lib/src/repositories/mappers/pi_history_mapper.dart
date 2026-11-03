@@ -673,7 +673,12 @@ final class PiHistoryMapper({
         errorMessage: errorMessage ?? "The Pi assistant response was aborted.",
         time: _time(timestamp),
       ),
-      _ => PluginMessage.assistant(
+      PiAssistantStopReason.pending ||
+      PiAssistantStopReason.stop ||
+      PiAssistantStopReason.length ||
+      PiAssistantStopReason.toolUse ||
+      PiAssistantStopReason.deferred ||
+      null => PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
         agent: _pluginId,

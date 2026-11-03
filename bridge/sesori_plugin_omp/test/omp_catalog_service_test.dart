@@ -43,8 +43,8 @@ void main() {
     expect(catalog.defaultModelValue, "custom/team/model-v2");
     expect(catalog.models.first.providerId, "custom");
     expect(catalog.models.first.modelId, "team/model-v2");
-    expect(catalog.thinkingByModel["custom/team/model-v2"]!.variants, ["off", "high"]);
-    expect(catalog.thinkingByModel["other/model"]!.variants, ["auto", "max"]);
+    expect(catalog.thinkingByModel["custom/team/model-v2"]?.variants, ["off", "high"]);
+    expect(catalog.thinkingByModel["other/model"]?.variants, ["auto", "max"]);
     expect(catalog.commands.single.name, "review");
     expect(repository.selectedModels, [
       "custom/team/model-v2",
@@ -150,7 +150,7 @@ void main() {
     expect(catalog.completeness, PluginSessionOptionsCompleteness.partial);
     expect(catalog.models, hasLength(3));
     expect(catalog.thinkingByModel, isNot(contains("custom/team/model-v2")));
-    expect(catalog.thinkingByModel["other/model"]!.variants, ["high"]);
+    expect(catalog.thinkingByModel["other/model"]?.variants, ["high"]);
   });
 
   test("hydrates every model in large catalogs", () async {

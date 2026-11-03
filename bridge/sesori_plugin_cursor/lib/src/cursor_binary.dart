@@ -24,8 +24,8 @@ abstract final class CursorBinary() {
 
   static AcpLaunchSpec launchSpec({
     String binary = defaultBinary,
-    String? cwd,
-    String? apiEndpoint,
+    required String? cwd,
+    required String? apiEndpoint,
     Map<String, String> environment = const {},
   }) {
     return AcpLaunchSpec(

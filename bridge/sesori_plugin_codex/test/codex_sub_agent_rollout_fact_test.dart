@@ -34,8 +34,8 @@ void main() {
       ),
       previousLine: null,
     );
-    expect(spawn, isA<CodexSubAgentSpawnFact>());
-    final spawnFact = spawn! as CodexSubAgentSpawnFact;
+    if (spawn is! CodexSubAgentSpawnFact) fail("expected a spawn fact, got $spawn");
+    final spawnFact = spawn;
     expect(spawnFact.callId, "call-spawn");
     expect(spawnFact.agent, "worker");
     expect(spawnFact.message, "  preserve delegated text  ");
@@ -58,8 +58,8 @@ void main() {
       ),
       previousLine: null,
     );
-    expect(started, isA<CodexSubAgentStartedActivityFact>());
-    final startedFact = started! as CodexSubAgentStartedActivityFact;
+    if (started is! CodexSubAgentStartedActivityFact) fail("expected a started activity fact, got $started");
+    final startedFact = started;
     expect(startedFact.callId, "call-spawn");
     expect(startedFact.childThreadId, "child-1");
     expect(startedFact.agentPath, "/root/worker");
@@ -80,8 +80,8 @@ void main() {
       previousLine: marker,
     );
     expect(
-      (encrypted! as CodexSubAgentInitialInputFact).input,
-      isA<CodexSubAgentEncryptedInput>(),
+      encrypted,
+      isA<CodexSubAgentInitialInputFact>().having((fact) => fact.input, "input", isA<CodexSubAgentEncryptedInput>()),
     );
 
     final plaintext = repository.subAgentRolloutFact(
@@ -95,8 +95,8 @@ void main() {
       ),
       previousLine: marker,
     );
-    expect(plaintext, isA<CodexSubAgentInitialInputFact>());
-    final plaintextFact = plaintext! as CodexSubAgentInitialInputFact;
+    if (plaintext is! CodexSubAgentInitialInputFact) fail("expected an initial input fact, got $plaintext");
+    final plaintextFact = plaintext;
     expect(plaintextFact.turnId, "child-turn-1");
     expect(
       (plaintextFact.input as CodexSubAgentPlaintextInput).message,

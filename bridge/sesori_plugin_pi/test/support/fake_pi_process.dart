@@ -3,6 +3,15 @@ import "dart:convert";
 import "dart:io";
 
 import "package:pi_plugin/pi_plugin.dart";
+import "package:test/test.dart";
+
+/// Reads the request id the Pi RPC client stamped on a written command frame.
+extension PiWrittenFrameRequestId on Map<String, Object?> {
+  String get requestId => switch (this["id"]) {
+    final String id => id,
+    final other => fail("expected a string request id, got $other"),
+  };
+}
 
 /// In-memory [PiProcessHandle] for Pi transport and plugin tests.
 class FakePiProcess({bool stdinCloseCompletes = true, bool stdinWritesFail = false}) implements PiProcessHandle {

@@ -132,7 +132,10 @@ class _AuthenticationTransport({
         "userCode": "PRIVATE-CODE",
       };
     }
-    cancelLoginIds.add((params! as Map<String, dynamic>)["loginId"]! as String);
+    if (params is! Map<String, dynamic>) fail("login cancel params are not an object: $params");
+    final loginId = params["loginId"];
+    if (loginId is! String) fail("login cancel has no loginId: $params");
+    cancelLoginIds.add(loginId);
     return {"status": "canceled"};
   }
 

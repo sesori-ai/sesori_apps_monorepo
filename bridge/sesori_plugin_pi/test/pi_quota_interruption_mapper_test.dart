@@ -34,7 +34,7 @@ void main() {
       toolTracker: PiToolTracker(),
     );
     final visible = dispatcher
-        .map(sessionId: "session", event: event)
+        .map(sessionId: "session", event: event, now: observedAt)
         .whereType<BridgeSseMessageUpdated>()
         .firstOrNull
         ?.info;
@@ -43,15 +43,17 @@ void main() {
       mappedMessage: visible,
       observedAt: observedAt.add(const Duration(days: 1)),
     );
-    if (result != null) expect(result.errorMessageId, visible!.id);
+    if (result != null) expect(result.errorMessageId, (visible ?? fail("expected the mapped error message")).id);
     return result;
   }
 
   test("observed multi-day duration is anchored to the error, not later delivery", () {
-    final result = map(
-      text: "You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min.",
-      fields: const {},
-    )!;
+    final result =
+        map(
+          text: "You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min.",
+          fields: const {},
+        ) ??
+        fail("expected a quota interruption");
     expect(result.observedAt, observedAt);
     expect((result.reset as PluginQuotaResetKnown).resetAt, observedAt.add(const Duration(minutes: 5918)));
   });
@@ -64,14 +66,14 @@ void main() {
       "You have hit your ChatGPT usage limit. Try again in ~-5 min.",
       "You have hit your ChatGPT usage limit. Try again in ~999999999999999 min.",
     ]) {
-      expect(map(text: text, fields: const {})!.reset, isA<PluginQuotaResetUnknown>());
+      expect(map(text: text, fields: const {})?.reset, isA<PluginQuotaResetUnknown>());
     }
     for (final timestamp in [null, 9000000000000000]) {
       expect(
         map(
           text: "You have hit your ChatGPT usage limit. Try again in ~60 min.",
           fields: {"timestamp": timestamp},
-        )!.reset,
+        )?.reset,
         isA<PluginQuotaResetUnknown>(),
       );
     }

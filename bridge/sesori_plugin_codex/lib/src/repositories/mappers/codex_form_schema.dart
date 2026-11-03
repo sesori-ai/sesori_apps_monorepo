@@ -72,16 +72,21 @@ final class CodexFormSchema._({
 
   /// Only call after validation; native names and option values stay here.
   Map<String, Object?> encode({required Map<String, PluginFormValue> values}) => {
-    for (final entry in values.entries)
-      _nativeKeys[entry.key]!: switch (entry.value) {
+    for (final MapEntry(key: fieldId, :value) in values.entries)
+      _nativeKeys[fieldId] ?? (throw StateError("Unvalidated form field $fieldId")): switch (value) {
         PluginFormTextValue(:final value) => value,
         PluginFormIntegerValue(:final value) => value,
         PluginFormNumberValue(:final value) => value,
         PluginFormBooleanValue(:final value) => value,
-        PluginFormChoiceValue(:final optionId) => _nativeOptions[entry.key]![optionId]!,
-        PluginFormChoicesValue(:final optionIds) => [for (final id in optionIds) _nativeOptions[entry.key]![id]!],
+        PluginFormChoiceValue(:final optionId) => _nativeOption(fieldId: fieldId, optionId: optionId),
+        PluginFormChoicesValue(:final optionIds) => [
+          for (final optionId in optionIds) _nativeOption(fieldId: fieldId, optionId: optionId),
+        ],
       },
   };
+
+  String _nativeOption({required String fieldId, required String optionId}) =>
+      _nativeOptions[fieldId]?[optionId] ?? (throw StateError("Unvalidated form option $optionId for $fieldId"));
 
   static PluginFormSchema _field({required Map<String, Object?> schema, required Map<String, String> nativeOptions}) {
     const metadata = {"type", "title", "description", "default"};

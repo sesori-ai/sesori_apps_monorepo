@@ -24,12 +24,12 @@ final class const CodexSubAgentReplayData({
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
   final List<CodexRolloutLineDto> _lines = List.unmodifiable(lines);
 
-  bool get hasSubtasks => _lines.any(
-    (line) => switch (line) {
-      CodexRolloutResponseItemLineDto(payload: CodexRolloutFunctionCallDto(name: "spawn_agent")) => true,
-      _ => false,
-    },
-  );
+  bool get hasSubtasks => _lines.any((line) {
+    if (line case CodexRolloutResponseItemLineDto(payload: CodexRolloutFunctionCallDto(name: "spawn_agent"))) {
+      return true;
+    }
+    return false;
+  });
 }
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
@@ -159,10 +159,9 @@ class CodexMessageRepository({
   static List<CodexRolloutLineDto> trimForkedParentHistory({
     required List<CodexRolloutLineDto> lines,
   }) {
-    final startsAsSubAgent = switch (lines.firstOrNull) {
-      CodexRolloutSessionMetadataLineDto(:final payload) => payload.threadSource == CodexRolloutThreadSource.subagent,
-      _ => false,
-    };
+    final first = lines.firstOrNull;
+    final startsAsSubAgent =
+        first is CodexRolloutSessionMetadataLineDto && first.payload.threadSource == CodexRolloutThreadSource.subagent;
     if (!startsAsSubAgent) return lines;
     var copyStart = -1;
     for (var index = 1; index < lines.length; index++) {

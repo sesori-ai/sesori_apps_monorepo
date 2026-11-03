@@ -149,7 +149,7 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       await pump();
-      final ids = started.process.written.map((frame) => frame["id"]).toList();
+      final ids = started.process.written.map((frame) => frame.requestId).toList();
 
       // Events interleave, and the second response lands before the first: only
       // the id may decide which future completes.
@@ -157,14 +157,14 @@ void main() {
         frame: piEventFixture(type: "agent_start", fields: const {}),
       );
       started.process.emitResponse(
-        id: ids[1]! as String,
+        id: ids[1],
         command: "get_available_models",
         data: {"models": <Object?>[]},
       );
       started.process.emit(
         frame: piEventFixture(type: "agent_settled", fields: const {}),
       );
-      started.process.emitResponse(id: ids[0]! as String, command: "get_state", data: {"sessionId": "s1"});
+      started.process.emitResponse(id: ids[0], command: "get_state", data: {"sessionId": "s1"});
 
       expect((await first).data["sessionId"], "s1");
       expect((await second).command, PiRpcCommand.getAvailableModels);
@@ -191,7 +191,7 @@ void main() {
       );
       await pump();
       expect(started.client.isRunning, isTrue);
-      started.process.emitResponse(id: command["id"]! as String, command: "prompt");
+      started.process.emitResponse(id: command.requestId, command: "prompt");
 
       expect((await prompt).command, PiRpcCommand.prompt);
       expect(command["message"], "hi");
@@ -207,7 +207,7 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       final command = await waitForCommand(process: started.process, type: "get_entries");
-      started.process.emitFailure(id: command["id"]! as String, command: "get_entries", error: "Unknown entry");
+      started.process.emitFailure(id: command.requestId, command: "get_entries", error: "Unknown entry");
 
       await expectLater(
         pending,
@@ -231,7 +231,7 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       final command = await waitForCommand(process: started.process, type: "prompt");
-      started.process.emitResponse(id: command["id"]! as String, command: "prompt");
+      started.process.emitResponse(id: command.requestId, command: "prompt");
 
       expect(command["id"], isNot("spoofed"));
       expect((await pending).command, PiRpcCommand.prompt);
@@ -318,7 +318,7 @@ void main() {
       final command = await waitForCommand(process: started.process, type: "get_state");
 
       started.process.emitResponse(
-        id: command["id"]! as String,
+        id: command.requestId,
         command: "get_state",
         data: {"sessionId": "s1"},
       );
@@ -505,7 +505,7 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       final command = await waitForCommand(process: started.process, type: "get_state");
-      started.process.emitResponse(id: command["id"]! as String, command: "get_state");
+      started.process.emitResponse(id: command.requestId, command: "get_state");
 
       expect((await pending).command, PiRpcCommand.getState);
     });

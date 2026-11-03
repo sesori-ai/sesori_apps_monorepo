@@ -42,14 +42,15 @@ void main() {
       );
       await _answerEntries(process);
       final prompt = await waitForCommand(process: process, type: "prompt");
-      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emitResponse(id: prompt.requestId, command: "prompt");
       process.emit(frame: {"type": "agent_start"});
+      final errorTimestamp = DateTime.utc(2026, 9, 16, 19, 34, 27).millisecondsSinceEpoch;
       final error = <String, Object?>{
         "role": "assistant",
         "provider": "openai-codex",
         "stopReason": "error",
         "content": <Object?>[],
-        "timestamp": DateTime.utc(2026, 9, 16, 19, 34, 27).millisecondsSinceEpoch,
+        "timestamp": errorTimestamp,
         "errorMessage": "You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min.",
       };
       process.emit(frame: {"type": "message_end", "message": error});
@@ -68,7 +69,7 @@ void main() {
             "type": "message_end",
             "message": {
               ...error,
-              "timestamp": (error["timestamp"]! as int) + 10,
+              "timestamp": errorTimestamp + 10,
               if (outcome == "recovered") "stopReason": "stop",
             },
           },
@@ -154,7 +155,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     await pump();
@@ -321,7 +322,7 @@ void main() {
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
     storage.resolved = _resolved(id: sessionId);
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: sessionId);
     await pump();
@@ -466,7 +467,7 @@ void main() {
     await connecting;
     await _answerNthEntries(resident, count: 2);
     final residentRename = await waitForCommand(process: resident, type: "set_session_name");
-    resident.emitResponse(id: residentRename["id"]! as String, command: "set_session_name");
+    resident.emitResponse(id: residentRename.requestId, command: "set_session_name");
     await history;
     await rename;
     expect(fixture.spawned, hasLength(1));
@@ -478,7 +479,7 @@ void main() {
       resolved: fixture.storage.resolved,
     );
     final transientCommand = await waitForCommand(process: transient, type: "set_session_name");
-    transient.emitResponse(id: transientCommand["id"]! as String, command: "set_session_name");
+    transient.emitResponse(id: transientCommand.requestId, command: "set_session_name");
     await transientRename;
     expect(transient.killed, isTrue);
   });
@@ -515,7 +516,7 @@ void main() {
         await _answerEntries(transient);
       } else {
         final rename = await waitForCommand(process: transient, type: "set_session_name");
-        transient.emitResponse(id: rename["id"]! as String, command: "set_session_name");
+        transient.emitResponse(id: rename.requestId, command: "set_session_name");
       }
       await firstOperation;
       expect(transient.killed, isTrue);
@@ -558,10 +559,10 @@ void main() {
     ]);
     final model = await waitForCommand(process: process, type: "set_model");
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
-    process.emitResponse(id: model["id"]! as String, command: "set_model");
+    process.emitResponse(id: model.requestId, command: "set_model");
     final thinking = await waitForCommand(process: process, type: "set_thinking_level");
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
-    process.emitResponse(id: thinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: thinking.requestId, command: "set_thinking_level");
     final prompt = await waitForCommand(process: process, type: "prompt");
     expect(prompt["message"], "selected");
   });
@@ -614,7 +615,7 @@ void main() {
     final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
     expect(events.indexOf(message), lessThan(events.indexOf(emptyQueue)));
 
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -655,7 +656,7 @@ void main() {
     await _answerEntries(process);
     final followUp = await waitForCommand(process: process, type: "prompt");
     expect(followUp["message"], "follow up");
-    process.emitResponse(id: followUp["id"]! as String, command: "prompt");
+    process.emitResponse(id: followUp.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
@@ -685,7 +686,7 @@ void main() {
     expect(service.cancelQueuedPrompt(sessionId: "session", promptId: "cancelled"), isTrue);
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.written.where((frame) => frame["type"] == "prompt").map((frame) => frame["message"]), ["first"]);
@@ -742,7 +743,7 @@ void main() {
     );
     await _answerEntries(process);
     final model = await waitForCommand(process: process, type: "set_model");
-    process.emitFailure(id: model["id"]! as String, command: "set_model", error: "unavailable");
+    process.emitFailure(id: model.requestId, command: "set_model", error: "unavailable");
     await _waitForIdle(service: service, sessionId: "session");
 
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
@@ -768,7 +769,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "agent_settled"});
     await _waitForEvent<BridgeSseSessionIdle>(events: events);
@@ -817,17 +818,17 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     await pump();
     expect(completed, isFalse);
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     await accepted;
     final settledState = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: settledState["id"]! as String,
+      id: settledState.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
-      id: confirmedState["id"]! as String,
+      id: confirmedState.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
@@ -856,7 +857,7 @@ void main() {
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "agent_settled"});
-    process.emitFailure(id: secondPrompt["id"]! as String, command: "prompt", error: "rejected");
+    process.emitFailure(id: secondPrompt.requestId, command: "prompt", error: "rejected");
 
     await expectLater(failed, throwsA(isA<PiRpcCommandFailureException>()));
     await _waitForIdle(service: service, sessionId: "session");
@@ -928,7 +929,7 @@ void main() {
         },
       },
     );
-    first.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    first.emitResponse(id: firstPrompt.requestId, command: "prompt");
     final secondPrompt = await _waitForNthCommand(process: first, type: "prompt", count: 2);
     expect(secondPrompt["message"], "second");
     expect(secondPrompt["streamingBehavior"], "steer");
@@ -951,7 +952,7 @@ void main() {
       reason: "the follow-up must dispatch before the active run settles",
     );
 
-    first.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    first.emitResponse(id: secondPrompt.requestId, command: "prompt");
     await pump();
     expect(service.cancelQueuedPrompt(sessionId: "one", promptId: "prompt-9"), isFalse);
     expect(service.queuedPrompts(sessionId: "one").single.dispatchState, PluginQueuedPromptDispatchState.dispatched);
@@ -969,7 +970,7 @@ void main() {
       },
     );
     first.emit(frame: {"type": "agent_settled"});
-    other.emitResponse(id: otherPrompt["id"]! as String, command: "prompt");
+    other.emitResponse(id: otherPrompt.requestId, command: "prompt");
     other.emit(frame: {"type": "agent_settled"});
     await Future.wait([
       _waitForIdle(service: service, sessionId: "one"),
@@ -1012,14 +1013,14 @@ void main() {
     await _answerEntries(process);
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
 
     process.emit(frame: {"type": "agent_settled"});
-    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: steeringPrompt.requestId, command: "prompt");
     final stateCommand = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: stateCommand["id"]! as String,
+      id: stateCommand.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: true),
     );
@@ -1060,10 +1061,10 @@ void main() {
 
     await _answerEntries(process);
     final firstModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: firstModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: firstModel.requestId, command: "set_model");
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     await pump();
 
     expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
@@ -1072,10 +1073,10 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     final secondModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
     expect(secondModel["modelId"], "second-model");
-    process.emitResponse(id: secondModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: secondModel.requestId, command: "set_model");
     final secondState = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: secondState["id"]! as String,
+      id: secondState.requestId,
       command: "get_state",
       data: const {
         "model": {"provider": "provider", "id": "second-model"},
@@ -1085,7 +1086,7 @@ void main() {
       },
     );
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: secondPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1128,21 +1129,21 @@ void main() {
 
     await _answerEntries(process);
     final setModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: setModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: setModel.requestId, command: "set_model");
     final setThinking = await waitForCommand(process: process, type: "set_thinking_level");
-    process.emitResponse(id: setThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: setThinking.requestId, command: "set_thinking_level");
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
 
     final inheritedPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: inheritedPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: inheritedPrompt.requestId, command: "prompt");
     final explicitPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 3);
     expect(explicitPrompt["message"], "explicit");
     expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
     expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
 
-    process.emitResponse(id: explicitPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: explicitPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1169,7 +1170,7 @@ void main() {
     final initialState = await waitForCommand(process: process, type: "get_state");
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
     process.emitResponse(
-      id: initialState["id"]! as String,
+      id: initialState.requestId,
       command: "get_state",
       data: const {
         "model": {"provider": "provider", "id": "model"},
@@ -1180,7 +1181,7 @@ void main() {
     );
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
 
     await service.sendPrompt(
       sessionId: "session",
@@ -1198,7 +1199,7 @@ void main() {
     expect(process.written.where((frame) => frame["type"] == "set_model"), isEmpty);
     expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), isEmpty);
 
-    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: steeringPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1222,12 +1223,12 @@ void main() {
     );
     await _answerEntries(process);
     final initialModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: initialModel.requestId, command: "set_model");
     final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
 
     final history = fixture.repository.loadHistory(sessionId: "session", resolved: fixture.storage.resolved);
     final historyCommand = await _waitForNthCommand(process: process, type: "get_entries", count: 2);
@@ -1243,7 +1244,7 @@ void main() {
     process.emit(frame: {"type": "thinking_level_changed", "level": "low"});
     await pump();
     process.emitResponse(
-      id: historyCommand["id"]! as String,
+      id: historyCommand.requestId,
       command: "get_entries",
       data: const {"entries": <Object?>[], "leafId": null},
     );
@@ -1256,9 +1257,9 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
 
     final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
-    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: restoredThinking.requestId, command: "set_thinking_level");
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: secondPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1292,7 +1293,7 @@ void main() {
       await _answerEntries(process, answerInitialSelection: false);
       final initialState = await waitForCommand(process: process, type: "get_state");
       process.emitResponse(
-        id: initialState["id"]! as String,
+        id: initialState.requestId,
         command: "get_state",
         data: {
           "model": runtimeState.model,
@@ -1303,7 +1304,7 @@ void main() {
       );
       final firstPrompt = await waitForCommand(process: process, type: "prompt");
       process.emit(frame: {"type": "agent_start"});
-      process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+      process.emitResponse(id: firstPrompt.requestId, command: "prompt");
 
       await service.sendPrompt(
         sessionId: "session",
@@ -1321,11 +1322,11 @@ void main() {
       process.emit(frame: {"type": "agent_settled"});
 
       final setModel = await waitForCommand(process: process, type: "set_model");
-      process.emitResponse(id: setModel["id"]! as String, command: "set_model");
+      process.emitResponse(id: setModel.requestId, command: "set_model");
       final setThinking = await waitForCommand(process: process, type: "set_thinking_level");
-      process.emitResponse(id: setThinking["id"]! as String, command: "set_thinking_level");
+      process.emitResponse(id: setThinking.requestId, command: "set_thinking_level");
       final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-      process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+      process.emitResponse(id: secondPrompt.requestId, command: "prompt");
       process.emit(frame: {"type": "agent_settled"});
       await _waitForIdle(service: service, sessionId: "session");
     });
@@ -1351,12 +1352,12 @@ void main() {
 
     await _answerEntries(process);
     final initialModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: initialModel.requestId, command: "set_model");
     final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "thinking_level_changed", "level": "low"});
     await pump();
 
@@ -1377,9 +1378,9 @@ void main() {
 
     final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
     expect(restoredThinking["level"], "high");
-    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: restoredThinking.requestId, command: "set_thinking_level");
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: secondPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1404,12 +1405,12 @@ void main() {
 
     await _answerEntries(process);
     final initialModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: initialModel.requestId, command: "set_model");
     final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "thinking_level_changed", "level": "future-level"});
     await pump();
 
@@ -1429,11 +1430,11 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
 
     final restoredModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
-    process.emitResponse(id: restoredModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: restoredModel.requestId, command: "set_model");
     final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
-    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: restoredThinking.requestId, command: "set_thinking_level");
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: secondPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1473,7 +1474,7 @@ void main() {
       level: "max",
     );
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
     await pump();
 
@@ -1491,7 +1492,7 @@ void main() {
     expect(steeringPrompt["message"], "second");
     expect(steeringPrompt["streamingBehavior"], "steer");
 
-    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: steeringPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1519,11 +1520,11 @@ void main() {
         );
         await _answerEntries(process);
         final initialModel = await waitForCommand(process: process, type: "set_model");
-        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        process.emitResponse(id: initialModel.requestId, command: "set_model");
         final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
         final firstPrompt = await waitForCommand(process: process, type: "prompt");
-        process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+        process.emitResponse(id: firstPrompt.requestId, command: "prompt");
         process.emit(frame: {"type": "agent_settled"});
         await _waitForIdle(service: service, sessionId: "session");
 
@@ -1538,11 +1539,11 @@ void main() {
         );
         final changedModelCommand = await _waitForNthCommand(process: process, type: "set_model", count: 2);
         if (failModelUpdate) {
-          process.emitFailure(id: changedModelCommand["id"]! as String, command: "set_model", error: "rejected");
+          process.emitFailure(id: changedModelCommand.requestId, command: "set_model", error: "rejected");
         } else {
-          process.emitResponse(id: changedModelCommand["id"]! as String, command: "set_model");
+          process.emitResponse(id: changedModelCommand.requestId, command: "set_model");
           final failedThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
-          process.emitFailure(id: failedThinking["id"]! as String, command: "set_thinking_level", error: "rejected");
+          process.emitFailure(id: failedThinking.requestId, command: "set_thinking_level", error: "rejected");
         }
         await _waitForIdle(service: service, sessionId: "session");
 
@@ -1558,15 +1559,15 @@ void main() {
 
         final restoredModel = await _waitForNthCommand(process: process, type: "set_model", count: 3);
         expect(restoredModel["modelId"], "original-model");
-        process.emitResponse(id: restoredModel["id"]! as String, command: "set_model");
+        process.emitResponse(id: restoredModel.requestId, command: "set_model");
         final restoredThinking = await _waitForNthCommand(
           process: process,
           type: "set_thinking_level",
           count: failModelUpdate ? 2 : 3,
         );
-        process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+        process.emitResponse(id: restoredThinking.requestId, command: "set_thinking_level");
         final restoredPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-        process.emitResponse(id: restoredPrompt["id"]! as String, command: "prompt");
+        process.emitResponse(id: restoredPrompt.requestId, command: "prompt");
         process.emit(frame: {"type": "agent_settled"});
         await _waitForIdle(service: service, sessionId: "session");
       },
@@ -1597,18 +1598,18 @@ void main() {
 
         await _answerEntries(process);
         final initialModel = await waitForCommand(process: process, type: "set_model");
-        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        process.emitResponse(id: initialModel.requestId, command: "set_model");
         final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
         final commandPrompt = await waitForCommand(process: process, type: "prompt");
         process.emit(frame: {"type": "agent_start"});
-        process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+        process.emitResponse(id: commandPrompt.requestId, command: "prompt");
         final commandState = await waitForCommand(process: process, type: "get_state");
         if (stateRefreshFails) {
-          process.emitFailure(id: commandState["id"]! as String, command: "get_state", error: "unavailable");
+          process.emitFailure(id: commandState.requestId, command: "get_state", error: "unavailable");
         } else {
           process.emitResponse(
-            id: commandState["id"]! as String,
+            id: commandState.requestId,
             command: "get_state",
             data: const {
               "model": {"provider": "provider", "id": "changed-model"},
@@ -1638,11 +1639,11 @@ void main() {
 
         final restoredModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
         expect(restoredModel["modelId"], "original-model");
-        process.emitResponse(id: restoredModel["id"]! as String, command: "set_model");
+        process.emitResponse(id: restoredModel.requestId, command: "set_model");
         final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
-        process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+        process.emitResponse(id: restoredThinking.requestId, command: "set_thinking_level");
         final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-        process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+        process.emitResponse(id: secondPrompt.requestId, command: "prompt");
         process.emit(frame: {"type": "agent_settled"});
         await _waitForIdle(service: service, sessionId: "session");
       },
@@ -1673,16 +1674,16 @@ void main() {
         );
         await _answerEntries(process);
         final initialModel = await waitForCommand(process: process, type: "set_model");
-        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        process.emitResponse(id: initialModel.requestId, command: "set_model");
         final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
         final commandPrompt = await waitForCommand(process: process, type: "prompt");
-        process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+        process.emitResponse(id: commandPrompt.requestId, command: "prompt");
         final commandState = await waitForCommand(process: process, type: "get_state");
         var failedState = commandState;
         if (failSecondBarrier) {
           process.emitResponse(
-            id: commandState["id"]! as String,
+            id: commandState.requestId,
             command: "get_state",
             data: _stateData(process: process, streaming: false),
           );
@@ -1699,17 +1700,17 @@ void main() {
           variant: variant,
           model: model,
         );
-        process.emitFailure(id: failedState["id"]! as String, command: "get_state", error: "unavailable");
+        process.emitFailure(id: failedState.requestId, command: "get_state", error: "unavailable");
 
         await _answerEntries(replacement);
         expect(process.killed, isTrue);
         expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
         final replacementModel = await waitForCommand(process: replacement, type: "set_model");
-        replacement.emitResponse(id: replacementModel["id"]! as String, command: "set_model");
+        replacement.emitResponse(id: replacementModel.requestId, command: "set_model");
         final replacementThinking = await waitForCommand(process: replacement, type: "set_thinking_level");
-        replacement.emitResponse(id: replacementThinking["id"]! as String, command: "set_thinking_level");
+        replacement.emitResponse(id: replacementThinking.requestId, command: "set_thinking_level");
         final nextPrompt = await waitForCommand(process: replacement, type: "prompt");
-        replacement.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
+        replacement.emitResponse(id: nextPrompt.requestId, command: "prompt");
         replacement.emit(frame: {"type": "agent_settled"});
         await _waitForIdle(service: service, sessionId: "session");
       },
@@ -1736,12 +1737,12 @@ void main() {
     );
     await _answerEntries(process);
     final initialModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: initialModel.requestId, command: "set_model");
     final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    process.emitResponse(id: initialThinking.requestId, command: "set_thinking_level");
     final commandPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: commandPrompt.requestId, command: "prompt");
     await waitForCommand(process: process, type: "get_state");
     await accepted;
 
@@ -1805,10 +1806,10 @@ void main() {
 
     await _answerEntries(process);
     final firstModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: firstModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: firstModel.requestId, command: "set_model");
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "auto_retry_start", "attempt": 2, "delayMs": 500});
     process.emit(frame: {"type": "auto_retry_end", "success": false, "attempt": 2});
     await pump();
@@ -1819,10 +1820,10 @@ void main() {
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
     expect(events.whereType<BridgeSseSessionStatus>().last.status, const PluginSessionStatus.busy());
 
-    process.emitResponse(id: nextModel["id"]! as String, command: "set_model");
+    process.emitResponse(id: nextModel.requestId, command: "set_model");
     final nextState = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: nextState["id"]! as String,
+      id: nextState.requestId,
       command: "get_state",
       data: const {
         "model": {"provider": "provider", "id": "next-model"},
@@ -1832,7 +1833,7 @@ void main() {
       },
     );
     final nextPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: nextPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
@@ -1871,10 +1872,10 @@ void main() {
         },
       },
     );
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     final state = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: state["id"]! as String,
+      id: state.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
@@ -1897,7 +1898,7 @@ void main() {
     );
     final noArgumentsPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     expect(noArgumentsPrompt["message"], "/status");
-    process.emitFailure(id: noArgumentsPrompt["id"]! as String, command: "prompt", error: "done");
+    process.emitFailure(id: noArgumentsPrompt.requestId, command: "prompt", error: "done");
     await expectLater(noArguments, throwsA(isA<PiRpcCommandFailureException>()));
   });
 
@@ -1936,7 +1937,7 @@ void main() {
         },
       },
     );
-    process.emitFailure(id: prompt["id"]! as String, command: "prompt", error: "done");
+    process.emitFailure(id: prompt.requestId, command: "prompt", error: "done");
     await _waitForIdle(service: service, sessionId: "session");
 
     expect(
@@ -1978,7 +1979,7 @@ void main() {
         },
       },
     );
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
 
@@ -2020,7 +2021,7 @@ void main() {
     );
     await _answerEntries(process);
     final busyPrompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: busyPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: busyPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "agent_settled"});
     await pump();
@@ -2057,17 +2058,17 @@ void main() {
       },
     );
     await accepted;
-    process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: commandPrompt.requestId, command: "prompt");
     final idle = service.events.firstWhere((event) => event is BridgeSseSessionIdle);
     final state = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: state["id"]! as String,
+      id: state.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
-      id: confirmedState["id"]! as String,
+      id: confirmedState.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
@@ -2109,17 +2110,17 @@ void main() {
     await pump();
     expect(commandAccepted, isFalse, reason: "notification does not prove command acceptance");
 
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     await accepted;
     final state = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: state["id"]! as String,
+      id: state.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
-      id: confirmedState["id"]! as String,
+      id: confirmedState.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
@@ -2162,19 +2163,19 @@ void main() {
     final prompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "agent_settled"});
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     await accepted;
 
     final firstState = await waitForCommand(process: process, type: "get_state");
     process.emitResponse(
-      id: firstState["id"]! as String,
+      id: firstState.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(
-      id: confirmedState["id"]! as String,
+      id: confirmedState.requestId,
       command: "get_state",
       data: _stateData(process: process, streaming: false),
     );
@@ -2382,7 +2383,7 @@ void main() {
     expect(completedPart, isA<PluginMessagePartCompaction>());
 
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     await pump();
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
@@ -2432,11 +2433,11 @@ void main() {
     expect(timedOut.killed, isTrue);
     expect(fixture.extensions.single.getPendingQuestions(sessionId: "session"), isEmpty);
     expect(queued["message"], "queued");
-    timedOut.emitResponse(id: oldPrompt["id"]! as String, command: "prompt");
+    timedOut.emitResponse(id: oldPrompt.requestId, command: "prompt");
     timedOut.emit(frame: {"type": "agent_settled"});
     await pump();
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
-    replacement.emitFailure(id: queued["id"]! as String, command: "prompt", error: "terminal");
+    replacement.emitFailure(id: queued.requestId, command: "prompt", error: "terminal");
     await _waitForIdle(service: service, sessionId: "session");
   });
 
@@ -2478,13 +2479,13 @@ void main() {
     );
     await _answerEntries(failed);
     final prompt = await waitForCommand(process: failed, type: "prompt");
-    failed.emitFailure(id: prompt["id"]! as String, command: "prompt", error: "private failure");
+    failed.emitFailure(id: prompt.requestId, command: "prompt", error: "private failure");
     final second = await _waitForNthCommand(process: failed, type: "prompt", count: 2);
     failed.emitStderrRaw(bytes: utf8.encode("${PiRpcClient.noModelsDiagnosticPrefix}\n"));
     failed.exit(code: 9);
     await _answerEntries(replacement);
     final queued = await waitForCommand(process: replacement, type: "prompt");
-    replacement.emitFailure(id: queued["id"]! as String, command: "prompt", error: "failed");
+    replacement.emitFailure(id: queued.requestId, command: "prompt", error: "failed");
     await _waitForEvent<BridgeSseTuiToastShow>(events: events);
     await _waitForEventCount<BridgeSseSessionError>(events: events, count: 3);
 
@@ -2527,7 +2528,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "auto_retry_start", "attempt": 2, "delayMs": 500});
     await _waitForEventCount<BridgeSseSessionStatus>(events: events, count: 2);
@@ -2547,7 +2548,8 @@ void main() {
       await pump();
     }
 
-    final retry = service.sessionStatuses["child"]! as PluginSessionStatusRetry;
+    final retry = service.sessionStatuses["child"];
+    if (retry is! PluginSessionStatusRetry) fail("expected the child to be retrying, got $retry");
     final active = service.getActiveSessionsSummary().single.activeSessions.single;
     expect(retry.attempt, 2);
     expect(active.id, "root");
@@ -2596,7 +2598,7 @@ void main() {
 
     final abort = service.abort(sessionId: "session");
     final abortCommand = await waitForCommand(process: process, type: "abort");
-    process.emitResponse(id: abortCommand["id"]! as String, command: "abort");
+    process.emitResponse(id: abortCommand.requestId, command: "abort");
     await abort;
 
     final settlement = events.whereType<BridgeSsePromptSettled>().single;
@@ -2631,7 +2633,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
@@ -2639,10 +2641,10 @@ void main() {
     final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     expect(steeringPrompt["message"], "queued");
     expect(steeringPrompt["streamingBehavior"], "steer");
-    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: steeringPrompt.requestId, command: "prompt");
     final abort = service.abort(sessionId: "session");
     final abortCommand = await waitForCommand(process: process, type: "abort");
-    process.emitResponse(id: abortCommand["id"]! as String, command: "abort");
+    process.emitResponse(id: abortCommand.requestId, command: "abort");
     await abort;
 
     expect(process.killed, isTrue);
@@ -2676,10 +2678,10 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
     final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: steeringPrompt.requestId, command: "prompt");
 
     final warnings = await _captureWarnings(() async {
       final abort = service.abort(sessionId: "session");
@@ -2709,7 +2711,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
 
     final warnings = await _captureWarnings(() async {
@@ -2744,7 +2746,7 @@ void main() {
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     await pump();
@@ -2836,7 +2838,7 @@ void main() {
       await _answerEntries(process);
       final prompt = await waitForCommand(process: process, type: "prompt");
       process.emit(frame: {"type": "agent_start"});
-      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emitResponse(id: prompt.requestId, command: "prompt");
       process.emit(frame: {"type": "agent_settled"});
       await _waitForIdle(service: service, sessionId: "session");
       events.clear();
@@ -2878,7 +2880,7 @@ void main() {
     );
     await _answerEntries(first);
     final prompt = await waitForCommand(process: first, type: "prompt");
-    first.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    first.emitResponse(id: prompt.requestId, command: "prompt");
     first.emit(frame: {"type": "agent_settled"});
     await pump();
     clock.elapse();
@@ -2916,7 +2918,7 @@ void main() {
     );
     await _answerEntries(process);
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: firstPrompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
 
@@ -2959,7 +2961,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     clock.elapse();
@@ -2992,7 +2994,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     clock.elapse();
@@ -3025,7 +3027,7 @@ void main() {
     );
     await _answerEntries(oldProcess);
     final firstPrompt = await waitForCommand(process: oldProcess, type: "prompt");
-    oldProcess.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    oldProcess.emitResponse(id: firstPrompt.requestId, command: "prompt");
     oldProcess.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     clock.elapse();
@@ -3047,7 +3049,7 @@ void main() {
     await _answerEntries(replacement);
     final secondPrompt = await waitForCommand(process: replacement, type: "prompt");
     expect(secondPrompt["message"], "second");
-    replacement.emitFailure(id: secondPrompt["id"]! as String, command: "prompt", error: "done");
+    replacement.emitFailure(id: secondPrompt.requestId, command: "prompt", error: "done");
     await _waitForIdle(service: service, sessionId: "session");
   });
 
@@ -3069,7 +3071,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     clock.elapse();
@@ -3103,7 +3105,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     clock.elapse();
@@ -3137,7 +3139,7 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: sessionId);
     clock.elapse();
@@ -3230,7 +3232,7 @@ Future<void> _answerInitialSelectionState(FakePiProcess process) async {
     final state = process.written.where((frame) => frame["type"] == "get_state").firstOrNull;
     if (state != null) {
       process.emitResponse(
-        id: state["id"]! as String,
+        id: state.requestId,
         command: "get_state",
         data: _stateData(process: process, streaming: false),
       );
@@ -3262,7 +3264,7 @@ Map<String, Object?> _stateData({
 Future<void> _answerNthEntries(FakePiProcess process, {required int count}) async {
   final command = await _waitForNthCommand(process: process, type: "get_entries", count: count);
   process.emitResponse(
-    id: command["id"]! as String,
+    id: command.requestId,
     command: "get_entries",
     data: const {"entries": <Object?>[], "leafId": null},
   );

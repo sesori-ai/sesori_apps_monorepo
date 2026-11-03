@@ -27,12 +27,18 @@ void main() {
         },
       );
 
-      expect(completed, isA<CodexImageGenerationItemDto>());
-      final image = completed! as CodexImageGenerationItemDto;
-      expect(image.status, CodexImageGenerationStatus.completed);
-      expect(image.result, "encoded-image");
-      expect(image.savedPath, "/private/output.png");
-      expect((unknown! as CodexImageGenerationItemDto).status, CodexImageGenerationStatus.unknown);
+      if (completed is! CodexImageGenerationItemDto) fail("expected an image generation item, got $completed");
+      expect(completed.status, CodexImageGenerationStatus.completed);
+      expect(completed.result, "encoded-image");
+      expect(completed.savedPath, "/private/output.png");
+      expect(
+        unknown,
+        isA<CodexImageGenerationItemDto>().having(
+          (image) => image.status,
+          "status",
+          CodexImageGenerationStatus.unknown,
+        ),
+      );
     });
 
     test("decodes MCP text and image content without retaining unknown payloads", () {
@@ -55,7 +61,8 @@ void main() {
         },
       );
 
-      final mcp = item! as CodexMcpToolCallItemDto;
+      if (item is! CodexMcpToolCallItemDto) fail("expected an MCP tool call item, got $item");
+      final mcp = item;
       expect(mcp.status, CodexToolCallStatus.failed);
       expect(mcp.content, hasLength(4));
       expect(mcp.content[1], isA<CodexMcpImageContentDto>());
@@ -85,7 +92,8 @@ void main() {
         },
       );
 
-      final dynamic = item! as CodexDynamicToolCallItemDto;
+      if (item is! CodexDynamicToolCallItemDto) fail("expected a dynamic tool call item, got $item");
+      final dynamic = item;
       expect(dynamic.tool, "tool");
       expect(dynamic.status, CodexToolCallStatus.unknown);
       expect(dynamic.content[1], isA<CodexDynamicImageContentDto>());

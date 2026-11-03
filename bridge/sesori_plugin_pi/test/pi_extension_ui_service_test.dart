@@ -495,7 +495,7 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
         if (frame["type"] == "extension_ui_response")
           _SentReply(
             ownerSessionId: "child",
-            requestId: frame["id"]! as String,
+            requestId: frame.requestId,
             reply: switch (frame) {
               {"value": final String value} => PiExtensionUiValueReply(value: value),
               {"confirmed": final bool confirmed} => PiExtensionUiConfirmationReply(confirmed: confirmed),
@@ -517,7 +517,7 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
     );
     final command = await _waitForCommand(process: process, type: "get_entries");
     process.emitResponse(
-      id: command["id"]! as String,
+      id: command.requestId,
       command: "get_entries",
       data: const {"entries": <Object?>[], "leafId": null},
     );

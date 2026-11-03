@@ -117,7 +117,7 @@ final class _CodexMcpLogin({
           if (completion.name != _target.serverKey) return;
           final threadId = switch (_target.scope) {
             PluginMcpSessionScope(:final sessionId) => sessionId,
-            _ => null,
+            PluginMcpHarnessScope() || PluginMcpProjectScope() => null,
           };
           if (completion.threadId != threadId) return;
           _complete(

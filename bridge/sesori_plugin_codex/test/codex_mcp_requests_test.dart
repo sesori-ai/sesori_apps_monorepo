@@ -297,12 +297,18 @@ void main() {
         },
       },
     );
-    final form = parse(names: ["Basic plan", "Pro plan"])!;
+    final form = parse(names: ["Basic plan", "Pro plan"]) ?? fail("named choices did not parse");
     final choice = form.fields.single.schema as PluginFormChoiceSchema;
     expect(choice.options.map((option) => option.label), ["Basic plan", "Pro plan"]);
     expect(choice.defaultOptionId, "option-1");
     expect(form.encode(values: const {"field-0": PluginFormChoiceValue(optionId: "option-1")}), {"plan": "pro"});
-    expect((parse(names: null)!.fields.single.schema as PluginFormChoiceSchema).options.first.label, "basic");
+    expect(
+      ((parse(names: null) ?? fail("unnamed choices did not parse")).fields.single.schema as PluginFormChoiceSchema)
+          .options
+          .first
+          .label,
+      "basic",
+    );
     for (final names in [
       <String>[],
       ["Only one"],
@@ -369,7 +375,7 @@ void main() {
   });
 
   test("schema bounds, unknown fields and invalid defaults fail explicitly", () {
-    final schema = CodexFormSchema.parse(schema: _schema)!;
+    final schema = CodexFormSchema.parse(schema: _schema) ?? fail("schema did not parse");
     expect(
       schema.validate(values: const {"foreign": PluginFormBooleanValue(value: true)}),
       containsPair("foreign", PluginFormValidationIssue.invalidChoice),
@@ -397,14 +403,16 @@ void main() {
   });
 
   test("native fractional integer bounds constrain the available integral values", () {
-    final form = CodexFormSchema.parse(
-      schema: {
-        "type": "object",
-        "properties": {
-          "count": {"type": "integer", "minimum": 1.5, "maximum": 3.5, "default": 2.0},
-        },
-      },
-    )!;
+    final form =
+        CodexFormSchema.parse(
+          schema: {
+            "type": "object",
+            "properties": {
+              "count": {"type": "integer", "minimum": 1.5, "maximum": 3.5, "default": 2.0},
+            },
+          },
+        ) ??
+        fail("schema did not parse");
     final schema = form.fields.single.schema as PluginFormIntegerSchema;
     expect((schema.minimum, schema.maximum, schema.defaultValue), (2, 3, 2));
     expect(
@@ -416,25 +424,27 @@ void main() {
   });
 
   test("integral JSON count constraints retain text and choice array validation", () {
-    final form = CodexFormSchema.parse(
-      schema: {
-        "type": "object",
-        "properties": {
-          "note": {"type": "string", "minLength": 2.0, "maxLength": 3.0},
-          "tags": {
-            "type": "array",
-            "minItems": 1.0,
-            "maxItems": 2.0,
-            "items": {
-              "anyOf": [
-                {"const": "native-a", "title": "Visible A"},
-                {"const": "native-b", "title": "Visible B"},
-              ],
+    final form =
+        CodexFormSchema.parse(
+          schema: {
+            "type": "object",
+            "properties": {
+              "note": {"type": "string", "minLength": 2.0, "maxLength": 3.0},
+              "tags": {
+                "type": "array",
+                "minItems": 1.0,
+                "maxItems": 2.0,
+                "items": {
+                  "anyOf": [
+                    {"const": "native-a", "title": "Visible A"},
+                    {"const": "native-b", "title": "Visible B"},
+                  ],
+                },
+              },
             },
           },
-        },
-      },
-    )!;
+        ) ??
+        fail("schema did not parse");
     final choices = form.fields.last.schema as PluginFormChoicesSchema;
     expect(choices.options.map((option) => option.label), ["Visible A", "Visible B"]);
     expect(

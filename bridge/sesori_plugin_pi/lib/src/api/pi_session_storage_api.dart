@@ -428,7 +428,7 @@ enum _PiHistoryEntryIds() {
   static _PiHistoryEntryIds fromHeader({required PiSessionMetadataDto header}) => switch (header) {
     PiSessionHeaderDto(id: String(), :final int version) when version >= 2 => persisted,
     PiSessionHeaderDto(id: String()) => synthesized,
-    _ => throw const FormatException("Expected session header"),
+    PiSessionHeaderDto() || PiSessionInfoDto() => throw const FormatException("Expected session header"),
   };
 }
 
@@ -1192,11 +1192,11 @@ final class _PiHistoryByteSink({
     while (true) {
       final newline = data.indexOf(0x0A, start);
       if (newline < 0) break;
-      _addSegment(data, start, newline);
+      _addSegment(data, start: start, end: newline);
       _emit(isFinal: false);
       start = newline + 1;
     }
-    _addSegment(data, start, data.length);
+    _addSegment(data, start: start, end: data.length);
   }
 
   @override
@@ -1204,7 +1204,7 @@ final class _PiHistoryByteSink({
     if (_pending.length > 0) _emit(isFinal: true);
   }
 
-  void _addSegment(List<int> data, int start, int end) {
+  void _addSegment(List<int> data, {required int start, required int end}) {
     final segmentLength = end - start;
     if (_pending.length + segmentLength > _maxRecordBytes) {
       throw const _PiHistoryRecordLimitException();

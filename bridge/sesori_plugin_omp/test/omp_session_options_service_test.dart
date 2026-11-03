@@ -172,13 +172,13 @@ void main() {
 
     final snapshot = OmpCatalogRepository(api: _UnusedAcpApi()).mapSessionResult(result: result);
 
-    expect(snapshot.thinking!.configId, "thinking");
-    expect(snapshot.thinking!.variants, ["off", "high"]);
+    expect(snapshot.thinking?.configId, "thinking");
+    expect(snapshot.thinking?.variants, ["off", "high"]);
   });
 
   test("keeps no-model discovery distinct from generic failure", () async {
     final catalogService = _FakeCatalogService(
-      tracker.snapshotFor(projectId: "/repo")!,
+      tracker.snapshotFor(projectId: "/repo") ?? fail("expected a seeded catalog snapshot"),
     )..result = const OmpCatalogNoModels();
     final optionsService = OmpSessionOptionsService(
       catalogService: catalogService,
