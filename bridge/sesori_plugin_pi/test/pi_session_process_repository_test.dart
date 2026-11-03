@@ -10,6 +10,7 @@ import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.d
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
 import "package:pi_plugin/src/repositories/pi_session_process_repository.dart";
 import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

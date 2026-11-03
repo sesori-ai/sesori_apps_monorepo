@@ -414,13 +414,11 @@ void main() {
       expect(plugin.directoryForSession(sessionId: "root"), storedDirectory);
     });
 
-    test("uses Grok identity, headless auth policy, and stop-and-send", () {
+    test("uses Grok identity and headless auth policy", () {
       expect(plugin.id, "grok");
       expect(plugin.authMethodId, isNull);
       expect(plugin.authMethodAllowlist, {"xai.api_key", "cached_token"});
       expect(plugin.supportsFormElicitation, isFalse);
-      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
-      expect(plugin.failsTurnOnSelectionError, isTrue);
     });
 
     test("initialize captures one Grok provider without a scratch process", () async {

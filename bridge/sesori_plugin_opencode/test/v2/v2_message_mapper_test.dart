@@ -2,6 +2,7 @@ import "package:opencode_plugin/src/v2/models/openapi/session_message_info.g.dar
 import "package:opencode_plugin/src/v2/models/openapi/session_message_tool_state.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_agent_names.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";

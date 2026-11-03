@@ -9,15 +9,14 @@
 // Adding an ACP harness:
 //  1. An `XxxBinary` with the launch spec (binary + `acp` args) and any fixed
 //     handshake policy (auth method id, capability meta).
-//  2. A subclass of AcpPlugin. Every policy and hook has a bridge-safe default;
-//     override only what the agent does differently (see the AcpPlugin doc).
-//     Busy-session follow-ups default to stop-and-send because ACP has no
-//     standard steering method. Never disable that fallback unless the concrete
-//     plugin supplies another immediate active-turn delivery path.
+//  2. A subclass of AcpPlugin that serves its own option catalog
+//     (getSessionOptions, getAgents, getProviders). Every other policy and hook
+//     has a bridge-safe default; override only what the agent does differently
+//     (see the AcpPlugin doc). Busy-session follow-ups are stop-and-send because
+//     ACP has no standard steering method.
 //     The composer builds one AcpSessionConfigurationTracker + AcpCommandTracker
 //     and shares them between the AcpEventMapper (subclass the mapper only for
-//     `xxx/*` notification extensions), the neutral AcpSessionOptionsService,
-//     and any harness catalog service.
+//     `xxx/*` notification extensions) and the harness catalog service.
 //  3. Catalog discovery / persisted cleanup that needs its own agent process:
 //     an AcpStdioClient + AcpAgentApi (initialize, session/new, load/resume,
 //     list, set_config_option, close) wrapped in a harness-specific lease API.
@@ -41,7 +40,6 @@ export "src/acp_protocol.dart";
 export "src/acp_session_configuration_tracker.dart";
 export "src/acp_session_directory_batch.dart";
 export "src/acp_session_loader.dart";
-export "src/acp_session_options_service.dart";
 export "src/acp_stdio_client.dart";
 export "src/api/acp_agent_api.dart";
 export "src/models/acp_scoped_stop.dart";

@@ -64,12 +64,21 @@ class const AcpAuthMethod({
   final String? name,
   final String? description,
 }) {
-  factory fromJson(Map<String, dynamic> json) => AcpAuthMethod(
-    id: (json["id"] ?? "") as String,
-    type: json["type"] == "terminal" ? AcpAuthMethodType.terminal : AcpAuthMethodType.other,
-    name: json["name"] as String?,
-    description: json["description"] as String?,
-  );
+  /// Returns `null` when the method has no id, since it could not be selected
+  /// for `authenticate`.
+  static AcpAuthMethod? tryFromJson(Map<String, dynamic> json) {
+    final id = json["id"];
+    if (id is! String || id.isEmpty) {
+      Log.d("[acp] skipping auth method without an id");
+      return null;
+    }
+    return AcpAuthMethod(
+      id: id,
+      type: json["type"] == "terminal" ? AcpAuthMethodType.terminal : AcpAuthMethodType.other,
+      name: json["name"] as String?,
+      description: json["description"] as String?,
+    );
+  }
 }
 
 /// Capabilities the agent reports at `initialize`.
@@ -114,24 +123,25 @@ class const AcpAgentCapabilities({
 class const AcpInitializeResult({
   required final int protocolVersion,
   required final AcpAgentCapabilities agentCapabilities,
+
+  /// The advertised methods that have an id; malformed entries are skipped.
   required final List<AcpAuthMethod> authMethods,
+
+  /// True when the agent advertised any auth method, usable or not, so it
+  /// requires authentication before sessions can start.
+  required final bool requiresAuth,
   required final Map<String, dynamic> raw,
 }) {
-  /// True when the agent requires authentication before sessions can start.
-  bool get requiresAuth => authMethods.isNotEmpty;
-
   factory fromJson(Map<String, dynamic> json) {
     final rawCaps = json["agentCapabilities"];
     final caps = rawCaps is Map ? rawCaps.cast<String, dynamic>() : const <String, dynamic>{};
     final rawMethods = json["authMethods"];
-    final methods = rawMethods is List ? rawMethods : const <Object?>[];
+    final methods = (rawMethods is List ? rawMethods : const <Object?>[]).whereType<Map<dynamic, dynamic>>();
     return AcpInitializeResult(
       protocolVersion: (json["protocolVersion"] ?? acpProtocolVersion) as int,
       agentCapabilities: AcpAgentCapabilities.fromJson(caps),
-      authMethods: methods
-          .whereType<Map<dynamic, dynamic>>()
-          .map((m) => AcpAuthMethod.fromJson(m.cast<String, dynamic>()))
-          .toList(growable: false),
+      authMethods: [for (final method in methods) ?AcpAuthMethod.tryFromJson(method.cast())],
+      requiresAuth: methods.isNotEmpty,
       raw: json,
     );
   }
@@ -156,7 +166,8 @@ class const AcpTimestampMsConverter() implements JsonConverter<int?, Object?> {
 @freezed
 sealed class AcpSessionInfo with _$AcpSessionInfo {
   const factory({
-    @Default("") String sessionId,
+    /// Required by the spec; an entry without one is skipped as malformed.
+    required String sessionId,
 
     /// The session's working directory. Required by the spec, but kept
     /// nullable — a missing value falls back to the directory the caller
@@ -205,7 +216,8 @@ sealed class AcpSessionListResult with _$AcpSessionListResult {
   factory fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
 }
 
-/// Result of `session/new`.
+/// Result of `session/new`, or the session state a `session/load`,
+/// `session/resume` or `session/set_config_option` answer reports.
 class const AcpNewSessionResult({
   required final String sessionId,
 
@@ -216,14 +228,24 @@ class const AcpNewSessionResult({
   required final List<Map<String, dynamic>> configOptions,
   required final Map<String, dynamic> raw,
 }) {
+  /// Parses a `session/new` result. Throws [FormatException] when it names no
+  /// session, since nothing can be done with such a session.
   factory fromJson(Map<String, dynamic> json) {
-    return AcpNewSessionResult(
-      sessionId: (json["sessionId"] ?? "") as String,
-      modes: _mapList(json["modes"]),
-      configOptions: _mapList(json["configOptions"]),
-      raw: json,
-    );
+    final sessionId = json["sessionId"];
+    if (sessionId is! String || sessionId.isEmpty) {
+      throw FormatException("session/new result has no sessionId", json);
+    }
+    return AcpNewSessionResult.forSession(sessionId: sessionId, json: json);
   }
+
+  /// Parses the state an answer reports for [sessionId], the session the
+  /// request named. Those answers do not repeat the id.
+  factory forSession({required String sessionId, required Map<String, dynamic> json}) => AcpNewSessionResult(
+    sessionId: sessionId,
+    modes: _mapList(json["modes"]),
+    configOptions: _mapList(json["configOptions"]),
+    raw: json,
+  );
 }
 
 /// Why a `session/prompt` turn ended.

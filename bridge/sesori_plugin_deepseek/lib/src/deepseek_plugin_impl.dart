@@ -2,6 +2,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/deepseek_acp_api.dart";
+import "api/models/deepseek_protocol_dto.dart";
 import "deepseek_approval_registry.dart";
 import "deepseek_event_mapper.dart";
 import "repositories/deepseek_history_repository.dart";
@@ -18,7 +19,6 @@ class DeepSeekPlugin({
   required final DeepSeekSessionService deepSeekSessionService,
   required final DeepSeekSessionOptionsService deepSeekSessionOptionsService,
   required super.commandTracker,
-  required super.sessionOptionsService,
   required super.processFactory,
 }) extends AcpPlugin {
   this
@@ -141,7 +141,7 @@ class DeepSeekPlugin({
     required String sessionId,
     required String messageId,
   }) => {
-    DeepSeekAcpApi.initializeMetadataKey: {"messageId": messageId},
+    DeepSeekAcpApi.initializeMetadataKey: DeepSeekPromptMetadataDto(messageId: messageId).toJson(),
   };
 
   @override

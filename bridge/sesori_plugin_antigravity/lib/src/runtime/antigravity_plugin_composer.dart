@@ -49,12 +49,6 @@ class const AntigravityPluginComposer() {
       ),
       childSessionTracker: children,
       commandTracker: commands,
-      sessionOptionsService: AcpSessionOptionsService(
-        configurationTracker: configuration,
-        commandTracker: commands,
-        pluginId: AntigravityIdentity.pluginId,
-        agentDisplayName: AntigravityIdentity.displayName,
-      ),
       options: AntigravitySessionOptionsService(
         protocolMapper: protocol,
         catalogTracker: catalog,

@@ -116,13 +116,10 @@ void main() {
       expect(spec.args, ["acp"]);
     });
 
-    test("uses the stock ACP policies plus stop-and-send follow-ups", () {
+    test("uses the stock ACP policies", () {
       expect(plugin.authMethodId, isNull, reason: "Hermes provider ids are dynamic");
       expect(plugin.initializeCapabilityMeta, isNull);
       expect(plugin.supportsFormElicitation, isFalse, reason: "no elicitation/create on Hermes");
-      expect(plugin.serializesPromptsProcessWide, isFalse);
-      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
-      expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.sessionCloseSettlementTimeout, const Duration(seconds: 5));
     });
 
@@ -467,12 +464,6 @@ HermesPlugin _plugin({
       childSessions: childSessionTracker,
     ),
     commandTracker: commandTracker,
-    sessionOptionsService: AcpSessionOptionsService(
-      configurationTracker: configurationTracker,
-      commandTracker: commandTracker,
-      pluginId: "hermes",
-      agentDisplayName: "Hermes Agent",
-    ),
     processFactory: (_) async => fake,
     hermesSessionOptionsService: optionsService,
   );

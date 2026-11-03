@@ -5,6 +5,7 @@ import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.d
 import "package:pi_plugin/src/services/pi_event_dispatcher.dart";
 import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
 import "package:pi_plugin/src/trackers/pi_tool_tracker.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

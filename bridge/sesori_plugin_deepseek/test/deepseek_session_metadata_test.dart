@@ -57,12 +57,6 @@ void main() {
         discoveryTimeout: const Duration(seconds: 30),
       ),
       commandTracker: commandTracker,
-      sessionOptionsService: AcpSessionOptionsService(
-        configurationTracker: configurationTracker,
-        commandTracker: commandTracker,
-        pluginId: DeepSeekIdentity.id,
-        agentDisplayName: "DeepSeek",
-      ),
       processFactory: (_) async => fake,
     );
 
