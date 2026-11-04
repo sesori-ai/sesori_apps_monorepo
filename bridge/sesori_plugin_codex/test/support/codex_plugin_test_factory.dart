@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
@@ -12,6 +14,7 @@ CodexPlugin createInjectedCodexPlugin({
   required CodexAppServerClient Function()? clientFactory,
   required Duration keepaliveInterval,
   required CodexToolOutcomeRepository toolOutcomeRepository,
+  required Future<void> runtimeExit,
 }) {
   return buildCodexPlugin(
     serverUrl: serverUrl,
@@ -22,10 +25,17 @@ CodexPlugin createInjectedCodexPlugin({
     clientFactory: clientFactory,
     onConnected: null,
     onDisconnected: null,
+    runtimeExit: runtimeExit,
     keepaliveInterval: keepaliveInterval,
     rolloutPollInterval: const Duration(milliseconds: 10),
   );
 }
+
+/// An app-server process that keeps running.
+final Future<void> runningCodexRuntime = Completer<void>().future;
+
+/// An app-server process that has already exited.
+final Future<void> exitedCodexRuntime = Future<void>.value();
 
 CodexToolOutcomeRepository createMemoryCodexToolOutcomeRepository() {
   return CodexToolOutcomeRepository(

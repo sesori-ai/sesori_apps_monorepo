@@ -176,7 +176,7 @@ $CodexTurnDtoCopyWith<$Res>? get turn {
 /// @nodoc
 mixin _$CodexTurnDto {
 
- String? get id;
+ String? get id;@JsonKey(unknownEnumValue: CodexTurnStatus.unknown) CodexTurnStatus? get status;
 /// Create a copy of CodexTurnDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -188,20 +188,20 @@ $CodexTurnDtoCopyWith<CodexTurnDto> get copyWith => _$CodexTurnDtoCopyWithImpl<C
 @override
 bool operator ==(Object other) {
   final _this = this as CodexTurnDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnDto&&(identical(other.id, _this.id) || other.id == _this.id));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CodexTurnDto;
-  return Object.hash(runtimeType,_this.id);
+  return Object.hash(runtimeType,_this.id,_this.status);
 }
 
 @override
 String toString() {
   final _this = this as CodexTurnDto;
-  return 'CodexTurnDto(id: ${_this.id})';
+  return 'CodexTurnDto(id: ${_this.id}, status: ${_this.status})';
 }
 
 
@@ -212,7 +212,7 @@ abstract mixin class $CodexTurnDtoCopyWith<$Res>  {
   factory $CodexTurnDtoCopyWith(CodexTurnDto value, $Res Function(CodexTurnDto) _then) = _$CodexTurnDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id
+ String? id,@JsonKey(unknownEnumValue: CodexTurnStatus.unknown) CodexTurnStatus? status
 });
 
 
@@ -229,10 +229,11 @@ class _$CodexTurnDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexTurnDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? status = freezed,}) {
   return _then(CodexTurnDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexTurnStatus?,
   ));
 }
 
@@ -244,10 +245,11 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexTurnDto implements CodexTurnDto {
-  const _CodexTurnDto({required this.id});
+  const _CodexTurnDto({required this.id, @JsonKey(unknownEnumValue: CodexTurnStatus.unknown) required this.status});
   factory _CodexTurnDto.fromJson(Map<String, dynamic> json) => _$CodexTurnDtoFromJson(json);
 
 @override final  String? id;
+@override@JsonKey(unknownEnumValue: CodexTurnStatus.unknown) final  CodexTurnStatus? status;
 
 /// Create a copy of CodexTurnDto
 /// with the given fields replaced by the non-null parameter values.
@@ -259,18 +261,18 @@ _$CodexTurnDtoCopyWith<_CodexTurnDto> get copyWith => __$CodexTurnDtoCopyWithImp
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexTurnDto&&(identical(other.id, id) || other.id == id));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexTurnDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id);
+    return Object.hash(runtimeType,id,status);
 }
 
 @override
 String toString() {
-    return 'CodexTurnDto(id: $id)';
+    return 'CodexTurnDto(id: $id, status: $status)';
 }
 
 
@@ -281,7 +283,7 @@ abstract mixin class _$CodexTurnDtoCopyWith<$Res> implements $CodexTurnDtoCopyWi
   factory _$CodexTurnDtoCopyWith(_CodexTurnDto value, $Res Function(_CodexTurnDto) _then) = __$CodexTurnDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id
+ String? id,@JsonKey(unknownEnumValue: CodexTurnStatus.unknown) CodexTurnStatus? status
 });
 
 
@@ -298,10 +300,11 @@ class __$CodexTurnDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexTurnDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? status = freezed,}) {
   return _then(_CodexTurnDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexTurnStatus?,
   ));
 }
 

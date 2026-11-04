@@ -46,6 +46,7 @@ void main() {
       clientFactory: null,
       keepaliveInterval: const Duration(seconds: 30),
       toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+      runtimeExit: runningCodexRuntime,
     );
     addTearDown(plugin.dispose);
     expect(await plugin.getPendingForms(sessionId: "thread"), isEmpty);
@@ -168,6 +169,7 @@ void main() {
       clientFactory: null,
       keepaliveInterval: const Duration(seconds: 30),
       toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+      runtimeExit: runningCodexRuntime,
     );
     addTearDown(plugin.dispose);
     expect(plugin, isA<McpManagementPluginApi>());
@@ -251,6 +253,7 @@ void main() {
       clientFactory: null,
       keepaliveInterval: const Duration(seconds: 30),
       toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+      runtimeExit: runningCodexRuntime,
     );
     addTearDown(plugin.dispose);
     const target = PluginMcpServerTarget(

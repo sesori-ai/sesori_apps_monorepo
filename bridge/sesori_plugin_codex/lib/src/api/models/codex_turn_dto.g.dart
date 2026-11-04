@@ -15,5 +15,19 @@ _CodexTurnStartResponseDto _$CodexTurnStartResponseDtoFromJson(Map json) =>
             ),
     );
 
-_CodexTurnDto _$CodexTurnDtoFromJson(Map json) =>
-    _CodexTurnDto(id: json['id'] as String?);
+_CodexTurnDto _$CodexTurnDtoFromJson(Map json) => _CodexTurnDto(
+  id: json['id'] as String?,
+  status: $enumDecodeNullable(
+    _$CodexTurnStatusEnumMap,
+    json['status'],
+    unknownValue: CodexTurnStatus.unknown,
+  ),
+);
+
+const _$CodexTurnStatusEnumMap = {
+  CodexTurnStatus.completed: 'completed',
+  CodexTurnStatus.interrupted: 'interrupted',
+  CodexTurnStatus.failed: 'failed',
+  CodexTurnStatus.inProgress: 'inProgress',
+  CodexTurnStatus.unknown: 'unknown',
+};

@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "codex_turn_dto.dart";
+
 part "codex_thread_dto.freezed.dart";
 part "codex_thread_dto.g.dart";
 
@@ -39,6 +41,9 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required String? parentThreadId,
     required String? agentNickname,
     @JsonKey(unknownEnumValue: CodexThreadSource.unknown) required CodexThreadSource? threadSource,
+
+    /// Populated by `thread/resume`, including a still-running turn.
+    required List<CodexTurnDto>? turns,
   }) = _CodexThreadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);

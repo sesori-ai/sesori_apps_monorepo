@@ -2634,6 +2634,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
@@ -2671,6 +2672,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       final sessions = await plugin.getSessions(projectId: "/work/sample-app");
@@ -2722,6 +2724,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       final messages = await plugin.getSessionMessages(
@@ -2761,6 +2764,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       final messages = await plugin.getSessionMessages(sessionId);

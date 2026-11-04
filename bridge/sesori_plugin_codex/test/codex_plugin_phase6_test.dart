@@ -37,6 +37,7 @@ void main() {
         clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
     }
 
