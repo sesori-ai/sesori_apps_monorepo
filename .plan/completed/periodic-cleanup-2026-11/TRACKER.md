@@ -73,7 +73,7 @@ retirement".
 
 | Row | Result | Evidence or reason |
 | --- | --- | --- |
-| Plugin interface, routes and plugins | Pass | Setup inspection of all 11 harnesses (9 ready; Antigravity and Copilot runtime-missing; Cursor disabled). Real turns completed on OpenCode v2, Claude Code and Codex; a Claude permission round trip. |
+| Plugin interface, routes and plugins | Pass | Setup inspection of all 11 harnesses (8 ready; Antigravity and Copilot runtime-missing; Cursor disabled). Real turns completed on OpenCode v2, Claude Code and Codex; a Claude permission round trip. |
 | Bridge services | Pass after 28.a, 28.b | `supervised_e2e_test`, reconnect backoff (1, 2, 4 s), no stray processes, exit codes {0, 1, 87, 88} and no restart route all passed. Clean shutdown was Partial: a stalled debug event stream forced a 50 s shutdown (28.a), and each runtime stop waited the full 5 s grace (28.b). |
 | Client (steps 13–17) | Pass | iOS simulator: project and session lists, rename without a jump, session detail, Settings without the voice-engine row, dictation, sign-out and sign-in. The "Couldn't load sessions" flash after sign-in went to 28.f. |
 | Desktop-specific (step 19) | Not run (Q14 A) | `module_desktop_core` `dart test` 454/0 and module_core notification routing 26/0. The macOS desktop launch was not run, per the testing rule. |
@@ -113,7 +113,7 @@ Fixes found by step 28 (none caused by the cleanup):
 | 28.d | #2380 Merged | An ACP session's first prompt keeps its time on replay (Grok, Hermes, Antigravity, Copilot, Cursor, OMP). |
 | 28.e | None | No change. "Codex stayed stopped after its app-server exited" is the documented dormant state: Codex runs with `RuntimeRestartPolicy.disabled()` because it cannot reconnect to a restarted app-server, and the next request starts a new generation (verified live; chosen in 199d5f6a96, documented in `plugin-setup-and-lifecycle.md`). The failed-plugin hint is accurate. |
 | 28.f | #2384 Merged | Session loads, pages and search wait under the skeleton while the bridge connects (15 s cap); sign-out clears the filter, so there is no title jump or cross-account carry. |
-| 28.g | #2385 PR open | After a Codex app-server WebSocket drop mid-turn, the plugin reconnects at once while the process runs, resumes the idled sessions, restores busy for a running turn (keeping its turn id for Stop), sends the newest reply for a turn that ended during the outage, and re-syncs the work state. Accepted: items missed during the outage appear on reload (parity with OpenCode), and two rare races (a prompt's own resume landing first, a second drop mid-resume). |
+| 28.g | #2385 Merged | After a Codex app-server WebSocket drop mid-turn, the plugin reconnects at once while the process runs, resumes the idled sessions, restores busy for a running turn (keeping its turn id for Stop), sends the newest reply for a turn that ended during the outage, and re-syncs the work state once every session is resumed (a second drop mid-resume keeps the session queued, and safe stops stay refused until then). Accepted: items missed during the outage appear on reload (parity with OpenCode), a tool finalized by the drop shows its real end state on reload, and the rare race of a prompt's own resume landing first. |
 
 Q16 C: the rating sheet keeps its timing; it followed its documented rules.
 
@@ -129,9 +129,7 @@ CI on `main` `1ca8d39c82`: Mobile CI 41735174047, Desktop CI 41735174331,
 Design Catalog CI 41735174083 and Bridge CI 41735173971, all green. Bridge and
 Desktop CI stay green through the 28.a–28.d and Q12 commits.
 
-Stale matrix text: PLAN.md's opencode-v2 row says "managed OpenCode 2.0.x",
-but the pin is 2.1.4 (2.0.11 is the v2 and shared-service floor). The live run
-also corrected assumptions carried over from retired plans: the setup route is
+The live run corrected assumptions carried over from retired plans: the setup route is
 `/plugin/management` (not `/plugin/setup`), compaction runs through the
 `compact` command (there is no route), v2 forms reach clients as Sesori
 `question.asked` events, and v2 archive state lives in the bridge database. No
