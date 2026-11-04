@@ -160,6 +160,11 @@ class CodexPlugin._({
 
   bool _runtimeExited = false;
 
+  /// Whether the current connection finished its handshake. Only a drop of
+  /// such a connection reconnects at once, so a failing handshake never chains
+  /// into another attempt.
+  bool _connectionEstablished = false;
+
   /// Normalized project directory per thread, learned the moment a thread is
   /// started or resumed — before its rollout is flushed to disk. codex reports
   /// a session under its own cwd, and the bridge derives one project per cwd, so
@@ -319,17 +324,23 @@ class CodexPlugin._({
         _attachApprovalRegistry(client: client);
         _startKeepalive();
         _onConnected?.call();
+        _connectionEstablished = true;
         unawaited(_resumeSessionsIdledByDisconnect());
         return true;
       } catch (error, stackTrace) {
         Log.w("[codex] connecting to the app-server failed", error, stackTrace);
-        await _mcpAuthentication?.dispose();
-        _mcpAuthentication = null;
+        // A drop during the handshake already released the shared state, which
+        // a later attempt may own by now.
+        if (identical(_client, client)) {
+          final authentication = _mcpAuthentication;
+          _mcpAuthentication = null;
+          _client = null;
+          _mcpRepository = null;
+          _sessionService.detachAppServerRepositories();
+          _connectFuture = null;
+          await authentication?.dispose();
+        }
         await client.dispose();
-        _client = null;
-        _mcpRepository = null;
-        _sessionService.detachAppServerRepositories();
-        _connectFuture = null;
         return await Future<bool>.error(error);
       }
     }();
@@ -356,10 +367,12 @@ class CodexPlugin._({
   /// stale successful future for a dead socket and instead re-establishes on
   /// the next call), idles connection-scoped activity until the next connection
   /// resumes it, and forwards the signal to the runtime descriptor's status
-  /// reporter. While a session awaits that resume and the process still runs,
-  /// the next connection starts at once; otherwise it waits for the next
-  /// request.
+  /// reporter. When an established connection drops while a session awaits
+  /// that resume and the process still runs, the next connection starts at
+  /// once; otherwise it waits for the next request.
   void _handleClientDisconnected() {
+    final wasEstablished = _connectionEstablished;
+    _connectionEstablished = false;
     final registry = _approvalRegistry;
     final effectiveStatuses = _sessionService.effectiveSessionStatuses(
       ownStatuses: _sessionStatusSnapshot(),
@@ -413,8 +426,9 @@ class CodexPlugin._({
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
     // A turn the server keeps running must not show idle until the next user
-    // action. With no session to resume the lazy reconnect is enough.
-    if (_sessionsIdledByDisconnect.isNotEmpty && !_runtimeExited) {
+    // action. A drop during a handshake, or with no session to resume, waits
+    // for the next request.
+    if (wasEstablished && _sessionsIdledByDisconnect.isNotEmpty && !_runtimeExited) {
       unawaited(_ensureConnected());
     }
   }
@@ -1543,10 +1557,9 @@ class CodexPlugin._({
 
   /// Resumes the sessions transport drops idled. Each shows what the server
   /// reports now: busy while its turn still runs, otherwise idle with the final
-  /// reply that finished during the outage. A session leaves the set only once
-  /// resumed, so a failed resume or another drop keeps it for the next
-  /// connection, and the work state the drop made unknown stays unknown until
-  /// no session is left.
+  /// reply that finished during the outage. A resume cut off by another drop
+  /// keeps its session for the next connection, and the work state the drop
+  /// made unknown stays unknown until no session is left.
   Future<void> _resumeSessionsIdledByDisconnect() async {
     await Future.wait([
       for (final sessionId in _sessionsIdledByDisconnect.toList())
@@ -1556,6 +1569,7 @@ class CodexPlugin._({
   }
 
   Future<void> _resumeSessionIdledByDisconnect({required String sessionId}) async {
+    final client = _client;
     try {
       final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
       final resumed = await _sessionService.resumeThreadIfNeeded(threadId: sessionId, force: false);
@@ -1578,6 +1592,9 @@ class CodexPlugin._({
       }
     } on Object catch (error, stackTrace) {
       Log.w("[codex] failed to restore session $sessionId after reconnecting", error, stackTrace);
+      // The connection survived, so the failure is the thread's own and a
+      // retry would fail again: leave it idle, as a reload would.
+      if (identical(_client, client)) _sessionsIdledByDisconnect.remove(sessionId);
     }
   }
 
