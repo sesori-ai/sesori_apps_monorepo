@@ -453,13 +453,19 @@ void main() {
       addTearDown(() => tempHome.delete(recursive: true));
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(server.close);
-      final connections = [Completer<WebSocket>(), Completer<WebSocket>()];
+      final firstSocket = Completer<WebSocket>();
       var connectionCount = 0;
       server.listen((request) async {
         final socket = await WebSocketTransformer.upgrade(request);
-        connections[connectionCount++].complete(socket);
+        final connection = ++connectionCount;
+        if (connection == 1) firstSocket.complete(socket);
         socket.listen((frame) {
           final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+          // The first reconnect drops again before answering its resume.
+          if (connection == 2 && decoded["method"] == "thread/resume") {
+            unawaited(socket.close(WebSocketStatus.goingAway));
+            return;
+          }
           final result = switch (decoded["method"]) {
             "initialize" => _initOk,
             "thread/resume" => const {
@@ -489,7 +495,7 @@ void main() {
       addTearDown(plugin.dispose);
 
       await plugin.initialize();
-      final socket = await connections.first.future;
+      final socket = await firstSocket.future;
       final busy = plugin.events.where((event) => event is BridgeSseSessionStatus).first;
       socket.add(
         jsonEncode({
@@ -507,16 +513,109 @@ void main() {
           .where((event) => event is BridgeSseSessionStatus)
           .cast<BridgeSseSessionStatus>()
           .first;
+      final workStates = <PluginWorkState>[];
+      final workStateSubscription = plugin.workState.listen(workStates.add);
+      addTearDown(workStateSubscription.cancel);
       await socket.close(WebSocketStatus.goingAway);
       await idled.timeout(const Duration(seconds: 2));
 
-      // No further call: the drop itself reconnects and resumes the session.
+      // No further call: the drops themselves reconnect, and the session that
+      // missed its resume is resumed on the next connection.
       final restored = await busyAgain.timeout(const Duration(seconds: 2));
-      expect(connectionCount, 2);
+      expect(connectionCount, 3);
       expect(restored.sessionID, "t-running");
       expect(restored.status, isA<PluginSessionStatusBusy>());
       expect((await plugin.getSessionStatuses())["t-running"], isA<PluginSessionStatusBusy>());
       expect(plugin.currentWorkState, PluginWorkState.busy);
+      // The failed resume never reports a running turn as idle work.
+      expect(workStates, isNot(contains(PluginWorkState.idle)));
+    });
+
+    test("a turn that ends during a socket drop sends its final reply after the reconnect", () async {
+      const threadId = "019a0000-1111-2222-3333-dddddddddddd";
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => tempHome.delete(recursive: true));
+      String record({required String role, required String text}) => jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "role": role,
+          "content": [
+            {"type": role == "user" ? "input_text" : "output_text", "text": text},
+          ],
+        },
+      });
+      Directory(p.join(tempHome.path, "sessions")).createSync();
+      File(p.join(tempHome.path, "sessions", "rollout-2026-11-03T10-00-00-$threadId.jsonl")).writeAsStringSync(
+        [
+          jsonEncode({
+            "type": "session_meta",
+            "payload": {"id": threadId, "cwd": "/repo/example"},
+          }),
+          record(role: "user", text: "Fix it."),
+          record(role: "assistant", text: "Fixed while you were away."),
+        ].join("\n"),
+      );
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final firstSocket = Completer<WebSocket>();
+      server.listen((request) async {
+        final socket = await WebSocketTransformer.upgrade(request);
+        if (!firstSocket.isCompleted) firstSocket.complete(socket);
+        socket.listen((frame) {
+          final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+          final result = switch (decoded["method"]) {
+            "initialize" => _initOk,
+            "thread/resume" => const {
+              "thread": {
+                "id": threadId,
+                "cwd": "/repo/example",
+                "turns": [
+                  {"id": "turn-1", "status": "completed"},
+                ],
+              },
+            },
+            _ => null,
+          };
+          if (result == null) return;
+          socket.add(jsonEncode({"jsonrpc": "2.0", "id": decoded["id"], "result": result}));
+        });
+      });
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: "ws://127.0.0.1:${server.port}",
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
+        clientFactory: null,
+        keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
+      );
+      addTearDown(plugin.dispose);
+
+      await plugin.initialize();
+      final socket = await firstSocket.future;
+      final busy = plugin.events.where((event) => event is BridgeSseSessionStatus).first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "turn/started",
+          "params": {
+            "threadId": threadId,
+            "turn": {"id": "turn-1"},
+          },
+        }),
+      );
+      await busy.timeout(const Duration(seconds: 2));
+      final replyPart = plugin.events
+          .where((event) => event is BridgeSseMessagePartUpdated)
+          .cast<BridgeSseMessagePartUpdated>()
+          .first;
+      await socket.close(WebSocketStatus.goingAway);
+
+      final part = (await replyPart.timeout(const Duration(seconds: 2))).part;
+      expect(part, isA<PluginMessagePartText>().having((text) => text.text, "text", "Fixed while you were away."));
+      expect((await plugin.getSessionStatuses())[threadId], isA<PluginSessionStatusIdle>());
+      expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
     test("disconnect idles a provisional resumed child and its hydrated root", () async {

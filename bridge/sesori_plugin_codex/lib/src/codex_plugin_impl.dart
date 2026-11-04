@@ -153,9 +153,9 @@ class CodexPlugin._({
   /// until codex supplies an authoritative new thread lifecycle.
   final Set<String> _deletedThreadIds = {};
 
-  /// Sessions a transport drop idled while active. Only the socket may have
-  /// dropped, so the next connection resumes them to learn whether their turn
-  /// is still running.
+  /// Sessions a transport drop idled while active, until a connection resumes
+  /// them. Only the socket may have dropped, so the resume learns whether their
+  /// turn is still running.
   final Set<String> _sessionsIdledByDisconnect = {};
 
   bool _runtimeExited = false;
@@ -356,8 +356,9 @@ class CodexPlugin._({
   /// stale successful future for a dead socket and instead re-establishes on
   /// the next call), idles connection-scoped activity until the next connection
   /// resumes it, and forwards the signal to the runtime descriptor's status
-  /// reporter. While a session was active and the process still runs, that
-  /// next connection starts at once; otherwise it waits for the next request.
+  /// reporter. While a session awaits that resume and the process still runs,
+  /// the next connection starts at once; otherwise it waits for the next
+  /// request.
   void _handleClientDisconnected() {
     final registry = _approvalRegistry;
     final effectiveStatuses = _sessionService.effectiveSessionStatuses(
@@ -412,8 +413,8 @@ class CodexPlugin._({
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
     // A turn the server keeps running must not show idle until the next user
-    // action. Without active sessions the lazy reconnect is enough.
-    if (activeSessionIds.isNotEmpty && !_runtimeExited) {
+    // action. With no session to resume the lazy reconnect is enough.
+    if (_sessionsIdledByDisconnect.isNotEmpty && !_runtimeExited) {
       unawaited(_ensureConnected());
     }
   }
@@ -1540,17 +1541,18 @@ class CodexPlugin._({
     return busy;
   }
 
-  /// Resumes the sessions the last transport drop idled. Each shows what the
-  /// server reports now: busy while its turn still runs, otherwise idle with
-  /// the final reply that finished during the outage. The work state the drop
-  /// made unknown is known again afterwards.
+  /// Resumes the sessions transport drops idled. Each shows what the server
+  /// reports now: busy while its turn still runs, otherwise idle with the final
+  /// reply that finished during the outage. A session leaves the set only once
+  /// resumed, so a failed resume or another drop keeps it for the next
+  /// connection, and the work state the drop made unknown stays unknown until
+  /// no session is left.
   Future<void> _resumeSessionsIdledByDisconnect() async {
-    final sessionIds = _sessionsIdledByDisconnect.toList();
-    _sessionsIdledByDisconnect.clear();
     await Future.wait([
-      for (final sessionId in sessionIds) _resumeSessionIdledByDisconnect(sessionId: sessionId),
+      for (final sessionId in _sessionsIdledByDisconnect.toList())
+        _resumeSessionIdledByDisconnect(sessionId: sessionId),
     ]);
-    _syncWorkState();
+    if (_sessionsIdledByDisconnect.isEmpty) _syncWorkState();
   }
 
   Future<void> _resumeSessionIdledByDisconnect({required String sessionId}) async {
@@ -1558,6 +1560,7 @@ class CodexPlugin._({
       final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
       final resumed = await _sessionService.resumeThreadIfNeeded(threadId: sessionId, force: false);
       final status = _applyResumedThread(threadId: sessionId, resumed: resumed, evidenceRevision: evidenceRevision);
+      _sessionsIdledByDisconnect.remove(sessionId);
       // Busy, or null when a prompt resumed the thread first or a turn event
       // arrived meanwhile: live events carry the session from here.
       if (status is! PluginSessionStatusIdle) return;
@@ -1565,6 +1568,8 @@ class CodexPlugin._({
       // Clients already show idle; recording it replays finished tools as such.
       _setSessionStatus(threadId: sessionId, status: status);
       final messages = await getSessionMessages(sessionId);
+      // A turn that started during the read now carries the session.
+      if ((_turnEvidenceRevisionByThread[sessionId] ?? 0) != evidenceRevision) return;
       final reply = messages.where((message) => message.info is! PluginMessageUser).lastOrNull;
       if (reply == null) return;
       _eventBuffer.add(BridgeSseMessageUpdated(info: reply.info));
