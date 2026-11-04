@@ -15,6 +15,8 @@ class ManagedProcessService<R>({
   required final String _runtimeId,
   required final Duration _gracefulShutdownWait,
 }) {
+  static const Duration _staleExitPollInterval = Duration(milliseconds: 100);
+
   final Map<String, _CurrentOwnedRuntimeProcess> _currentOwnedProcessesBySessionId =
       <String, _CurrentOwnedRuntimeProcess>{};
 
@@ -343,7 +345,7 @@ class ManagedProcessService<R>({
       return;
     }
     if (await _requestGracefulStop(pid: process.pid)) {
-      await _clock.delay(duration: _gracefulShutdownWait);
+      await _awaitGracefulExit(process: process);
     }
     if (!await _spawnedProcessExited(process: process)) {
       await _processes.signalForce(pid: process.pid);
@@ -369,6 +371,18 @@ class ManagedProcessService<R>({
       );
       return false;
     }
+  }
+
+  /// Waits out the grace period after a graceful signal, ending as soon as
+  /// [process] exits. A runtime with no handle in this bridge gets the full
+  /// period, since only the handle reports its exit.
+  Future<void> _awaitGracefulExit({required SpawnedProcess? process}) async {
+    final graceElapsed = _clock.delay(duration: _gracefulShutdownWait);
+    if (process == null) {
+      await graceElapsed;
+      return;
+    }
+    await Future.any<void>([process.exitCode, graceElapsed]);
   }
 
   void _throwIfAborted(StartAbortSignal abort) {
@@ -420,19 +434,12 @@ class ManagedProcessService<R>({
     );
 
     if (anyGracefulSignalSent) {
-      await _clock.delay(duration: _gracefulShutdownWait);
+      await _awaitStaleExit(records: recordsToTerminate);
     }
 
     final survivors = <R>[];
     for (final record in recordsToTerminate) {
-      final currentOwned = _currentOwnedProcessFor(record: record);
-      final currentOwnedStillRunning =
-          currentOwned != null && await _isCurrentOwnedProcessRunning(process: currentOwned);
-      final remainingIdentity = await _processes.inspect(pid: _runtimePidOf(record: record));
-      final matchesRemaining =
-          remainingIdentity != null && _matchesRuntimeRecord(identity: remainingIdentity, record: record);
-
-      if (currentOwnedStillRunning || matchesRemaining) {
+      if (await _isStaleRecordRunning(record: record)) {
         survivors.add(record);
       } else {
         _currentOwnedProcessesBySessionId.remove(_ownerSessionIdOf(record: record));
@@ -469,6 +476,29 @@ class ManagedProcessService<R>({
     }
   }
 
+  /// Waits out the grace period after stale runtimes were signalled, polling
+  /// the process table so the wait ends as soon as none of them is running.
+  Future<void> _awaitStaleExit({required List<R> records}) async {
+    final deadline = _clock.now().add(_gracefulShutdownWait);
+    var running = records;
+    while (running.isNotEmpty && _clock.now().isBefore(deadline)) {
+      await _clock.delay(duration: _staleExitPollInterval);
+      running = [
+        for (final record in running)
+          if (await _isStaleRecordRunning(record: record)) record,
+      ];
+    }
+  }
+
+  Future<bool> _isStaleRecordRunning({required R record}) async {
+    final currentOwned = _currentOwnedProcessFor(record: record);
+    final currentOwnedStillRunning = currentOwned != null && await _isCurrentOwnedProcessRunning(process: currentOwned);
+    final remainingIdentity = await _processes.inspect(pid: _runtimePidOf(record: record));
+    final matchesRemaining =
+        remainingIdentity != null && _matchesRuntimeRecord(identity: remainingIdentity, record: record);
+    return currentOwnedStillRunning || matchesRemaining;
+  }
+
   Future<void> stopOwnedRuntime({required R record}) async {
     await _ownershipRepository.upsert(record: _mapper.markStopping(record: record));
     await _stopRecord(record: record);
@@ -494,7 +524,7 @@ class ManagedProcessService<R>({
     }
 
     if (await _requestGracefulStop(pid: _runtimePidOf(record: record))) {
-      await _clock.delay(duration: _gracefulShutdownWait);
+      await _awaitGracefulExit(process: currentOwnedProcess?.process);
     }
 
     final currentOwnedStillRunningAfterGraceful =
