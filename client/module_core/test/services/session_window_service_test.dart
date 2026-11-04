@@ -25,6 +25,11 @@ ConnectionStatus _connected({required String bridgeId}) => ConnectionStatus.conn
   health: _health,
 );
 
+/// The bridge away: the connection dropped and is not coming back by itself.
+const _lost = ConnectionStatus.connectionLost(
+  config: ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: "a"),
+);
+
 Session _session({
   required String id,
   required int updatedAt,
@@ -293,7 +298,7 @@ void main() {
         async.flushMicrotasks();
         bridge.requests.clear();
 
-        status.add(const ConnectionStatus.disconnected());
+        status.add(_lost);
         async.flushMicrotasks();
         unawaited(window.loadMore());
         expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
@@ -701,6 +706,33 @@ void main() {
         expect(bridge.requests.single.projectId, "alpha");
         expect(loaded(window).awaitingAnswer, isFalse);
         expect(loaded(window).counts.all, 2);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a page or search asked for while reconnecting waits under its spinner, and is sent once connected", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        bridge.requests.clear();
+
+        status.add(reconnecting);
+        async.flushMicrotasks();
+        unawaited(window.loadMore());
+        SessionWindowSearchResult? result;
+        unawaited(window.search(query: "session", limit: 20).then((value) => result = value));
+        async.elapse(const Duration(seconds: 5));
+        expect(bridge.requests, isEmpty);
+        expect(loaded(window).loadMore, SessionWindowLoadMore.loading);
+        expect(result, isNull);
+
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect([for (final request in bridge.requests) request.cursor], unorderedEquals(["200", null]));
+        expect(ids(window), hasLength(250));
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        expect(result, isA<SessionWindowSearchMatches>());
         unawaited(window.dispose());
       });
     });
@@ -1247,7 +1279,7 @@ void main() {
       async.flushMicrotasks();
       expect(result, isNull);
 
-      status.add(const ConnectionStatus.disconnected());
+      status.add(_lost);
       async.flushMicrotasks();
       const away = TypeMatcher<SessionWindowSearchFailure>();
       expect(result, away.having((failure) => failure.reason, "reason", RemoteFailureReason.networkDown));
