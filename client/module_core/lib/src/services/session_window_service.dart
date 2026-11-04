@@ -55,8 +55,8 @@ class SessionWindowService({
   /// asked again.
   static const Duration liveRefreshDelay = Duration(seconds: 1);
 
-  /// How long a load waits for a connection that is still coming up before it
-  /// is sent anyway, so a relay that stays out of reach still shows a failure.
+  /// How long a load, page or search waits for a connection that is still
+  /// coming up, so a relay that stays out of reach still shows a failure.
   static const Duration connectionWait = Duration(seconds: 15);
 
   final BehaviorSubject<SessionWindowState> _state = BehaviorSubject.seeded(const SessionWindowLoading());
@@ -546,11 +546,17 @@ class SessionWindowService({
   /// [_connectionComingUp] first, so a settled connection costs no wait.
   Future<void> _connectionSettled() async {
     final settled = Completer<void>();
-    _connectionService.status.where((status) => !_comingUp(status)).take(1).listen((_) => settled.complete());
+    final subscription = _connectionService.status
+        .where((status) => !_comingUp(status))
+        .take(1)
+        .listen((_) => settled.complete());
     try {
       await settled.future.timeout(connectionWait);
     } on TimeoutException {
-      // The caller goes on; a request that then fails is logged and shown.
+      // The caller goes on, and fails as while the bridge is away.
+    } finally {
+      // Not awaited: the caller goes on as soon as the status settles.
+      unawaited(subscription.cancel());
     }
   }
 
