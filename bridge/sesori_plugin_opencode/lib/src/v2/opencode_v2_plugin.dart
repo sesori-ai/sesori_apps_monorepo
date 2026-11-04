@@ -134,8 +134,11 @@ class OpenCodeV2Plugin._({
 
   Future<void> _refresh() async {
     try {
-      await _service.coldStart();
-      if (!_disposed) _eventBuffer.add(const BridgeSseProjectUpdated());
+      final statusChanges = await _service.coldStart();
+      if (!_disposed) {
+        statusChanges.forEach(_eventBuffer.add);
+        _eventBuffer.add(const BridgeSseProjectUpdated());
+      }
     } finally {
       if (!_disposed) _syncWorkState();
     }

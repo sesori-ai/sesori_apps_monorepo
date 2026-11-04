@@ -348,6 +348,34 @@ void main() {
         expect(() => active["x"] = const SessionStatusBusy(), throwsA(anything));
       });
 
+      test("statusChangesSince reports turns that ended or started while no event could", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [openCodeProject(id: "p1", worktree: "/projects/foo")],
+          sessions: [
+            for (final id in ["ran", "ended", "started", "odd"]) _session(id, "/projects/foo"),
+          ],
+          statuses: {
+            "ran": const SessionStatusBusy(),
+            "started": const SessionStatusBusy(),
+            "odd": const SessionStatusUnknown(raw: {"type": "future"}),
+          },
+        );
+        const previous = {
+          "ran": SessionStatusBusy(),
+          "ended": SessionStatusBusy(),
+          "odd": SessionStatusBusy(),
+        };
+
+        expect(tracker.statusChangesSince(previous: previous), {
+          "ended": const PluginSessionStatus.idle(),
+          "started": const PluginSessionStatus.busy(),
+        });
+
+        // An incomplete baseline cannot prove a missing session stopped.
+        tracker.reset();
+        expect(tracker.statusChangesSince(previous: previous), isEmpty);
+      });
+
       test("reset clears active statuses", () async {
         final tracker = await _coldStartedTracker(
           projects: [

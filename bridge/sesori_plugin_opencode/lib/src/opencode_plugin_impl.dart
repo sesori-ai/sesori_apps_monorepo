@@ -132,9 +132,19 @@ class OpenCodePlugin._({
       password: password,
       onEvent: _handleRawSseEvent,
       onReconnect: () async {
+        final previous = _service.tracker.getActiveStatuses();
         _service.reset();
         _syncWorkState();
         await _service.coldStart();
+        // A turn that ended during the outage settles as its idle event would have.
+        for (final MapEntry(key: sessionID, value: status)
+            in _service.tracker.statusChangesSince(previous: previous).entries) {
+          _eventBuffer.add(switch (status) {
+            PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: sessionID),
+            PluginSessionStatusBusy() ||
+            PluginSessionStatusRetry() => BridgeSseSessionStatus(sessionID: sessionID, status: status),
+          });
+        }
         _emitProjectsSummary();
       },
       onConnected: onConnected,
@@ -740,7 +750,7 @@ class OpenCodePlugin._({
         answers: answers,
       ),
     );
-    if (result.found) {
+    if (result.announce) {
       _eventBuffer.add(
         BridgeSseQuestionReplied(
           requestID: questionId,
@@ -765,7 +775,7 @@ class OpenCodePlugin._({
         reply: reply,
       ),
     );
-    if (result.found) {
+    if (result.announce) {
       _eventBuffer.add(
         BridgeSsePermissionReplied(
           requestID: requestId,
@@ -786,7 +796,7 @@ class OpenCodePlugin._({
         sessionId: sessionId,
       ),
     );
-    if (result.found) {
+    if (result.announce) {
       if (result.resolvedSessionId case final sessionID?) {
         _eventBuffer.add(
           BridgeSseQuestionRejected(

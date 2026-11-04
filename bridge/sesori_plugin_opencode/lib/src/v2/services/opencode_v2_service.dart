@@ -32,7 +32,10 @@ class OpenCodeV2Service({
 
   PluginWorkState get workState => _tracker.workState;
 
-  Future<void> coldStart() async {
+  /// Replaces the activity baseline and returns the status changes it reveals.
+  /// After a stream gap, a turn that ended unseen settles as its terminal event
+  /// would have: idle, then its newest assistant message.
+  Future<List<BridgeSseEvent>> coldStart() async {
     _tracker.invalidateBaseline();
     // Live state is read after the slow metadata read, so sessions and folders
     // that another client starts or loads meanwhile are still included.
@@ -44,12 +47,35 @@ class OpenCodeV2Service({
       _repository.getLoadedDirectories(),
     );
     final pending = await Future.wait(directories.map((directory) => _pendingInput(directory: directory)));
-    _tracker.seed(
+    final changes = _tracker.seed(
       sessions: sessions,
       activeSessionIds: active,
       permissions: [for (final (permissions, _) in pending) ...permissions],
       forms: [for (final (_, forms) in pending) ...forms],
     );
+    return [
+      for (final MapEntry(key: sessionId, value: status) in changes.entries) ...[
+        _mapper.mapStatus(sessionId: sessionId, status: status),
+        if (status is PluginSessionStatusIdle) ...await _latestReply(sessionId: sessionId),
+      ],
+    ];
+  }
+
+  Future<List<BridgeSseEvent>> _latestReply({required String sessionId}) async {
+    final directory = _tracker.session(sessionId: sessionId)?.directory;
+    if (directory == null) return const [];
+    try {
+      final message = await _repository.getLatestMessage(
+        sessionId: sessionId,
+        filter: V2MessageFilter.assistant,
+        directory: directory,
+      );
+      return message == null ? const [] : _mapper.mapAssistantSnapshot(message: message);
+    } catch (error, stack) {
+      // The baseline is already in place; a missing reply must not fail the refresh.
+      Log.w("OpenCode v2 reply snapshot failed for $sessionId after a refresh", error, stack);
+      return const [];
+    }
   }
 
   Future<(List<PermissionRequest>, List<FormInfo>)> _pendingInput({required String directory}) async {

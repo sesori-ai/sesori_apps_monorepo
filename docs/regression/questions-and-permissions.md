@@ -170,7 +170,10 @@ reaches the backend so the turn continues.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression. Raising and resolving a request also
   refreshes the activity summary, so the session's awaiting-input state appears
-  and clears without waiting for the turn to end.
+  and clears without waiting for the turn to end. Each resolution is announced
+  once; OpenCode v1 announces its own event for an accepted reply, so the
+  bridge announces only one OpenCode had already resolved or one it cleared
+  locally.
 - ACP and Codex teardown attempts every pending backend resolution independently,
   logs responder or request-subscription failures, and still clears each stale
   client prompt. One failed resolution never skips later pending entries.
@@ -294,7 +297,7 @@ the prompt write is held, proving cancellation does not remove the later request
   clears an earlier request also removes a later admitted request, or a cleared
   permission/question sheet remains actionable.
 - A resolved request stays visible, keeps suppressing notifications, or returns
-  after reconnect.
+  after reconnect, or one reply is announced twice.
 - One failed backend resolution prevents another pending prompt from clearing,
   or a Cursor notification-mapping failure breaks later approval routing.
 - Clearing prompts during a transport drop leaves the plugin reporting idle

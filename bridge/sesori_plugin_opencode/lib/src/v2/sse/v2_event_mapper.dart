@@ -72,20 +72,22 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2ProjectUpdated() => null,
   };
 
+  BridgeSseEvent mapStatus({required String sessionId, required PluginSessionStatus status}) => switch (status) {
+    // An idle edge ends the turn. The bridge records its completion and
+    // finalizes stranded tools before delivering the idle to clients; an
+    // extra idle status would reach them twice, first ahead of that work.
+    PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: sessionId),
+    PluginSessionStatusBusy() || PluginSessionStatusRetry() => BridgeSseSessionStatus(
+      sessionID: sessionId,
+      status: status,
+    ),
+  };
+
   List<BridgeSseEvent> map({required V2EventEnvelope envelope}) {
     final event = envelope.data;
     return [
       if (status(event: event) case final projected?)
-        switch (projected.status) {
-          // An idle edge ends the turn. The bridge records its completion and
-          // finalizes stranded tools before delivering the idle to clients; an
-          // extra idle status would reach them twice, first ahead of that work.
-          PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: projected.sessionId),
-          PluginSessionStatusBusy() || PluginSessionStatusRetry() => BridgeSseSessionStatus(
-            sessionID: projected.sessionId,
-            status: projected.status,
-          ),
-        },
+        mapStatus(sessionId: projected.sessionId, status: projected.status),
       ...switch (event) {
         V2ServerConnected() => [const BridgeSseServerConnected()],
         V2ProjectUpdated() => [const BridgeSseProjectUpdated()],

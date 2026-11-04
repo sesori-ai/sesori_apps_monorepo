@@ -44,6 +44,9 @@ import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, S
 import "../opencode_plugin.dart";
 import "models/open_code_mcp_decode_exception.dart";
 
+/// [announce] is true when the bridge must announce the cleared request itself.
+typedef ReplyOutcome = ({bool announce, String? resolvedSessionId, bool summaryChanged});
+
 class OpenCodeService(
   final OpenCodeRepository repository,
   final ActiveSessionTracker tracker, {
@@ -630,7 +633,7 @@ class OpenCodeService(
     return model;
   }
 
-  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> replyToQuestion({
+  Future<ReplyOutcome> replyToQuestion({
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
@@ -643,20 +646,20 @@ class OpenCodeService(
         message: "could not resolve session directory",
       );
     }
-    try {
-      await repository.replyToQuestion(
+    final published = await _sendReply(
+      request: () => repository.replyToQuestion(
         questionId: questionId,
         directory: directory,
         body: QuestionReplyBody(answers: answers),
-      );
-    } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404) rethrow;
-      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
-    }
-    return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
+      ),
+    );
+    return _outcome(
+      cleared: tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId),
+      published: published,
+    );
   }
 
-  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> rejectQuestion({
+  Future<ReplyOutcome> rejectQuestion({
     required String questionId,
     required String? sessionId,
   }) async {
@@ -665,7 +668,10 @@ class OpenCodeService(
     // Older mobile clients may omit sessionId. We accept that in those cases
     // we can only clear local pending state; the upstream question may remain.
     if (resolvedSessionId == null) {
-      return tracker.clearPendingQuestion(questionId: questionId, sessionId: null);
+      return _outcome(
+        cleared: tracker.clearPendingQuestion(questionId: questionId, sessionId: null),
+        published: false,
+      );
     }
 
     final directory = await _resolveSessionDirectory(sessionId: resolvedSessionId);
@@ -677,21 +683,19 @@ class OpenCodeService(
       );
     }
 
-    try {
-      await repository.rejectQuestion(
+    final published = await _sendReply(
+      request: () => repository.rejectQuestion(
         questionId: questionId,
         directory: directory,
-      );
-    } on OpenCodeApiException catch (e) {
-      // A 404 after a scoped request means the question is already gone
-      // upstream; reconcile local state so the UI does not stay stuck.
-      if (e.statusCode != 404) rethrow;
-      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
-    }
-    return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);
+      ),
+    );
+    return _outcome(
+      cleared: tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId),
+      published: published,
+    );
   }
 
-  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> replyToPermission({
+  Future<ReplyOutcome> replyToPermission({
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,
@@ -704,18 +708,42 @@ class OpenCodeService(
         message: "could not resolve session directory",
       );
     }
-    try {
-      await repository.replyToPermission(
+    final published = await _sendReply(
+      request: () => repository.replyToPermission(
         requestId: requestId,
         directory: directory,
         reply: reply,
-      );
+      ),
+    );
+    return _outcome(
+      cleared: tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId),
+      published: published,
+    );
+  }
+
+  /// Returns whether OpenCode accepted the reply, which it then announces on
+  /// its own event stream. A 404 means it was already resolved upstream, so
+  /// local state is reconciled instead of leaving the UI stuck.
+  Future<bool> _sendReply({required Future<void> Function() request}) async {
+    try {
+      await request();
+      return true;
     } on OpenCodeApiException catch (e) {
       if (e.statusCode != 404) rethrow;
-      Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+      Log.w("request already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+      return false;
     }
-    return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }
+
+  /// The bridge announces a cleared request only when OpenCode will not.
+  static ReplyOutcome _outcome({
+    required ({bool found, String? resolvedSessionId, bool summaryChanged}) cleared,
+    required bool published,
+  }) => (
+    announce: cleared.found && !published,
+    resolvedSessionId: cleared.resolvedSessionId,
+    summaryChanged: cleared.summaryChanged,
+  );
 
   /// Fires when service-owned tracker updates require the plugin to resync its
   /// work state and re-emit the activity summary.
