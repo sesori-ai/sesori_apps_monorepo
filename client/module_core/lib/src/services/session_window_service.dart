@@ -55,6 +55,10 @@ class SessionWindowService({
   /// asked again.
   static const Duration liveRefreshDelay = Duration(seconds: 1);
 
+  /// How long a load, page or search waits for a connection that is still
+  /// coming up, so a relay that stays out of reach still shows a failure.
+  static const Duration connectionWait = Duration(seconds: 15);
+
   final BehaviorSubject<SessionWindowState> _state = BehaviorSubject.seeded(const SessionWindowLoading());
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
@@ -202,27 +206,38 @@ class SessionWindowService({
   /// Appends the next page. Does nothing while the rows are being replaced,
   /// while a page is already on its way, or when none follows. Rows a failed
   /// load left behind are reloaded instead: their cursor may belong to an
-  /// earlier key. While the bridge is away the page fails at once, and the
-  /// reconnect asks for it.
+  /// earlier key. While the connection is coming up the page waits for it;
+  /// while the bridge is away the page fails at once, and the reconnect asks
+  /// for it.
   Future<void> loadMore() async {
     if (_state.isClosed || _replay != null) return;
     final loaded = _state.value;
     if (loaded is! SessionWindowLoaded || loaded.loadMore == SessionWindowLoadMore.loading) return;
     final cursor = loaded.nextCursor;
     if (cursor == null) return;
+    final generation = _generation;
+    var rows = loaded;
+    if (_connectionComingUp) {
+      // Waits under the page's spinner rather than failing at once.
+      _emit(_withLoadMore(loaded: rows, loadMore: SessionWindowLoadMore.loading));
+      await _connectionSettled();
+      // A newer load owns the rows, and settles the spinner.
+      final now = _state.value;
+      if (_state.isClosed || generation != _generation || now is! SessionWindowLoaded) return;
+      rows = now;
+    }
     if (!_connected) {
-      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+      _emit(_withLoadMore(loaded: rows, loadMore: SessionWindowLoadMore.failed));
       return;
     }
     if (_rowsOutdated) {
-      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
+      _emit(_withLoadMore(loaded: rows, loadMore: SessionWindowLoadMore.loading));
       await reload();
       return;
     }
-    final generation = _generation;
     _pageGeneration = generation;
     _replay = [];
-    _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
+    _emit(_withLoadMore(loaded: rows, loadMore: SessionWindowLoadMore.loading));
     final unseenTick = _sessionUnseenTracker.tick;
     final result = await _sessionRepository.getSessionPage(
       request: _request(cursor: cursor, limit: pageSize),
@@ -273,8 +288,9 @@ class SessionWindowService({
   }
 
   /// The newest sessions of every project matching [query], at most [limit],
-  /// whatever the key. A blank query matches every session. While the bridge
-  /// is away, and once it leaves, this fails at once.
+  /// whatever the key. A blank query matches every session. While the
+  /// connection is coming up this waits for it; while the bridge is away, and
+  /// once it leaves, this fails at once.
   Future<SessionWindowSearchResult> search({required String query, required int limit}) async {
     if (_completeSessions case final sessions?) {
       return SessionWindowSearchMatches(
@@ -282,6 +298,8 @@ class SessionWindowService({
       );
     }
     const away = SessionWindowSearchFailure(reason: RemoteFailureReason.networkDown);
+    // Waits under the search's spinner rather than failing at once.
+    if (_connectionComingUp) await _connectionSettled();
     if (!_connected) return away;
     final lost = Completer<SessionPageResult?>();
     final watch = _connectionService.status.where((status) => status is! ConnectionConnected).listen((_) {
@@ -419,6 +437,11 @@ class SessionWindowService({
     final generation = ++_generation;
     _replay = [];
     _cancelTimers();
+    // Waits under the skeleton rather than failing at once and offering Retry.
+    if (_connectionComingUp) {
+      await _connectionSettled();
+      if (_state.isClosed || generation != _generation) return true;
+    }
     final unseenTick = _sessionUnseenTracker.tick;
     final sessions = <Session>[];
     String? cursor;
@@ -506,6 +529,35 @@ class SessionWindowService({
     // The inventory may have changed while the projects were read.
     unawaited(_admitProjects(inventory: _projectInventory.state));
     return succeeded;
+  }
+
+  /// Whether the connection is still coming up: the first connect after
+  /// signing in or launching, or a reconnect in progress.
+  bool get _connectionComingUp => _comingUp(_connectionService.currentStatus);
+
+  static bool _comingUp(ConnectionStatus status) => switch (status) {
+    ConnectionDisconnected() || ConnectionReconnecting() => true,
+    ConnectionConnected() || ConnectionLost() || ConnectionBridgeOffline() => false,
+  };
+
+  /// Waits until a connection coming up is up, lost or finds the bridge
+  /// offline, or for [connectionWait] at most, so a request asked for
+  /// meanwhile is not sent only to fail at once. Callers check
+  /// [_connectionComingUp] first, so a settled connection costs no wait.
+  Future<void> _connectionSettled() async {
+    final settled = Completer<void>();
+    final subscription = _connectionService.status
+        .where((status) => !_comingUp(status))
+        .take(1)
+        .listen((_) => settled.complete());
+    try {
+      await settled.future.timeout(connectionWait);
+    } on TimeoutException {
+      // The caller goes on, and fails as while the bridge is away.
+    } finally {
+      // Not awaited: the caller goes on as soon as the status settles.
+      unawaited(subscription.cancel());
+    }
   }
 
   /// The inventory's project set once it has one. Completes from the first
