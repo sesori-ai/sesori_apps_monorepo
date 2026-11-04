@@ -153,9 +153,10 @@ class CodexPlugin._({
   /// until codex supplies an authoritative new thread lifecycle.
   final Set<String> _deletedThreadIds = {};
 
-  /// Sessions a transport drop idled while active, until a connection resumes
-  /// them. Only the socket may have dropped, so the resume learns whether their
-  /// turn is still running.
+  /// Sessions a transport drop idled while active, until a live connection
+  /// answers their resume. Only the socket may have dropped, so the resume
+  /// learns whether their turn is still running; until then the work state is
+  /// unknown rather than idle.
   final Set<String> _sessionsIdledByDisconnect = {};
 
   bool _runtimeExited = false;
@@ -1558,14 +1559,14 @@ class CodexPlugin._({
   /// Resumes the sessions transport drops idled. Each shows what the server
   /// reports now: busy while its turn still runs, otherwise idle with the final
   /// reply that finished during the outage. A resume cut off by another drop
-  /// keeps its session for the next connection, and the work state the drop
-  /// made unknown stays unknown until no session is left.
+  /// keeps its session for the next connection; [_syncWorkState] keeps the
+  /// work state unknown while any session is left.
   Future<void> _resumeSessionsIdledByDisconnect() async {
     await Future.wait([
       for (final sessionId in _sessionsIdledByDisconnect.toList())
         _resumeSessionIdledByDisconnect(sessionId: sessionId),
     ]);
-    if (_sessionsIdledByDisconnect.isEmpty) _syncWorkState();
+    _syncWorkState();
   }
 
   Future<void> _resumeSessionIdledByDisconnect({required String sessionId}) async {
@@ -1948,6 +1949,13 @@ class CodexPlugin._({
         _sessionStatuses.values.any(
           (status) => status is PluginSessionStatusBusy || status is PluginSessionStatusRetry,
         );
-    _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
+    if (busy) {
+      _workState.set(PluginWorkState.busy);
+    } else if (_sessionsIdledByDisconnect.isNotEmpty) {
+      // A session a drop idled may still be running until its resume answers.
+      _workState.set(PluginWorkState.unknown);
+    } else {
+      _workState.set(PluginWorkState.idle);
+    }
   }
 }
