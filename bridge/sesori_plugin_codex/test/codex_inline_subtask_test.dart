@@ -273,6 +273,7 @@ void main() {
       clientFactory: null,
       keepaliveInterval: const Duration(seconds: 30),
       toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+      runtimeExit: runningCodexRuntime,
     );
     addTearDown(plugin.dispose);
 

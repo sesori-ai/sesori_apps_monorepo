@@ -14,6 +14,7 @@ import "../repositories/codex_sub_agent_tracker.dart";
 import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_session_mapper.dart";
+import "../repositories/models/codex_resumed_thread.dart";
 import "../repositories/models/codex_session_record.dart";
 import "../repositories/models/codex_sub_agent_rollout_fact.dart";
 import "../repositories/models/codex_thread_record.dart";
@@ -552,18 +553,18 @@ class CodexSessionService({
     return thread;
   }
 
-  Future<CodexThreadRecord?> resumeThreadIfNeeded({
+  Future<CodexResumedThread?> resumeThreadIfNeeded({
     required String threadId,
     required bool force,
   }) async {
     if (!force && _loadedThreads.contains(threadId)) return null;
-    final thread = await _connectedThreadRepository.resumeThread(threadId: threadId);
+    final resumed = await _connectedThreadRepository.resumeThread(threadId: threadId);
     _loadedThreads.add(threadId);
-    _rememberThreadModel(threadId: threadId, model: thread.model);
-    return thread;
+    _rememberThreadModel(threadId: threadId, model: resumed.thread.model);
+    return resumed;
   }
 
-  Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId, bool started})> startTurn({
+  Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId, bool started})> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
     required String? clientUserMessageId,
@@ -572,7 +573,7 @@ class CodexSessionService({
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
   }) async {
-    Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId, bool started})> start(
+    Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId, bool started})> start(
       _PreparedTurn prepared,
     ) async {
       final turnId = await _connectedThreadRepository.startTurn(
@@ -619,7 +620,7 @@ class CodexSessionService({
     }
   }
 
-  Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId})> sendCommand({
+  Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId})> sendCommand({
     required String threadId,
     required String command,
     required String arguments,
@@ -1030,7 +1031,7 @@ class CodexSessionService({
 }
 
 typedef _PreparedTurn = ({
-  CodexThreadRecord? resumedThread,
+  CodexResumedThread? resumedThread,
   String? model,
   CodexCollaborationMode? mode,
   String? effort,

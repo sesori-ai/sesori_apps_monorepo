@@ -44,6 +44,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: toolOutcomeRepository,
+        runtimeExit: runningCodexRuntime,
       );
     });
 
@@ -1079,6 +1080,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
       addTearDown(resolvedPlugin.dispose);
       resolvedFake.respondInOrder([
@@ -3072,6 +3074,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(milliseconds: 20),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
       kaFake.respondInOrder([
         const _Response(result: _initOk),
@@ -3255,6 +3258,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
       addTearDown(scopedPlugin.dispose);
       scopedFake.respondInOrder([

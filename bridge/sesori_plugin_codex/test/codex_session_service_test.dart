@@ -21,6 +21,7 @@ import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_map
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
+import "package:codex_plugin/src/repositories/models/codex_resumed_thread.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -645,19 +646,22 @@ class _StubThreadRepository() extends CodexThreadRepository {
   bool? lastFastMode;
 
   @override
-  Future<CodexThreadRecord> resumeThread({required String threadId}) async {
+  Future<CodexResumedThread> resumeThread({required String threadId}) async {
     resumeCount += 1;
-    return CodexThreadRecord(
-      id: threadId,
-      name: null,
-      directory: "/repo",
-      createdAt: null,
-      updatedAt: null,
-      model: null,
-      modelProvider: null,
-      parentId: null,
-      agentNickname: null,
-      agentPath: null,
+    return CodexResumedThread(
+      thread: CodexThreadRecord(
+        id: threadId,
+        name: null,
+        directory: "/repo",
+        createdAt: null,
+        updatedAt: null,
+        model: null,
+        modelProvider: null,
+        parentId: null,
+        agentNickname: null,
+        agentPath: null,
+      ),
+      runningTurnId: null,
     );
   }
 

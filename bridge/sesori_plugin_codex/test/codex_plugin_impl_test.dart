@@ -38,6 +38,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          runtimeExit: runningCodexRuntime,
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
@@ -62,6 +63,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          runtimeExit: runningCodexRuntime,
         );
         expect(await plugin.getSessions(projectId: "/repo/example"), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
@@ -143,6 +145,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          runtimeExit: runningCodexRuntime,
         );
 
         final agents = await plugin.getAgents(projectId: "/repo/example");
@@ -190,6 +193,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       // Auto-respond to the first request with a valid initialize response.
@@ -231,6 +235,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       fake.outgoing.first.then((Object? frame) {
@@ -274,6 +279,8 @@ void main() {
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        // An exited process leaves the drop idle instead of reconnecting.
+        runtimeExit: exitedCodexRuntime,
       );
       addTearDown(plugin.dispose);
       final firstSummary = Completer<void>();
@@ -441,6 +448,152 @@ void main() {
       expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
+    test("a socket drop mid-turn reconnects at once and restores busy while the turn runs", () async {
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => codexHome.delete(recursive: true));
+      final (:plugin, :connectionCount) = await _dropMidTurn(
+        threadIds: const ["t-running"],
+        codexHome: codexHome.path,
+        reply: ({required connection, required method, required threadId, required socket}) {
+          // The first reconnect drops again before answering its resume.
+          if (connection == 2 && method == "thread/resume") {
+            unawaited(socket.close(WebSocketStatus.goingAway));
+            return null;
+          }
+          return _resumeReply(method: method, threadId: threadId, turnStatus: "inProgress");
+        },
+      );
+      final workStates = <PluginWorkState>[];
+      final workStateSubscription = plugin.workState.listen(workStates.add);
+      addTearDown(workStateSubscription.cancel);
+
+      // No further call: the drops themselves reconnect, and the session that
+      // missed its resume is resumed on the next connection.
+      final restored = await plugin.events
+          .where((event) => event is BridgeSseSessionStatus)
+          .cast<BridgeSseSessionStatus>()
+          .first
+          .timeout(const Duration(seconds: 2));
+      expect(connectionCount(), 3);
+      expect(restored.sessionID, "t-running");
+      expect(restored.status, isA<PluginSessionStatusBusy>());
+      expect((await plugin.getSessionStatuses())["t-running"], isA<PluginSessionStatusBusy>());
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      // The cut-off resume never reports a running turn as idle work.
+      expect(workStates, isNot(contains(PluginWorkState.idle)));
+    });
+
+    test("a drop during the reconnect's handshake leaves the session for the next request", () async {
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => codexHome.delete(recursive: true));
+      final (:plugin, :connectionCount) = await _dropMidTurn(
+        threadIds: const ["t-running"],
+        codexHome: codexHome.path,
+        reply: ({required connection, required method, required threadId, required socket}) {
+          if (connection == 2) {
+            unawaited(socket.close(WebSocketStatus.goingAway));
+            return null;
+          }
+          return _resumeReply(method: method, threadId: threadId, turnStatus: "inProgress");
+        },
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(connectionCount(), 2);
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+    });
+
+    test("a resume that fails on a live connection releases the work state", () async {
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => codexHome.delete(recursive: true));
+      final (:plugin, connectionCount: _) = await _dropMidTurn(
+        threadIds: const ["t-running"],
+        codexHome: codexHome.path,
+        reply: ({required connection, required method, required threadId, required socket}) =>
+            connection == 2 && method == "thread/resume"
+            ? const {
+                "error": {"code": -32600, "message": "thread not found"},
+              }
+            : _resumeReply(method: method, threadId: threadId, turnStatus: "inProgress"),
+      );
+
+      await plugin.workState.firstWhere((state) => state == PluginWorkState.idle).timeout(const Duration(seconds: 2));
+      expect((await plugin.getSessionStatuses())["t-running"], isNot(isA<PluginSessionStatusBusy>()));
+    });
+
+    test("a session resumed idle keeps the work state unknown while another resume is pending", () async {
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => codexHome.delete(recursive: true));
+      final runningResume = Completer<void>();
+      final (:plugin, connectionCount: _) = await _dropMidTurn(
+        threadIds: const ["t-done", "t-running"],
+        codexHome: codexHome.path,
+        reply: ({required connection, required method, required threadId, required socket}) async {
+          // The running session's resume answers only once released.
+          if (connection == 2 && threadId == "t-running") await runningResume.future;
+          final turnStatus = threadId == "t-done" ? "completed" : "inProgress";
+          return _resumeReply(method: method, threadId: threadId, turnStatus: turnStatus);
+        },
+      );
+      final workStates = <PluginWorkState>[];
+      final workStateSubscription = plugin.workState.listen(workStates.add);
+      addTearDown(workStateSubscription.cancel);
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect((await plugin.getSessionStatuses())["t-done"], isA<PluginSessionStatusIdle>());
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+      final restored = plugin.events.where((event) => event is BridgeSseSessionStatus).first;
+      runningResume.complete();
+      await restored.timeout(const Duration(seconds: 2));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      expect(workStates, isNot(contains(PluginWorkState.idle)));
+    });
+
+    test("a turn that ends during a socket drop sends its final reply after the reconnect", () async {
+      const threadId = "019a0000-1111-2222-3333-dddddddddddd";
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => codexHome.delete(recursive: true));
+      String record({required String role, required String text}) => jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "role": role,
+          "content": [
+            {"type": role == "user" ? "input_text" : "output_text", "text": text},
+          ],
+        },
+      });
+      Directory(p.join(codexHome.path, "sessions")).createSync();
+      File(p.join(codexHome.path, "sessions", "rollout-2026-11-03T10-00-00-$threadId.jsonl")).writeAsStringSync(
+        [
+          jsonEncode({
+            "type": "session_meta",
+            "payload": {"id": threadId, "cwd": "/repo/example"},
+          }),
+          record(role: "user", text: "Fix it."),
+          record(role: "assistant", text: "Fixed while you were away."),
+        ].join("\n"),
+      );
+      final (:plugin, connectionCount: _) = await _dropMidTurn(
+        threadIds: const [threadId],
+        codexHome: codexHome.path,
+        reply: ({required connection, required method, required threadId, required socket}) =>
+            _resumeReply(method: method, threadId: threadId, turnStatus: "completed"),
+      );
+
+      final replyPart = await plugin.events
+          .where((event) => event is BridgeSseMessagePartUpdated)
+          .cast<BridgeSseMessagePartUpdated>()
+          .first
+          .timeout(const Duration(seconds: 2));
+      expect(
+        replyPart.part,
+        isA<PluginMessagePartText>().having((text) => text.text, "text", "Fixed while you were away."),
+      );
+      expect((await plugin.getSessionStatuses())[threadId], isA<PluginSessionStatusIdle>());
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("disconnect idles a provisional resumed child and its hydrated root", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-disconnect-");
       addTearDown(() => tempHome.delete(recursive: true));
@@ -485,6 +638,7 @@ void main() {
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: exitedCodexRuntime,
       );
       addTearDown(plugin.dispose);
       final idleSessionIds = <String>{};
@@ -534,6 +688,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
       await expectLater(plugin.dispose(), completes);
     });
@@ -625,6 +780,93 @@ const Map<String, dynamic> _initOk = {
   "platformOs": "macos",
   "platformFamily": "unix",
 };
+
+/// Runs a turn on each of [threadIds] against a loopback app-server, then
+/// drops that first connection mid-turn and returns once the drop idled them.
+/// [reply] answers each request on the numbered connection, given the thread
+/// it names, with a JSON-RPC result or error body, or null to stay silent; it
+/// may close the socket.
+Future<({CodexPlugin plugin, int Function() connectionCount})> _dropMidTurn({
+  required List<String> threadIds,
+  required String codexHome,
+  required FutureOr<Map<String, Object?>?> Function({
+    required int connection,
+    required String method,
+    required String? threadId,
+    required WebSocket socket,
+  })
+  reply,
+}) async {
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  addTearDown(server.close);
+  final firstSocket = Completer<WebSocket>();
+  var connectionCount = 0;
+  server.listen((request) async {
+    final socket = await WebSocketTransformer.upgrade(request);
+    final connection = ++connectionCount;
+    if (connection == 1) firstSocket.complete(socket);
+    socket.listen((frame) async {
+      final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+      final body = await reply(
+        connection: connection,
+        method: decoded["method"] as String,
+        threadId: (decoded["params"] as Map<String, dynamic>?)?["threadId"] as String?,
+        socket: socket,
+      );
+      if (body != null) socket.add(jsonEncode({"jsonrpc": "2.0", "id": decoded["id"], ...body}));
+    });
+  });
+  final plugin = createInjectedCodexPlugin(
+    serverUrl: "ws://127.0.0.1:${server.port}",
+    environment: {"CODEX_HOME": codexHome},
+    projectCwd: "/repo/example",
+    clientFactory: null,
+    keepaliveInterval: const Duration(seconds: 30),
+    toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+    runtimeExit: runningCodexRuntime,
+  );
+  addTearDown(plugin.dispose);
+
+  await plugin.initialize();
+  final socket = await firstSocket.future;
+  final busy = plugin.events.where((event) => event is BridgeSseSessionStatus).take(threadIds.length).drain<void>();
+  for (final threadId in threadIds) {
+    socket.add(
+      jsonEncode({
+        "jsonrpc": "2.0",
+        "method": "turn/started",
+        "params": {
+          "threadId": threadId,
+          "turn": {"id": "turn-1"},
+        },
+      }),
+    );
+  }
+  await busy.timeout(const Duration(seconds: 2));
+  final idled = plugin.events.where((event) => event is BridgeSseSessionIdle).take(threadIds.length).drain<void>();
+  await socket.close(WebSocketStatus.goingAway);
+  await idled.timeout(const Duration(seconds: 2));
+  return (plugin: plugin, connectionCount: () => connectionCount);
+}
+
+/// Answers `initialize`, and `thread/resume` of [threadId] with one turn in
+/// [turnStatus].
+Map<String, Object?>? _resumeReply({required String method, required String? threadId, required String turnStatus}) =>
+    switch (method) {
+      "initialize" => const {"result": _initOk},
+      "thread/resume" => {
+        "result": {
+          "thread": {
+            "id": threadId,
+            "cwd": "/repo/example",
+            "turns": [
+              {"id": "turn-1", "status": turnStatus},
+            ],
+          },
+        },
+      },
+      _ => null,
+    };
 
 /// Minimal bidirectional channel for in-memory WebSocket testing.
 ///

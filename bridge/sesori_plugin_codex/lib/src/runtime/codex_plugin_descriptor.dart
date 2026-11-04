@@ -52,6 +52,7 @@ CodexPlugin buildCodexPlugin({
   required CodexAppServerClient Function()? clientFactory,
   required void Function()? onConnected,
   required void Function()? onDisconnected,
+  required Future<void> runtimeExit,
   required Duration keepaliveInterval,
   required Duration rolloutPollInterval,
 }) {
@@ -110,6 +111,7 @@ CodexPlugin buildCodexPlugin({
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
+    runtimeExit: runtimeExit,
     keepaliveInterval: keepaliveInterval,
   );
 }
@@ -658,6 +660,7 @@ class const CodexPluginDescriptor({
       clientFactory: null,
       onConnected: reporter.markConnected,
       onDisconnected: reporter.markDisconnected,
+      runtimeExit: handle.process.exitCode,
       keepaliveInterval: const Duration(seconds: 30),
       rolloutPollInterval: const Duration(milliseconds: 50),
     );
