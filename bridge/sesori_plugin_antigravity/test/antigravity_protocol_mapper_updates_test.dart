@@ -38,7 +38,7 @@ AcpReplayCollector _collector({required AcpEventMapper mapper}) => AcpReplayColl
   shellCommandResolver: mapper.shellCommandForToolUpdate,
   sessionId: "s",
   agentId: "antigravity",
-  initialUserMessageId: null,
+  initialUserMessage: null,
   messageIdOverride: null,
   messageTimeResolver: null,
   haltClassifier: null,

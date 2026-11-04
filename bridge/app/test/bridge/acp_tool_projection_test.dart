@@ -44,7 +44,7 @@ ToolStateFull _parity({required AcpEventMapper mapper, required List<Map<String,
   final replay = AcpReplayCollector(
     sessionId: "s",
     agentId: mapper.pluginId,
-    initialUserMessageId: null,
+    initialUserMessage: null,
     sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
     shellCommandResolver: mapper.shellCommandForToolUpdate,
     messageIdOverride: null,

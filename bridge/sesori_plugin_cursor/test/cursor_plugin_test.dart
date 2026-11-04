@@ -251,7 +251,7 @@ void main() {
             shellCommandResolver: null,
             sessionId: "replay-root",
             agentId: CursorPlugin.pluginId,
-            initialUserMessageId: null,
+            initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
             haltClassifier: null,

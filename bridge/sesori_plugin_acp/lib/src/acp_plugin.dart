@@ -141,10 +141,11 @@ abstract class AcpPlugin({
 
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
 
-  /// Sessions whose initial user message was synthesized by this bridge
-  /// process. History replay reuses that message identity to avoid a load/SSE
-  /// race rendering the same prompt twice.
-  final Set<String> _syntheticInitialPromptSessions = {};
+  /// Times of the initial user messages this bridge process synthesized, by
+  /// session. History replay reuses that message identity to avoid a load/SSE
+  /// race rendering the same prompt twice, and its time because ACP replay
+  /// carries none.
+  final Map<String, PluginMessageTime> _syntheticInitialPromptTimes = {};
 
   /// Per-session turn-queue state. ACP agents run one turn per session at a
   /// time, so turns are serialized behind each session's chain here; all
@@ -1024,7 +1025,7 @@ abstract class AcpPlugin({
       createdAtMs: createdAt,
     );
     if (initialPromptEvents.isNotEmpty) {
-      _syntheticInitialPromptSessions.add(session.sessionId);
+      _syntheticInitialPromptTimes[session.sessionId] = eventMapper.localUserMessageTime(createdAtMs: createdAt);
       initialPromptEvents.forEach(emitEvent);
     }
     if (parts.isEmpty) {
@@ -2121,7 +2122,7 @@ abstract class AcpPlugin({
     _inFlightTurnSessions.remove(sessionId);
     if (_lastTurnSessionId == sessionId) _lastTurnSessionId = null;
     _sessionStatuses.remove(sessionId);
-    _syntheticInitialPromptSessions.remove(sessionId);
+    _syntheticInitialPromptTimes.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
     _recoveredSessionDirectories.remove(sessionId);
@@ -2183,9 +2184,10 @@ abstract class AcpPlugin({
           // Replayed messages must carry the same `agent` the live mapper stamps,
           // or a reloaded session reports a different agent than the live one did.
           agentId: eventMapper.pluginId,
-          initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
-              ? AcpEventMapper.initialUserMessageId(sessionId)
-              : null,
+          initialUserMessage: switch (_syntheticInitialPromptTimes[sessionId]) {
+            final time? => (id: AcpEventMapper.initialUserMessageId(sessionId), time: time),
+            null => null,
+          },
           messageIdOverride: null,
           messageTimeResolver: null,
           // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
