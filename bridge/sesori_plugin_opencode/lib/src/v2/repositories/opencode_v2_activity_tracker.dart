@@ -54,12 +54,15 @@ class OpenCodeV2ActivityTracker() {
   void removeForm({required String formId}) => _forms.remove(formId);
   void removePermission({required String requestId}) => _permissions.remove(requestId);
 
-  void seed({
+  /// Replaces the baseline and returns every session whose status it changed,
+  /// such as idle for a turn that ended while no event could report it.
+  Map<String, PluginSessionStatus> seed({
     required List<shared.Session> sessions,
     required Set<String> activeSessionIds,
     required List<PermissionRequest> permissions,
     required List<FormInfo> forms,
   }) {
+    final previous = Map.of(_active);
     _sessions
       ..clear()
       ..addEntries(sessions.map((session) => MapEntry(session.id, session)));
@@ -73,6 +76,12 @@ class OpenCodeV2ActivityTracker() {
       ..clear()
       ..addEntries(forms.map((form) => MapEntry(form.id, form)));
     _baselineTrusted = true;
+    return {
+      for (final id in previous.keys)
+        if (!_active.containsKey(id)) id: const PluginSessionStatus.idle(),
+      for (final MapEntry(key: id, value: status) in _active.entries)
+        if (previous[id] != status) id: status,
+    };
   }
 
   bool apply({required V2EventData event}) {

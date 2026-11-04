@@ -72,20 +72,22 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2ProjectUpdated() => null,
   };
 
+  BridgeSseEvent mapStatus({required String sessionId, required PluginSessionStatus status}) => switch (status) {
+    // An idle edge ends the turn. The bridge records its completion and
+    // finalizes stranded tools before delivering the idle to clients; an
+    // extra idle status would reach them twice, first ahead of that work.
+    PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: sessionId),
+    PluginSessionStatusBusy() || PluginSessionStatusRetry() => BridgeSseSessionStatus(
+      sessionID: sessionId,
+      status: status,
+    ),
+  };
+
   List<BridgeSseEvent> map({required V2EventEnvelope envelope}) {
     final event = envelope.data;
     return [
       if (status(event: event) case final projected?)
-        switch (projected.status) {
-          // An idle edge ends the turn. The bridge records its completion and
-          // finalizes stranded tools before delivering the idle to clients; an
-          // extra idle status would reach them twice, first ahead of that work.
-          PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: projected.sessionId),
-          PluginSessionStatusBusy() || PluginSessionStatusRetry() => BridgeSseSessionStatus(
-            sessionID: projected.sessionId,
-            status: projected.status,
-          ),
-        },
+        mapStatus(sessionId: projected.sessionId, status: projected.status),
       ...switch (event) {
         V2ServerConnected() => [const BridgeSseServerConnected()],
         V2ProjectUpdated() => [const BridgeSseProjectUpdated()],
@@ -276,6 +278,14 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
       BridgeSseMessagePartUpdated(part: retry)
     else
       _removeRetry(sessionId: message.info.sessionID, messageId: message.info.id),
+  ];
+
+  /// A reply that ended while the event stream was down: no delta can follow
+  /// it, so every part goes with the snapshot.
+  List<BridgeSseEvent> mapMissedReply({required PluginMessageWithParts message}) => [
+    ...mapAssistantSnapshot(message: message),
+    for (final part in message.parts)
+      if (part is! PluginMessagePartRetry) BridgeSseMessagePartUpdated(part: part),
   ];
 
   List<BridgeSseEvent> mapToolSnapshot({required String toolId, required PluginMessageWithParts message}) => [

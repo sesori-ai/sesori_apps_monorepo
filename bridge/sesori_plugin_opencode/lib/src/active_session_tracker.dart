@@ -1,5 +1,5 @@
 import "package:collection/collection.dart" show MapEquality, SetEquality;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkState;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSessionStatus, PluginWorkState;
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 
 import "models/openapi/permission_request.g.dart";
@@ -8,6 +8,7 @@ import "models/openapi/session.g.dart";
 import "models/openapi/session_status.g.dart";
 import "models/sse_event_data.g.dart";
 import "opencode_repository.dart";
+import "plugin_model_mapper.dart" show knownPluginSessionStatus;
 
 class ActiveSessionTracker(final OpenCodeRepository _repository) {
   final Set<String> _projectWorktrees = {};
@@ -597,6 +598,19 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
   /// from the map.
   Map<String, SessionStatus> getActiveStatuses() {
     return Map.unmodifiable(_sessionStatuses);
+  }
+
+  /// The status changes a fresh baseline reveals against [previous], such as
+  /// idle for a turn that ended while no event could report it. Empty when the
+  /// baseline is incomplete, because an absent session may still be running.
+  Map<String, PluginSessionStatus> statusChangesSince({required Map<String, SessionStatus> previous}) {
+    if (!_workStateBaselineTrusted) return const {};
+    return {
+      for (final id in previous.keys)
+        if (!_sessionStatuses.containsKey(id) && !_unknownSessionIds.contains(id)) id: const PluginSessionStatus.idle(),
+      for (final MapEntry(key: id, value: status) in _sessionStatuses.entries)
+        if (knownPluginSessionStatus(status) case final known? when previous[id] != status) id: known,
+    };
   }
 
   List<ProjectActivitySummary> buildSummary() {

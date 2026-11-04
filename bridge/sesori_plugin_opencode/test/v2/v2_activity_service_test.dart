@@ -238,6 +238,36 @@ void main() {
     expect(service.buildSummary(), isEmpty);
   });
 
+  test("a refresh settles a turn that ended unseen with idle and its newest reply", () async {
+    final idle = isA<BridgeSseSessionIdle>().having((event) => event.sessionID, "sessionID", "child");
+    repository.active = {"child"};
+    expect(await service.coldStart(), [
+      isA<BridgeSseSessionStatus>()
+          .having((event) => event.sessionID, "sessionID", "child")
+          .having((event) => event.status, "status", const PluginSessionStatus.busy()),
+    ]);
+    expect(await service.coldStart(), isEmpty);
+    repository.latest[V2MessageFilter.assistant] = assistant;
+    repository.active = {};
+    repository.calls.clear();
+    final settled = await service.coldStart();
+    expect(settled.first, idle);
+    expect(settled.whereType<BridgeSseMessageUpdated>().single.info.id, "m");
+    expect(
+      settled.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part),
+      contains(isA<PluginMessagePartText>().having((part) => part.text, "text", "Unrelated snapshot text")),
+    );
+    expect(repository.calls.where((call) => call.startsWith("latest:")), ["latest:assistant:$worktree"]);
+    expect(service.workState, PluginWorkState.idle);
+
+    // A failed reply read must not withhold the idle.
+    repository.active = {"child"};
+    await service.coldStart();
+    repository.active = {};
+    repository.messageFailure = StateError("Fixture reply failure");
+    expect(await service.coldStart(), [idle]);
+  });
+
   test("pending input is read only for loaded directories, never for every session folder", () async {
     // Live state follows the slow metadata read, so a folder loaded meanwhile is included.
     final gate = repository.metadataGate = Completer<void>();

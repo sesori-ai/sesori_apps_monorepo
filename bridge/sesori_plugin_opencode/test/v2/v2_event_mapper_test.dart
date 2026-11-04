@@ -235,6 +235,22 @@ void main() {
     }
   });
 
+  test("a reply missed in a stream gap replays every part once with its retry state", () {
+    for (final retry in [false, true]) {
+      final message = assistant(retry: retry);
+      final result = mapper.mapMissedReply(message: message);
+      expect((result.first as BridgeSseMessageUpdated).info.id, "m");
+      expect(
+        result.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.id),
+        unorderedEquals(message.parts.map((part) => part.id)),
+      );
+      expect(
+        result.whereType<BridgeSseMessagePartRemoved>().map((event) => event.partID),
+        retry ? isEmpty : ["m:retry"],
+      );
+    }
+  });
+
   test("native notices match REST identities, attribution and synthetic descriptions", () {
     final result = mapper.mapNotice(
       envelope: frame(

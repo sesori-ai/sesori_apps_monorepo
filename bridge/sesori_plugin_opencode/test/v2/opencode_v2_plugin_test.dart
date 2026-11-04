@@ -142,6 +142,17 @@ void main() {
     expect(plugin.currentWorkState, PluginWorkState.idle);
   });
 
+  test("reconnect settles a turn that ended while the stream was down", () async {
+    server.active = {_sessionId};
+    await plugin.initialize();
+    expect(plugin.currentWorkState, PluginWorkState.busy);
+    final idle = _next<BridgeSseSessionIdle>(plugin: plugin);
+    server.active = {};
+    await server.streams.single.close();
+    expect((await idle).sessionID, _sessionId);
+    expect(plugin.currentWorkState, PluginWorkState.idle);
+  });
+
   test("disposal during enrichment drops late publication and closes the event stream", () async {
     await plugin.initialize();
     final events = <BridgeSseEvent>[];
@@ -339,6 +350,7 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   bool folderLoaded = true;
   List<Map<String, Object?>> forms = [];
   List<Map<String, Object?>> permissions = [];
+  Set<String> active = {};
   Map<String, dynamic>? promptBody;
   Map<String, dynamic>? replyBody;
   Map<String, dynamic>? createBody;
@@ -476,7 +488,11 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
             ],
             "cursor": {"next": null},
           },
-          "/api/session/active" => {"data": <String, Object?>{}},
+          "/api/session/active" => {
+            "data": {
+              for (final id in active) id: {"type": "busy"},
+            },
+          },
           "/api/session/$_sessionId" => {"data": v2SessionFixture},
           "/api/agent" => {
             "data": [if (folderLoaded) native["agent"]],
