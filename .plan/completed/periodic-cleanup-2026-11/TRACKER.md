@@ -1,5 +1,13 @@
 # Periodic cleanup 2026-11 tracker
 
+## Retired 2026-11-03
+
+All 28 steps merged. Step 28 ran the verification matrix on `main` at
+`1ca8d39c82` (step 20.l), and steps 28.a–28.g handled what it found. The user
+accepted the reduced matrix: Q13 A (step-timer rows the current sign-ins could
+not run) and Q14 A (desktop notification-open Not run). See
+[Step 28 verification](#step-28-verification).
+
 Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 
 | Step | Status | PR | Notes |
@@ -30,9 +38,9 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 24 Restart route | Merged | #2350 | Removes the route and the whole restart subsystem (Q1), including exit code 86; `/global/restart` returns 404. |
 | 25 Runtime-update seam | Merged | #2341 | Removed (Q2). The management snapshot sent to apps is byte-identical. |
 | 26 Phone desktop/web runners | Merged | #2340 | Deleted (Q3), about 3.6k lines rather than the audit's ~9.9k. `firebase_options.dart` and `firebase.json` stay as generated; the next `flutterfire configure` for Android and iOS trims them. |
-| 20.k, 20.l Dart format check (Q11 A) | PR open | | `tool/dart_format.sh` owns the generated-file exclusions; the CI jobs that analyze each workspace run it with `--check`. 20.k checks and reformats the bridge; 20.l, stacked on it, does the client, the shared packages and the root `tool/` scripts (which get a `tool/analysis_options.yaml` with the repository's formatter settings). Formatter output only: 174 files, about 2,820 lines. |
+| 20.k, 20.l Dart format check (Q11 A) | Merged | #2377, #2378 | `tool/dart_format.sh` owns the generated-file exclusions; the CI jobs that analyze each workspace run it with `--check`. 20.k checks and reformats the bridge; 20.l, stacked on it, does the client, the shared packages and the root `tool/` scripts (which get a `tool/analysis_options.yaml` with the repository's formatter settings). Formatter output only: 174 files, about 2,820 lines. |
 | 27 Regression docs | Merged | #2375 | Also runs the retired step-timers plan's step-6 reconciliation (Q6), and applies #2374's accepted README row. |
-| 28 Verify and retire | Pending | | Includes the retired opencode-v2 and step-timers live rows (Q6). |
+| 28 Verify and retire | Merged | #2380, #2381, #2382, #2383, #2384, #2385, #2386 | Includes the retired opencode-v2 and step-timers live rows (Q6). See "Step 28 verification" below. |
 
 Out of series:
 - #2309 fixed PN-1 (OpenCode v2 idle).
@@ -40,7 +48,7 @@ Out of series:
 - #2355: ownership records match on pid, start marker and a live command line that ends with the recorded args, so interpreter-shim, execve and native launches all match. Without a start marker (Windows) a record still falls back to pid + path.
 - #2359: a Windows graceful stop that throws falls back to force on every stop path and skips the grace wait.
 - #2365 (Q8 A): backend runtimes on Windows join a kill-on-close job object, so they end with the bridge.
-- Q12 B, in progress: on Windows a runtime starts suspended, is bound to the job object, then resumes, so it cannot escape the job before it is bound.
+- #2379 (Q12 B): Windows runtimes that end with the bridge start inside the kill-on-close job (`CreateProcessW` with `PROC_THREAD_ATTRIBUTE_JOB_LIST`), so none escapes before it is bound; this closes the gap without a suspended phase. If that start fails, it is logged and falls back to `Process.start` plus a late bind. Known limits: Windows before 1607 uses the late bind; descendants started with `CREATE_BREAKAWAY_FROM_JOB` escape; a read error other than end-of-file ends the output stream with a log. Declined in review: adding a suspended start anyway (the `RegisterWait` failure it would guard happens only on resource exhaustion, and the child stays in the job regardless), and unlistened pipes (every caller drains both).
 
 ## Step 20
 
@@ -56,6 +64,78 @@ Behaviour changes from step 20 (all edge cases of malformed input):
 - ACP: a wrong-typed field reads as absent or fails with `FormatException`; Cursor: a thought-level config without an id reads as absent.
 - OpenCode: a null MCP status fails with a `FormatException` naming the server instead of a `TypeError`; the raw HTTP post, patch and delete lost an unused `timeout` parameter.
 - `tool/bump_version.dart` skips non-object `optionalDependencies` and `sesoriBridge` entries instead of crashing.
+
+## Step 28 verification
+
+Run on 2026-11-03 against `main` `1ca8d39c82`: a headless live bridge on macOS
+arm64 and the headless iOS simulator. Rows follow PLAN.md "Verification and
+retirement".
+
+| Row | Result | Evidence or reason |
+| --- | --- | --- |
+| Plugin interface, routes and plugins | Pass | Setup inspection of all 11 harnesses (8 ready; Antigravity and Copilot runtime-missing; Cursor disabled). Real turns completed on OpenCode v2, Claude Code and Codex; a Claude permission round trip. |
+| Bridge services | Pass after 28.a, 28.b | `supervised_e2e_test`, reconnect backoff (1, 2, 4 s), no stray processes, exit codes {0, 1, 87, 88} and no restart route all passed. Clean shutdown was Partial: a stalled debug event stream forced a 50 s shutdown (28.a), and each runtime stop waited the full 5 s grace (28.b). |
+| Client (steps 13–17) | Pass | iOS simulator: project and session lists, rename without a jump, session detail, Settings without the voice-engine row, dictation, sign-out and sign-in. The "Couldn't load sessions" flash after sign-in went to 28.f. |
+| Desktop-specific (step 19) | Not run (Q14 A) | `module_desktop_core` `dart test` 454/0 and module_core notification routing 26/0. The macOS desktop launch was not run, per the testing rule. |
+| Shared, linter, CI, docs | Pass | `tool/dart_format.sh --check` clean over 3,303 files; no_slop_linter 225/0; `sesori_shared` analyzes clean, 494/0; OpenCode v1 and v2 regeneration is byte-identical; CI below. Link check: 552 links, 10 broken, all in the 2026-09 `.plan/completed/periodic-cleanup/AUDIT.md`, pointing at code later work moved; left as the historical record. |
+
+Retired opencode-v2 live rows (Q6), each bridge-side; the client-side cases ran
+with the step-timers rows:
+
+| Row | Result | Evidence or reason |
+| --- | --- | --- |
+| OpenCode 1.18.32 on PATH | Pass | |
+| Managed upgrade 1.18.32 → 2.1.4 | Pass | First cold start 21.4 s, including the database migration. It used a private server, because the user's shared service held the port. |
+| Managed fresh install 2.1.4 | Pass | |
+| `--opencode-no-auto-start` attach | Pass after 28.c | The re-fetch after a reconnect was Partial: a session that finished during the outage stayed busy. |
+
+Retired step-timers live rows (Q6). Device, Android and macOS desktop rows are
+not run, per the testing rule.
+
+| Harness | Result | Evidence or reason |
+| --- | --- | --- |
+| Claude Code | Pass | Its first sub-agent kept the main turn "Working…" for about 90 s while a background shell ran; this matches the bridge's state, so no change. |
+| Codex | Pass | |
+| OpenCode | Partial (Q13 A) | Working timer Pass. Foreground Task Partial and background sub-agent Blocked: the sub-agent models return 401 because OpenCode's Anthropic sign-in was revoked. |
+| Pi | Pass | Run on the DeepSeek key; Pi's OpenAI sign-in fails with `invalid_grant`. |
+| DeepSeek | Partial (Q13 A) | Sub-agent Pass. The working timer was not caught on screen, but the bridge returns the message times it needs. |
+| Grok | Pass after 28.d | Sub-agent and follow-up passed; the first prompt of a new session showed no time. |
+| Hermes (another ACP) | Pass after 28.d | Follow-up passed; same first-prompt failure as Grok. |
+| Retry rows | Not run (Q13 A) | No harness produced a retry status that could be triggered; Hermes reports provider retries only as transcript text. |
+
+Fixes found by step 28 (none caused by the cleanup):
+
+| Step | PR | Change |
+| --- | --- | --- |
+| 28.a | #2381 Merged | The debug server writes to each client without awaiting a flush and drops a client when its response ends. Accepted: no backpressure for a stalled but connected debug client, and cubic's bounded queue declined (a loopback, opt-in debug tool). |
+| 28.b | #2383 Merged | An owned runtime stop and the post-crash stale cleanup end the grace wait when the runtime exits (bridge exit 5.1 s → 0.2 s; plugin start after a crash about 5.5 s → under 1 s). Declined: an untracked-record qualifier (no caller) and a poll-count backstop (only a frozen fake clock reaches it). |
+| 28.c | #2382 Merged | After an event-stream reconnect, OpenCode v1 and v2 diff session status and send a finished turn's final reply with all its parts; v1 drops duplicate replied events by request id. No change for v2's three `part.removed` events: they are the bridge's own retry-row clears, which clients ignore. |
+| 28.d | #2380 Merged | An ACP session's first prompt keeps its time on replay (Grok, Hermes, Antigravity, Copilot, Cursor, OMP). |
+| 28.e | None | No change. "Codex stayed stopped after its app-server exited" is the documented dormant state: Codex runs with `RuntimeRestartPolicy.disabled()` because it cannot reconnect to a restarted app-server, and the next request starts a new generation (verified live; chosen in 199d5f6a96, documented in `plugin-setup-and-lifecycle.md`). The failed-plugin hint is accurate. |
+| 28.f | #2384 Merged | Session loads, pages and search wait under the skeleton while the bridge connects (15 s cap); sign-out clears the filter, so there is no title jump or cross-account carry. |
+| 28.g | #2385 Merged | After a Codex app-server WebSocket drop mid-turn, the plugin reconnects at once while the process runs, resumes the idled sessions, restores busy for a running turn (keeping its turn id for Stop), sends the newest reply for a turn that ended during the outage, and re-syncs the work state once every session is resumed (a second drop mid-resume keeps the session queued, and safe stops stay refused until then). Accepted: items missed during the outage appear on reload (parity with OpenCode), a tool finalized by the drop shows its real end state on reload, and the rare race of a prompt's own resume landing first. |
+
+Q16 C: the rating sheet keeps its timing; it followed its documented rules.
+
+Q15 cleanup: 19 step 28 sessions were deleted (OpenCode 6, Claude 4, Codex 3,
+Grok 2, DeepSeek 2, Hermes 1, Pi 1), including the Hermes session with the
+dictated speech, and the local evidence folder. The two "extra dev-account
+registrations" never existed. Left: Hermes's `state.db` free pages keep the
+dictated bytes until the user runs `hermes sessions optimize` with Hermes
+closed; OpenCode keeps empty project rows for the deleted scratch folders (no
+delete API); log files still name the session ids.
+
+CI on `main` `1ca8d39c82`: Mobile CI 41735174047, Desktop CI 41735174331,
+Design Catalog CI 41735174083 and Bridge CI 41735173971, all green. Bridge and
+Desktop CI stay green through the 28.a–28.d and Q12 commits.
+
+The live run corrected assumptions carried over from retired plans: the setup route is
+`/plugin/management` (not `/plugin/setup`), compaction runs through the
+`compact` command (there is no route), v2 forms reach clients as Sesori
+`question.asked` events, and v2 archive state lives in the bridge database. No
+live doc states the old assumptions. The one live-doc fix:
+`plugin-runtime-installation.md` now says managed runtimes install under the
+home directory, which `--data-dir` does not move.
 
 ## Decisions and declined review findings
 

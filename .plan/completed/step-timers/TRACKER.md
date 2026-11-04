@@ -15,7 +15,7 @@ as finished, and these checks were never executed:
   OpenCode, Pi, DeepSeek, Grok and other-ACP rows.
 
 User decision Q6 (2026-11-02): the live harness rows run on a headless bridge and
-the iOS simulator in [periodic-cleanup-2026-11](../../active/periodic-cleanup-2026-11/PLAN.md#verification-and-retirement)
+the iOS simulator in [periodic-cleanup-2026-11](../periodic-cleanup-2026-11/PLAN.md#verification-and-retirement)
 step 28, and the step-6 reconciliation runs in its step 27. The iOS device,
 Android and macOS desktop rows stay accepted gaps.
 

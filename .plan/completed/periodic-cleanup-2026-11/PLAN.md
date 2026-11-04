@@ -92,7 +92,7 @@ existing rules or decisions:
 | XC-DOC-6 | Condense the orphaned auth-reconnect plan into a short draft under `.plan/drafts/`. |
 | XC-DOC-11 | Rewrite `docs/cursor-acp-followups/README.md` against current code. |
 
-User decisions (review page, 2026-11-02):
+User decisions (review pages, 2026-11-02 and 2026-11-03):
 
 | Q | Item | Decision | Step |
 | --- | --- | --- | --- |
@@ -103,8 +103,15 @@ User decisions (review page, 2026-11-02):
 | Q5 | XC-DOC-1 eight finished or stalled plans | Retire all eight. The user accepts these unexecuted checks: quota-auto-continuation macOS QA; mcp-management step 37 L4 and external checks; desktop-sign-in full Apple sign-in on a macOS build; user-analytics Looker report and 3-day reconciliation. | 23 |
 | Q6 | Round 2: the retired plans skipped more checks than Q5 listed (opencode-v2 and step-timers never ran their final live matrices; desktop-sign-in and quota-auto-continuation skipped more rows) | Fold the opencode-v2 and step-timers live rows into step 28's matrix and step-timers' reconciliation into step 27. Every other gap stays accepted as recorded in each retired tracker. | 27, 28 |
 | Q7 | Round 2: ROADMAP's same-machine loopback transport for the desktop cockpit | Keep it as an unscheduled idea with a concrete trigger: users needing the desktop app offline, or relay latency hurting same-machine use. | 23 |
+| Q8 | Round 3: on Windows, Codex and OpenCode runtimes outlive a bridge crash (the record holds the `cmd.exe` pid, with no start time to match) | A: put every runtime the bridge launches into a kill-on-close Windows job object, so it ends with the bridge however the bridge exits. | Out of series (#2365) |
+| Q9 | Round 4: which linter rules the 9 bridge packages that never loaded the linter follow | A: the bridge enforces the written rules (no `!`, no forced casts, required named parameters, exhaustive switches, no mutable fields, no dynamic return types). `prefer_specific_type` and `avoid_implicit_tostring` are off for the bridge only; the client keeps every rule. | 20.e–20.g |
+| Q10 | Rounds 4 and 5: about 1,030 `!` in the bridge app's tests | A: sweep them now, then the bridge app joins the linter. | 20.h, 20.i |
 | Q11 | The dropped format-only PR: should CI check `dart format`? | Yes (A). CI checks `dart format` on hand-written Dart files, and one reformat lands at a quiet time, while few PRs are open. | 20.k, 20.l |
-| Q12 | Windows job object: a runtime can escape it before it is bound | B: close the escape with a suspended start. Start the runtime suspended, bind it to the job object, then resume it. | Out of series |
+| Q12 | Windows job object: a runtime can escape it before it is bound | B: close the escape with a suspended start. Start the runtime suspended, bind it to the job object, then resume it. | Out of series (#2379) |
+| Q13 | Round 7: step-timer rows the current sign-ins could not run | A: accept them as recorded: OpenCode background sub-agent Blocked and foreground Task Partial (revoked Anthropic sign-in), retry rows Not run, DeepSeek working timer Partial. | 28 |
+| Q14 | Round 7: desktop notification-open check on a macOS build | A: record it as Not run. The desktop core (454/454) and shared routing (26/26) suites stand in. | 28 |
+| Q15 | Round 7: step 28 test leftovers in real harness stores, including a dictated-speech prompt in Hermes | A: delete everything step 28 created. | 28 |
+| Q16 | Round 8: when the "Are you enjoying Sesori?" sheet slides up | C: keep it as it is: right after the fifth point, over whatever is on screen. | No change |
 
 ## Phase 1 steps
 
@@ -288,7 +295,7 @@ changes, not a fresh pass of whole feature documents.
 | Bridge services (steps 9–12, 24) | Owning suites, including `supervised_e2e_test`. A headless bridge start, relay connect, reconnect and clean shutdown. A desktop-supervised stop/start keeps the same data directory, now that restart is gone. |
 | Client (steps 13–17) | Owning cubit, widget and golden suites. Headless iOS simulator (`xcrun simctl boot`, never Simulator.app) on the device the local testing setup assigns: project list, session list, rename showing the new title at once without a jump, session detail, settings without the voice-engine row, dictation still working, sign-out and in. |
 | Desktop-specific (step 19) | Owning `module_desktop_core` suites (`dart test`). Notification-open routing on a macOS desktop build if a display is available. Otherwise record it as not run; it is not a pass. |
-| Retired opencode-v2 live rows (Q6) | The cases of the retired plan's [Verification Matrix](../../completed/opencode-v2/PLAN.md#verification-matrix), headless on macOS arm64 with a real provider: managed OpenCode 2.0.x fresh install and upgrade from 1.18.32, OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach. |
+| Retired opencode-v2 live rows (Q6) | The cases of the retired plan's [Verification Matrix](../../completed/opencode-v2/PLAN.md#verification-matrix), headless on macOS arm64 with a real provider: managed OpenCode 2.1.4 (the pin at step 28; 2.0.11 is the v2 floor) fresh install and upgrade from 1.18.32, OpenCode 1.18.32 on PATH, and `--opencode-no-auto-start` attach. |
 | Retired step-timers live rows (Q6) | The harness rows of the retired plan's [Regression Coverage](../../completed/step-timers/PLAN.md#regression-coverage) matrix (Claude Code, Codex, OpenCode, Pi, DeepSeek, Grok and another ACP harness where installed), on a headless live bridge plus the iOS simulator. Device, Android and macOS desktop rows are not run, per the testing rule. |
 | Shared, linter, CI, docs (steps 18, 20–23, 26) | Owning suites, analyzers, generator dry runs, the CI workflow run itself, link checks over the moved plans. |
 
@@ -308,6 +315,11 @@ Step 27 reconciles them, and also runs the retired step-timers plan's step-6 rec
 run per row, and moves the plan to `.plan/completed/periodic-cleanup-2026-11/`
 only when the rows pass. Reducing this matrix needs explicit user acceptance,
 recorded here.
+
+Accepted on 2026-11-03: the user accepted retirement with a reduced matrix, Q13 A
+(the step-timer rows the current sign-ins could not run) and Q14 A (desktop
+notification-open recorded as Not run). Every other row passed, or passed after
+the step 28 fixes; the results are in the [tracker](TRACKER.md#step-28-verification).
 
 ## Phase 2 (rough; each becomes its own plan when it starts)
 
