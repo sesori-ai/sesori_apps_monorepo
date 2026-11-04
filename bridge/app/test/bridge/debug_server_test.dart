@@ -152,21 +152,25 @@ void main() {
       expect(followingEvent["type"], "vcs.branch.updated");
     });
 
-    test(
-      "first client still receives events after second disconnects",
-      () async {
-        final first = await _SseTestClient.connect(_boundPort(server: debugServer));
-        addTearDown(first.close);
+    test("a disconnected client blocks neither the other clients nor the drain", () async {
+      final gone = await _SseTestClient.connect(_boundPort(server: debugServer));
+      final live = await _SseTestClient.connect(_boundPort(server: debugServer));
+      addTearDown(live.close);
 
-        final second = await _SseTestClient.connect(_boundPort(server: debugServer));
+      await gone.disconnect();
 
-        await second.close();
-
+      // The first write to the gone client succeeds and draws a reset. Spacing
+      // the events lets that reset land before the next write, whose awaited
+      // flush used to never complete, stalling every client and the drain.
+      for (var i = 0; i < 3; i++) {
         plugin.emitEvent(const BridgeSseVcsBranchUpdated());
-        final firstEvent = await first.nextEvent();
-        expect(firstEvent, contains("vcs.branch.updated"));
-      },
-    );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      for (var i = 0; i < 3; i++) {
+        expect(await live.nextEvent().timeout(const Duration(seconds: 2)), contains("vcs.branch.updated"));
+      }
+      await debugServer.drain().timeout(const Duration(seconds: 2));
+    });
 
     test("async-mapped session events preserve order for SSE clients", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -878,7 +882,7 @@ class _SseTestClient._(final Socket _socket, final StreamIterator<String> _lines
   static Future<_SseTestClient> connect(int port) async {
     final socket = await Socket.connect("127.0.0.1", port);
     socket.write(
-      "GET /global/event HTTP/1.0\r\n"
+      "GET /global/event HTTP/1.1\r\n"
       "Host: 127.0.0.1\r\n"
       "Accept: text/event-stream\r\n"
       "\r\n",
@@ -946,6 +950,12 @@ class _SseTestClient._(final Socket _socket, final StreamIterator<String> _lines
 
   Future<void> close() async {
     await _socket.close();
+    await _lines.cancel();
+  }
+
+  /// Drops the connection in both directions, as an exiting `curl` does.
+  Future<void> disconnect() async {
+    _socket.destroy();
     await _lines.cancel();
   }
 

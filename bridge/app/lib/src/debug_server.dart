@@ -194,9 +194,9 @@ class DebugServer({
       _sseClients.add(response);
 
       _localWireEventsSub ??= _localWireEvents
-          .asyncMap((event) => _fanOutEvent(jsonEncode(event.toJson())))
+          .map((event) => jsonEncode(event.toJson()))
           .listen(
-            (_) {},
+            _fanOutEvent,
             onError: (Object e, StackTrace st) {
               Log.w("debug SSE stream error", e, st);
               unawaited(
@@ -212,16 +212,8 @@ class DebugServer({
             },
           );
 
-      final disconnected = Completer<void>();
-      unawaited(
-        response.done.whenComplete(() {
-          if (!disconnected.isCompleted) {
-            disconnected.complete();
-          }
-        }),
-      );
-
-      await disconnected.future;
+      // Completes once a write finds the connection gone or the drain closes it.
+      await response.done;
     } catch (error, stackTrace) {
       // The finally block drops the client.
       _logSseClientFailure(failure: "debug SSE client connection failed", error: error, stackTrace: stackTrace);
@@ -235,22 +227,17 @@ class DebugServer({
     }
   }
 
-  Future<void> _fanOutEvent(String eventData) async {
-    final clients = List<HttpResponse>.from(_sseClients);
-    for (final client in clients) {
+  /// Writes without awaiting a flush: dart:io can leave a flush to a client that
+  /// disconnected pending forever, which would stall every client and the drain.
+  /// The output is unbuffered, so each write still goes out immediately.
+  void _fanOutEvent(String eventData) {
+    final bytes = utf8.encode("data: $eventData\n\n");
+    for (final client in List<HttpResponse>.from(_sseClients)) {
       try {
-        client.add(utf8.encode("data: $eventData\n\n"));
-        await client.flush();
+        client.add(bytes);
       } catch (error, stackTrace) {
-        // A failed write leaves this client's connection unusable. Drop it; the
-        // other clients keep receiving.
         _logSseClientFailure(failure: "debug SSE event write failed", error: error, stackTrace: stackTrace);
         _removeSseClient(client);
-        try {
-          await client.close();
-        } catch (error, stackTrace) {
-          _logSseClientFailure(failure: "debug SSE client close failed", error: error, stackTrace: stackTrace);
-        }
       }
     }
   }
