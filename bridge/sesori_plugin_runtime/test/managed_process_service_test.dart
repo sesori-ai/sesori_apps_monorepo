@@ -392,6 +392,42 @@ void main() {
       expect(spawnedProcess.killSignals, isEmpty);
     });
 
+    test("shutdown ends the grace wait as soon as the runtime exits", () async {
+      final spawnedProcess = _FakeSpawnedProcess(
+        identity: _opencodeIdentity(pid: 213, startMarker: "open-start-213", port: 50133),
+        exitImmediately: false,
+      );
+      final record = _record(
+        ownerSessionId: "current-owner",
+        openCodePid: 213,
+        openCodeStartMarker: "open-start-213",
+        bridgePid: 900,
+        bridgeStartMarker: "bridge-start",
+        port: 50133,
+      );
+      ownershipRepository.records[record.ownerSessionId] = record;
+      processService.inspectResults[213] = <ProcessIdentity?>[
+        _opencodeIdentity(pid: 213, startMarker: "open-start-213", port: 50133),
+        null,
+        null,
+      ];
+      processService.gracefulHooks[213] = spawnedProcess.completeExit;
+      // The grace period never elapses, so only the exit can end the wait.
+      clock.delaysElapse = false;
+      final service = _service(
+        ownershipRepository: ownershipRepository,
+        processService: processService,
+        bridge: bridge,
+        clock: clock,
+      );
+      service.trackOwnedRuntime(ownerSessionId: record.ownerSessionId, process: spawnedProcess);
+
+      await service.stopOwnedRuntime(record: record).timeout(const Duration(seconds: 2));
+
+      expect(processService.signalRequests, equals(<String>["graceful:213"]));
+      expect(ownershipRepository.records, isEmpty);
+    });
+
     test("stop path force stops current-owned child without a start marker", () async {
       final spawnedProcess = _FakeSpawnedProcess(
         identity: _opencodeIdentity(pid: 212, startMarker: null, port: 50130),
@@ -782,10 +818,12 @@ class _FakeBridgeHostInfo({required final ProcessIdentity _identity}) implements
 
 class _FakeServerClock() implements ServerClock {
   final List<Duration> delays = <Duration>[];
+  bool delaysElapse = true;
 
   @override
-  Future<void> delay({required Duration duration}) async {
+  Future<void> delay({required Duration duration}) {
     delays.add(duration);
+    return delaysElapse ? Future<void>.value() : Completer<void>().future;
   }
 
   @override

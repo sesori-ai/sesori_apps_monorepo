@@ -363,6 +363,10 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   failed record build. On each path, if the graceful request fails or finds the process
   already gone, the stop skips the grace wait and goes straight to its force checks.
   Windows `taskkill` without `/F` fails this way for a windowless console process.
+  On the shutdown stop and the new child's cleanup the bridge holds the child's handle, so
+  the grace wait ends as soon as the runtime exits; a shutdown with Codex and a private
+  OpenCode server active finishes in well under a second. Stale cleanup has no handle
+  and waits the full grace period.
   On macOS and Linux, an owned Codex or OpenCode runtime is stopped on shutdown and
   reclaimed by stale cleanup after a crash in every launch shape: a native binary, an
   npm `#!/usr/bin/env node` shim (`ps` shows `node <shim> <args>`), and a launcher

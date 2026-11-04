@@ -343,7 +343,7 @@ class ManagedProcessService<R>({
       return;
     }
     if (await _requestGracefulStop(pid: process.pid)) {
-      await _clock.delay(duration: _gracefulShutdownWait);
+      await _awaitGracefulExit(process: process);
     }
     if (!await _spawnedProcessExited(process: process)) {
       await _processes.signalForce(pid: process.pid);
@@ -369,6 +369,18 @@ class ManagedProcessService<R>({
       );
       return false;
     }
+  }
+
+  /// Waits out the grace period after a graceful signal, ending as soon as
+  /// [process] exits. A runtime with no handle in this bridge gets the full
+  /// period, since only the handle reports its exit.
+  Future<void> _awaitGracefulExit({required SpawnedProcess? process}) async {
+    final graceElapsed = _clock.delay(duration: _gracefulShutdownWait);
+    if (process == null) {
+      await graceElapsed;
+      return;
+    }
+    await Future.any<void>([process.exitCode, graceElapsed]);
   }
 
   void _throwIfAborted(StartAbortSignal abort) {
@@ -494,7 +506,7 @@ class ManagedProcessService<R>({
     }
 
     if (await _requestGracefulStop(pid: _runtimePidOf(record: record))) {
-      await _clock.delay(duration: _gracefulShutdownWait);
+      await _awaitGracefulExit(process: currentOwnedProcess?.process);
     }
 
     final currentOwnedStillRunningAfterGraceful =
