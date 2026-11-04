@@ -81,6 +81,11 @@ class CodexPlugin._({
   /// drops. Wrapped by [_handleClientDisconnected] so cached connection state
   /// is reset before the reporter is told.
   required final void Function()? _onDisconnected,
+
+  /// Completes when the managed app-server process exits. The plugin learns of
+  /// a socket close and a process exit separately, and only a live process is
+  /// reconnected at once; an exit belongs to the runtime monitor.
+  required final Future<void> _runtimeExit,
   required final Duration _keepaliveInterval,
 }) implements
     BridgeDerivedProjectsPluginApi,
@@ -153,6 +158,8 @@ class CodexPlugin._({
   /// is still running.
   final Set<String> _sessionsIdledByDisconnect = {};
 
+  bool _runtimeExited = false;
+
   /// Normalized project directory per thread, learned the moment a thread is
   /// started or resumed — before its rollout is flushed to disk. codex reports
   /// a session under its own cwd, and the bridge derives one project per cwd, so
@@ -177,6 +184,7 @@ class CodexPlugin._({
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
+    required Future<void> runtimeExit,
     required Duration keepaliveInterval,
   }) : this._(
          serverUrl: serverUrl,
@@ -194,6 +202,7 @@ class CodexPlugin._({
          projectCwd: projectCwd,
          onConnected: onConnected,
          onDisconnected: onDisconnected,
+         runtimeExit: runtimeExit,
          keepaliveInterval: keepaliveInterval,
        );
 
@@ -201,6 +210,7 @@ class CodexPlugin._({
     _rolloutSubscription = _rolloutTailer.appends.listen(
       _handleRolloutAppend,
     );
+    unawaited(_runtimeExit.then((_) => _runtimeExited = true));
   }
 
   String get serverUrl => _serverUrl;
@@ -311,7 +321,8 @@ class CodexPlugin._({
         _onConnected?.call();
         unawaited(_resumeSessionsIdledByDisconnect());
         return true;
-      } catch (error) {
+      } catch (error, stackTrace) {
+        Log.w("[codex] connecting to the app-server failed", error, stackTrace);
         await _mcpAuthentication?.dispose();
         _mcpAuthentication = null;
         await client.dispose();
@@ -344,8 +355,9 @@ class CodexPlugin._({
   /// cached connection state (so [_ensureConnected] no longer hands back a
   /// stale successful future for a dead socket and instead re-establishes on
   /// the next call), idles connection-scoped activity until the next connection
-  /// resumes it, then forwards the signal to the runtime descriptor's status
-  /// reporter.
+  /// resumes it, and forwards the signal to the runtime descriptor's status
+  /// reporter. While a session was active and the process still runs, that
+  /// next connection starts at once; otherwise it waits for the next request.
   void _handleClientDisconnected() {
     final registry = _approvalRegistry;
     final effectiveStatuses = _sessionService.effectiveSessionStatuses(
@@ -399,6 +411,11 @@ class CodexPlugin._({
     }
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
+    // A turn the server keeps running must not show idle until the next user
+    // action. Without active sessions the lazy reconnect is enough.
+    if (activeSessionIds.isNotEmpty && !_runtimeExited) {
+      unawaited(_ensureConnected());
+    }
   }
 
   /// Wires the codex notification stream into the bridge event buffer,

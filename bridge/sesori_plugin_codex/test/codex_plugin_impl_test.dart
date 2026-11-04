@@ -38,6 +38,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          runtimeExit: runningCodexRuntime,
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
@@ -62,6 +63,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          runtimeExit: runningCodexRuntime,
         );
         expect(await plugin.getSessions(projectId: "/repo/example"), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
@@ -143,6 +145,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl, channelFactory: null, onDisconnected: null),
           keepaliveInterval: const Duration(seconds: 30),
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          runtimeExit: runningCodexRuntime,
         );
 
         final agents = await plugin.getAgents(projectId: "/repo/example");
@@ -190,6 +193,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       // Auto-respond to the first request with a valid initialize response.
@@ -231,6 +235,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
 
       fake.outgoing.first.then((Object? frame) {
@@ -274,6 +279,8 @@ void main() {
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        // An exited process leaves the drop idle instead of reconnecting.
+        runtimeExit: exitedCodexRuntime,
       );
       addTearDown(plugin.dispose);
       final firstSummary = Completer<void>();
@@ -441,7 +448,7 @@ void main() {
       expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
-    test("reconnecting restores busy for a turn that kept running through a socket drop", () async {
+    test("a socket drop mid-turn reconnects at once and restores busy while the turn runs", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
       addTearDown(() => tempHome.delete(recursive: true));
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -477,6 +484,7 @@ void main() {
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
       addTearDown(plugin.dispose);
 
@@ -495,18 +503,16 @@ void main() {
       );
       await busy.timeout(const Duration(seconds: 2));
       final idled = plugin.events.where((event) => event is BridgeSseSessionIdle).first;
-      await socket.close(WebSocketStatus.goingAway);
-      await idled.timeout(const Duration(seconds: 2));
-      expect(await plugin.getSessionStatuses(), isEmpty);
-
       final busyAgain = plugin.events
           .where((event) => event is BridgeSseSessionStatus)
           .cast<BridgeSseSessionStatus>()
           .first;
-      // Any call that needs the app-server reconnects lazily.
-      await plugin.initialize();
+      await socket.close(WebSocketStatus.goingAway);
+      await idled.timeout(const Duration(seconds: 2));
 
+      // No further call: the drop itself reconnects and resumes the session.
       final restored = await busyAgain.timeout(const Duration(seconds: 2));
+      expect(connectionCount, 2);
       expect(restored.sessionID, "t-running");
       expect(restored.status, isA<PluginSessionStatusBusy>());
       expect((await plugin.getSessionStatuses())["t-running"], isA<PluginSessionStatusBusy>());
@@ -557,6 +563,7 @@ void main() {
         clientFactory: null,
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: exitedCodexRuntime,
       );
       addTearDown(plugin.dispose);
       final idleSessionIds = <String>{};
@@ -606,6 +613,7 @@ void main() {
         ),
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+        runtimeExit: runningCodexRuntime,
       );
       await expectLater(plugin.dispose(), completes);
     });
