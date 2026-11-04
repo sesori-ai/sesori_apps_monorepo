@@ -1640,7 +1640,7 @@ void main() {
 
       final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
 
-      expect(result.announce, isTrue);
+      expect(result.found, isTrue);
       expect(result.resolvedSessionId, equals("ses-1"));
       expect(result.summaryChanged, isTrue);
       expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
@@ -1662,7 +1662,7 @@ void main() {
 
       final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
 
-      expect(result.announce, isTrue);
+      expect(result.found, isTrue);
       expect(result.resolvedSessionId, isNull);
       expect(result.summaryChanged, isTrue);
       expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
@@ -1671,11 +1671,10 @@ void main() {
       expect(tracker.lastClearedQuestionSessionId, isNull);
     });
 
-    test("replyToPermission 200 clears tracker and leaves the announcement to OpenCode", () async {
+    test("replyToPermission 200 clears tracker and returns change", () async {
       final repository = FakeOpenCodeRepository();
       final tracker = FakeActiveSessionTracker(
         sessionDirectories: const {"ses-1": "/repo"},
-        clearPendingPermissionFound: true,
         clearPendingPermissionChanged: true,
       );
       final service = OpenCodeService(repository, tracker);
@@ -1686,7 +1685,6 @@ void main() {
         reply: PluginPermissionReply.once,
       );
 
-      expect(result.announce, isFalse);
       expect(result.summaryChanged, isTrue);
       expect(repository.lastReplyPermissionRequestId, equals("perm-1"));
       expect(repository.lastReplyPermissionDirectory, equals("/repo"));

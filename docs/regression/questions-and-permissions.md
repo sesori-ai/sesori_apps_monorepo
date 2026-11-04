@@ -171,9 +171,8 @@ reaches the backend so the turn continues.
   in completion-notification suppression. Raising and resolving a request also
   refreshes the activity summary, so the session's awaiting-input state appears
   and clears without waiting for the turn to end. Each resolution is announced
-  once; OpenCode v1 announces its own event for an accepted reply, so the
-  bridge announces only one OpenCode had already resolved or one it cleared
-  locally.
+  once; OpenCode v1 announces a reply the bridge cleared at once, even when
+  OpenCode's own event never arrives, and drops that event when it does.
 - ACP and Codex teardown attempts every pending backend resolution independently,
   logs responder or request-subscription failures, and still clears each stale
   client prompt. One failed resolution never skips later pending entries.

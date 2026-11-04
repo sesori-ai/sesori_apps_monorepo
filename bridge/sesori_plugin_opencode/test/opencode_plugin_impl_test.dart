@@ -540,6 +540,43 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    test("a reply the bridge announced is not announced again by OpenCode's own event", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      final events = <BridgeSseEvent>[];
+      plugin.events.listen(events.add);
+      Future<void> emit({required String type, required Map<String, Object> properties}) => server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {"type": type, "properties": properties},
+        }),
+      );
+      Future<void> ask({required String id}) => emit(
+        type: "permission.asked",
+        properties: {
+          "id": id,
+          "sessionID": "s-root",
+          "permission": "bash",
+          "patterns": ["pwd"],
+        },
+      );
+
+      await ask(id: "per-1");
+      await _awaitEvents<BridgeSsePermissionAsked>(events, count: 1);
+      await plugin.replyToPermission(requestId: "per-1", sessionId: "s-root", reply: PluginPermissionReply.once);
+      await emit(
+        type: "permission.replied",
+        properties: {"requestID": "per-1", "sessionID": "s-root", "reply": "once"},
+      );
+      // A later event proves OpenCode's own reply event was already processed.
+      await ask(id: "per-2");
+      await _awaitEvents<BridgeSsePermissionAsked>(events, count: 2);
+
+      expect(events.whereType<BridgeSsePermissionReplied>().map((event) => event.requestID), ["per-1"]);
+    });
+
     test("sendPrompt failure does not mark the plugin busy", () async {
       final connected = Completer<void>();
       final plugin = OpenCodePlugin(
@@ -2527,6 +2564,11 @@ class _FakeOpenCodeServer() {
 
       if (request.method == "GET" && path == "/permission") {
         await _sendJson(request.response, <Object>[]);
+        return;
+      }
+
+      if (request.method == "POST" && path.startsWith("/permission/") && path.endsWith("/reply")) {
+        await _sendJson(request.response, true);
         return;
       }
 

@@ -53,12 +53,15 @@ class OpenCodeV2Service({
       permissions: [for (final (permissions, _) in pending) ...permissions],
       forms: [for (final (_, forms) in pending) ...forms],
     );
-    return [
-      for (final MapEntry(key: sessionId, value: status) in changes.entries) ...[
-        _mapper.mapStatus(sessionId: sessionId, status: status),
-        if (status is PluginSessionStatusIdle) ...await _latestReply(sessionId: sessionId),
-      ],
-    ];
+    final settled = await Future.wait(
+      changes.entries.map(
+        (change) async => [
+          _mapper.mapStatus(sessionId: change.key, status: change.value),
+          if (change.value is PluginSessionStatusIdle) ...await _latestReply(sessionId: change.key),
+        ],
+      ),
+    );
+    return [for (final events in settled) ...events];
   }
 
   Future<List<BridgeSseEvent>> _latestReply({required String sessionId}) async {
