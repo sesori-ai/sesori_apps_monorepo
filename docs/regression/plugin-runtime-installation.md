@@ -150,7 +150,9 @@ below-minimum managed runtime, the pinned version already installed, a too-old r
 the path, and a previously disabled harness. Vary the trigger between the app, the
 management API, and a bridge start; whether the harness is running, idle, or blocked when
 an upgrade completes; whether another harness is busy; and the interruption point during
-download, verification, or placement. Use a disposable data directory.
+download, verification, or placement. Use a disposable data directory and a disposable
+home directory: managed runtimes install under `~/.local/share/sesori/`
+(`%LOCALAPPDATA%\sesori\` on Windows), which `--data-dir` does not move.
 
 ## Failure Signals
 
