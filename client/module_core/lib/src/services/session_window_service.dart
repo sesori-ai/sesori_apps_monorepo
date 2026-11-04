@@ -55,6 +55,10 @@ class SessionWindowService({
   /// asked again.
   static const Duration liveRefreshDelay = Duration(seconds: 1);
 
+  /// How long a load waits for a connection that is still coming up before it
+  /// is sent anyway, so a relay that stays out of reach still shows a failure.
+  static const Duration connectionWait = Duration(seconds: 15);
+
   final BehaviorSubject<SessionWindowState> _state = BehaviorSubject.seeded(const SessionWindowLoading());
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
@@ -419,6 +423,18 @@ class SessionWindowService({
     final generation = ++_generation;
     _replay = [];
     _cancelTimers();
+    // Asked for while signing in, launching or reconnecting, the load waits
+    // under the skeleton rather than failing at once and offering Retry.
+    if (_comingUp(_connectionService.currentStatus)) {
+      final settled = Completer<void>();
+      _connectionService.status.where((status) => !_comingUp(status)).take(1).listen((_) => settled.complete());
+      try {
+        await settled.future.timeout(connectionWait);
+      } on TimeoutException {
+        // Sent anyway; its failure is logged and shown below.
+      }
+      if (_state.isClosed || generation != _generation) return true;
+    }
     final unseenTick = _sessionUnseenTracker.tick;
     final sessions = <Session>[];
     String? cursor;
@@ -507,6 +523,13 @@ class SessionWindowService({
     unawaited(_admitProjects(inventory: _projectInventory.state));
     return succeeded;
   }
+
+  /// Whether [status] is a connection still coming up: the first connect after
+  /// signing in or launching, or a reconnect in progress.
+  static bool _comingUp(ConnectionStatus status) => switch (status) {
+    ConnectionDisconnected() || ConnectionReconnecting() => true,
+    ConnectionConnected() || ConnectionLost() || ConnectionBridgeOffline() => false,
+  };
 
   /// The inventory's project set once it has one. Completes from the first
   /// settled value rather than awaiting the subscription's cancellation, as

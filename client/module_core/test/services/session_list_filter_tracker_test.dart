@@ -52,12 +52,23 @@ void main() {
   test("another computer clears the filter, and reconnecting to the same one keeps it", () async {
     tracker.select(projectId: one.id);
     status
-      ..add(const ConnectionStatus.disconnected())
+      ..add(
+        const ConnectionStatus.reconnecting(
+          config: ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: "a"),
+        ),
+      )
       ..add(connected(bridgeId: "a"));
     await Future<void>.delayed(Duration.zero);
     expect(tracker.projectId.value, one.id);
 
     status.add(connected(bridgeId: "b"));
+    await Future<void>.delayed(Duration.zero);
+    expect(tracker.projectId.value, isNull);
+  });
+
+  test("sign-out clears the filter", () async {
+    tracker.select(projectId: one.id);
+    status.add(const ConnectionStatus.disconnected());
     await Future<void>.delayed(Duration.zero);
     expect(tracker.projectId.value, isNull);
   });

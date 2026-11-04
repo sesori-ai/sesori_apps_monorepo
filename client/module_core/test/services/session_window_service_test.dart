@@ -451,19 +451,19 @@ void main() {
       });
     });
 
-    test("a reload that failed while disconnected runs again on reconnect", () {
+    test("a reload asked for while disconnected waits and runs on reconnect", () {
       inFakeTime((async) {
         bridge.sessions = _sessions(count: 1);
         final window = create();
         async.flushMicrotasks();
 
         status.add(const ConnectionStatus.disconnected());
-        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        bridge.requests.clear();
         connection.emitDataMayBeStale();
         async.flushMicrotasks();
+        expect(bridge.requests, isEmpty);
         expect(ids(window), ["s0000"]);
 
-        bridge.answer = null;
         bridge.sessions = _sessions(count: 2);
         status.add(_connected(bridgeId: "a"));
         async.flushMicrotasks();
@@ -637,6 +637,70 @@ void main() {
         );
         async.flushMicrotasks();
         expect(ids(window), ["s0000", "s0001"]);
+        unawaited(window.dispose());
+      });
+    });
+  });
+
+  group("connection coming up", () {
+    const reconnecting = ConnectionStatus.reconnecting(
+      config: ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: "a"),
+    );
+
+    test("a key asked for while signing in waits under the skeleton, and loads once connected", () {
+      inFakeTime((async) {
+        bridge.sessions = [..._sessions(count: 2), _session(id: "b1", updatedAt: 1, projectId: "beta")];
+        status.add(const ConnectionStatus.disconnected());
+        final window = create();
+        window.select(key: (projectId: "beta", query: null, filter: SessionListQuickFilter.all));
+        async.flushMicrotasks();
+        status.add(reconnecting);
+        async.elapse(const Duration(seconds: 5));
+        expect(bridge.requests, isEmpty);
+        expect(window.state.value, isA<SessionWindowLoading>());
+
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect(bridge.requests.single.projectId, "beta");
+        expect(ids(window), ["b1"]);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a load still waiting after connectionWait is sent, and its failure shows", () {
+      inFakeTime((async) {
+        status.add(reconnecting);
+        final window = create();
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        window.select(key: (projectId: "beta", query: null, filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.connectionWait);
+        expect(bridge.requests, hasLength(1));
+        expect(window.state.value, isA<SessionWindowFailed>());
+        bridge.answer = null;
+        unawaited(window.dispose());
+      });
+    });
+
+    test("loaded rows narrowed while reconnecting wait for the answer until connected", () {
+      inFakeTime((async) {
+        bridge.sessions = [..._sessions(count: 2), _session(id: "b1", updatedAt: 1, projectId: "beta")];
+        final window = create();
+        async.flushMicrotasks();
+        bridge.requests.clear();
+
+        status.add(reconnecting);
+        async.flushMicrotasks();
+        window.select(key: (projectId: "alpha", query: null, filter: SessionListQuickFilter.all));
+        async.flushMicrotasks();
+        expect(bridge.requests, isEmpty);
+        expect(ids(window), ["s0000", "s0001"]);
+        expect(loaded(window).awaitingAnswer, isTrue);
+
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect(bridge.requests.single.projectId, "alpha");
+        expect(loaded(window).awaitingAnswer, isFalse);
+        expect(loaded(window).counts.all, 2);
         unawaited(window.dispose());
       });
     });

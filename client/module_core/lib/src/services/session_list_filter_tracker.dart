@@ -11,8 +11,10 @@ import "project_list_service.dart";
 
 /// The session list's project filter, for the app's run only (never persisted).
 ///
-/// It clears itself when its project leaves the project list, and when the
-/// connection moves to another computer, whose projects are different.
+/// It clears itself when its project leaves the project list, when the
+/// connection moves to another computer, whose projects are different, and on
+/// sign-out, so the next sign-in starts on every project rather than on a
+/// project whose name only the bridge knows.
 @lazySingleton
 class SessionListFilterTracker({
   required ConnectionService connectionService,
@@ -37,7 +39,8 @@ class SessionListFilterTracker({
   void select({required String? projectId}) => _projectId.add(projectId);
 
   void _onConnectionStatus(ConnectionStatus status) {
-    if (_targetChange.changed(status: status)) _clear();
+    // Only sign-out disconnects.
+    if (_targetChange.changed(status: status) || status is ConnectionDisconnected) _clear();
   }
 
   void _onListedProjects(List<ProjectSummary> projects) {
