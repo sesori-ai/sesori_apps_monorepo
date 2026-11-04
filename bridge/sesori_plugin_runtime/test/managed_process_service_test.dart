@@ -38,12 +38,9 @@ void main() {
         bridgeStartMarker: "dead-bridge-start",
       );
       ownershipRepository.records[staleRecord.ownerSessionId] = staleRecord;
-      processService.inspectResults[401] = <ProcessIdentity?>[
-        _opencodeIdentity(pid: 401, startMarker: "open-start"),
-        _opencodeIdentity(pid: 401, startMarker: "open-start"),
-        _opencodeIdentity(pid: 401, startMarker: "open-start"),
-        null,
-      ];
+      // The runtime ignores the graceful signal and runs until force stopped.
+      processService.inspectResults[401] = <ProcessIdentity?>[_opencodeIdentity(pid: 401, startMarker: "open-start")];
+      processService.forceHooks[401] = () => processService.inspectResults[401] = <ProcessIdentity?>[null];
       bridge.liveBridgeResults[901] = <bool>[false];
 
       await _service(
@@ -55,7 +52,38 @@ void main() {
 
       expect(processService.signalRequests, equals(<String>["graceful:401", "force:401"]));
       expect(ownershipRepository.records, isEmpty);
-      expect(clock.delays, equals(<Duration>[_gracefulShutdownWait]));
+      expect(clock.elapsed, equals(_gracefulShutdownWait));
+    });
+
+    test("stale cleanup ends the grace wait as soon as the runtime exits", () async {
+      final staleRecord = _record(
+        ownerSessionId: "stale-owner",
+        openCodePid: 404,
+        openCodeStartMarker: "open-start",
+        bridgePid: 901,
+        bridgeStartMarker: "dead-bridge-start",
+      );
+      ownershipRepository.records[staleRecord.ownerSessionId] = staleRecord;
+      // Authorization, the pre-signal check and the first poll see it running;
+      // it is gone by the second poll.
+      processService.inspectResults[404] = <ProcessIdentity?>[
+        _opencodeIdentity(pid: 404, startMarker: "open-start"),
+        _opencodeIdentity(pid: 404, startMarker: "open-start"),
+        _opencodeIdentity(pid: 404, startMarker: "open-start"),
+        null,
+      ];
+      bridge.liveBridgeResults[901] = <bool>[false];
+
+      await _service(
+        ownershipRepository: ownershipRepository,
+        processService: processService,
+        bridge: bridge,
+        clock: clock,
+      ).cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: const <ProcessIdentity>[]);
+
+      expect(processService.signalRequests, equals(<String>["graceful:404"]));
+      expect(ownershipRepository.records, isEmpty);
+      expect(clock.elapsed, lessThan(_gracefulShutdownWait));
     });
 
     test("stale cleanup force stops without a grace wait when the graceful signal fails", () async {
@@ -749,7 +777,8 @@ class _FakeHostProcessService() implements HostProcessService {
     if (results == null || results.isEmpty) {
       return null;
     }
-    return results.removeAt(0);
+    // The last scripted result holds, as a process stays as it is until signalled.
+    return results.length == 1 ? results.single : results.removeAt(0);
   }
 
   @override
@@ -819,15 +848,20 @@ class _FakeBridgeHostInfo({required final ProcessIdentity _identity}) implements
 class _FakeServerClock() implements ServerClock {
   final List<Duration> delays = <Duration>[];
   bool delaysElapse = true;
+  Duration elapsed = Duration.zero;
 
   @override
   Future<void> delay({required Duration duration}) {
     delays.add(duration);
-    return delaysElapse ? Future<void>.value() : Completer<void>().future;
+    if (!delaysElapse) {
+      return Completer<void>().future;
+    }
+    elapsed += duration;
+    return Future<void>.value();
   }
 
   @override
-  DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
+  DateTime now() => DateTime.utc(2026, 5, 15, 12, 30).add(elapsed);
 }
 
 class _FakeSpawnedProcess({required final ProcessIdentity _identity, required bool exitImmediately})
