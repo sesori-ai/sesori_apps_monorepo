@@ -273,8 +273,8 @@ reconnect or restart.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
   incomplete until a full re-sync; later captures do not mark them complete.
   When OpenCode's event stream reconnects, a turn that ended during the gap
-  settles idle; on v2 the session's newest assistant message follows it, so an
-  open session shows the final reply without a manual refresh.
+  settles idle and the session's newest reply follows it with all its parts, so
+  an open session shows the final reply without a manual refresh.
 - A client refresh reconciles the fetched page with the message and part events
   that arrived while the fetch was in flight instead of replacing the transcript
   wholesale: messages and parts added or changed live survive, removals seen
@@ -482,7 +482,7 @@ rules where supported.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
 - After an OpenCode event-stream reconnect, a session whose turn ended during
-  the gap stays busy, or a v2 open session misses the final reply.
+  the gap stays busy, or an open session misses the final reply.
 - A Codex rollback leaves reverted user, assistant, reasoning, tool, or subtask
   content visible; removes an earlier retained turn; drops content added after
   the marker; or applies a repeated marker to the original instead of already-

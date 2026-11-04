@@ -70,7 +70,7 @@ class OpenCodeV2Service({
         filter: V2MessageFilter.assistant,
         directory: directory,
       );
-      return message == null ? const [] : _mapper.mapAssistantSnapshot(message: message);
+      return message == null ? const [] : _mapper.mapMissedReply(message: message);
     } catch (error, stack) {
       // The baseline is already in place; a missing reply must not fail the refresh.
       Log.w("OpenCode v2 reply snapshot failed for $sessionId after a refresh", error, stack);

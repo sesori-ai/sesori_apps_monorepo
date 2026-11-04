@@ -280,6 +280,14 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
       _removeRetry(sessionId: message.info.sessionID, messageId: message.info.id),
   ];
 
+  /// A reply that ended while the event stream was down: no delta can follow
+  /// it, so every part goes with the snapshot.
+  List<BridgeSseEvent> mapMissedReply({required PluginMessageWithParts message}) => [
+    ...mapAssistantSnapshot(message: message),
+    for (final part in message.parts)
+      if (part is! PluginMessagePartRetry) BridgeSseMessagePartUpdated(part: part),
+  ];
+
   List<BridgeSseEvent> mapToolSnapshot({required String toolId, required PluginMessageWithParts message}) => [
     for (final part in message.parts.whereType<PluginMessagePartTool>())
       if (part.id == toolId) BridgeSseMessagePartUpdated(part: part),

@@ -131,22 +131,7 @@ class OpenCodePlugin._({
       eventPath: "/global/event",
       password: password,
       onEvent: _handleRawSseEvent,
-      onReconnect: () async {
-        final previous = _service.tracker.getActiveStatuses();
-        _service.reset();
-        _syncWorkState();
-        await _service.coldStart();
-        // A turn that ended during the outage settles as its idle event would have.
-        for (final MapEntry(key: sessionID, value: status)
-            in _service.tracker.statusChangesSince(previous: previous).entries) {
-          _eventBuffer.add(switch (status) {
-            PluginSessionStatusIdle() => BridgeSseSessionIdle(sessionID: sessionID),
-            PluginSessionStatusBusy() ||
-            PluginSessionStatusRetry() => BridgeSseSessionStatus(sessionID: sessionID, status: status),
-          });
-        }
-        _emitProjectsSummary();
-      },
+      onReconnect: _refreshAfterReconnect,
       onConnected: onConnected,
       onDisconnected: () {
         _workState.set(
@@ -916,6 +901,49 @@ class OpenCodePlugin._({
         eventType: eventType,
       ),
     );
+  }
+
+  Future<void> _refreshAfterReconnect() async {
+    final previous = _service.tracker.getActiveStatuses();
+    _service.reset();
+    _syncWorkState();
+    await _service.coldStart();
+    // A turn that ended during the outage settles as its terminal events would
+    // have: idle, then its newest reply, whose streaming was missed.
+    final events = [
+      for (final MapEntry(key: sessionID, value: status)
+          in _service.tracker.statusChangesSince(previous: previous).entries)
+        ...switch (status) {
+          PluginSessionStatusIdle() => [
+            BridgeSseSessionIdle(sessionID: sessionID),
+            ...await _missedReply(sessionId: sessionID),
+          ],
+          PluginSessionStatusBusy() ||
+          PluginSessionStatusRetry() => [BridgeSseSessionStatus(sessionID: sessionID, status: status)],
+        },
+    ];
+    if (_disposed) return;
+    events.forEach(_eventBuffer.add);
+    _emitProjectsSummary();
+  }
+
+  Future<List<BridgeSseEvent>> _missedReply({required String sessionId}) async {
+    try {
+      final messages = await _service.getMessages(
+        sessionId: sessionId,
+        directory: _service.tracker.getSessionDirectory(sessionId: sessionId),
+      );
+      final reply = messages.where((message) => message.info is! PluginMessageUser).lastOrNull;
+      if (reply == null) return const [];
+      return [
+        BridgeSseMessageUpdated(info: reply.info),
+        for (final part in reply.parts) BridgeSseMessagePartUpdated(part: part),
+      ];
+    } catch (error, stack) {
+      // The baseline is already in place; a missing reply must not withhold the idle.
+      Log.w("OpenCode reply snapshot failed for $sessionId after a reconnect", error, stack);
+      return const [];
+    }
   }
 
   void _emitProjectsSummary() {

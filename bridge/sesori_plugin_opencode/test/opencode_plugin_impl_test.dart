@@ -513,6 +513,33 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.unknown);
     });
 
+    test("reconnect settles a turn that ended during the outage with idle and its reply", () async {
+      server.sessionStatuses["ses-1"] = {"type": "busy"};
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, password: null);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      final events = <BridgeSseEvent>[];
+      plugin.events.listen(events.add);
+
+      server.sessionStatuses.remove("ses-1");
+      await server.disconnectSseClients();
+      await _awaitEvents<BridgeSseSessionIdle>(events, count: 1);
+
+      final settled = events
+          .skipWhile((event) => event is! BridgeSseSessionIdle)
+          .takeWhile((event) => event is! BridgeSseProjectUpdated)
+          .toList();
+      expect(settled.first, isA<BridgeSseSessionIdle>().having((event) => event.sessionID, "sessionID", "ses-1"));
+      expect(settled.whereType<BridgeSseMessageUpdated>().single.info.id, "m-assistant");
+      expect(
+        settled.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part),
+        [isA<PluginMessagePartText>().having((part) => part.text, "text", "world")],
+      );
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("sendPrompt failure does not mark the plugin busy", () async {
       final connected = Completer<void>();
       final plugin = OpenCodePlugin(

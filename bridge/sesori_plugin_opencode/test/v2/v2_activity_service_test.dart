@@ -253,6 +253,10 @@ void main() {
     final settled = await service.coldStart();
     expect(settled.first, idle);
     expect(settled.whereType<BridgeSseMessageUpdated>().single.info.id, "m");
+    expect(
+      settled.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part),
+      contains(isA<PluginMessagePartText>().having((part) => part.text, "text", "Unrelated snapshot text")),
+    );
     expect(repository.calls.where((call) => call.startsWith("latest:")), ["latest:assistant:$worktree"]);
     expect(service.workState, PluginWorkState.idle);
 
