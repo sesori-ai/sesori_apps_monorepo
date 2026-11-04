@@ -441,6 +441,78 @@ void main() {
       expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
+    test("reconnecting restores busy for a turn that kept running through a socket drop", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-reconnect-");
+      addTearDown(() => tempHome.delete(recursive: true));
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final connections = [Completer<WebSocket>(), Completer<WebSocket>()];
+      var connectionCount = 0;
+      server.listen((request) async {
+        final socket = await WebSocketTransformer.upgrade(request);
+        connections[connectionCount++].complete(socket);
+        socket.listen((frame) {
+          final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+          final result = switch (decoded["method"]) {
+            "initialize" => _initOk,
+            "thread/resume" => const {
+              "thread": {
+                "id": "t-running",
+                "cwd": "/repo/example",
+                "turns": [
+                  {"id": "turn-1", "status": "inProgress"},
+                ],
+              },
+            },
+            _ => null,
+          };
+          if (result == null) return;
+          socket.add(jsonEncode({"jsonrpc": "2.0", "id": decoded["id"], "result": result}));
+        });
+      });
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: "ws://127.0.0.1:${server.port}",
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
+        clientFactory: null,
+        keepaliveInterval: const Duration(seconds: 30),
+        toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+      );
+      addTearDown(plugin.dispose);
+
+      await plugin.initialize();
+      final socket = await connections.first.future;
+      final busy = plugin.events.where((event) => event is BridgeSseSessionStatus).first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "turn/started",
+          "params": {
+            "threadId": "t-running",
+            "turn": {"id": "turn-1"},
+          },
+        }),
+      );
+      await busy.timeout(const Duration(seconds: 2));
+      final idled = plugin.events.where((event) => event is BridgeSseSessionIdle).first;
+      await socket.close(WebSocketStatus.goingAway);
+      await idled.timeout(const Duration(seconds: 2));
+      expect(await plugin.getSessionStatuses(), isEmpty);
+
+      final busyAgain = plugin.events
+          .where((event) => event is BridgeSseSessionStatus)
+          .cast<BridgeSseSessionStatus>()
+          .first;
+      // Any call that needs the app-server reconnects lazily.
+      await plugin.initialize();
+
+      final restored = await busyAgain.timeout(const Duration(seconds: 2));
+      expect(restored.sessionID, "t-running");
+      expect(restored.status, isA<PluginSessionStatusBusy>());
+      expect((await plugin.getSessionStatuses())["t-running"], isA<PluginSessionStatusBusy>());
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
     test("disconnect idles a provisional resumed child and its hydrated root", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-disconnect-");
       addTearDown(() => tempHome.delete(recursive: true));

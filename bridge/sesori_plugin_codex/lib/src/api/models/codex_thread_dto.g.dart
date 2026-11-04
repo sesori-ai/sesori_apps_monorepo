@@ -32,6 +32,9 @@ _CodexThreadDto _$CodexThreadDtoFromJson(Map json) => _CodexThreadDto(
     json['threadSource'],
     unknownValue: CodexThreadSource.unknown,
   ),
+  turns: (json['turns'] as List<dynamic>?)
+      ?.map((e) => CodexTurnDto.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
 );
 
 const _$CodexThreadSourceEnumMap = {

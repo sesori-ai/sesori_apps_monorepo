@@ -34,6 +34,7 @@ import "repositories/codex_tool_outcome_repository.dart";
 import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
+import "repositories/models/codex_resumed_thread.dart";
 import "repositories/models/codex_thread_record.dart";
 import "services/codex_mcp_authentication_service.dart";
 import "services/codex_rollout_tailer.dart";
@@ -146,6 +147,11 @@ class CodexPlugin._({
   /// Deleted thread identities cannot accept new provisional turn evidence
   /// until codex supplies an authoritative new thread lifecycle.
   final Set<String> _deletedThreadIds = {};
+
+  /// Sessions a transport drop idled while active. Only the socket may have
+  /// dropped, so the next connection resumes them to learn whether their turn
+  /// is still running.
+  final Set<String> _sessionsIdledByDisconnect = {};
 
   /// Normalized project directory per thread, learned the moment a thread is
   /// started or resumed — before its rollout is flushed to disk. codex reports
@@ -303,6 +309,7 @@ class CodexPlugin._({
         _attachApprovalRegistry(client: client);
         _startKeepalive();
         _onConnected?.call();
+        unawaited(_resumeSessionsIdledByDisconnect());
         return true;
       } catch (error) {
         await _mcpAuthentication?.dispose();
@@ -336,8 +343,9 @@ class CodexPlugin._({
   /// Invoked when the underlying transport drops unexpectedly. Resets the
   /// cached connection state (so [_ensureConnected] no longer hands back a
   /// stale successful future for a dead socket and instead re-establishes on
-  /// the next call), clears connection-scoped activity, then
-  /// forwards the signal to the runtime descriptor's status reporter.
+  /// the next call), idles connection-scoped activity until the next connection
+  /// resumes it, then forwards the signal to the runtime descriptor's status
+  /// reporter.
   void _handleClientDisconnected() {
     final registry = _approvalRegistry;
     final effectiveStatuses = _sessionService.effectiveSessionStatuses(
@@ -376,6 +384,7 @@ class CodexPlugin._({
     unawaited(registry?.dispose());
     _sessionStatuses.clear();
     _activeTurnByThread.clear();
+    _sessionsIdledByDisconnect.addAll(activeSessionIds);
     for (final sessionId in activeSessionIds) {
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
     }
@@ -1080,7 +1089,8 @@ class CodexPlugin._({
       );
       _applyResumedThread(
         threadId: sessionId,
-        response: dispatch.resumedThread,
+        resumed: dispatch.resumedThread,
+        evidenceRevision: evidenceRevision,
       );
       final resolvedModel = dispatch.resolvedModel;
       if (resolvedModel != null) {
@@ -1376,7 +1386,8 @@ class CodexPlugin._({
       }
       _applyResumedThread(
         threadId: threadId,
-        response: dispatch.resumedThread,
+        resumed: dispatch.resumedThread,
+        evidenceRevision: evidenceRevision,
       );
       final resolvedModel = dispatch.resolvedModel;
       if (resolvedModel != null) {
@@ -1465,26 +1476,87 @@ class CodexPlugin._({
     _turnEvidenceRevisionByThread[threadId] = (_turnEvidenceRevisionByThread[threadId] ?? 0) + 1;
   }
 
-  void _applyResumedThread({
+  /// Applies a `thread/resume` response and returns the status it reports, or
+  /// null when turn evidence newer than [evidenceRevision] superseded it. A
+  /// still-running turn turns the session busy; an idle report is left to the
+  /// caller, because a turn about to start may already be on its way.
+  PluginSessionStatus? _applyResumedThread({
     required String threadId,
-    required CodexThreadRecord? response,
+    required CodexResumedThread? resumed,
+    required int evidenceRevision,
   }) {
-    if (response == null) return;
+    if (resumed == null) return null;
+    final CodexResumedThread(:thread, :runningTurnId) = resumed;
     _sessionService.observeResumedThread(
-      thread: response,
+      thread: thread,
       status: _sessionStatuses[threadId] ?? const PluginSessionStatus.idle(),
     );
-    _eventMapper.setThreadTime(record: response);
-    _eventMapper.setThreadModel(threadId: threadId, model: response.model);
-    _eventMapper.setThreadProvider(threadId: threadId, provider: response.modelProvider);
-    _eventMapper.setThreadParent(threadId: threadId, parentId: response.parentId);
+    _eventMapper.setThreadTime(record: thread);
+    _eventMapper.setThreadModel(threadId: threadId, model: thread.model);
+    _eventMapper.setThreadProvider(threadId: threadId, provider: thread.modelProvider);
+    _eventMapper.setThreadParent(threadId: threadId, parentId: thread.parentId);
     // A thread resumed from a prior bridge run never re-emits `thread/started`,
     // so learn its directory here (from the resume payload, else its rollout)
     // to keep live rename events attributed to its real project.
     _recordThreadDirectory(
       threadId: threadId,
-      directory: response.directory ?? _directoryForSession(sessionId: threadId),
+      directory: thread.directory ?? _directoryForSession(sessionId: threadId),
     );
+    if (_deletedThreadIds.contains(threadId) || (_turnEvidenceRevisionByThread[threadId] ?? 0) != evidenceRevision) {
+      return null;
+    }
+    if (runningTurnId == null) return const PluginSessionStatus.idle();
+    _activeTurnByThread[threadId] = runningTurnId;
+    unawaited(_rolloutTailer.start(sessionId: threadId));
+    const busy = PluginSessionStatus.busy();
+    if (_setSessionStatus(threadId: threadId, status: busy)) {
+      _sessionService
+          .coordinateSessionEvents(
+            sessionId: threadId,
+            sessionIsIdle: false,
+            activityChanged: true,
+            sessionClosed: false,
+            events: [BridgeSseSessionStatus(sessionID: threadId, status: busy)],
+          )
+          .forEach(_eventBuffer.add);
+    }
+    return busy;
+  }
+
+  /// Resumes the sessions the last transport drop idled. Each shows what the
+  /// server reports now: busy while its turn still runs, otherwise idle with
+  /// the final reply that finished during the outage. The work state the drop
+  /// made unknown is known again afterwards.
+  Future<void> _resumeSessionsIdledByDisconnect() async {
+    final sessionIds = _sessionsIdledByDisconnect.toList();
+    _sessionsIdledByDisconnect.clear();
+    await Future.wait([
+      for (final sessionId in sessionIds) _resumeSessionIdledByDisconnect(sessionId: sessionId),
+    ]);
+    _syncWorkState();
+  }
+
+  Future<void> _resumeSessionIdledByDisconnect({required String sessionId}) async {
+    try {
+      final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
+      final resumed = await _sessionService.resumeThreadIfNeeded(threadId: sessionId, force: false);
+      final status = _applyResumedThread(threadId: sessionId, resumed: resumed, evidenceRevision: evidenceRevision);
+      // Busy, or null when a prompt resumed the thread first or a turn event
+      // arrived meanwhile: live events carry the session from here.
+      if (status is! PluginSessionStatusIdle) return;
+      // The turn ended during the outage, so its final reply never streamed.
+      // Clients already show idle; recording it replays finished tools as such.
+      _setSessionStatus(threadId: sessionId, status: status);
+      final messages = await getSessionMessages(sessionId);
+      final reply = messages.where((message) => message.info is! PluginMessageUser).lastOrNull;
+      if (reply == null) return;
+      _eventBuffer.add(BridgeSseMessageUpdated(info: reply.info));
+      for (final part in reply.parts) {
+        _eventBuffer.add(BridgeSseMessagePartUpdated(part: part));
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to restore session $sessionId after reconnecting", error, stackTrace);
+    }
   }
 
   bool _isEmptyRollout({required CodexRpcException error}) {

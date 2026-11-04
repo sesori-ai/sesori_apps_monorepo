@@ -7,9 +7,11 @@ import "package:sesori_shared/sesori_shared.dart"
 
 import "../api/codex_app_server_api.dart";
 import "../api/models/codex_thread_dto.dart";
+import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "models/codex_resumed_thread.dart";
 import "models/codex_thread_record.dart";
 
 sealed class const CodexThreadOperationException({
@@ -75,12 +77,24 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return _mapRequired(dto: dto, operation: "thread/read");
   }
 
-  Future<CodexThreadRecord> resumeThread({required String threadId}) async {
+  Future<CodexResumedThread> resumeThread({required String threadId}) async {
     final dto = await _request(
       operation: "thread/resume",
       request: () => _appServerApi.resumeThread(threadId: threadId),
     );
-    return _mapRequired(dto: dto, operation: "thread/resume");
+    return CodexResumedThread(
+      thread: _mapRequired(dto: dto, operation: "thread/resume"),
+      runningTurnId: _runningTurnId(turns: dto.thread?.turns),
+    );
+  }
+
+  /// Codex marks a resumed thread's in-progress turns interrupted unless the
+  /// thread is still active, so an in-progress turn here is still running.
+  String? _runningTurnId({required List<CodexTurnDto>? turns}) {
+    for (final turn in (turns ?? const <CodexTurnDto>[]).reversed) {
+      if (turn.status == CodexTurnStatus.inProgress) return _usefulText(value: turn.id);
+    }
+    return null;
   }
 
   Future<String?> startTurn({
