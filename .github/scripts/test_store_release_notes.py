@@ -1,4 +1,5 @@
 """Source contracts: production promotion always replaces internal commit-message notes."""
+import re
 import unittest
 from pathlib import Path
 
@@ -9,7 +10,9 @@ ANDROID_FASTFILE = ROOT / "client" / "app" / "android" / "fastlane" / "Fastfile"
 
 class StoreReleaseNotesTest(unittest.TestCase):
     def test_android_release_notes_path_ignores_the_listing_publish_gate(self):
-        android_job = WORKFLOW.read_text().split("\n  submit-android:\n", 1)[1].split("\n  submit-", 1)[0]
+        after = WORKFLOW.read_text().split("\n  submit-android:\n", 1)[1]
+        # The job ends at the next top-level job key (two-space indent), whatever its name.
+        android_job = re.split(r"\n  [A-Za-z0-9_-]+:\n", after, maxsplit=1)[0]
         line = next(l for l in android_job.splitlines() if l.strip().startswith("ANDROID_RELEASE_NOTES_PATH:"))
         self.assertIn("steps.cometa.outcome == 'success'", line)
         self.assertNotIn("steps.gate", line)

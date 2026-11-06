@@ -128,8 +128,10 @@ when a metadata dir is present.
   into `<versionCode>.txt` for the *internal* track; production "What's new" is
   the fixed `default.txt` in the private repo (see below).
 - Promotion copies the internal release with its commit-message notes, so a
-  production submit always uploads changelogs, even when the listing is skipped
-  (HEAD tagged). `ANDROID_RELEASE_NOTES_PATH` points at the cloned `android/`
+  production submit uploads changelogs whenever the metadata repo checkout
+  succeeds, even when the listing is skipped (HEAD tagged). With
+  `STORE_METADATA_REPO` unset the checkout is skipped and production keeps the
+  internal notes. `ANDROID_RELEASE_NOTES_PATH` points at the cloned `android/`
   tree independently of the publish gate, like `IOS_RELEASE_NOTES_PATH`; with it
   alone the lane uploads only changelogs and leaves the rest of the listing alone.
 
