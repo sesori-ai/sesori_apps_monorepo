@@ -4,7 +4,7 @@ part "health_response.freezed.dart";
 
 part "health_response.g.dart";
 
-/// How the bridge was installed, which decides how the user updates it.
+/// How the bridge was installed, which decides how the user starts and updates it.
 enum BridgeKind() {
   /// The standalone command-line bridge, updated with `sesori-bridge update`.
   @JsonValue("cli")
