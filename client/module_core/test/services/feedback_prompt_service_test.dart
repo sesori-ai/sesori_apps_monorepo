@@ -376,6 +376,19 @@ void main() {
         expect(await stored(), counting(points: const {}, lastShownAt: isNull));
       });
 
+      test("the stopped turn earns no point, unless the stop was refused", () async {
+        await startTurn(sessionId: "ses-a");
+        service.recordUserStop(sessionId: "ses-a");
+        await endTurn(sessionId: "ses-a");
+        expect(await stored(), isNull);
+
+        await startTurn(sessionId: "ses-a");
+        service.recordUserStop(sessionId: "ses-a");
+        service.recordUserStopRefused(sessionId: "ses-a");
+        await endTurn(sessionId: "ses-a");
+        expect(await stored(), counting(points: {"ses-a": 1}, lastShownAt: isNull));
+      });
+
       test("other sessions' AI errors still drop their points", () async {
         await finishTurns(sessionId: "ses-b");
         service.recordUserStop(sessionId: "ses-a");

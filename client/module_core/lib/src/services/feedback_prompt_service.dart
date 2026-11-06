@@ -43,12 +43,13 @@ class FeedbackPromptService({
   /// Sessions last reported busy or retrying, whose going idle ends a turn.
   final Set<String> _busySessions = {};
 
-  /// Sessions whose current turn failed or was stopped, so it earns no point
-  /// when it ends. Cleared when the session's next turn starts.
+  /// Sessions whose current turn failed, so it earns no point when it ends.
+  /// Cleared when the session's next turn starts.
   final Set<String> _spoiledTurns = {};
 
-  /// Sessions the user stopped. Some backends report a stopped response as an
-  /// error, so their AI errors do not count until their next turn starts.
+  /// Sessions the user stopped. Their current turn earns no point, and because
+  /// some backends report a stopped response as an error, their AI errors do
+  /// not count until their next turn starts.
   final Set<String> _stoppedSessions = {};
 
   /// Sub-agent sessions. Their turns run inside the parent's turn, which is
@@ -71,8 +72,11 @@ class FeedbackPromptService({
   void recordUserStop({required String sessionId}) {
     if (!_isStarted) return;
     _stoppedSessions.add(sessionId);
-    _spoiledTurns.add(sessionId);
   }
+
+  /// The stop recorded by [recordUserStop] was refused without changing
+  /// anything, so [sessionId]'s turn keeps running and can still earn a point.
+  void recordUserStopRefused({required String sessionId}) => _stoppedSessions.remove(sessionId);
 
   /// A failure the user felt in [sessionId]: an AI error, or a failed send or
   /// reply. Drops only that session's points; other sessions keep theirs.
@@ -131,7 +135,7 @@ class FeedbackPromptService({
       case SessionStatusIdle():
         if (!_busySessions.remove(sessionId)) return;
         final spoiled = _spoiledTurns.remove(sessionId);
-        if (spoiled || _childSessions.contains(sessionId)) return;
+        if (spoiled || _stoppedSessions.contains(sessionId) || _childSessions.contains(sessionId)) return;
         if (_lifecycleSource.lifecycleState != LifecycleState.resumed) return;
         unawaited(_recordFinishedTurn(sessionId: sessionId));
     }

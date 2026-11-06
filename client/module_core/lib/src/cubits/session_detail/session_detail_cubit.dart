@@ -3177,6 +3177,8 @@ class SessionDetailCubit(
       return true;
     } on Object catch (error, stackTrace) {
       loge("Failed to $failureAction $requestId", error, stackTrace);
+      // A sub-agent's request belongs to the turn of the session on screen;
+      // sub-agent sessions never hold points, so the failure counts here.
       unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
       await _loadMessages(isReload: true);
       return false;
@@ -3324,8 +3326,10 @@ class SessionDetailCubit(
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
     } on SessionAbortRejectedException catch (error) {
+      _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.rejected(rejection: error.rejection);
     } on SessionAbortNotAcceptedException catch (error) {
+      _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.notAccepted(refusal: error.refusal);
     } on SessionAbortDescendantFailureException catch (error) {
       _clearLocalPromptQueue();

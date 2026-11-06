@@ -321,6 +321,7 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
   final StreamController<void> promptsController = StreamController<void>.broadcast();
   final List<String> _failedSessions = [];
   final List<String> _stoppedSessions = [];
+  final List<String> _refusedStops = [];
   int _yesAnswers = 0;
 
   /// The session of each recorded failure, in order.
@@ -328,6 +329,9 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
 
   /// The session of each recorded user stop, in order.
   List<String> get stoppedSessions => List.unmodifiable(_stoppedSessions);
+
+  /// The session of each stop refused without changing anything, in order.
+  List<String> get refusedStops => List.unmodifiable(_refusedStops);
   int get yesAnswers => _yesAnswers;
 
   @override
@@ -341,6 +345,9 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
 
   @override
   void recordUserStop({required String sessionId}) => _stoppedSessions.add(sessionId);
+
+  @override
+  void recordUserStopRefused({required String sessionId}) => _refusedStops.add(sessionId);
 }
 
 class MockConnectionService() extends Mock implements ConnectionService {

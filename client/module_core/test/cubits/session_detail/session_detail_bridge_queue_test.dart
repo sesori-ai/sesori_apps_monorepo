@@ -1987,6 +1987,7 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
       expect(feedbackPromptService.stoppedSessions, [_sessionId]);
+      expect(feedbackPromptService.refusedStops, isEmpty);
     });
 
     test("a refused confirm stop returns the rejection and leaves queued work untouched", () async {
@@ -2015,6 +2016,7 @@ void main() {
 
       expect(outcome, isA<SessionAbortRejected>().having((o) => o.rejection, "rejection", rejection));
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+      expect(feedbackPromptService.refusedStops, [_sessionId], reason: "the running turn can still earn a point");
     });
 
     test("not-performed refusal with unknown reason gates dispatch, preserves queue, then resumes drain", () async {
@@ -2056,6 +2058,7 @@ void main() {
         SessionAbortNotAcceptedException(refusal: refusal, innerError: StateError("409")),
       );
       expect(await aborting, isA<SessionAbortNotAccepted>());
+      expect(feedbackPromptService.refusedStops, [_sessionId], reason: "the running turn can still earn a point");
       await _awaitCondition(
         () => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty,
       );
