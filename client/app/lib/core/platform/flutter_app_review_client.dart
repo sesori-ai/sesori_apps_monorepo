@@ -11,20 +11,19 @@ class FlutterAppReviewClient({required final UrlLauncher _urlLauncher}) implemen
   // Devices without the Play Store app open the listing in a browser.
   static final _playStoreWeb = Uri.parse("https://play.google.com/store/apps/details?id=com.sesori.app");
 
-  // Only iOS has a native review channel; Android never uses Play In-App Review.
   @override
-  bool get requestReviewOpensStore => defaultTargetPlatform != TargetPlatform.iOS;
+  bool get allowsQuestionBeforeReview => defaultTargetPlatform != TargetPlatform.android;
 
+  /// StoreKit on iOS, Play In-App Review on Android, both behind the native
+  /// review channel.
   @override
   Future<void> requestReview() async {
-    if (requestReviewOpensStore) {
-      await openStoreReviewPage();
-      return;
-    }
     try {
       await _channel.invokeMethod<void>("requestReview");
     } on Object catch (error, stackTrace) {
-      logw("Failed to request the App Store review prompt", error, stackTrace);
+      // On Android this is a build without Google Play, such as a sideloaded
+      // one or a device without Play services; the review is skipped.
+      loge("Failed to request the in-app review prompt", error, stackTrace);
     }
   }
 

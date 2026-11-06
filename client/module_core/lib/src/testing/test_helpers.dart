@@ -316,33 +316,38 @@ class MockFailureReporter() extends Mock implements FailureReporter;
 
 class MockFounderCallService() extends Mock implements FounderCallService;
 
-/// Counts what the automatic rating sheet was told, without storing anything.
+/// Records what the automatic rating prompt was told, without storing anything.
 class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService {
   final StreamController<void> promptsController = StreamController<void>.broadcast();
-  int _positiveInteractions = 0;
-  int _failures = 0;
+  final List<String> _failedSessions = [];
+  final List<String> _stoppedSessions = [];
+  final List<String> _refusedStops = [];
   int _yesAnswers = 0;
-  int _userStops = 0;
 
-  int get positiveInteractions => _positiveInteractions;
-  int get failures => _failures;
+  /// The session of each recorded failure, in order.
+  List<String> get failedSessions => List.unmodifiable(_failedSessions);
+
+  /// The session of each recorded user stop, in order.
+  List<String> get stoppedSessions => List.unmodifiable(_stoppedSessions);
+
+  /// The session of each stop refused without changing anything, in order.
+  List<String> get refusedStops => List.unmodifiable(_refusedStops);
   int get yesAnswers => _yesAnswers;
-  int get userStops => _userStops;
 
   @override
   Stream<void> get prompts => promptsController.stream;
 
   @override
-  Future<void> recordPositiveInteraction() async => _positiveInteractions++;
-
-  @override
-  Future<void> recordFailure() async => _failures++;
+  Future<void> recordFailure({required String sessionId}) async => _failedSessions.add(sessionId);
 
   @override
   Future<void> recordYes() async => _yesAnswers++;
 
   @override
-  void recordUserStop() => _userStops++;
+  void recordUserStop({required String sessionId}) => _stoppedSessions.add(sessionId);
+
+  @override
+  void recordUserStopRefused({required String sessionId}) => _refusedStops.add(sessionId);
 }
 
 class MockConnectionService() extends Mock implements ConnectionService {

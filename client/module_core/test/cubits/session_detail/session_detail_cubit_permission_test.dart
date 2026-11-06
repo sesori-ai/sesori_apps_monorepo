@@ -303,8 +303,8 @@ void main() {
       );
 
       expect(result, isFalse);
-      expect(feedbackPromptService.failures, 1);
-      expect(feedbackPromptService.positiveInteractions, 0);
+      // The failure belongs to the screen's session, whose turn is waiting.
+      expect(feedbackPromptService.failedSessions, [sessionId]);
       verify(
         () => mockSourceRepository.getMessages(
           sessionId: sessionId,
@@ -414,8 +414,8 @@ void main() {
           decision: AnalyticsPermissionDecision.reject,
         ),
       ]);
-      expect(feedbackPromptService.positiveInteractions, 3);
-      expect(feedbackPromptService.failures, 0);
+      // Replies earn no rating points; only finished turns do.
+      expect(feedbackPromptService.failedSessions, isEmpty);
     });
 
     test("successful question controls and abort report content-free outcomes", () async {
@@ -477,8 +477,9 @@ void main() {
         const ProductAnalyticsEvent.sessionQuestionRejected(),
         const ProductAnalyticsEvent.sessionAbortSucceeded(),
       ]);
-      // Answering and rejecting a question each count; an abort does not.
-      expect(feedbackPromptService.positiveInteractions, 2);
+      // Replies earn no rating points; the abort records the stopped session.
+      expect(feedbackPromptService.failedSessions, isEmpty);
+      expect(feedbackPromptService.stoppedSessions, [sessionId]);
     });
 
     test("non-loaded state buffers permission events and replays after loaded", () async {

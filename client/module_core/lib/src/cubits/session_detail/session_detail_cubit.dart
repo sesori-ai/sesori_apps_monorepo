@@ -2594,13 +2594,12 @@ class SessionDetailCubit(
           _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           _staleOptionsRecoveryAttemptedPromptIds.remove(submission.promptId);
           _reportAcceptedSubmission(submission: submission);
-          unawaited(_feedbackPromptService.recordPositiveInteraction());
         case ErrorResponse(:final error) when SessionRepository.isStalePromptOptionsError(error: error):
           sendSettledElsewhere = !_promptQueue.failSend();
           if (!sendSettledElsewhere) {
             if (!_staleOptionsRecoveryAttemptedPromptIds.add(submission.promptId)) {
               if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
-              unawaited(_feedbackPromptService.recordFailure());
+              unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
@@ -2617,7 +2616,7 @@ class SessionDetailCubit(
           );
           logw("Failed to send queued session submission", error);
           // A send the bridge already settled is not a failure the user saw.
-          if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure());
+          if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
       }
     } on Object catch (error, stackTrace) {
       sendSettledElsewhere = !_settleFailedSend(
@@ -2625,7 +2624,7 @@ class SessionDetailCubit(
         failure: PromptSendFailure.uncertain,
       );
       logw("Failed to send queued session submission", error, stackTrace);
-      if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure());
+      if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
     }
 
     _emitQueueUpdate(_latestLoadedState());
@@ -2691,7 +2690,7 @@ class SessionDetailCubit(
         return false;
       case _OptionsReloadResult.failed:
         _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
-        unawaited(_feedbackPromptService.recordFailure());
+        unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
         return false;
       case _OptionsReloadResult.updated:
         break;
@@ -3175,11 +3174,12 @@ class SessionDetailCubit(
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;
       reportSuccess();
-      unawaited(_feedbackPromptService.recordPositiveInteraction());
       return true;
     } on Object catch (error, stackTrace) {
       loge("Failed to $failureAction $requestId", error, stackTrace);
-      unawaited(_feedbackPromptService.recordFailure());
+      // A sub-agent's request belongs to the turn of the session on screen;
+      // sub-agent sessions never hold points, so the failure counts here.
+      unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
       await _loadMessages(isReload: true);
       return false;
     }
@@ -3319,15 +3319,17 @@ class SessionDetailCubit(
       return const SessionAbortOutcome.failed();
     }
     _abortRequestInFlight = true;
-    _feedbackPromptService.recordUserStop();
+    _feedbackPromptService.recordUserStop(sessionId: _sessionId);
     try {
       await _sessionAbortService.abortSession(sessionId: _sessionId, subAgents: subAgents);
       _clearLocalPromptQueue();
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
     } on SessionAbortRejectedException catch (error) {
+      _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.rejected(rejection: error.rejection);
     } on SessionAbortNotAcceptedException catch (error) {
+      _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.notAccepted(refusal: error.refusal);
     } on SessionAbortDescendantFailureException catch (error) {
       _clearLocalPromptQueue();

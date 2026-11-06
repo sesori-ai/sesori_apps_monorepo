@@ -238,9 +238,8 @@ void main() {
     },
   );
 
-  testWidgets("an automatic sheet with an in-app OS prompt closes itself a beat after the pop", (tester) async {
+  testWidgets("an automatic sheet closes itself a beat after the pop, before the OS prompt", (tester) async {
     final appReviewClient = _MockAppReviewClient();
-    when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
     await cubit.close();
     cubit = FeedbackSheetCubit(
       appReviewClient: appReviewClient,
@@ -272,7 +271,6 @@ void main() {
 
   testWidgets("closing an automatic sheet before its OS prompt closes it requests no review", (tester) async {
     final appReviewClient = _MockAppReviewClient();
-    when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
     await cubit.close();
     cubit = FeedbackSheetCubit(
       appReviewClient: appReviewClient,

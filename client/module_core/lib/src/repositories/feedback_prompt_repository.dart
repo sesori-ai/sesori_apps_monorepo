@@ -27,7 +27,7 @@ class FeedbackPromptRepository({
 
   /// This device's progress; a device that never stored any starts from zero.
   Future<FeedbackPromptState> readState() async =>
-      await _storage.read() ?? const FeedbackPromptCounting(positiveCount: 0, lastShownAt: null);
+      await _storage.read() ?? const FeedbackPromptCounting(pointsBySession: {}, lastShownAt: null);
 
   Future<void> writeState({required FeedbackPromptState state}) => _storage.write(state: state);
 }

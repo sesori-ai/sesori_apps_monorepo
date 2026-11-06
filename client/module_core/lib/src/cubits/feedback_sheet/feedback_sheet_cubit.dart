@@ -131,9 +131,10 @@ class FeedbackSheetCubit({
   };
 
   /// Whether the review leaves Sesori for the store, which the user confirms
-  /// first so leaving the app is never a surprise.
+  /// first so leaving the app is never a surprise. The automatic sheet's
+  /// review is the OS prompt inside Sesori.
   bool get reviewLeavesApp => switch (_source) {
-    FeedbackSource.automatic => _appReviewClient.requestReviewOpensStore,
+    FeedbackSource.automatic => false,
     FeedbackSource.settings => true,
   };
 

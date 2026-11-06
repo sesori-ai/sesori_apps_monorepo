@@ -54,11 +54,6 @@ void main() {
   test("a device without stored progress starts counting from zero, never shown", () async {
     when(storage.read).thenAnswer((_) async => null);
 
-    expect(
-      await repository.readState(),
-      isA<FeedbackPromptCounting>()
-          .having((state) => state.positiveCount, "positiveCount", 0)
-          .having((state) => state.lastShownAt, "lastShownAt", isNull),
-    );
+    expect(await repository.readState(), const FeedbackPromptCounting(pointsBySession: {}, lastShownAt: null));
   });
 }
