@@ -36,6 +36,7 @@ Future<void> main(List<String> arguments) async {
 
   // Secondary launches must never initialize Firebase or count as app sessions.
   // SDK failures are best-effort and do not disable the server analytics path.
+  logi("Desktop startup: initializing desktop Firebase analytics");
   await getIt<DesktopFirebaseAnalytics>().initialize(platform: defaultTargetPlatform);
 
   // Only the primary process renders UI; premium remains disabled.
