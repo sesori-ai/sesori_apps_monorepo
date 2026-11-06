@@ -187,4 +187,18 @@ void main() {
     expect(File("macos/Flutter/GeneratedPluginRegistrant.swift").readAsStringSync(), isNot(contains("firebase_core")));
     expect(File("windows/flutter/generated_plugins.cmake").readAsStringSync(), isNot(contains("firebase_core")));
   });
+
+  test("the dedicated desktop Firebase app is configured and bundled separately from mobile", () {
+    final config = File("macos/Runner/DesktopFirebase-Info.plist").readAsStringSync();
+    expect(config, matches(RegExp(r"<key>BUNDLE_ID</key>\s*<string>com\.sesori\.desktop</string>")));
+    expect(config, matches(RegExp(r"<key>PROJECT_ID</key>\s*<string>sesori-ai</string>")));
+    expect(
+      config,
+      matches(RegExp(r"<key>GOOGLE_APP_ID</key>\s*<string>1:1068630921159:ios:6da01be1e22018c89713e2</string>")),
+    );
+    expect(
+      File("macos/Runner.xcodeproj/project.pbxproj").readAsStringSync(),
+      contains("DesktopFirebase-Info.plist in Resources"),
+    );
+  });
 }

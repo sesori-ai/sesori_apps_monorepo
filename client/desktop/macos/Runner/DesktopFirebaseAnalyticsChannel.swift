@@ -14,9 +14,8 @@ enum DesktopFirebaseAnalyticsChannel {
     channel.setMethodCallHandler { call, result in
       switch call.method {
       case "initialize":
-        // Use explicit options, not Firebase's default-named plist or automatic
-        // plugin startup. The dedicated desktop config is added after Firebase
-        // project registration; missing config fails without blocking the app.
+        // Read the registered desktop app's explicit options only here, never
+        // through a default Firebase plist or automatic plugin startup.
         guard let path = Bundle.main.path(forResource: "DesktopFirebase-Info", ofType: "plist"),
               let options = FirebaseOptions(contentsOfFile: path) else {
           result(FlutterError(

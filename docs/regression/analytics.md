@@ -181,6 +181,10 @@ account against a real property.
 
 ## Sources
 
+Desktop native Firebase initialization/configuration lives in `client/desktop/macos/Runner/`, with its Dart SDK boundary
+and release/platform admission adapter in `client/desktop/lib/core/platform/desktop_firebase_*.dart` and regression
+coverage in `client/desktop/test/core/platform/desktop_firebase_analytics_test.dart`.
+
 `client/module_core/test/foundation/`, `client/module_core/test/services/`,
 `client/module_core/test/cubits/product_analytics_preference/`, `client/app/test/core/platform/`, and
 `.github/scripts/test_publish_firebase_analytics_release_cutoff.py`; production contracts under
