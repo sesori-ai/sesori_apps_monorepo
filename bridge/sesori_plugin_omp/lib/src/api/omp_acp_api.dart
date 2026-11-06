@@ -4,11 +4,15 @@ import "dart:io" show Directory;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "../models/omp_steering_models.dart";
 import "../omp_binary.dart";
 
-/// Layer-1 ACP operations used by OMP's bounded isolated workflows: owns one
-/// scratch `omp acp` lease (process plus optional isolated session directory)
-/// and exposes the typed standard requests on it.
+/// Layer-1 wrapper for the `omp acp` tool, its single API per bridge/AGENTS.md
+/// ("API Classes Are Per-Tool, Not Per-Use-Case"). The lease methods own one
+/// optional scratch `omp acp` process (plus isolated session directory) for
+/// bounded isolated workflows and expose the typed standard requests on it.
+/// [steerSession] never uses that lease: it runs only on the live client the
+/// caller passes in, so it reads no instance state.
 class OmpAcpApi({
   required final String _binaryPath,
   required final AcpProcessFactory _processFactory,
@@ -115,6 +119,28 @@ class OmpAcpApi({
     required String sessionId,
     required Duration timeout,
   }) => _api().closeSession(sessionId: sessionId, timeout: timeout);
+
+  /// Sends OMP's `_session/steering` extension on the plugin's [liveClient],
+  /// never on this API's scratch lease: steering only reaches a turn that the
+  /// live client runs.
+  Future<OmpSteeringResultDto> steerSession({
+    required AcpStdioClient liveClient,
+    required String sessionId,
+    required List<Map<String, dynamic>> prompt,
+    required Duration timeout,
+  }) async {
+    final raw = await liveClient.request(
+      method: sessionSteeringMethod,
+      params: OmpSteeringParams(sessionId: sessionId, prompt: prompt).toJson(),
+      timeout: timeout,
+    );
+    return switch (raw) {
+      final Map<dynamic, dynamic> map => OmpSteeringResultDto.fromJson(map.cast<String, dynamic>()),
+      _ => throw FormatException("$sessionSteeringMethod result is not an object: ${raw.runtimeType}"),
+    };
+  }
+
+  static const String sessionSteeringMethod = "_session/steering";
 
   Future<Directory> createScratchDirectory({required String prefix}) => _createScratch(prefix: prefix);
 

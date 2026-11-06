@@ -368,6 +368,15 @@ class AcpEventMapper({
     ];
   }
 
+  /// Ends the current id-less assistant message at a user message published
+  /// inside a running turn (a steered follow-up), so the turn's later chunks
+  /// open a new message below it instead of appending to the one above.
+  List<BridgeSseEvent> closeAssistantMessageAtUserBoundary({required String sessionId}) {
+    final events = _finalizeCurrentIdlessAssistantText(sessionId: sessionId);
+    _closeCurrentIdlessAssistantContent(sessionId: sessionId);
+    return events;
+  }
+
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
 
   String _fallbackTurnMessageId(String sessionId) => _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
