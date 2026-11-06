@@ -17,13 +17,15 @@ lists the rows that stayed unexecuted.
 ## Required Behavior
 
 - Existing visible error messages and their live/history IDs remain unchanged.
-- Claude Code reports only a tagged root session-limit error followed by a
+- Claude Code reports only a tagged root session- or weekly-limit error followed by a
   failed, non-aborted result. Forwarded child errors and progress do not arm or
   replace root observations. Process-wide rate-limit frames alone do not report.
   Trailing stream frames preserve a complete error; a new root message clears it.
 - Claude's recognized clock-time/IANA-zone format is accepted only when it
   denotes one future instant on the original local date. Stale times, unresolved
   day boundaries, malformed times, unknown zones and DST gaps/ambiguity remain unknown.
+  Weekly limits use the same rule; date-bearing or otherwise unrecognized weekly
+  reset text reports an unknown reset rather than leaving the preference idle.
 - Pi reports only recognized `openai-codex` assistant errors after native
   `agent_settled`. Intermediate `agent_end`, retry status and a subsequently
   successful response never report a terminal quota interruption.
@@ -118,7 +120,8 @@ lists the rows that stayed unexecuted.
 - **L1:** Claude/Pi quota mapper tests; their existing session-service suites;
   core session-event and SSE mapper suites. Include terminal failure, retry
   recovery/exhaustion/cancellation, forwarded subagents, original timestamps,
-  stable IDs, missing resets and timezone ambiguity. The Claude plugin test
+  stable IDs, missing resets and timezone ambiguity. Cover Claude's weekly-limit
+  wording and a Los Angeles local date that differs from UTC. The Claude plugin test
   sends a continuation with the selection replayed on a history quota error.
 - **L1:** Shared continuation wire tests; bridge continuation repository and
   v17→v18 migration tests; session repository defaults tests. Cover actual file

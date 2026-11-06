@@ -33,6 +33,59 @@ void main() {
     expect((interruption.reset as PluginQuotaResetKnown).resetAt, DateTime.utc(2026, 9, 23, 15, 30));
   });
 
+  test("weekly quota uses the original Los Angeles date rather than the UTC date", () {
+    final interruption =
+        map(
+          text: "You've hit your weekly limit · resets 6pm (America/Los_Angeles)",
+          fields: {"timestamp": "2026-11-06T01:19:19.806Z"},
+        ) ??
+        fail("weekly quota was not recognized");
+    expect(interruption.errorMessageId, "visible-error-id");
+    expect(interruption.observedAt, DateTime.parse("2026-11-06T01:19:19.806Z"));
+    expect((interruption.reset as PluginQuotaResetKnown).resetAt, DateTime.utc(2026, 11, 6, 2));
+  });
+
+  test("weekly quota with an unusable reset remains an explicit unknown interruption", () {
+    for (final suffix in [
+      "",
+      " · resets tomorrow",
+      " · resets Nov 12 at 6pm (America/Los_Angeles)",
+      " · resets 13pm (America/Los_Angeles)",
+      " · resets 6pm (Unknown/Zone)",
+    ]) {
+      final interruption =
+          map(text: "You've hit your weekly limit$suffix", fields: const {}) ??
+          fail("weekly quota was not recognized: $suffix");
+      expect(interruption.reset, isA<PluginQuotaResetUnknown>(), reason: suffix);
+    }
+    final stale =
+        map(
+          text: "You've hit your weekly limit · resets 6pm (America/Los_Angeles)",
+          fields: {"timestamp": "2026-11-06T03:00:00Z"},
+        ) ??
+        fail("stale weekly quota was not recognized");
+    expect(stale.reset, isA<PluginQuotaResetUnknown>());
+  });
+
+  test("weekly quota still requires a tagged root error with a visible identity", () {
+    const text = "You've hit your weekly limit · resets 6pm (America/Los_Angeles)";
+    for (final fields in [
+      {"error": null},
+      {"error": "billing_error"},
+      {"parent_tool_use_id": "child-tool"},
+      {
+        "message": {
+          "content": [
+            {"type": "text", "text": text},
+          ],
+        },
+      },
+    ]) {
+      expect(map(text: text, fields: fields), isNull);
+    }
+    expect(map(text: "You've hit your daily limit · resets 6pm (America/Los_Angeles)", fields: const {}), isNull);
+  });
+
   test("whole-hour and 12-hour notation use the named zone", () {
     for (final (time, hour) in [("6pm", 15), ("12pm", 9), ("12am", 21)]) {
       final timestamp = time == "12am" ? "2026-09-22T20:00:00Z" : "2026-09-23T08:00:00Z";

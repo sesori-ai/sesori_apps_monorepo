@@ -22,6 +22,7 @@ void main() {
 
     for (final scenario in [
       "terminal",
+      "weekly",
       "recovered",
       "subagent",
       "aborted",
@@ -39,11 +40,16 @@ void main() {
           "type": "assistant",
           "session_id": testSessionId,
           "error": "rate_limit",
-          "timestamp": "2026-09-23T14:12:51Z",
+          "timestamp": scenario == "weekly" ? "2026-11-06T01:19:19.806Z" : "2026-09-23T14:12:51Z",
           "message": {
             "id": "quota-error",
             "content": [
-              {"type": "text", "text": "You've hit your session limit · resets 6:30pm (Europe/Sofia)"},
+              {
+                "type": "text",
+                "text": scenario == "weekly"
+                    ? "You've hit your weekly limit · resets 6pm (America/Los_Angeles)"
+                    : "You've hit your session limit · resets 6:30pm (Europe/Sofia)",
+              },
             ],
           },
         };
@@ -90,9 +96,16 @@ void main() {
         await harness.waitForIdle();
         await pump();
         final reports = harness.events.whereType<BridgeSseSessionQuotaBlocked>().toList();
-        if (scenario == "terminal" || scenario == "child progress" || scenario == "trailing stream") {
+        if (scenario == "terminal" ||
+            scenario == "weekly" ||
+            scenario == "child progress" ||
+            scenario == "trailing stream") {
           expect(reports.single.sessionID, testSessionId);
           expect(reports.single.interruption.errorMessageId, "quota-error");
+          expect(
+            (reports.single.interruption.reset as PluginQuotaResetKnown).resetAt,
+            scenario == "weekly" ? DateTime.utc(2026, 11, 6, 2) : DateTime.utc(2026, 9, 23, 15, 30),
+          );
         } else {
           expect(reports, isEmpty);
         }
