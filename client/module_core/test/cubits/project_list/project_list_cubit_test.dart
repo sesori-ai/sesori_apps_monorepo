@@ -304,7 +304,7 @@ void main() {
       );
     });
 
-    test("onboarding outcome intents report the seven bounded events", () async {
+    test("onboarding outcome intents report the nine bounded events", () async {
       when(
         () => mockProjectRepository.listProjects(),
       ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <ProjectSummary>[])));
@@ -331,7 +331,9 @@ void main() {
           surface: OnboardingSurface.connectSetup,
         )
         ..reportRunCommandCopied(surface: OnboardingSurface.bridgeOffline)
-        ..reportRunCommandShared(surface: OnboardingSurface.bridgeOffline);
+        ..reportRunCommandShared(surface: OnboardingSurface.bridgeOffline)
+        ..reportDesktopLinkCopied(surface: OnboardingSurface.connectSetup)
+        ..reportDesktopLinkShared(surface: OnboardingSurface.connectSetup);
 
       final events = verify(
         () => mockProductAnalyticsService.logEvent(
@@ -358,6 +360,8 @@ void main() {
         ),
         const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.bridgeOffline),
         const ProductAnalyticsEvent.runCommandShared(surface: OnboardingSurface.bridgeOffline),
+        const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.connectSetup),
+        const ProductAnalyticsEvent.desktopLinkShared(surface: OnboardingSurface.connectSetup),
       ]);
     });
 

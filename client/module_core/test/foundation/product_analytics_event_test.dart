@@ -208,6 +208,16 @@ void main() {
         const {"surface": "bridge_offline"},
       ),
       (
+        const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.connectSetup),
+        "desktop_link_copied",
+        const {"surface": "connect_setup"},
+      ),
+      (
+        const ProductAnalyticsEvent.desktopLinkShared(surface: OnboardingSurface.connectSetup),
+        "desktop_link_shared",
+        const {"surface": "connect_setup"},
+      ),
+      (
         const ProductAnalyticsEvent.screenViewed(screen: AnalyticsScreen.sessionDetail),
         "product_screen_viewed",
         const {"screen": "session_detail"},

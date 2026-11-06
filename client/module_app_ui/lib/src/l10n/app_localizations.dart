@@ -679,16 +679,52 @@ abstract class AppLocalizations {
   /// **'Share command'**
   String get projectsOnboardingShareCommand;
 
-  /// Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online.
+  /// Caption shown beneath the connection graphic on the connect-your-computer onboarding (and as the home's computer line in the same state) while the app waits for a computer to connect, whether through Sesori Desktop or the terminal bridge.
   ///
   /// In en, this message translates to:
-  /// **'Waiting for the bridge...'**
-  String get projectsOnboardingWaitingForBridge;
+  /// **'Waiting for your computer...'**
+  String get projectsOnboardingWaitingForComputer;
 
-  /// Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer.
+  /// Title of the card that leads the connect-your-computer onboarding, recommending the Sesori Desktop app.
   ///
   /// In en, this message translates to:
-  /// **'Next, run on your computer:'**
+  /// **'Get Sesori Desktop'**
+  String get projectsOnboardingDesktopTitle;
+
+  /// One-line explanation under the Get Sesori Desktop title: which systems it supports, and that signing in to the desktop app connects the phone.
+  ///
+  /// In en, this message translates to:
+  /// **'It runs on macOS, Windows and Linux. Sign in there and this phone connects.'**
+  String get projectsOnboardingDesktopBody;
+
+  /// Primary button on the Get Sesori Desktop card; opens the native share sheet (e.g. AirDrop) with the Sesori Desktop download link.
+  ///
+  /// In en, this message translates to:
+  /// **'Send link to my computer'**
+  String get projectsOnboardingDesktopSendLink;
+
+  /// Secondary button on the Get Sesori Desktop card; copies the Sesori Desktop download link to the clipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get projectsOnboardingDesktopCopyLink;
+
+  /// Popup confirmation after copying the Sesori Desktop download link.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied to clipboard'**
+  String get projectsOnboardingDesktopLinkCopied;
+
+  /// Disclosure button on the connect-your-computer onboarding that reveals the terminal install and start commands for the bridge, an alternative to Sesori Desktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer the terminal?'**
+  String get projectsOnboardingPreferTerminal;
+
+  /// Heading inside the 'Prefer the terminal?' disclosure, above the numbered install/start command steps, introducing the commands to run on the user's computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Run these in a terminal on your computer:'**
   String get projectsOnboardingRunOnComputer;
 
   /// Title of the first numbered onboarding step, rendered as '1. Install the bridge' above the install-command box.
@@ -4774,7 +4810,7 @@ abstract class AppLocalizations {
   /// Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role.
   ///
   /// In en, this message translates to:
-  /// **'The Bridge securely connects it to Sesori on your phone.'**
+  /// **'The Bridge securely connects it to Sesori on your phone. It comes with Sesori Desktop, or you can install it from the terminal.'**
   String get projectsOnboardingWhyBody;
 
   /// Title of the 'secure access' reassurance row in the 'Why is this needed?' sheet.

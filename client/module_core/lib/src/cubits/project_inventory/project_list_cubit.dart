@@ -63,6 +63,12 @@ class ProjectListCubit({required final ProjectInventoryService _inventoryService
   void reportRunCommandShared({required OnboardingSurface surface}) =>
       _inventoryService.reportRunCommandShared(surface: surface);
 
+  void reportDesktopLinkCopied({required OnboardingSurface surface}) =>
+      _inventoryService.reportDesktopLinkCopied(surface: surface);
+
+  void reportDesktopLinkShared({required OnboardingSurface surface}) =>
+      _inventoryService.reportDesktopLinkShared(surface: surface);
+
   @override
   Future<void> close() async {
     await _subscription.cancel();
