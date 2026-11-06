@@ -96,8 +96,11 @@ participates.
   entry instead of adding a duplicate. Without a readable identifier the bridge
   registers without a host key and logs the failure.
 - Signed-in launch opens the phone home (`/sessions`), the list of every project's sessions.
-- With no bridge, the phone home shows install/start commands, the explainer and support links in place of
-  the list; copy/share hand off the command unchanged. Desktop home instead offers supervised local bridge
+- With no bridge, the phone home leads with Sesori Desktop in place of the list: the `sesori.com/desktop`
+  address above "Send link to my computer" (share sheet) and "Copy link", both handing off
+  `https://sesori.com/desktop/`. The explainer and support links follow, and the install/start commands sit
+  behind a collapsed "Prefer the terminal?" disclosure; copy/share hand off the command unchanged. Desktop home
+  instead offers supervised local bridge
   recovery. Connected with no projects shows the add-project call to action on either surface; on the phone,
   adding that first project opens a new session in it.
 - With the target computer offline, the phone home names the computer in the

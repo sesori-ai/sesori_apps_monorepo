@@ -76,6 +76,8 @@ final class DeferredProductAnalyticsCandidates {
     InstallCommandSharedEvent() ||
     RunCommandCopiedEvent() ||
     RunCommandSharedEvent() ||
+    DesktopLinkCopiedEvent() ||
+    DesktopLinkSharedEvent() ||
     ProductScreenViewedEvent() ||
     ComputerSwitchedEvent() ||
     ComputerManagedEvent() ||

@@ -116,6 +116,10 @@ class DesktopProductAnalyticsDeliveryService({
   Map<String, String>? _wireParams({required ProductAnalyticsEvent event}) => switch (event) {
     HarnessInstallFinishedEvent() ||
     TranscriptPromptsOpenedEvent() ||
+    // Phone-only: the desktop download link is offered on the phone's
+    // connect onboarding, never by the desktop app itself.
+    DesktopLinkCopiedEvent() ||
+    DesktopLinkSharedEvent() ||
     ComputerSwitchedEvent() ||
     ComputerManagedEvent() ||
     FounderCallShownEvent() ||

@@ -134,7 +134,14 @@ void main() {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
     await pumpScreen(tester);
     // The body's caption under the connection graphic.
-    expect(find.text("Waiting for the bridge..."), findsOneWidget);
+    expect(find.text("Waiting for your computer..."), findsOneWidget);
+  }
+
+  /// Opens the connect onboarding's "Prefer the terminal?" disclosure, which
+  /// holds the install and start command boxes.
+  Future<void> expandTerminalSteps(WidgetTester tester) async {
+    await tester.tap(find.text("Prefer the terminal?"));
+    await tester.pumpAndSettle();
   }
 
   /// Bridge offline with a bridge registered → the bridge-offline recovery
@@ -165,11 +172,109 @@ void main() {
   }
 
   group("connect-your-computer setup onboarding", () {
-    testWidgets("keeps mobile CLI installation and omits desktop supervised start", (tester) async {
+    testWidgets("keeps mobile CLI installation behind the terminal disclosure", (tester) async {
       await pumpConnectSetup(tester);
 
+      // Collapsed by default: Sesori Desktop leads, the commands stay hidden.
+      expect(find.text("1. Install the bridge"), findsNothing);
+      expect(find.bySemanticsLabel("Copy command"), findsNothing);
+
+      await expandTerminalSteps(tester);
+
+      expect(find.text("Run these in a terminal on your computer:"), findsOneWidget);
       expect(find.text("1. Install the bridge"), findsOneWidget);
+      expect(find.text("2. Start the bridge"), findsOneWidget);
+      expect(find.bySemanticsLabel("Copy command"), findsNWidgets(2));
+      // The desktop's supervised start never shows on the phone.
       expect(find.text("Start the bridge"), findsNothing);
+
+      // Collapsing hides the commands again.
+      await tester.tap(find.text("Prefer the terminal?"));
+      await tester.pumpAndSettle();
+      expect(find.text("1. Install the bridge"), findsNothing);
+    });
+
+    testWidgets("leads with the Sesori Desktop card, its link above the buttons", (tester) async {
+      await pumpConnectSetup(tester);
+
+      expect(find.text("Get Sesori Desktop"), findsOneWidget);
+      expect(
+        find.text("It runs on macOS, Windows and Linux. Sign in there and this phone connects."),
+        findsOneWidget,
+      );
+      final linkTop = tester.getTopLeft(find.text("sesori.com/desktop")).dy;
+      final sendTop = tester.getTopLeft(find.text("Send link to my computer")).dy;
+      final copyTop = tester.getTopLeft(find.text("Copy link")).dy;
+      final disclosureTop = tester.getTopLeft(find.text("Prefer the terminal?")).dy;
+      expect(linkTop, lessThan(sendTop));
+      expect(sendTop, lessThan(copyTop));
+      expect(copyTop, lessThan(disclosureTop));
+    });
+
+    testWidgets("sending the desktop link shares the download URL and logs the shared event", (tester) async {
+      final shareCalls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel("dev.fluttercommunity.plus/share"),
+        (call) async {
+          shareCalls.add(call);
+          return "test-share-target";
+        },
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.text("Send link to my computer"));
+      await tester.pumpAndSettle();
+
+      expect(shareCalls, hasLength(1));
+      expect(shareCalls.single.arguments, containsPair("uri", "https://sesori.com/desktop/"));
+      verifyLogged(
+        const ProductAnalyticsEvent.desktopLinkShared(surface: OnboardingSurface.connectSetup),
+      );
+    });
+
+    testWidgets("a dismissed desktop link share emits no shared outcome", (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel("dev.fluttercommunity.plus/share"),
+        (_) async => "",
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.text("Send link to my computer"));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.desktopLinkShared(surface: OnboardingSurface.connectSetup),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    testWidgets("copying the desktop link copies the URL, shows an info alert and logs the copied event", (
+      tester,
+    ) async {
+      final copied = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call case MethodCall(method: "Clipboard.setData", arguments: {"text": final String text})) {
+            copied.add(text);
+          }
+          return null;
+        },
+      );
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.text("Copy link"));
+      await tester.pumpAndSettle();
+
+      expect(copied, ["https://sesori.com/desktop/"]);
+      final alert = tester.widget<PregoPopupAlertsNotifications>(find.byType(PregoPopupAlertsNotifications));
+      expect(alert.title, "Link copied to clipboard");
+      expect(alert.variant, PregoPopupAlertsNotificationsVariant.info);
+      verifyLogged(
+        const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.connectSetup),
+      );
     });
 
     testWidgets("tapping the Need help pill logs the menu-open event", (tester) async {
@@ -259,10 +364,11 @@ void main() {
       expect(find.text("Why is this needed?"), findsNWidgets(2));
     });
 
-    // Two command rows on this surface: the install box (step 1) first, the
-    // run box (step 2) below it — hence copy/share at index 0 vs 1.
+    // Two command rows inside the terminal disclosure: the install box (step 1)
+    // first, the run box (step 2) below it — hence copy/share at index 0 vs 1.
     testWidgets("copying the default install command shows an info alert and logs curl on unix", (tester) async {
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.bySemanticsLabel("Copy command").at(0));
       await tester.pumpAndSettle();
@@ -280,6 +386,7 @@ void main() {
 
     testWidgets("clipboard failure emits no copied outcome", (tester) async {
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         (call) async {
@@ -311,6 +418,7 @@ void main() {
 
     testWidgets("copying after switching to the Windows group logs powershell", (tester) async {
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.text("Windows PowerShell"));
       await tester.pumpAndSettle();
@@ -328,6 +436,7 @@ void main() {
 
     testWidgets("copying a method tab logs that method under the selected group", (tester) async {
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.text("npm"));
       await tester.pumpAndSettle();
@@ -353,6 +462,7 @@ void main() {
         },
       );
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.bySemanticsLabel("Copy command").at(0));
       await tester.pump();
@@ -382,6 +492,7 @@ void main() {
 
     testWidgets("sharing the install command logs the shared event", (tester) async {
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.bySemanticsLabel("Share command").at(0));
       await tester.pumpAndSettle();
@@ -401,6 +512,7 @@ void main() {
         (_) async => "dev.fluttercommunity.plus/share/unavailable",
       );
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.bySemanticsLabel("Share command").at(0));
       await tester.pumpAndSettle();
@@ -423,6 +535,7 @@ void main() {
         (_) async => "",
       );
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.bySemanticsLabel("Share command").at(0));
       await tester.pumpAndSettle();
@@ -441,6 +554,7 @@ void main() {
 
     testWidgets("copying the step-2 run command shows an info alert and logs the run event", (tester) async {
       await pumpConnectSetup(tester);
+      await expandTerminalSteps(tester);
 
       await tester.tap(find.bySemanticsLabel("Copy command").at(1));
       await tester.pumpAndSettle();

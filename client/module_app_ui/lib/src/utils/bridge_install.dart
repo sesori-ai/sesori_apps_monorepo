@@ -1,5 +1,6 @@
 /// Single source of truth for the Sesori Bridge install and update commands
-/// shown in the "connect your computer" onboarding and the update sheet.
+/// and the Sesori Desktop download link shown in the "connect your computer"
+/// onboarding and the update sheet.
 ///
 /// Edit [_host] (or the individual commands) here if the installer hosting
 /// changes. The branded `sesori.com` URLs front the canonical scripts that
@@ -32,4 +33,12 @@ class const BridgeInstall._() {
   /// Command that moves an installed bridge to the newest release. Bridges
   /// released before 2026-06-23 lack it; the installers above replace those.
   static const String updateCommand = "sesori-bridge update";
+
+  /// Sesori Desktop download page, which bundles the bridge. The connect
+  /// onboarding leads with it ahead of the terminal commands above.
+  static const String desktopDownloadUrl = "$_host/desktop/";
+
+  /// [desktopDownloadUrl] as shown to read off the phone and type on a
+  /// computer: no scheme or trailing slash.
+  static const String desktopDownloadLabel = "sesori.com/desktop";
 }

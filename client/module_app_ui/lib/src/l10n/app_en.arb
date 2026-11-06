@@ -227,13 +227,37 @@
   "@projectsOnboardingShareCommand": {
     "description": "Accessibility label for the button that opens the native share sheet with the selected install command."
   },
-  "projectsOnboardingWaitingForBridge": "Waiting for the bridge...",
-  "@projectsOnboardingWaitingForBridge": {
-    "description": "Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online."
+  "projectsOnboardingWaitingForComputer": "Waiting for your computer...",
+  "@projectsOnboardingWaitingForComputer": {
+    "description": "Caption shown beneath the connection graphic on the connect-your-computer onboarding (and as the home's computer line in the same state) while the app waits for a computer to connect, whether through Sesori Desktop or the terminal bridge."
   },
-  "projectsOnboardingRunOnComputer": "Next, run on your computer:",
+  "projectsOnboardingDesktopTitle": "Get Sesori Desktop",
+  "@projectsOnboardingDesktopTitle": {
+    "description": "Title of the card that leads the connect-your-computer onboarding, recommending the Sesori Desktop app."
+  },
+  "projectsOnboardingDesktopBody": "It runs on macOS, Windows and Linux. Sign in there and this phone connects.",
+  "@projectsOnboardingDesktopBody": {
+    "description": "One-line explanation under the Get Sesori Desktop title: which systems it supports, and that signing in to the desktop app connects the phone."
+  },
+  "projectsOnboardingDesktopSendLink": "Send link to my computer",
+  "@projectsOnboardingDesktopSendLink": {
+    "description": "Primary button on the Get Sesori Desktop card; opens the native share sheet (e.g. AirDrop) with the Sesori Desktop download link."
+  },
+  "projectsOnboardingDesktopCopyLink": "Copy link",
+  "@projectsOnboardingDesktopCopyLink": {
+    "description": "Secondary button on the Get Sesori Desktop card; copies the Sesori Desktop download link to the clipboard."
+  },
+  "projectsOnboardingDesktopLinkCopied": "Link copied to clipboard",
+  "@projectsOnboardingDesktopLinkCopied": {
+    "description": "Popup confirmation after copying the Sesori Desktop download link."
+  },
+  "projectsOnboardingPreferTerminal": "Prefer the terminal?",
+  "@projectsOnboardingPreferTerminal": {
+    "description": "Disclosure button on the connect-your-computer onboarding that reveals the terminal install and start commands for the bridge, an alternative to Sesori Desktop."
+  },
+  "projectsOnboardingRunOnComputer": "Run these in a terminal on your computer:",
   "@projectsOnboardingRunOnComputer": {
-    "description": "Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer."
+    "description": "Heading inside the 'Prefer the terminal?' disclosure, above the numbered install/start command steps, introducing the commands to run on the user's computer."
   },
   "projectsOnboardingInstallStepTitle": "Install the bridge",
   "@projectsOnboardingInstallStepTitle": {
@@ -1923,7 +1947,7 @@
   "@projectsOnboardingWhyLede": {
     "description": "Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine."
   },
-  "projectsOnboardingWhyBody": "The Bridge securely connects it to Sesori on your phone.",
+  "projectsOnboardingWhyBody": "The Bridge, built into Sesori Desktop, securely connects it to Sesori on your phone.",
   "@projectsOnboardingWhyBody": {
     "description": "Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role."
   },

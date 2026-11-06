@@ -244,6 +244,8 @@ sealed class const ProductAnalyticsEvent() {
   }) = InstallCommandSharedEvent;
   const factory runCommandCopied({required OnboardingSurface surface}) = RunCommandCopiedEvent;
   const factory runCommandShared({required OnboardingSurface surface}) = RunCommandSharedEvent;
+  const factory desktopLinkCopied({required OnboardingSurface surface}) = DesktopLinkCopiedEvent;
+  const factory desktopLinkShared({required OnboardingSurface surface}) = DesktopLinkSharedEvent;
   const factory screenViewed({required AnalyticsScreen screen}) = ProductScreenViewedEvent;
   const factory computerSwitched({
     required ComputerSwitchSource source,
@@ -524,6 +526,26 @@ final class const RunCommandCopiedEvent({required final OnboardingSurface surfac
 final class const RunCommandSharedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "bridge_run_command_shared";
+
+  @override
+  Map<String, String> get parameters => {"surface": surface.wireValue};
+}
+
+/// The Sesori Desktop download link reached the clipboard from an onboarding
+/// surface.
+final class const DesktopLinkCopiedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "desktop_link_copied";
+
+  @override
+  Map<String, String> get parameters => {"surface": surface.wireValue};
+}
+
+/// The native share sheet confirmed handing off the Sesori Desktop download
+/// link from an onboarding surface.
+final class const DesktopLinkSharedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "desktop_link_shared";
 
   @override
   Map<String, String> get parameters => {"surface": surface.wireValue};

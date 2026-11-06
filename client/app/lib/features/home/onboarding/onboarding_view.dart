@@ -5,7 +5,8 @@ part of "bridge_onboarding.dart";
 //
 // The two empty home states have their own bodies now that they diverge:
 // * disconnected — the connect-your-computer onboarding (connection graphic in
-//   its "off" state): install + start the bridge. See [ConnectBridgeChecklist].
+//   its "off" state): get Sesori Desktop, or install + start the bridge from
+//   the terminal. See [ConnectBridgeChecklist].
 // * connected, no projects — the stacked-folders graphic over an add-project
 //   call to action. See [ConnectedEmptyView].
 //
@@ -98,16 +99,70 @@ class const _EmptyProjectsGraphic() extends StatelessWidget {
 }
 
 /// The not-yet-connected onboarding body ("Connect your computer"): the
-/// connection graphic in its "off" state with a "Waiting for bridge" caption,
-/// then two numbered command steps — install the bridge, then start it — each
-/// introduced by a label carrying an "ⓘ" info popover, and a "Why is this
-/// needed?" explainer button. The "Need help?" support menu ([NeedHelpMenu])
-/// closes the page below this body (see [DisconnectedComputerSlivers]).
-class const ConnectBridgeChecklist({super.key}) extends StatelessWidget {
+/// connection graphic in its "off" state with a "Waiting for your computer"
+/// caption, then the [_DesktopDownloadCard] leading with Sesori Desktop, which
+/// bundles the bridge. Below it, quiet "Why is this needed?" and "Prefer the
+/// terminal?" links, the latter a disclosure holding the two numbered command
+/// steps — install the bridge, then start it — each introduced by a label
+/// carrying an "ⓘ" info popover. The disclosure follows the bridge-offline
+/// "Install commands" one ([BridgeOfflineView]). The "Need help?" support menu
+/// ([NeedHelpMenu]) closes the page below this body (see
+/// [DisconnectedComputerSlivers]).
+class const ConnectBridgeChecklist({super.key}) extends StatefulWidget {
+  @override
+  State<ConnectBridgeChecklist> createState() => _ConnectBridgeChecklistState();
+}
+
+class _ConnectBridgeChecklistState() extends State<ConnectBridgeChecklist> {
+  /// Whether the "Prefer the terminal?" disclosure is expanded.
+  bool _showTerminalSteps = false;
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
+    // maintainState keeps the command boxes mounted while collapsed so the
+    // selected OS group and install method survive closing and reopening the
+    // disclosure.
+    final terminalSteps = Visibility(
+      visible: _showTerminalSteps,
+      maintainState: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: PregoSpacing.lg),
+          Text(
+            loc.projectsOnboardingRunOnComputer,
+            textAlign: TextAlign.center,
+            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          // Step 1 — install: the OS segmented control drives the install-command
+          // box; the numbered step label with its info popover sits between them.
+          _InstallCommandBoxes(
+            surface: OnboardingSurface.connectSetup,
+            stepHeader: _InfoLabel(
+              title: "1. ${loc.projectsOnboardingInstallStepTitle}",
+              info: loc.projectsOnboardingInstallStepInfo,
+            ),
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          // Step 2 — start: a single, platform-independent command box.
+          _InfoLabel(
+            title: "2. ${loc.projectsOnboardingStartStepTitle}",
+            info: loc.projectsOnboardingStartStepInfo,
+          ),
+          const SizedBox(height: PregoSpacing.md),
+          _CommandBoxFrame(
+            child: _CommandActionRow(
+              command: BridgeInstall.runCommand,
+              reportCopied: (cubit) => cubit.reportRunCommandCopied(surface: OnboardingSurface.connectSetup),
+              reportShared: (cubit) => cubit.reportRunCommandShared(surface: OnboardingSurface.connectSetup),
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,55 +173,167 @@ class const ConnectBridgeChecklist({super.key}) extends StatelessWidget {
         ),
         const SizedBox(height: PregoSpacing.sm),
         Text(
-          loc.projectsOnboardingWaitingForBridge,
+          loc.projectsOnboardingWaitingForComputer,
           textAlign: TextAlign.center,
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
         const SizedBox(height: PregoSpacing.x5l),
-        Text(
-          loc.projectsOnboardingRunOnComputer,
-          textAlign: TextAlign.center,
-          style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-        ),
-        const SizedBox(height: PregoSpacing.xl),
-        // Step 1 — install: the OS segmented control drives the install-command
-        // box; the numbered step label with its info popover sits between them.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
-          child: _InstallCommandBoxes(
-            surface: OnboardingSurface.connectSetup,
-            stepHeader: _InfoLabel(
-              title: "1. ${loc.projectsOnboardingInstallStepTitle}",
-              info: loc.projectsOnboardingInstallStepInfo,
-            ),
-          ),
-        ),
-        const SizedBox(height: PregoSpacing.xl),
-        // Step 2 — start: a single, platform-independent command box.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _InfoLabel(
-                title: "2. ${loc.projectsOnboardingStartStepTitle}",
-                info: loc.projectsOnboardingStartStepInfo,
-              ),
-              const SizedBox(height: PregoSpacing.md),
-              _CommandBoxFrame(
-                child: _CommandActionRow(
-                  command: BridgeInstall.runCommand,
-                  reportCopied: (cubit) => cubit.reportRunCommandCopied(surface: OnboardingSurface.connectSetup),
-                  reportShared: (cubit) => cubit.reportRunCommandShared(surface: OnboardingSurface.connectSetup),
+              const _DesktopDownloadCard(),
+              const SizedBox(height: PregoSpacing.xl),
+              const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
+              const SizedBox(height: PregoSpacing.xs),
+              // expanded semantics so screen readers announce the open/closed
+              // state of the disclosure; MergeSemantics folds it onto the
+              // button's own node.
+              MergeSemantics(
+                child: Semantics(
+                  expanded: _showTerminalSteps,
+                  // A quiet link, the same weight as "Why is this needed?".
+                  child: Center(
+                    child: PregoButtonsSolid(
+                      label: loc.projectsOnboardingPreferTerminal,
+                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                      size: PregoButtonsSolidSize.sm,
+                      trailingIcon: _showTerminalSteps ? TablerRegular.chevron_up : TablerRegular.chevron_down,
+                      fullWidth: false,
+                      onPressed: () => setState(() => _showTerminalSteps = !_showTerminalSteps),
+                    ),
+                  ),
                 ),
               ),
+              // Under reduced motion no wrapper at all: a zero-length AnimatedSize
+              // would re-dirty itself mid-layout.
+              context.isReducedMotion
+                  ? terminalSteps
+                  : AnimatedSize(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOut,
+                      alignment: Alignment.topCenter,
+                      child: terminalSteps,
+                    ),
             ],
           ),
         ),
-        const SizedBox(height: PregoSpacing.xl),
-        const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
       ],
     );
+  }
+}
+
+/// The card leading the connect onboarding: Sesori Desktop bundles the
+/// bridge, so downloading it and signing in connects this phone with no
+/// terminal. Shows the download address to read off the phone, then hands the
+/// link to the computer through the share sheet (AirDrop, messages) or the
+/// clipboard. Shares the command boxes' bordered chrome ([_CommandBoxFrame]).
+class const _DesktopDownloadCard() extends StatelessWidget {
+  Future<void> _copyLink({required BuildContext context}) async {
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
+    final loc = context.loc;
+    final cubit = context.read<ProjectListCubit>();
+    if (!await copyTextToClipboard(text: BridgeInstall.desktopDownloadUrl, operation: "desktop link")) return;
+    cubit.reportDesktopLinkCopied(surface: OnboardingSurface.connectSetup);
+    popupAlertPresenter.show(
+      title: loc.projectsOnboardingDesktopLinkCopied,
+      variant: PregoPopupAlertsNotificationsVariant.info,
+    );
+  }
+
+  /// [anchorContext] is the button's own context, so the iPad popover points
+  /// at it.
+  Future<void> _shareLink({required BuildContext anchorContext}) async {
+    final cubit = anchorContext.read<ProjectListCubit>();
+    final shared = await _shareFromAnchor(
+      anchorContext: anchorContext,
+      params: (origin) => ShareParams(uri: Uri.parse(BridgeInstall.desktopDownloadUrl), sharePositionOrigin: origin),
+      failureMessage: "Failed to share desktop link",
+    );
+    if (shared) cubit.reportDesktopLinkShared(surface: OnboardingSurface.connectSetup);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    final colors = prego.colors;
+
+    return _CommandBoxFrame(
+      child: Container(
+        color: colors.bgSurface2,
+        padding: const EdgeInsets.all(PregoSpacing.x2l),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              loc.projectsOnboardingDesktopTitle,
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textMd.bold.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: PregoSpacing.xs),
+            Text(
+              loc.projectsOnboardingDesktopBody,
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+            ),
+            const SizedBox(height: PregoSpacing.lg),
+            // The address itself, above the buttons, for typing it straight
+            // into the computer's browser.
+            Text(
+              BridgeInstall.desktopDownloadLabel,
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textMd.bold.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: PregoSpacing.xl),
+            Builder(
+              builder: (buttonContext) => PregoButtonsSolid(
+                fullWidth: true,
+                leadingIcon: TablerRegular.share_3,
+                label: loc.projectsOnboardingDesktopSendLink,
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.xl,
+                onPressed: () => unawaited(_shareLink(anchorContext: buttonContext)),
+              ),
+            ),
+            const SizedBox(height: PregoSpacing.md),
+            PregoButtonsSolid(
+              fullWidth: true,
+              leadingIcon: TablerRegular.copy,
+              label: loc.projectsOnboardingDesktopCopyLink,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.xl,
+              onPressed: () => unawaited(_copyLink(context: context)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Opens the native share sheet with [params] and reports whether the sheet
+/// confirmed a handoff. iPad presents the sheet as a popover anchored to a
+/// source rect, so it is derived from [anchorContext]'s box (an unanchored
+/// sheet throws on iPad). Dismissing the sheet is reported through
+/// [ShareResultStatus], not a throw, so a throw is a real platform failure with
+/// nothing to recover: it is logged with [failureMessage].
+Future<bool> _shareFromAnchor({
+  required BuildContext anchorContext,
+  required ShareParams Function(Rect? origin) params,
+  required String failureMessage,
+}) async {
+  final renderObject = anchorContext.findRenderObject();
+  final origin = renderObject is RenderBox && renderObject.attached && renderObject.hasSize
+      ? renderObject.localToGlobal(Offset.zero) & renderObject.size
+      : null;
+  try {
+    final result = await SharePlus.instance.share(params(origin));
+    return result.status == ShareResultStatus.success;
+  } on Object catch (error, stackTrace) {
+    logw(failureMessage, error, stackTrace);
+    return false;
   }
 }
 
@@ -357,7 +524,7 @@ class const NeedHelpMenu({
 /// The per-platform install commands: a flat iOS-style segmented control that
 /// switches between the Unix (macOS/Linux/WSL) and Windows install groups, and
 /// a single [_InstallCommandBox] showing the selected group's methods. Shared
-/// by the connect-setup onboarding ([ConnectBridgeChecklist]) and the
+/// by the connect-setup terminal disclosure ([ConnectBridgeChecklist]) and the
 /// bridge-offline reconnect disclosure ([BridgeOfflineView]) so both stay in
 /// sync; callers supply their own surrounding padding.
 class const _InstallCommandBoxes({
@@ -747,26 +914,13 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
     final cubit = context.read<ProjectListCubit>();
     final command = widget.command;
     final reportShared = widget.reportShared;
-    // iPad presents the share sheet as a popover anchored to a source rect;
-    // derive it from this row so the popover points at the command instead of
-    // floating (an unanchored sheet throws on iPad).
-    final renderObject = context.findRenderObject();
-    final origin = renderObject is RenderBox && renderObject.attached && renderObject.hasSize
-        ? renderObject.localToGlobal(Offset.zero) & renderObject.size
-        : null;
-    try {
-      final result = await SharePlus.instance.share(
-        ShareParams(text: command, sharePositionOrigin: origin),
-      );
-      if (result.status == ShareResultStatus.success) {
-        reportShared(cubit);
-      }
-    } on Object catch (error, stackTrace) {
-      // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
-      // reaching here is a real platform failure with nothing to recover — log
-      // it and move on.
-      logw("Failed to share command", error, stackTrace);
-    }
+    // Anchored to this row so the iPad popover points at the command.
+    final shared = await _shareFromAnchor(
+      anchorContext: context,
+      params: (origin) => ShareParams(text: command, sharePositionOrigin: origin),
+      failureMessage: "Failed to share command",
+    );
+    if (shared) reportShared(cubit);
   }
 
   @override
