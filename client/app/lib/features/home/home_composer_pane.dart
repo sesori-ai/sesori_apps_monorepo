@@ -126,7 +126,10 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
             listener: (context, state) => setState(() {
               if (state is NewSessionCreated) {
                 _launches++;
-                _projectId = context.read<AllSessionsCubit>().state.defaultProjectId ?? state.project.id;
+                // The list may not hold the new session yet, so on a bridge
+                // without "No project" the newest session is this one.
+                final list = context.read<AllSessionsCubit>().state;
+                _projectId = list.projectId ?? list.scratchProjectId ?? state.project.id;
               } else {
                 _projectId = state.project.id;
               }

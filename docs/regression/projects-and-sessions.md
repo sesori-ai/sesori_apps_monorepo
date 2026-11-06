@@ -299,7 +299,8 @@ state.
   opens on "All projects" like a launch, and when its project leaves the list. The bar holds the computer button and Settings, and a round glass + for New session floats at the bottom
   right, above the home indicator, holding still while the list scrolls under it. New session grows out of the + as a
   circle over the still home and shrinks back into it on Back ([navigation transitions](navigation-transitions.md)).
-  It opens in the filtered project, else "No project", else the project of the newest session, else asks for a project, its picker rising once the circle has settled
+  It opens in the filtered project, else "No project", else the project of the newest session, else asks for a project,
+  its picker rising once the circle has settled
   ([session creation](session-creation-and-options.md)). Settings' Bridge section lists Archived after Projects
   (dimmed and disabled offline); it pushes like the other Settings pages and opens under the current filter. A pull
   refreshes every project and imports, as above. Until the project list loads the home shows a skeleton, a failed
