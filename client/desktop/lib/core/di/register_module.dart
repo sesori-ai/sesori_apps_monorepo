@@ -1,5 +1,6 @@
 import "package:device_info_plus/device_info_plus.dart";
 import "package:flutter/foundation.dart" show kReleaseMode;
+import "package:flutter/services.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
@@ -17,6 +18,7 @@ import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../platform/desktop_analytics_client.dart";
+import "../platform/desktop_firebase_sdk.dart";
 import "../platform/desktop_master_key_store.dart";
 
 // Injectable module providers require a class; bootstrap registers this enum value explicitly.
@@ -41,6 +43,10 @@ abstract class RegisterModule() {
 
   @lazySingleton
   DesktopProductEventSource desktopProductEventSource({required DesktopAnalyticsClient client}) => client;
+
+  @lazySingleton
+  DesktopFirebaseSdk get desktopFirebaseSdk =>
+      DesktopFirebaseSdk(channel: const MethodChannel("sesori/desktop_firebase_analytics"));
 
   @lazySingleton
   RelayCryptoService get relayCryptoService => RelayCryptoService();

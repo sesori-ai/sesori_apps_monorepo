@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart" show defaultTargetPlatform;
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -8,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "app.dart";
 import "core/di/injection.dart";
+import "core/platform/desktop_firebase_analytics.dart";
 import "core/platform/desktop_launch_arguments.dart";
 import "core/platform/io_installed_desktop_bundle_source.dart";
 import "core/routing/desktop_router.dart";
@@ -31,6 +33,11 @@ Future<void> main(List<String> arguments) async {
   }
   logi("Desktop startup: primary process claimed");
   setLogSink(sink: getIt<LogSink>());
+
+  // Secondary launches must never initialize Firebase or count as app sessions.
+  // SDK failures are best-effort and do not disable the server analytics path.
+  logi("Desktop startup: initializing desktop Firebase analytics");
+  await getIt<DesktopFirebaseAnalytics>().initialize(platform: defaultTargetPlatform);
 
   // Only the primary process renders UI; premium remains disabled.
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);

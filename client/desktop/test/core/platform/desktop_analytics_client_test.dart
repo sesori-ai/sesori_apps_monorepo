@@ -6,6 +6,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/desktop_analytics_client.dart";
+import "package:sesori_desktop/core/platform/desktop_firebase_analytics.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -23,6 +24,8 @@ const _identity = DesktopBundleIdentity(
 class _MockAuthSession() extends Mock implements AuthSession;
 
 class _MockBundleSource() extends Mock implements InstalledDesktopBundleSource;
+
+class _MockFirebaseAnalytics() extends Mock implements DesktopFirebaseAnalytics;
 
 class _FakeEventApi() implements ProductAnalyticsEventApi {
   final List<({String userId, ProductAnalyticsEventRequest request})> attempts = [];
@@ -44,6 +47,13 @@ void main() {
   late _MockAuthSession authSession;
   late _MockBundleSource bundleSource;
   late DesktopAnalyticsClient client;
+  late _MockFirebaseAnalytics firebaseAnalytics;
+
+  setUpAll(() {
+    registerFallbackValue(
+      const InstallationAnalyticsEvent.loginAttemptStarted(provider: AnalyticsLoginProvider.github),
+    );
+  });
 
   DesktopProductAnalyticsDeliveryService serviceFor({required _FakeEventApi api}) =>
       DesktopProductAnalyticsDeliveryService(
@@ -69,7 +79,9 @@ void main() {
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     bundleSource = _MockBundleSource();
     when(() => bundleSource.compiledIdentity).thenReturn(_identity);
-    client = DesktopAnalyticsClient();
+    firebaseAnalytics = _MockFirebaseAnalytics();
+    when(() => firebaseAnalytics.logInstallationEvent(event: any(named: "event"))).thenAnswer((_) async {});
+    client = DesktopAnalyticsClient(firebaseAnalytics: firebaseAnalytics);
   });
 
   group("events logged before the service starts", () {
@@ -207,5 +219,16 @@ void main() {
     await pumpEventQueue();
 
     expect(received, isEmpty);
+    verify(
+      () => firebaseAnalytics.logInstallationEvent(
+        event: const InstallationAnalyticsEvent.loginAttemptStarted(provider: AnalyticsLoginProvider.github),
+      ),
+    ).called(1);
+  });
+
+  test("account-linked events keep their server-only path", () async {
+    client.events.listen((_) {});
+    await logAnswered();
+    verifyZeroInteractions(firebaseAnalytics);
   });
 }

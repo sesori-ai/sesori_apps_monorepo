@@ -50,7 +50,12 @@ state under `services/models/`:
   `AnalyticsApi` directly.
 - Mobile implements `AnalyticsClient` with Firebase. Desktop implements it with
   an adapter that streams events to `DesktopProductAnalyticsDeliveryService`, which
-  posts to the auth server. Its disabled capability keeps events from reaching them.
+  posts account-linked product events to the auth server. Packaged macOS release
+  builds also use Firebase for native usage/session metrics and the five approved
+  account-less authentication events, never a second copy of product events.
+  Windows/Linux have no native Firebase Analytics support. Desktop debug/profile
+  and source builds keep analytics disabled; Firebase initializes only after
+  primary-process admission. Desktop has no Singular or automatic screen reporting.
 
 ## Choose the authoritative hook
 
