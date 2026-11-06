@@ -390,8 +390,19 @@ platform :android do
       # pure promotion (pre-feature behavior).
       metadata_dir = metadata_dir_from_env("ANDROID_METADATA_PATH")
       have_meta = !metadata_dir.nil?
+      # Promotion copies the internal release as-is, including its commit-message
+      # notes from deploy_internal. ANDROID_RELEASE_NOTES_PATH is set on every
+      # production submit (independent of the publish gate above) so the public
+      # changelogs/default.txt always replaces them, even when the listing is skipped.
+      release_notes_dir = metadata_dir || metadata_dir_from_env("ANDROID_RELEASE_NOTES_PATH")
       UI.message(
-        have_meta ? "Uploading Play listing from #{metadata_dir}" : "No metadata path — promotion only"
+        if have_meta
+          "Uploading Play listing from #{metadata_dir}"
+        elsif release_notes_dir
+          "Uploading release notes only from #{release_notes_dir}"
+        else
+          "No metadata path — promotion only, keeping the internal release notes"
+        end
       )
 
       # package_name comes from Appfile (matches deploy_internal).
@@ -412,12 +423,12 @@ platform :android do
         skip_upload_apk: true,
         skip_upload_aab: true,
         skip_upload_metadata: !have_meta,
-        skip_upload_changelogs: !have_meta,
+        skip_upload_changelogs: release_notes_dir.nil?,
         skip_upload_images: !have_meta,
         skip_upload_screenshots: !have_meta,
         release_status: "completed"
       }
-      play_opts[:metadata_path] = metadata_dir if metadata_dir
+      play_opts[:metadata_path] = release_notes_dir if release_notes_dir
       upload_to_play_store(play_opts)
 
       UI.success("Promoted Android version code #{version_code} (v#{version_name}) " \

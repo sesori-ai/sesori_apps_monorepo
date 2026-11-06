@@ -355,6 +355,11 @@ jobs:
           # publish; otherwise empty, so the lane promotes only. Empty also when
           # the checkout was skipped.
           ANDROID_METADATA_PATH:            ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/android', github.workspace) || '' }}
+          # Promotion would otherwise carry the internal track's commit-message
+          # notes to production. Expose the cloned dir whenever the repo was checked
+          # out (independent of the publish gate) so the lane always uploads the
+          # public changelogs/default.txt. Empty when the checkout was skipped.
+          ANDROID_RELEASE_NOTES_PATH:       ${{ steps.cometa.outcome == 'success' && format('{0}/store-metadata/android', github.workspace) || '' }}
         run: bundle exec fastlane submit_android
 
       - name: Cleanup credentials
