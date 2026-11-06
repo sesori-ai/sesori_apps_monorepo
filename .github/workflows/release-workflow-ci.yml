@@ -23,6 +23,7 @@ on:
       - '.github/workflows/submit-release.yml'
       - '.github/workflows/desktop-qualification.yml'
       - '.github/scripts/test_macos_signing_workflows.py'
+      - '.github/scripts/test_store_release_notes.py'
       - '.github/actions/**'
       - '.github/workflows/_reusable-*.yml'
       - '.github/scripts/check_internal_release.sh'
@@ -70,6 +71,8 @@ jobs:
         run: python -m unittest discover -s .github/scripts -p 'test_bridge_linux_signatures.py'
       - name: Test automatic macOS signing workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_macos_signing_workflows.py'
+      - name: Test Play production release notes contracts
+        run: python -m unittest discover -s .github/scripts -p 'test_store_release_notes.py'
       - name: Test desktop release preparation and publication boundaries
         env:
           SESORI_LINUX_SIGNING_TEST_REQUIRED: '1'

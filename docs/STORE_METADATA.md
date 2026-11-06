@@ -127,6 +127,11 @@ when a metadata dir is present.
   code. The monorepo's `deploy_internal` lane writes the build commit's message
   into `<versionCode>.txt` for the *internal* track; production "What's new" is
   the fixed `default.txt` in the private repo (see below).
+- Promotion copies the internal release with its commit-message notes, so a
+  production submit always uploads changelogs, even when the listing is skipped
+  (HEAD tagged). `ANDROID_RELEASE_NOTES_PATH` points at the cloned `android/`
+  tree independently of the publish gate, like `IOS_RELEASE_NOTES_PATH`; with it
+  alone the lane uploads only changelogs and leaves the rest of the listing alone.
 
 ### Release notes / "What's new"
 
