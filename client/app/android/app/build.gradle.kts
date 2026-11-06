@@ -139,6 +139,10 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
+
+    // Google Play In-App Review, behind the app_review channel
+    // https://developer.android.com/guide/playcore/in-app-review/kotlin-java
+    implementation("com.google.android.play:review:2.0.2")
 }
 
 // Fail fast if the signing properties file for the requested build type is missing.

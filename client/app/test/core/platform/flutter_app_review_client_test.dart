@@ -65,7 +65,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       answerChannel(() => null);
 
-      expect(client.requestReviewOpensStore, isFalse);
+      expect(client.allowsQuestionBeforeReview, isTrue);
       await client.requestReview();
 
       expect(calls.map((call) => call.method), ["requestReview"]);
@@ -82,16 +82,25 @@ void main() {
       verifyZeroInteractions(launcher);
     });
 
-    test("Android opens the Play Store listing instead of In-App Review", () async {
+    test("Android asks Play In-App Review for its card, with no question first and no store hand-off", () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       answerChannel(() => null);
-      when(() => launcher.launch(any())).thenAnswer((_) async => true);
 
-      expect(client.requestReviewOpensStore, isTrue);
+      expect(client.allowsQuestionBeforeReview, isFalse);
       await client.requestReview();
 
-      verify(() => launcher.launch(_playApp)).called(1);
-      expect(calls, isEmpty);
+      expect(calls.map((call) => call.method), ["requestReview"]);
+      verifyZeroInteractions(launcher);
+    });
+
+    test("Android skips the review quietly where Play In-App Review is unavailable", () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      answerChannel(() => throw PlatformException(code: "review_unavailable"));
+
+      await client.requestReview();
+
+      expect(calls, hasLength(1));
+      verifyZeroInteractions(launcher);
     });
   });
 

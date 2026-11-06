@@ -687,7 +687,8 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(1);
-      expect(feedbackPromptService.positiveInteractions, 1);
+      // Creating a session earns no rating point; only its finished turn does.
+      expect(feedbackPromptService.failedSessions, isEmpty);
     });
 
     test("failed creation reports only a bounded failure outcome", () async {
@@ -729,8 +730,8 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(1);
-      expect(feedbackPromptService.failures, 1);
-      expect(feedbackPromptService.positiveInteractions, 0);
+      // No session exists yet, so no session's points are dropped.
+      expect(feedbackPromptService.failedSessions, isEmpty);
       verifyNever(
         () => mockProductAnalyticsService.logEvent(
           event: any(named: "event", that: isA<SessionCreatedWithMessageEvent>()),

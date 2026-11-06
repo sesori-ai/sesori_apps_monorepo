@@ -967,7 +967,7 @@ void main() {
         [const SessionDetailPromptOptionsUpdated(), const SessionDetailPromptOptionsRecoveryFailed()],
       );
       // Only the final give-up counts as a failed send for the rating prompt.
-      expect(feedbackPromptService.failures, 1);
+      expect(feedbackPromptService.failedSessions, [_sessionId]);
     });
 
     test("does not restart stale-options recovery after forced refresh fails", () async {
@@ -1986,7 +1986,7 @@ void main() {
       await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
-      expect(feedbackPromptService.userStops, 1);
+      expect(feedbackPromptService.stoppedSessions, [_sessionId]);
     });
 
     test("a refused confirm stop returns the rejection and leaves queued work untouched", () async {

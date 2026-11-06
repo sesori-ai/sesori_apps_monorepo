@@ -132,26 +132,11 @@ void main() {
 
     tearDown(() => automatic.close());
 
-    test("with an in-app OS prompt, the celebration ends without a confirmation and asks the OS", () async {
-      when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
+    test("the celebration ends without a confirmation and asks the OS for its in-app prompt", () async {
       automatic.chooseLove();
       automatic.finishCelebration();
 
       expect(automatic.state, const FeedbackSheetState.reviewPromptPending());
-      expect(automatic.outcome, isA<FeedbackSheetOutcomeLoveLeaveReview>());
-
-      await automatic.requestStoreReview();
-      verify(appReviewClient.requestReview).called(1);
-      verifyNever(appReviewClient.openStoreReviewPage);
-    });
-
-    test("when the review opens the store, the user confirms first", () async {
-      when(() => appReviewClient.requestReviewOpensStore).thenReturn(true);
-      automatic.chooseLove();
-      automatic.finishCelebration();
-
-      expect(automatic.state, const FeedbackSheetState.reviewConfirmation());
-      automatic.chooseLeaveReview();
       expect(automatic.outcome, isA<FeedbackSheetOutcomeLoveLeaveReview>());
 
       await automatic.requestStoreReview();

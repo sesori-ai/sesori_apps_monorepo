@@ -164,12 +164,10 @@ class SessionLaunchService({
             workspaceKind: _workspaceKind(projectKind: projectKind, dedicatedWorktree: session.hasWorktree),
           ),
         );
-        unawaited(_feedbackPromptService.recordPositiveInteraction());
         _launchRepository.promote(launchId: launchId, session: session);
         unawaited(_deliverFollowUps(launchId: launchId));
       case ErrorResponse(:final error):
         loge("New session creation failed", error);
-        unawaited(_feedbackPromptService.recordFailure());
         // Until creation is idempotent, unconfirmed outcomes remain counted by
         // the released failure event rather than being guessed as successes.
         _reportProductEvent(
@@ -224,7 +222,6 @@ class SessionLaunchService({
                 },
               ),
             );
-            unawaited(_feedbackPromptService.recordPositiveInteraction());
             continue;
           case ErrorResponse(:final error):
             logw("Failed to send $context", error);
@@ -237,7 +234,7 @@ class SessionLaunchService({
       if (!_launchRepository.followUpFailed(launchId: launchId, promptId: submission.promptId, failure: failure)) {
         continue;
       }
-      unawaited(_feedbackPromptService.recordFailure());
+      unawaited(_feedbackPromptService.recordFailure(sessionId: sessionId));
       return;
     }
   }

@@ -726,13 +726,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
-    gh.lazySingleton<_i905.FeedbackPromptService>(
-      () => _i905.FeedbackPromptService(
-        connectionService: gh<_i369.ConnectionService>(),
-        repository: gh<_i723.FeedbackPromptRepository>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i679.VoiceTranscriptionService>(
       () => _i679.VoiceTranscriptionService(
         repository: gh<_i107.VoiceRepository>(),
@@ -752,19 +745,16 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i8.SessionLaunchService>(
-      () => _i8.SessionLaunchService(
-        sessionRepository: gh<_i7.SessionRepository>(),
-        launchRepository: gh<_i818.SessionLaunchRepository>(),
-        feedbackPromptService: gh<_i905.FeedbackPromptService>(),
-        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
-        selectionTracker: gh<_i913.NewSessionSelectionTracker>(),
-        authSession: gh<_i442.AuthSession>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
+    gh.lazySingleton<_i905.FeedbackPromptService>(
+      () => _i905.FeedbackPromptService(
+        connectionService: gh<_i369.ConnectionService>(),
+        lifecycleSource: gh<_i904.LifecycleSource>(),
+        repository: gh<_i723.FeedbackPromptRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i1013.FounderCallService>(
       () => _i1013.FounderCallService(
@@ -923,6 +913,17 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
         catalogRescanService: gh<_i572.CatalogRescanService>(),
       ),
+    );
+    gh.lazySingleton<_i8.SessionLaunchService>(
+      () => _i8.SessionLaunchService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        launchRepository: gh<_i818.SessionLaunchRepository>(),
+        feedbackPromptService: gh<_i905.FeedbackPromptService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        selectionTracker: gh<_i913.NewSessionSelectionTracker>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.factoryParam<
       _i478.SessionListRefreshService,

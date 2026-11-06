@@ -53,7 +53,7 @@ void _configureFirebaseSdk({
   }
 }
 
-/// Starts counting toward the automatic rating sheet, restarting the count
+/// Starts counting toward the automatic rating prompt, dropping every point
 /// when the previous launch crashed.
 void _startFeedbackPrompt({required bool supportsCrashlytics}) {
   final feedbackPromptService = getIt<FeedbackPromptService>()..start();
@@ -61,7 +61,7 @@ void _startFeedbackPrompt({required bool supportsCrashlytics}) {
   unawaited(
     () async {
       if (await getIt<FirebaseCrashlytics>().didCrashOnPreviousExecution()) {
-        await feedbackPromptService.recordFailure();
+        await feedbackPromptService.recordCrash();
       }
     }().catchError((Object error, StackTrace stackTrace) {
       logw("Failed to check the previous launch for a crash", error, stackTrace);
@@ -379,7 +379,11 @@ class const _SesoriAppShell() extends StatelessWidget {
                       create: (_) => BridgeKindCubit(connectionService: getIt<ConnectionService>()),
                     ),
                     BlocProvider(
-                      create: (_) => FeedbackPromptCubit(feedbackPromptService: getIt<FeedbackPromptService>()),
+                      create: (_) => FeedbackPromptCubit(
+                        feedbackPromptService: getIt<FeedbackPromptService>(),
+                        appReviewClient: getIt<AppReviewClient>(),
+                        productAnalyticsService: getIt<ProductAnalyticsService>(),
+                      ),
                     ),
                     BlocProvider(
                       create: (_) => FounderCallPromptCubit(founderCallService: getIt<FounderCallService>()),

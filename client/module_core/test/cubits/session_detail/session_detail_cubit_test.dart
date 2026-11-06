@@ -1723,7 +1723,8 @@ void main() {
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
-        expect(feedbackPromptService.positiveInteractions, 1);
+        // An accepted prompt earns no rating point; only its finished turn does.
+        expect(feedbackPromptService.failedSessions, isEmpty);
       },
     );
 
@@ -3023,8 +3024,7 @@ void main() {
 
         final localSend = (cubit.state as SessionDetailLoaded).localSend;
         expect(localSend, isA<LocalSendFailed>().having((phase) => phase.failure, "failure", failure));
-        expect(feedbackPromptService.failures, 1);
-        expect(feedbackPromptService.positiveInteractions, 0);
+        expect(feedbackPromptService.failedSessions, [sessionId]);
       });
     }
 

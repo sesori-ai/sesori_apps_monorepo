@@ -94,7 +94,7 @@ void main() {
       ),
     ]);
     expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
-    expect(feedbackPromptService.positiveInteractions, 1);
+    expect(feedbackPromptService.failedSessions, isEmpty);
     verify(
       () => productAnalyticsService.logEvent(
         event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
@@ -189,7 +189,8 @@ void main() {
     ]);
     expect(records.single.message, "New session creation failed");
     expect(records.single.diagnosticError, isNotNull);
-    expect(feedbackPromptService.failures, 1);
+    // No session exists yet, so no session's points are dropped.
+    expect(feedbackPromptService.failedSessions, isEmpty);
     verify(
       () => productAnalyticsService.logEvent(
         event: const ProductAnalyticsEvent.sessionCreationFailed(
@@ -307,7 +308,7 @@ void main() {
 
       expect(sentPromptIds, ["prm_a", "prm_b"]);
       expect(storage.readAll(), isEmpty);
-      expect(feedbackPromptService.positiveInteractions, 3);
+      expect(feedbackPromptService.failedSessions, isEmpty);
       verify(
         () => productAnalyticsService.logEvent(
           event: const ProductAnalyticsEvent.sessionMessageSent(
@@ -363,7 +364,7 @@ void main() {
       expect(storage.read(launchId: "launch-1")?.followUps.first, isA<FailedLaunchFollowUp>());
       expect(records.single.message, "Failed to send follow-up prm_a of launch launch-1 to session session-1");
       expect(records.single.diagnosticError, isNotNull);
-      expect(feedbackPromptService.failures, 1);
+      expect(feedbackPromptService.failedSessions, ["session-1"]);
 
       service.retryFollowUp(promptId: "prm_a");
       await Future<void>.delayed(Duration.zero);
@@ -409,7 +410,7 @@ void main() {
 
       expect(sentPromptIds, ["prm_a", "prm_b"]);
       expect(storage.readAll(), isEmpty);
-      expect(feedbackPromptService.failures, 0);
+      expect(feedbackPromptService.failedSessions, isEmpty);
     });
   });
 }
