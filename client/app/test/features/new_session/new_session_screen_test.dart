@@ -495,7 +495,6 @@ void main() {
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
     GetIt.instance.registerSingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository());
     GetIt.instance.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
-    GetIt.instance.registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
     GetIt.instance.registerSingleton<SessionLaunchService>(
       SessionLaunchService(
         sessionRepository: launchSessionRepository,
@@ -527,7 +526,7 @@ void main() {
     expect(find.byType(NewSessionScreen), findsNothing);
   });
 
-  testWidgets("a project chosen in the prompt opens its setup page and is where the next one opens", (tester) async {
+  testWidgets("a project chosen in the prompt opens its setup page", (tester) async {
     final allSessions = _MockAllSessionsCubit();
     await tester.pumpWidget(_buildApp(initialLocation: "/sessions/new", projectName: null, allSessions: allSessions));
     await tester.pumpAndSettle();
@@ -540,7 +539,6 @@ void main() {
 
     expect(find.byType(NewSessionProjectPrompt), findsNothing);
     expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id, "project-2");
-    verify(() => allSessions.rememberNewSessionProject(projectId: "project-2")).called(1);
   });
 
   testWidgets("a sent dictation has a landing over the composer", (tester) async {

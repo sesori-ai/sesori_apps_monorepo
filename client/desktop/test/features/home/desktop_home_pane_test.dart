@@ -526,8 +526,7 @@ void main() {
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
         )
-        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore())
-        ..registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
+        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
       whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: project.id));
       updates = StreamController<ProjectListState>();
       addTearDown(updates.close);
@@ -1027,9 +1026,7 @@ void main() {
       expect(shownProject(tester), "two");
     });
 
-    testWidgets("without a default, asks for a project and starts in the one picked, remembering it", (
-      tester,
-    ) async {
+    testWidgets("without a default, asks for a project and starts in the one picked", (tester) async {
       await pumpStart(tester: tester, list: _list(defaultProjectId: null));
       expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
       expect(find.text("Choose a project"), findsOneWidget);
@@ -1043,7 +1040,6 @@ void main() {
 
       expect(createdFor, ["two"]);
       expect(shownProject(tester), "two");
-      verify(() => sessions.rememberNewSessionProject(projectId: "two")).called(1);
     });
 
     testWidgets("picking another project moves the same composer there", (tester) async {

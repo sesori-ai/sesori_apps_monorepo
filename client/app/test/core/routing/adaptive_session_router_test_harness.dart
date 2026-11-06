@@ -63,6 +63,9 @@ class AdaptiveSessionRouterTestHarness() {
     Map<String, List<FileDiff>> diffsBySession = const {},
     Map<String, List<Session>> childSessionsBySession = const {},
     List<RouteBase> extraRoutes = const [],
+
+    /// The key of [sessionsByProject] that is the bridge's "No project".
+    String? scratchProjectId,
   }) async {
     await GetIt.instance.reset();
 
@@ -107,6 +110,7 @@ class AdaptiveSessionRouterTestHarness() {
                 name: "Project One",
                 path: "/$projectId",
                 time: const ProjectTime(created: 1700000000000, updated: 1700000000000),
+                kind: projectId == scratchProjectId ? ProjectKind.scratch : ProjectKind.folder,
               ),
           ],
         ),
@@ -214,7 +218,6 @@ class AdaptiveSessionRouterTestHarness() {
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectRepository>(projectRepository);
     getIt.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
-    getIt.registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
     getIt.registerSingleton<PluginRepository>(pluginRepository);
     final pluginPreferenceRepository = MockPluginPreferenceRepository();
     when(

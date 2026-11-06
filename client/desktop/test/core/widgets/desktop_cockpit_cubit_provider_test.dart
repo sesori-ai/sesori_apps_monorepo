@@ -51,7 +51,6 @@ void main() {
     getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
     final filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projects);
     getIt.registerSingleton<SessionListFilterTracker>(filterTracker);
-    getIt.registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker());
     getIt.registerFactory<SessionLaunchService>(
       () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -102,7 +101,6 @@ void main() {
       await getIt.unregister<ActiveBridgeLocality>();
       await getIt.unregister<SelectedComputerService>();
       await getIt.unregister<SessionListFilterTracker>();
-      await getIt.unregister<LastNewSessionProjectTracker>();
       await filterTracker.dispose();
       await getIt.unregister<SessionLaunchService>();
       await getIt.unregister<ProjectInventoryService>();
