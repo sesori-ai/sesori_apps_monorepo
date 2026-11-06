@@ -1282,8 +1282,9 @@ abstract class AcpPlugin({
     switch (outcome) {
       case AcpSteeringOutcome.injected:
         queuedPrompt.phase = _QueuedAcpPromptPhase.steered;
-        if (identical(_turnStates[sessionId], state))
+        if (identical(_turnStates[sessionId], state)) {
           _publishSentPrompt(sessionId: sessionId, state: state, turn: turn);
+        }
       case AcpSteeringOutcome.notAdmitted:
         Log.d("[$id] follow-up for $sessionId was not admitted into a running turn; sending it next");
         _returnUnsteeredFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
