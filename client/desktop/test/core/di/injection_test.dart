@@ -11,6 +11,7 @@ import "package:sesori_desktop/core/platform/desktop_analytics_client.dart";
 import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
 import "package:sesori_desktop/core/platform/desktop_failure_reporter.dart";
 import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
+import "package:sesori_desktop/core/platform/desktop_firebase_analytics.dart";
 import "package:sesori_desktop/core/platform/desktop_route_source.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -68,6 +69,7 @@ void main() {
     expect(getIt.isRegistered<LoginCubit>(), isFalse);
     expect(getIt<AnalyticsClient>(), isA<DesktopAnalyticsClient>());
     expect(getIt<DesktopProductEventSource>(), same(getIt<AnalyticsClient>()));
+    expect(getIt<DesktopFirebaseAnalytics>(), isA<DesktopFirebaseAnalytics>());
     expect(getIt<DesktopProductAnalyticsDeliveryService>(), isNotNull);
     // `flutter test` runs in debug mode, so this pins the side of the switch that
     // keeps debug and profile builds from sending anything.

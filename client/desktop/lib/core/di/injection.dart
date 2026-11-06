@@ -24,7 +24,7 @@ final GetIt getIt = GetIt.instance;
 // Module registrations are lazy: resolution happens on first getIt<T>() use.
 // The only eager registration is the shell's own DesktopLifecycleObserver,
 // which must attach its WidgetsBinding observer at startup.
-@InjectableInit(ignoreUnregisteredTypes: [PersistenceScope])
+@InjectableInit(ignoreUnregisteredTypes: [PersistenceScope, AnalyticsRuntimeCapability])
 void configureDesktopDependencies({required GoRouter router, required Future<void> routerReady}) {
   getIt.registerSingleton<PersistenceScope>(clientPersistenceScope);
   getIt.registerLazySingleton<RouteDispatcher>(

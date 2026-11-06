@@ -34,6 +34,10 @@ import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
     as _i524;
 import 'package:sesori_desktop/core/platform/desktop_file_save_client.dart'
     as _i880;
+import 'package:sesori_desktop/core/platform/desktop_firebase_analytics.dart'
+    as _i286;
+import 'package:sesori_desktop/core/platform/desktop_firebase_sdk.dart'
+    as _i644;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
 import 'package:sesori_desktop/core/platform/desktop_local_notification_client.dart'
@@ -101,12 +105,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
       () => registerModule.feedbackPromptConfigSource,
     );
-    gh.lazySingleton<_i221.DesktopAnalyticsClient>(
-      () => _i221.DesktopAnalyticsClient(),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i880.DesktopFileSaveClient>(
       () => _i880.DesktopFileSaveClient(),
+    );
+    gh.lazySingleton<_i644.DesktopFirebaseSdk>(
+      () => _i644.DesktopFirebaseSdk(),
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i925.DesktopComposerImagePicker(),
@@ -124,19 +127,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
     gh.lazySingleton<_i316.LaunchAtLogin>(() => _i122.IoLaunchAtLogin());
-    gh.lazySingleton<_i948.AnalyticsClient>(
-      () => registerModule.analyticsClient(
-        client: gh<_i221.DesktopAnalyticsClient>(),
-      ),
-    );
-    gh.lazySingleton<_i316.DesktopProductEventSource>(
-      () => registerModule.desktopProductEventSource(
-        client: gh<_i221.DesktopAnalyticsClient>(),
-      ),
-    );
     gh.lazySingleton<_i316.SystemTray>(
       () => _i81.FlutterSystemTray(),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i286.DesktopFirebaseAnalytics>(
+      () => _i286.DesktopFirebaseAnalytics(
+        sdk: gh<_i644.DesktopFirebaseSdk>(),
+        capability: gh<_i948.AnalyticsRuntimeCapability>(),
+      ),
     );
     gh.lazySingleton<_i948.FounderCallConfigSource>(
       () => _i1005.NoOpFounderCallConfigSource(),
@@ -200,6 +199,12 @@ extension GetItInjectableX on _i174.GetIt {
         temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
       ),
     );
+    gh.lazySingleton<_i221.DesktopAnalyticsClient>(
+      () => _i221.DesktopAnalyticsClient(
+        firebaseAnalytics: gh<_i286.DesktopFirebaseAnalytics>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i948.VoiceModeConfigSource>(
       () => _i456.ChannelVoiceModeConfigSource(
         bundleSource: gh<_i316.InstalledDesktopBundleSource>(),
@@ -208,6 +213,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(
         bundleSource: gh<_i316.InstalledDesktopBundleSource>(),
+      ),
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => registerModule.analyticsClient(
+        client: gh<_i221.DesktopAnalyticsClient>(),
+      ),
+    );
+    gh.lazySingleton<_i316.DesktopProductEventSource>(
+      () => registerModule.desktopProductEventSource(
+        client: gh<_i221.DesktopAnalyticsClient>(),
       ),
     );
     gh.lazySingleton<_i948.NotificationCanceller>(

@@ -7,8 +7,10 @@ adoption questions. Account-linked events carry a server-derived pseudonymous ke
 preference; five bounded account-less authentication events are the only exception: a three-event attempt funnel and
 Firebase's recommended `sign_up`/`login` outcomes. Separately, eligible Android/iOS release builds start Singular for
 install/session attribution, standard authentication conversion events, and two parameter-free activation milestones
-with release-injected credentials. Desktop release builds report the same closed event set directly to an authenticated
-auth-server route, not through Firebase or Singular; the bridge is excluded, and the warehouse is external.
+with release-injected credentials. Desktop release builds report account-linked product events directly to an
+authenticated auth-server route. Packaged macOS releases additionally use Firebase for native usage/session metrics
+and the five approved account-less authentication events; Windows/Linux have no native Firebase Analytics support.
+Desktop does not use Singular; the bridge is excluded, and the warehouse is external.
 
 ## Required Behavior
 
@@ -25,6 +27,15 @@ auth-server route, not through Firebase or Singular; the bridge is excluded, and
   preference when it arrives. A transient failure retries at most twice, after 5 and 30 seconds, and stops on a sign-out or
   account change. There is no durable queue: an event still unsent after that, or when the app quits, is lost, which is
   accepted.
+- Desktop Firebase initializes only on macOS, after primary-process admission, in a release build with a compiled bundle
+  identity. It uses the `com.sesori.desktop` app registered in the same Firebase project as mobile, not the mobile app's
+  stream, through explicit Dart options rather than a bundled default `GoogleService-Info.plist` (which would initialize
+  Firebase before primary admission). Native collection and automatic screen reporting default off; advertising consent
+  stays denied when usage collection is enabled. Unsupported platforms and debug/profile/source builds never initialize
+  the SDK. Initialization
+  and authentication-event failures are logged without blocking desktop startup, login, or server product reporting.
+  Account-linked product events are not mirrored into Firebase, avoiding duplicate warehouse rows. The account
+  preference still governs those product events, not native usage or the approved account-less authentication events.
 - Disable applies immediately here and records durable local intent before any network work; a failed sync shows
   pending, never saved, and survives logout and restart. Enable activates only after server success plus local
   persistence.
@@ -105,6 +116,8 @@ auth-server route, not through Firebase or Singular; the bridge is excluded, and
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
+| L2 Desktop Firebase | Automated, no plugin: macOS-only initialization, release/source capability gating, native collection and screens default off, advertising consent denied before collection, exact approved authentication payloads without identity, startup/event failure isolation, product events staying on their server path, and DI resolution without initializing Firebase. |
+| L5 Desktop Firebase | Packaged macOS release against the real Firebase project: `com.sesori.desktop` usage/session and version visible upstream, approved authentication outcomes observed, no automatic screens, and no second copy of account product events. Debug/profile, source builds, and secondary process launches produce no Firebase events. Windows/Linux keep server product reporting without invoking Firebase Analytics. Desktop crash-free metrics are not claimed. |
 | L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, imported pending-disable ordering through real SQL/DI with fake native ports, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration, partner-sharing posture, standard/custom event mapping, app-container claim persistence, and restart deduplication with fake adapters. Desktop, with fakes: event-to-wire mapping, bundle OS to platform, source builds sending nothing, and the debug side of the capability. |
 | L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; first-frame and notification startup proceeding while the crawl gate is unresolved; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; interactive authentication lifting a pending or resolved gate for both SDKs; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; Singular registration-before-login only for server-confirmed account creation; bridge pairing only from a connected E2E outcome; and first-session attribution from the canonical successful message outcomes even while product analytics is preference-disabled. Desktop, against a fake route: a transient failure retries at most twice and stops on a sign-out or account change, a permanent failure is dropped, and neither blocks the caller. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. Desktop release build: the same switch stops events on that installation, and the server drops an event sent while the preference is off. |
@@ -147,6 +160,10 @@ account against a real property.
 
 ## Known Limitations
 
+- The Firebase overview can show macOS usage and app versions, but mobile-only release-monitoring cards need not include
+  macOS identically. Crash-free metrics are not added: desktop does not integrate Crashlytics. Windows/Linux product
+  metrics remain available through server reporting, not Firebase. Do not combine Firebase app-instance counts with
+  account counts or count the same macOS authentication outcomes twice across reports.
 - The vendor SDK, property, warehouse, and dashboards are external; their correctness is never passed from client
   evidence. SDK acceptance is not delivery: a missing upstream row may be sampling, latency, retention, or exclusion.
 - Firebase's Active users report counts active app instances, not authenticated Sesori accounts. Logged-in testing

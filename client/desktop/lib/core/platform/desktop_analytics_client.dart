@@ -4,10 +4,14 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
-/// The desktop's analytics sink. It only streams product events to whoever
-/// listens to [events]; delivery policy stays in `module_desktop_core`.
+import "desktop_firebase_analytics.dart";
+
+/// Streams product events to the server delivery service, and sends the approved
+/// account-less authentication events to Firebase on supported desktop targets.
+/// Product delivery policy stays in `module_desktop_core`.
 @lazySingleton
-class DesktopAnalyticsClient() implements AnalyticsClient, DesktopProductEventSource {
+class DesktopAnalyticsClient({required final DesktopFirebaseAnalytics _firebaseAnalytics})
+    implements AnalyticsClient, DesktopProductEventSource {
   // Single-subscription, so events logged before the listener arrives wait for
   // it. Synchronous, so from then on the listener runs in the caller's stack and
   // sees the account that was current when the event was logged.
@@ -25,7 +29,8 @@ class DesktopAnalyticsClient() implements AnalyticsClient, DesktopProductEventSo
   }
 
   @override
-  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) async {}
+  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) =>
+      _firebaseAnalytics.logInstallationEvent(event: event);
 
   @override
   Future<void> activateAfterInteractiveAuthentication() async {}
