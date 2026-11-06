@@ -2708,7 +2708,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsOnboardingWhyBody =>
-      'The Bridge, built into Sesori Desktop, securely connects it to Sesori on your phone.';
+      'The Bridge securely connects it to Sesori on your phone. It comes with Sesori Desktop, or you can install it from the terminal.';
 
   @override
   String get projectsOnboardingWhySecureTitle => 'Secure access';

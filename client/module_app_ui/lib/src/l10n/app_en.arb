@@ -1947,7 +1947,7 @@
   "@projectsOnboardingWhyLede": {
     "description": "Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine."
   },
-  "projectsOnboardingWhyBody": "The Bridge, built into Sesori Desktop, securely connects it to Sesori on your phone.",
+  "projectsOnboardingWhyBody": "The Bridge securely connects it to Sesori on your phone. It comes with Sesori Desktop, or you can install it from the terminal.",
   "@projectsOnboardingWhyBody": {
     "description": "Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role."
   },

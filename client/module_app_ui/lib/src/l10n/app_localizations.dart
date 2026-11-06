@@ -4810,7 +4810,7 @@ abstract class AppLocalizations {
   /// Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role.
   ///
   /// In en, this message translates to:
-  /// **'The Bridge, built into Sesori Desktop, securely connects it to Sesori on your phone.'**
+  /// **'The Bridge securely connects it to Sesori on your phone. It comes with Sesori Desktop, or you can install it from the terminal.'**
   String get projectsOnboardingWhyBody;
 
   /// Title of the 'secure access' reassurance row in the 'Why is this needed?' sheet.
