@@ -202,7 +202,8 @@ The main pane hosts one full-width routed page.
   project. Loading projects is labelled and failures retry the shared inventory. A disconnected home branches on the
   computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without CLI setup;
   another computer shows the phone's offline body instead: "<computer> is offline" (the generic "Bridge offline" until
-  the list names it), its last-seen time when the list has one, a line to start the bridge on that computer, and the
+  the list names it), its last-seen time when the list has one, a line on how to start the bridge on that computer
+  (by its registered kind: open Sesori Desktop for desktop, start the bridge for the CLI, both when unknown), and the
   shared Other computers card, with no Start button. While the desktop is launching this computer's bridge (including a
   cold start) and has not reached it yet, this computer's offline bridge is a load: the home shows the same loader as
   any load and the sidebar list shows its loading skeleton, one skeleton from launch that hands off to the rows or the

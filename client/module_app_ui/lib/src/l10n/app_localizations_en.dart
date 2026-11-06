@@ -528,6 +528,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Start the bridge on that computer to load its projects and sessions here.';
 
   @override
+  String get projectsDesktopRemoteOfflineOpenDesktop =>
+      'Open Sesori Desktop on that computer to load its projects and sessions here.';
+
+  @override
+  String get projectsDesktopRemoteOfflineUnknownKind =>
+      'Open Sesori Desktop or start the bridge on that computer to load its projects and sessions here.';
+
+  @override
   String get projectsDesktopBridgeStillStarting => 'Still starting this computer\'s bridge…';
 
   @override

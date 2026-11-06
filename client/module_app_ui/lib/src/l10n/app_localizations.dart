@@ -985,11 +985,23 @@ abstract class AppLocalizations {
   /// **'Start the local bridge to load your projects and sessions in Sesori.'**
   String get projectsDesktopStartBridgeInfo;
 
-  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one.
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one, and that computer runs the command-line bridge.
   ///
   /// In en, this message translates to:
   /// **'Start the bridge on that computer to load its projects and sessions here.'**
   String get projectsDesktopRemoteOfflineInfo;
+
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer that runs Sesori Desktop, whose bridge starts with the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sesori Desktop on that computer to load its projects and sessions here.'**
+  String get projectsDesktopRemoteOfflineOpenDesktop;
+
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer and the app does not know whether it runs Sesori Desktop or the command-line bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sesori Desktop or start the bridge on that computer to load its projects and sessions here.'**
+  String get projectsDesktopRemoteOfflineUnknownKind;
 
   /// Desktop-only line that fades in under the home loader when launching this computer's own bridge has taken longer than 10 seconds and the app has not reached it yet.
   ///
