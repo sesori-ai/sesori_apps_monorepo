@@ -23,6 +23,7 @@ class CodeHighlighter._() {
     "kt": "kotlin",
     "yml": "yaml",
     "xml": "html",
+    "htm": "html",
     "golang": "go",
   };
 

@@ -12,6 +12,7 @@ import "package:sesori_app_ui/src/features/session_detail/file_preview/file_refe
 import "package:sesori_app_ui/src/widgets/chat_link.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
@@ -25,12 +26,81 @@ class _MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockImageSharer() extends Mock implements ImageSharer;
 
+/// Stands in for the native web view, recording what the preview asks of it.
+class _FakeWebViewPlatform() extends WebViewPlatform {
+  final controllers = <_FakeWebViewController>[];
+
+  @override
+  PlatformWebViewController createPlatformWebViewController(PlatformWebViewControllerCreationParams params) {
+    final controller = _FakeWebViewController(params);
+    controllers.add(controller);
+    return controller;
+  }
+
+  @override
+  PlatformNavigationDelegate createPlatformNavigationDelegate(PlatformNavigationDelegateCreationParams params) =>
+      _FakeNavigationDelegate(params);
+
+  @override
+  PlatformWebViewWidget createPlatformWebViewWidget(PlatformWebViewWidgetCreationParams params) =>
+      _FakeWebViewWidget(params);
+}
+
+class _FakeWebViewController(super.params) extends PlatformWebViewController {
+  this : super.implementation();
+
+  String? html;
+  JavaScriptMode? javaScriptMode;
+  PlatformNavigationDelegate? navigationDelegate;
+
+  @override
+  Future<void> loadHtmlString(String html, {String? baseUrl}) async => this.html = html;
+
+  @override
+  Future<void> setJavaScriptMode(JavaScriptMode javaScriptMode) async => this.javaScriptMode = javaScriptMode;
+
+  @override
+  Future<void> setPlatformNavigationDelegate(PlatformNavigationDelegate handler) async => navigationDelegate = handler;
+
+  /// What the page's navigation delegate decides for [url].
+  Future<NavigationDecision> decide({required String url, required bool isMainFrame}) async {
+    final callback = switch (navigationDelegate) {
+      _FakeNavigationDelegate(:final onNavigationRequest?) => onNavigationRequest,
+      _ => throw StateError("no navigation request handler"),
+    };
+    return await callback(NavigationRequest(url: url, isMainFrame: isMainFrame));
+  }
+}
+
+class _FakeNavigationDelegate(super.params) extends PlatformNavigationDelegate {
+  this : super.implementation();
+
+  NavigationRequestCallback? onNavigationRequest;
+
+  @override
+  Future<void> setOnNavigationRequest(NavigationRequestCallback onNavigationRequest) async =>
+      this.onNavigationRequest = onNavigationRequest;
+}
+
+class _FakeWebViewWidget(super.params) extends PlatformWebViewWidget {
+  this : super.implementation();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.expand(key: Key("fake-web-view"));
+}
+
 /// A 1×1 transparent PNG.
 final _png = base64Decode(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
 );
 
-Widget _app({required FilePreviewCubitFactory createFilePreviewCubit, required Widget child}) => MaterialApp(
+Future<bool> _ignoreLink({required Uri url, required UrlLaunchMode mode}) async => false;
+
+Widget _app({
+  required FilePreviewCubitFactory createFilePreviewCubit,
+  required ExternalLinkOpener openExternalLink,
+  required Widget child,
+}) => MaterialApp(
   theme: ThemeData(extensions: [PregoDesignSystem.light]),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
@@ -46,7 +116,7 @@ Widget _app({required FilePreviewCubitFactory createFilePreviewCubit, required W
     createFilePreviewCubit: createFilePreviewCubit,
     createExternalActionCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
     canShareImages: false,
-    openExternalLink: ({required url, required mode}) async => false,
+    openExternalLink: openExternalLink,
     openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
     child: Scaffold(body: child),
   ),
@@ -56,12 +126,14 @@ Future<void> _pumpScreen(
   WidgetTester tester, {
   required FileReference reference,
   required FilePreviewState state,
+  required ExternalLinkOpener openExternalLink,
 }) async {
   final cubit = _MockFilePreviewCubit();
   whenListen(cubit, const Stream<FilePreviewState>.empty(), initialState: state);
   await tester.pumpWidget(
     _app(
       createFilePreviewCubit: ({required reference}) => cubit,
+      openExternalLink: openExternalLink,
       child: BlocProvider<FilePreviewCubit>.value(
         value: cubit,
         child: FilePreviewScreen(reference: reference, onClose: () {}),
@@ -120,6 +192,7 @@ void main() {
       _app(
         createFilePreviewCubit: ({required reference}) =>
             FilePreviewCubit(repository: repository, reference: reference),
+        openExternalLink: _ignoreLink,
         child: BlocProvider<SessionDetailCubit>.value(
           value: sessionCubit,
           child: const TextPartWidget(text: "Look at `lib/main.dart:2` please"),
@@ -147,6 +220,7 @@ void main() {
         tester,
         reference: const FileReference(absolutePath: "/repo/notes.txt", line: 2),
         state: const FilePreviewShowsText(content: "alpha\nbeta"),
+        openExternalLink: _ignoreLink,
       );
       expect(find.text("1"), findsOneWidget);
       expect(find.text("2"), findsOneWidget);
@@ -158,6 +232,7 @@ void main() {
         tester,
         reference: const FileReference(absolutePath: "/repo/README.md", line: null),
         state: const FilePreviewShowsText(content: "# Title"),
+        openExternalLink: _ignoreLink,
       );
       expect(find.text("Title"), findsOneWidget);
 
@@ -166,11 +241,99 @@ void main() {
       expect(_spanWithText(tester, "# Title"), isNotNull);
     });
 
+    group("HTML", () {
+      const page = "<h1>Report</h1>";
+      late _FakeWebViewPlatform webViews;
+      setUp(() => WebViewPlatform.instance = webViews = _FakeWebViewPlatform());
+
+      testWidgets("renders in a web view and toggles to its source", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        expect(find.byKey(const Key("fake-web-view")), findsOneWidget);
+        final controller = webViews.controllers.single;
+        expect(controller.html, page);
+        expect(controller.javaScriptMode, JavaScriptMode.unrestricted);
+
+        await tester.tap(find.byKey(const Key("file-preview-source-toggle")));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key("fake-web-view")), findsNothing);
+        expect(_spanWithText(tester, "Report"), isNotNull);
+
+        await tester.tap(find.byKey(const Key("file-preview-source-toggle")));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key("fake-web-view")), findsOneWidget);
+        expect(webViews.controllers.single, same(controller), reason: "the page is kept, not loaded again");
+      });
+
+      testWidgets("opens on its source when the reference names a line", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.htm", line: 1),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        expect(find.byKey(const Key("fake-web-view")), findsNothing);
+        expect(_spanWithText(tester, "Report"), isNotNull);
+        expect(find.byKey(const Key("file-preview-source-toggle")), findsOneWidget);
+      });
+
+      testWidgets(
+        "shows only its source without a web view",
+        (tester) async {
+          await _pumpScreen(
+            tester,
+            reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+            state: const FilePreviewShowsText(content: page),
+            openExternalLink: _ignoreLink,
+          );
+          expect(find.byKey(const Key("fake-web-view")), findsNothing);
+          expect(find.byKey(const Key("file-preview-source-toggle")), findsNothing);
+          expect(_spanWithText(tester, "Report"), isNotNull);
+        },
+        variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.windows}),
+      );
+
+      testWidgets("keeps the page and sends web links to the browser", (tester) async {
+        final opened = <(Uri, UrlLaunchMode)>[];
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: ({required url, required mode}) async {
+            opened.add((url, mode));
+            return true;
+          },
+        );
+        final controller = webViews.controllers.single;
+
+        expect(await controller.decide(url: "about:blank", isMainFrame: true), NavigationDecision.navigate);
+        expect(await controller.decide(url: "about:blank#results", isMainFrame: true), NavigationDecision.navigate);
+        expect(
+          await controller.decide(url: "https://cdn.example.com/embed", isMainFrame: false),
+          NavigationDecision.navigate,
+        );
+        expect(await controller.decide(url: "file:///etc/hosts", isMainFrame: true), NavigationDecision.prevent);
+        expect(
+          await controller.decide(url: "https://user:pw@example.com", isMainFrame: true),
+          NavigationDecision.prevent,
+        );
+        expect(opened, isEmpty);
+
+        expect(await controller.decide(url: "https://example.com/docs", isMainFrame: true), NavigationDecision.prevent);
+        expect(opened, [(Uri.parse("https://example.com/docs"), UrlLaunchMode.externalApp)]);
+      });
+    });
+
     testWidgets("hands an image to the image viewer", (tester) async {
       await _pumpScreen(
         tester,
         reference: const FileReference(absolutePath: "/repo/shot.png", line: null),
         state: FilePreviewShowsImage(bytes: _png, mime: "image/png"),
+        openExternalLink: _ignoreLink,
       );
       expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     });
@@ -189,6 +352,7 @@ void main() {
           tester,
           reference: const FileReference(absolutePath: "/repo/a.bin", line: null),
           state: FilePreviewUnavailable(reason: reason),
+          openExternalLink: _ignoreLink,
         );
         expect(find.text(message), findsOneWidget);
       });

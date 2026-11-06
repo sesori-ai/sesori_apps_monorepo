@@ -1,14 +1,17 @@
 import "dart:async";
 import "dart:math" as math;
 
+import "package:flutter/foundation.dart" show defaultTargetPlatform;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:webview_flutter/webview_flutter.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../platform/external_link_opener.dart";
 import "../../../utils/code_highlighter.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
@@ -62,8 +65,8 @@ Future<void> showFilePreview({required BuildContext context, required FileRefere
 }
 
 /// A read-only view of one file from the bridge's computer: highlighted text
-/// with line numbers, rendered Markdown with a source toggle, or an image in
-/// the image viewer. Every other outcome is a one-line message.
+/// with line numbers, rendered Markdown or HTML with a source toggle, or an
+/// image in the image viewer. Every other outcome is a one-line message.
 class const FilePreviewScreen({
   super.key,
   required final FileReference reference,
@@ -74,19 +77,31 @@ class const FilePreviewScreen({
 }
 
 class _FilePreviewScreenState() extends State<FilePreviewScreen> {
-  /// A Markdown file opens formatted, unless the reference names a line,
-  /// which only its source can show.
+  /// A Markdown or HTML file opens formatted, unless the reference names a
+  /// line, which only its source can show.
   late bool _showsSource = widget.reference.line != null;
 
-  bool get _isMarkdown {
+  /// An HTML file's page, kept while its source shows, so switching back shows
+  /// it at once, where it was.
+  WebViewController? _htmlPage;
+
+  /// How the file renders besides its source, or null when it has only source.
+  /// HTML needs a web view, which Windows and Linux lack.
+  _Rendering? get _rendering {
     final name = widget.reference.fileName.toLowerCase();
-    return name.endsWith(".md") || name.endsWith(".markdown");
+    if (name.endsWith(".md") || name.endsWith(".markdown")) return _Rendering.markdown;
+    if (!name.endsWith(".html") && !name.endsWith(".htm")) return null;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.macOS => _Rendering.html,
+      TargetPlatform.windows || TargetPlatform.linux || TargetPlatform.fuchsia => null,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final state = context.watch<FilePreviewCubit>().state;
+    final rendering = _rendering;
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.escape): widget.onClose,
@@ -103,13 +118,20 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
                 onClose: widget.onClose,
                 actions: [
                   if (state case FilePreviewShowsText(:final content)) ...[
-                    if (_isMarkdown)
+                    if (rendering != null)
                       IconButton(
                         key: const Key("file-preview-source-toggle"),
                         tooltip: _showsSource
                             ? context.loc.filePreviewShowFormatted
                             : context.loc.filePreviewShowSource,
-                        icon: Icon(_showsSource ? TablerRegular.markdown : TablerRegular.code, size: PregoIconSize.md),
+                        icon: Icon(
+                          switch ((_showsSource, rendering)) {
+                            (false, _) => TablerRegular.code,
+                            (true, _Rendering.markdown) => TablerRegular.markdown,
+                            (true, _Rendering.html) => TablerRegular.browser,
+                          },
+                          size: PregoIconSize.md,
+                        ),
                         onPressed: () => setState(() => _showsSource = !_showsSource),
                       ),
                     PregoCopyIconButton(
@@ -131,7 +153,7 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
                   ),
                   child: KeyedSubtree(
                     key: ValueKey((state.runtimeType, _showsSource)),
-                    child: _body(state: state),
+                    child: _body(state: state, rendering: _showsSource ? null : rendering),
                   ),
                 ),
               ),
@@ -142,9 +164,17 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     );
   }
 
-  Widget _body({required FilePreviewState state}) => switch (state) {
+  /// The view for [state], with text shown as [rendering] or, when null, as
+  /// its source.
+  Widget _body({required FilePreviewState state, required _Rendering? rendering}) => switch (state) {
     FilePreviewLoading() => const Center(child: PregoActivityIndicator(color: null)),
-    FilePreviewShowsText(:final content) when _isMarkdown && !_showsSource => _MarkdownPreview(content: content),
+    FilePreviewShowsText(:final content) when rendering == _Rendering.markdown => _MarkdownPreview(content: content),
+    FilePreviewShowsText(:final content) when rendering == _Rendering.html => WebViewWidget(
+      controller: _htmlPage ??= _loadHtmlPage(
+        content: content,
+        openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+      ),
+    ),
     FilePreviewShowsText(:final content) => _CodePreview(
       content: content,
       language: _languageOf(fileName: widget.reference.fileName),
@@ -256,6 +286,36 @@ class const _MarkdownPreview({required final String content}) extends StatelessW
       ),
     );
   }
+}
+
+/// The ways a text file renders besides its source.
+enum _Rendering() {
+  markdown,
+  html,
+}
+
+/// Loads the page an HTML file describes into a web view. Its scripts run, but
+/// it never navigates: a link opens in the browser, and anything else is
+/// blocked. Relative assets beside the file do not load; only the file is here.
+WebViewController _loadHtmlPage({required String content, required ExternalLinkOpener openExternalLink}) {
+  NavigationDecision decide(NavigationRequest request) {
+    final uri = Uri.tryParse(request.url);
+    if (uri == null) return NavigationDecision.prevent;
+    // The loaded file and its in-page anchors are about:blank, and frames load
+    // their own content. A link with a new-window target arrives here first as
+    // a frame request and then again for the main frame.
+    if (uri.isScheme("about") || !request.isMainFrame) return NavigationDecision.navigate;
+    if (isAllowedExternalLinkUri(uri: uri)) {
+      unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp).then<void>((_) {}));
+    }
+    return NavigationDecision.prevent;
+  }
+
+  final controller = WebViewController();
+  unawaited(controller.setJavaScriptMode(JavaScriptMode.unrestricted));
+  unawaited(controller.setNavigationDelegate(NavigationDelegate(onNavigationRequest: decide)));
+  unawaited(controller.loadHtmlString(content));
+  return controller;
 }
 
 /// Text with line numbers, one row per line, opened on [line] with that row
