@@ -667,6 +667,46 @@ void main() {
       });
     }
 
+    testWidgets("a search cleared while the bridge answers keeps the search field and chips in place", (
+      tester,
+    ) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: state(query: "zzz", failure: null, rows: const [], scratchProjectId: null),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      final searchField = find.byType(TextField);
+      final fieldTop = tester.getTopLeft(searchField).dy;
+      final chipTop = tester.getTopLeft(runningChip).dy;
+      ({double? field, double? chips, double? fieldOpacity}) read() => (
+        field: topOf(tester, searchField),
+        chips: topOf(tester, runningChip),
+        fieldOpacity: shownOpacity(tester, searchField),
+      );
+
+      // The window still holds the search's rows and counts until the bridge
+      // answers the cleared query.
+      final waiting = await everyFrameAcross(
+        tester,
+        updates: updates,
+        update: state(query: "", failure: null, rows: const [], scratchProjectId: null, awaitingAnswer: true),
+        read: read,
+      );
+      final answered = await everyFrameAcross(
+        tester,
+        updates: updates,
+        update: listing(withSession: true, failure: null),
+        read: read,
+      );
+      for (final frame in [...waiting, ...answered]) {
+        expect(frame, (field: fieldTop, chips: chipTop, fieldOpacity: 1.0));
+      }
+      expect(sessionRow, findsOneWidget);
+    });
+
     // Running leaves no rows of a project's sessions, as the project switcher
     // moves to a project with none, or back.
     AllSessionsState running({required int sessions}) => state(

@@ -384,8 +384,11 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     if (!currentlyLoading && !_replacing) _lastShown = current;
     final searching = state.query.trim().isNotEmpty;
     // A launching row counts, so the search field and chips are already in
-    // place when a first session takes its row.
-    final hasSessions = state.counts.all > 0 || launchesOf(state).isNotEmpty || searching;
+    // place when a first session takes its row. Until the bridge answers a
+    // new key, such as a cleared search, the counts are the previous key's,
+    // so the list keeps what it showed rather than folding the room away.
+    final hasSessions =
+        (state.awaitingAnswer && _hadSessions) || state.counts.all > 0 || launchesOf(state).isNotEmpty || searching;
     final isLoading = awaitingConnection || state.isLoading;
     final loading = isLoading && entries.isEmpty;
     final isActive = cubit.mode == AllSessionsMode.active;
