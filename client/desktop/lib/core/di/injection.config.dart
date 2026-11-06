@@ -94,6 +94,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
       () => registerModule.flutterLocalNotificationsPlugin,
     );
+    gh.lazySingleton<_i644.DesktopFirebaseSdk>(
+      () => registerModule.desktopFirebaseSdk,
+    );
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
     );
@@ -107,9 +110,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i880.DesktopFileSaveClient>(
       () => _i880.DesktopFileSaveClient(),
-    );
-    gh.lazySingleton<_i644.DesktopFirebaseSdk>(
-      () => _i644.DesktopFirebaseSdk(),
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i925.DesktopComposerImagePicker(),
