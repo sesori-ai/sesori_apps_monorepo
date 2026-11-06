@@ -33,8 +33,12 @@ void main() {
         functionalityStorageConsentGranted: true,
       ),
     ).thenAnswer((_) async {});
-    when(() => analytics.logEvent(name: any(named: "name"), parameters: any(named: "parameters")))
-        .thenAnswer((_) async {});
+    when(
+      () => analytics.logEvent(
+        name: any(named: "name"),
+        parameters: any(named: "parameters"),
+      ),
+    ).thenAnswer((_) async {});
     client = DesktopFirebaseAnalytics(sdk: sdk, capability: const AnalyticsRuntimeCapability.enabled());
   });
 
@@ -117,7 +121,12 @@ void main() {
       event: const InstallationAnalyticsEvent.accountLogin(method: AnalyticsLoginProvider.github),
     );
     verifyNever(() => analytics.setAnalyticsCollectionEnabled(true));
-    verifyNever(() => analytics.logEvent(name: any(named: "name"), parameters: any(named: "parameters")));
+    verifyNever(
+      () => analytics.logEvent(
+        name: any(named: "name"),
+        parameters: any(named: "parameters"),
+      ),
+    );
   });
 
   test("reports the five approved authentication events without account identity", () async {
@@ -139,7 +148,8 @@ void main() {
 
     verifyInOrder([
       () => analytics.logEvent(name: "login_attempt_started", parameters: {"provider": "github", "schema_version": 1}),
-      () => analytics.logEvent(name: "login_attempt_completed", parameters: {"provider": "github", "schema_version": 1}),
+      () =>
+          analytics.logEvent(name: "login_attempt_completed", parameters: {"provider": "github", "schema_version": 1}),
       () => analytics.logEvent(
         name: "login_attempt_failed",
         parameters: {"provider": "github", "failure_kind": "cancelled", "schema_version": 1},
@@ -152,8 +162,12 @@ void main() {
 
   test("a Firebase event failure cannot fail authentication", () async {
     await client.initialize(platform: TargetPlatform.macOS);
-    when(() => analytics.logEvent(name: any(named: "name"), parameters: any(named: "parameters")))
-        .thenThrow(StateError("native event failed"));
+    when(
+      () => analytics.logEvent(
+        name: any(named: "name"),
+        parameters: any(named: "parameters"),
+      ),
+    ).thenThrow(StateError("native event failed"));
 
     await expectLater(
       client.logInstallationEvent(
@@ -186,6 +200,9 @@ void main() {
 
   test("no bundled default Firebase plist can eagerly initialize a secondary process", () {
     expect(File("macos/Runner/GoogleService-Info.plist").existsSync(), isFalse);
-    expect(File("macos/Runner.xcodeproj/project.pbxproj").readAsStringSync(), isNot(contains("GoogleService-Info.plist")));
+    expect(
+      File("macos/Runner.xcodeproj/project.pbxproj").readAsStringSync(),
+      isNot(contains("GoogleService-Info.plist")),
+    );
   });
 }
