@@ -7,9 +7,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "../models/omp_steering_models.dart";
 import "../omp_binary.dart";
 
-/// Layer-1 ACP operations used by OMP's bounded isolated workflows: owns one
-/// scratch `omp acp` lease (process plus optional isolated session directory)
-/// and exposes the typed standard requests on it.
+/// Layer-1 wrapper for the `omp acp` tool, its single API per bridge/AGENTS.md
+/// ("API Classes Are Per-Tool, Not Per-Use-Case"). The lease methods own one
+/// optional scratch `omp acp` process (plus isolated session directory) for
+/// bounded isolated workflows and expose the typed standard requests on it.
+/// [steerSession] never uses that lease: it runs only on the live client the
+/// caller passes in, so it reads no instance state.
 class OmpAcpApi({
   required final String _binaryPath,
   required final AcpProcessFactory _processFactory,
