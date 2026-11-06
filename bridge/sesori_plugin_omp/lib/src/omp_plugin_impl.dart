@@ -2,7 +2,6 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/omp_acp_api.dart";
-import "api/omp_steering_api.dart";
 import "models/omp_catalog_models.dart";
 import "omp_binary.dart";
 import "omp_identity.dart";
@@ -98,7 +97,7 @@ class OmpPlugin._({
       catalogService: catalogService,
       ompSessionOptionsService: ompSessionOptionsService,
       cleanupService: cleanupService,
-      steeringService: const OmpSteeringService(repository: OmpSteeringRepository(api: OmpSteeringApi())),
+      steeringService: OmpSteeringService(repository: OmpSteeringRepository(api: catalogApi)),
       processFactory: processFactory,
     );
   }

@@ -1,9 +1,9 @@
 import "package:acp_plugin/acp_plugin.dart";
 
-import "../api/omp_steering_api.dart";
+import "../api/omp_acp_api.dart";
 import "../models/omp_steering_models.dart";
 
-class const OmpSteeringRepository({required final OmpSteeringApi api}) {
+class const OmpSteeringRepository({required final OmpAcpApi api}) {
   /// Whether an OMP `initialize` result advertises `_session/steering`.
   bool parseSteeringSupported({required AcpInitializeResult initializeResult}) =>
       OmpInitializeMetaDto.fromJson(initializeResult.raw).meta?.steering?.supported ?? false;

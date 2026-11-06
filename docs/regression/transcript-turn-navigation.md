@@ -504,9 +504,11 @@ answer, and on a trackpad while text streams.
 - The rule reads loaded messages only. About 2% of ordinary Claude prompts that
   follow a completed tool step join the previous turn, and a boundary can move
   once, at the old edge, when an older page loads.
-- ACP follow-ups other than steered OMP prompts open a new turn
-  (stop-and-send). Live, one sent after a running tool can move to a new turn
-  once idle finalization marks that tool failed.
+- ACP follow-ups open a new turn, except an OMP prompt steered into the
+  running one. Most arrive by stop-and-send; one OMP does not admit opens the
+  next turn without a cancel. Live, a stop-and-send follow-up sent after a
+  running tool can move to a new turn once idle finalization marks that tool
+  failed.
   Claude's live-only `isMeta` bubbles can open a bogus turn live.
 - Claude sessions imported before the queued-command fix regain dropped
   follow-ups only on their next re-import.

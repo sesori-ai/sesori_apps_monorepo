@@ -1162,6 +1162,9 @@ abstract class AcpPlugin({
     // link starts asynchronously, so assigning the attempt after enqueueing
     // is always seen. Slash commands are never steered: the agent runs them
     // only through `session/prompt`, so sendCommand keeps stop-and-send.
+    final predecessor = _turnStates[sessionId]?.queue
+        .where((entry) => entry.phase == _QueuedAcpPromptPhase.steering)
+        .lastOrNull;
     final queuedPrompt = turn.queuedPrompt;
     queuedPrompt.phase = _QueuedAcpPromptPhase.steering;
     final state = _enqueueTurn(sessionId: sessionId, turn: turn);
@@ -1170,6 +1173,7 @@ abstract class AcpPlugin({
       sessionId: sessionId,
       state: state,
       turn: turn,
+      predecessor: predecessor,
     );
   }
 
@@ -1262,32 +1266,61 @@ abstract class AcpPlugin({
   /// Hands a busy-session follow-up to the harness's native steering. An
   /// admitted input is published as sent; one the agent does not admit goes
   /// back to the queue and dispatches after the running turn; a failed request
-  /// falls back to stop-and-send.
+  /// falls back to stop-and-send. A follow-up behind an unresolved
+  /// [predecessor] attempt waits for it and steers only after the predecessor
+  /// was steered, so it can never overtake it. An abort during the attempt
+  /// discards the follow-up, as it does a prompt whose frame is still writing.
   Future<void> _steerFollowUp({
     required AcpStdioClient client,
     required String sessionId,
     required _SessionTurnState state,
     required _QueuedAcpTurn turn,
+    required _QueuedAcpPrompt? predecessor,
   }) async {
     final queuedPrompt = turn.queuedPrompt;
+    final generation = state.generation;
+    bool aborted() => state.generation != generation || queuedPrompt.phase == _QueuedAcpPromptPhase.cancelled;
+    if (predecessor != null) {
+      final predecessorAttempt = predecessor.steeringAttempt;
+      if (predecessorAttempt != null) await predecessorAttempt;
+      if (aborted()) return _discardAbortedFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
+      if (predecessor.phase != _QueuedAcpPromptPhase.steered) {
+        return _returnUnsteeredFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
+      }
+    }
     final AcpSteeringOutcome outcome;
     try {
       outcome = await steerActiveTurn(client: client, sessionId: sessionId, prompt: turn.blocks);
     } on Object catch (error, stack) {
+      if (aborted()) return _discardAbortedFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
       Log.w("[$id] steering a follow-up into $sessionId failed; falling back to stop-and-send", error, stack);
       _returnUnsteeredFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
       _cancelActiveTurnForQueuedInput(sessionId: sessionId);
       return;
     }
+    if (aborted()) return _discardAbortedFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
     switch (outcome) {
       case AcpSteeringOutcome.injected:
         queuedPrompt.phase = _QueuedAcpPromptPhase.steered;
         if (identical(_turnStates[sessionId], state)) {
+          eventMapper.closeAssistantMessageAtUserBoundary(sessionId: sessionId).forEach(_eventBuffer.add);
           _publishSentPrompt(sessionId: sessionId, state: state, turn: turn);
         }
       case AcpSteeringOutcome.notAdmitted:
         Log.d("[$id] follow-up for $sessionId was not admitted into a running turn; sending it next");
         _returnUnsteeredFollowUp(sessionId: sessionId, state: state, queuedPrompt: queuedPrompt);
+    }
+  }
+
+  void _discardAbortedFollowUp({
+    required String sessionId,
+    required _SessionTurnState state,
+    required _QueuedAcpPrompt queuedPrompt,
+  }) {
+    Log.d("[$id] discarding a follow-up for $sessionId whose steering attempt an abort overtook");
+    queuedPrompt.phase = _QueuedAcpPromptPhase.cancelled;
+    if (state.queue.remove(queuedPrompt) && identical(_turnStates[sessionId], state)) {
+      _emitQueueUpdate(sessionId: sessionId, state: state);
     }
   }
 
@@ -2124,7 +2157,9 @@ abstract class AcpPlugin({
       childSessionTracker.interruptRootHoldWait(sessionId: sessionId);
       var removedQueuedPrompt = false;
       for (final entry in state.queue) {
-        if (entry.phase == _QueuedAcpPromptPhase.queued) {
+        // A steering attempt still in flight is dropped too; its reply is
+        // discarded when it arrives.
+        if (entry.phase == _QueuedAcpPromptPhase.queued || entry.phase == _QueuedAcpPromptPhase.steering) {
           entry.phase = _QueuedAcpPromptPhase.cancelled;
           removedQueuedPrompt = true;
         }

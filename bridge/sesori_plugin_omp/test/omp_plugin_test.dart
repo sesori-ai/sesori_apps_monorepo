@@ -540,6 +540,169 @@ void main() {
       expect(frames(steeringMethod), isEmpty);
     });
 
+    test("steers a second follow-up only after the first one is injected", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await sendFollowUp(session.id, "prompt-2", "first");
+      final first = await waitForFrame(steeringMethod);
+      await sendFollowUp(session.id, "prompt-3", "second");
+      await settle();
+      expect(frames(steeringMethod), hasLength(1));
+
+      respond(first, {"outcome": "injected", "queue": "steering"});
+      final second = await waitForFrame(steeringMethod, count: 2);
+      expect((second["params"] as Map)["prompt"], [
+        {"type": "text", "text": "second"},
+      ]);
+      respond(second, {"outcome": "injected", "queue": "steering"});
+      await settle();
+      final userPromptIds = [
+        for (final event in events.whereType<BridgeSseMessageUpdated>())
+          if (event.info case PluginMessageUser(:final promptId?)) promptId,
+      ];
+      expect(userPromptIds.toSet().toList(), ["prompt-1", "prompt-2", "prompt-3"]);
+      respond(firstPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("a follow-up behind a failed steering attempt waits instead of overtaking it", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await sendFollowUp(session.id, "prompt-2", "first");
+      final first = await waitForFrame(steeringMethod);
+      await sendFollowUp(session.id, "prompt-3", "second");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": first["id"],
+        "error": {"code": -32603, "message": "boom"},
+      });
+      await waitForFrame(AcpMethods.sessionCancel);
+      await settle();
+      expect(frames(steeringMethod), hasLength(1));
+      expect(frames(AcpMethods.sessionCancel), hasLength(1));
+      expect(
+        (await plugin.getQueuedPrompts(sessionId: session.id)).map((prompt) => (prompt.id, prompt.dispatchState)),
+        [
+          ("prompt-2", PluginQueuedPromptDispatchState.queued),
+          ("prompt-3", PluginQueuedPromptDispatchState.queued),
+        ],
+      );
+
+      respond(firstPrompt, {"stopReason": "cancelled"});
+      final replacement = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((replacement["params"] as Map)["prompt"], [
+        {"type": "text", "text": "first"},
+      ]);
+      respond(replacement, {"stopReason": "end_turn"});
+      final last = await waitForFrame(AcpMethods.sessionPrompt, count: 3);
+      expect((last["params"] as Map)["prompt"], [
+        {"type": "text", "text": "second"},
+      ]);
+      respond(last, {"stopReason": "end_turn"});
+    });
+
+    test("an abort during a steering attempt discards the follow-up", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await sendFollowUp(session.id, "prompt-2", "late");
+      final steering = await waitForFrame(steeringMethod);
+      await plugin.abortSession(
+        sessionId: session.id,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+
+      respond(steering, {"outcome": "injected", "queue": "steering"});
+      respond(firstPrompt, {"stopReason": "cancelled"});
+      await settle();
+      expect(hasUserMessage("prompt-2"), isFalse);
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, session.id);
+    });
+
+    test("the running turn's reply to a steered follow-up opens a new assistant message", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      void chunk(String text) => fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+          },
+        },
+      });
+      String messageIdOf(String delta) =>
+          events.whereType<BridgeSseMessagePartDelta>().singleWhere((event) => event.delta == delta).messageID;
+
+      chunk("before");
+      await settle();
+      await sendFollowUp(session.id, "prompt-2", "also check the tests");
+      respond(await waitForFrame(steeringMethod), {"outcome": "injected", "queue": "steering"});
+      await settle();
+      chunk("after");
+      await settle();
+
+      expect(hasUserMessage("prompt-2"), isTrue);
+      expect(messageIdOf("after"), isNot(messageIdOf("before")));
+      respond(firstPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("a steered follow-up leaves a pending permission request answerable", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "run it");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 61,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "sessionId": session.id,
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "once", "name": "Allow", "kind": "allow_once"},
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var i = 0; i < 200 && events.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      await sendFollowUp(session.id, "prompt-2", "and then the tests");
+      respond(await waitForFrame(steeringMethod), {"outcome": "injected", "queue": "steering"});
+      await settle();
+      expect(fake.written.where((frame) => frame["id"] == 61), isEmpty);
+      expect(frames(AcpMethods.sessionCancel), isEmpty);
+
+      await plugin.replyToPermission(
+        requestId: events.whereType<BridgeSsePermissionAsked>().single.requestID,
+        sessionId: session.id,
+        reply: PluginPermissionReply.once,
+      );
+      expect(fake.written.where((frame) => frame["id"] == 61).single["result"], {
+        "outcome": {"outcome": "selected", "optionId": "once"},
+      });
+      respond(firstPrompt, {"stopReason": "end_turn"});
+    });
+
     test("maps live reasoning, tools, images, and final text", () async {
       await connect();
       final session = await create("session-1");

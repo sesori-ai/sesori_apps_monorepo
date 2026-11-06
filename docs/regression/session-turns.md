@@ -564,7 +564,13 @@ defaults and queued client sends coherent.
   follow-up that changes the model, variant or agent, one behind another
   waiting prompt, and a failed or unrecognised steering reply (logged) keep
   stop-and-send. A follow-up OMP does not admit returns to Queued and
-  dispatches after the running turn without a cancel. Their
+  dispatches after the running turn without a cancel. A second follow-up sent
+  while the first is still Sending waits for it and steers only once the first
+  was injected, so it never overtakes it. An abort while a follow-up is Sending
+  removes it, and a late reply never publishes it. The running turn's reply to
+  a steered follow-up opens a new assistant message below it. A steered
+  follow-up leaves a pending permission or form request open and answerable;
+  the turn continues after the reply. Their
   synthetic user transcript message is published only after its frame is
   synchronously admitted to the agent's stdin. The shared NDJSON transport
   relies on one IOSink's FIFO admission rather than per-request flushing, so
@@ -987,7 +993,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   for the active turn to finish naturally instead of cancelling it before dispatch.
   An OMP follow-up steered into a running turn cancels it, is sent twice, or
   never shows its user message; a failed steering request leaves the follow-up
-  waiting instead of falling back to stop-and-send.
+  waiting instead of falling back to stop-and-send; a second follow-up
+  overtakes the first; a follow-up aborted while Sending still appears; the
+  reply to a steered follow-up lands above it; or a steered follow-up
+  dismisses a pending permission or form request.
   A Pi abort waits for the general history/control timeout, lets hidden steering
   resume after Stop, or leaves later sends stuck in their sending state.
 - Recovery or interruption artifacts from an aborted turn appear in the next
