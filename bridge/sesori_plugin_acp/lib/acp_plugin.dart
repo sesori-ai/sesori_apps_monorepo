@@ -13,7 +13,8 @@
 //     (getSessionOptions, getAgents, getProviders). Every other policy and hook
 //     has a bridge-safe default; override only what the agent does differently
 //     (see the AcpPlugin doc). Busy-session follow-ups are stop-and-send because
-//     ACP has no standard steering method.
+//     ACP has no standard steering method, unless the harness implements
+//     supportsActiveTurnSteering + steerActiveTurn over its own extension.
 //     The composer builds one AcpSessionConfigurationTracker + AcpCommandTracker
 //     and shares them between the AcpEventMapper (subclass the mapper only for
 //     `xxx/*` notification extensions) and the harness catalog service.

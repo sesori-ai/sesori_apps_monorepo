@@ -110,7 +110,8 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes, OMP | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and no ACP plugin overrides the shared stop-and-send (checked in code on 2026-09-26). |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. |
+| ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
 
@@ -192,7 +193,7 @@ the current wait while retaining the preference for later quota interruptions.
 |---|---|
 | Pi and Claude, still bridge-pending | ✅ Implemented before dispatch; successful cancellation prevents backend submission. |
 | Pi and Claude, already dispatched and awaiting user echo | 🚫 Individual cancellation is not supported through the driven seam; retained rows show Sending without trash. Immediate steering remains enabled. |
-| ACP adapters, including OMP, before prompt-frame writing | ✅ Implemented; a cancelled pending entry never writes its prompt. Once writing starts, cancellation is refused and the row reports Sending until the user-message projection arrives. |
+| ACP adapters, including OMP, before prompt-frame writing | ✅ Implemented; a cancelled pending entry never writes its prompt. Once writing starts, cancellation is refused and the row reports Sending until the user-message projection arrives. An OMP follow-up being steered reports Sending the same way; one OMP does not admit returns to Queued and can be cancelled again. |
 | OpenCode and Codex | No retained queue entries through this API; this does not claim a native per-item cancellation capability. |
 
 Pi's installed 0.85.1 RPC `clear_queue` clears **all** steering/follow-up work,

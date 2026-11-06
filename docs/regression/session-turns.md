@@ -555,8 +555,16 @@ defaults and queued client sends coherent.
   stop-and-send, immediately cancelling the active turn and
   dispatching the queued input after cancellation settles. Further already-queued
   inputs retain FIFO order; natural-completion queueing is not valid production
-  behavior. Every ACP harness uses it: Antigravity, Cursor, Hermes, DeepSeek,
-  Copilot, Grok, and OMP. Their
+  behavior. Antigravity, Cursor, Hermes, DeepSeek, Copilot, and Grok always use
+  it. OMP instead steers a prompt follow-up into its running prompt turn
+  through `_session/steering` when the process advertises
+  `_meta.steering.supported`: the row shows Sending without Cancel, and once OMP
+  reports it injected, its user message appears and the running turn continues
+  without a cancel or a second `session/prompt`. OMP slash commands, a
+  follow-up that changes the model, variant or agent, one behind another
+  waiting prompt, and a failed or unrecognised steering reply (logged) keep
+  stop-and-send. A follow-up OMP does not admit returns to Queued and
+  dispatches after the running turn without a cancel. Their
   synthetic user transcript message is published only after its frame is
   synchronously admitted to the agent's stdin. The shared NDJSON transport
   relies on one IOSink's FIFO admission rather than per-request flushing, so
@@ -839,7 +847,8 @@ defaults and queued client sends coherent.
 
 Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to steer at a tool
-boundary where supported or stop-and-send over ACP, sending a command or
+boundary where supported (including OMP over ACP) or stop-and-send over other
+ACP harnesses, sending a command or
 selection change that must wait, cancelling before dispatch, leaving and
 reopening while an entry is visible, turn length, and client count. Where a
 busy follow-up lands also decides its transcript turn; run the busy send with
@@ -976,6 +985,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   reorders control frames and prompts, or loses an asynchronous sink failure; or
   a stop-and-send ACP follow-up waits
   for the active turn to finish naturally instead of cancelling it before dispatch.
+  An OMP follow-up steered into a running turn cancels it, is sent twice, or
+  never shows its user message; a failed steering request leaves the follow-up
+  waiting instead of falling back to stop-and-send.
   A Pi abort waits for the general history/control timeout, lets hidden steering
   resume after Stop, or leaves later sends stuck in their sending state.
 - Recovery or interruption artifacts from an aborted turn appear in the next

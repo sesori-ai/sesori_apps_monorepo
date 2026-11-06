@@ -49,7 +49,7 @@ void main() {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
     }
 
-    Future<void> connect({Map<String, dynamic>? capabilities}) async {
+    Future<void> connect({Map<String, dynamic>? capabilities, Map<String, dynamic>? meta}) async {
       final connecting = plugin.ensureConnected();
       final initialize = await waitForFrame(AcpMethods.initialize);
       respond(initialize, {
@@ -58,6 +58,7 @@ void main() {
         "authMethods": [
           {"id": "agent", "name": "Agent"},
         ],
+        "_meta": ?meta,
       });
       final authenticate = await waitForFrame(AcpMethods.authenticate);
       expect(authenticate["params"], {"methodId": "agent"});
@@ -90,6 +91,35 @@ void main() {
       variant: null,
       agent: null,
       model: null,
+    );
+
+    const steeringMethod = "_session/steering";
+    const steeringMeta = {
+      "steering": {"supported": true},
+    };
+
+    Future<void> sendFollowUp(
+      String sessionId,
+      String promptId,
+      String text, {
+      ({String providerID, String modelID})? model,
+    }) => plugin.sendPrompt(
+      fastMode: false,
+      promptId: promptId,
+      sessionId: sessionId,
+      parts: [PluginPromptPart.text(text: text)],
+      variant: null,
+      agent: null,
+      model: model,
+    );
+
+    Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
+
+    bool hasUserMessage(String promptId) => events.whereType<BridgeSseMessageUpdated>().any(
+      (event) => switch (event.info) {
+        PluginMessageUser(promptId: final id) => id == promptId,
+        _ => false,
+      },
     );
 
     test("launches omp acp with inherited environment and local agent auth", () async {
@@ -347,7 +377,7 @@ void main() {
       expect(await plugin.getPendingQuestions(sessionId: session.id), isEmpty);
     });
 
-    test("a prompt queued on the active session cancels that turn before dispatch", () async {
+    test("without advertised steering, a prompt queued on the active session cancels that turn first", () async {
       await connect();
       final session = await create("session");
 
@@ -373,6 +403,7 @@ void main() {
       );
       final cancel = await waitForFrame(AcpMethods.sessionCancel);
       expect(cancel["params"], {"sessionId": session.id});
+      expect(frames(steeringMethod), isEmpty);
       expect(frames(AcpMethods.sessionPrompt), hasLength(1));
       expect((await plugin.getQueuedPrompts(sessionId: session.id)).single.id, "prompt-2");
 
@@ -393,6 +424,120 @@ void main() {
         isA<PluginMessageUser>(),
       );
       respond(replacement, {"stopReason": "end_turn"});
+    });
+
+    test("steers a follow-up into the running turn when OMP advertises steering", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await sendFollowUp(session.id, "prompt-2", "also check the tests");
+      final steering = await waitForFrame(steeringMethod);
+      expect(steering["params"], {
+        "sessionId": session.id,
+        "prompt": [
+          {"type": "text", "text": "also check the tests"},
+        ],
+      });
+      final queued = (await plugin.getQueuedPrompts(sessionId: session.id)).single;
+      expect(queued.id, "prompt-2");
+      expect(queued.dispatchState, PluginQueuedPromptDispatchState.dispatched);
+      expect(await plugin.cancelQueuedPrompt(sessionId: session.id, promptId: "prompt-2"), isFalse);
+      expect(hasUserMessage("prompt-2"), isFalse);
+
+      respond(steering, {"outcome": "injected", "queue": "steering"});
+      await settle();
+      expect(hasUserMessage("prompt-2"), isTrue);
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      expect(events.whereType<BridgeSseSessionIdle>(), isEmpty);
+
+      respond(firstPrompt, {"stopReason": "end_turn"});
+      await settle();
+      expect(frames(AcpMethods.sessionCancel), isEmpty);
+      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, session.id);
+    });
+
+    test("sends a follow-up OMP does not admit as the next turn without cancelling", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await sendFollowUp(session.id, "prompt-2", "next");
+      respond(await waitForFrame(steeringMethod), {"outcome": "promptRequired", "queue": "steering"});
+      await settle();
+      final queued = (await plugin.getQueuedPrompts(sessionId: session.id)).single;
+      expect(queued.dispatchState, PluginQueuedPromptDispatchState.queued);
+      expect(frames(AcpMethods.sessionCancel), isEmpty);
+      expect(hasUserMessage("prompt-2"), isFalse);
+
+      respond(firstPrompt, {"stopReason": "end_turn"});
+      final next = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((next["params"] as Map)["prompt"], [
+        {"type": "text", "text": "next"},
+      ]);
+      expect(hasUserMessage("prompt-2"), isTrue);
+      expect(frames(AcpMethods.sessionCancel), isEmpty);
+      respond(next, {"stopReason": "end_turn"});
+    });
+
+    for (final (name, reply) in [
+      (
+        "a failed outcome",
+        <String, dynamic>{
+          "result": {"outcome": "failed", "reason": "image preprocessing failed"},
+        },
+      ),
+      (
+        "an RPC error",
+        <String, dynamic>{
+          "error": {"code": -32602, "message": "unknown session"},
+        },
+      ),
+    ]) {
+      test("falls back to stop-and-send when steering returns $name", () async {
+        await connect(meta: steeringMeta);
+        final session = await create("session");
+        await sendFollowUp(session.id, "prompt-1", "keep searching");
+        final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+        await sendFollowUp(session.id, "prompt-2", "stop");
+        final steering = await waitForFrame(steeringMethod);
+        fake.emit({"jsonrpc": "2.0", "id": steering["id"], ...reply});
+        final cancel = await waitForFrame(AcpMethods.sessionCancel);
+        expect(cancel["params"], {"sessionId": session.id});
+        expect(
+          (await plugin.getQueuedPrompts(sessionId: session.id)).single.dispatchState,
+          PluginQueuedPromptDispatchState.queued,
+        );
+
+        respond(firstPrompt, {"stopReason": "cancelled"});
+        final replacement = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+        expect((replacement["params"] as Map)["prompt"], [
+          {"type": "text", "text": "stop"},
+        ]);
+        expect(hasUserMessage("prompt-2"), isTrue);
+        respond(replacement, {"stopReason": "end_turn"});
+      });
+    }
+
+    test("keeps stop-and-send for a follow-up that changes the running turn's model", () async {
+      await connect(meta: steeringMeta);
+      final session = await create("session");
+      await sendFollowUp(session.id, "prompt-1", "keep searching");
+      await waitForFrame(AcpMethods.sessionPrompt);
+
+      await sendFollowUp(
+        session.id,
+        "prompt-2",
+        "switch models",
+        model: (providerID: "anthropic", modelID: "claude-opus"),
+      );
+      final cancel = await waitForFrame(AcpMethods.sessionCancel);
+      expect(cancel["params"], {"sessionId": session.id});
+      expect(frames(steeringMethod), isEmpty);
     });
 
     test("maps live reasoning, tools, images, and final text", () async {

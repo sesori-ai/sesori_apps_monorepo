@@ -2,19 +2,24 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/omp_acp_api.dart";
+import "api/omp_steering_api.dart";
 import "models/omp_catalog_models.dart";
 import "omp_binary.dart";
 import "omp_identity.dart";
 import "repositories/omp_catalog_repository.dart";
 import "repositories/omp_session_cleanup_repository.dart";
+import "repositories/omp_steering_repository.dart";
 import "services/omp_catalog_service.dart";
 import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
+import "services/omp_steering_service.dart";
 import "trackers/omp_catalog_tracker.dart";
 
 /// Oh My Pi backend over ACP.
 ///
-/// OMP replaces an in-flight same-session turn when another input arrives and
+/// OMP replaces an in-flight same-session turn when another `session/prompt`
+/// arrives, so a busy follow-up is steered through `_session/steering` when the
+/// process advertises it and otherwise uses the shared stop-and-send. It
 /// supports standard form elicitation. Independent sessions retain stock ACP's
 /// per-session turn lanes, while project-scoped model/mode/thinking catalog and
 /// persisted-session cleanup run over isolated scratch processes.
@@ -27,6 +32,7 @@ class OmpPlugin._({
   required final OmpCatalogService _catalogService,
   required final OmpSessionOptionsService _ompSessionOptionsService,
   required final OmpSessionCleanupService _cleanupService,
+  required final OmpSteeringService _steeringService,
   required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
@@ -92,6 +98,7 @@ class OmpPlugin._({
       catalogService: catalogService,
       ompSessionOptionsService: ompSessionOptionsService,
       cleanupService: cleanupService,
+      steeringService: const OmpSteeringService(repository: OmpSteeringRepository(api: OmpSteeringApi())),
       processFactory: processFactory,
     );
   }
@@ -107,6 +114,21 @@ class OmpPlugin._({
 
   @override
   bool get supportsFormElicitation => true;
+
+  /// OMP advertises `_session/steering` per process in its `initialize`
+  /// result. Without it, follow-ups keep the shared stop-and-send.
+  @override
+  bool get supportsActiveTurnSteering {
+    final result = initializeResult;
+    return result != null && _steeringService.supportsSteering(result: result);
+  }
+
+  @override
+  Future<AcpSteeringOutcome> steerActiveTurn({
+    required AcpStdioClient client,
+    required String sessionId,
+    required List<Map<String, dynamic>> prompt,
+  }) => _steeringService.steer(client: client, sessionId: sessionId, prompt: prompt);
 
   @override
   void captureSessionConfig(
