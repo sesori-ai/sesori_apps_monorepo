@@ -14,8 +14,9 @@ import "../../helpers/test_helpers.dart";
 // ---------------------------------------------------------------------------
 // Behaviour guards for the bridge-offline recovery view: the heading naming
 // the computer with how long it has been gone; the account's other online
-// computers as one-tap switches; a single info control; and the
-// install-commands disclosure that closes the body.
+// computers as one-tap switches; how to start that computer's bridge, by how
+// it was installed; a single info control; and the install-commands
+// disclosure that closes the body.
 //
 // Pumps the real home (its cubits are built from getIt, so every
 // dependency is registered as a mock below) driven into the bridge-offline
@@ -37,6 +38,7 @@ BridgeSummary _bridge({
   BridgePlatform platform = BridgePlatform.macos,
   BridgeRegistrationStatus status = BridgeRegistrationStatus.active,
   DateTime? lastSeenAt,
+  BridgeKind? kind,
 }) {
   return BridgeSummary(
     id: id,
@@ -46,6 +48,7 @@ BridgeSummary _bridge({
     status: status,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
+    kind: kind,
   );
 }
 
@@ -115,7 +118,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text("Make sure the Bridge is running"), findsOneWidget);
+    expect(find.text("Install commands"), findsOneWidget);
     expect(find.text("Start the bridge"), findsNothing);
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
@@ -139,7 +142,7 @@ void main() {
 
   group("other computers", () {
     final bridges = [
-      _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
+      _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1), kind: BridgeKind.cli),
       _bridge(id: "b", name: "work-desktop", platform: BridgePlatform.linux),
       _bridge(id: "c", name: "old-tower", status: BridgeRegistrationStatus.inactive),
     ];
@@ -205,10 +208,54 @@ void main() {
     });
   });
 
+  group("starting the bridge", () {
+    Future<void> pumpWithBridge(WidgetTester tester, {required BridgeKind? kind}) async {
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+        (_) async => [_bridge(id: "a", name: "Macbook-Pro.local", kind: kind)],
+      );
+      await pumpScreen(tester);
+    }
+
+    testWidgets("a command-line bridge gets the start command", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.cli);
+
+      expect(find.text("Make sure the Bridge is running"), findsOneWidget);
+      expect(find.text("sesori-bridge"), findsOneWidget);
+      expect(find.textContaining("Sesori Desktop"), findsNothing);
+      expect(find.text("Terminal:"), findsNothing);
+    });
+
+    testWidgets("Sesori Desktop gets told to open the app, with no command", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.desktop);
+
+      // Sesori Desktop puts no sesori-bridge command on PATH.
+      expect(find.text("Open Sesori Desktop on Macbook-Pro.local."), findsOneWidget);
+      expect(find.text("sesori-bridge"), findsNothing);
+      expect(find.text("Make sure the Bridge is running"), findsNothing);
+      expect(find.text("Terminal:"), findsNothing);
+      // The reinstall disclosure stays.
+      expect(find.text("Install commands"), findsOneWidget);
+    });
+
+    testWidgets("an unknown kind gets both, each labelled", (tester) async {
+      await pumpWithBridge(tester, kind: null);
+
+      expect(find.text("Make sure the Bridge is running"), findsNothing);
+      final desktopY = tester.getTopLeft(find.text("Sesori Desktop: open the app.")).dy;
+      final terminalY = tester.getTopLeft(find.text("Terminal:")).dy;
+      final commandY = tester.getTopLeft(find.text("sesori-bridge")).dy;
+      expect(desktopY, lessThan(terminalY));
+      expect(terminalY, lessThan(commandY));
+    });
+  });
+
   testWidgets("the heading stands alone when the bridges could not be fetched", (tester) async {
     await pumpScreen(tester);
 
     expect(find.text("Bridge offline"), findsOneWidget);
+    // Without a computer there is no kind either, so both ways to start it show.
+    expect(find.text("Sesori Desktop: open the app."), findsOneWidget);
+    expect(find.text("Terminal:"), findsOneWidget);
     expect(find.textContaining("Last seen"), findsNothing);
     expect(find.text("Install commands"), findsOneWidget);
   });
@@ -244,7 +291,7 @@ void main() {
     // End-of-body ordering: run box → explainer → disclosure. No reconnect
     // button: the page reconnects on its own and on pull-to-refresh.
     expect(find.text("Reconnect"), findsNothing);
-    final runBoxY = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
+    final runBoxY = tester.getTopLeft(find.text("sesori-bridge")).dy;
     final whyY = tester.getTopLeft(find.text("Why is this needed?")).dy;
     final disclosureY = tester.getTopLeft(find.text("Install commands")).dy;
     expect(runBoxY, lessThan(whyY));

@@ -106,7 +106,12 @@ participates.
   "<name> is offline" heading when the name is known
   ("Bridge offline" otherwise), with when it was last seen when that is known,
   then the account's other online computers ([projects](projects-and-sessions.md)),
-  and keeps the start command above quiet explainer, install and help links.
+  and then how to start that computer's bridge above quiet explainer, install and help links. The
+  instruction follows the bridge's registered kind: Sesori Desktop gets "Open Sesori Desktop on <name>." with
+  no command box (it puts no `sesori-bridge` on PATH); the command-line bridge gets "Make sure the Bridge is
+  running" and the `sesori-bridge` box; an unknown kind (an older auth server, a bridge registered before
+  kind existed, an unrecognised value, or no named computer) gets both, labelled "Sesori Desktop: open the
+  app." and "Terminal:" over the box.
 - Desktop first-run startup preferences and optional macOS file-access guidance follow the
   [cockpit contract](desktop-cockpit-shell.md) and [supervision contract](desktop-bridge-supervision.md).
   Dismissing guidance does not grant permission or block ordinary project navigation.

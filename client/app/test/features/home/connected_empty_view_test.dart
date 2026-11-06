@@ -36,6 +36,7 @@ BridgeSummary _bridge({required String name, DateTime? lastSeenAt}) {
     status: BridgeRegistrationStatus.active,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
+    kind: null,
   );
 }
 

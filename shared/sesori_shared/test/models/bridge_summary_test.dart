@@ -22,6 +22,7 @@ void main() {
         status: BridgeRegistrationStatus.active,
         addedAt: DateTime.utc(2026, 6, 1, 12),
         lastSeenAt: DateTime.utc(2026, 6, 10, 9, 30),
+        kind: BridgeKind.desktop,
       );
 
       final json = original.toJson();
@@ -31,6 +32,7 @@ void main() {
       expect(json["hostname"], equals("alex-macbook"));
       expect(json["platform"], equals("macos"));
       expect(json["status"], equals("active"));
+      expect(json["kind"], equals("desktop"));
       expect(restored, equals(original));
     });
 
@@ -78,6 +80,34 @@ void main() {
         BridgePlatform.windows,
       );
       expect(BridgeSummary.fromJson(_summaryJson(platform: "linux", status: "active")).platform, BridgePlatform.linux);
+    });
+
+    test("parses a missing kind as unknown", () {
+      // Servers before kind was returned omit the field.
+      final restored = BridgeSummary.fromJson(_summaryJson(platform: "macos", status: "active"));
+
+      expect(restored.kind, isNull);
+    });
+
+    test("parses both known kinds", () {
+      expect(
+        BridgeSummary.fromJson({..._summaryJson(platform: "macos", status: "active"), "kind": "desktop"}).kind,
+        BridgeKind.desktop,
+      );
+      expect(
+        BridgeSummary.fromJson({..._summaryJson(platform: "linux", status: "active"), "kind": "cli"}).kind,
+        BridgeKind.cli,
+      );
+    });
+
+    test("parses a null or unrecognised kind as unknown", () {
+      // Null is what the server returns for a bridge that registered before
+      // kind existed; an unrecognised value is a kind a newer server knows.
+      expect(BridgeSummary.fromJson({..._summaryJson(platform: "macos", status: "active"), "kind": null}).kind, isNull);
+      expect(
+        BridgeSummary.fromJson({..._summaryJson(platform: "macos", status: "active"), "kind": "container"}).kind,
+        isNull,
+      );
     });
 
     test("parses an unrecognised platform as unknown", () {

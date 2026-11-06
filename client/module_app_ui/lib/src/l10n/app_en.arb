@@ -477,6 +477,24 @@
   "@projectsBridgeOfflineStartBridge": {
     "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
   },
+  "projectsBridgeOfflineOpenDesktop": "Open Sesori Desktop on {name}.",
+  "@projectsBridgeOfflineOpenDesktop": {
+    "description": "Instruction on the bridge-offline Projects screen when the offline computer runs Sesori Desktop, whose bridge starts with the app, so no command is shown. Names the computer, e.g. 'Open Sesori Desktop on dev-laptop.'",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "dev-laptop"
+      }
+    }
+  },
+  "projectsBridgeOfflineDesktopOption": "Sesori Desktop: open the app.",
+  "@projectsBridgeOfflineDesktopOption": {
+    "description": "First of two labelled instructions on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers Sesori Desktop."
+  },
+  "projectsBridgeOfflineTerminalOption": "Terminal:",
+  "@projectsBridgeOfflineTerminalOption": {
+    "description": "Label above the start-the-bridge command box on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers the command-line bridge."
+  },
   "projectsDesktopStartBridge": "Start the bridge",
   "@projectsDesktopStartBridge": {
     "description": "Desktop project recovery action that starts or retries the supervised local bridge."

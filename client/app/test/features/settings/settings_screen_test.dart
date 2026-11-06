@@ -384,6 +384,7 @@ void main() {
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026),
           lastSeenAt: DateTime.utc(2026, 7),
+          kind: null,
         ),
         BridgeSummary(
           id: "b",
@@ -393,6 +394,7 @@ void main() {
           status: BridgeRegistrationStatus.inactive,
           addedAt: DateTime.utc(2026),
           lastSeenAt: null,
+          kind: null,
         ),
       ],
     );
@@ -444,6 +446,7 @@ void main() {
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026),
           lastSeenAt: DateTime.utc(2026, 7),
+          kind: null,
         ),
         BridgeSummary(
           id: "b",
@@ -453,6 +456,7 @@ void main() {
           status: BridgeRegistrationStatus.inactive,
           addedAt: DateTime.utc(2026),
           lastSeenAt: null,
+          kind: null,
         ),
       ],
     );

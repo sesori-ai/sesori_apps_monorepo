@@ -114,6 +114,7 @@ class FakeBridgeRegistrationRepository() implements BridgeRegistrationRepository
       status: BridgeRegistrationStatus.inactive,
       addedAt: DateTime.utc(2026, 6, 1),
       lastSeenAt: null,
+      kind: null,
     );
   }
 

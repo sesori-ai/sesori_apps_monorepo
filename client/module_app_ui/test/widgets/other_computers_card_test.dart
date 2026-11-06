@@ -17,6 +17,7 @@ BridgeSummary _computer({required String id, required BridgeRegistrationStatus s
   status: status,
   addedAt: DateTime.utc(2026),
   lastSeenAt: null,
+  kind: null,
 );
 
 BridgeSummary _online(String id) => _computer(id: id, status: BridgeRegistrationStatus.active);

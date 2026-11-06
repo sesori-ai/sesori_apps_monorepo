@@ -955,6 +955,24 @@ abstract class AppLocalizations {
   /// **'Make sure the Bridge is running'**
   String get projectsBridgeOfflineStartBridge;
 
+  /// Instruction on the bridge-offline Projects screen when the offline computer runs Sesori Desktop, whose bridge starts with the app, so no command is shown. Names the computer, e.g. 'Open Sesori Desktop on dev-laptop.'
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sesori Desktop on {name}.'**
+  String projectsBridgeOfflineOpenDesktop(String name);
+
+  /// First of two labelled instructions on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers Sesori Desktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori Desktop: open the app.'**
+  String get projectsBridgeOfflineDesktopOption;
+
+  /// Label above the start-the-bridge command box on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers the command-line bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal:'**
+  String get projectsBridgeOfflineTerminalOption;
+
   /// Desktop project recovery action that starts or retries the supervised local bridge.
   ///
   /// In en, this message translates to:

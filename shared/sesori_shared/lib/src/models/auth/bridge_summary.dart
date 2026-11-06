@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../sesori/health_response.dart" show BridgeKind;
+
 part "bridge_summary.freezed.dart";
 part "bridge_summary.g.dart";
 
@@ -19,6 +21,12 @@ sealed class BridgeSummary with _$BridgeSummary {
     required BridgeRegistrationStatus status,
     required DateTime addedAt,
     required DateTime? lastSeenAt,
+
+    /// How the bridge was installed, which decides how the user starts it.
+    /// Null when unknown: the bridge registered before kind existed, the
+    /// server predates the field, or it reports a kind this client does not
+    /// know yet.
+    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required BridgeKind? kind,
   }) = _BridgeSummary;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSummaryFromJson(json);

@@ -507,6 +507,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineStartBridge => 'Make sure the Bridge is running';
 
   @override
+  String projectsBridgeOfflineOpenDesktop(String name) {
+    return 'Open Sesori Desktop on $name.';
+  }
+
+  @override
+  String get projectsBridgeOfflineDesktopOption => 'Sesori Desktop: open the app.';
+
+  @override
+  String get projectsBridgeOfflineTerminalOption => 'Terminal:';
+
+  @override
   String get projectsDesktopStartBridge => 'Start the bridge';
 
   @override

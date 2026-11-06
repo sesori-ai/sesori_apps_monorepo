@@ -189,6 +189,7 @@ void main() {
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026, 1, 1),
           lastSeenAt: DateTime.utc(2026, 9, 1),
+          kind: null,
         ),
       ],
     );
@@ -1201,6 +1202,7 @@ BridgeSummary _computer({required String id, required String name, required Brid
       status: status,
       addedAt: DateTime.utc(2026, 1, 1),
       lastSeenAt: null,
+      kind: null,
     );
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;

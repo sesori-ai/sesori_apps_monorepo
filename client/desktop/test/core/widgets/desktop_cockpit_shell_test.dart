@@ -1702,6 +1702,7 @@ BridgeSummary _computer({required String id, required String name, required Brid
       status: status,
       addedAt: DateTime.utc(2026),
       lastSeenAt: null,
+      kind: null,
     );
 
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;

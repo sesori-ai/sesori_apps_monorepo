@@ -20,6 +20,11 @@ _BridgeSummary _$BridgeSummaryFromJson(Map json) => _BridgeSummary(
   lastSeenAt: json['lastSeenAt'] == null
       ? null
       : DateTime.parse(json['lastSeenAt'] as String),
+  kind: $enumDecodeNullable(
+    _$BridgeKindEnumMap,
+    json['kind'],
+    unknownValue: JsonKey.nullForUndefinedEnumValue,
+  ),
 );
 
 Map<String, dynamic> _$BridgeSummaryToJson(_BridgeSummary instance) =>
@@ -31,6 +36,7 @@ Map<String, dynamic> _$BridgeSummaryToJson(_BridgeSummary instance) =>
       'status': _$BridgeRegistrationStatusEnumMap[instance.status]!,
       'addedAt': instance.addedAt.toIso8601String(),
       'lastSeenAt': ?instance.lastSeenAt?.toIso8601String(),
+      'kind': ?_$BridgeKindEnumMap[instance.kind],
     };
 
 const _$BridgePlatformEnumMap = {
@@ -43,4 +49,9 @@ const _$BridgePlatformEnumMap = {
 const _$BridgeRegistrationStatusEnumMap = {
   BridgeRegistrationStatus.active: 'active',
   BridgeRegistrationStatus.inactive: 'inactive',
+};
+
+const _$BridgeKindEnumMap = {
+  BridgeKind.cli: 'cli',
+  BridgeKind.desktop: 'desktop',
 };
