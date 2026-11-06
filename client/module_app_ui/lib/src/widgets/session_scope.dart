@@ -35,7 +35,6 @@ class const SessionScope({
   required final SessionLaunchService sessionLaunchService,
   required final ConnectionService connectionService,
   required final SessionListFilterTracker filterTracker,
-  required final LastNewSessionProjectTracker lastProjectTracker,
   required final SseEventTracker sseEventTracker,
   required final SessionUnseenTracker sessionUnseenTracker,
 
@@ -75,7 +74,6 @@ class const SessionScope({
             create: (context) => createAllSessionsCubit(
               context: context,
               filterTracker: filterTracker,
-              lastProjectTracker: lastProjectTracker,
               sseEventTracker: sseEventTracker,
               sessionUnseenTracker: sessionUnseenTracker,
             ),
@@ -102,14 +100,12 @@ class const SessionScope({
 AllSessionsCubit createAllSessionsCubit({
   required BuildContext context,
   required SessionListFilterTracker filterTracker,
-  required LastNewSessionProjectTracker lastProjectTracker,
   required SseEventTracker sseEventTracker,
   required SessionUnseenTracker sessionUnseenTracker,
 }) => AllSessionsCubit(
   window: context.read<SessionWindowService>(),
   projectInventory: context.read<ProjectInventoryService>(),
   filterTracker: filterTracker,
-  lastProjectTracker: lastProjectTracker,
   sseEventTracker: sseEventTracker,
   sessionUnseenTracker: sessionUnseenTracker,
 );
@@ -127,7 +123,6 @@ class const ArchivedSessionsScope({
   })
   createRefreshService,
   required final SessionListFilterTracker filterTracker,
-  required final LastNewSessionProjectTracker lastProjectTracker,
   required final SseEventTracker sseEventTracker,
   required final SessionUnseenTracker sessionUnseenTracker,
   required final Widget child,
@@ -150,7 +145,6 @@ class const ArchivedSessionsScope({
           create: (context) => createAllSessionsCubit(
             context: context,
             filterTracker: filterTracker,
-            lastProjectTracker: lastProjectTracker,
             sseEventTracker: sseEventTracker,
             sessionUnseenTracker: sessionUnseenTracker,
           ),

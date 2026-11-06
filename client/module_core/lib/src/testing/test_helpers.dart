@@ -30,7 +30,6 @@ import "../platform/url_launcher.dart";
 import "../repositories/bridge_repository.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
-import "../repositories/last_new_session_project_store.dart";
 import "../repositories/models/plugin_discovery_snapshot.dart";
 import "../repositories/models/plugin_management_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
@@ -47,9 +46,7 @@ import "../services/catalog_rescan_service.dart";
 import "../services/feedback_prompt_service.dart";
 import "../services/file_reference_open_service.dart";
 import "../services/founder_call_service.dart";
-import "../services/last_new_session_project_tracker.dart";
 import "../services/models/catalog_rescan_state.dart";
-import "../services/models/last_new_session_project.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
 import "../services/new_session_selection_tracker.dart";
@@ -1005,38 +1002,4 @@ class FakeDedicatedWorktreePreferenceStore() implements DedicatedWorktreePrefere
 
   @override
   Future<void> write({required bool value}) async => writes.add(value);
-}
-
-/// The last new-session project, already read for the connected computer:
-/// [emit] sets what it knows, and [records] lists what the composer recorded.
-class FakeLastNewSessionProjectTracker() implements LastNewSessionProjectTracker {
-  final BehaviorSubject<LastNewSessionProject> _project = BehaviorSubject.seeded(
-    const LastNewSessionProjectKnown(projectId: null),
-  );
-  final List<String> records = [];
-
-  @override
-  ValueStream<LastNewSessionProject> get project => _project.stream;
-
-  void emit({required LastNewSessionProject project}) => _project.add(project);
-
-  @override
-  void record({required String projectId}) {
-    records.add(projectId);
-    _project.add(LastNewSessionProjectKnown(projectId: projectId));
-  }
-
-  @override
-  Future<void> dispose() => _project.close();
-}
-
-/// Stores the last new-session project of each computer in memory.
-class FakeLastNewSessionProjectStore() implements LastNewSessionProjectStore {
-  final Map<String, String> projectIds = {};
-
-  @override
-  Future<String?> read({required String bridgeId}) async => projectIds[bridgeId];
-
-  @override
-  Future<void> write({required String bridgeId, required String projectId}) async => projectIds[bridgeId] = projectId;
 }

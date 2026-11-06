@@ -6,9 +6,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
-import "../../services/last_new_session_project_tracker.dart";
 import "../../services/models/all_sessions_mode.dart";
-import "../../services/models/last_new_session_project.dart";
 import "../../services/models/project_list_state.dart";
 import "../../services/models/session_list_quick_filter.dart";
 import "../../services/models/session_window_state.dart";
@@ -29,7 +27,6 @@ class AllSessionsCubit({
   required final SessionWindowService _window,
   required final ProjectInventoryService _projectInventory,
   required final SessionListFilterTracker _filterTracker,
-  required final LastNewSessionProjectTracker _lastProjectTracker,
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
 }) extends Cubit<AllSessionsState> {
@@ -52,7 +49,6 @@ class AllSessionsCubit({
         _sessionUnseenTracker.sessionUnseen.skip(1),
         // [selectProject] already shows its own selection.
         _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId),
-        _lastProjectTracker.project.skip(1),
       ]).debounceTime(Duration.zero).listen((_) => _update()),
     );
     _update();
@@ -83,11 +79,6 @@ class AllSessionsCubit({
     _filterTracker.select(projectId: projectId);
     _update();
   }
-
-  /// Remembers [projectId], chosen for a new session before any composer
-  /// exists, as where the next new session opens on the computer being viewed.
-  /// A composer's own picks are remembered by its cubit.
-  void rememberNewSessionProject({required String projectId}) => _lastProjectTracker.record(projectId: projectId);
 
   /// The loaded rows narrow at once; the window asks the bridge once typing
   /// pauses.
@@ -193,22 +184,10 @@ class AllSessionsCubit({
           RemoteFailureReason.unknown,
         SessionWindowFailed() || SessionWindowLoading() || SessionWindowLoaded() => null,
       },
-      isLoading:
-          _retrying ||
-          window is SessionWindowLoading ||
-          _projectInventory.state is ProjectListLoading ||
-          _lastProjectTracker.project.value is LastNewSessionProjectUnknown,
+      isLoading: _retrying || window is SessionWindowLoading || _projectInventory.state is ProjectListLoading,
       scratchProjectId: scratchProjectId,
-      defaultProjectId:
-          projectId ??
-          switch (_lastProjectTracker.project.value) {
-            // Until the computer's last project is read, any other default
-            // would be a guess.
-            LastNewSessionProjectUnknown() => null,
-            // A project since removed or hidden gives way to the rest.
-            LastNewSessionProjectKnown(:final projectId) =>
-              (projects.containsKey(projectId) ? projectId : null) ?? scratchProjectId ?? _newestProjectId,
-          },
+      // A bridge without "No project" falls back to the newest session's.
+      defaultProjectId: projectId ?? scratchProjectId ?? _newestProjectId,
     );
     // A cubit's first emit goes out even when equal to its initial state.
     if (next != state) emit(next);

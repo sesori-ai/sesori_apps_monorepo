@@ -10,14 +10,9 @@ variant, and worktree mode, and creating the session with its first input.
 
 - Every new-session entry point opens in one default project. The desktop New session row and Cmd+N start with the
   open session's project, which beats even the filter, since it is where the user is. After that, for every entry
-  point: the session list's filter, else the project the user last picked in the new-session composer or started a
-  session in on the computer being viewed, while it is still listed, else "No project" on a bridge that has it, else
-  the project of the newest session whose project is still listed. The last project is stored per computer on the
-  device, so it survives leaving the composer, the desktop home rebuilding on return from a session, and an app
-  restart; another computer keeps its own. Any project pick in a composer or in the "What should we work on?"
-  prompt counts, the move a filter change makes on a home composer included; opening in the default does not.
-  Until the computer's stored project is read, only the filter is a default and the list counts as loading, so
-  the home panes wait rather than show the prompt.
+  point: the session list's filter, else "No project" on a bridge that has it, else the project of the newest
+  session whose project is still listed. A project picked in a composer, or a session started in one, is not
+  remembered: the next new session opens in the default again.
 - The desktop sidebar's New session button and Cmd+N (Ctrl+N on Windows/Linux) open the typed setup route in
   that default, else the first listed project; with no project yet they open the Add project dialog, and the
   project it adds opens in setup.
@@ -596,14 +591,12 @@ startup-extension file failure, retry once the filesystem is usable.
 
 ## Failure Signals
 
-- The phone home's New session opens a project other than its default (the filtered one, else the last project
-  picked or started in on the computer being viewed, else "No project" on a bridge that has it, else the newest
-  session whose project is still listed),
+- The phone home's New session opens a project other than its default (the filtered one, else "No project" on a
+  bridge that has it, else the newest session whose project is still listed),
   or, with no default, preselects a project, creates a session before one is chosen, or hides the known projects
   behind the zero-project state.
-- A project picked in the composer, or a session started in it, is not where the next composer opens after Back,
-  a desktop return from a session, or an app restart (while no filter is set); another computer's last project
-  leaks in; or a home composer briefly takes "No project" or the newest session's project before the stored one.
+- Without a filter, the next composer opens in a project picked or started in earlier instead of "No project" on a
+  bridge that has it, after Back, a return from a session (desktop home or the wide phone pane), or an app restart.
 - Pi exits or hangs on an extension's startup question, a catalog refresh leaves
   newly available models missing for that reason, or an early command is lost,
   duplicated, or corrupted when native RPC starts reading input; startup

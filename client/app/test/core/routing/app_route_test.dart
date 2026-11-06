@@ -233,12 +233,10 @@ void main() {
       final unseen = FakeSessionUnseenTracker();
       getIt
         ..registerSingleton<SessionListFilterTracker>(_MockSessionListFilterTracker())
-        ..registerSingleton<LastNewSessionProjectTracker>(FakeLastNewSessionProjectTracker())
         ..registerSingleton<SseEventTracker>(activity)
         ..registerSingleton<SessionUnseenTracker>(unseen);
       addTearDown(() async {
         await getIt.unregister<SessionListFilterTracker>();
-        await getIt.unregister<LastNewSessionProjectTracker>();
         await getIt.unregister<SseEventTracker>();
         await getIt.unregister<SessionUnseenTracker>();
         await activity.onDispose();

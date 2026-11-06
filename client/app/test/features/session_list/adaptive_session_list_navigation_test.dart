@@ -6,7 +6,6 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/home/home_sidebar_footer.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -394,37 +393,28 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    Matcher recorded(List<String> projectIds) =>
-        isA<FakeLastNewSessionProjectTracker>().having((tracker) => tracker.records, "records", projectIds);
-
-    // The newest session's project, which opening in does not remember.
+    // The newest session's project, on a bridge without "No project".
     expect(draftProject(), "p1");
-    expect(getIt<LastNewSessionProjectTracker>(), recorded([]));
 
     // A filter that already names the draft's project moves nothing, and
-    // clearing it leaves nothing to remember either.
+    // clearing it moves nothing either.
     await pick(trigger: switcher, option: "Project One");
     expect(find.descendant(of: switcher, matching: find.text("Project One")), findsOneWidget);
     await pick(trigger: switcher, option: "All projects");
     expect(find.descendant(of: switcher, matching: find.text("All projects")), findsOneWidget);
     expect(draftProject(), "p1");
-    expect(getIt<LastNewSessionProjectTracker>(), recorded([]));
 
     await pick(trigger: switcher, option: "Project Two");
     expect(draftProject(), "p2");
-    expect(getIt<LastNewSessionProjectTracker>(), recorded(["p2"]));
 
-    // The filter's project is the last one the draft was in, so it stays, and
-    // clearing the filter remembers no fallback.
+    // Clearing the filter moves the draft to the unfiltered default.
     await pick(trigger: switcher, option: "All projects");
-    expect(draftProject(), "p2");
-    expect(getIt<LastNewSessionProjectTracker>(), recorded(["p2"]));
+    expect(draftProject(), "p1");
 
     // The header moves the draft and leaves the filter.
-    await pick(trigger: find.byKey(const Key("new_session_project")), option: "Project One");
-    expect(draftProject(), "p1");
+    await pick(trigger: find.byKey(const Key("new_session_project")), option: "Project Two");
+    expect(draftProject(), "p2");
     expect(find.descendant(of: switcher, matching: find.text("All projects")), findsOneWidget);
-    expect(getIt<LastNewSessionProjectTracker>(), recorded(["p2", "p1"]));
   });
 
   testWidgets("the wide home keeps one list across every project's routes", (tester) async {

@@ -300,7 +300,6 @@ List<RouteBase> _buildAppRoutes({
           sessionLaunchService: getIt<SessionLaunchService>(),
           connectionService: getIt<ConnectionService>(),
           filterTracker: getIt<SessionListFilterTracker>(),
-          lastProjectTracker: getIt<LastNewSessionProjectTracker>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           // Above that navigator, so its alerts join the pages' alert slot.
@@ -589,7 +588,6 @@ ShellRoute buildArchivedSessionsRoute() {
           createRefreshService: ({required projectInventory, required window}) =>
               getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
           filterTracker: getIt<SessionListFilterTracker>(),
-          lastProjectTracker: getIt<LastNewSessionProjectTracker>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           child: child,

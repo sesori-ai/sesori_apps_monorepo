@@ -133,7 +133,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           createRefreshService: ({required projectInventory, required window}) =>
               getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
           filterTracker: getIt<SessionListFilterTracker>(),
-          lastProjectTracker: getIt<LastNewSessionProjectTracker>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           child: ArchivedSessionsView(
