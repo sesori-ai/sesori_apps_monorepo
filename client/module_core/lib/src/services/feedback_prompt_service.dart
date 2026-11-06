@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
@@ -15,7 +16,7 @@ import "../repositories/feedback_prompt_repository.dart";
 ///
 /// An agent turn that finishes cleanly while the app is in the foreground earns
 /// its session a point; the turn finishing is the session going idle after a
-/// busy run. A failure the user felt in a session drops only that session's
+/// busy run, with no error for it within [finishedTurnGrace]. A failure the user felt in a session drops only that session's
 /// points. Right after a clean turn brings the total across sessions to the
 /// configured threshold, and once the cooldown since the last automatic
 /// showing has passed, the service clears every point, records the showing and
@@ -56,6 +57,16 @@ class FeedbackPromptService({
   /// still going when they end, so they never earn points.
   final Set<String> _childSessions = {};
 
+  /// How long a clean idle waits before it earns its point, because some
+  /// bridges (ACP) report a turn's terminal error right after its idle.
+  Duration get finishedTurnGrace => _finishedTurnGrace;
+  @visibleForTesting
+  set finishedTurnGrace(Duration value) => _finishedTurnGrace = value;
+  Duration _finishedTurnGrace = const Duration(seconds: 1);
+
+  /// Clean finishes waiting out [finishedTurnGrace], by session.
+  final Map<String, Timer> _pendingTurns = {};
+
   bool get _isStarted => _eventsSubscription != null;
 
   /// Emits once for each automatic showing, right after it is recorded.
@@ -82,6 +93,7 @@ class FeedbackPromptService({
   /// reply. Drops only that session's points; other sessions keep theirs.
   Future<void> recordFailure({required String sessionId}) {
     if (!_isStarted) return Future<void>.value();
+    _pendingTurns.remove(sessionId)?.cancel();
     _spoiledTurns.add(sessionId);
     return _update(() async {
       final state = await _repository.readState();
@@ -137,7 +149,11 @@ class FeedbackPromptService({
         final spoiled = _spoiledTurns.remove(sessionId);
         if (spoiled || _stoppedSessions.contains(sessionId) || _childSessions.contains(sessionId)) return;
         if (_lifecycleSource.lifecycleState != LifecycleState.resumed) return;
-        unawaited(_recordFinishedTurn(sessionId: sessionId));
+        _pendingTurns[sessionId]?.cancel();
+        _pendingTurns[sessionId] = Timer(_finishedTurnGrace, () {
+          _pendingTurns.remove(sessionId);
+          unawaited(_recordFinishedTurn(sessionId: sessionId));
+        });
     }
   }
 
@@ -174,6 +190,10 @@ class FeedbackPromptService({
 
   @disposeMethod
   Future<void> dispose() async {
+    for (final timer in _pendingTurns.values) {
+      timer.cancel();
+    }
+    _pendingTurns.clear();
     await _eventsSubscription?.cancel();
     _eventsSubscription = null;
     await _prompts.close();

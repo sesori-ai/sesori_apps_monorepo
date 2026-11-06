@@ -75,6 +75,8 @@ void main() {
         storage: storage,
       ),
     );
+    // Tests that exercise the grace set their own.
+    service.finishedTurnGrace = Duration.zero;
     prompts = [];
     service.prompts.listen(prompts.add);
   });
@@ -92,9 +94,11 @@ void main() {
       .having((state) => state.lastShownAt, "lastShownAt", lastShownAt);
 
   /// Delivers [data] and lets the update it causes land: the in-memory store
-  /// settles within the microtasks that drain before the next timer.
+  /// settles within the microtasks that drain before the next timer, and the
+  /// second wait outlasts the zero grace timer the event may start.
   Future<void> emitEvent(SesoriSseEvent data) async {
     events.add(SseEvent(data: data));
+    await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
   }
 
@@ -210,6 +214,7 @@ void main() {
               data: const SesoriSseEvent.sessionStatus(sessionID: "ses-b", status: SessionStatus.idle()),
             ),
           );
+        await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
 
         expect(await stored(), counting(points: {"ses-a": 1, "ses-b": 1}, lastShownAt: isNull));
@@ -354,6 +359,26 @@ void main() {
       await service.recordCrash();
 
       expect(await stored(), counting(points: const {}, lastShownAt: shownAt));
+    });
+
+    test("an error reported right after the idle spoils the turn before it earns", () async {
+      service.finishedTurnGrace = const Duration(milliseconds: 50);
+      await startTurn(sessionId: "ses-a");
+      await endTurn(sessionId: "ses-a");
+      await emitEvent(const SesoriSseEvent.sessionError(sessionID: "ses-a"));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(await stored(), isNull);
+
+      await startTurn(sessionId: "ses-a");
+      await endTurn(sessionId: "ses-a");
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(
+        await stored(),
+        counting(points: {"ses-a": 1}, lastShownAt: isNull),
+        reason: "a clean turn still earns once the grace passes",
+      );
     });
 
     group("after a user stop", () {
