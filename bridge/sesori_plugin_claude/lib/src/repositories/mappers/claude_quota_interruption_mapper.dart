@@ -13,7 +13,7 @@ final class ClaudeQuotaInterruptionMapper({required final ClaudeContentMapper co
   }
 
   static final _reset = RegExp(
-    r"^You've hit your session limit · resets (\d{1,2})(?::(\d{2}))?(am|pm) \(([^)]+)\)$",
+    r"^You've hit your (?:session|weekly) limit · resets (\d{1,2})(?::(\d{2}))?(am|pm) \(([^)]+)\)$",
   );
 
   PluginQuotaInterruption? map({required ClaudeAssistantMessage message, required DateTime observedAt}) {
@@ -28,7 +28,9 @@ final class ClaudeQuotaInterruptionMapper({required final ClaudeContentMapper co
       for (final block in contentMapper.map(content: message.message["content"]))
         if (block case ClaudeMappedTextContentBlock(:final text)) text,
     ].join("\n").trim();
-    if (!text.startsWith("You've hit your session limit")) return null;
+    if (!text.startsWith("You've hit your session limit") && !text.startsWith("You've hit your weekly limit")) {
+      return null;
+    }
     final observed = (message.timestamp ?? observedAt).toUtc();
     return PluginQuotaInterruption(
       errorMessageId: id,

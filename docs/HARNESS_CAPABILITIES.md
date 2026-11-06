@@ -138,7 +138,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 
 | Harness | Reset evidence | Sesori availability |
 |---|---|---|
-| Claude Code | Tagged session-limit error with IANA zone | ✅ Conditional; root terminal error only. |
+| Claude Code | Tagged session- or weekly-limit error with IANA zone | ✅ Conditional; root terminal error only. |
 | Pi | Recognized `openai-codex` error text | ✅ Conditional; final RPC settlement verified on 0.85.1 / 0.84.1. |
 | Codex | Local and documented reset timestamps | Not implemented; failed-turn bucket binding unverified. |
 | OpenCode | Raw error data reaches mapper | Not implemented; reset payload/provider attribution unverified. |
@@ -150,8 +150,8 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 | Grok Build | ACP payload needs inspection | Not implemented; reset reporting unverified. |
 | Antigravity | Official ACP payload needs inspection | Not implemented; reset reporting unverified. |
 
-- Claude recognizes the tagged `rate_limit` assistant error beginning “You've
-  hit your session limit”. The observed time/zone format yields a UTC reset
+- Claude recognizes tagged `rate_limit` assistant errors beginning “You've
+  hit your session limit” or “You've hit your weekly limit”. The observed time/zone format yields a UTC reset
   only when it identifies one future time on the original local date. Unrecognized
   dates, past times, unknown zones, and ambiguous/nonexistent DST times remain
   unknown. Root errors report only after an unsuccessful, non-aborted result;
