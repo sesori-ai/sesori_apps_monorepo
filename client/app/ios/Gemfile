@@ -1,6 +1,10 @@
 source "https://rubygems.org"
 
-gem "fastlane", "~> 2.241", ">= 2.241.1"
+# Header and search results images need deliver's creative_assets option from
+# fastlane/fastlane#30442, which no release has yet (2.241.1 is the newest), so
+# ">= 2.241.2" does not resolve until the next release. Raise it to the first
+# release that contains #30442, then refresh Gemfile.lock.
+gem "fastlane", "~> 2.241", ">= 2.241.2"
 gem "cocoapods", "1.16.2"
 
 plugins_path = File.join(File.dirname(__FILE__), 'fastlane', 'Pluginfile')
