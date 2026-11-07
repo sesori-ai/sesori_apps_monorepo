@@ -37,11 +37,14 @@ Future<String> _createInstallShLibrary() async {
   return libraryPath;
 }
 
+/// Runs [script] with exactly [environment]. The parent environment is not
+/// inherited: a caller's FORCE_COLOR, NO_COLOR, TERM or locale would otherwise
+/// change the installer's styling decisions and make assertions host-dependent.
 Future<ProcessResult> _runBashSnippet({
   required String script,
   required Map<String, String> environment,
 }) {
-  return Process.run('/bin/bash', ['-c', script], environment: environment);
+  return Process.run('/bin/bash', ['-c', script], environment: environment, includeParentEnvironment: false);
 }
 
 Future<String> _createExecutable({
@@ -590,16 +593,16 @@ cat "\$HOME/.zprofile"
 
     test('emits ANSI color and the SESORI banner when FORCE_COLOR is set', () async {
       final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-color-');
+      addTearDown(() => tempDir.delete(recursive: true));
 
       final result = await _runBashSnippet(
         script: 'source ${jsonEncode(libraryPath)}; init_style; print_banner; step 1 "Downloading release"; ok "done"',
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
           'FORCE_COLOR': '1',
           // should_use_unicode gates on both a non-dumb TERM and a UTF-8 locale.
-          // Process.run inherits the parent env, and CI runners export TERM=dumb
-          // plus their own non-UTF-8 LC_ALL/LC_CTYPE, either of which forces the
-          // ASCII fallback. Pin both here so the Unicode assertion is deterministic.
           'TERM': 'xterm-256color',
           'LC_ALL': 'en_US.UTF-8',
           'LANG': 'en_US.UTF-8',
@@ -620,11 +623,14 @@ cat "\$HOME/.zprofile"
 
     test('suppresses all ANSI escapes when NO_COLOR is set', () async {
       final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-nocolor-');
+      addTearDown(() => tempDir.delete(recursive: true));
 
       final result = await _runBashSnippet(
         script: 'source ${jsonEncode(libraryPath)}; init_style; print_banner; step 1 "Downloading release"; ok "done"',
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
           'NO_COLOR': '1',
           'LANG': 'en_US.UTF-8',
         },
@@ -641,11 +647,14 @@ cat "\$HOME/.zprofile"
 
     test('falls back to ASCII glyphs in a non-UTF-8 locale', () async {
       final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-ascii-');
+      addTearDown(() => tempDir.delete(recursive: true));
 
       final result = await _runBashSnippet(
         script: 'source ${jsonEncode(libraryPath)}; init_style; print_banner; ok "done"',
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
           'FORCE_COLOR': '1',
           'LANG': 'C',
           'LC_ALL': 'C',
