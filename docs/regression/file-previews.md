@@ -72,9 +72,9 @@ default app; otherwise it shows a read-only preview.
     navigates away: a tapped link the chat would open (web without
     credentials, or `mailto`) opens outside the app, a script's navigation
     opens nothing, frames load their own content, any other navigation is
-    blocked, and a page that starts loading
-    anyway, such as a submitted form on Android, is replaced with the file
-    again. Relative assets beside the file do not load.
+    blocked, and a page that starts loading anyway, such as a submitted form
+    on Android, is replaced with the file again, with its scripts off when no
+    tap started it. Relative assets beside the file do not load.
     Windows and Linux show only the source, with no toggle.
   - An image opens in the image viewer once the page has slid in.
   - Every other outcome is a one-line message. A `404` from an older bridge

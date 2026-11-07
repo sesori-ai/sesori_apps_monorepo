@@ -398,14 +398,37 @@ void main() {
           state: const FilePreviewShowsText(content: page),
           openExternalLink: _ignoreLink,
         );
-        final controller = webViews.controllers.single;
+        final controller = webViews.controllers.single..finishPage(url: "about:blank");
+        await tester.pump();
 
         controller.startPage(url: "about:blank");
         expect(controller.loadedHtml, [page]);
 
         // Android submits a POST form without asking the navigation delegate.
+        await tester.tapAt(tester.getCenter(find.byKey(const Key("fake-web-view"))));
         controller.startPage(url: "https://example.com/submit");
         expect(controller.loadedHtml, [page, page]);
+        expect(
+          controller.javaScriptMode,
+          JavaScriptMode.unrestricted,
+          reason: "a tapped form keeps the page's scripts",
+        );
+      });
+
+      testWidgets("returns to the file without scripts when a script left it", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        final controller = webViews.controllers.single;
+
+        // A script that submits a form on load would submit again from the
+        // reloaded file, forever.
+        controller.startPage(url: "https://example.com/auto-submit");
+        expect(controller.loadedHtml, [page, page]);
+        expect(controller.javaScriptMode, JavaScriptMode.disabled);
       });
     });
 

@@ -362,9 +362,12 @@ WebViewController _loadHtmlPage({
 
   // Android never asks [decide] about a POST, such as a submitted form, so a
   // page that starts anywhere but the file is replaced with the file again.
+  // Without a touch a script started it, and would again from the reloaded
+  // file, so the file comes back with its scripts off.
   void returnToFile(String url) {
     final scheme = Uri.tryParse(url)?.scheme ?? "";
     if (scheme.isEmpty || scheme == "about" || scheme == "data") return;
+    if (!justTouched()) unawaited(controller.setJavaScriptMode(JavaScriptMode.disabled));
     unawaited(controller.loadHtmlString(content));
   }
 
