@@ -334,7 +334,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Sidebar computer row naming the viewed computer on every page, crossfading in place on a switch, and switching from
   its menu; the bridge controls alone for a lone local computer; the palette listing the other computers; disconnected
   home for a remote target (offline
-  body, other computers, no Start, also while this computer's bridge launches) versus
+  body, its start line per bridge kind (desktop, CLI, unknown), other computers, no Start, also while this
+  computer's bridge launches) versus
   this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
   recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
   another computer was picked in this sign-in; header and body agreeing on "this computer" before the
