@@ -495,7 +495,11 @@
   },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
-    "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
+    "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands (and, when the app does not know how the computer's bridge was installed, the Sesori Desktop download card above them)."
+  },
+  "projectsBridgeOfflineReinstallDesktop": "Reinstall Sesori Desktop",
+  "@projectsBridgeOfflineReinstallDesktop": {
+    "description": "Label for the disclosure on the bridge-offline Projects screen, when the offline computer runs Sesori Desktop, that expands to reveal the Sesori Desktop download card."
   },
   "projectsBridgeOfflineStartBridge": "Make sure the Bridge is running",
   "@projectsBridgeOfflineStartBridge": {

@@ -118,7 +118,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text("Install commands"), findsOneWidget);
+    expect(find.text("Why is this needed?"), findsOneWidget);
     expect(find.text("Start the bridge"), findsNothing);
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
@@ -233,8 +233,44 @@ void main() {
       expect(find.text("sesori-bridge"), findsNothing);
       expect(find.text("Make sure the Bridge is running"), findsNothing);
       expect(find.text("Terminal:"), findsNothing);
-      // The reinstall disclosure stays.
-      expect(find.text("Install commands"), findsOneWidget);
+      // The reinstall disclosure stays, relabelled for the app.
+      expect(find.text("Reinstall Sesori Desktop"), findsOneWidget);
+    });
+
+    testWidgets("Sesori Desktop reinstalls from its download, not the CLI installers", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.desktop);
+
+      expect(find.text("Install commands"), findsNothing);
+      await tester.tap(find.text("Reinstall Sesori Desktop"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Get Sesori Desktop"), findsOneWidget);
+      expect(find.text("sesori.com/desktop"), findsOneWidget);
+      expect(find.text("Send link to my computer"), findsOneWidget);
+      expect(find.text("macOS, Linux, WSL"), findsNothing);
+    });
+
+    testWidgets("a command-line bridge reinstalls from the CLI installers only", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.cli);
+
+      expect(find.text("Reinstall Sesori Desktop"), findsNothing);
+      await tester.tap(find.text("Install commands"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("macOS, Linux, WSL"), findsOneWidget);
+      expect(find.text("Get Sesori Desktop"), findsNothing);
+    });
+
+    testWidgets("an unknown kind offers the Sesori Desktop card above the CLI installers", (tester) async {
+      await pumpWithBridge(tester, kind: null);
+
+      await tester.tap(find.text("Install commands"));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.text("Get Sesori Desktop")).dy,
+        lessThan(tester.getTopLeft(find.text("macOS, Linux, WSL")).dy),
+      );
     });
 
     testWidgets("an unknown kind gets both, each labelled", (tester) async {

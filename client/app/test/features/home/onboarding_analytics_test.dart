@@ -615,6 +615,24 @@ void main() {
       );
     });
 
+    testWidgets("copying the desktop link from the install disclosure logs the bridge-offline surface", (
+      tester,
+    ) async {
+      // No computer named, so the kind is unknown and the disclosure leads
+      // with the Sesori Desktop card.
+      await pumpBridgeOffline(tester);
+
+      await tester.tap(find.text("Install commands"));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text("Copy link"));
+      await tester.tap(find.text("Copy link"));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.bridgeOffline),
+      );
+    });
+
     testWidgets("tapping the Need help pill logs the bridge-offline surface", (tester) async {
       await pumpBridgeOffline(tester);
 

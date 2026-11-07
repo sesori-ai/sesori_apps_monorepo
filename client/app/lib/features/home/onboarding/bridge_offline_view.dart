@@ -6,8 +6,11 @@ part of "bridge_onboarding.dart";
 /// that names the computer ("dev-laptop is offline") and when it was last
 /// seen, then the account's other online computers to switch to
 /// ([OtherComputersCard]), then how to start that computer's bridge (see
-/// [_StartBridgeInstructions]), and quiet "Why is this needed?" and "Install commands" links, the latter a
-/// disclosure for when the bridge needs to be (re)installed. The quiet
+/// [_StartBridgeInstructions]), and quiet "Why is this needed?" and install
+/// links, the latter a disclosure for when the bridge needs to be
+/// (re)installed, again by how it was installed: "Reinstall Sesori Desktop"
+/// holds the Sesori Desktop download card, "Install commands" the CLI
+/// installers, and for an unknown kind both, the card first. The quiet
 /// "Need help?" support menu ([NeedHelpMenu]) closes the page below this body
 /// (see [DisconnectedComputerSlivers]).
 ///
@@ -33,22 +36,34 @@ class const BridgeOfflineView({
 }
 
 class _BridgeOfflineViewState() extends State<BridgeOfflineView> {
-  /// Whether the "Install commands" disclosure is expanded.
+  /// Whether the install disclosure is expanded.
   bool _showInstallCommands = false;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    const desktopCard = _DesktopDownloadCard(surface: OnboardingSurface.bridgeOffline);
+    const commandBoxes = _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline);
+    final (String disclosureLabel, List<Widget> installOptions) = switch (widget.bridge) {
+      // Sesori Desktop is reinstalled from its download; the CLI installers
+      // would install a second, standalone bridge.
+      BridgeSummary(kind: BridgeKind.desktop) => (loc.projectsBridgeOfflineReinstallDesktop, const [desktopCard]),
+      BridgeSummary(kind: BridgeKind.cli) => (loc.projectsBridgeOfflineInstallCommands, const [commandBoxes]),
+      BridgeSummary(kind: null) || null => (
+        loc.projectsBridgeOfflineInstallCommands,
+        const [desktopCard, SizedBox(height: PregoSpacing.xl), commandBoxes],
+      ),
+    };
     // maintainState keeps the install boxes mounted while collapsed so the
     // selected install method survives closing and reopening the disclosure.
     final installCommands = Visibility(
       visible: _showInstallCommands,
       maintainState: true,
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: PregoSpacing.lg),
-          _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
+          const SizedBox(height: PregoSpacing.lg),
+          ...installOptions,
         ],
       ),
     );
@@ -84,7 +99,7 @@ class _BridgeOfflineViewState() extends State<BridgeOfflineView> {
               // A quiet link, the same weight as "Why is this needed?".
               child: Center(
                 child: PregoButtonsSolid(
-                  label: loc.projectsBridgeOfflineInstallCommands,
+                  label: disclosureLabel,
                   hierarchy: PregoButtonsSolidHierarchy.tertiary,
                   size: PregoButtonsSolidSize.sm,
                   trailingIcon: _showInstallCommands ? TablerRegular.chevron_up : TablerRegular.chevron_down,
