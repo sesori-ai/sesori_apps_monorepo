@@ -339,10 +339,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingShareCommand => 'Share command';
 
   @override
-  String get projectsOnboardingWaitingForBridge => 'Waiting for the bridge...';
+  String get projectsOnboardingWaitingForComputer => 'Waiting for your computer...';
 
   @override
-  String get projectsOnboardingRunOnComputer => 'Next, run on your computer:';
+  String get projectsOnboardingDesktopTitle => 'Get Sesori Desktop';
+
+  @override
+  String get projectsOnboardingDesktopBody =>
+      'It runs on macOS, Windows and Linux. Sign in there and this phone connects.';
+
+  @override
+  String get projectsOnboardingDesktopSendLink => 'Send link to my computer';
+
+  @override
+  String get projectsOnboardingDesktopCopyLink => 'Copy link';
+
+  @override
+  String get projectsOnboardingDesktopLinkCopied => 'Link copied to clipboard';
+
+  @override
+  String get projectsOnboardingPreferTerminal => 'Prefer the terminal?';
+
+  @override
+  String get projectsOnboardingRunOnComputer => 'Run these in a terminal on your computer:';
 
   @override
   String get projectsOnboardingInstallStepTitle => 'Install the bridge';
@@ -2707,7 +2726,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingWhyLede => 'Your LLM of choice runs on your computer.';
 
   @override
-  String get projectsOnboardingWhyBody => 'The Bridge securely connects it to Sesori on your phone.';
+  String get projectsOnboardingWhyBody =>
+      'The Bridge securely connects it to Sesori on your phone. It comes with Sesori Desktop, or you can install it from the terminal.';
 
   @override
   String get projectsOnboardingWhySecureTitle => 'Secure access';

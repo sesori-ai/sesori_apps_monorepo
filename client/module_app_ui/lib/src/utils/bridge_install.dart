@@ -1,14 +1,18 @@
 /// Single source of truth for the Sesori Bridge install and update commands
-/// shown in the "connect your computer" onboarding and the update sheet.
+/// and the Sesori Desktop download link shown in the "connect your computer"
+/// onboarding and the update sheet.
 ///
-/// Edit [_host] (or the individual commands) here if the installer hosting
+/// Edit [_hostName] (or the individual commands) here if the installer hosting
 /// changes. The branded `sesori.com` URLs front the canonical scripts that
 /// currently live at
 /// `raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/`.
 class const BridgeInstall._() {
   /// Branded host that serves the install scripts. Change in one place to
   /// repoint every onboarding command.
-  static const String _host = "https://sesori.com";
+  static const String _host = "https://$_hostName";
+
+  /// [_host] without its scheme, for addresses shown to be typed by hand.
+  static const String _hostName = "sesori.com";
 
   /// macOS / Linux one-line installer.
   static const String macLinuxCommand = "curl -fsSL $_host/install.sh | bash";
@@ -32,4 +36,12 @@ class const BridgeInstall._() {
   /// Command that moves an installed bridge to the newest release. Bridges
   /// released before 2026-06-23 lack it; the installers above replace those.
   static const String updateCommand = "sesori-bridge update";
+
+  /// Sesori Desktop download page, which bundles the bridge. The connect
+  /// onboarding leads with it ahead of the terminal commands above.
+  static const String desktopDownloadUrl = "$_host/desktop/";
+
+  /// [desktopDownloadUrl] as shown to read off the phone and type on a
+  /// computer: no scheme or trailing slash.
+  static const String desktopDownloadLabel = "$_hostName/desktop";
 }

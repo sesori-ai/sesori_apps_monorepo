@@ -49,7 +49,6 @@ void main() {
     late NewSessionSelectionTracker selectionTracker;
     late MockProductAnalyticsService mockProductAnalyticsService;
     late FakeFeedbackPromptService feedbackPromptService;
-    late FakeLastNewSessionProjectTracker lastProjectTracker;
 
     const defaultPlugin = PluginMetadata(
       id: "plugin-1",
@@ -62,7 +61,6 @@ void main() {
     setUpAll(registerAllFallbackValues);
 
     setUp(() {
-      lastProjectTracker = FakeLastNewSessionProjectTracker();
       mockLaunchSessionRepository = MockSessionRepository();
       mockSessionApi = MockSessionApi();
       mockSessionRepository = MockSessionRepository();
@@ -177,7 +175,6 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: dedicatedWorktreePreferenceStore ?? FakeDedicatedWorktreePreferenceStore(),
-      lastProjectTracker: lastProjectTracker,
       project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
     );
 
@@ -301,8 +298,6 @@ void main() {
 
       expect(store.writes, [false]);
       expect(await cubit.readDedicatedWorktreePreference(), isFalse);
-      // The next composer opens in the project the session started in.
-      expect(lastProjectTracker.records, ["project-1"]);
     });
 
     test("project capability failure blocks creation until retry succeeds", () async {
@@ -612,7 +607,6 @@ void main() {
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
           dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
-          lastProjectTracker: lastProjectTracker,
           project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
         );
       },
@@ -2975,18 +2969,6 @@ void main() {
           NewSessionProjectWorktreeCapability.supported,
         );
         verify(() => mockProjectRepository.getProject(projectId: "project-2")).called(1);
-      });
-
-      test("records the project picked for the next composer, and nothing for the same one", () async {
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await waitForComposer(cubit);
-        expect(lastProjectTracker.records, isEmpty, reason: "opening in a default is not a pick");
-
-        cubit.selectProject(project: projectTwo);
-        cubit.selectProject(project: projectTwo);
-
-        expect(lastProjectTracker.records, ["project-2"]);
       });
 
       test("a pick the project lacks gives way to its default and returns with a project that has it", () async {

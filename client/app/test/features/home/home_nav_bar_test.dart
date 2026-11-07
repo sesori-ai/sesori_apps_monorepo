@@ -253,7 +253,7 @@ void main() {
     expect(largeTitle("All projects"), findsOneWidget);
     expect(find.byType(PregoNavLeadingTitle), findsNothing);
     expectNoComputerLine();
-    expect(find.text("Waiting for the bridge..."), findsOneWidget);
+    expect(find.text("Waiting for your computer..."), findsOneWidget);
     // No computer to name yet, so the button holds its place without taps.
     expect(computerButtonOf(tester).onPressed, isNull);
     expect(computerButtonOf(tester).semanticLabel, "Computer");

@@ -76,7 +76,6 @@ void main() {
   late BehaviorSubject<ConnectionStatus> status;
   late ProjectListService projectListService;
   late SessionListFilterTracker filterTracker;
-  late FakeLastNewSessionProjectTracker lastProject;
   late _FakeBridge bridge;
 
   setUpAll(() {
@@ -126,12 +125,10 @@ void main() {
     ).thenAnswer((invocation) => bridge.serve(invocation.namedArguments[#request] as SessionPageRequest));
     projectListService = ProjectListService(repository: MockProjectRepository());
     filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projectListService);
-    lastProject = FakeLastNewSessionProjectTracker();
   });
 
   tearDown(() async {
     await filterTracker.dispose();
-    await lastProject.dispose();
     await projectListService.dispose();
     await events.close();
     await status.close();
@@ -161,7 +158,6 @@ void main() {
       window: window,
       projectInventory: projectInventory,
       filterTracker: filterTracker,
-      lastProjectTracker: lastProject,
       sseEventTracker: activity,
       sessionUnseenTracker: unseen,
     );
@@ -295,50 +291,17 @@ void main() {
     });
   });
 
-  test("the last project wins over No project and the newest session, and the filter wins over it", () {
-    bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two")];
-    lastProject.emit(project: const LastNewSessionProjectKnown(projectId: "one"));
+  test("the default project is No project even when the newest session started in a folder project", () {
+    // A session just started in "two" is the newest listed one.
+    bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two"), _session(id: "a", updatedAt: 1)];
     withCubit((cubit, async) {
-      expect(cubit.state.defaultProjectId, "one");
-
-      cubit.selectProject(projectId: "two");
-      expect(cubit.state.defaultProjectId, "two");
-      cubit.selectProject(projectId: null);
-      expect(cubit.state.defaultProjectId, "one");
-
-      // A pick in the composer moves it.
-      lastProject.record(projectId: "scratch");
-      async.elapse(Duration.zero);
-      expect(cubit.state.defaultProjectId, "scratch");
-
-      // So does a project chosen before any composer exists.
-      cubit.rememberNewSessionProject(projectId: "two");
-      async.elapse(Duration.zero);
-      expect(lastProject.records, ["scratch", "two"]);
-      expect(cubit.state.defaultProjectId, "two");
-    });
-  });
-
-  test("a last project no longer listed gives way to No project", () {
-    lastProject.emit(project: const LastNewSessionProjectKnown(projectId: "gone"));
-    withCubit((cubit, async) {
-      expect(cubit.state.defaultProjectId, "scratch");
-    });
-  });
-
-  test("until the last project is read the list is loading and only the filter is a default", () {
-    lastProject.emit(project: const LastNewSessionProjectUnknown());
-    withCubit((cubit, async) {
-      expect(cubit.state.isLoading, isTrue);
-      expect(cubit.state.defaultProjectId, isNull);
-
-      cubit.selectProject(projectId: "two");
-      expect(cubit.state.defaultProjectId, "two");
-      cubit.selectProject(projectId: null);
-
-      lastProject.emit(project: const LastNewSessionProjectKnown(projectId: null));
-      async.elapse(Duration.zero);
       expect(cubit.state.isLoading, isFalse);
+      expect(cubit.state.defaultProjectId, "scratch");
+
+      // The filter is explicit context, so it wins while it is set.
+      cubit.selectProject(projectId: "two");
+      expect(cubit.state.defaultProjectId, "two");
+      cubit.selectProject(projectId: null);
       expect(cubit.state.defaultProjectId, "scratch");
     });
   });

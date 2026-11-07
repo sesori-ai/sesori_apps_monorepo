@@ -31,7 +31,6 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     sessionLaunchService: getIt<SessionLaunchService>(),
     connectionService: getIt<ConnectionService>(),
     filterTracker: getIt<SessionListFilterTracker>(),
-    lastProjectTracker: getIt<LastNewSessionProjectTracker>(),
     sseEventTracker: getIt<SseEventTracker>(),
     sessionUnseenTracker: getIt<SessionUnseenTracker>(),
     alertNavigatorKey: null,
@@ -111,10 +110,10 @@ class const DesktopCockpitShell({
       showAddProjectDialog(context: context, onProjectAdded: onNewSession),
     );
     // The open project, else the list's new-session default (the filter, else
-    // the project last picked or started in, else "No project", else the
-    // newest session's project), else the first listed one; with no project
-    // yet, adding one is the only useful next step. A chosen project missing
-    // from the inventory (hidden meanwhile) is never swapped for another one.
+    // "No project", else the newest session's project), else the first listed
+    // one; with no project yet, adding one is the only useful next step. A
+    // chosen project missing from the inventory (hidden meanwhile) is never
+    // swapped for another one.
     void startNewSession() {
       final projects = context.read<ProjectListCubit>().state;
       if (projects is! ProjectListLoaded) return;

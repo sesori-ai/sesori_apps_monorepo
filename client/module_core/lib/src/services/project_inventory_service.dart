@@ -187,6 +187,14 @@ class ProjectInventoryService({
     _reportProductEvent(event: ProductAnalyticsEvent.runCommandShared(surface: surface));
   }
 
+  void reportDesktopLinkCopied({required OnboardingSurface surface}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.desktopLinkCopied(surface: surface));
+  }
+
+  void reportDesktopLinkShared({required OnboardingSurface surface}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.desktopLinkShared(surface: surface));
+  }
+
   void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(
       _productAnalyticsService.logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((result) {

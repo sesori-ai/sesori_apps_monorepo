@@ -301,7 +301,7 @@ Widget? homeComputerSubtitle({
 }) {
   if (context.watch<ProjectListCubit>().state case ProjectListBridgeDisconnected(hasRegisteredBridges: false)) {
     return PregoNavSubtitle(
-      text: context.loc.projectsOnboardingWaitingForBridge,
+      text: context.loc.projectsOnboardingWaitingForComputer,
       icon: TablerRegular.broadcast_off,
       status: PregoNavStatus.error,
     );

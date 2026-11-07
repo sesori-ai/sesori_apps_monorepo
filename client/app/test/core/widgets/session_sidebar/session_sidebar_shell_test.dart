@@ -7,7 +7,6 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -33,6 +32,7 @@ void main() {
     required AppRouteDef currentRouteDef,
     List<Session>? sessions,
     Map<String, List<FileDiff>> diffsBySession = const {},
+    String? scratchProjectId,
   }) async {
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(size);
@@ -43,8 +43,10 @@ void main() {
       currentRouteDef: currentRouteDef,
       sessionsByProject: {
         "p1": sessions ?? [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+        ?scratchProjectId: const [],
       },
       diffsBySession: diffsBySession,
+      scratchProjectId: scratchProjectId,
     );
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
@@ -119,11 +121,56 @@ void main() {
 
       expect(find.byType(NewSessionProjectPrompt), findsNothing);
       expect(tester.element(inContent(find.byType(NewSessionView))).read<NewSessionCubit>().state.project.id, "p1");
-      // The pick is where the next New session opens.
-      expect(
-        getIt<LastNewSessionProjectTracker>(),
-        isA<FakeLastNewSessionProjectTracker>().having((tracker) => tracker.records, "records", ["p1"]),
+    });
+
+    testWidgets("after a session starts in a folder project, the pane's next draft is No project again", (
+      tester,
+    ) async {
+      final harness = await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
+        scratchProjectId: "scratch",
       );
+      String draftProject() =>
+          tester.element(inContent(find.byType(NewSessionView))).read<NewSessionCubit>().state.project.id;
+      expect(draftProject(), "scratch");
+
+      await tester.tap(inContent(find.byKey(const Key("new_session_project"))));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Project One").last);
+      await tester.pumpAndSettle();
+      expect(draftProject(), "p1");
+
+      when(
+        () => harness.sessionRepository.createSessionWithMessage(
+          attachments: const [],
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(adaptiveTestSession(projectId: "p1", id: "s-new", title: "New")));
+      final pane = inContent(find.byType(NewSessionView));
+      // The fresh composer rests in its hold-to-talk pill; type instead.
+      await tester.tap(find.descendant(of: pane, matching: find.byIcon(TablerRegular.keyboard)));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.descendant(of: pane, matching: find.byType(EditableText)), "do the thing");
+      // Send only accepts taps once the composer has rebuilt around its text.
+      await tester.pump();
+      await tester.tap(find.descendant(of: pane, matching: find.byIcon(TablerRegular.arrow_up)).last);
+      await tester.pumpAndSettle();
+      expect(harness.currentLocation, startsWith("/sessions/p1/s-new"));
+
+      harness.router.go("/sessions");
+      await tester.pumpAndSettle();
+      expect(draftProject(), "scratch");
     });
 
     testWidgets("collapse slides the sidebar out and the pane's restore button brings it back", (tester) async {

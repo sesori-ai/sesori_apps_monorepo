@@ -294,6 +294,14 @@ void main() {
         reason: "transcript_prompts_opened",
       ),
       (
+        event: const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.connectSetup),
+        reason: "desktop_link_copied",
+      ),
+      (
+        event: const ProductAnalyticsEvent.desktopLinkShared(surface: OnboardingSurface.connectSetup),
+        reason: "desktop_link_shared",
+      ),
+      (
         event: const ProductAnalyticsEvent.computerSwitched(source: ComputerSwitchSource.menu, targetOnline: true),
         reason: "computer_switched",
       ),

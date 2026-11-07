@@ -215,7 +215,6 @@ void main() {
                 window: window,
                 projectInventory: projectInventory,
                 filterTracker: filterTracker,
-                lastProjectTracker: FakeLastNewSessionProjectTracker(),
                 sseEventTracker: MockSseEventTracker(),
                 sessionUnseenTracker: FakeSessionUnseenTracker(),
               ),
