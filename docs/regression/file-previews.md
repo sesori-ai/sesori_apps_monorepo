@@ -66,11 +66,13 @@ default app; otherwise it shows a read-only preview.
     it highlighted. Markdown renders with the session's styles and has a source
     toggle; with a line it opens on the source.
   - HTML (`.html`, `.htm`) renders in a web view on iOS, Android and macOS,
-    with the same source toggle and line rule; switching back to it shows the
-    page where it was. Its scripts and in-page anchors work, but the page
-    never navigates away: a link the chat would open (web without
-    credentials, or `mailto`) opens outside the app, frames load their own
-    content, any other navigation is blocked, and a page that starts loading
+    with the same source toggle and line rule; a loading indicator shows
+    until the page has loaded, and switching back to it shows the page where
+    it was. Its scripts and in-page anchors work, but the page never
+    navigates away: a tapped link the chat would open (web without
+    credentials, or `mailto`) opens outside the app, a script's navigation
+    opens nothing, frames load their own content, any other navigation is
+    blocked, and a page that starts loading
     anyway, such as a submitted form on Android, is replaced with the file
     again. Relative assets beside the file do not load.
     Windows and Linux show only the source, with no toggle.
@@ -99,8 +101,9 @@ default app; otherwise it shows a read-only preview.
 - A link shows the wrong icon or label, the text cursor on hover, or copying it
   yields the short label instead of the full URL or path.
 - The transcript jumps or scrolls when a preview opens or closes.
-- An HTML preview shows anything but the file inside the app, or a web or
-  `mailto` link in it does nothing.
+- An HTML preview shows anything but the file inside the app, stays blank
+  while it loads, a tapped web or `mailto` link in it does nothing, or its
+  script opens something outside the app without a tap.
 - A remote bridge's path is opened on this computer instead of previewed.
 
 ## Sources

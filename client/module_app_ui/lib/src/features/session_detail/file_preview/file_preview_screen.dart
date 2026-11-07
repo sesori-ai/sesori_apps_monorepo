@@ -85,6 +85,23 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
   /// it at once, where it was.
   WebViewController? _htmlPage;
 
+  /// Whether [_htmlPage] has finished loading the file. Until then a loading
+  /// indicator covers the blank web view.
+  bool _htmlPageLoaded = false;
+
+  /// When a finger or pointer last lifted from [_htmlPage].
+  DateTime? _htmlPageTouchedAt;
+
+  /// Whether the page was just touched, so a link it opens was a tap rather
+  /// than a script.
+  // ponytail: any pointer-up within a second counts, including the end of a
+  // scroll, and a script may navigate in that second. The platform's own
+  // navigation type would be exact, but webview_flutter does not expose it.
+  bool get _htmlPageJustTouched => switch (_htmlPageTouchedAt) {
+    final touchedAt? => DateTime.now().difference(touchedAt) < const Duration(seconds: 1),
+    null => false,
+  };
+
   /// How the file renders besides its source, or null when it has only source.
   /// HTML needs a web view, which Windows and Linux lack.
   _Rendering? get _rendering {
@@ -172,11 +189,30 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     // The web view never insets its page for the home indicator, so it stops above it.
     FilePreviewShowsText(:final content) when rendering == _Rendering.html => Padding(
       padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
-      child: WebViewWidget(
-        controller: _htmlPage ??= _loadHtmlPage(
-          content: content,
-          openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
-        ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerUp: (_) => _htmlPageTouchedAt = DateTime.now(),
+            child: WebViewWidget(
+              controller: _htmlPage ??= _loadHtmlPage(
+                content: content,
+                openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+                justTouched: () => _htmlPageJustTouched,
+                onLoaded: () {
+                  if (mounted && !_htmlPageLoaded) setState(() => _htmlPageLoaded = true);
+                },
+              ),
+            ),
+          ),
+          if (!_htmlPageLoaded)
+            ColoredBox(
+              key: const Key("file-preview-html-loading"),
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: const Center(child: PregoActivityIndicator(color: null)),
+            ),
+        ],
       ),
     ),
     FilePreviewShowsText(:final content) => _CodePreview(
@@ -299,10 +335,16 @@ enum _Rendering() {
 }
 
 /// Loads the page an HTML file describes into a web view. Its scripts and
-/// in-page anchors work, but it never navigates away: a link opens outside the
-/// app, and anything else is blocked. Relative assets beside the file do not
-/// load; only the file is here.
-WebViewController _loadHtmlPage({required String content, required ExternalLinkOpener openExternalLink}) {
+/// in-page anchors work, but it never navigates away: a link tapped while
+/// [justTouched] holds opens outside the app, and anything else is blocked.
+/// [onLoaded] runs once the file has loaded. Relative assets beside the file
+/// do not load; only the file is here.
+WebViewController _loadHtmlPage({
+  required String content,
+  required ExternalLinkOpener openExternalLink,
+  required bool Function() justTouched,
+  required VoidCallback onLoaded,
+}) {
   NavigationDecision decide(NavigationRequest request) {
     final uri = Uri.tryParse(request.url);
     if (uri == null) return NavigationDecision.prevent;
@@ -310,7 +352,7 @@ WebViewController _loadHtmlPage({required String content, required ExternalLinkO
     // their own content. A link with a new-window target arrives here first as
     // a frame request and then again for the main frame.
     if (uri.isScheme("about") || !request.isMainFrame) return NavigationDecision.navigate;
-    if (isAllowedExternalLinkUri(uri: uri)) {
+    if (isAllowedExternalLinkUri(uri: uri) && justTouched()) {
       unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp).then<void>((_) {}));
     }
     return NavigationDecision.prevent;
@@ -328,7 +370,9 @@ WebViewController _loadHtmlPage({required String content, required ExternalLinkO
 
   unawaited(controller.setJavaScriptMode(JavaScriptMode.unrestricted));
   unawaited(
-    controller.setNavigationDelegate(NavigationDelegate(onNavigationRequest: decide, onPageStarted: returnToFile)),
+    controller.setNavigationDelegate(
+      NavigationDelegate(onNavigationRequest: decide, onPageStarted: returnToFile, onPageFinished: (_) => onLoaded()),
+    ),
   );
   unawaited(controller.loadHtmlString(content));
   return controller;

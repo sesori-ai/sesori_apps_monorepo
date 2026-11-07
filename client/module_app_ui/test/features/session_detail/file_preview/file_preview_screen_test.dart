@@ -79,6 +79,15 @@ class _FakeWebViewController(super.params) extends PlatformWebViewController {
     };
     callback(url);
   }
+
+  /// Tells the page's navigation delegate that the main frame finished [url].
+  void finishPage({required String url}) {
+    final callback = switch (navigationDelegate) {
+      _FakeNavigationDelegate(:final onPageFinished?) => onPageFinished,
+      _ => throw StateError("no page finished handler"),
+    };
+    callback(url);
+  }
 }
 
 class _FakeNavigationDelegate(super.params) extends PlatformNavigationDelegate {
@@ -86,6 +95,10 @@ class _FakeNavigationDelegate(super.params) extends PlatformNavigationDelegate {
 
   NavigationRequestCallback? onNavigationRequest;
   PageEventCallback? onPageStarted;
+  PageEventCallback? onPageFinished;
+
+  @override
+  Future<void> setOnPageFinished(PageEventCallback onPageFinished) async => this.onPageFinished = onPageFinished;
 
   @override
   Future<void> setOnNavigationRequest(NavigationRequestCallback onNavigationRequest) async =>
@@ -310,7 +323,23 @@ void main() {
         variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.windows}),
       );
 
-      testWidgets("keeps the page and sends web links to the browser", (tester) async {
+      testWidgets("covers the web view with a loading indicator until the file loads", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        expect(find.byKey(const Key("file-preview-html-loading")), findsOneWidget);
+        expect(find.byType(PregoActivityIndicator), findsOneWidget);
+
+        webViews.controllers.single.finishPage(url: "about:blank");
+        await tester.pump();
+        expect(find.byKey(const Key("file-preview-html-loading")), findsNothing);
+        expect(find.byKey(const Key("fake-web-view")), findsOneWidget);
+      });
+
+      testWidgets("keeps the page and opens nothing a script navigates to", (tester) async {
         final opened = <(Uri, UrlLaunchMode)>[];
         await _pumpScreen(
           tester,
@@ -334,8 +363,30 @@ void main() {
           await controller.decide(url: "https://user:pw@example.com", isMainFrame: true),
           NavigationDecision.prevent,
         );
-        expect(opened, isEmpty);
+        expect(await controller.decide(url: "https://example.com/docs", isMainFrame: true), NavigationDecision.prevent);
+        expect(opened, isEmpty, reason: "nothing touched the page, so a script navigated");
+      });
 
+      testWidgets("sends a tapped web link to the browser and keeps the page", (tester) async {
+        final opened = <(Uri, UrlLaunchMode)>[];
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: ({required url, required mode}) async {
+            opened.add((url, mode));
+            return true;
+          },
+        );
+        final controller = webViews.controllers.single..finishPage(url: "about:blank");
+        await tester.pump();
+
+        await tester.tapAt(tester.getCenter(find.byKey(const Key("fake-web-view"))));
+        expect(
+          await controller.decide(url: "https://user:pw@example.com", isMainFrame: true),
+          NavigationDecision.prevent,
+        );
+        expect(opened, isEmpty);
         expect(await controller.decide(url: "https://example.com/docs", isMainFrame: true), NavigationDecision.prevent);
         expect(opened, [(Uri.parse("https://example.com/docs"), UrlLaunchMode.externalApp)]);
       });
