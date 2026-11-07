@@ -17,12 +17,14 @@ MarkdownTapLinkCallback buildMarkdownLinkTapHandler({required ExternalLinkOpener
   return (String text, String? href, String title) {
     if (href == null) return;
     final uri = Uri.tryParse(href);
-    if (uri == null || !_isAllowedMarkdownUri(uri)) return;
+    if (uri == null || !isAllowedExternalLinkUri(uri: uri)) return;
     unawaited(openExternalLink(url: uri, mode: UrlLaunchMode.externalApp).then<void>((_) {}));
   };
 }
 
-bool _isAllowedMarkdownUri(Uri uri) {
+/// Whether [uri] is a link that may open outside the app: a web page without
+/// credentials in it, or an email address.
+bool isAllowedExternalLinkUri({required Uri uri}) {
   final scheme = uri.scheme.toLowerCase();
   return switch (scheme) {
     "http" || "https" => uri.host.isNotEmpty && uri.userInfo.isEmpty,
