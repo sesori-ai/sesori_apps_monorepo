@@ -117,7 +117,7 @@ participates.
   app." and "Terminal:" over the box. The install link follows the kind too: Sesori Desktop gets
   "Reinstall Sesori Desktop", which opens the Sesori Desktop download card and no CLI installers; the
   command-line bridge gets "Install commands" with the CLI installers only; an unknown kind gets "Install
-  commands" with the download card above the CLI installers. The card's copy and share log the offline
+  options" with the download card above the CLI installers. The card's copy and share log the offline
   screen's surface, not onboarding's.
 - Desktop first-run startup preferences and optional macOS file-access guidance follow the
   [cockpit contract](desktop-cockpit-shell.md) and [supervision contract](desktop-bridge-supervision.md).

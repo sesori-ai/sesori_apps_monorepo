@@ -523,6 +523,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
+  String get projectsBridgeOfflineInstallOptions => 'Install options';
+
+  @override
   String get projectsBridgeOfflineReinstallDesktop => 'Reinstall Sesori Desktop';
 
   @override

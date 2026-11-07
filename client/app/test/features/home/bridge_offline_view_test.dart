@@ -264,7 +264,7 @@ void main() {
     testWidgets("an unknown kind offers the Sesori Desktop card above the CLI installers", (tester) async {
       await pumpWithBridge(tester, kind: null);
 
-      await tester.tap(find.text("Install commands"));
+      await tester.tap(find.text("Install options"));
       await tester.pumpAndSettle();
 
       expect(
@@ -293,7 +293,7 @@ void main() {
     expect(find.text("Sesori Desktop: open the app."), findsOneWidget);
     expect(find.text("Terminal:"), findsOneWidget);
     expect(find.textContaining("Last seen"), findsNothing);
-    expect(find.text("Install commands"), findsOneWidget);
+    expect(find.text("Install options"), findsOneWidget);
   });
 
   testWidgets("a quiet line reports how long the bridge has been gone", (tester) async {
@@ -329,19 +329,19 @@ void main() {
     expect(find.text("Reconnect"), findsNothing);
     final runBoxY = tester.getTopLeft(find.text("sesori-bridge")).dy;
     final whyY = tester.getTopLeft(find.text("Why is this needed?")).dy;
-    final disclosureY = tester.getTopLeft(find.text("Install commands")).dy;
+    final disclosureY = tester.getTopLeft(find.text("Install options")).dy;
     expect(runBoxY, lessThan(whyY));
     expect(whyY, lessThan(disclosureY));
 
     // Collapsed: no install command boxes on stage.
     expect(find.text("macOS, Linux, WSL"), findsNothing);
 
-    await tester.tap(find.text("Install commands"));
+    await tester.tap(find.text("Install options"));
     await tester.pumpAndSettle();
 
     // Expanded: the install boxes unfold below the disclosure button. The
     // centred body shifts up as it grows, so re-measure the button.
-    final expandedDisclosureY = tester.getTopLeft(find.text("Install commands")).dy;
+    final expandedDisclosureY = tester.getTopLeft(find.text("Install options")).dy;
     final installBoxY = tester.getTopLeft(find.text("macOS, Linux, WSL")).dy;
     expect(installBoxY, greaterThan(expandedDisclosureY));
   });

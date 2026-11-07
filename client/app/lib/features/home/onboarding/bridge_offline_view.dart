@@ -10,7 +10,8 @@ part of "bridge_onboarding.dart";
 /// links, the latter a disclosure for when the bridge needs to be
 /// (re)installed, again by how it was installed: "Reinstall Sesori Desktop"
 /// holds the Sesori Desktop download card, "Install commands" the CLI
-/// installers, and for an unknown kind both, the card first. The quiet
+/// installers, and for an unknown kind "Install options" holds both, the card
+/// first. The quiet
 /// "Need help?" support menu ([NeedHelpMenu]) closes the page below this body
 /// (see [DisconnectedComputerSlivers]).
 ///
@@ -50,7 +51,7 @@ class _BridgeOfflineViewState() extends State<BridgeOfflineView> {
       BridgeSummary(kind: BridgeKind.desktop) => (loc.projectsBridgeOfflineReinstallDesktop, const [desktopCard]),
       BridgeSummary(kind: BridgeKind.cli) => (loc.projectsBridgeOfflineInstallCommands, const [commandBoxes]),
       BridgeSummary(kind: null) || null => (
-        loc.projectsBridgeOfflineInstallCommands,
+        loc.projectsBridgeOfflineInstallOptions,
         const [desktopCard, SizedBox(height: PregoSpacing.xl), commandBoxes],
       ),
     };

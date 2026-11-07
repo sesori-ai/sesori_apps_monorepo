@@ -979,11 +979,17 @@ abstract class AppLocalizations {
   /// **'Turn off bridge'**
   String get computersTurnOffBridge;
 
-  /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands (and, when the app does not know how the computer's bridge was installed, the Sesori Desktop download card above them).
+  /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands, for a computer running the command-line bridge.
   ///
   /// In en, this message translates to:
   /// **'Install commands'**
   String get projectsBridgeOfflineInstallCommands;
+
+  /// Label for the disclosure on the bridge-offline Projects screen when the app does not know how the computer's bridge was installed. It expands to reveal the Sesori Desktop download card above the bridge install commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Install options'**
+  String get projectsBridgeOfflineInstallOptions;
 
   /// Label for the disclosure on the bridge-offline Projects screen, when the offline computer runs Sesori Desktop, that expands to reveal the Sesori Desktop download card.
   ///
