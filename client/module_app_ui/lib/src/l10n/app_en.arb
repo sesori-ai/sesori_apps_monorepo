@@ -495,11 +495,37 @@
   },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
-    "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
+    "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands, for a computer running the command-line bridge."
+  },
+  "projectsBridgeOfflineInstallOptions": "Install options",
+  "@projectsBridgeOfflineInstallOptions": {
+    "description": "Label for the disclosure on the bridge-offline Projects screen when the app does not know how the computer's bridge was installed. It expands to reveal the Sesori Desktop download card above the bridge install commands."
+  },
+  "projectsBridgeOfflineReinstallDesktop": "Reinstall Sesori Desktop",
+  "@projectsBridgeOfflineReinstallDesktop": {
+    "description": "Label for the disclosure on the bridge-offline Projects screen, when the offline computer runs Sesori Desktop, that expands to reveal the Sesori Desktop download card."
   },
   "projectsBridgeOfflineStartBridge": "Make sure the Bridge is running",
   "@projectsBridgeOfflineStartBridge": {
     "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
+  },
+  "projectsBridgeOfflineOpenDesktop": "Open Sesori Desktop on {name}.",
+  "@projectsBridgeOfflineOpenDesktop": {
+    "description": "Instruction on the bridge-offline Projects screen when the offline computer runs Sesori Desktop, whose bridge starts with the app, so no command is shown. Names the computer, e.g. 'Open Sesori Desktop on dev-laptop.'",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "dev-laptop"
+      }
+    }
+  },
+  "projectsBridgeOfflineDesktopOption": "Sesori Desktop: open the app.",
+  "@projectsBridgeOfflineDesktopOption": {
+    "description": "First of two labelled instructions on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers Sesori Desktop."
+  },
+  "projectsBridgeOfflineTerminalOption": "Terminal:",
+  "@projectsBridgeOfflineTerminalOption": {
+    "description": "Label above the start-the-bridge command box on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers the command-line bridge."
   },
   "projectsDesktopStartBridge": "Start the bridge",
   "@projectsDesktopStartBridge": {
@@ -511,7 +537,15 @@
   },
   "projectsDesktopRemoteOfflineInfo": "Start the bridge on that computer to load its projects and sessions here.",
   "@projectsDesktopRemoteOfflineInfo": {
-    "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one."
+    "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one, and that computer runs the command-line bridge."
+  },
+  "projectsDesktopRemoteOfflineOpenDesktop": "Open Sesori Desktop on that computer to load its projects and sessions here.",
+  "@projectsDesktopRemoteOfflineOpenDesktop": {
+    "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer that runs Sesori Desktop, whose bridge starts with the app."
+  },
+  "projectsDesktopRemoteOfflineUnknownKind": "Open Sesori Desktop or start the bridge on that computer to load its projects and sessions here.",
+  "@projectsDesktopRemoteOfflineUnknownKind": {
+    "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer and the app does not know whether it runs Sesori Desktop or the command-line bridge."
   },
   "projectsDesktopBridgeStillStarting": "Still starting this computer's bridge…",
   "@projectsDesktopBridgeStillStarting": {

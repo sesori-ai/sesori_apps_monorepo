@@ -109,7 +109,16 @@ participates.
   "<name> is offline" heading when the name is known
   ("Bridge offline" otherwise), with when it was last seen when that is known,
   then the account's other online computers ([projects](projects-and-sessions.md)),
-  and keeps the start command above quiet explainer, install and help links.
+  and then how to start that computer's bridge above quiet explainer, install and help links. The
+  instruction follows the bridge's registered kind: Sesori Desktop gets "Open Sesori Desktop on <name>." with
+  no command box (it puts no `sesori-bridge` on PATH); the command-line bridge gets "Make sure the Bridge is
+  running" and the `sesori-bridge` box; an unknown kind (an older auth server, a bridge registered before
+  kind existed, an unrecognised value, or no named computer) gets both, labelled "Sesori Desktop: open the
+  app." and "Terminal:" over the box. The install link follows the kind too: Sesori Desktop gets
+  "Reinstall Sesori Desktop", which opens the Sesori Desktop download card and no CLI installers; the
+  command-line bridge gets "Install commands" with the CLI installers only; an unknown kind gets "Install
+  options" with the download card above the CLI installers. The card's copy and share log the offline
+  screen's surface, not onboarding's.
 - Desktop first-run startup preferences and optional macOS file-access guidance follow the
   [cockpit contract](desktop-cockpit-shell.md) and [supervision contract](desktop-bridge-supervision.md).
   Dismissing guidance does not grant permission or block ordinary project navigation.
@@ -130,7 +139,7 @@ participates.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Signed-in launch restores the local session and reaches the home with no network work at splash; the macOS desktop restores a shared-store token using its classic-Keychain master; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
-| L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. Automated: browser sign-in cancel, reopen, failed launch, resume, declined and expired outcomes, and last-method recording through logout in the auth manager and login cubit; the shared email form and the phone's waiting line; the desktop's layouts, handoff card, countdown, notices, stale-failure switches and "Last used" marker; the gate bringing the window forward only after a sign-in from the login screen; the phone's no-bridge home leading with the Sesori Desktop card (its address above the buttons, the shared and copied `https://sesori.com/desktop/` link and their success-only analytics) over the collapsed terminal-commands disclosure; and the bridge registration host key, hashed with its salt as lowercase hex, omitted from the request when no machine id is readable, and never carrying the raw machine id. |
+| L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. Automated: browser sign-in cancel, reopen, failed launch, resume, declined and expired outcomes, and last-method recording through logout in the auth manager and login cubit; the shared email form and the phone's waiting line; the desktop's layouts, handoff card, countdown, notices, stale-failure switches and "Last used" marker; the gate bringing the window forward only after a sign-in from the login screen; the phone's no-bridge home leading with the Sesori Desktop card (its address above the buttons, the shared and copied `https://sesori.com/desktop/` link and their success-only analytics) over the collapsed terminal-commands disclosure; the bridge registration host key, hashed with its salt as lowercase hex, omitted from the request when no machine id is readable, and never carrying the raw machine id; and the phone offline screen's start instruction for a Sesori Desktop, CLI and unknown-kind computer (and no computer named) and its install disclosure per kind (the Sesori Desktop download card, the CLI installers, or the card above them, its link copy logged on the offline surface), with the bridge summary parsing a missing, null or unrecognised kind as unknown. |
 | L3 Release | Every sign-in option on the release-target client platform and on the macOS desktop, both empty-home states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. On the macOS desktop, also Cancel then another provider, Open again, Copy link finished in another browser, a declined page, expiry at five minutes, a browser that fails to open (launcher stubbed in a dev build), "Last used" after sign-out, the window coming forward, both layouts across 820 points and at 560×480, and dragging the window by its top band. Client end to end plus relay integration; no plugin. |
 | L4 Extended | Android native storage failure without an automatic data reset, background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, logout during restore/login persistence, refresh rejection followed by relaunch, withheld push registration, delayed status check, second mobile platform including the shared email form and one browser provider. Windows and Linux desktops: Apple and one other provider through the browser, and Copy link; the folded layout on Windows, and Copy link without a working browser opener on Linux. Client end to end where the app observes it, headless where the bridge owns it. |
 | L5 Full | Store builds: native Apple sign-in on a real device, email flow, legal and analytics-preference surfaces, marker rewrite after a fresh install, and the status-endpoint-unavailable path against an older auth deployment. Packaged or external; no plugin. |
@@ -146,6 +155,9 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 
 ## Failure Signals
 
+- The offline screen telling a Sesori Desktop computer to run `sesori-bridge` or
+  offering it the CLI installers, or a missing or unrecognised bridge kind failing the bridge list instead of
+  reading as unknown.
 - Splash doing network work, or routing a valid session to sign-in.
 - A recoverable interruption surfacing as terminal, or a real failure as silent.
 - A trapped browser sign-in: a wait without Cancel, a card still waiting after

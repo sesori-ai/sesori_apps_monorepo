@@ -596,7 +596,7 @@ void main() {
     testWidgets("copying from the expanded install disclosure logs the bridge-offline surface", (tester) async {
       await pumpBridgeOffline(tester);
 
-      await tester.tap(find.text("Install commands"));
+      await tester.tap(find.text("Install options"));
       await tester.pumpAndSettle();
 
       // Expanded, the install box unfolds below the disclosure at the end of
@@ -612,6 +612,24 @@ void main() {
           os: BridgeInstallOs.unix,
           surface: OnboardingSurface.bridgeOffline,
         ),
+      );
+    });
+
+    testWidgets("copying the desktop link from the install disclosure logs the bridge-offline surface", (
+      tester,
+    ) async {
+      // No computer named, so the kind is unknown and the disclosure leads
+      // with the Sesori Desktop card.
+      await pumpBridgeOffline(tester);
+
+      await tester.tap(find.text("Install options"));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text("Copy link"));
+      await tester.tap(find.text("Copy link"));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.bridgeOffline),
       );
     });
 

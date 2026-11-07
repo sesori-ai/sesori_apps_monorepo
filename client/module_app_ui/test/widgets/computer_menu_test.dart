@@ -22,6 +22,7 @@ BridgeSummary _computer({
   status: status,
   addedAt: DateTime.utc(2026),
   lastSeenAt: lastSeenAt,
+  kind: null,
 );
 
 void main() {

@@ -189,6 +189,7 @@ void main() {
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026, 1, 1),
           lastSeenAt: DateTime.utc(2026, 9, 1),
+          kind: null,
         ),
       ],
     );
@@ -450,6 +451,41 @@ void main() {
       await tester.tap(find.text("this-mac"));
       verify(() => switches.switchTo(bridgeId: local.id, source: ComputerSwitchSource.offlineScreen)).called(1);
       verifyNever(bridgeControlCubit.recoverConnection);
+    });
+
+    testWidgets("an offline remote Sesori Desktop is told to open the app", (tester) async {
+      final desktop = _computer(
+        id: "remote",
+        name: "workstation",
+        status: BridgeRegistrationStatus.inactive,
+        kind: BridgeKind.desktop,
+      );
+      arrange(computers: [local, desktop], targetId: desktop.id, localId: local.id);
+      await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text("Open Sesori Desktop on that computer to load its projects and sessions here."),
+        findsOneWidget,
+      );
+      expect(find.text("Start the bridge on that computer to load its projects and sessions here."), findsNothing);
+    });
+
+    testWidgets("an offline remote computer of unknown kind names both ways to start it", (tester) async {
+      final unknown = _computer(
+        id: "remote",
+        name: "workstation",
+        status: BridgeRegistrationStatus.inactive,
+        kind: null,
+      );
+      arrange(computers: [local, unknown], targetId: unknown.id, localId: local.id);
+      await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text("Open Sesori Desktop or start the bridge on that computer to load its projects and sessions here."),
+        findsOneWidget,
+      );
     });
 
     testWidgets("an offline remote computer shows offline while this computer's bridge starts", (tester) async {
@@ -1188,16 +1224,21 @@ const BridgeControlState _bridgeControlState = BridgeControlState(
   updateState: DesktopUpdateManagedBySystem(),
 );
 
-BridgeSummary _computer({required String id, required String name, required BridgeRegistrationStatus status}) =>
-    BridgeSummary(
-      id: id,
-      name: name,
-      hostname: name,
-      platform: BridgePlatform.macos,
-      status: status,
-      addedAt: DateTime.utc(2026, 1, 1),
-      lastSeenAt: null,
-    );
+BridgeSummary _computer({
+  required String id,
+  required String name,
+  required BridgeRegistrationStatus status,
+  BridgeKind? kind = BridgeKind.cli,
+}) => BridgeSummary(
+  id: id,
+  name: name,
+  hostname: name,
+  platform: BridgePlatform.macos,
+  status: status,
+  addedAt: DateTime.utc(2026, 1, 1),
+  lastSeenAt: null,
+  kind: kind,
+);
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;

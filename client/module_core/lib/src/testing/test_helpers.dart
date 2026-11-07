@@ -724,6 +724,7 @@ BridgeSummary testBridgeSummary({
     status: status,
     addedAt: addedAt ?? DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
+    kind: null,
   );
 }
 

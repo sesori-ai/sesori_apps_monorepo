@@ -523,7 +523,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
+  String get projectsBridgeOfflineInstallOptions => 'Install options';
+
+  @override
+  String get projectsBridgeOfflineReinstallDesktop => 'Reinstall Sesori Desktop';
+
+  @override
   String get projectsBridgeOfflineStartBridge => 'Make sure the Bridge is running';
+
+  @override
+  String projectsBridgeOfflineOpenDesktop(String name) {
+    return 'Open Sesori Desktop on $name.';
+  }
+
+  @override
+  String get projectsBridgeOfflineDesktopOption => 'Sesori Desktop: open the app.';
+
+  @override
+  String get projectsBridgeOfflineTerminalOption => 'Terminal:';
 
   @override
   String get projectsDesktopStartBridge => 'Start the bridge';
@@ -534,6 +551,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get projectsDesktopRemoteOfflineInfo =>
       'Start the bridge on that computer to load its projects and sessions here.';
+
+  @override
+  String get projectsDesktopRemoteOfflineOpenDesktop =>
+      'Open Sesori Desktop on that computer to load its projects and sessions here.';
+
+  @override
+  String get projectsDesktopRemoteOfflineUnknownKind =>
+      'Open Sesori Desktop or start the bridge on that computer to load its projects and sessions here.';
 
   @override
   String get projectsDesktopBridgeStillStarting => 'Still starting this computer\'s bridge…';

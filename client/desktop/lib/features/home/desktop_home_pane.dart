@@ -253,7 +253,8 @@ class _SlowStartLineState() extends State<_SlowStartLine> {
 /// The offline body for another computer, as the phone shows it: the computer
 /// by name and when it was last seen, then the account's other online
 /// computers to switch to. Its bridge runs elsewhere, so there is nothing to
-/// start from here.
+/// start from here; the line under the heading says how to start it on that
+/// computer, by how its bridge was installed.
 class const DesktopRemoteComputerOfflineView({
   super.key,
 
@@ -279,7 +280,15 @@ class const DesktopRemoteComputerOfflineView({
               ComputerOfflineHeading(bridge: bridge),
               const SizedBox(height: PregoSpacing.xl),
               Text(
-                context.loc.projectsDesktopRemoteOfflineInfo,
+                // Sesori Desktop starts its bridge with the app; the
+                // command-line bridge is started by hand; an unknown kind (an
+                // older auth server or registration, or no named computer)
+                // names both.
+                switch (bridge) {
+                  BridgeSummary(kind: BridgeKind.desktop) => context.loc.projectsDesktopRemoteOfflineOpenDesktop,
+                  BridgeSummary(kind: BridgeKind.cli) => context.loc.projectsDesktopRemoteOfflineInfo,
+                  BridgeSummary(kind: null) || null => context.loc.projectsDesktopRemoteOfflineUnknownKind,
+                },
                 textAlign: TextAlign.center,
                 style: prego.textTheme.textSm.regular,
               ),

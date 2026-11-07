@@ -589,6 +589,7 @@ class _FakeAuthServer() {
             status: BridgeRegistrationStatus.inactive,
             addedAt: DateTime.utc(2026, 8, 30),
             lastSeenAt: null,
+            kind: null,
           ).toJson(),
         );
         return;

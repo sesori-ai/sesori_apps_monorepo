@@ -30,6 +30,7 @@ BridgeSummary _computer({
   status: status,
   addedAt: DateTime.utc(2026),
   lastSeenAt: null,
+  kind: null,
 );
 
 final _studio = _computer(

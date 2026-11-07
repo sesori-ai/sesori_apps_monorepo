@@ -979,17 +979,47 @@ abstract class AppLocalizations {
   /// **'Turn off bridge'**
   String get computersTurnOffBridge;
 
-  /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
+  /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands, for a computer running the command-line bridge.
   ///
   /// In en, this message translates to:
   /// **'Install commands'**
   String get projectsBridgeOfflineInstallCommands;
+
+  /// Label for the disclosure on the bridge-offline Projects screen when the app does not know how the computer's bridge was installed. It expands to reveal the Sesori Desktop download card above the bridge install commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Install options'**
+  String get projectsBridgeOfflineInstallOptions;
+
+  /// Label for the disclosure on the bridge-offline Projects screen, when the offline computer runs Sesori Desktop, that expands to reveal the Sesori Desktop download card.
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstall Sesori Desktop'**
+  String get projectsBridgeOfflineReinstallDesktop;
 
   /// Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon.
   ///
   /// In en, this message translates to:
   /// **'Make sure the Bridge is running'**
   String get projectsBridgeOfflineStartBridge;
+
+  /// Instruction on the bridge-offline Projects screen when the offline computer runs Sesori Desktop, whose bridge starts with the app, so no command is shown. Names the computer, e.g. 'Open Sesori Desktop on dev-laptop.'
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sesori Desktop on {name}.'**
+  String projectsBridgeOfflineOpenDesktop(String name);
+
+  /// First of two labelled instructions on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers Sesori Desktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori Desktop: open the app.'**
+  String get projectsBridgeOfflineDesktopOption;
+
+  /// Label above the start-the-bridge command box on the bridge-offline Projects screen when the app does not know whether the offline computer runs Sesori Desktop or the command-line bridge; this one covers the command-line bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal:'**
+  String get projectsBridgeOfflineTerminalOption;
 
   /// Desktop project recovery action that starts or retries the supervised local bridge.
   ///
@@ -1003,11 +1033,23 @@ abstract class AppLocalizations {
   /// **'Start the local bridge to load your projects and sessions in Sesori.'**
   String get projectsDesktopStartBridgeInfo;
 
-  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one.
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one, and that computer runs the command-line bridge.
   ///
   /// In en, this message translates to:
   /// **'Start the bridge on that computer to load its projects and sessions here.'**
   String get projectsDesktopRemoteOfflineInfo;
+
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer that runs Sesori Desktop, whose bridge starts with the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sesori Desktop on that computer to load its projects and sessions here.'**
+  String get projectsDesktopRemoteOfflineOpenDesktop;
+
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer and the app does not know whether it runs Sesori Desktop or the command-line bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sesori Desktop or start the bridge on that computer to load its projects and sessions here.'**
+  String get projectsDesktopRemoteOfflineUnknownKind;
 
   /// Desktop-only line that fades in under the home loader when launching this computer's own bridge has taken longer than 10 seconds and the app has not reached it yet.
   ///

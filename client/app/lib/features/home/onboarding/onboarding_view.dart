@@ -183,7 +183,7 @@ class _ConnectBridgeChecklistState() extends State<ConnectBridgeChecklist> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _DesktopDownloadCard(),
+              const _DesktopDownloadCard(surface: OnboardingSurface.connectSetup),
               const SizedBox(height: PregoSpacing.xl),
               const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
               const SizedBox(height: PregoSpacing.xs),
@@ -229,13 +229,15 @@ class _ConnectBridgeChecklistState() extends State<ConnectBridgeChecklist> {
 /// terminal. Shows the download address to read off the phone, then hands the
 /// link to the computer through the share sheet (AirDrop, messages) or the
 /// clipboard. Shares the command boxes' bordered chrome ([_CommandBoxFrame]).
-class const _DesktopDownloadCard() extends StatelessWidget {
+/// The bridge-offline reinstall disclosure reuses it ([BridgeOfflineView]);
+/// [surface] tells their analytics apart.
+class const _DesktopDownloadCard({required final OnboardingSurface surface}) extends StatelessWidget {
   Future<void> _copyLink({required BuildContext context}) async {
     final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
     final cubit = context.read<ProjectListCubit>();
     if (!await copyTextToClipboard(text: BridgeInstall.desktopDownloadUrl, operation: "desktop link")) return;
-    cubit.reportDesktopLinkCopied(surface: OnboardingSurface.connectSetup);
+    cubit.reportDesktopLinkCopied(surface: surface);
     popupAlertPresenter.show(
       title: loc.projectsOnboardingDesktopLinkCopied,
       variant: PregoPopupAlertsNotificationsVariant.info,
@@ -251,7 +253,7 @@ class const _DesktopDownloadCard() extends StatelessWidget {
       params: (origin) => ShareParams(uri: Uri.parse(BridgeInstall.desktopDownloadUrl), sharePositionOrigin: origin),
       failureMessage: "Failed to share desktop link",
     );
-    if (shared) cubit.reportDesktopLinkShared(surface: OnboardingSurface.connectSetup);
+    if (shared) cubit.reportDesktopLinkShared(surface: surface);
   }
 
   @override

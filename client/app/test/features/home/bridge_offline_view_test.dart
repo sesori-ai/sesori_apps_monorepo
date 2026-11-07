@@ -14,8 +14,9 @@ import "../../helpers/test_helpers.dart";
 // ---------------------------------------------------------------------------
 // Behaviour guards for the bridge-offline recovery view: the heading naming
 // the computer with how long it has been gone; the account's other online
-// computers as one-tap switches; a single info control; and the
-// install-commands disclosure that closes the body.
+// computers as one-tap switches; how to start that computer's bridge, by how
+// it was installed; a single info control; and the install-commands
+// disclosure that closes the body.
 //
 // Pumps the real home (its cubits are built from getIt, so every
 // dependency is registered as a mock below) driven into the bridge-offline
@@ -37,6 +38,7 @@ BridgeSummary _bridge({
   BridgePlatform platform = BridgePlatform.macos,
   BridgeRegistrationStatus status = BridgeRegistrationStatus.active,
   DateTime? lastSeenAt,
+  BridgeKind? kind,
 }) {
   return BridgeSummary(
     id: id,
@@ -46,6 +48,7 @@ BridgeSummary _bridge({
     status: status,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
+    kind: kind,
   );
 }
 
@@ -115,7 +118,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text("Make sure the Bridge is running"), findsOneWidget);
+    expect(find.text("Why is this needed?"), findsOneWidget);
     expect(find.text("Start the bridge"), findsNothing);
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
@@ -139,7 +142,7 @@ void main() {
 
   group("other computers", () {
     final bridges = [
-      _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
+      _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1), kind: BridgeKind.cli),
       _bridge(id: "b", name: "work-desktop", platform: BridgePlatform.linux),
       _bridge(id: "c", name: "old-tower", status: BridgeRegistrationStatus.inactive),
     ];
@@ -205,12 +208,92 @@ void main() {
     });
   });
 
+  group("starting the bridge", () {
+    Future<void> pumpWithBridge(WidgetTester tester, {required BridgeKind? kind}) async {
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+        (_) async => [_bridge(id: "a", name: "Macbook-Pro.local", kind: kind)],
+      );
+      await pumpScreen(tester);
+    }
+
+    testWidgets("a command-line bridge gets the start command", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.cli);
+
+      expect(find.text("Make sure the Bridge is running"), findsOneWidget);
+      expect(find.text("sesori-bridge"), findsOneWidget);
+      expect(find.textContaining("Sesori Desktop"), findsNothing);
+      expect(find.text("Terminal:"), findsNothing);
+    });
+
+    testWidgets("Sesori Desktop gets told to open the app, with no command", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.desktop);
+
+      // Sesori Desktop puts no sesori-bridge command on PATH.
+      expect(find.text("Open Sesori Desktop on Macbook-Pro.local."), findsOneWidget);
+      expect(find.text("sesori-bridge"), findsNothing);
+      expect(find.text("Make sure the Bridge is running"), findsNothing);
+      expect(find.text("Terminal:"), findsNothing);
+      // The reinstall disclosure stays, relabelled for the app.
+      expect(find.text("Reinstall Sesori Desktop"), findsOneWidget);
+    });
+
+    testWidgets("Sesori Desktop reinstalls from its download, not the CLI installers", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.desktop);
+
+      expect(find.text("Install commands"), findsNothing);
+      await tester.tap(find.text("Reinstall Sesori Desktop"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Get Sesori Desktop"), findsOneWidget);
+      expect(find.text("sesori.com/desktop"), findsOneWidget);
+      expect(find.text("Send link to my computer"), findsOneWidget);
+      expect(find.text("macOS, Linux, WSL"), findsNothing);
+    });
+
+    testWidgets("a command-line bridge reinstalls from the CLI installers only", (tester) async {
+      await pumpWithBridge(tester, kind: BridgeKind.cli);
+
+      expect(find.text("Reinstall Sesori Desktop"), findsNothing);
+      await tester.tap(find.text("Install commands"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("macOS, Linux, WSL"), findsOneWidget);
+      expect(find.text("Get Sesori Desktop"), findsNothing);
+    });
+
+    testWidgets("an unknown kind offers the Sesori Desktop card above the CLI installers", (tester) async {
+      await pumpWithBridge(tester, kind: null);
+
+      await tester.tap(find.text("Install options"));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.text("Get Sesori Desktop")).dy,
+        lessThan(tester.getTopLeft(find.text("macOS, Linux, WSL")).dy),
+      );
+    });
+
+    testWidgets("an unknown kind gets both, each labelled", (tester) async {
+      await pumpWithBridge(tester, kind: null);
+
+      expect(find.text("Make sure the Bridge is running"), findsNothing);
+      final desktopY = tester.getTopLeft(find.text("Sesori Desktop: open the app.")).dy;
+      final terminalY = tester.getTopLeft(find.text("Terminal:")).dy;
+      final commandY = tester.getTopLeft(find.text("sesori-bridge")).dy;
+      expect(desktopY, lessThan(terminalY));
+      expect(terminalY, lessThan(commandY));
+    });
+  });
+
   testWidgets("the heading stands alone when the bridges could not be fetched", (tester) async {
     await pumpScreen(tester);
 
     expect(find.text("Bridge offline"), findsOneWidget);
+    // Without a computer there is no kind either, so both ways to start it show.
+    expect(find.text("Sesori Desktop: open the app."), findsOneWidget);
+    expect(find.text("Terminal:"), findsOneWidget);
     expect(find.textContaining("Last seen"), findsNothing);
-    expect(find.text("Install commands"), findsOneWidget);
+    expect(find.text("Install options"), findsOneWidget);
   });
 
   testWidgets("a quiet line reports how long the bridge has been gone", (tester) async {
@@ -244,21 +327,21 @@ void main() {
     // End-of-body ordering: run box → explainer → disclosure. No reconnect
     // button: the page reconnects on its own and on pull-to-refresh.
     expect(find.text("Reconnect"), findsNothing);
-    final runBoxY = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
+    final runBoxY = tester.getTopLeft(find.text("sesori-bridge")).dy;
     final whyY = tester.getTopLeft(find.text("Why is this needed?")).dy;
-    final disclosureY = tester.getTopLeft(find.text("Install commands")).dy;
+    final disclosureY = tester.getTopLeft(find.text("Install options")).dy;
     expect(runBoxY, lessThan(whyY));
     expect(whyY, lessThan(disclosureY));
 
     // Collapsed: no install command boxes on stage.
     expect(find.text("macOS, Linux, WSL"), findsNothing);
 
-    await tester.tap(find.text("Install commands"));
+    await tester.tap(find.text("Install options"));
     await tester.pumpAndSettle();
 
     // Expanded: the install boxes unfold below the disclosure button. The
     // centred body shifts up as it grows, so re-measure the button.
-    final expandedDisclosureY = tester.getTopLeft(find.text("Install commands")).dy;
+    final expandedDisclosureY = tester.getTopLeft(find.text("Install options")).dy;
     final installBoxY = tester.getTopLeft(find.text("macOS, Linux, WSL")).dy;
     expect(installBoxY, greaterThan(expandedDisclosureY));
   });
