@@ -67,9 +67,12 @@ default app; otherwise it shows a read-only preview.
     toggle; with a line it opens on the source.
   - HTML (`.html`, `.htm`) renders in a web view on iOS, Android and macOS,
     with the same source toggle and line rule; switching back to it shows the
-    page where it was. Its scripts run, but the page never navigates: a web or
-    `mailto` link opens in the browser, frames load their own content, and any
-    other navigation is blocked. Relative assets beside the file do not load.
+    page where it was. Its scripts and in-page anchors work, but the page
+    never navigates away: a link the chat would open (web without
+    credentials, or `mailto`) opens outside the app, frames load their own
+    content, any other navigation is blocked, and a page that starts loading
+    anyway, such as a submitted form on Android, is replaced with the file
+    again. Relative assets beside the file do not load.
     Windows and Linux show only the source, with no toggle.
   - An image opens in the image viewer once the page has slid in.
   - Every other outcome is a one-line message. A `404` from an older bridge
@@ -81,7 +84,7 @@ default app; otherwise it shows a read-only preview.
 |---|---|
 | L1 Smoke | Automated: repository outcomes for text, image, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, FIFO and device left unopened, followed link, denied read, and denied lookup; handler `400` and passthrough; wire tags. Client: path recognition, the open-locally or preview decision, repository `404` mapping, cubit states, and the preview page for each state. |
 | L2 Routine | Headless bridge: request a text file, an image, and a missing path, and confirm each outcome. |
-| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an HTML file, confirm its scripts ran, scroll it, toggle its source and back, and tap a web link to confirm it opens in the browser while the page stays; tap an image path. Desktop on the same computer: confirm the file opens in its default app. |
+| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. Desktop on the same computer: confirm the file opens in its default app. |
 | L4 Extended | A client against a bridge older than this route shows "Update the bridge to preview files". Headless bridge: on macOS, request a file under a Full Disk Access-protected folder without access and confirm `denied`. |
 | L5 Full | No additional coverage. |
 
@@ -96,8 +99,8 @@ default app; otherwise it shows a read-only preview.
 - A link shows the wrong icon or label, the text cursor on hover, or copying it
   yields the short label instead of the full URL or path.
 - The transcript jumps or scrolls when a preview opens or closes.
-- An HTML preview navigates away from the file inside the app, or a link in it
-  does nothing.
+- An HTML preview shows anything but the file inside the app, or a web or
+  `mailto` link in it does nothing.
 - A remote bridge's path is opened on this computer instead of previewed.
 
 ## Sources

@@ -169,10 +169,14 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
   Widget _body({required FilePreviewState state, required _Rendering? rendering}) => switch (state) {
     FilePreviewLoading() => const Center(child: PregoActivityIndicator(color: null)),
     FilePreviewShowsText(:final content) when rendering == _Rendering.markdown => _MarkdownPreview(content: content),
-    FilePreviewShowsText(:final content) when rendering == _Rendering.html => WebViewWidget(
-      controller: _htmlPage ??= _loadHtmlPage(
-        content: content,
-        openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+    // The web view never insets its page for the home indicator, so it stops above it.
+    FilePreviewShowsText(:final content) when rendering == _Rendering.html => Padding(
+      padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
+      child: WebViewWidget(
+        controller: _htmlPage ??= _loadHtmlPage(
+          content: content,
+          openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+        ),
       ),
     ),
     FilePreviewShowsText(:final content) => _CodePreview(
@@ -294,9 +298,10 @@ enum _Rendering() {
   html,
 }
 
-/// Loads the page an HTML file describes into a web view. Its scripts run, but
-/// it never navigates: a link opens in the browser, and anything else is
-/// blocked. Relative assets beside the file do not load; only the file is here.
+/// Loads the page an HTML file describes into a web view. Its scripts and
+/// in-page anchors work, but it never navigates away: a link opens outside the
+/// app, and anything else is blocked. Relative assets beside the file do not
+/// load; only the file is here.
 WebViewController _loadHtmlPage({required String content, required ExternalLinkOpener openExternalLink}) {
   NavigationDecision decide(NavigationRequest request) {
     final uri = Uri.tryParse(request.url);
@@ -312,8 +317,19 @@ WebViewController _loadHtmlPage({required String content, required ExternalLinkO
   }
 
   final controller = WebViewController();
+
+  // Android never asks [decide] about a POST, such as a submitted form, so a
+  // page that starts anywhere but the file is replaced with the file again.
+  void returnToFile(String url) {
+    final scheme = Uri.tryParse(url)?.scheme ?? "";
+    if (scheme.isEmpty || scheme == "about" || scheme == "data") return;
+    unawaited(controller.loadHtmlString(content));
+  }
+
   unawaited(controller.setJavaScriptMode(JavaScriptMode.unrestricted));
-  unawaited(controller.setNavigationDelegate(NavigationDelegate(onNavigationRequest: decide)));
+  unawaited(
+    controller.setNavigationDelegate(NavigationDelegate(onNavigationRequest: decide, onPageStarted: returnToFile)),
+  );
   unawaited(controller.loadHtmlString(content));
   return controller;
 }

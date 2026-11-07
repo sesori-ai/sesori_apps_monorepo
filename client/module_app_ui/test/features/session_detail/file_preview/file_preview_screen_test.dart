@@ -49,12 +49,12 @@ class _FakeWebViewPlatform() extends WebViewPlatform {
 class _FakeWebViewController(super.params) extends PlatformWebViewController {
   this : super.implementation();
 
-  String? html;
+  final loadedHtml = <String>[];
   JavaScriptMode? javaScriptMode;
   PlatformNavigationDelegate? navigationDelegate;
 
   @override
-  Future<void> loadHtmlString(String html, {String? baseUrl}) async => this.html = html;
+  Future<void> loadHtmlString(String html, {String? baseUrl}) async => loadedHtml.add(html);
 
   @override
   Future<void> setJavaScriptMode(JavaScriptMode javaScriptMode) async => this.javaScriptMode = javaScriptMode;
@@ -70,16 +70,29 @@ class _FakeWebViewController(super.params) extends PlatformWebViewController {
     };
     return await callback(NavigationRequest(url: url, isMainFrame: isMainFrame));
   }
+
+  /// Tells the page's navigation delegate that the main frame started [url].
+  void startPage({required String url}) {
+    final callback = switch (navigationDelegate) {
+      _FakeNavigationDelegate(:final onPageStarted?) => onPageStarted,
+      _ => throw StateError("no page started handler"),
+    };
+    callback(url);
+  }
 }
 
 class _FakeNavigationDelegate(super.params) extends PlatformNavigationDelegate {
   this : super.implementation();
 
   NavigationRequestCallback? onNavigationRequest;
+  PageEventCallback? onPageStarted;
 
   @override
   Future<void> setOnNavigationRequest(NavigationRequestCallback onNavigationRequest) async =>
       this.onNavigationRequest = onNavigationRequest;
+
+  @override
+  Future<void> setOnPageStarted(PageEventCallback onPageStarted) async => this.onPageStarted = onPageStarted;
 }
 
 class _FakeWebViewWidget(super.params) extends PlatformWebViewWidget {
@@ -255,7 +268,7 @@ void main() {
         );
         expect(find.byKey(const Key("fake-web-view")), findsOneWidget);
         final controller = webViews.controllers.single;
-        expect(controller.html, page);
+        expect(controller.loadedHtml, [page]);
         expect(controller.javaScriptMode, JavaScriptMode.unrestricted);
 
         await tester.tap(find.byKey(const Key("file-preview-source-toggle")));
@@ -325,6 +338,23 @@ void main() {
 
         expect(await controller.decide(url: "https://example.com/docs", isMainFrame: true), NavigationDecision.prevent);
         expect(opened, [(Uri.parse("https://example.com/docs"), UrlLaunchMode.externalApp)]);
+      });
+
+      testWidgets("returns to the file when a page it never asked about starts", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        final controller = webViews.controllers.single;
+
+        controller.startPage(url: "about:blank");
+        expect(controller.loadedHtml, [page]);
+
+        // Android submits a POST form without asking the navigation delegate.
+        controller.startPage(url: "https://example.com/submit");
+        expect(controller.loadedHtml, [page, page]);
       });
     });
 
