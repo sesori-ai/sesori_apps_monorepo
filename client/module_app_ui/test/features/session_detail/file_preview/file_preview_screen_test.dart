@@ -295,6 +295,22 @@ void main() {
         expect(webViews.controllers.single, same(controller), reason: "the page is kept, not loaded again");
       });
 
+      testWidgets("fills to the bottom edge, under the home indicator", (tester) async {
+        tester.view.padding = FakeViewPadding(bottom: 34 * tester.view.devicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        webViews.controllers.single.finishPage(url: "about:blank");
+        await tester.pump();
+
+        final screen = tester.getRect(find.byType(FilePreviewScreen));
+        expect(tester.getRect(find.byKey(const Key("fake-web-view"))).bottom, screen.bottom);
+      });
+
       testWidgets("opens on its source when the reference names a line", (tester) async {
         await _pumpScreen(
           tester,
