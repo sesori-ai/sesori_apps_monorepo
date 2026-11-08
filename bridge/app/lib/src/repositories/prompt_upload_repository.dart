@@ -6,7 +6,6 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../api/filesystem_api.dart";
-import "../foundation/data_directory_hardening.dart";
 
 /// Owns the files sent with prompts, kept on disk as
 /// `<root>/<sessionId>/<YYYY-MM-DD>-<random>/<name>`.
@@ -37,14 +36,13 @@ class PromptUploadRepository({
   /// when [sessionId] is not a single path segment.
   Future<String> save({required String sessionId, required List<int> bytes, required String filename}) async {
     final sessionFolder = _sessionFolder(sessionId: sessionId);
-    await _createOwnerOnlyDirectory(path: _uploadsRoot);
-    await _createOwnerOnlyDirectory(path: sessionFolder);
-    final fileFolder = await _filesystemApi.createTemporaryDirectory(
+    await _filesystemApi.createOwnerOnlyDirectory(path: _uploadsRoot);
+    await _filesystemApi.createOwnerOnlyDirectory(path: sessionFolder);
+    final fileFolder = await _filesystemApi.createOwnerOnlyTemporaryDirectory(
       parent: sessionFolder,
       prefix: "${_formatDate(date: clock.now())}-",
     );
     try {
-      await hardenPath(targetPath: fileFolder, mode: ownerOnlyDirectoryMode);
       final filePath = p.join(fileFolder, _sanitizeName(filename: filename));
       await _filesystemApi.writeOwnerOnlyFile(path: filePath, bytes: bytes);
       return filePath;
@@ -107,11 +105,6 @@ class PromptUploadRepository({
       throw StateError("Session id $sessionId is not a single path segment");
     }
     return p.join(_uploadsRoot, sessionId);
-  }
-
-  Future<void> _createOwnerOnlyDirectory({required String path}) async {
-    await _filesystemApi.createDirectoryRecursively(path: path);
-    await hardenPath(targetPath: path, mode: ownerOnlyDirectoryMode);
   }
 
   /// Best-effort: the save already fails with its own error, so a folder left

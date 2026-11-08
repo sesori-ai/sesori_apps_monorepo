@@ -519,6 +519,13 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   Future<void> writeOwnerOnlyFile({required String path, required List<int> bytes}) => throw UnimplementedError();
 
   @override
+  Future<void> createOwnerOnlyDirectory({required String path}) => throw UnimplementedError();
+
+  @override
+  Future<String> createOwnerOnlyTemporaryDirectory({required String parent, required String prefix}) =>
+      throw UnimplementedError();
+
+  @override
   bool directoryExists({required String path}) => true;
 
   @override

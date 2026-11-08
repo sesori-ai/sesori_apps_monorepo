@@ -222,8 +222,10 @@ this plan changes a wire contract and adds a bridge class.
     rejects an id that isn't a single plain segment, with a `StateError`.
   - The root and folders are mode 700 and files are mode 600. The root and
     session folders are created with the default umask, so the repository
-    hardens them with `hardenPath` right after creating them. Dart's `createTemp`
-    already makes the per-file folder 700; the repository hardens it too, as
+    creates them through `FilesystemApi.createOwnerOnlyDirectory`, which hardens
+    them right after creating them; the repository never runs `chmod` itself.
+    Dart's `createTemp` already makes the per-file folder 700;
+    `FilesystemApi.createOwnerOnlyTemporaryDirectory` hardens it too, as
     cheap insurance that doesn't rely on how Dart creates temp folders. On a failed write
     the per-file folder is deleted and the error propagates, so the send fails
     visibly.

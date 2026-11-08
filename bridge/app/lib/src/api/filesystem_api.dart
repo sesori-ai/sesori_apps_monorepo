@@ -108,6 +108,26 @@ class const FilesystemApi() {
     await createHardenedFile(filePath: path).writeAsBytes(bytes, flush: true);
   }
 
+  /// Creates the directory at [path] and any missing parents, then lets only
+  /// the current user open it. Hardens an existing directory too.
+  Future<void> createOwnerOnlyDirectory({required String path}) async {
+    await Directory(path).create(recursive: true);
+    await hardenPath(targetPath: path, mode: ownerOnlyDirectoryMode);
+  }
+
+  /// [createTemporaryDirectory], but only the current user can open the new
+  /// directory. When hardening fails, removes the directory and rethrows.
+  Future<String> createOwnerOnlyTemporaryDirectory({required String parent, required String prefix}) async {
+    final directory = await Directory(parent).createTemp(prefix);
+    try {
+      await hardenPath(targetPath: directory.path, mode: ownerOnlyDirectoryMode);
+    } on Object {
+      await directory.delete(recursive: true);
+      rethrow;
+    }
+    return directory.path;
+  }
+
   String resolveFilePath({required String path}) {
     return File(path).resolveSymbolicLinksSync();
   }
