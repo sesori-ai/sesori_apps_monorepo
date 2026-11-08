@@ -18,6 +18,7 @@ class GetPluginsHandler({
       bridgeId: _bridgeIdProvider.bridgeId,
       plugins: _lifecycleService.selectableMetadataSnapshot,
       supportsSessionOptions: true,
+      supportsFileUploads: true,
     );
   }
 }

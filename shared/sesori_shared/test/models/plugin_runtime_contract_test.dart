@@ -79,6 +79,24 @@ void main() {
     expect(response.toJson()["supportsSessionOptions"], isTrue);
   });
 
+  test("plugin discovery defaults an omitted file-upload capability to false", () {
+    final response = PluginListResponse.fromJson(const {
+      "plugins": <Object>[],
+      "bridgeId": null,
+    });
+
+    expect(response.supportsFileUploads, isFalse);
+  });
+
+  test("plugin discovery round-trips the file-upload capability", () {
+    const response = PluginListResponse(plugins: [], bridgeId: null, supportsFileUploads: true);
+
+    final json = response.toJson();
+
+    expect(json["supportsFileUploads"], isTrue);
+    expect(PluginListResponse.fromJson(json).supportsFileUploads, isTrue);
+  });
+
   test("plugin discovery maps a future lifecycle state to unavailable", () {
     final metadata = PluginMetadata.fromJson(const {
       "id": "future-plugin",

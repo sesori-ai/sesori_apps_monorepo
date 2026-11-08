@@ -111,6 +111,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       handler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -527,6 +528,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1043,6 +1045,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1235,6 +1238,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),

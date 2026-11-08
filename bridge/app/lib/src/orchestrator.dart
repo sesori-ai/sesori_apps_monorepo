@@ -184,6 +184,7 @@ import "services/project_glossary_scope_service.dart";
 import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
+import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_continuation_service.dart";
@@ -351,6 +352,7 @@ class Orchestrator({
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriUploadsDirectory(),
     );
+    final promptPartDeliveryService = PromptPartDeliveryService(uploads: promptUploadRepository, clock: clock);
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
@@ -489,6 +491,7 @@ class Orchestrator({
       sessionOptionsService: sessionOptionsService,
       scratchRepository: scratchRepository,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+      promptPartDelivery: promptPartDeliveryService,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
@@ -547,6 +550,7 @@ class Orchestrator({
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
       sessionOptionsService: sessionOptionsService,
+      promptPartDelivery: promptPartDeliveryService,
     );
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,

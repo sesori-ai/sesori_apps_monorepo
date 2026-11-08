@@ -61,6 +61,10 @@ class TestPluginRuntime({
   /// them as unavailable while `use` would start them.
   final Set<String> stoppedPluginIds = {};
   final Map<String, PluginQuotaReportingSupport> quotaReportingSupportByPlugin = {};
+
+  /// Plugin ids whose descriptor takes image parts inline: all of them unless
+  /// a test removes one, as nearly every production plugin takes them.
+  late final Set<String> promptAttachmentPluginIds = {..._plugins.keys};
   Completer<void>? useStarted;
   Future<void>? useGate;
   bool generationCurrent = true;
@@ -83,6 +87,9 @@ class TestPluginRuntime({
   @override
   PluginQuotaReportingSupport quotaReportingSupport({required String pluginId}) =>
       quotaReportingSupportByPlugin[pluginId] ?? PluginQuotaReportingSupport.unavailable;
+
+  @override
+  bool supportsPromptAttachments({required String pluginId}) => promptAttachmentPluginIds.contains(pluginId);
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {

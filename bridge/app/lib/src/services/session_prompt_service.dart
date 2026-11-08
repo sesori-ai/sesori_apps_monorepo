@@ -10,6 +10,7 @@ import "../repositories/random_hex_id.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
+import "prompt_part_delivery_service.dart";
 import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
@@ -30,6 +31,7 @@ class SessionPromptService({
   required final SessionContinuationRepository _continuations,
   required final SessionViewService _views,
   required final SessionMutationDispatcher _mutations,
+  required final PromptPartDeliveryService _promptPartDelivery,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -115,12 +117,19 @@ class SessionPromptService({
       }
     }
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
+      // After the accepted check, so a repeated prompt saves no files again.
+      // A command sends only its text, so it saves nothing.
+      final deliverableParts = await _promptPartDelivery.deliverableParts(
+        sessionId: sessionId,
+        inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
+        parts: parts,
+      );
       await _sendInvalidatingStaleOptionsCache(
         sessionId: sessionId,
         send: () => _sessionRepository.sendPrompt(
           sessionId: sessionId,
           promptId: promptId,
-          parts: parts,
+          parts: deliverableParts,
           variant: variant,
           fastMode: fastMode,
           agent: agent,

@@ -244,6 +244,9 @@ class PluginRuntime({
   PluginQuotaReportingSupport quotaReportingSupport({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.quotaReportingSupport ?? PluginQuotaReportingSupport.unavailable;
 
+  bool supportsPromptAttachments({required String pluginId}) =>
+      _slots[pluginId]?.registration.descriptor.supportsPromptAttachments ?? false;
+
   Future<Map<String, PluginSetupStatus>> inspectSetup({
     required Set<String> pluginIds,
     required bool markUnselectedNotInspected,

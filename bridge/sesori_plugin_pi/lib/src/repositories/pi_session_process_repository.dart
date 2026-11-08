@@ -534,8 +534,18 @@ final class PiSessionProcessRepository({
         : false;
   }
 
+  /// Pi takes one message string, so the text parts are joined. The bridge
+  /// joins the user-visible texts the same way (non-blank, blank line apart),
+  /// which keeps them an exact suffix of this text when it adds a saved-file
+  /// note or prepends its own context.
+  static String promptText({required List<PluginPromptPart> parts}) => parts
+      .whereType<PluginPromptPartText>()
+      .map((part) => part.text)
+      .where((text) => text.trim().isNotEmpty)
+      .join("\n\n");
+
   PiPromptPayload mapPrompt({required List<PluginPromptPart> parts, required String? userVisibleText}) {
-    final executionText = parts.whereType<PluginPromptPartText>().map((part) => part.text).join();
+    final executionText = promptText(parts: parts);
     final message = executionText.isEmpty && (userVisibleText == null || userVisibleText.isEmpty)
         ? ""
         : executionText == userVisibleText

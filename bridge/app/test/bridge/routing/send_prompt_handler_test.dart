@@ -625,6 +625,7 @@ SessionPromptService _buildPromptService(SessionRepository repository) {
     dispatcher: dispatcher,
     archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
     sessionOptionsService: FakeSessionOptionsService(),
+    promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
   );
   addTearDown(dispatcher.dispose);
   addTearDown(service.dispose);

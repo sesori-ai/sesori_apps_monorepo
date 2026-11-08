@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:clock/clock.dart";
@@ -43,11 +44,14 @@ void main() {
     late String scratchRoot;
     late ProjectCatalogIdentityCalculator calculator;
     late ScratchRepository scratchRepository;
+    late String uploadsRoot;
+    late TestPluginRuntime runtime;
 
     setUp(() async {
       db = createTestDatabase();
       scratchParent = await Directory.systemTemp.createTemp("session-creation-scratch-");
       scratchRoot = p.join(scratchParent.path, "scratch");
+      uploadsRoot = p.join(scratchParent.path, "uploads");
       calculator = ProjectCatalogIdentityCalculator(scratchRoot: scratchRoot, pathContext: p.context);
       scratchRepository = testScratchRepository(db: db, scratchRoot: scratchRoot);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", scratchRoot]);
@@ -69,11 +73,13 @@ void main() {
           plugin: plugin,
         ),
       );
+      runtime = createTestPluginRuntime(plugins: [plugin]);
       final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        runtime: runtime,
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       mutationDispatcher = SessionMutationDispatcher(
@@ -89,6 +95,7 @@ void main() {
         sessionOptionsService: sessionOptionsService,
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
       );
     });
 
@@ -158,6 +165,7 @@ void main() {
         sessionOptionsService: sessionOptionsService,
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
 
       final creation = localService.createSession(
@@ -313,6 +321,7 @@ void main() {
         sessionOptionsService: sessionOptionsService,
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
 
       final creation = localService.createSession(
@@ -429,6 +438,7 @@ void main() {
         sessionOptionsService: sessionOptionsService,
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       var creationCompleted = false;
       final creation = localService.createSession(
@@ -474,6 +484,7 @@ void main() {
         sessionOptionsService: sessionOptionsService,
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       late Session created;
 
@@ -573,6 +584,74 @@ void main() {
         plugin.lastCreateParts?.first,
         isA<PluginPromptPartText>().having((part) => part.text, "text", contains("SYSTEM CONTEXT")),
       );
+    });
+
+    test("saves a file under the id the session is committed with and notes it in place", () async {
+      final created = await service.createSession(
+        request: CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [
+            const PromptPart.text(text: "Read this"),
+            PromptPart.fileData(
+              mime: "application/octet-stream",
+              base64: base64Encode(utf8.encode("notes")),
+              filename: "notes.txt",
+            ),
+            const PromptPart.text(text: "Then summarize it"),
+          ],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      await service.drain();
+
+      final savedFolders = Directory(p.join(uploadsRoot, created.id)).listSync();
+      expect(savedFolders, hasLength(1));
+      final savedPath = p.join(savedFolders.single.path, "notes.txt");
+      expect(File(savedPath).readAsStringSync(), "notes");
+      final note = 'Attached file "notes.txt": `$savedPath`';
+      expect(plugin.lastCreateParts, [_pluginText("Read this"), _pluginText(note), _pluginText("Then summarize it")]);
+      expect(plugin.lastCreateUserVisibleText, "Read this\n\n$note\n\nThen summarize it");
+      expect(metadataRepository.lastFirstMessage, "Read this");
+    });
+
+    test("passes an image inline to a plugin that takes images", () async {
+      await service.createSession(request: _imageOnlyRequest);
+
+      expect(plugin.lastCreateParts, [isA<PluginPromptPartFileData>()]);
+      expect(Directory(uploadsRoot).existsSync(), isFalse);
+    });
+
+    test("saves an image for a plugin that doesn't take images", () async {
+      runtime.promptAttachmentPluginIds.remove("fake");
+
+      final created = await service.createSession(request: _imageOnlyRequest);
+      await service.drain();
+
+      expect(plugin.lastCreateParts, [_pluginText(startsWith('Attached file "shot.png": `'))]);
+      expect(Directory(p.join(uploadsRoot, created.id)).listSync(), hasLength(1));
+    });
+
+    test("saves nothing for a create that sends a command", () async {
+      await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.fileData(mime: "application/octet-stream", base64: "bm90ZXM=", filename: "notes.txt")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+      );
+      await service.drain();
+
+      expect(Directory(uploadsRoot).existsSync(), isFalse);
     });
 
     test("stores the HEAD commit for an in-place session", () async {
@@ -806,6 +885,19 @@ class _ThrowingNewSessionDefaultsRepository() implements NewSessionDefaultsRepos
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+const _imageOnlyRequest = CreateSessionRequest(
+  projectId: "/repo",
+  pluginId: "fake",
+  dedicatedWorktree: false,
+  parts: [PromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "shot.png")],
+  variant: null,
+  agent: null,
+  model: null,
+  command: null,
+);
+
+Matcher _pluginText(Object? text) => isA<PluginPromptPartText>().having((part) => part.text, "text", text);
 
 class _FakePlugin() implements NativeProjectsPluginApi {
   int createCalls = 0;

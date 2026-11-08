@@ -343,7 +343,7 @@ final class PiPlugin._({
       promptId: promptId,
       directory: session.directory,
       parts: parts,
-      userVisibleText: parts.whereType<PluginPromptPartText>().map((part) => part.text).join(),
+      userVisibleText: PiSessionProcessRepository.promptText(parts: parts),
       variant: variant,
       model: model,
     );

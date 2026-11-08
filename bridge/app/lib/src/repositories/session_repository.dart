@@ -249,7 +249,12 @@ class SessionRepository({
     );
   }
 
+  /// Creates the backend session and binds it under [reservedSessionId], from
+  /// [reserveSessionId], so files saved for the first prompt before the
+  /// plugin call land in the folder of the session that is committed. A
+  /// backend session that is already bound keeps its existing id instead.
   Future<Session> createSession({
+    required String reservedSessionId,
     required String pluginId,
     required String projectId,
     required String directory,
@@ -314,7 +319,7 @@ class SessionRepository({
               message: "backend session ${created.id} is already bound as a child session",
             );
           }
-          final sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
+          final sessionId = existingBinding?.sessionId ?? reservedSessionId;
           await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
           await _sessionDao.insertSession(
             sessionId: sessionId,
@@ -513,6 +518,15 @@ class SessionRepository({
         PluginQuotaReportingSupport.conditional => AutoContinuationAvailability.conditional,
         PluginQuotaReportingSupport.unavailable => AutoContinuationAvailability.unavailable,
       };
+
+  /// Whether [pluginId] takes image parts inline.
+  bool inlineImagesSupported({required String pluginId}) => _runtime.supportsPromptAttachments(pluginId: pluginId);
+
+  /// Whether the plugin bound to [sessionId] takes image parts inline.
+  Future<bool> inlineImagesSupportedForSession({required String sessionId}) async {
+    final binding = await _requireBinding(sessionId: sessionId, operation: SessionOperation.sendPrompt);
+    return inlineImagesSupported(pluginId: binding.pluginId);
+  }
 
   Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) => _useSessionPlugin(
     sessionId: sessionId,
@@ -1524,7 +1538,7 @@ class SessionRepository({
           );
           return stored;
         }
-        final sessionId = await _allocateSessionId();
+        final sessionId = await reserveSessionId();
         final createdAt = observed.time?.created ?? projectionUpdatedAt;
         _runtime.requireCurrentGeneration(
           pluginId: pluginId,
@@ -1760,16 +1774,17 @@ class SessionRepository({
     return allocated;
   }
 
-  Future<String> _allocateSessionId({Set<String>? reservedSessionIds}) async {
+  /// Draws a random `ses_` id that no stored session uses. It needs no
+  /// transaction: 128 random bits make a collision with a concurrent
+  /// reservation negligible.
+  Future<String> reserveSessionId() async {
     while (true) {
       final candidate = generateRandomHexId(
         secureRandom: _secureRandom,
         prefix: "ses_",
         byteLength: 16,
       );
-      if (reservedSessionIds != null && !reservedSessionIds.add(candidate)) continue;
       if (await _sessionDao.getSession(sessionId: candidate) == null) return candidate;
-      reservedSessionIds?.remove(candidate);
     }
   }
 }

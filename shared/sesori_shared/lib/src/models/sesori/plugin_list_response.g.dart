@@ -46,6 +46,7 @@ _PluginListResponse _$PluginListResponseFromJson(Map json) =>
           .toList(),
       bridgeId: json['bridgeId'] as String?,
       supportsSessionOptions: json['supportsSessionOptions'] as bool? ?? false,
+      supportsFileUploads: json['supportsFileUploads'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$PluginListResponseToJson(_PluginListResponse instance) =>
@@ -53,4 +54,5 @@ Map<String, dynamic> _$PluginListResponseToJson(_PluginListResponse instance) =>
       'plugins': instance.plugins.map((e) => e.toJson()).toList(),
       'bridgeId': ?instance.bridgeId,
       'supportsSessionOptions': instance.supportsSessionOptions,
+      'supportsFileUploads': instance.supportsFileUploads,
     };

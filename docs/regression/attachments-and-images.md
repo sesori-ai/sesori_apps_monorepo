@@ -206,14 +206,24 @@ content the transcript renders live and after reload.
   bytes is persisted before its live event is delivered, so a delivered
   reference is always fetchable; if that write fails, every subscriber receives
   bounded metadata rather than a dangling identifier or oversized inline frame.
+- The bridge advertises `supportsFileUploads`; an older bridge omits it and
+  reads as unsupported. It passes a `file_data` part to the plugin unchanged
+  only when its mime starts with `image/` and the plugin takes attachments.
+  Every other one (any file, or an image for Grok) is saved as
+  `~/.sesori/uploads/<sessionId>/<YYYY-MM-DD>-<random>/<sanitized name>`,
+  owner-only, and replaced in the same position by a visible
+  ``Attached file "<name>": `<path>` `` note, which a new session's live user
+  message shows too. A repeated accepted prompt saves nothing again, and a
+  command or a create with a command saves nothing. Deleting a session from
+  Sesori removes its uploads folder, and each save starts a best-effort sweep
+  of file folders dated more than 30 days before it.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; an oversized PNG is staged as a JPEG at most 2048 px on its long side with transparency on white and orientation applied, while a small image and a GIF stay untouched; Send pressed while an image is still being prepared waits with a spinner, sends once with it, goes without an image that fails to stage, and is abandoned when the draft changes; an Android pick hands a GIF over untouched, re-encodes any other photo above 2048 px on its long side, or in a format shared core can't read, through the platform decoder to a JPEG at most 2048 px on its long side, and hands one the platform can't decode to shared core, which turns it away only when it can't read the format either; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
-| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget and local versus remote bridges; dropped paths reach the composer as staged images and caret text; copied files route only when every path exists and paste ahead of the clipboard's image and text, whatever the backend's attachment support, and the desktop clipboard adapter reads a copied web link as no files; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). |
-| L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
+| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget and local versus remote bridges; dropped paths reach the composer as staged images and caret text; copied files route only when every path exists and paste ahead of the clipboard's image and text, whatever the backend's attachment support, and the desktop clipboard adapter reads a copied web link as no files; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). Automated bridge, no plugin: the bridge advertises file uploads; an image goes inline to a plugin that takes images, and every other `file_data` part is saved owner-only (700 folders, 600 files) under the session's folder and replaced in place by its note; a repeated accepted prompt and a command save nothing; a create saves under the id it commits, and joins the notes into its live user message; saved names are sanitized and never escape their folder; deleting a session family removes every member's uploads whatever `deleteSessionFolder` says; the sweep removes only folders dated more than 30 days back and skips unparseable ones. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
@@ -240,6 +250,9 @@ account-level rejection without changing the descriptor's capability claim.
   the bridge queue; retained preview bytes exceed the session's aggregate budget.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
+- A non-image `file_data` part reaches a plugin; a saved name escapes its
+  folder or a saved file isn't owner-only; a new session's files land under an
+  id other than its own; a deleted session's uploads folder stays.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload
   crosses the plugin/client boundary; a raw parser error reaches a client payload
   or user-facing error, or local diagnostics discard useful parser error and
@@ -307,6 +320,14 @@ account-level rejection without changing the descriptor's capability claim.
   model rejection must stay visible and does not justify reading path-only provider output.
 - Only images reach a bridge on another computer: a non-image file dropped or
   picked there is turned away with a notice until remote file transfer exists.
+- Saved prompt files are removed with their session when it is deleted from
+  Sesori; that removal is best-effort. Age cleanup is a best-effort sweep that
+  runs only after a later save on the same bridge, so a file can stay well past
+  30 days when nothing else is uploaded. Files of a create that bound to an
+  existing session, of a failed create, of a failed send that was retried, or
+  of a session removed outside Sesori go only by age. Some harnesses ask before
+  reading outside the session's working directory (see
+  `docs/HARNESS_CAPABILITIES.md`).
 - Pasting files copied in a file manager works on desktop only. On Windows and
   Linux it is covered only by adapter tests.
 - Mobile is unchanged: its picker stays a gallery image picker with no drop.

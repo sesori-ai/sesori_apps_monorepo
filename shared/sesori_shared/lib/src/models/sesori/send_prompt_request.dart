@@ -56,6 +56,15 @@ sealed class PromptPart with _$PromptPart {
   }) = PromptPartFileUrl;
 
   /// Inline file content as base64-encoded data.
+  ///
+  /// When the bridge sends a prompt's parts to the plugin, it passes this part
+  /// unchanged only when [mime] starts with `image/` and the plugin takes
+  /// prompt attachments. Otherwise it saves the file and, in the same
+  /// position, gives the agent a text part naming its path. A command sends
+  /// only its text and a repeated accepted prompt sends nothing, so neither
+  /// saves a file. Clients send a file that isn't an inline image as
+  /// `application/octet-stream`, and only to bridges that advertise
+  /// `PluginListResponse.supportsFileUploads`.
   @FreezedUnionValue("file_data")
   const factory fileData({
     required String mime,

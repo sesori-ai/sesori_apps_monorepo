@@ -1,4 +1,7 @@
 import "dart:async";
+import "dart:io";
+
+import "package:path/path.dart" as p;
 
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -11,11 +14,13 @@ import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStaleOptionsException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show PluginPromptPartFileData, PluginPromptPartText, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
@@ -56,6 +61,7 @@ void main() {
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: optionsService,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       await insertTestSession(
         db: db,
@@ -463,4 +469,144 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1") ?? fail("missing stored session")).lastAgent, isNull);
     });
   });
+
+  group("SessionPromptService file delivery", () {
+    late FakeBridgePlugin plugin;
+    late AppDatabase db;
+    late TestPluginRuntime runtime;
+    late SessionOperationDispatcher dispatcher;
+    late SessionPromptService service;
+    late Directory uploadsParent;
+    late String uploadsRoot;
+
+    setUp(() async {
+      db = createTestDatabase();
+      plugin = FakeBridgePlugin();
+      runtime = createTestPluginRuntime(plugins: [plugin]);
+      uploadsParent = await Directory.systemTemp.createTemp("session-prompt-uploads-");
+      uploadsRoot = p.join(uploadsParent.path, "uploads");
+      final sessionRepository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        runtime: runtime,
+      );
+      dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      service = SessionPromptService(
+        continuations: RecordingSessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
+        sessionRepository: sessionRepository,
+        acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
+        dispatcher: dispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        sessionOptionsService: FakeSessionOptionsService(),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
+      );
+      await insertTestSession(
+        db: db,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+    });
+
+    tearDown(() async {
+      await service.dispose();
+      await dispatcher.dispose();
+      await plugin.close();
+      await db.close();
+      await uploadsParent.delete(recursive: true);
+    });
+
+    Future<void> send({
+      required List<PromptPart> parts,
+      String promptId = "prompt-1",
+      String? command,
+    }) {
+      return service.sendPrompt(
+        sessionId: "s1",
+        promptId: promptId,
+        parts: parts,
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+        command: command,
+      );
+    }
+
+    List<FileSystemEntity> savedFolders() {
+      final sessionFolder = Directory(p.join(uploadsRoot, "s1"));
+      return sessionFolder.existsSync() ? sessionFolder.listSync() : const [];
+    }
+
+    const file = PromptPart.fileData(mime: "application/octet-stream", base64: "bm90ZXM=", filename: "notes.txt");
+    const image = PromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "shot.png");
+
+    test("saves a file under the session and sends the agent its note in place", () async {
+      await send(
+        parts: const [
+          PromptPart.text(text: "Read"),
+          file,
+          PromptPart.text(text: "please"),
+        ],
+      );
+
+      final savedPath = p.join(savedFolders().single.path, "notes.txt");
+      expect(File(savedPath).readAsStringSync(), "notes");
+      expect(plugin.lastSendPromptParts, [
+        _pluginText("Read"),
+        _pluginText('Attached file "notes.txt": `$savedPath`'),
+        _pluginText("please"),
+      ]);
+    });
+
+    test("does not save the files of a repeated accepted prompt again", () async {
+      await send(parts: const [file]);
+      await send(parts: const [file]);
+
+      expect(savedFolders(), hasLength(1));
+    });
+
+    test("passes an image inline when the session's plugin takes images", () async {
+      await send(parts: const [image]);
+
+      expect(plugin.lastSendPromptParts, [isA<PluginPromptPartFileData>()]);
+      expect(savedFolders(), isEmpty);
+    });
+
+    test("saves an image when the session's plugin doesn't take images", () async {
+      runtime.promptAttachmentPluginIds.remove("fake");
+
+      await send(parts: const [image]);
+
+      expect(plugin.lastSendPromptParts, [_pluginText(startsWith('Attached file "shot.png": `'))]);
+      expect(savedFolders(), hasLength(1));
+    });
+
+    test("saves nothing for a command", () async {
+      await send(
+        parts: const [
+          PromptPart.text(text: "args"),
+          file,
+        ],
+        command: "review",
+      );
+
+      expect(plugin.lastSendCommand, "review");
+      expect(Directory(uploadsRoot).existsSync(), isFalse);
+    });
+  });
 }
+
+Matcher _pluginText(Object? text) => isA<PluginPromptPartText>().having((part) => part.text, "text", text);

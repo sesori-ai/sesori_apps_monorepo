@@ -172,7 +172,10 @@ as bool,
 /// @nodoc
 mixin _$PluginListResponse {
 
- List<PluginMetadata> get plugins; String? get bridgeId; bool get supportsSessionOptions;
+ List<PluginMetadata> get plugins; String? get bridgeId; bool get supportsSessionOptions;/// Whether the bridge saves prompt files that it doesn't pass to the
+/// plugin inline, and gives the agent their paths (see
+/// `PromptPart.fileData`).
+ bool get supportsFileUploads;
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -186,20 +189,20 @@ $PluginListResponseCopyWith<PluginListResponse> get copyWith => _$PluginListResp
 @override
 bool operator ==(Object other) {
   final _this = this as PluginListResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _this.plugins)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.supportsSessionOptions, _this.supportsSessionOptions) || other.supportsSessionOptions == _this.supportsSessionOptions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _this.plugins)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.supportsSessionOptions, _this.supportsSessionOptions) || other.supportsSessionOptions == _this.supportsSessionOptions)&&(identical(other.supportsFileUploads, _this.supportsFileUploads) || other.supportsFileUploads == _this.supportsFileUploads));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginListResponse;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins),_this.bridgeId,_this.supportsSessionOptions);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins),_this.bridgeId,_this.supportsSessionOptions,_this.supportsFileUploads);
 }
 
 @override
 String toString() {
   final _this = this as PluginListResponse;
-  return 'PluginListResponse(plugins: ${_this.plugins}, bridgeId: ${_this.bridgeId}, supportsSessionOptions: ${_this.supportsSessionOptions})';
+  return 'PluginListResponse(plugins: ${_this.plugins}, bridgeId: ${_this.bridgeId}, supportsSessionOptions: ${_this.supportsSessionOptions}, supportsFileUploads: ${_this.supportsFileUploads})';
 }
 
 
@@ -210,7 +213,7 @@ abstract mixin class $PluginListResponseCopyWith<$Res>  {
   factory $PluginListResponseCopyWith(PluginListResponse value, $Res Function(PluginListResponse) _then) = _$PluginListResponseCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions
+ List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions, bool supportsFileUploads
 });
 
 
@@ -227,11 +230,12 @@ class _$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,Object? supportsFileUploads = null,}) {
   return _then(PluginListResponse(
 plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
+as bool,supportsFileUploads: null == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -244,7 +248,7 @@ as bool,
 @JsonSerializable()
 
 class _PluginListResponse implements PluginListResponse {
-  const _PluginListResponse({required  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false}): _plugins = plugins;
+  const _PluginListResponse({required  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false, this.supportsFileUploads = false}): _plugins = plugins;
   factory _PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 
  final  List<PluginMetadata> _plugins;
@@ -256,6 +260,10 @@ class _PluginListResponse implements PluginListResponse {
 
 @override final  String? bridgeId;
 @override@JsonKey() final  bool supportsSessionOptions;
+/// Whether the bridge saves prompt files that it doesn't pass to the
+/// plugin inline, and gives the agent their paths (see
+/// `PromptPart.fileData`).
+@override@JsonKey() final  bool supportsFileUploads;
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -270,18 +278,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions)&&(identical(other.supportsFileUploads, supportsFileUploads) || other.supportsFileUploads == supportsFileUploads));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions,supportsFileUploads);
 }
 
 @override
 String toString() {
-    return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions)';
+    return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions, supportsFileUploads: $supportsFileUploads)';
 }
 
 
@@ -292,7 +300,7 @@ abstract mixin class _$PluginListResponseCopyWith<$Res> implements $PluginListRe
   factory _$PluginListResponseCopyWith(_PluginListResponse value, $Res Function(_PluginListResponse) _then) = __$PluginListResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions
+ List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions, bool supportsFileUploads
 });
 
 
@@ -309,11 +317,12 @@ class __$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,Object? supportsFileUploads = null,}) {
   return _then(_PluginListResponse(
 plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
+as bool,supportsFileUploads: null == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
