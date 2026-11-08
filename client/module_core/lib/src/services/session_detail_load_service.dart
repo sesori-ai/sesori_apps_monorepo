@@ -446,7 +446,8 @@ class const SessionDetailSnapshot({
   required final bool? supportsPromptAttachments,
 
   /// Whether the session's bridge saves prompt files that are not inline
-  /// images, or `null` when its plugin listing could not be read.
+  /// images, or `null` when the session is archived or has no plugin id, or
+  /// its plugin listing could not be read.
   required final bool? supportsFileUploads,
   required final List<MessageWithParts> messages,
 

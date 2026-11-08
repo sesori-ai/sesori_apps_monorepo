@@ -625,7 +625,7 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await awaitState(
         cubit: cubit,
-        predicate: (state) => state is SessionDetailLoaded && state.supportsFileUploads == true,
+        predicate: (state) => state is SessionDetailLoaded && (state.supportsFileUploads ?? false),
         description: "refresh carrying file upload support",
       );
 
