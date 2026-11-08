@@ -34,6 +34,7 @@ final class const ComposerImageDownscaleFailed({
 @lazySingleton
 class const ComposerImageDownscaleBuilder() {
   static const _thresholdBytes = 1024 * 1024;
+
   /// The longest side, in pixels, of an image this builder re-encodes.
   static const maxLongSide = 2048;
 
