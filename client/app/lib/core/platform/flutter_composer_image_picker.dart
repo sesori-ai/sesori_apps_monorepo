@@ -9,14 +9,14 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// limits up front, which keeps a full-resolution photo out of memory and turns
 /// formats such as HEIC into a JPEG core can stage, so its picks arrive already
 /// within the rule.
-@LazySingleton(as: ComposerImagePicker)
-class FlutterComposerImagePicker({required final ImagePicker picker}) implements ComposerImagePicker {
+@LazySingleton(as: ComposerFilePicker)
+class FlutterComposerImagePicker({required final ImagePicker picker}) implements ComposerFilePicker {
   static final double _maxDimension = ComposerImageDownscaleBuilder.maxLongSide.toDouble();
 
   final ImagePicker _picker = picker;
 
   @override
-  Future<ComposerPickedImage?> pickImage() async {
+  Future<ComposerPickResult?> pick() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
       maxWidth: _maxDimension,

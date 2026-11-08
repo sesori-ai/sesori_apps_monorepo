@@ -11,6 +11,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
+import "../../core/widgets/desktop_pane_drop_target.dart";
 import "../../core/widgets/desktop_sidebar.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
@@ -443,9 +444,13 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       // filter's, is where it starts.
       listenWhen: (previous, current) => _projectId == null && previous.defaultProjectId != current.defaultProjectId,
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
-      child: AnimatedSwitcher(
-        duration: _homeMotionDuration,
-        child: pane,
+      // The whole pane takes drops, so one dropped while no composer is up (the
+      // project prompt) gets a notice rather than passing unseen.
+      child: DesktopPaneDropTarget(
+        child: AnimatedSwitcher(
+          duration: _homeMotionDuration,
+          child: pane,
+        ),
       ),
     );
   }

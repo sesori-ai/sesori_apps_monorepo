@@ -19,7 +19,8 @@ content the transcript renders live and after reload.
   Under reduced motion the pill opens and folds at once.
 - The shared composer offers image staging only for a backend declaring prompt
   attachment support and only when its product shell supplies a real picker.
-  Mobile opens its gallery adapter; desktop opens a filtered native file dialog.
+  Mobile opens its gallery adapter; desktop opens a native file dialog for any
+  files, routed like a drop (below).
   Shared core validates picked or clipboard bytes by raster signature and the
   outbound size bound rather than trusting an extension or platform MIME.
   Before the size bound applies, shared core shrinks any staged image above
@@ -55,8 +56,29 @@ content the transcript renders live and after reload.
   Each endpoint image and remove action is then fully visible, and both fades
   disappear when the remaining images fit.
   Removing one image preserves the remaining image identities and send bytes;
-  removing all images removes the strip. This is image-only staging, not a
-  generic file picker.
+  removing all images removes the strip.
+- On desktop, files dragged anywhere over the session-detail pane, the
+  new-session pane or the home pane show a full-pane "Drop files to add
+  them to your prompt" hint and go to that pane's composer, and to exactly one
+  composer when a cross-fade briefly mounts two. The hint shows only while a
+  composer there can take files, and follows a composer that appears or starts
+  recording mid-drag. A drop on a pane with no composer gets a "Files can't be
+  added here" notice; while the composer records or transcribes there is no
+  hint, and a drop gets "Finish recording before adding files". A pane under a
+  pushed page or a dialog takes no drops. Picked and dropped paths share one
+  rule in shared core: a supported raster image (by its header bytes) is staged
+  while the backend accepts attachments and, once downscaled, it fits the rest
+  of the prompt's 50 MB budget. A file above 50 MB is never read in full.
+  Anything else, including folders and images that are unsupported or over
+  budget, is typed into the prompt at the caret as its absolute path when the
+  active bridge runs on this computer; paths with whitespace are quoted and
+  separated by spaces. On a bridge on another computer it is not added, and one
+  notice has a line per reason, each counting the files turned away for it.
+  This works regardless of backend attachment support, which still gates the
+  plus action. Images from several picks, pastes and drops stage in the order
+  they were added, even when an earlier one takes longer to downscale. A late
+  result never lands in a composer that moved to another draft or was sent in
+  the meantime.
 - Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
   Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
   copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
@@ -168,7 +190,7 @@ content the transcript renders live and after reload.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; an oversized PNG is staged as a JPEG at most 2048 px on its long side with transparency on white and orientation applied, while a small image and a GIF stay untouched; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
-| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). |
+| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget and local versus remote bridges; dropped paths reach the composer as staged images and caret text; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
@@ -221,6 +243,13 @@ account-level rejection without changing the descriptor's capability claim.
 - Staged previews wrap, grow the composer with the image count, hide the final
   remove action behind the fade, remove a different image after scrolling, or
   change the staged bytes sent to the backend.
+- A dropped or picked file is lost without a notice, inserted twice, read in
+  full when it is not a stageable image, typed as a path for a bridge on
+  another computer, or staged into a composer other than the pane's; a drop
+  over a pane without a ready composer shows the hint or passes without a
+  notice; a notice for mixed reasons names only one of them; images stage out
+  of the order they were added; or a pane under another page or a dialog takes
+  the drop.
 - An image above the downscale threshold is staged unshrunk although it could
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a
   transparent image gets a black background, a downscale blocks the UI, or a
@@ -249,6 +278,13 @@ account-level rejection without changing the descriptor's capability claim.
   covered by the remote-attachment guarantee.
 - Antigravity native prompt-image acceptance and Google-generated image behavior remain unverified; account or
   model rejection must stay visible and does not justify reading path-only provider output.
+- Only images reach a bridge on another computer: a non-image file dropped or
+  picked there is turned away with a notice until remote file transfer exists.
+- Pasting files copied in a file manager is not supported; paste still takes
+  only image bytes and text.
+- Mobile is unchanged: its picker stays a gallery image picker with no drop.
+- The plus action follows backend attachment support, so a backend without it
+  offers no picker even on a local bridge, where drop still inserts paths.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and
   account entitlement; a visible upstream rejection is expected coverage, not a

@@ -37,6 +37,15 @@ class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActio
 
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
+void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachment Function() image) {
+  when(
+    () => dispatcher.pick(
+      attachmentsSupported: any(named: "attachmentsSupported"),
+      stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+    ),
+  ).thenAnswer((_) async => ComposerAttachOutcome(attachments: [image()], insertedText: null, rejections: const {}));
+}
+
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
 class MockImageSaver() extends Mock implements ImageSaver;
@@ -530,6 +539,8 @@ void main() {
               presentation: ComposerPresentation.touch,
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
+              droppedPaths: null,
+              attachKind: ComposerAttachKind.images,
               child: PromptInput(
                 initialSelection: null,
                 onBusyChanged: null,
@@ -5188,7 +5199,7 @@ void main() {
 
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
+    _stubImagePick(attachmentDispatcher, () => attachment);
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -5481,7 +5492,7 @@ void main() {
 
   testWidgets("staged attachment survives unresolved support but cannot send", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
+    _stubImagePick(attachmentDispatcher, () => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -5528,7 +5539,7 @@ void main() {
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
+    _stubImagePick(attachmentDispatcher, () => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -5565,7 +5576,7 @@ void main() {
 
   testWidgets("an attachment alone is sendable", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
+    _stubImagePick(attachmentDispatcher, () => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -5607,7 +5618,7 @@ void main() {
       ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
       ComposerAttachment(mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
     ];
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => answers.removeAt(0));
+    _stubImagePick(attachmentDispatcher, () => answers.removeAt(0));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5630,7 +5641,7 @@ void main() {
   });
 
   testWidgets("an oversized image is rejected with a notice", (tester) async {
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
+    _stubImagePick(attachmentDispatcher, () => throw const AttachmentTooLargeError());
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5647,7 +5658,7 @@ void main() {
 
   testWidgets("send is refused while both a command and attachments are staged", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
+    _stubImagePick(attachmentDispatcher, () => attachment);
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       stagedCommand: const CommandInfo(
         name: "review",

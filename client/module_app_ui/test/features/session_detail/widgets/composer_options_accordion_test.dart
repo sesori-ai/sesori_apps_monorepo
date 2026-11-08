@@ -304,6 +304,7 @@ Future<void> _pumpAccordion({
           child: ComposerOptionsAccordion(
             actionsEnabled: actionsEnabled,
             showAttachImage: showAttachImage,
+            attachTooltip: "Attach image",
             alwaysOpen: alwaysOpen,
             isTyping: isTyping,
             onAttachImageTap: onAttachImageTap,

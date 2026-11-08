@@ -22,6 +22,9 @@ class const ComposerOptionsAccordion({
   /// image parts get no attach button rather than one that loses the image.
   required final bool showAttachImage,
 
+  /// Names what the attach action picks on this shell.
+  required final String attachTooltip,
+
   /// Keeps `+` and `/` visible instead of folding them behind the chevron,
   /// except while [isTyping].
   required final bool alwaysOpen,
@@ -127,7 +130,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                     if (widget.showAttachImage)
                       _AccordionIconButton(
                         icon: TablerRegular.plus,
-                        tooltip: loc.sessionDetailAttachImage,
+                        tooltip: widget.attachTooltip,
                         onTap: widget.actionsEnabled && onAttachImageTap != null
                             ? () {
                                 _collapse();

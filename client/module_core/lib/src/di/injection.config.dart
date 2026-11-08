@@ -72,6 +72,8 @@ import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
 import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
     as _i898;
+import 'package:sesori_dart_core/src/foundation/io/host_file_client.dart'
+    as _i685;
 import 'package:sesori_dart_core/src/foundation/io/plugin_authentication_loopback_server.dart'
     as _i456;
 import 'package:sesori_dart_core/src/foundation/io/temporary_directory_client.dart'
@@ -90,8 +92,8 @@ import 'package:sesori_dart_core/src/foundation/platform/attribution_claim_stora
     as _i275;
 import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart'
     as _i14;
-import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.dart'
-    as _i65;
+import 'package:sesori_dart_core/src/foundation/platform/composer_file_picker.dart'
+    as _i907;
 import 'package:sesori_dart_core/src/foundation/platform/feedback_prompt_config_source.dart'
     as _i294;
 import 'package:sesori_dart_core/src/foundation/platform/founder_call_config_source.dart'
@@ -151,6 +153,8 @@ import 'package:sesori_dart_core/src/repositories/file_preview_repository.dart'
     as _i704;
 import 'package:sesori_dart_core/src/repositories/founder_call_repository.dart'
     as _i733;
+import 'package:sesori_dart_core/src/repositories/host_file_repository.dart'
+    as _i513;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -298,6 +302,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i384.SessionLaunchStorage>(
       () => _i384.SessionLaunchStorage(),
     );
+    gh.lazySingleton<_i685.HostFileClient>(() => const _i685.HostFileClient());
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
     );
@@ -336,12 +341,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
       () => _i560.ProductAnalyticsPreferenceApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
-      ),
-    );
-    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
-      () => _i705.ComposerAttachmentDispatcher(
-        imagePicker: gh<_i65.ComposerImagePicker>(),
-        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
       ),
     );
     gh.lazySingleton<_i231.RealtimeVoiceClient>(
@@ -384,6 +383,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i736.OnDeviceSpeechApi>(
       () => _i736.OnDeviceSpeechApi(source: gh<_i598.OnDeviceSpeechSource>()),
+    );
+    gh.lazySingleton<_i513.HostFileRepository>(
+      () => _i513.HostFileRepository(client: gh<_i685.HostFileClient>()),
     );
     gh.lazySingleton<_i695.LegacyNativeStorageMigrationRepository>(
       () => _i695.LegacyNativeStorageMigrationRepository(
@@ -520,6 +522,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i508.SseEventTracker(
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
+      ),
+    );
+    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
+      () => _i705.ComposerAttachmentDispatcher(
+        filePicker: gh<_i907.ComposerFilePicker>(),
+        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
+        hostFiles: gh<_i513.HostFileRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
     gh.lazySingleton<_i933.LegalRepository>(

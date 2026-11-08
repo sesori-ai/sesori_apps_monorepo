@@ -13,6 +13,8 @@ import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_la
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 const _releaseToSend = "Release to send · slide up to cancel";
@@ -848,11 +850,14 @@ class const _ComposerApp({
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
           presentation: presentation,
-          attachmentDispatcher: () => ComposerAttachmentDispatcher(
-            imagePicker: _NoOpComposerImagePicker(),
+          attachmentDispatcher: () => composerAttachmentDispatcherForTest(
+            filePicker: const NoOpComposerFilePicker(),
             downscaleBuilder: const ComposerImageDownscaleBuilder(),
+            bridgeIsLocal: false,
           ),
           imageClipboard: _NoOpImageClipboard.new,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: home(const _ComposerHost()),
         ),
       ),
@@ -913,11 +918,6 @@ class _ComposerHostState() extends State<_ComposerHost> {
       ),
     );
   }
-}
-
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
 }
 
 class _NoOpImageClipboard() implements ImageClipboard {

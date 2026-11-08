@@ -17,6 +17,8 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
@@ -933,11 +935,14 @@ Future<_ScreenState> _pumpScreen({
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
           presentation: ComposerPresentation.touch,
-          attachmentDispatcher: () => ComposerAttachmentDispatcher(
-            imagePicker: _NoOpComposerImagePicker(),
+          attachmentDispatcher: () => composerAttachmentDispatcherForTest(
+            filePicker: const NoOpComposerFilePicker(),
             downscaleBuilder: const ComposerImageDownscaleBuilder(),
+            bridgeIsLocal: false,
           ),
           imageClipboard: _NoOpImageClipboard.new,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: _Screen(buildsRows: buildsRows, rowsArrive: rowsArrive),
         ),
       ),
@@ -1113,11 +1118,14 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
           presentation: presentation,
-          attachmentDispatcher: () => ComposerAttachmentDispatcher(
-            imagePicker: _NoOpComposerImagePicker(),
+          attachmentDispatcher: () => composerAttachmentDispatcherForTest(
+            filePicker: const NoOpComposerFilePicker(),
             downscaleBuilder: const ComposerImageDownscaleBuilder(),
+            bridgeIsLocal: false,
           ),
           imageClipboard: _NoOpImageClipboard.new,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: SentBubbleLanding(
             child: Scaffold(
               body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
@@ -1257,11 +1265,6 @@ class _ScreenState() extends State<_Screen> {
       ),
     );
   }
-}
-
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
 }
 
 class _NoOpImageClipboard() implements ImageClipboard {

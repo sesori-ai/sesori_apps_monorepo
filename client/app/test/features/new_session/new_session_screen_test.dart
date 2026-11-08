@@ -30,6 +30,15 @@ import "../../helpers/test_helpers.dart";
 
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
+void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachment Function() image) {
+  when(
+    () => dispatcher.pick(
+      attachmentsSupported: any(named: "attachmentsSupported"),
+      stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+    ),
+  ).thenAnswer((_) async => ComposerAttachOutcome(attachments: [image()], insertedText: null, rejections: const {}));
+}
+
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
@@ -3205,7 +3214,7 @@ void main() {
 
   testWidgets("restores a coalesced failed submission without remounting the composer", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
+    _stubImagePick(attachmentDispatcher, () => attachment);
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(

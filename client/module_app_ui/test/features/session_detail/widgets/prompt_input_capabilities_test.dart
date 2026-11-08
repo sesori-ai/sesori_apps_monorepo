@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
@@ -13,10 +14,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
-}
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
 
 class _NoOpImageClipboard() implements ImageClipboard {
   @override
@@ -26,11 +24,11 @@ class _NoOpImageClipboard() implements ImageClipboard {
   Future<void> writeImage({required Uint8List bytes}) async {}
 }
 
-class _PendingComposerImagePicker() implements ComposerImagePicker {
-  Completer<ComposerPickedImage?> pick = Completer();
+class _PendingComposerFilePicker() implements ComposerFilePicker {
+  Completer<ComposerPickResult?> result = Completer();
 
   @override
-  Future<ComposerPickedImage?> pickImage() => pick.future;
+  Future<ComposerPickResult?> pick() => result.future;
 }
 
 class _FixedImageClipboard({required final Uint8List _bytes}) implements ImageClipboard {
@@ -51,6 +49,39 @@ class _PendingDownscaleBuilder() implements ComposerImageDownscaleBuilder {
   }) => result.future;
 }
 
+/// Hands out one clipboard read per paste, in order; `null` is a text-only paste.
+class _QueuedImageClipboard({required final List<Uint8List?> _images}) implements ImageClipboard {
+  @override
+  Future<Uint8List?> readImage() async => _images.removeAt(0);
+
+  @override
+  Future<void> writeImage({required Uint8List bytes}) async {}
+}
+
+/// Lets each downscale settle on its own, in any order.
+class _QueuedDownscaleBuilder() implements ComposerImageDownscaleBuilder {
+  final results = <Completer<ComposerImageDownscaleResult>>[];
+
+  @override
+  Future<ComposerImageDownscaleResult> downscale({
+    required Uint8List bytes,
+    required SupportedRasterImageFormat format,
+  }) {
+    final result = Completer<ComposerImageDownscaleResult>();
+    results.add(result);
+    return result.future;
+  }
+}
+
+/// Turns every image into [_bytes], as if downscaling produced them.
+class const _FixedDownscaleBuilder({required final Uint8List _bytes}) implements ComposerImageDownscaleBuilder {
+  @override
+  Future<ComposerImageDownscaleResult> downscale({
+    required Uint8List bytes,
+    required SupportedRasterImageFormat format,
+  }) async => ComposerImageDownscaled(bytes: _bytes);
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -61,10 +92,11 @@ void main() {
   testWidgets("starts at the handed-over caret and reports busy while an insert or a word is pending", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final picker = _PendingComposerImagePicker();
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: picker,
+    final picker = _PendingComposerFilePicker();
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final clipboard = _NoOpImageClipboard();
     final busy = <bool>[];
@@ -83,6 +115,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: PromptInput(
               initialSelection: (base: 5, extent: 2),
@@ -129,7 +163,7 @@ void main() {
     await tester.tap(_tooltip("Attach image"));
     await tester.pump();
     expect(busy, [true]);
-    picker.pick.complete(null);
+    picker.result.complete(null);
     await tester.pumpAndSettle();
     expect(busy, [true, false]);
 
@@ -160,25 +194,286 @@ void main() {
     expect(busy, [true, false, true, false, true, false]);
 
     // A pick that settles after the composer is gone reports nothing.
-    picker.pick = Completer();
+    picker.result = Completer();
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
     await tester.tap(_tooltip("Attach image"));
     await tester.pump();
     expect(busy, [true, false, true, false, true, false, true]);
     await tester.pumpWidget(const SizedBox());
-    picker.pick.complete(null);
+    picker.result.complete(null);
     await tester.pump();
     expect(busy, [true, false, true, false, true, false, true]);
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("dropped paths stage images and type the rest at the caret on a local bridge", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final drops = StreamController<List<String>>();
+    addTearDown(drops.close);
+    final root = Directory.systemTemp.createTempSync("composer_drop_test");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final imagePath = (File("${root.path}/shot.png")..writeAsBytesSync(png)).path;
+    final notesPath = (File("${root.path}/notes.dart")..writeAsStringSync("void main() {}")).path;
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: true,
+    );
+    final clipboard = _NoOpImageClipboard();
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    final busy = <bool>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.pointer,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          droppedPaths: drops.stream,
+          attachKind: ComposerAttachKind.images,
+          child: Scaffold(
+            body: PromptInput(
+              initialSelection: (base: 3, extent: 3),
+              onBusyChanged: busy.add,
+              onSelectionChanged: null,
+              isBusy: false,
+              hasMessages: false,
+              canSend: true,
+              onSend: ({required draft, required command, required attachments}) {},
+              onVoiceTranscriptionFinished: null,
+              onDraftChanged: (_) {},
+              onDraftCleared: () {},
+              onAbort: () {},
+              surfaceStyleController: surfaceStyle,
+              composerHeader: null,
+              composerTrailing: null,
+              availableCommands: const [],
+              stagedCommand: null,
+              onCommandSelected: (_) {},
+              onCommandCleared: () {},
+              attachmentsSupported: true,
+              draftIdentity: "drop-session",
+              restorationKey: null,
+              initialDraft: ComposerDraft.typed(text: "see and fix"),
+              initialAttachments: const [],
+              onAttachmentsChanged: reportedAttachments.add,
+              autofocus: false,
+              onInitialAttachmentsConsumed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    drops.add([notesPath, imagePath]);
+    await tester.pump();
+    expect(busy, [true]);
+    // Real file reads only finish outside the fake clock.
+    for (var tries = 0; tries < 100 && busy.last; tries++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, "see $notesPath and fix");
+    expect(reportedAttachments.last.single.filename, "shot.png");
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("a drop turned away for several reasons gets one notice naming each", (tester) async {
+    final drops = StreamController<List<String>>();
+    addTearDown(drops.close);
+    final root = Directory.systemTemp.createTempSync("composer_drop_reasons_test");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final imagePath = (File("${root.path}/shot.png")..writeAsBytesSync(png)).path;
+    final notesPath = (File("${root.path}/notes.dart")..writeAsStringSync("void main() {}")).path;
+    final libPath = (Directory("${root.path}/lib")..createSync()).path;
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        downscaleBuilder: const ComposerImageDownscaleBuilder(),
+        bridgeIsLocal: false,
+      ),
+      clipboard: _NoOpImageClipboard(),
+      droppedPaths: drops.stream,
+      voiceCubit: null,
+      attachmentsSupported: false,
+      onAttachmentsChanged: (_) {},
+    );
+
+    drops.add([notesPath, imagePath, libPath]);
+    await _settleFileReads(tester);
+
+    expect(
+      find.text(
+        "2 files weren't added. Only images can be sent to another computer for now.\n"
+        "An image wasn't added. This agent doesn't accept images.",
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets("a drop that follows another is routed against the budget the first one left", (tester) async {
+    final drops = StreamController<List<String>>();
+    addTearDown(drops.close);
+    final root = Directory.systemTemp.createTempSync("composer_drop_budget_test");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final firstPath = (File("${root.path}/first.png")..writeAsBytesSync(png)).path;
+    final secondPath = (File("${root.path}/second.png")..writeAsBytesSync(png)).path;
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        // Each image takes 60% of the budget, so only one fits.
+        downscaleBuilder: _FixedDownscaleBuilder(bytes: Uint8List(maxComposerPromptAttachmentBytes * 3 ~/ 5)),
+        bridgeIsLocal: true,
+      ),
+      clipboard: _NoOpImageClipboard(),
+      droppedPaths: drops.stream,
+      voiceCubit: null,
+      attachmentsSupported: true,
+      onAttachmentsChanged: reportedAttachments.add,
+    );
+
+    drops
+      ..add([firstPath])
+      ..add([secondPath]);
+    await _settleFileReads(tester);
+
+    expect([for (final attachment in reportedAttachments.last) attachment.filename], ["first.jpg"]);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "see attached $secondPath ");
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets("drops pause while recording and resume once it settles", (tester) async {
+    final drops = StreamController<List<String>>();
+    addTearDown(drops.close);
+    final voiceStates = StreamController<VoiceInputState>();
+    addTearDown(voiceStates.close);
+    final voiceCubit = _MockVoiceInputCubit();
+    whenListen(voiceCubit, voiceStates.stream, initialState: const VoiceInputState.idle());
+    when(() => voiceCubit.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    addTearDown(voiceCubit.close);
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        downscaleBuilder: const ComposerImageDownscaleBuilder(),
+        bridgeIsLocal: true,
+      ),
+      clipboard: _NoOpImageClipboard(),
+      droppedPaths: drops.stream,
+      voiceCubit: voiceCubit,
+      attachmentsSupported: true,
+      onAttachmentsChanged: (_) {},
+    );
+    expect(drops.isPaused, isFalse);
+
+    voiceStates.add(const VoiceInputState.recording());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(drops.isPaused, isTrue);
+
+    voiceStates.add(const VoiceInputState.idle());
+    await tester.pumpAndSettle();
+    expect(drops.isPaused, isFalse);
+  });
+
+  testWidgets("two pasted images stage in paste order when the first downscales slower", (tester) async {
+    final first = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 1]);
+    final second = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 2]);
+    final downscale = _QueuedDownscaleBuilder();
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        downscaleBuilder: downscale,
+        bridgeIsLocal: false,
+      ),
+      clipboard: _QueuedImageClipboard(images: [first, second]),
+      droppedPaths: null,
+      voiceCubit: null,
+      attachmentsSupported: true,
+      onAttachmentsChanged: reportedAttachments.add,
+    );
+
+    await tester.showKeyboard(find.byType(EditableText));
+    final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pump();
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pump();
+    expect(downscale.results, hasLength(2));
+
+    downscale.results[1].complete(const ComposerImageKept());
+    await tester.pump();
+    expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+
+    downscale.results[0].complete(const ComposerImageKept());
+    await tester.pumpAndSettle();
+    expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, second]);
+  });
+
+  testWidgets("a text-only paste between two images does not let the later image jump the queue", (tester) async {
+    final first = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 1]);
+    final third = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 3]);
+    final downscale = _QueuedDownscaleBuilder();
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        downscaleBuilder: downscale,
+        bridgeIsLocal: false,
+      ),
+      clipboard: _QueuedImageClipboard(images: [first, null, third]),
+      droppedPaths: null,
+      voiceCubit: null,
+      attachmentsSupported: true,
+      onAttachmentsChanged: reportedAttachments.add,
+    );
+
+    await tester.showKeyboard(find.byType(EditableText));
+    final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+    for (var paste = 0; paste < 3; paste++) {
+      Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+      await tester.pump();
+    }
+    expect(downscale.results, hasLength(2));
+
+    downscale.results[1].complete(const ComposerImageKept());
+    await tester.pump();
+    expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+
+    downscale.results[0].complete(const ComposerImageKept());
+    await tester.pumpAndSettle();
+    expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, third]);
+  });
+
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final clipboard = _NoOpImageClipboard();
     final images = [
@@ -205,6 +500,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -281,9 +578,10 @@ void main() {
   ) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final clipboard = _NoOpImageClipboard();
     // Each fits alone; the three together exceed the 50 MB aggregate budget.
@@ -309,6 +607,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -500,9 +800,10 @@ void main() {
   testWidgets("unsupported voice forces a text-first composer without a VoiceInputCubit", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final attachmentDispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final attachmentDispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final imageClipboard = _NoOpImageClipboard();
 
@@ -521,6 +822,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: PromptInput(
               initialSelection: null,
@@ -568,9 +871,10 @@ void main() {
   testWidgets("defers surface-style synchronization while dependencies rebuild", (tester) async {
     final inputMode = ValueNotifier(ChatInputMode.textFirst);
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
-    final attachmentDispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final attachmentDispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final imageClipboard = _NoOpImageClipboard();
     final voiceCubit = _MockVoiceInputCubit();
@@ -600,6 +904,8 @@ void main() {
               presentation: ComposerPresentation.touch,
               attachmentDispatcher: () => attachmentDispatcher,
               imageClipboard: () => imageClipboard,
+              droppedPaths: null,
+              attachKind: ComposerAttachKind.images,
               child: Scaffold(
                 body: Column(
                   children: [
@@ -658,9 +964,10 @@ void main() {
     final draftIdentity = ValueNotifier("first-session");
     addTearDown(draftIdentity.dispose);
     final downscale = _PendingDownscaleBuilder();
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: downscale,
+      bridgeIsLocal: false,
     );
     final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
     final clipboard = _FixedImageClipboard(bytes: png);
@@ -678,6 +985,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: ValueListenableBuilder(
               valueListenable: draftIdentity,
@@ -752,9 +1061,10 @@ Future<void> _pumpCommandComposer({
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(
-    imagePicker: _NoOpComposerImagePicker(),
+  final attachmentDispatcher = composerAttachmentDispatcherForTest(
+    filePicker: const NoOpComposerFilePicker(),
     downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
   final composer = ValueListenableBuilder<CommandInfo?>(
@@ -767,6 +1077,8 @@ Future<void> _pumpCommandComposer({
       presentation: ComposerPresentation.touch,
       attachmentDispatcher: () => attachmentDispatcher,
       imageClipboard: () => imageClipboard,
+      droppedPaths: null,
+      attachKind: ComposerAttachKind.images,
       child: Scaffold(
         body: PromptInput(
           initialSelection: null,
@@ -810,4 +1122,75 @@ Future<void> _pumpCommandComposer({
       ),
     ),
   );
+}
+
+Future<void> _pumpAttachComposer({
+  required WidgetTester tester,
+  required ComposerAttachmentDispatcher dispatcher,
+  required ImageClipboard clipboard,
+  required Stream<List<String>>? droppedPaths,
+  required VoiceInputCubit? voiceCubit,
+  required bool attachmentsSupported,
+  required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
+}) async {
+  final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+  addTearDown(surfaceStyle.dispose);
+  final composer = ComposerPresentationScope(
+    voiceSupport: voiceCubit == null ? ComposerVoiceSupport.unsupported : ComposerVoiceSupport.supported,
+    inputMode: ChatInputMode.textFirst,
+    isKeyboardVisible: false,
+    sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+    presentation: ComposerPresentation.touch,
+    attachmentDispatcher: () => dispatcher,
+    imageClipboard: () => clipboard,
+    droppedPaths: droppedPaths,
+    attachKind: ComposerAttachKind.files,
+    child: Scaffold(
+      body: PromptInput(
+        initialSelection: null,
+        onBusyChanged: null,
+        onSelectionChanged: null,
+        isBusy: false,
+        hasMessages: false,
+        canSend: true,
+        onSend: ({required draft, required command, required attachments}) {},
+        onVoiceTranscriptionFinished: null,
+        onDraftChanged: (_) {},
+        onDraftCleared: () {},
+        onAbort: () {},
+        surfaceStyleController: surfaceStyle,
+        composerHeader: null,
+        composerTrailing: null,
+        availableCommands: const [],
+        stagedCommand: null,
+        onCommandSelected: (_) {},
+        onCommandCleared: () {},
+        attachmentsSupported: attachmentsSupported,
+        draftIdentity: "attach-session",
+        restorationKey: null,
+        initialDraft: ComposerDraft.typed(text: "see attached"),
+        initialAttachments: const [],
+        onAttachmentsChanged: onAttachmentsChanged,
+        autofocus: false,
+        onInitialAttachmentsConsumed: () {},
+      ),
+    ),
+  );
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: voiceCubit == null ? composer : BlocProvider<VoiceInputCubit>.value(value: voiceCubit, child: composer),
+    ),
+  );
+  await tester.pump();
+}
+
+/// Real file reads only finish outside the fake clock.
+Future<void> _settleFileReads(WidgetTester tester) async {
+  for (var tries = 0; tries < 40; tries++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+    await tester.pump();
+  }
 }

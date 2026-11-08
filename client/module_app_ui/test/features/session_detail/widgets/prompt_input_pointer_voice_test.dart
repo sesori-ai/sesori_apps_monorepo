@@ -13,6 +13,8 @@ import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_la
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 final _mic = _labelledTooltip("Record voice");
@@ -767,9 +769,10 @@ Future<void> _pumpPointerComposer({
   addTearDown(tester.view.reset);
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(
-    imagePicker: _NoOpComposerImagePicker(),
+  final attachmentDispatcher = composerAttachmentDispatcherForTest(
+    filePicker: const NoOpComposerFilePicker(),
     downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
 
@@ -791,6 +794,8 @@ Future<void> _pumpPointerComposer({
             presentation: ComposerPresentation.pointer,
             attachmentDispatcher: () => attachmentDispatcher,
             imageClipboard: () => imageClipboard,
+            droppedPaths: null,
+            attachKind: ComposerAttachKind.images,
             child: Scaffold(
               body: PromptInput(
                 initialSelection: null,
@@ -827,11 +832,6 @@ Future<void> _pumpPointerComposer({
     ),
   );
   await tester.pumpAndSettle();
-}
-
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
 }
 
 class _NoOpImageClipboard() implements ImageClipboard {

@@ -5,6 +5,8 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
+
 void main() {
   testWidgets("desktop Enter sends while Shift+Enter remains a newline gesture", (tester) async {
     var sendCount = 0;
@@ -97,9 +99,10 @@ Future<void> _pumpComposer({
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(
-    imagePicker: _NoOpComposerImagePicker(),
+  final attachmentDispatcher = composerAttachmentDispatcherForTest(
+    filePicker: const NoOpComposerFilePicker(),
     downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
 
@@ -116,6 +119,8 @@ Future<void> _pumpComposer({
         presentation: ComposerPresentation.touch,
         attachmentDispatcher: () => attachmentDispatcher,
         imageClipboard: () => imageClipboard,
+        droppedPaths: null,
+        attachKind: ComposerAttachKind.images,
         child: Scaffold(
           body: PromptInput(
             initialSelection: null,
@@ -153,11 +158,6 @@ Future<void> _pumpComposer({
   await tester.tap(find.text("Follow up..."));
   await tester.pumpAndSettle();
   await tester.tap(find.byType(TextField));
-}
-
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
 }
 
 class _NoOpImageClipboard() implements ImageClipboard {

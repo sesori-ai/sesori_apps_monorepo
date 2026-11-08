@@ -26,8 +26,8 @@ import 'package:sesori_desktop/core/platform/desktop_analytics_client.dart'
     as _i221;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
-import 'package:sesori_desktop/core/platform/desktop_composer_image_picker.dart'
-    as _i925;
+import 'package:sesori_desktop/core/platform/desktop_composer_file_picker.dart'
+    as _i262;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
     as _i227;
 import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
@@ -111,9 +111,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i880.DesktopFileSaveClient>(
       () => _i880.DesktopFileSaveClient(),
     );
-    gh.lazySingleton<_i948.ComposerImagePicker>(
-      () => _i925.DesktopComposerImagePicker(),
-    );
     gh.lazySingleton<_i948.OnDeviceSpeechSource>(
       () => _i567.UnsupportedOnDeviceSpeechSource(),
     );
@@ -160,6 +157,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
     gh.lazySingleton<_i316.SparkleUpdateEngine>(
       () => _i760.MethodChannelSparkleUpdateEngine(),
+    );
+    gh.lazySingleton<_i948.ComposerFilePicker>(
+      () => _i262.DesktopComposerFilePicker(),
     );
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i500.DesktopLocalNotificationClient(
