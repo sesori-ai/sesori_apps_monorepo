@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/delete_session_handler.dart";
@@ -20,6 +21,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fakes/deletion_worktree_service_fake.dart";
+import "../../helpers/log_capture.dart";
 import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
@@ -39,6 +41,7 @@ void main() {
     late Directory scratchParent;
     late String scratchRoot;
     late _RecordingScratchRepository scratchRepository;
+    late _RecordingPromptUploadRepository promptUploadRepository;
 
     setUp(() {
       db = createTestDatabase();
@@ -46,6 +49,12 @@ void main() {
       scratchRoot = p.join(scratchParent.path, "scratch");
       scratchRepository = _RecordingScratchRepository(
         delegate: testScratchRepository(db: db, scratchRoot: scratchRoot),
+      );
+      promptUploadRepository = _RecordingPromptUploadRepository(
+        delegate: PromptUploadRepository(
+          filesystemApi: const FilesystemApi(),
+          uploadsRoot: p.join(scratchParent.path, "uploads"),
+        ),
       );
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
@@ -83,6 +92,7 @@ void main() {
           sessionMutationDispatcher: sessionMutationDispatcher,
           chatHistoryService: chatHistory.service,
           scratchRepository: scratchRepository,
+          promptUploadRepository: promptUploadRepository,
         ),
       );
     });
@@ -154,6 +164,57 @@ void main() {
         expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
         expect(scratchRepository.deletions, hasLength(1));
         expect(File(p.join(folder.path, "notes.txt")).readAsStringSync(), "draft");
+      });
+    });
+
+    group("prompt uploads", () {
+      setUp(() async {
+        await _insertSession(db: db, sessionId: "s1", projectId: "/repo", worktreePath: null);
+        await _insertSession(db: db, sessionId: "s2", projectId: "/repo", worktreePath: null);
+        await db.sessionDao.setParentSessionId(sessionId: "s2", parentSessionId: "s1");
+        await _insertSession(db: db, sessionId: "other", projectId: "/repo", worktreePath: null);
+        for (final sessionId in ["s1", "s2", "other"]) {
+          await promptUploadRepository.save(sessionId: sessionId, bytes: [1], filename: "notes.txt");
+        }
+      });
+
+      Future<void> delete({required bool deleteSessionFolder}) async {
+        await handler.handle(
+          request: makeRequest("DELETE", "/session/delete"),
+          body: DeleteSessionRequest(
+            sessionId: "s1",
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+            deleteSessionFolder: deleteSessionFolder,
+          ),
+        );
+      }
+
+      for (final deleteSessionFolder in [false, true]) {
+        test("are deleted for every family member with deleteSessionFolder=$deleteSessionFolder", () async {
+          await delete(deleteSessionFolder: deleteSessionFolder);
+          await Future.wait(promptUploadRepository.deletions);
+
+          expect(promptUploadRepository.deletedSessionIds.single, unorderedEquals(["s1", "s2"]));
+          expect(
+            Directory(p.join(scratchParent.path, "uploads")).listSync().map((entry) => p.basename(entry.path)),
+            ["other"],
+          );
+        });
+      }
+
+      test("a failed delete is logged with the ids and does not fail the session delete", () async {
+        final logs = captureLogOutput();
+        promptUploadRepository.failure = const FileSystemException("Device busy");
+
+        await delete(deleteSessionFolder: false);
+        await pumpEventQueue();
+
+        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+        final deletedSessionIds = promptUploadRepository.deletedSessionIds.single;
+        expect(deletedSessionIds, unorderedEquals(["s1", "s2"]));
+        expect(logs.text, allOf(contains(deletedSessionIds.join(", ")), contains("Device busy")));
       });
     });
 
@@ -606,6 +667,32 @@ class _RecordingScratchRepository({required final ScratchRepository _delegate}) 
     deletions.add(deletion);
     return deletion;
   }
+}
+
+/// Records each uploads deletion so a test can await the work the deletion
+/// service leaves running, and fails it with [failure] when that is set.
+class _RecordingPromptUploadRepository({required final PromptUploadRepository _delegate})
+    implements PromptUploadRepository {
+  final List<Future<void>> deletions = [];
+  final List<List<String>> deletedSessionIds = [];
+  Object? failure;
+
+  @override
+  Future<String> save({required String sessionId, required List<int> bytes, required String filename}) =>
+      _delegate.save(sessionId: sessionId, bytes: bytes, filename: filename);
+
+  @override
+  Future<void> deleteSessions({required List<String> sessionIds}) {
+    deletedSessionIds.add(sessionIds);
+    final failure = this.failure;
+    final deletion = failure == null ? _delegate.deleteSessions(sessionIds: sessionIds) : Future<void>.error(failure);
+    deletions.add(deletion);
+    return deletion;
+  }
+
+  @override
+  Future<void> deleteFileFoldersDatedBefore({required DateTime cutoff}) =>
+      _delegate.deleteFileFoldersDatedBefore(cutoff: cutoff);
 }
 
 class _TrackingFakeBridgePlugin({required final List<String> operationLog}) extends FakeBridgePlugin {

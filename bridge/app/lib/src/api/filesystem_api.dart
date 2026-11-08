@@ -2,6 +2,8 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 
+import "../foundation/data_directory_hardening.dart";
+
 /// Layer 1 data access over the host filesystem (`dart:io`).
 ///
 /// Each method is a thin wrapper around a single `dart:io` operation. They
@@ -98,6 +100,12 @@ class const FilesystemApi() {
   Future<String> createTemporaryDirectory({required String parent, required String prefix}) async {
     final directory = await Directory(parent).createTemp(prefix);
     return directory.path;
+  }
+
+  /// Writes [bytes] to the file at [path], which only the current user can
+  /// read or write, and flushes it to disk before completing.
+  Future<void> writeOwnerOnlyFile({required String path, required List<int> bytes}) async {
+    await createHardenedFile(filePath: path).writeAsBytes(bytes, flush: true);
   }
 
   String resolveFilePath({required String path}) {

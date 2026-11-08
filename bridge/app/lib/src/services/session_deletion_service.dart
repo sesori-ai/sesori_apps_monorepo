@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "../repositories/prompt_upload_repository.dart";
 import "../repositories/scratch_repository.dart";
 import "../repositories/session_repository.dart";
 import "chat_history_service.dart";
@@ -15,6 +16,7 @@ class SessionDeletionService({
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final ChatHistoryService _chatHistoryService,
   required final ScratchRepository _scratchRepository,
+  required final PromptUploadRepository _promptUploadRepository,
 }) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
@@ -33,9 +35,11 @@ class SessionDeletionService({
       ),
       onDeleted: (deleted) async {
         await _purgeHistory(deleted.sessionIds);
+        // Not awaited: the family lock must not be held while large folders
+        // are removed. The uploads go on every delete, because they are
+        // Sesori's copies and not the user's project files.
+        unawaited(_deletePromptUploads(sessionIds: deleted.sessionIds));
         if (deleteSessionFolder) {
-          // Not awaited: the family lock must not be held while a large
-          // folder is removed.
           unawaited(_deleteSessionFolder(deleted: deleted));
         }
       },
@@ -56,6 +60,16 @@ class SessionDeletionService({
         error,
         stackTrace,
       );
+    }
+  }
+
+  /// Best-effort: the sessions are already gone, so a failure leaves only
+  /// their uploaded files, which the age sweep removes later.
+  Future<void> _deletePromptUploads({required List<String> sessionIds}) async {
+    try {
+      await _promptUploadRepository.deleteSessions(sessionIds: sessionIds);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to delete the prompt uploads of deleted sessions ${sessionIds.join(", ")}", error, stackTrace);
     }
   }
 

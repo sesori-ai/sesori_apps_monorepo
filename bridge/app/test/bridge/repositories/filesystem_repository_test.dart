@@ -516,6 +516,9 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
       throw UnimplementedError();
 
   @override
+  Future<void> writeOwnerOnlyFile({required String path, required List<int> bytes}) => throw UnimplementedError();
+
+  @override
   bool directoryExists({required String path}) => true;
 
   @override
