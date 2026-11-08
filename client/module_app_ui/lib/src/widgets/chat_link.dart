@@ -105,7 +105,12 @@ class _ChatLinkState() extends State<ChatLink> {
               duration: const Duration(milliseconds: 100),
               child: SelectionContainer(
                 delegate: _selection,
+                // One line: Markdown forces every line of a paragraph to the
+                // strut's height, so a link that wrapped would spill below its
+                // paragraph. A long label ends in an ellipsis instead.
                 child: Text.rich(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   TextSpan(
                     style: style,
                     children: [
