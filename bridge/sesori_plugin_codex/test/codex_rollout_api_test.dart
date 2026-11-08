@@ -12,6 +12,7 @@ import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -2686,13 +2687,25 @@ void main() {
       await plugin.dispose();
     });
 
-    test("getSessionMessages reads the rollout for the session", () async {
+    test("getSessionMessages reads the rollout for the session, without developer instructions", () async {
       _writeRollout(
         codexHome,
         path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         cwd: "/work/sample-app",
         extraLines: [
+          // Codex records a thread's developerInstructions, the Sesori note
+          // included, as a developer message.
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "role": "developer",
+              "content": [
+                {"type": "input_text", "text": sesoriAgentInstructions},
+              ],
+            },
+          }),
           jsonEncode({
             "type": "response_item",
             "payload": {

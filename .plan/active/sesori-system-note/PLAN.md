@@ -78,8 +78,8 @@ Made while planning:
   so they never reach the transcript; no test covers that today. Live
   app-server items have no developer-message variant.
 - `config/read {cwd}` returns the effective `developer_instructions`, project
-  layers included. A resume has no directory at hand, so it reads without
-  `cwd` (user and system layers only).
+  layers included. A resume takes the `cwd` from the thread's rollout in the
+  bridge's catalog, so project layers apply there too.
 
 ## Phase 1
 
@@ -105,8 +105,9 @@ Plan files only.
   the join (user text first, blank line, note) before each start and resume.
 - Tests:
   - Claude launch spec: the flag and note appear on both launch variants.
-  - Codex: `thread/start` (with `cwd`) and `thread/resume` (without) carry the
-    joined text, with and without a configured user value.
+  - Codex: `thread/start` and `thread/resume`, each reading `config/read` with
+    the thread's `cwd`, carry the joined text, with and without a configured
+    user value.
   - Codex: a `role: developer` rollout message is absent from the mapped
     messages.
   - Existing Codex fakes answer `config/read`; method-order assertions add it.
@@ -125,7 +126,9 @@ Record the results below and move the plan to `.plan/completed/`.
   for the touched packages.
 - L3, local bridge from the step 2 branch (`sesori-local-testing`): start a
   Claude session and a Codex session, ask each agent what Sesori told it about
-  file paths, confirm it quotes the note, confirm the note is absent from the
+  file paths, and confirm Claude quotes the note. Codex models decline to
+  disclose developer instructions, so for Codex confirm the note as a
+  `role: developer` message in the thread's rollout instead. Confirm the note is absent from the
   session's transcript in the bridge API, resume each once (Claude: idle
   respawn or bridge restart; Codex: bridge restart) and ask again, then delete
   the test sessions. Any app UI check runs only on a headless iOS simulator
@@ -150,10 +153,10 @@ cannot become a constant, and moving it is a later phase.
   there fails the start. Accepted: it is a core app-server request, present
   since before the PATH floor, and reads the same config the thread itself
   needs.
-
-- A Codex user's project-level `developer_instructions` is replaced by the
-  user-level value on a resume. Accepted: project-level developer instructions
-  are rare, and the start of a thread uses the project value.
+- A Codex thread whose rollout the bridge's catalog cannot find resumes with
+  `config/read` lacking `cwd`, so project-level `developer_instructions` are
+  replaced by the user-level value for that resume. Accepted: a thread the
+  bridge resumes was listed from that catalog, and a miss rescans first.
 - `--system-prompt-snapshot` keeps old Claude sessions on their recorded
   prompt until compaction. Accepted: new sessions are what matter, and the
   note is advisory.

@@ -6,6 +6,7 @@ import "../models/codex_service_tier.dart";
 import "models/codex_account_dto.dart";
 import "models/codex_apps_dto.dart";
 import "models/codex_collaboration_mode_dto.dart";
+import "models/codex_config_read_dto.dart";
 import "models/codex_mcp_oauth_dto.dart";
 import "models/codex_mcp_status_dto.dart";
 import "models/codex_model_dto.dart";
@@ -129,8 +130,9 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     required String? model,
     required String? modelProvider,
     required bool fastMode,
+    required String developerInstructions,
   }) async {
-    final params = <String, dynamic>{"cwd": cwd};
+    final params = <String, dynamic>{"cwd": cwd, "developerInstructions": developerInstructions};
     if (model != null) {
       params["model"] = model;
       params["modelProvider"] = modelProvider;
@@ -144,15 +146,32 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     return _decodeResponse(result: result, operation: "thread/start");
   }
 
+  /// Codex does not persist a thread's developer instructions, so a resume
+  /// sends them again. A resume of a thread that is still running ignores them.
   Future<CodexThreadEnvelopeDto> resumeThread({
     required String threadId,
+    required String developerInstructions,
   }) async {
     final result = await _client.request(
       method: "thread/resume",
-      params: {"threadId": threadId},
+      params: {"threadId": threadId, "developerInstructions": developerInstructions},
       timeout: codexRequestTimeout,
     );
     return _decodeResponse(result: result, operation: "thread/resume");
+  }
+
+  /// The user's effective config. [cwd] adds the project config layers seen
+  /// from that directory.
+  Future<CodexConfigReadResponseDto> readConfig({required String? cwd}) async {
+    final result = await _client.request(
+      method: "config/read",
+      params: {"cwd": ?cwd},
+      timeout: codexRequestTimeout,
+    );
+    if (result is! Map) {
+      throw StateError("expected a Codex config response object, got ${result.runtimeType}");
+    }
+    return CodexConfigReadResponseDto.fromJson(result.cast<String, dynamic>());
   }
 
   Future<CodexThreadEnvelopeDto> readThread({

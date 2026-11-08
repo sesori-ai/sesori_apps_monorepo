@@ -646,7 +646,10 @@ class _StubThreadRepository() extends CodexThreadRepository {
   bool? lastFastMode;
 
   @override
-  Future<CodexResumedThread> resumeThread({required String threadId}) async {
+  Future<String?> readDeveloperInstructions({required String? cwd}) async => null;
+
+  @override
+  Future<CodexResumedThread> resumeThread({required String threadId, required String developerInstructions}) async {
     resumeCount += 1;
     return CodexResumedThread(
       thread: CodexThreadRecord(
