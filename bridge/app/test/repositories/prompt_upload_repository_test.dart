@@ -79,11 +79,17 @@ void main() {
         });
       }
 
-      test("keeps a capped name to whole characters", () async {
+      test("caps a long CJK name at 240 UTF-8 bytes and keeps the extension", () async {
+        final path = await save(sessionId: "ses_1", filename: "${"报" * 100}.pdf");
+
+        expect(p.basename(path), "${"报" * 78}.pdf");
+        expect(utf8.encode(p.basename(path)).length, lessThanOrEqualTo(240));
+      });
+
+      test("cuts a capped name on whole characters", () async {
         final path = await save(sessionId: "ses_1", filename: "${"😀" * 200}.txt");
 
-        expect(p.basename(path).runes, hasLength(120));
-        expect(p.basename(path), endsWith("😀.txt"));
+        expect(p.basename(path), "${"😀" * 59}.txt");
       });
 
       for (final sessionId in ["", ".", "..", "../ses_1", "a/b", r"a\b"]) {

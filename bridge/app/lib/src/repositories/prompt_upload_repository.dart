@@ -1,3 +1,4 @@
+import "dart:convert" show utf8;
 import "dart:io" show Directory, FileSystemEntityType, PathNotFoundException;
 
 import "package:clock/clock.dart";
@@ -18,6 +19,9 @@ class PromptUploadRepository({
   required final String _uploadsRoot,
 }) {
   static const _maxNameLength = 120;
+
+  /// Below the 255-byte name limit of common Linux filesystems such as ext4.
+  static const _maxNameBytes = 240;
   static const _fallbackName = "attachment";
 
   /// Characters that would break the noted path as inline code, as one shell
@@ -122,17 +126,33 @@ class PromptUploadRepository({
 
   /// Keeps only the last `/` segment and replaces [_unsafeNameCharacters],
   /// including `\`, with `_`. Uses [_fallbackName] for `.`, `..` and an empty
-  /// name, and shortens the stem so the name has at most [_maxNameLength]
-  /// characters.
+  /// name, and shortens the stem on whole characters so the name has at most
+  /// [_maxNameLength] characters and [_maxNameBytes] UTF-8 bytes.
   static String _sanitizeName({required String filename}) {
     final name = p.posix.basename(filename).replaceAll(_unsafeNameCharacters, "_");
     if (name.isEmpty || name == "." || name == "..") return _fallbackName;
-    final characters = name.runes.toList();
-    if (characters.length <= _maxNameLength) return name;
-    final extension = p.posix.extension(name).runes.toList();
-    if (extension.length >= _maxNameLength) return String.fromCharCodes(characters.take(_maxNameLength));
-    final stem = characters.take(characters.length - extension.length);
-    return String.fromCharCodes([...stem.take(_maxNameLength - extension.length), ...extension]);
+    if (_fitsNameLimits(name: name)) return name;
+    final extension = p.posix.extension(name);
+    // An extension that leaves no room for the stem is cut with the name.
+    final keptExtension = _fitsNameLimits(name: extension) && extension.runes.length < _maxNameLength ? extension : "";
+    final stem = name.substring(0, name.length - keptExtension.length);
+    final characterBudget = _maxNameLength - keptExtension.runes.length;
+    final byteBudget = _maxNameBytes - utf8.encode(keptExtension).length;
+    final keptStem = StringBuffer();
+    var characters = 0;
+    var bytes = 0;
+    for (final character in stem.runes) {
+      final characterBytes = utf8.encode(String.fromCharCode(character)).length;
+      if (characters == characterBudget || bytes + characterBytes > byteBudget) break;
+      keptStem.writeCharCode(character);
+      characters++;
+      bytes += characterBytes;
+    }
+    return "$keptStem$keptExtension";
+  }
+
+  static bool _fitsNameLimits({required String name}) {
+    return name.runes.length <= _maxNameLength && utf8.encode(name).length <= _maxNameBytes;
   }
 
   static DateTime? _parseFolderDate({required String folderName}) {
