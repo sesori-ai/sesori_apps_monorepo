@@ -160,8 +160,10 @@ this plan changes a wire contract and adds a bridge class.
   ```
 - **Layering.** The work splits across the usual bridge layers:
   - *API (Layer 1):* `FilesystemApi` gains `writeOwnerOnlyFile({path, bytes})`.
-    It creates the file, sets mode 600 with the async `hardenPath` from
-    `foundation/data_directory_hardening.dart`, then writes with flush. It also
+    It creates the file, sets mode 600 on POSIX with the async `hardenPath` from
+    `foundation/data_directory_hardening.dart` (on Windows `hardenPath` sets no
+    mode and the profile directory's permissions apply), then writes with flush.
+    The 700 and 600 modes elsewhere in this plan are POSIX-only too. It also
     gains `createOwnerOnlyDirectory`, `createOwnerOnlyTemporaryDirectory` and
     `listDirectoriesAsync`, so no upload path blocks the isolate. No `api/`
     class depends on another.
