@@ -933,7 +933,10 @@ Future<_ScreenState> _pumpScreen({
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
           presentation: ComposerPresentation.touch,
-          attachmentDispatcher: () => ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker()),
+          attachmentDispatcher: () => ComposerAttachmentDispatcher(
+            imagePicker: _NoOpComposerImagePicker(),
+            downscaleBuilder: const ComposerImageDownscaleBuilder(),
+          ),
           imageClipboard: _NoOpImageClipboard.new,
           child: _Screen(buildsRows: buildsRows, rowsArrive: rowsArrive),
         ),
@@ -1110,7 +1113,10 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
           presentation: presentation,
-          attachmentDispatcher: () => ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker()),
+          attachmentDispatcher: () => ComposerAttachmentDispatcher(
+            imagePicker: _NoOpComposerImagePicker(),
+            downscaleBuilder: const ComposerImageDownscaleBuilder(),
+          ),
           imageClipboard: _NoOpImageClipboard.new,
           child: SentBubbleLanding(
             child: Scaffold(

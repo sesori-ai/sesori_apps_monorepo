@@ -848,7 +848,10 @@ class const _ComposerApp({
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
           presentation: presentation,
-          attachmentDispatcher: () => ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker()),
+          attachmentDispatcher: () => ComposerAttachmentDispatcher(
+            imagePicker: _NoOpComposerImagePicker(),
+            downscaleBuilder: const ComposerImageDownscaleBuilder(),
+          ),
           imageClipboard: _NoOpImageClipboard.new,
           child: home(const _ComposerHost()),
         ),

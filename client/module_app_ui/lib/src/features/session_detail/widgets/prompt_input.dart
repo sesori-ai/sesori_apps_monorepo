@@ -2601,20 +2601,34 @@ class _PromptInputState() extends State<PromptInput> {
     if (!mounted) return _PasteImageResult.stale;
     if (bytes == null) return _PasteImageResult.noImage;
 
+    // Downscaling an oversized image awaits too, so every outcome checks
+    // staleness again before it touches the composer.
     try {
-      final attachment = _attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
+      final attachment = await _attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
+      if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+        return _PasteImageResult.stale;
+      }
       if (_stageAttachment(attachment: attachment)) return _PasteImageResult.handled;
       // The staged strip is already at its aggregate budget, so no image was
       // added; fall back so the clipboard's text is not swallowed.
       return _PasteImageResult.noImage;
     } on AttachmentTooLargeError {
+      if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+        return _PasteImageResult.stale;
+      }
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
       return _PasteImageResult.noImage;
     } on UnsupportedAttachmentImageError {
+      if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+        return _PasteImageResult.stale;
+      }
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
       return _PasteImageResult.noImage;
     } catch (error, stackTrace) {
       loge("Failed to attach a pasted image", error, stackTrace);
+      if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+        return _PasteImageResult.stale;
+      }
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
       return _PasteImageResult.noImage;
     }

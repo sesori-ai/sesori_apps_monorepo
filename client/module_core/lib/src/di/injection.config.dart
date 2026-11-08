@@ -202,6 +202,8 @@ import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dart'
     as _i705;
+import 'package:sesori_dart_core/src/services/composer_image_downscale_builder.dart'
+    as _i293;
 import 'package:sesori_dart_core/src/services/connection_notification_observation_service.dart'
     as _i959;
 import 'package:sesori_dart_core/src/services/feedback_prompt_service.dart'
@@ -299,6 +301,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
     );
+    gh.lazySingleton<_i293.ComposerImageDownscaleBuilder>(
+      () => const _i293.ComposerImageDownscaleBuilder(),
+    );
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
     );
@@ -307,11 +312,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
-    );
-    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
-      () => _i705.ComposerAttachmentDispatcher(
-        imagePicker: gh<_i65.ComposerImagePicker>(),
-      ),
     );
     gh.lazySingleton<_i385.BridgeApi>(
       () => _i385.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -336,6 +336,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
       () => _i560.ProductAnalyticsPreferenceApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
+      ),
+    );
+    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
+      () => _i705.ComposerAttachmentDispatcher(
+        imagePicker: gh<_i65.ComposerImagePicker>(),
+        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
       ),
     );
     gh.lazySingleton<_i231.RealtimeVoiceClient>(

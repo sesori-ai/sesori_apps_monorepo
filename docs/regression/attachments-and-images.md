@@ -22,6 +22,18 @@ content the transcript renders live and after reload.
   Mobile opens its gallery adapter; desktop opens a filtered native file dialog.
   Shared core validates picked or clipboard bytes by raster signature and the
   outbound size bound rather than trusting an extension or platform MIME.
+  Before the size bound applies, shared core shrinks any staged image above
+  1 MiB except a GIF, which shared core leaves untouched so it keeps its
+  animation: off the UI isolate, it bakes the EXIF orientation, resizes the
+  long side to at most 2048 px without upscaling, composites transparency onto
+  white and re-encodes a JPEG at quality 85, renaming the file's extension to
+  match. A typical oversized screenshot or photo therefore stays well inside
+  the inline image budgets backends accept. It keeps the original when the
+  result is not smaller, when decoding fails, or when the image exceeds 24
+  million pixels decoded; such an original is still held to the size bound and
+  can still exceed a backend's own limit. Mobile's gallery picker already
+  applies the same size and quality natively before shared core sees the
+  bytes, so an animated GIF picked there may arrive as a still image.
   Staged images are memory-only. They are cleared when the target stops
   supporting attachments, the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot
@@ -155,7 +167,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; an oversized PNG is staged as a JPEG at most 2048 px on its long side with transparency on white and orientation applied, while a small image and a GIF stay untouched; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
@@ -208,7 +220,11 @@ account-level rejection without changing the descriptor's capability claim.
   decode succeeds, or retains original bytes/provider cache entries after closing.
 - Staged previews wrap, grow the composer with the image count, hide the final
   remove action behind the fade, remove a different image after scrolling, or
-  change the original bytes sent to the backend.
+  change the staged bytes sent to the backend.
+- An image above the downscale threshold is staged unshrunk although it could
+  shrink, a GIF loses its animation, a rotated photo is staged sideways, a
+  transparent image gets a black background, a downscale blocks the UI, or a
+  paste that settles after its composer changed stages into the new one.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 - Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
@@ -223,6 +239,9 @@ account-level rejection without changing the descriptor's capability claim.
 
 - Prompt attachment support is read from declared capabilities, so an
   unsupporting backend hides staging rather than failing at send time.
+- Several images that each stay just under the downscale threshold can still
+  exceed a backend's own aggregate inline-image limit; that send fails visibly
+  at the bridge.
 - Switching between two attachment-capable backends in the same project keeps
   staged images because they are backend-neutral inline payloads.
 - Markdown inline image URLs use the platform network image loader for HTTP and

@@ -3411,7 +3411,10 @@ Future<_Composer> _pumpComposer({
   addTearDown(composer.busy.dispose);
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+  final attachmentDispatcher = ComposerAttachmentDispatcher(
+    imagePicker: _NoOpComposerImagePicker(),
+    downscaleBuilder: const ComposerImageDownscaleBuilder(),
+  );
   final imageClipboard = _NoOpImageClipboard();
 
   await tester.pumpWidget(
