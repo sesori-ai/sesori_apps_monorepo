@@ -1,11 +1,13 @@
+import "dart:convert";
 import "dart:io";
-import "dart:typed_data";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:image_picker/image_picker.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/flutter_composer_image_picker.dart";
+import "package:sesori_mobile/core/platform/platform_image_downscale_builder.dart";
 
 class MockImagePicker() extends Mock implements ImagePicker;
 
@@ -13,14 +15,29 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockActiveBridgeLocality() extends Mock implements ActiveBridgeLocality;
 
+/// Stands in for the platform decoder: returns [result] for any input and
+/// records what it was given.
+class _FakeDownscaleBuilder() implements PlatformImageDownscaleBuilder {
+  final given = <Uint8List>[];
+  PlatformImageDownscaleResult result = const PlatformImageKept();
+
+  @override
+  Future<PlatformImageDownscaleResult> downscale({required Uint8List bytes}) async {
+    given.add(bytes);
+    return result;
+  }
+}
+
 void main() {
   late MockImagePicker imagePicker;
+  late _FakeDownscaleBuilder downscaleBuilder;
   late FlutterComposerImagePicker picker;
   late ComposerAttachmentDispatcher attachmentDispatcher;
 
   setUp(() {
     imagePicker = MockImagePicker();
-    picker = FlutterComposerImagePicker(picker: imagePicker);
+    downscaleBuilder = _FakeDownscaleBuilder();
+    picker = FlutterComposerImagePicker(picker: imagePicker, downscaleBuilder: downscaleBuilder);
     attachmentDispatcher = ComposerAttachmentDispatcher(
       filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
@@ -82,6 +99,61 @@ void main() {
     expect(attachment.mime, "image/png");
     expect(attachment.filename, "shot.png");
     expect(attachment.bytes, png);
+  });
+
+  test("Android asks for the original image, so an animated GIF stays animated", () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    stubPick(null);
+
+    await pickAttachment();
+
+    verify(() => imagePicker.pickImage(source: ImageSource.gallery, requestFullMetadata: false)).called(1);
+  });
+
+  test("Android hands a GIF over untouched so it stays animated", () async {
+    final gif = Uint8List.fromList([...latin1.encode("GIF89a"), 1, 0, 1, 0, 0, 0]);
+    stubPick(XFile.fromData(gif, name: "anim.gif"));
+
+    final attachment = await pickAttachment();
+
+    expect(attachment?.mime, "image/gif");
+    expect(attachment?.bytes, gif);
+  });
+
+  test("Android shrinks any other photo with the platform decoder and names it after the result", () async {
+    final heic = Uint8List.fromList([0, 0, 0, 24, ...latin1.encode("ftypheic"), 0, 0, 0, 0]);
+    final jpeg = jpegBytes();
+    downscaleBuilder.result = PlatformImageDownscaled(jpeg: jpeg);
+    final file = File("${Directory.systemTemp.createTempSync("picker_test").path}/IMG_0001.HEIC")
+      ..writeAsBytesSync(heic);
+    addTearDown(() => file.parent.deleteSync(recursive: true));
+    stubPick(XFile(file.path));
+
+    final attachment = await pickAttachment();
+
+    expect(downscaleBuilder.given, [heic]);
+    expect(attachment?.mime, "image/jpeg");
+    expect(attachment?.bytes, jpeg);
+    expect(attachment?.filename, "IMG_0001.jpg");
+  });
+
+  test("a photo the platform can't decode is turned away as unsupported", () async {
+    final heic = Uint8List.fromList([0, 0, 0, 24, ...latin1.encode("ftypheic"), 0, 0, 0, 0]);
+    stubPick(XFile.fromData(heic, name: "photo.heic"));
+
+    expect(pickAttachment, throwsA(isA<UnsupportedAttachmentImageError>()));
+  });
+
+  test("iOS applies the shared size rule natively", () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    stubPick(XFile.fromData(jpegBytes(), name: "photo.jpg"));
+
+    await pickAttachment();
+
+    expect(downscaleBuilder.given, isEmpty);
+
     verify(
       () => imagePicker.pickImage(
         source: ImageSource.gallery,

@@ -5,6 +5,7 @@ import "dart:typed_data";
 import "package:image/image.dart" as image;
 import "package:injectable/injectable.dart";
 
+import "../foundation/image/composer_jpeg_builder.dart";
 import "../foundation/models/image/supported_raster_image_format.dart";
 
 sealed class const ComposerImageDownscaleResult();
@@ -37,9 +38,6 @@ class const ComposerImageDownscaleBuilder() {
 
   /// The longest side, in pixels, of an image this builder re-encodes.
   static const maxLongSide = 2048;
-
-  /// The JPEG quality this builder re-encodes at.
-  static const jpegQuality = 85;
   static const _maxDecodedPixels = 24 * 1000 * 1000;
 
   Future<ComposerImageDownscaleResult> downscale({
@@ -85,18 +83,11 @@ class const ComposerImageDownscaleBuilder() {
               height: math.max(1, (oriented.height * scale).round()),
               interpolation: image.Interpolation.average,
             );
-      final encoded = image.encodeJpg(_onWhite(source: resized), quality: jpegQuality);
+      final encoded = ComposerJpegBuilder.encode(source: resized);
       return encoded.length < bytes.length ? ComposerImageDownscaled(bytes: encoded) : const ComposerImageKept();
     } on Object catch (cause, stackTrace) {
       return ComposerImageDownscaleFailed(cause: cause, stackTrace: stackTrace);
     }
-  }
-
-  static image.Image _onWhite({required image.Image source}) {
-    if (!source.hasAlpha) return source;
-    final background = image.Image(width: source.width, height: source.height);
-    image.fill(background, color: image.ColorRgb8(255, 255, 255));
-    return image.compositeImage(background, source.convert(format: image.Format.uint8, numChannels: 4));
   }
 
   static image.Decoder _decoderFor({required SupportedRasterImageFormat format}) => switch (format) {

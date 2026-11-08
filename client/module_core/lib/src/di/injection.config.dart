@@ -70,6 +70,8 @@ import 'package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.da
     as _i231;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
+import 'package:sesori_dart_core/src/foundation/image/composer_jpeg_builder.dart'
+    as _i215;
 import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
     as _i898;
 import 'package:sesori_dart_core/src/foundation/io/host_file_client.dart'
@@ -301,6 +303,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i384.SessionLaunchStorage>(
       () => _i384.SessionLaunchStorage(),
+    );
+    gh.lazySingleton<_i215.ComposerJpegBuilder>(
+      () => const _i215.ComposerJpegBuilder(),
     );
     gh.lazySingleton<_i685.HostFileClient>(() => const _i685.HostFileClient());
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(

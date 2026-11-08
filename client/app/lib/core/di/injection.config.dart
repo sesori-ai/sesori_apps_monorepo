@@ -93,6 +93,8 @@ import 'package:sesori_mobile/core/platform/mobile_photo_image_saver.dart'
 import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
 import 'package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart'
     as _i186;
+import 'package:sesori_mobile/core/platform/platform_image_downscale_builder.dart'
+    as _i854;
 import 'package:sesori_mobile/core/platform/singular/singular_attribution_client.dart'
     as _i681;
 import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dart'
@@ -176,12 +178,14 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i948.ComposerFilePicker>(
-      () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
-    );
     gh.lazySingleton<_i903.PersistenceDirectory>(
       () => _i512.FlutterPersistenceDirectory(
         directories: gh<_i441.ApplicationSupportDirectoryClient>(),
+      ),
+    );
+    gh.lazySingleton<_i854.PlatformImageDownscaleBuilder>(
+      () => _i854.PlatformImageDownscaleBuilder(
+        jpegBuilder: gh<_i948.ComposerJpegBuilder>(),
       ),
     );
     gh.lazySingleton<_i948.NotificationCanceller>(
@@ -262,6 +266,12 @@ extension GetItInjectableX on _i174.GetIt {
         analytics: gh<_i398.FirebaseAnalytics>(),
       ),
       registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i948.ComposerFilePicker>(
+      () => _i111.FlutterComposerImagePicker(
+        picker: gh<_i183.ImagePicker>(),
+        downscaleBuilder: gh<_i854.PlatformImageDownscaleBuilder>(),
+      ),
     );
     gh.lazySingleton<_i948.VoiceModeConfigSource>(
       () => _i245.NoOpVoiceModeConfigSource(),

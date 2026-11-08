@@ -71,6 +71,15 @@ final class const _VoiceTranscribing({
 
 final class const _VoiceCancelling() extends _VoiceGesturePresentation;
 
+/// Whether Send is held until in-flight inserts stage.
+sealed class const _SendHold();
+
+final class const _SendNotHeld() extends _SendHold;
+
+/// Completing [cancelled] abandons the held send because the composer moved
+/// to another draft.
+final class const _SendHeld({required final Completer<void> cancelled}) extends _SendHold;
+
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
 // ignore: use_primary_constructors
 enum _PasteImageResult { noImage, handled, stale }
@@ -238,8 +247,15 @@ class _PromptInputState() extends State<PromptInput> {
   bool _voiceBusy = false;
   int _pendingInserts = 0;
 
-  /// Settles once every pick, paste and drop started so far has settled.
+  /// Picks, pastes and drops in flight for the current paste generation; the
+  /// only ones Send waits for, since older ones are discarded when they land.
+  int _generationInserts = 0;
+
+  /// Settles once every pick, paste and drop started in the current paste
+  /// generation has settled.
   Future<void> _insertsSettled = Future<void>.value();
+
+  _SendHold _sendHold = const _SendNotHeld();
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
@@ -361,6 +377,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   @override
   void dispose() {
+    _cancelHeldSend();
     _voiceStateSub?.cancel();
     _droppedPathsSub?.cancel();
     _minimumRecordingDurationTimer?.cancel();
@@ -576,6 +593,56 @@ class _PromptInputState() extends State<PromptInput> {
   /// leaves everything where it is.
   Future<bool> _submitComposer({required bool fromDictation}) async {
     if (_isSubmitting || !widget.canSend) return false;
+    _isSubmitting = true;
+    try {
+      return await _submitHeldComposer(fromDictation: fromDictation);
+    } finally {
+      _isSubmitting = false;
+      _reportBusy();
+    }
+  }
+
+  /// Holds Send, with a spinner in its place, until every pick, paste and
+  /// drop in flight has staged, so an image still being prepared goes out
+  /// with the prompt. One that fails shows its own notice and the prompt goes
+  /// without it. Returns false when the composer moved to another draft or
+  /// went away meanwhile, so nothing is sent into the wrong session.
+  Future<bool> _awaitPendingInserts() async {
+    final cancelled = Completer<void>();
+    setState(() => _sendHold = _SendHeld(cancelled: cancelled));
+    try {
+      while (_generationInserts > 0 && !cancelled.isCompleted) {
+        await Future.any([_insertsSettled, cancelled.future]);
+      }
+      return mounted && !cancelled.isCompleted;
+    } finally {
+      if (mounted) {
+        setState(() => _sendHold = const _SendNotHeld());
+      } else {
+        _sendHold = const _SendNotHeld();
+      }
+    }
+  }
+
+  /// Makes every pick, paste and drop in flight stale. Their results are
+  /// discarded, so later inserts and Send no longer wait for them.
+  void _startPasteGeneration() {
+    _pasteGeneration++;
+    _generationInserts = 0;
+    _insertsSettled = Future<void>.value();
+  }
+
+  void _cancelHeldSend() {
+    if (_sendHold case _SendHeld(:final cancelled) when !cancelled.isCompleted) cancelled.complete();
+  }
+
+  /// [_submitComposer]'s body, run while it holds [_isSubmitting], so a second
+  /// press while Send waits does nothing.
+  Future<bool> _submitHeldComposer({required bool fromDictation}) async {
+    // Checked without awaiting when nothing is in flight, so a plain send
+    // still goes out in the same turn.
+    if (_generationInserts > 0 && !await _awaitPendingInserts()) return false;
+    if (!mounted || !widget.canSend) return false;
 
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
@@ -592,47 +659,41 @@ class _PromptInputState() extends State<PromptInput> {
     final submission = _draftCalculator.trim(draft: _draft);
     if (stagedCommand == null && submission.text.isEmpty && attachments.isEmpty) return false;
 
-    _isSubmitting = true;
-    try {
-      if (_voiceSupport.isSupported) {
-        final voiceState = _voiceCubit.state;
-        if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
-          await _voiceCubit.discard();
-          if (!mounted) return false;
-        }
+    if (_voiceSupport.isSupported) {
+      final voiceState = _voiceCubit.state;
+      if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
+        await _voiceCubit.discard();
+        if (!mounted) return false;
       }
-
-      // Here rather than before this method: a refusal above leaves the words
-      // for the box, with no bubble expected.
-      if (fromDictation) SentBubbleLanding.of(context: context).expect();
-      widget.onSend(
-        draft: submission,
-        command: stagedCommand?.name,
-        attachments: attachments,
-      );
-      if (stagedCommand != null) widget.onCommandCleared();
-
-      _pasteGeneration++;
-      if (_attachments.isNotEmpty) {
-        setState(_attachments.clear);
-        _reportAttachments();
-      }
-      _controller.clear();
-      widget.onDraftCleared();
-      // Keep the keyboard up across a send only where it was already part of
-      // the flow: when the field was focused, and after a typed send in
-      // text-first. A dictation that sent itself never raises it — the composer
-      // collapses back to its resting pill and the chat keeps its height.
-      if (wasFocused || (!_isVoiceFirst && !fromDictation)) {
-        _focusNode.requestFocus();
-      } else {
-        setState(() => _sendLeftKeyboardDown = true);
-      }
-      return true;
-    } finally {
-      _isSubmitting = false;
-      _reportBusy();
     }
+
+    // Here rather than before this method: a refusal above leaves the words
+    // for the box, with no bubble expected.
+    if (fromDictation) SentBubbleLanding.of(context: context).expect();
+    widget.onSend(
+      draft: submission,
+      command: stagedCommand?.name,
+      attachments: attachments,
+    );
+    if (stagedCommand != null) widget.onCommandCleared();
+
+    _startPasteGeneration();
+    if (_attachments.isNotEmpty) {
+      setState(_attachments.clear);
+      _reportAttachments();
+    }
+    _controller.clear();
+    widget.onDraftCleared();
+    // Keep the keyboard up across a send only where it was already part of
+    // the flow: when the field was focused, and after a typed send in
+    // text-first. A dictation that sent itself never raises it — the composer
+    // collapses back to its resting pill and the chat keeps its height.
+    if (wasFocused || (!_isVoiceFirst && !fromDictation)) {
+      _focusNode.requestFocus();
+    } else {
+      setState(() => _sendLeftKeyboardDown = true);
+    }
+    return true;
   }
 
   @override
@@ -642,13 +703,15 @@ class _PromptInputState() extends State<PromptInput> {
     final restorationRequested = widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
     if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
-      _pasteGeneration++;
+      _startPasteGeneration();
     }
     if (draftChanged || restorationRequested) {
       // A draft identity change means this state moved to another composer. A
       // restoration key change means a fast failed send reused this composer.
-      // Both replace authored content exactly once.
-      _pasteGeneration++;
+      // Both replace authored content exactly once, and abandon a send still
+      // waiting for the old draft's images.
+      _startPasteGeneration();
+      _cancelHeldSend();
       _attachments.clear();
       _applyDraft(draft: widget.initialDraft, notify: false);
       _restoreInitialAttachments();
@@ -2671,9 +2734,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// stage in the order they were added even when an earlier one takes longer
   /// to downscale.
   _InsertTurn _startInsert() {
-    final turn = _InsertTurn(earlierSettled: _insertsSettled);
+    final turn = _InsertTurn(earlierSettled: _insertsSettled, pasteGeneration: _pasteGeneration);
     _insertsSettled = turn.settled;
     _pendingInserts++;
+    _generationInserts++;
     _reportBusy();
     return turn;
   }
@@ -2681,6 +2745,7 @@ class _PromptInputState() extends State<PromptInput> {
   void _settleInsert({required _InsertTurn turn}) {
     turn.settle();
     _pendingInserts--;
+    if (turn.pasteGeneration == _pasteGeneration) _generationInserts--;
     _reportBusy();
   }
 
@@ -3131,6 +3196,8 @@ class _PromptInputState() extends State<PromptInput> {
       semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
       size: PregoButtonsSolidSize.lg,
+      // A send held for an image still being prepared.
+      isLoading: _sendHold is _SendHeld,
       onPressed: onPressed,
     );
   }
@@ -3164,7 +3231,7 @@ class _PromptInputState() extends State<PromptInput> {
 }
 
 /// One pick, paste or drop in flight.
-final class _InsertTurn({required final Future<void> earlierSettled}) {
+final class _InsertTurn({required final Future<void> earlierSettled, required final int pasteGeneration}) {
   final _settled = Completer<void>();
 
   Future<void> get settled => _settled.future;

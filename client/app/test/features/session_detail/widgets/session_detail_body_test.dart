@@ -5404,7 +5404,7 @@ void main() {
     expect(editableText.controller.text, "pasted after");
   });
 
-  testWidgets("a clipboard image settling after send is discarded", (tester) async {
+  testWidgets("Send waits for a clipboard image still being read and sends it with the prompt", (tester) async {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
@@ -5431,11 +5431,30 @@ void main() {
     Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
     await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pump();
+    verifyNever(
+      () => cubit.sendMessage(
+        text: any(named: "text"),
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: any(named: "attachments"),
+      ),
+    );
+
     imageRead.complete(_tinyPng);
     await tester.pumpAndSettle();
 
-    expect(semanticsWithLabel("Attached image"), findsNothing);
-    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    final sentAttachments = verify(
+      () => cubit.sendMessage(
+        text: "send now",
+        command: any(named: "command"),
+        inputMode: any(named: "inputMode"),
+        attachments: captureAny(named: "attachments"),
+      ),
+    ).captured.single;
+    expect(
+      sentAttachments,
+      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) a.bytes], "bytes", [_tinyPng]),
+    );
   });
 
   testWidgets("a clipboard image is discarded after attachment support toggles", (tester) async {
