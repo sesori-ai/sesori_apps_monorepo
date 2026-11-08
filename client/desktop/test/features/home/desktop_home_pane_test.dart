@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:bloc_test/bloc_test.dart";
+import "package:desktop_drop/desktop_drop.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -845,6 +846,29 @@ void main() {
     final button = tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_project")));
     expect(button.onPressed, isNotNull);
     verifyNever(bridgeControlCubit.recoverConnection);
+  });
+
+  testWidgets("a file dropped on the project prompt gets a notice", (tester) async {
+    await pumpHome(
+      tester: tester,
+      state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
+    );
+    expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
+
+    tester
+        .widget<DropTarget>(find.byType(DropTarget))
+        .onDragDone
+        ?.call(
+          DropDoneDetails(
+            files: [DropItemFile("/work/notes.dart")],
+            localPosition: Offset.zero,
+            globalPosition: Offset.zero,
+          ),
+        );
+    await tester.pump();
+
+    expect(find.text("Files can't be added here"), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 
   testWidgets("failed home retries the shared inventory through its recovery path", (tester) async {

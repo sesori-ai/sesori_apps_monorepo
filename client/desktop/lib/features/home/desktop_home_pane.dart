@@ -444,9 +444,13 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       // filter's, is where it starts.
       listenWhen: (previous, current) => _projectId == null && previous.defaultProjectId != current.defaultProjectId,
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
-      child: AnimatedSwitcher(
-        duration: _homeMotionDuration,
-        child: pane,
+      // The whole pane takes drops, so one dropped while no composer is up (the
+      // project prompt) gets a notice rather than passing unseen.
+      child: DesktopPaneDropTarget(
+        child: AnimatedSwitcher(
+          duration: _homeMotionDuration,
+          child: pane,
+        ),
       ),
     );
   }
@@ -469,43 +473,40 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
     final listed = widget.projects.where((project) => project.id == projectId).firstOrNull;
     void select({required String projectId, required String projectName}) =>
         context.read<NewSessionCubit>().selectProject(project: _project(projectId: projectId));
-    // The whole pane takes drops; with the prompt up, nothing listens.
-    return DesktopPaneDropTarget(
-      child: AnimatedSwitcher(
-        duration: _homeMotionDuration,
-        child: switch (listed) {
-          final listed? => NewSessionView(
-            key: const Key("desktop-home-composer"),
-            onProjectSelected: select,
-            // The home is where Back would lead; there is nothing to leave.
-            onBack: null,
-            onOpenHarnessSettings: widget.onOpenHarnessSettings,
-            // Sending holds the composer's project, so the session's is the one
-            // listed here.
-            onSessionCreated: ({required session, required project}) => widget.onOpenSession(
-              context: context,
-              project: listed,
-              displayName: projectDisplayName(loc: context.loc, project: listed),
-              session: session,
-            ),
-            composerScopeBuilder: ({required projectId, required child}) => DesktopComposerPresentationScope(
-              child: DesktopVoiceInputScope(projectId: projectId, child: child),
-            ),
-            // The desktop root owns its single connection banner.
-            banner: null,
-            pageChrome: const NewSessionPageChrome(
-              maxContentWidth: 760,
-              transcriptWidth: desktopTranscriptWidth,
-              topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
-              // The pane paints the background, beneath the bodies it cross-fades.
-              backgroundColor: Colors.transparent,
-            ),
+    return AnimatedSwitcher(
+      duration: _homeMotionDuration,
+      child: switch (listed) {
+        final listed? => NewSessionView(
+          key: const Key("desktop-home-composer"),
+          onProjectSelected: select,
+          // The home is where Back would lead; there is nothing to leave.
+          onBack: null,
+          onOpenHarnessSettings: widget.onOpenHarnessSettings,
+          // Sending holds the composer's project, so the session's is the one
+          // listed here.
+          onSessionCreated: ({required session, required project}) => widget.onOpenSession(
+            context: context,
+            project: listed,
+            displayName: projectDisplayName(loc: context.loc, project: listed),
+            session: session,
           ),
-          // A list still loading may yet name it.
-          null when isLoading => const SizedBox.expand(key: Key("desktop-home-waiting")),
-          null => _prompt(onProjectSelected: select),
-        },
-      ),
+          composerScopeBuilder: ({required projectId, required child}) => DesktopComposerPresentationScope(
+            child: DesktopVoiceInputScope(projectId: projectId, child: child),
+          ),
+          // The desktop root owns its single connection banner.
+          banner: null,
+          pageChrome: const NewSessionPageChrome(
+            maxContentWidth: 760,
+            transcriptWidth: desktopTranscriptWidth,
+            topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
+            // The pane paints the background, beneath the bodies it cross-fades.
+            backgroundColor: Colors.transparent,
+          ),
+        ),
+        // A list still loading may yet name it.
+        null when isLoading => const SizedBox.expand(key: Key("desktop-home-waiting")),
+        null => _prompt(onProjectSelected: select),
+      },
     );
   }
 }

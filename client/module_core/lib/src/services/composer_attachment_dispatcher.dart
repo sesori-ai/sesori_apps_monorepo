@@ -10,6 +10,7 @@ import "../foundation/models/image/supported_raster_image_format.dart";
 import "../foundation/platform/active_bridge_locality.dart";
 import "../foundation/platform/composer_file_picker.dart";
 import "../logging/logging.dart";
+import "../repositories/host_file_repository.dart";
 import "composer_image_downscale_builder.dart";
 import "models/composer_attach_outcome.dart";
 
@@ -23,12 +24,10 @@ final class const UnsupportedAttachmentImageError() implements Exception;
 class ComposerAttachmentDispatcher({
   required final ComposerFilePicker _filePicker,
   required final ComposerImageDownscaleBuilder _downscaleBuilder,
-  required final HostFileClient _fileClient,
+  required final HostFileRepository _hostFiles,
   required final ConnectionService _connectionService,
   required final ActiveBridgeLocality _locality,
 }) {
-  /// Enough bytes for every supported raster signature.
-  static const _headerBytes = 16;
   static final _needsQuotes = RegExp(r'[\s"]');
 
   /// Opens the shell's picker and routes what it returns, or returns `null`
@@ -103,14 +102,13 @@ class ComposerAttachmentDispatcher({
   }) async {
     try {
       final int sizeBytes;
-      switch (await _fileClient.kindOf(path: hostPath)) {
+      switch (await _hostFiles.kindOf(path: hostPath)) {
         case HostRegularFile(sizeBytes: final size):
           sizeBytes = size;
         case HostDirectory() || HostOtherPath():
           return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
       }
-      final header = await _fileClient.readHeader(path: hostPath, length: _headerBytes);
-      if (detectSupportedRasterImageFormat(bytes: header) == null) {
+      if (await _hostFiles.imageFormatOf(path: hostPath) == null) {
         return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
       }
       if (attachmentsSupported != true) {
@@ -124,7 +122,7 @@ class ComposerAttachmentDispatcher({
       }
       // Downscaled first, so a large image that shrinks to fit still stages.
       final attachment = await attachmentFromBytes(
-        bytes: await _fileClient.readAll(path: hostPath),
+        bytes: await _hostFiles.readAll(path: hostPath),
         filename: path.basename(hostPath),
       );
       if (attachment.bytes.length > remainingBytes) {

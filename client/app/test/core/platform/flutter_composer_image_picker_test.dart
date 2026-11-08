@@ -24,7 +24,7 @@ void main() {
     attachmentDispatcher = ComposerAttachmentDispatcher(
       filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
-      fileClient: const HostFileClient(),
+      hostFiles: HostFileRepository(client: const HostFileClient()),
       connectionService: _MockConnectionService(),
       locality: _MockActiveBridgeLocality(),
     );

@@ -34,7 +34,7 @@ ComposerAttachmentDispatcher composerAttachmentDispatcherForTest({
   return ComposerAttachmentDispatcher(
     filePicker: filePicker,
     downscaleBuilder: downscaleBuilder,
-    fileClient: const HostFileClient(),
+    hostFiles: HostFileRepository(client: const HostFileClient()),
     connectionService: connectionService,
     locality: _FixedLocality(isLocal: bridgeIsLocal),
   );

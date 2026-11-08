@@ -153,6 +153,8 @@ import 'package:sesori_dart_core/src/repositories/file_preview_repository.dart'
     as _i704;
 import 'package:sesori_dart_core/src/repositories/founder_call_repository.dart'
     as _i733;
+import 'package:sesori_dart_core/src/repositories/host_file_repository.dart'
+    as _i513;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -382,6 +384,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i736.OnDeviceSpeechApi>(
       () => _i736.OnDeviceSpeechApi(source: gh<_i598.OnDeviceSpeechSource>()),
     );
+    gh.lazySingleton<_i513.HostFileRepository>(
+      () => _i513.HostFileRepository(client: gh<_i685.HostFileClient>()),
+    );
     gh.lazySingleton<_i695.LegacyNativeStorageMigrationRepository>(
       () => _i695.LegacyNativeStorageMigrationRepository(
         api: gh<_i691.LegacyNativeStorageMigrationApi>(),
@@ -519,6 +524,15 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
+    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
+      () => _i705.ComposerAttachmentDispatcher(
+        filePicker: gh<_i907.ComposerFilePicker>(),
+        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
+        hostFiles: gh<_i513.HostFileRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
+      ),
+    );
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
     );
@@ -556,15 +570,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i993.AttributionRepository(
         api: gh<_i556.AttributionApi>(),
         claimStorage: gh<_i275.AttributionClaimStorage>(),
-      ),
-    );
-    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
-      () => _i705.ComposerAttachmentDispatcher(
-        filePicker: gh<_i907.ComposerFilePicker>(),
-        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
-        fileClient: gh<_i685.HostFileClient>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        locality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
     gh.lazySingleton<_i479.ConnectionNotificationObservationApi>(

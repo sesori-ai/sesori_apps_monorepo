@@ -249,6 +249,7 @@ export "src/repositories/feedback_prompt_repository.dart";
 export "src/repositories/feedback_repository.dart";
 export "src/repositories/file_preview_repository.dart";
 export "src/repositories/founder_call_repository.dart";
+export "src/repositories/host_file_repository.dart";
 export "src/repositories/installed_app_build_repository.dart";
 export "src/repositories/legal_repository.dart";
 export "src/repositories/message_image_repository.dart";

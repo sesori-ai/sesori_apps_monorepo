@@ -73,6 +73,15 @@ class _QueuedDownscaleBuilder() implements ComposerImageDownscaleBuilder {
   }
 }
 
+/// Turns every image into [_bytes], as if downscaling produced them.
+class const _FixedDownscaleBuilder({required final Uint8List _bytes}) implements ComposerImageDownscaleBuilder {
+  @override
+  Future<ComposerImageDownscaleResult> downscale({
+    required Uint8List bytes,
+    required SupportedRasterImageFormat format,
+  }) async => ComposerImageDownscaled(bytes: _bytes);
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -315,6 +324,40 @@ void main() {
       ),
       findsOneWidget,
     );
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets("a drop that follows another is routed against the budget the first one left", (tester) async {
+    final drops = StreamController<List<String>>();
+    addTearDown(drops.close);
+    final root = Directory.systemTemp.createTempSync("composer_drop_budget_test");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final firstPath = (File("${root.path}/first.png")..writeAsBytesSync(png)).path;
+    final secondPath = (File("${root.path}/second.png")..writeAsBytesSync(png)).path;
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        // Each image takes 60% of the budget, so only one fits.
+        downscaleBuilder: _FixedDownscaleBuilder(bytes: Uint8List(maxComposerPromptAttachmentBytes * 3 ~/ 5)),
+        bridgeIsLocal: true,
+      ),
+      clipboard: _NoOpImageClipboard(),
+      droppedPaths: drops.stream,
+      voiceCubit: null,
+      attachmentsSupported: true,
+      onAttachmentsChanged: reportedAttachments.add,
+    );
+
+    drops
+      ..add([firstPath])
+      ..add([secondPath]);
+    await _settleFileReads(tester);
+
+    expect([for (final attachment in reportedAttachments.last) attachment.filename], ["first.jpg"]);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "see attached $secondPath ");
     await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 
@@ -1110,7 +1153,7 @@ Future<void> _pumpAttachComposer({
 
 /// Real file reads only finish outside the fake clock.
 Future<void> _settleFileReads(WidgetTester tester) async {
-  for (var tries = 0; tries < 20; tries++) {
+  for (var tries = 0; tries < 40; tries++) {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
     await tester.pump();
   }

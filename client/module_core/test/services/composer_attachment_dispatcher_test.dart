@@ -69,7 +69,7 @@ void main() {
     return ComposerAttachmentDispatcher(
       filePicker: _StubComposerFilePicker(result: picked),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
-      fileClient: fileClient,
+      hostFiles: HostFileRepository(client: fileClient),
       connectionService: connectionService,
       locality: const _Locality(localBridgeId: _localBridgeId),
     );

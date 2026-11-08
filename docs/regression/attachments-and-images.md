@@ -58,7 +58,7 @@ content the transcript renders live and after reload.
   Removing one image preserves the remaining image identities and send bytes;
   removing all images removes the strip.
 - On desktop, files dragged anywhere over the session-detail pane, the
-  new-session pane or the home composer show a full-pane "Drop files to add
+  new-session pane or the home pane show a full-pane "Drop files to add
   them to your prompt" hint and go to that pane's composer, and to exactly one
   composer when a cross-fade briefly mounts two. The hint shows only while a
   composer there can take files, and follows a composer that appears or starts

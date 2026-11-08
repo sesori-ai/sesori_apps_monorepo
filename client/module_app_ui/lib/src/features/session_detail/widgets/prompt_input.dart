@@ -2604,11 +2604,13 @@ class _PromptInputState() extends State<PromptInput> {
     bool isStale() => draftIdentity != widget.draftIdentity || pasteGeneration != _pasteGeneration;
     final turn = _startInsert();
     try {
-      final result = await outcome(_stagedAttachmentBytes);
+      // Routed only once earlier inserts have staged, so each file is judged
+      // against the budget that is really left.
       await turn.earlierSettled;
+      final result = await outcome(_stagedAttachmentBytes);
       if (!mounted || isStale() || result == null) return;
       for (final attachment in result.attachments) {
-        if (!_stageAttachment(attachment: attachment)) break;
+        _stageAttachment(attachment: attachment);
       }
       if (result.insertedText case final text?) _insertAtCaret(text: text);
       if (result.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: result.rejections));
