@@ -125,7 +125,9 @@ Record the results below and move the plan to `.plan/completed/`.
   for the touched packages.
 - L3, local bridge from the step 2 branch (`sesori-local-testing`): start a
   Claude session and a Codex session, ask each agent what Sesori told it about
-  file paths, confirm it quotes the note, confirm the note is absent from the
+  file paths, and confirm Claude quotes the note. Codex models decline to
+  disclose developer instructions, so for Codex confirm the note as a
+  `role: developer` message in the thread's rollout instead. Confirm the note is absent from the
   session's transcript in the bridge API, resume each once (Claude: idle
   respawn or bridge restart; Codex: bridge restart) and ask again, then delete
   the test sessions. Any app UI check runs only on a headless iOS simulator
