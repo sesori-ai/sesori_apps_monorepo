@@ -3468,6 +3468,7 @@ Future<_Composer> _pumpComposer({
                   onCommandSelected: (_) {},
                   onCommandCleared: () => composer.commandsCleared++,
                   attachmentsSupported: attachmentsSupported,
+                  fileUploadsSupported: false,
                   draftIdentity: "touch-voice-test",
                   restorationKey: null,
                   initialDraft: ComposerDraft.typed(text: initialText),

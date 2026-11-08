@@ -127,6 +127,7 @@ void main() {
       commands: [],
       fastMode: false,
       supportsPromptAttachments: true,
+      supportsFileUploads: false,
       hadFocus: true,
       unsent: null,
     );

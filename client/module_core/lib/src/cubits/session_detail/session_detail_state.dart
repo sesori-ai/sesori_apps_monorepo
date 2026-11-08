@@ -81,6 +81,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String? pluginId,
     // Null when the plugin metadata lookup could not resolve the capability.
     required bool? supportsPromptAttachments,
+    // Whether the bridge saves prompt files that are not inline images; false
+    // until its plugin listing is read.
+    required bool supportsFileUploads,
     // Model from the latest assistant message.
     required AgentModel? assistantAgentModel,
     // Background tasks (child sessions).

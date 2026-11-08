@@ -23,6 +23,7 @@ void main() {
       session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
+      supportsFileUploads: false,
       assistantAgentModel: null,
       children: [],
       childStatuses: {},

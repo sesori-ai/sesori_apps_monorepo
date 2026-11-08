@@ -142,6 +142,7 @@ Future<void> _pumpComposer({
             onCommandSelected: (_) {},
             onCommandCleared: () {},
             attachmentsSupported: false,
+            fileUploadsSupported: false,
             draftIdentity: "keyboard-test",
             restorationKey: null,
             initialDraft: ComposerDraft.typed(text: ""),

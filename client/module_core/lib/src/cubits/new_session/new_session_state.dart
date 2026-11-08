@@ -107,6 +107,10 @@ sealed class NewSessionComposeConfig with _$NewSessionComposeConfig {
     /// replaces them; null until a bridge has answered at all.
     required List<PluginMetadata>? availablePlugins,
     required PluginMetadata? selectedPlugin,
+
+    /// Whether the bridge last reported saving prompt files that are not
+    /// inline images, kept like [availablePlugins]; false until it answers.
+    required bool supportsFileUploads,
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,
     required bool isPluginDiscoveryInFlight,
@@ -181,6 +185,7 @@ sealed class NewSessionState with _$NewSessionState {
 typedef AgentModelData = ({
   List<PluginMetadata>? plugins,
   PluginMetadata? plugin,
+  bool supportsFileUploads,
   NewSessionOptionsLoadState optionsState,
   NewSessionBackendScope backendScope,
   bool isPluginDiscoveryInFlight,
@@ -214,6 +219,7 @@ extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
     return (
       plugins: availablePlugins,
       plugin: selectedPlugin,
+      supportsFileUploads: supportsFileUploads,
       optionsState: options,
       backendScope: backendScope,
       isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,

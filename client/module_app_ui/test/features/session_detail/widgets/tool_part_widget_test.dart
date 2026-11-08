@@ -766,6 +766,7 @@ SessionDetailState _loaded({required Map<ToolOutputKey, ToolOutputFetch> toolOut
   session: testConstSession,
   pluginId: "claude",
   supportsPromptAttachments: false,
+  supportsFileUploads: false,
   assistantAgentModel: null,
   children: const [],
   childStatuses: const {},

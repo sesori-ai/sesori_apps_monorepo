@@ -572,6 +572,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             hasMessages: isSending,
             canSend: cubit.canSubmit,
             attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+            fileUploadsSupported: composerData?.supportsFileUploads ?? false,
             isBusy: false,
             onSend: ({required draft, required command, required attachments}) =>
                 context.read<NewSessionCubit>().submit(

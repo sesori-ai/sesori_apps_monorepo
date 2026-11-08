@@ -191,6 +191,7 @@ SessionDetailLoaded _loadedState({
     session: testConstSession,
     pluginId: pluginId,
     supportsPromptAttachments: supportsPromptAttachments,
+    supportsFileUploads: false,
     assistantAgentModel: null,
     children: children,
     childStatuses: childStatuses,
@@ -564,6 +565,7 @@ void main() {
                 onCommandSelected: (_) {},
                 onCommandCleared: () {},
                 attachmentsSupported: true,
+                fileUploadsSupported: false,
                 draftIdentity: draftIdentity,
                 restorationKey: restorationKey,
                 initialDraft: draft,
@@ -775,6 +777,7 @@ void main() {
       commands: const [],
       fastMode: false,
       supportsPromptAttachments: true,
+      supportsFileUploads: true,
       hadFocus: true,
       unsent: null,
     );
@@ -826,6 +829,7 @@ void main() {
     expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
     expect(find.descendant(of: prompt, matching: find.text("planner")), findsOneWidget);
     expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+    expect(tester.widget<PromptInput>(prompt).fileUploadsSupported, isTrue);
     expect(find.byType(PregoLaunchStatus), findsNothing);
     final launchBubble = find.ancestor(of: find.text("Launch prompt"), matching: find.byType(QueuedMessageBubble));
     final queuedBubble = find.ancestor(
@@ -847,6 +851,8 @@ void main() {
     expect(tester.getRect(launchBubble), launchRect);
     expect(tester.getRect(queuedBubble), queuedRect);
     expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+    // The loaded state now answers for the bridge, which here saves no files.
+    expect(tester.widget<PromptInput>(prompt).fileUploadsSupported, isFalse);
   });
 
   group("the list taking over from the launch view", () {
@@ -891,6 +897,7 @@ void main() {
         commands: const [],
         fastMode: false,
         supportsPromptAttachments: true,
+        supportsFileUploads: false,
         hadFocus: false,
         unsent: null,
       );
@@ -1612,6 +1619,7 @@ void main() {
       session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
+      supportsFileUploads: false,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},

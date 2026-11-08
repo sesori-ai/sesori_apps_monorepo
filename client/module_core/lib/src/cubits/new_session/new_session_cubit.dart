@@ -58,6 +58,7 @@ class NewSessionCubit({
           config: NewSessionComposeConfig(
             availablePlugins: null,
             selectedPlugin: null,
+            supportsFileUploads: false,
             options: const NewSessionOptionsLoadingState(source: null),
             backendScope: _selectionTracker.backendScope.invalidate(),
             isPluginDiscoveryInFlight: false,
@@ -187,6 +188,7 @@ class NewSessionCubit({
           _emitDiscoverySuccess(
             availablePlugins: data.plugins,
             selectedPlugin: selectedPlugin,
+            supportsFileUploads: data.supportsFileUploads,
             options: canLoad
                 ? _loadingState(previous: retained, source: source)
                 : source == NewSessionOptionsSource.aggregate
@@ -231,6 +233,7 @@ class NewSessionCubit({
   void _emitDiscoverySuccess({
     required List<PluginMetadata> availablePlugins,
     required PluginMetadata? selectedPlugin,
+    required bool supportsFileUploads,
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,
     required NewSessionProjectWorktreeCapability projectWorktreeCapability,
@@ -249,6 +252,7 @@ class NewSessionCubit({
         config: NewSessionComposeConfig(
           availablePlugins: availablePlugins,
           selectedPlugin: selectedPlugin,
+          supportsFileUploads: supportsFileUploads,
           options: options,
           backendScope: backendScope,
           isPluginDiscoveryInFlight: false,
@@ -304,6 +308,7 @@ class NewSessionCubit({
         config: NewSessionComposeConfig(
           availablePlugins: data?.plugins,
           selectedPlugin: data?.plugin,
+          supportsFileUploads: data?.supportsFileUploads ?? false,
           options: options,
           backendScope: backendScope,
           isPluginDiscoveryInFlight: false,
@@ -888,6 +893,7 @@ class NewSessionCubit({
         config: NewSessionComposeConfig(
           availablePlugins: availablePlugins,
           selectedPlugin: selectedPlugin,
+          supportsFileUploads: current.config.supportsFileUploads,
           options: options,
           backendScope: backendScope,
           isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
@@ -1101,6 +1107,7 @@ class NewSessionCubit({
         config: NewSessionComposeConfig(
           availablePlugins: config.plugins,
           selectedPlugin: selectedPlugin,
+          supportsFileUploads: config.supportsFileUploads,
           options: config.optionsState,
           backendScope: config.backendScope,
           isPluginDiscoveryInFlight: false,
@@ -1238,6 +1245,7 @@ class NewSessionCubit({
         commands: data.commands,
         fastMode: data.runsFastMode,
         supportsPromptAttachments: data.plugin?.supportsPromptAttachments ?? false,
+        supportsFileUploads: data.supportsFileUploads,
         hadFocus: _composerFocused,
         unsent: _unsentComposer,
       ),
@@ -1296,6 +1304,7 @@ class NewSessionCubit({
         config: NewSessionComposeConfig(
           availablePlugins: latest.plugins,
           selectedPlugin: latest.plugin,
+          supportsFileUploads: latest.supportsFileUploads,
           options: restoredOptions,
           backendScope: latest.backendScope,
           isPluginDiscoveryInFlight: false,

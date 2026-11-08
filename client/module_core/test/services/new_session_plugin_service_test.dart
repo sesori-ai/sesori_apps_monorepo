@@ -57,6 +57,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "br_test",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: plugins,
           ),
         ),
@@ -159,6 +160,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: null,
             supportsSessionOptions: false,
+            supportsFileUploads: false,
             plugins: plugins,
           ),
         ),
@@ -177,6 +179,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "br_test",
             supportsSessionOptions: false,
+            supportsFileUploads: false,
             plugins: plugins,
           ),
         ),
@@ -185,6 +188,25 @@ void main() {
       final discovery = await discover();
 
       expect(discovery.optionsSource, NewSessionOptionsSource.legacy);
+    });
+
+    test("carries the bridge's file upload capability", () async {
+      final discoveries = <bool>[];
+      for (final supportsFileUploads in [true, false]) {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "br_test",
+              supportsSessionOptions: true,
+              supportsFileUploads: supportsFileUploads,
+              plugins: plugins,
+            ),
+          ),
+        );
+        discoveries.add((await discover()).supportsFileUploads);
+      }
+
+      expect(discoveries, [true, false]);
     });
 
     test("passes discovery errors through unchanged", () async {

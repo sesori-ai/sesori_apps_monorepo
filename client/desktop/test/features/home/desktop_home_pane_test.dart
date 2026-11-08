@@ -1317,6 +1317,7 @@ NewSessionState _composingIn({
   config: NewSessionComposeConfig(
     availablePlugins: const [],
     selectedPlugin: null,
+    supportsFileUploads: false,
     options: const NewSessionOptionsLoadState.unsupported(),
     backendScope: const NewSessionBackendScope.verified(bridgeId: null),
     isPluginDiscoveryInFlight: false,

@@ -170,6 +170,7 @@ void main() {
           bridgeQueuedPrompts: [],
           pluginId: "opencode",
           supportsPromptAttachments: false,
+          supportsFileUploads: false,
           messages: <MessageWithParts>[],
           olderMessagesCursor: null,
           userMessagesBefore: null,

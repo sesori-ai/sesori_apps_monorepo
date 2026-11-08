@@ -278,6 +278,7 @@ class PluginRepository({required final PluginApi _api}) {
         PluginDiscoverySnapshot(
           bridgeId: data.bridgeId,
           supportsSessionOptions: data.supportsSessionOptions,
+          supportsFileUploads: data.supportsFileUploads,
           // COMPATIBILITY 2026-08-04 (v1.8.0): Discovery responses that omit
           // session-options capability also predate prompt capability, while
           // their sole released OpenCode path already carried fileData parts.
@@ -298,6 +299,7 @@ class PluginRepository({required final PluginApi _api}) {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: false,
+          supportsFileUploads: false,
           plugins: [
             const PluginMetadata(
               id: legacyMissingPluginId,

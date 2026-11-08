@@ -69,6 +69,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         // The launch's first message is already in the transcript.
         hasMessages: true,
         attachmentsSupported: composer.supportsPromptAttachments,
+        fileUploadsSupported: composer.supportsFileUploads,
         isBusy: false,
         initialAttachments: cubit.launchAttachments,
         onInitialAttachmentsConsumed: cubit.acknowledgeLaunchAttachments,
@@ -103,6 +104,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         state.awaitingBridgeSubmissions.isNotEmpty ||
         state.bridgeQueuedPrompts.isNotEmpty,
     attachmentsSupported: state.supportsPromptAttachments,
+    fileUploadsSupported: state.supportsFileUploads,
     isBusy: hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses),
     initialAttachments: const [],
     onInitialAttachmentsConsumed: () {},
@@ -136,6 +138,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required BuildContext context,
     required bool hasMessages,
     required bool? attachmentsSupported,
+    required bool fileUploadsSupported,
     required bool isBusy,
     required List<ComposerAttachment> initialAttachments,
     required VoidCallback onInitialAttachmentsConsumed,
@@ -174,6 +177,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             autofocus: autofocus,
             hasMessages: hasMessages,
             attachmentsSupported: attachmentsSupported,
+            fileUploadsSupported: fileUploadsSupported,
             isBusy: isBusy,
             canSend: true,
             onSend: ({required draft, required command, required attachments}) =>

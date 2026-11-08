@@ -89,6 +89,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: [defaultPlugin],
           ),
         ),
@@ -200,6 +201,7 @@ void main() {
         config: NewSessionComposeConfig(
           availablePlugins: [defaultPlugin],
           selectedPlugin: defaultPlugin,
+          supportsFileUploads: false,
           options: NewSessionOptionsAvailableState(
             options: NewSessionOptionsData(
               agents: [],
@@ -411,6 +413,7 @@ void main() {
             PluginDiscoverySnapshot(
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
+              supportsFileUploads: false,
               plugins: const [
                 PluginMetadata(
                   id: "codex",
@@ -752,6 +755,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: const [
               PluginMetadata(
                 id: "plugin-1",
@@ -826,6 +830,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: const [
               PluginMetadata(
                 id: "plugin-1",
@@ -1014,6 +1019,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: const [defaultPlugin],
           ),
         );
@@ -2516,6 +2522,32 @@ void main() {
           expect(draftRepository.readForNewSession().text, isEmpty);
         });
 
+        test("carries the bridge's file upload capability from discovery to the session screen", () async {
+          when(mockPluginRepository.listPlugins).thenAnswer(
+            (_) async => ApiResponse.success(
+              PluginDiscoverySnapshot(
+                bridgeId: "bridge-1",
+                supportsSessionOptions: true,
+                supportsFileUploads: true,
+                plugins: [defaultPlugin],
+              ),
+            ),
+          );
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+          expect(cubit.state.agentModelData?.supportsFileUploads, isTrue);
+
+          final pending = send(cubit);
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+
+          final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
+          expect(composer?.supportsFileUploads, isTrue);
+          expect(composer?.supportsPromptAttachments, isFalse);
+        });
+
         test("a creation landing while the composer is busy waits for it, then hands over its draft", () async {
           final cubit = buildCubit(launchRepository: launchRepository);
           addTearDown(cubit.close);
@@ -3042,6 +3074,7 @@ void main() {
             PluginDiscoverySnapshot(
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
+              supportsFileUploads: false,
               plugins: const [defaultPlugin],
             ),
           ),
@@ -3161,7 +3194,12 @@ void main() {
 
       ApiResponse<PluginDiscoverySnapshot> answer({required String bridgeId, required List<PluginMetadata> plugins}) =>
           ApiResponse.success(
-            PluginDiscoverySnapshot(bridgeId: bridgeId, supportsSessionOptions: true, plugins: plugins),
+            PluginDiscoverySnapshot(
+              bridgeId: bridgeId,
+              supportsSessionOptions: true,
+              supportsFileUploads: false,
+              plugins: plugins,
+            ),
           );
       for (final (outcome, rediscovery, settled) in [
         (
@@ -3768,6 +3806,7 @@ void main() {
             PluginDiscoverySnapshot(
               bridgeId: "bridge-1",
               supportsSessionOptions: false,
+              supportsFileUploads: false,
               plugins: const [
                 PluginMetadata(
                   id: "plugin-1",
@@ -3942,6 +3981,7 @@ void main() {
             PluginDiscoverySnapshot(
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
+              supportsFileUploads: false,
               plugins: const [defaultPlugin, otherPlugin],
             ),
           ),
