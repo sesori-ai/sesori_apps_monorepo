@@ -1,6 +1,6 @@
 import "dart:io";
-import "dart:typed_data";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:image_picker/image_picker.dart";
 import "package:mocktail/mocktail.dart";
@@ -82,6 +82,25 @@ void main() {
     expect(attachment.mime, "image/png");
     expect(attachment.filename, "shot.png");
     expect(attachment.bytes, png);
+  });
+
+  test("Android asks for the original image, so an animated GIF stays animated", () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    stubPick(null);
+
+    await pickAttachment();
+
+    verify(() => imagePicker.pickImage(source: ImageSource.gallery, requestFullMetadata: false)).called(1);
+  });
+
+  test("iOS applies the shared size rule natively", () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    stubPick(null);
+
+    await pickAttachment();
+
     verify(
       () => imagePicker.pickImage(
         source: ImageSource.gallery,

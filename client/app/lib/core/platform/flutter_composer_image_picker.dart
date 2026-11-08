@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:image_picker/image_picker.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -5,10 +6,13 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// Mobile gallery picker for composer images.
 ///
 /// Shared core owns the staged-image size rule ([ComposerImageDownscaleBuilder])
-/// and validates the returned bytes. The plugin's native pass applies the same
-/// limits up front, which keeps a full-resolution photo out of memory and turns
-/// formats such as HEIC into a JPEG core can stage, so its picks arrive already
-/// within the rule.
+/// and validates the returned bytes.
+///
+/// iOS applies the same limits natively first. It scales a GIF frame by frame,
+/// so the GIF keeps its animation, and it turns HEIC into JPEG. It also keeps a
+/// 24 MP photo from reaching core larger than core will decode. Android
+/// re-encodes any resized pick, which flattens an animated GIF, so Android hands
+/// over the original and core downscales it.
 @LazySingleton(as: ComposerFilePicker)
 class FlutterComposerImagePicker({required final ImagePicker picker}) implements ComposerFilePicker {
   static final double _maxDimension = ComposerImageDownscaleBuilder.maxLongSide.toDouble();
@@ -17,11 +21,12 @@ class FlutterComposerImagePicker({required final ImagePicker picker}) implements
 
   @override
   Future<ComposerPickResult?> pick() async {
+    final nativeResize = defaultTargetPlatform == TargetPlatform.iOS;
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: _maxDimension,
-      maxHeight: _maxDimension,
-      imageQuality: ComposerImageDownscaleBuilder.jpegQuality,
+      maxWidth: nativeResize ? _maxDimension : null,
+      maxHeight: nativeResize ? _maxDimension : null,
+      imageQuality: nativeResize ? ComposerImageDownscaleBuilder.jpegQuality : null,
       requestFullMetadata: false,
     );
     if (file == null) return null;

@@ -32,9 +32,11 @@ content the transcript renders live and after reload.
   the inline image budgets backends accept. It keeps the original when the
   result is not smaller, when decoding fails, or when the image exceeds 24
   million pixels decoded; such an original is still held to the size bound and
-  can still exceed a backend's own limit. Mobile's gallery picker already
-  applies the same size and quality natively before shared core sees the
-  bytes, so an animated GIF picked there may arrive as a still image.
+  can still exceed a backend's own limit. On iOS the gallery picker applies the
+  same size and quality natively before shared core sees the bytes: it scales
+  a GIF frame by frame so it keeps its animation, and turns HEIC into JPEG. On
+  Android the picker hands over the original file, so an animated GIF keeps
+  its animation and shared core applies the size rule.
   Staged images are memory-only. They are cleared when the target stops
   supporting attachments, the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot
@@ -77,8 +79,12 @@ content the transcript renders live and after reload.
   This works regardless of backend attachment support, which still gates the
   plus action. Images from several picks, pastes and drops stage in the order
   they were added, even when an earlier one takes longer to downscale. A late
-  result never lands in a composer that moved to another draft or was sent in
-  the meantime.
+  result never lands in a composer that moved to another draft.
+- Send pressed while a pick, paste or drop is still preparing an image waits
+  for it: the Send button shows a spinner and further presses do nothing, then
+  the prompt goes out once, with every image that staged. An image that fails
+  to stage gets its usual notice and the prompt goes without it. Moving to
+  another session or draft while Send waits abandons that send.
 - Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
   Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
   copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
@@ -254,6 +260,9 @@ account-level rejection without changing the descriptor's capability claim.
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a
   transparent image gets a black background, a downscale blocks the UI, or a
   paste that settles after its composer changed stages into the new one.
+- Send pressed while an image is still being prepared goes out without it,
+  goes out twice, shows no spinner while it waits, or sends into a session the
+  user has since left.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 - Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
@@ -283,6 +292,9 @@ account-level rejection without changing the descriptor's capability claim.
 - Pasting files copied in a file manager is not supported; paste still takes
   only image bytes and text.
 - Mobile is unchanged: its picker stays a gallery image picker with no drop.
+- On Android a HEIF photo arrives as HEIF, which shared core does not support,
+  so it is turned away with the unsupported-format notice. A photo above 24
+  million pixels is staged at its original size there.
 - The plus action follows backend attachment support, so a backend without it
   offers no picker even on a local bridge, where drop still inserts paths.
 - Copilot does not negotiate its descriptor's attachment support against the
