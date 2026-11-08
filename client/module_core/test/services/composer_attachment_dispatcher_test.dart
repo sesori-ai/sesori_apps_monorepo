@@ -329,5 +329,45 @@ void main() {
       expect(outcome?.attachments.single.filename, "shot.png");
       expect(outcome?.insertedText, notesPath);
     });
+
+    test("routes copied files like a drop when every path exists", () async {
+      final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeClipboardPaths(
+        paths: [notesPath, imagePath, folderPath],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(outcome?.attachments.single.filename, "shot.png");
+      expect(outcome?.insertedText, "$notesPath $folderPath");
+      expect(outcome?.rejections, isEmpty);
+    });
+
+    test("leaves the paste to the clipboard's text when a copied path doesn't exist", () async {
+      final dispatcher = dispatcherFor(picked: null, activeBridgeId: _localBridgeId);
+
+      final someMissing = await dispatcher.routeClipboardPaths(
+        paths: [notesPath, "${root.path}/missing.txt"],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+      final allMissing = await dispatcher.routeClipboardPaths(
+        paths: ["${root.path}/missing.txt", "${root.path}/gone.png"],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(someMissing, isNull);
+      expect(allMissing, isNull);
+    });
+
+    test("leaves the paste to an image or text when no files are copied", () async {
+      final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeClipboardPaths(
+        paths: const [],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(outcome, isNull);
+    });
   });
 }

@@ -162,6 +162,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     presentation: ComposerPresentation.pointer,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
+    fileClipboard: null,
     droppedPaths: null,
     attachKind: ComposerAttachKind.files,
     child: BlocProvider<DiffSummaryCubit>(create: (_) => _StubDiffSummaryCubit(), child: child),

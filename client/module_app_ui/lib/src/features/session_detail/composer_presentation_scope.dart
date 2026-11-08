@@ -56,6 +56,10 @@ class const ComposerPresentationScope({
   required final ComposerCapabilityProvider<ComposerAttachmentDispatcher> attachmentDispatcher,
   required final ComposerCapabilityProvider<ImageClipboard> imageClipboard,
 
+  /// The files copied in the file manager, which a paste adds like a drop, or
+  /// null where the shell pastes no files.
+  required final ComposerCapabilityProvider<FileClipboard>? fileClipboard,
+
   /// Paths dropped on the pane around this composer, or null where the shell
   /// takes no drops.
   required final Stream<List<String>>? droppedPaths,
@@ -81,6 +85,7 @@ class const ComposerPresentationScope({
       presentation != oldWidget.presentation ||
       attachmentDispatcher != oldWidget.attachmentDispatcher ||
       imageClipboard != oldWidget.imageClipboard ||
+      fileClipboard != oldWidget.fileClipboard ||
       droppedPaths != oldWidget.droppedPaths ||
       attachKind != oldWidget.attachKind;
 }

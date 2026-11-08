@@ -211,6 +211,7 @@ export "src/foundation/platform/attribution_claim_storage.dart";
 export "src/foundation/platform/attribution_client.dart";
 export "src/foundation/platform/composer_file_picker.dart";
 export "src/foundation/platform/feedback_prompt_config_source.dart";
+export "src/foundation/platform/file_clipboard.dart";
 export "src/foundation/platform/founder_call_config_source.dart";
 export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";

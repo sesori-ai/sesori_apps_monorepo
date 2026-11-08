@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
-import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
@@ -82,6 +82,25 @@ class const _FixedDownscaleBuilder({required final Uint8List _bytes}) implements
   }) async => ComposerImageDownscaled(bytes: _bytes);
 }
 
+/// An image clipboard that counts its reads.
+class _CountingImageClipboard({required final Uint8List? _bytes}) implements ImageClipboard {
+  int reads = 0;
+
+  @override
+  Future<Uint8List?> readImage() async {
+    reads++;
+    return _bytes;
+  }
+
+  @override
+  Future<void> writeImage({required Uint8List bytes}) async {}
+}
+
+class const _FixedFileClipboard({required final List<String> _paths}) implements FileClipboard {
+  @override
+  Future<List<String>> readPaths() async => _paths;
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -115,6 +134,7 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(
@@ -238,6 +258,7 @@ void main() {
           presentation: ComposerPresentation.pointer,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          fileClipboard: null,
           droppedPaths: drops.stream,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(
@@ -308,6 +329,7 @@ void main() {
         bridgeIsLocal: false,
       ),
       clipboard: _NoOpImageClipboard(),
+      fileClipboard: null,
       droppedPaths: drops.stream,
       voiceCubit: null,
       attachmentsSupported: false,
@@ -345,6 +367,7 @@ void main() {
         bridgeIsLocal: true,
       ),
       clipboard: _NoOpImageClipboard(),
+      fileClipboard: null,
       droppedPaths: drops.stream,
       voiceCubit: null,
       attachmentsSupported: true,
@@ -378,6 +401,7 @@ void main() {
         bridgeIsLocal: true,
       ),
       clipboard: _NoOpImageClipboard(),
+      fileClipboard: null,
       droppedPaths: drops.stream,
       voiceCubit: voiceCubit,
       attachmentsSupported: true,
@@ -408,6 +432,7 @@ void main() {
         bridgeIsLocal: false,
       ),
       clipboard: _QueuedImageClipboard(images: [first, second]),
+      fileClipboard: null,
       droppedPaths: null,
       voiceCubit: null,
       attachmentsSupported: true,
@@ -444,6 +469,7 @@ void main() {
         bridgeIsLocal: false,
       ),
       clipboard: _QueuedImageClipboard(images: [first, null, third]),
+      fileClipboard: null,
       droppedPaths: null,
       voiceCubit: null,
       attachmentsSupported: true,
@@ -465,6 +491,133 @@ void main() {
     downscale.results[0].complete(const ComposerImageKept());
     await tester.pumpAndSettle();
     expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, third]);
+  });
+
+  group("a paste", () {
+    // On macOS a Finder copy also carries the file's icon as an image and its
+    // name as text.
+    final icon = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 9]);
+    late Directory root;
+    late String imagePath;
+    late String notesPath;
+
+    setUp(() {
+      root = Directory.systemTemp.createTempSync("composer_paste_files_test");
+      final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+      imagePath = (File("${root.path}/shot.png")..writeAsBytesSync(png)).path;
+      notesPath = (File("${root.path}/notes.dart")..writeAsStringSync("void main() {}")).path;
+    });
+
+    tearDown(() => root.deleteSync(recursive: true));
+
+    Future<String> pasteInto({
+      required WidgetTester tester,
+      required FileClipboard fileClipboard,
+      required ImageClipboard imageClipboard,
+      required String clipboardText,
+      required bool attachmentsSupported,
+      required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
+    }) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        return switch (call.method) {
+          "Clipboard.getData" => <String, Object?>{"text": clipboardText},
+          "Clipboard.hasStrings" => <String, Object?>{"value": true},
+          _ => null,
+        };
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await _pumpAttachComposer(
+        tester: tester,
+        dispatcher: composerAttachmentDispatcherForTest(
+          filePicker: const NoOpComposerFilePicker(),
+          downscaleBuilder: const ComposerImageDownscaleBuilder(),
+          bridgeIsLocal: true,
+        ),
+        clipboard: imageClipboard,
+        fileClipboard: fileClipboard,
+        droppedPaths: null,
+        voiceCubit: null,
+        attachmentsSupported: attachmentsSupported,
+        onAttachmentsChanged: onAttachmentsChanged,
+      );
+      await tester.showKeyboard(find.byType(EditableText));
+      final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+      Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+      await _settleFileReads(tester);
+      await tester.pumpAndSettle();
+      return tester.widget<TextField>(find.byType(TextField)).controller?.text ?? fail("the field has no controller");
+    }
+
+    testWidgets("adds copied files like a drop, ahead of the clipboard's image and text", (tester) async {
+      final imageClipboard = _CountingImageClipboard(bytes: icon);
+      final reportedAttachments = <List<ComposerAttachment>>[];
+
+      final text = await pasteInto(
+        tester: tester,
+        fileClipboard: _FixedFileClipboard(paths: [notesPath, imagePath]),
+        imageClipboard: imageClipboard,
+        clipboardText: "notes.dart\rshot.png",
+        attachmentsSupported: true,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+
+      expect(text.trim(), "see attached $notesPath");
+      expect(reportedAttachments.last.single.filename, "shot.png");
+      expect(imageClipboard.reads, 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("adds copied files where the backend takes no images", (tester) async {
+      final imageClipboard = _CountingImageClipboard(bytes: icon);
+      final reportedAttachments = <List<ComposerAttachment>>[];
+
+      final text = await pasteInto(
+        tester: tester,
+        fileClipboard: _FixedFileClipboard(paths: [notesPath, imagePath]),
+        imageClipboard: imageClipboard,
+        clipboardText: "notes.dart\rshot.png",
+        attachmentsSupported: false,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+
+      expect(text.trim(), "see attached $notesPath $imagePath");
+      expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+      expect(imageClipboard.reads, 0);
+    });
+
+    testWidgets("falls back to the clipboard's image when a copied path is gone", (tester) async {
+      final imageClipboard = _CountingImageClipboard(bytes: icon);
+      final reportedAttachments = <List<ComposerAttachment>>[];
+
+      final text = await pasteInto(
+        tester: tester,
+        fileClipboard: _FixedFileClipboard(paths: [notesPath, "${root.path}/gone.pdf"]),
+        imageClipboard: imageClipboard,
+        clipboardText: "notes.dart\rgone.pdf",
+        attachmentsSupported: true,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+
+      expect(text, "see attached");
+      expect(reportedAttachments.last.single.bytes, icon);
+      expect(imageClipboard.reads, 1);
+    });
+
+    testWidgets("falls back to the clipboard's text when it holds no files and no image", (tester) async {
+      final imageClipboard = _CountingImageClipboard(bytes: null);
+
+      final text = await pasteInto(
+        tester: tester,
+        fileClipboard: const _FixedFileClipboard(paths: []),
+        imageClipboard: imageClipboard,
+        clipboardText: "https://example.com/",
+        attachmentsSupported: true,
+        onAttachmentsChanged: (_) {},
+      );
+
+      expect(text, contains("https://example.com/"));
+      expect(imageClipboard.reads, 1);
+    });
   });
 
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
@@ -500,6 +653,7 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(
@@ -607,6 +761,7 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(
@@ -822,6 +977,7 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(
@@ -904,6 +1060,7 @@ void main() {
               presentation: ComposerPresentation.touch,
               attachmentDispatcher: () => attachmentDispatcher,
               imageClipboard: () => imageClipboard,
+              fileClipboard: null,
               droppedPaths: null,
               attachKind: ComposerAttachKind.images,
               child: Scaffold(
@@ -985,6 +1142,7 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(
@@ -1077,6 +1235,7 @@ Future<void> _pumpCommandComposer({
       presentation: ComposerPresentation.touch,
       attachmentDispatcher: () => attachmentDispatcher,
       imageClipboard: () => imageClipboard,
+      fileClipboard: null,
       droppedPaths: null,
       attachKind: ComposerAttachKind.images,
       child: Scaffold(
@@ -1128,6 +1287,7 @@ Future<void> _pumpAttachComposer({
   required WidgetTester tester,
   required ComposerAttachmentDispatcher dispatcher,
   required ImageClipboard clipboard,
+  required FileClipboard? fileClipboard,
   required Stream<List<String>>? droppedPaths,
   required VoiceInputCubit? voiceCubit,
   required bool attachmentsSupported,
@@ -1143,6 +1303,7 @@ Future<void> _pumpAttachComposer({
     presentation: ComposerPresentation.touch,
     attachmentDispatcher: () => dispatcher,
     imageClipboard: () => clipboard,
+    fileClipboard: fileClipboard == null ? null : () => fileClipboard,
     droppedPaths: droppedPaths,
     attachKind: ComposerAttachKind.files,
     child: Scaffold(
