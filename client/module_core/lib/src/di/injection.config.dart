@@ -72,6 +72,8 @@ import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
 import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
     as _i898;
+import 'package:sesori_dart_core/src/foundation/io/host_file_client.dart'
+    as _i978;
 import 'package:sesori_dart_core/src/foundation/io/plugin_authentication_loopback_server.dart'
     as _i456;
 import 'package:sesori_dart_core/src/foundation/io/temporary_directory_client.dart'
@@ -90,8 +92,8 @@ import 'package:sesori_dart_core/src/foundation/platform/attribution_claim_stora
     as _i275;
 import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart'
     as _i14;
-import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.dart'
-    as _i65;
+import 'package:sesori_dart_core/src/foundation/platform/composer_file_picker.dart'
+    as _i907;
 import 'package:sesori_dart_core/src/foundation/platform/feedback_prompt_config_source.dart'
     as _i294;
 import 'package:sesori_dart_core/src/foundation/platform/founder_call_config_source.dart'
@@ -298,6 +300,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i384.SessionLaunchStorage>(
       () => _i384.SessionLaunchStorage(),
     );
+    gh.lazySingleton<_i978.HostFileClient>(() => const _i978.HostFileClient());
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
     );
@@ -336,12 +339,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
       () => _i560.ProductAnalyticsPreferenceApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
-      ),
-    );
-    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
-      () => _i705.ComposerAttachmentDispatcher(
-        imagePicker: gh<_i65.ComposerImagePicker>(),
-        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
       ),
     );
     gh.lazySingleton<_i231.RealtimeVoiceClient>(
@@ -623,6 +620,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i723.FeedbackPromptRepository(
         configApi: gh<_i373.FeedbackPromptConfigApi>(),
         storage: gh<_i945.FeedbackPromptStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
+      () => _i705.ComposerAttachmentDispatcher(
+        filePicker: gh<_i907.ComposerFilePicker>(),
+        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
+        fileClient: gh<_i978.HostFileClient>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
     gh.lazySingleton<_i996.FileReferenceOpenService>(

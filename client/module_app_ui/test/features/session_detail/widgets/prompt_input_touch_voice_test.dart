@@ -16,6 +16,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// What one composer did, for the endings to assert on.
@@ -3411,9 +3413,10 @@ Future<_Composer> _pumpComposer({
   addTearDown(composer.busy.dispose);
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(
-    imagePicker: _NoOpComposerImagePicker(),
+  final attachmentDispatcher = composerAttachmentDispatcherForTest(
+    filePicker: const NoOpComposerFilePicker(),
     downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
 
@@ -3433,6 +3436,8 @@ Future<_Composer> _pumpComposer({
           presentation: presentation,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,
@@ -3480,11 +3485,6 @@ Future<_Composer> _pumpComposer({
   );
   await tester.pumpAndSettle();
   return composer;
-}
-
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
 }
 
 class _NoOpImageClipboard() implements ImageClipboard {

@@ -12,6 +12,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// One way a composer can be set up, whose two layouts cross-fade in place.
@@ -252,9 +254,10 @@ Future<void> _pumpComposer({
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(
-    imagePicker: _NoOpComposerImagePicker(),
+  final attachmentDispatcher = composerAttachmentDispatcherForTest(
+    filePicker: const NoOpComposerFilePicker(),
     downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
 
@@ -279,6 +282,8 @@ Future<void> _pumpComposer({
           presentation: shell.presentation,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,
@@ -317,11 +322,6 @@ Future<void> _pumpComposer({
     ),
   );
   await tester.pumpAndSettle();
-}
-
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
 }
 
 class _NoOpImageClipboard() implements ImageClipboard {

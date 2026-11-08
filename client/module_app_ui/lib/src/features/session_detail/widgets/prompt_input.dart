@@ -240,6 +240,8 @@ class _PromptInputState() extends State<PromptInput> {
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
+  Stream<List<String>>? _droppedPaths;
+  StreamSubscription<List<String>>? _droppedPathsSub;
   Timer? _minimumRecordingDurationTimer;
   late final ComposerVoiceSupport _voiceSupport;
   bool _capabilitiesInitialized = false;
@@ -344,6 +346,12 @@ class _PromptInputState() extends State<PromptInput> {
         _voiceStateSub = _voiceCubit.stream.listen(_handleVoiceStateChanged);
       }
     }
+    final droppedPaths = capabilities.droppedPaths;
+    if (droppedPaths != _droppedPaths) {
+      unawaited(_droppedPathsSub?.cancel());
+      _droppedPaths = droppedPaths;
+      _droppedPathsSub = droppedPaths?.listen(_handleDroppedPaths);
+    }
     _syncSurfaceStyle();
     _releaseHintHeight = _measureReleaseHintHeight();
   }
@@ -351,6 +359,7 @@ class _PromptInputState() extends State<PromptInput> {
   @override
   void dispose() {
     _voiceStateSub?.cancel();
+    _droppedPathsSub?.cancel();
     _minimumRecordingDurationTimer?.cancel();
     _cancelDragProgress.dispose();
     _editDragProgress.dispose();
@@ -2509,6 +2518,10 @@ class _PromptInputState() extends State<PromptInput> {
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
         isTyping: _hasText,
         showAttachImage: _offersAttachImage,
+        attachTooltip: switch (ComposerPresentationScope.of(context).attachKind) {
+          ComposerAttachKind.images => context.loc.sessionDetailAttachImage,
+          ComposerAttachKind.files => context.loc.sessionDetailAttachFiles,
+        },
         onSlashCommandsTap: () {
           _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
           toggle();
@@ -2532,38 +2545,91 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Stages a gallery image for the next submission. Adding one switches the
-  /// composer to the typing layout (via [_showsTypingLayout]) so the preview
-  /// strip is visible, without raising the keyboard.
-  Future<void> _handleAttachImage() async {
-    // The pick can settle after this state was reused for another session
-    // (didUpdateWidget cleared the strip) — a late result must not leak into
-    // the new session's composer. It can equally settle after the harness
-    // stopped supporting attachments, which the strip must not outlive.
+  /// Opens the shell's picker. Adding an image switches the composer to the
+  /// typing layout (via [_showsTypingLayout]) so the preview strip is visible,
+  /// without raising the keyboard.
+  Future<void> _handleAttachImage() => _attach(
+    outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
+      attachmentsSupported: widget.attachmentsSupported,
+      stagedAttachmentBytes: stagedAttachmentBytes,
+    ),
+  );
+
+  void _handleDroppedPaths(List<String> paths) {
+    // Like the attach action, a drop waits out recording and transcription,
+    // which own the field until they settle.
+    if (_voicePresentation != _VoicePresentation.idle) return;
+    unawaited(
+      _attach(
+        outcome: (stagedAttachmentBytes) => _attachmentDispatcher.routeHostPaths(
+          paths: paths,
+          attachmentsSupported: widget.attachmentsSupported,
+          stagedAttachmentBytes: stagedAttachmentBytes,
+        ),
+      ),
+    );
+  }
+
+  /// Applies what a pick or a drop adds: staged images, paths at the caret,
+  /// and one notice for whatever could not be added.
+  Future<void> _attach({required Future<ComposerAttachOutcome?> Function(int stagedAttachmentBytes) outcome}) async {
+    // The result can settle after this state was reused for another session
+    // (didUpdateWidget cleared the strip), after a send, or after the harness
+    // changed whether it takes attachments. A late result must not leak into
+    // the composer that replaced the one where it started.
     final draftIdentity = widget.draftIdentity;
+    final pasteGeneration = _pasteGeneration;
+    bool isStale() => draftIdentity != widget.draftIdentity || pasteGeneration != _pasteGeneration;
     _startInsert();
     try {
-      final attachment = await _attachmentDispatcher.pickImage();
-      if (!mounted ||
-          draftIdentity != widget.draftIdentity ||
-          widget.attachmentsSupported != true ||
-          attachment == null) {
-        return;
+      final result = await outcome(_stagedAttachmentBytes);
+      if (!mounted || isStale() || result == null) return;
+      for (final attachment in result.attachments) {
+        if (!_stageAttachment(attachment: attachment)) break;
       }
-      _stageAttachment(attachment: attachment);
+      if (result.insertedText case final text?) _insertAtCaret(text: text);
+      if (result.rejection case final rejection?) _showComposerNotice(_rejectionNotice(rejection: rejection));
     } on AttachmentTooLargeError {
-      if (!mounted || draftIdentity != widget.draftIdentity) return;
+      if (!mounted || isStale()) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
     } on UnsupportedAttachmentImageError {
-      if (!mounted || draftIdentity != widget.draftIdentity) return;
+      if (!mounted || isStale()) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
     } catch (error) {
       loge("Failed to attach an image", error);
-      if (!mounted || draftIdentity != widget.draftIdentity) return;
+      if (!mounted || isStale()) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
     } finally {
       _settleInsert();
     }
+  }
+
+  String _rejectionNotice({required ComposerAttachRejection rejection}) {
+    final loc = context.loc;
+    return switch (rejection.reason) {
+      ComposerAttachRejectionReason.notTransferable => loc.sessionDetailFilesNotTransferable(rejection.count),
+      ComposerAttachRejectionReason.attachmentsUnsupported => loc.sessionDetailImagesNotAccepted(rejection.count),
+      ComposerAttachRejectionReason.overBudget => loc.sessionDetailImagesOverBudget(rejection.count),
+    };
+  }
+
+  /// Types [text] over the selection, or at the end when the field has none,
+  /// keeping a space on each side so it never runs into the words around it.
+  void _insertAtCaret({required String text}) {
+    final value = _controller.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final before = value.text.substring(0, start);
+    final after = value.text.substring(end);
+    final leading = before.isEmpty || before.trimRight() != before ? "" : " ";
+    final trailing = after.trimLeft() != after ? "" : " ";
+    final inserted = "$leading$text$trailing";
+    // Goes through the typed-edit path, like a text paste.
+    _controller.value = TextEditingValue(
+      text: "$before$inserted$after",
+      selection: TextSelection.collapsed(offset: start + inserted.length),
+    );
   }
 
   /// An image pick or a paste, whose result lands after an await.
@@ -2686,13 +2752,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// Total decoded bytes the staged strip would carry with [attachment]
   /// added. The outbound budget is aggregate, so multiple images cannot each
   /// consume the full transport allowance.
-  int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) {
-    var total = attachment.bytes.length;
-    for (final staged in _attachments) {
-      total += staged.bytes.length;
-    }
-    return total;
-  }
+  int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) =>
+      attachment.bytes.length + _stagedAttachmentBytes;
+
+  int get _stagedAttachmentBytes => _attachments.fold(0, (total, staged) => total + staged.bytes.length);
 
   /// The leading slot: the options accordion at rest, the pencil to slide onto
   /// while recording, and a plain cancel button while transcribing. A pointer

@@ -162,6 +162,8 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     presentation: ComposerPresentation.pointer,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
+    droppedPaths: null,
+    attachKind: ComposerAttachKind.files,
     child: BlocProvider<DiffSummaryCubit>(create: (_) => _StubDiffSummaryCubit(), child: child),
   );
 }
@@ -300,7 +302,7 @@ void main() {
 
     // `+` and `/` are always visible on desktop, and the box grows instead of
     // offering the editor sheet.
-    expect(_tooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach files"), findsOneWidget);
     final composer = find.byType(SessionDetailComposerControls);
     expect(find.descendant(of: composer, matching: find.byIcon(TablerRegular.chevron_right)), findsNothing);
     expect(find.byIcon(TablerRegular.maximize), findsNothing);

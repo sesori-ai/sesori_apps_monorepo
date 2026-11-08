@@ -9,6 +9,10 @@ import "package:sesori_mobile/core/platform/flutter_composer_image_picker.dart";
 
 class MockImagePicker() extends Mock implements ImagePicker;
 
+class _MockConnectionService() extends Mock implements ConnectionService;
+
+class _MockActiveBridgeLocality() extends Mock implements ActiveBridgeLocality;
+
 void main() {
   late MockImagePicker imagePicker;
   late FlutterComposerImagePicker picker;
@@ -18,8 +22,11 @@ void main() {
     imagePicker = MockImagePicker();
     picker = FlutterComposerImagePicker(picker: imagePicker);
     attachmentDispatcher = ComposerAttachmentDispatcher(
-      imagePicker: picker,
+      filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      fileClient: const HostFileClient(),
+      connectionService: _MockConnectionService(),
+      locality: _MockActiveBridgeLocality(),
     );
   });
 
@@ -35,6 +42,11 @@ void main() {
     ).thenAnswer((_) async => file);
   }
 
+  Future<ComposerAttachment?> pickAttachment() async {
+    final outcome = await attachmentDispatcher.pick(attachmentsSupported: true, stagedAttachmentBytes: 0);
+    return outcome?.attachments.single;
+  }
+
   Uint8List jpegBytes([int length = 16]) {
     final bytes = Uint8List(length);
     bytes.setAll(0, const [0xFF, 0xD8, 0xFF]);
@@ -43,7 +55,7 @@ void main() {
 
   test("a dismissed picker stages nothing", () async {
     stubPick(null);
-    expect(await attachmentDispatcher.pickImage(), isNull);
+    expect(await pickAttachment(), isNull);
   });
 
   test("clipboard bytes use shared validation and have no filename", () async {
@@ -64,7 +76,7 @@ void main() {
     addTearDown(() => file.parent.deleteSync(recursive: true));
     stubPick(XFile(file.path));
 
-    final attachment = await attachmentDispatcher.pickImage();
+    final attachment = await pickAttachment();
 
     if (attachment == null) fail("no image was picked");
     expect(attachment.mime, "image/png");
@@ -84,7 +96,7 @@ void main() {
   test("re-encoded jpeg content sniffs as jpeg regardless of extension", () async {
     stubPick(XFile.fromData(jpegBytes(), name: "photo.heic"));
 
-    final attachment = await attachmentDispatcher.pickImage();
+    final attachment = await pickAttachment();
 
     expect(attachment?.mime, "image/jpeg");
   });
@@ -92,12 +104,12 @@ void main() {
   test("unsupported selected content is rejected by shared validation", () async {
     stubPick(XFile.fromData(Uint8List.fromList(const [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), name: "blob.bin"));
 
-    expect(attachmentDispatcher.pickImage, throwsA(isA<UnsupportedAttachmentImageError>()));
+    expect(pickAttachment, throwsA(isA<UnsupportedAttachmentImageError>()));
   });
 
   test("an image over the outbound composer limit is rejected", () async {
     stubPick(XFile.fromData(jpegBytes(maxComposerPromptAttachmentBytes + 1), name: "huge.jpg"));
 
-    expect(attachmentDispatcher.pickImage, throwsA(isA<AttachmentTooLargeError>()));
+    expect(pickAttachment, throwsA(isA<AttachmentTooLargeError>()));
   });
 }

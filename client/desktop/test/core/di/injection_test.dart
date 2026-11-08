@@ -8,7 +8,7 @@ import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart";
 import "package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart";
 import "package:sesori_desktop/core/platform/desktop_analytics_client.dart";
-import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
+import "package:sesori_desktop/core/platform/desktop_composer_file_picker.dart";
 import "package:sesori_desktop/core/platform/desktop_failure_reporter.dart";
 import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
 import "package:sesori_desktop/core/platform/desktop_firebase_analytics.dart";
@@ -134,7 +134,7 @@ void main() {
       routerReady: Future<void>.value(),
     );
 
-    expect(getIt<ComposerImagePicker>(), isA<DesktopComposerImagePicker>());
+    expect(getIt<ComposerFilePicker>(), isA<DesktopComposerFilePicker>());
     expect(getIt<ComposerAttachmentDispatcher>(), isA<ComposerAttachmentDispatcher>());
     expect(getIt<TemporaryDirectoryProvider>(), isA<PathProviderTemporaryDirectoryProvider>());
     expect(getIt<AttachmentThumbnailStorage>(), isA<FileAttachmentThumbnailStorage>());

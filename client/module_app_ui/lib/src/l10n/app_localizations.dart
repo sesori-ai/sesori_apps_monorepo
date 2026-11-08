@@ -2509,6 +2509,12 @@ abstract class AppLocalizations {
   /// **'Attach image'**
   String get sessionDetailAttachImage;
 
+  /// Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach files'**
+  String get sessionDetailAttachFiles;
+
   /// Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer.
   ///
   /// In en, this message translates to:
@@ -2556,6 +2562,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Images can\'t be sent with slash commands.'**
   String get sessionDetailAttachmentsNotWithCommands;
+
+  /// Notice shown when picked or dropped files could not be added because the active bridge runs on another computer and only images can reach it. The count covers every file that was not added.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{A file wasn\'t added. Only images can be sent to another computer for now.} other{{count} files weren\'t added. Only images can be sent to another computer for now.}}'**
+  String sessionDetailFilesNotTransferable(int count);
+
+  /// Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer, so their paths cannot be used either.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{An image wasn\'t added. This agent doesn\'t accept images.} other{{count} images weren\'t added. This agent doesn\'t accept images.}}'**
+  String sessionDetailImagesNotAccepted(int count);
+
+  /// Notice shown when picked or dropped images could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{An image wasn\'t added. Attached images are limited to 50 MB per message.} other{{count} images weren\'t added. Attached images are limited to 50 MB per message.}}'**
+  String sessionDetailImagesOverBudget(int count);
+
+  /// Shown over the whole session pane while files are dragged over it on desktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop files to add them to your prompt'**
+  String get desktopDropFilesHint;
 
   /// Under a long code block in a chat message that shows only its first lines; opens the whole block in a modal.
   ///

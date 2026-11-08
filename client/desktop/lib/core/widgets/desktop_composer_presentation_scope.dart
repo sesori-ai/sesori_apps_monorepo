@@ -4,6 +4,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../di/injection.dart";
+import "desktop_pane_drop_target.dart";
 
 /// Injects desktop composer policy and concrete platform capabilities.
 class const DesktopComposerPresentationScope({
@@ -22,6 +23,8 @@ class const DesktopComposerPresentationScope({
       presentation: ComposerPresentation.pointer,
       attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
       imageClipboard: getIt.get<ImageClipboard>,
+      droppedPaths: DesktopPaneDropTarget.droppedPathsOf(context),
+      attachKind: ComposerAttachKind.files,
       child: child,
     );
   }

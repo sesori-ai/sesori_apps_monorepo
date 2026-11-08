@@ -30,6 +30,15 @@ enum ComposerPresentation() {
   pointer,
 }
 
+/// What the shell's attach action picks.
+enum ComposerAttachKind() {
+  /// A gallery image.
+  images,
+
+  /// Any files: images are staged, the rest are routed like a drop.
+  files,
+}
+
 typedef ComposerCapabilityProvider<T> = T Function();
 
 /// Product-owned platform and presentation capabilities for shared composers.
@@ -46,6 +55,11 @@ class const ComposerPresentationScope({
   required final ComposerPresentation presentation,
   required final ComposerCapabilityProvider<ComposerAttachmentDispatcher> attachmentDispatcher,
   required final ComposerCapabilityProvider<ImageClipboard> imageClipboard,
+
+  /// Paths dropped on the pane around this composer, or null where the shell
+  /// takes no drops.
+  required final Stream<List<String>>? droppedPaths,
+  required final ComposerAttachKind attachKind,
   required super.child,
 }) extends InheritedWidget {
   static ComposerPresentationScope of(BuildContext context) {
@@ -66,5 +80,7 @@ class const ComposerPresentationScope({
       sendKeyPolicy != oldWidget.sendKeyPolicy ||
       presentation != oldWidget.presentation ||
       attachmentDispatcher != oldWidget.attachmentDispatcher ||
-      imageClipboard != oldWidget.imageClipboard;
+      imageClipboard != oldWidget.imageClipboard ||
+      droppedPaths != oldWidget.droppedPaths ||
+      attachKind != oldWidget.attachKind;
 }

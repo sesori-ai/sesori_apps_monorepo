@@ -12,6 +12,7 @@ import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
+import "../../core/widgets/desktop_pane_drop_target.dart";
 import "../../core/widgets/desktop_session_signals.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 
@@ -62,47 +63,50 @@ class const DesktopSessionDetailScreen({
           create: (context) => createSessionActionsCubit(locator: getIt, window: context.read<SessionWindowService>()),
         ),
       ],
-      child: DesktopComposerPresentationScope(
-        child: SessionDetailActivityOwner(
-          routeSource: getIt<RouteSource>(),
-          lifecycleSource: getIt<LifecycleSource>(),
-          productAnalyticsService: getIt<ProductAnalyticsService>(),
-          expectedDetailRoute: AppRouteDef.sessionDetail,
-          child: DesktopSessionDetailView(
-            projectId: projectId,
-            sessionId: sessionId,
-            sessionTitle: sessionTitle,
-            readOnly: readOnly,
-            onOpenParentSession: onOpenParentSession,
-            onShowDiffs: onShowDiffs,
-            onOpenSession: onOpenSession,
-            onOpenHarnessSettings: onOpenHarnessSettings,
-            onOpenBridgeSettings: onOpenBridgeSettings,
-            sessionActions: sessionActions,
-            onMarkedUnread: onMarkedUnread,
-            messageImageRepository: getIt.get<MessageImageRepository>,
-            imageSaver: getIt.get<ImageSaver>,
-            imageClipboard: getIt.get<ImageClipboard>,
-            imageSharer: getIt.get<ImageSharer>,
-            sessionRepository: getIt.get<SessionRepository>,
-            createPendingFormCubit: ({required requestId, required sessionId}) => PendingFormCubit(
-              service: getIt<PendingFormService>(),
-              connectionService: getIt<ConnectionService>(),
-              requestId: requestId,
+      // The whole pane takes drops, for the composer inside it.
+      child: DesktopPaneDropTarget(
+        child: DesktopComposerPresentationScope(
+          child: SessionDetailActivityOwner(
+            routeSource: getIt<RouteSource>(),
+            lifecycleSource: getIt<LifecycleSource>(),
+            productAnalyticsService: getIt<ProductAnalyticsService>(),
+            expectedDetailRoute: AppRouteDef.sessionDetail,
+            child: DesktopSessionDetailView(
+              projectId: projectId,
               sessionId: sessionId,
+              sessionTitle: sessionTitle,
+              readOnly: readOnly,
+              onOpenParentSession: onOpenParentSession,
+              onShowDiffs: onShowDiffs,
+              onOpenSession: onOpenSession,
+              onOpenHarnessSettings: onOpenHarnessSettings,
+              onOpenBridgeSettings: onOpenBridgeSettings,
+              sessionActions: sessionActions,
+              onMarkedUnread: onMarkedUnread,
+              messageImageRepository: getIt.get<MessageImageRepository>,
+              imageSaver: getIt.get<ImageSaver>,
+              imageClipboard: getIt.get<ImageClipboard>,
+              imageSharer: getIt.get<ImageSharer>,
+              sessionRepository: getIt.get<SessionRepository>,
+              createPendingFormCubit: ({required requestId, required sessionId}) => PendingFormCubit(
+                service: getIt<PendingFormService>(),
+                connectionService: getIt<ConnectionService>(),
+                requestId: requestId,
+                sessionId: sessionId,
+              ),
+              createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
+                service: getIt<SessionExternalActionService>(),
+                connectionService: getIt<ConnectionService>(),
+                urlLauncher: getIt<UrlLauncher>(),
+                requestId: requestId,
+                sessionId: sessionId,
+              ),
+              createFilePreviewCubit: ({required reference}) => FilePreviewCubit(
+                repository: getIt<FilePreviewRepository>(),
+                reference: reference,
+              ),
+              canShareImages: defaultTargetPlatform != TargetPlatform.linux,
             ),
-            createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
-              service: getIt<SessionExternalActionService>(),
-              connectionService: getIt<ConnectionService>(),
-              urlLauncher: getIt<UrlLauncher>(),
-              requestId: requestId,
-              sessionId: sessionId,
-            ),
-            createFilePreviewCubit: ({required reference}) => FilePreviewCubit(
-              repository: getIt<FilePreviewRepository>(),
-              reference: reference,
-            ),
-            canShareImages: defaultTargetPlatform != TargetPlatform.linux,
           ),
         ),
       ),

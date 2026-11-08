@@ -1029,6 +1029,10 @@
   "@sessionDetailAttachImage": {
     "description": "Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message."
   },
+  "sessionDetailAttachFiles": "Attach files",
+  "@sessionDetailAttachFiles": {
+    "description": "Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths."
+  },
   "sessionDetailRemoveAttachment": "Remove attachment",
   "@sessionDetailRemoveAttachment": {
     "description": "Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer."
@@ -1061,6 +1065,25 @@
   "sessionDetailAttachmentsNotWithCommands": "Images can't be sent with slash commands.",
   "@sessionDetailAttachmentsNotWithCommands": {
     "description": "Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images."
+  },
+  "sessionDetailFilesNotTransferable": "{count, plural, =1{A file wasn't added. Only images can be sent to another computer for now.} other{{count} files weren't added. Only images can be sent to another computer for now.}}",
+  "@sessionDetailFilesNotTransferable": {
+    "description": "Notice shown when picked or dropped files could not be added because the active bridge runs on another computer and only images can reach it. The count covers every file that was not added.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "sessionDetailImagesNotAccepted": "{count, plural, =1{An image wasn't added. This agent doesn't accept images.} other{{count} images weren't added. This agent doesn't accept images.}}",
+  "@sessionDetailImagesNotAccepted": {
+    "description": "Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer, so their paths cannot be used either.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "sessionDetailImagesOverBudget": "{count, plural, =1{An image wasn't added. Attached images are limited to 50 MB per message.} other{{count} images weren't added. Attached images are limited to 50 MB per message.}}",
+  "@sessionDetailImagesOverBudget": {
+    "description": "Notice shown when picked or dropped images could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "desktopDropFilesHint": "Drop files to add them to your prompt",
+  "@desktopDropFilesHint": {
+    "description": "Shown over the whole session pane while files are dragged over it on desktop."
   },
   "codeBlockOpenAll": "Open all {count} lines",
   "@codeBlockOpenAll": {

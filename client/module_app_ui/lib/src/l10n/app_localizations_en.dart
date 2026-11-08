@@ -1333,6 +1333,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachImage => 'Attach image';
 
   @override
+  String get sessionDetailAttachFiles => 'Attach files';
+
+  @override
   String get sessionDetailRemoveAttachment => 'Remove attachment';
 
   @override
@@ -1357,6 +1360,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';
+
+  @override
+  String sessionDetailFilesNotTransferable(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files weren\'t added. Only images can be sent to another computer for now.',
+      one: 'A file wasn\'t added. Only images can be sent to another computer for now.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionDetailImagesNotAccepted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images weren\'t added. This agent doesn\'t accept images.',
+      one: 'An image wasn\'t added. This agent doesn\'t accept images.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionDetailImagesOverBudget(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images weren\'t added. Attached images are limited to 50 MB per message.',
+      one: 'An image wasn\'t added. Attached images are limited to 50 MB per message.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get desktopDropFilesHint => 'Drop files to add them to your prompt';
 
   @override
   String codeBlockOpenAll(int count) {

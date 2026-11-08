@@ -176,6 +176,9 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i948.ComposerFilePicker>(
+      () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
+    );
     gh.lazySingleton<_i903.PersistenceDirectory>(
       () => _i512.FlutterPersistenceDirectory(
         directories: gh<_i441.ApplicationSupportDirectoryClient>(),
@@ -188,9 +191,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i903.MasterKeyStore>(
       () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
-    );
-    gh.lazySingleton<_i948.ComposerImagePicker>(
-      () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
     );
     gh.lazySingleton<_i948.InstalledAppBuildSource>(
       () => _i186.PackageInfoInstalledAppBuildSource(

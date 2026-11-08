@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
@@ -13,10 +14,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _NoOpComposerImagePicker() implements ComposerImagePicker {
-  @override
-  Future<ComposerPickedImage?> pickImage() async => null;
-}
+import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
 
 class _NoOpImageClipboard() implements ImageClipboard {
   @override
@@ -26,11 +24,11 @@ class _NoOpImageClipboard() implements ImageClipboard {
   Future<void> writeImage({required Uint8List bytes}) async {}
 }
 
-class _PendingComposerImagePicker() implements ComposerImagePicker {
-  Completer<ComposerPickedImage?> pick = Completer();
+class _PendingComposerFilePicker() implements ComposerFilePicker {
+  Completer<ComposerPickResult?> result = Completer();
 
   @override
-  Future<ComposerPickedImage?> pickImage() => pick.future;
+  Future<ComposerPickResult?> pick() => result.future;
 }
 
 class _FixedImageClipboard({required final Uint8List _bytes}) implements ImageClipboard {
@@ -61,10 +59,11 @@ void main() {
   testWidgets("starts at the handed-over caret and reports busy while an insert or a word is pending", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final picker = _PendingComposerImagePicker();
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: picker,
+    final picker = _PendingComposerFilePicker();
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final clipboard = _NoOpImageClipboard();
     final busy = <bool>[];
@@ -83,6 +82,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: PromptInput(
               initialSelection: (base: 5, extent: 2),
@@ -129,7 +130,7 @@ void main() {
     await tester.tap(_tooltip("Attach image"));
     await tester.pump();
     expect(busy, [true]);
-    picker.pick.complete(null);
+    picker.result.complete(null);
     await tester.pumpAndSettle();
     expect(busy, [true, false]);
 
@@ -160,25 +161,110 @@ void main() {
     expect(busy, [true, false, true, false, true, false]);
 
     // A pick that settles after the composer is gone reports nothing.
-    picker.pick = Completer();
+    picker.result = Completer();
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
     await tester.tap(_tooltip("Attach image"));
     await tester.pump();
     expect(busy, [true, false, true, false, true, false, true]);
     await tester.pumpWidget(const SizedBox());
-    picker.pick.complete(null);
+    picker.result.complete(null);
     await tester.pump();
     expect(busy, [true, false, true, false, true, false, true]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("dropped paths stage images and type the rest at the caret on a local bridge", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final drops = StreamController<List<String>>();
+    addTearDown(drops.close);
+    final root = Directory.systemTemp.createTempSync("composer_drop_test");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final imagePath = (File("${root.path}/shot.png")..writeAsBytesSync(png)).path;
+    final notesPath = (File("${root.path}/notes.dart")..writeAsStringSync("void main() {}")).path;
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: true,
+    );
+    final clipboard = _NoOpImageClipboard();
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    final busy = <bool>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.pointer,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          droppedPaths: drops.stream,
+          attachKind: ComposerAttachKind.images,
+          child: Scaffold(
+            body: PromptInput(
+              initialSelection: (base: 3, extent: 3),
+              onBusyChanged: busy.add,
+              onSelectionChanged: null,
+              isBusy: false,
+              hasMessages: false,
+              canSend: true,
+              onSend: ({required draft, required command, required attachments}) {},
+              onVoiceTranscriptionFinished: null,
+              onDraftChanged: (_) {},
+              onDraftCleared: () {},
+              onAbort: () {},
+              surfaceStyleController: surfaceStyle,
+              composerHeader: null,
+              composerTrailing: null,
+              availableCommands: const [],
+              stagedCommand: null,
+              onCommandSelected: (_) {},
+              onCommandCleared: () {},
+              attachmentsSupported: true,
+              draftIdentity: "drop-session",
+              restorationKey: null,
+              initialDraft: ComposerDraft.typed(text: "see and fix"),
+              initialAttachments: const [],
+              onAttachmentsChanged: reportedAttachments.add,
+              autofocus: false,
+              onInitialAttachmentsConsumed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    drops.add([notesPath, imagePath]);
+    await tester.pump();
+    expect(busy, [true]);
+    // Real file reads only finish outside the fake clock.
+    for (var tries = 0; tries < 100 && busy.last; tries++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, "see $notesPath and fix");
+    expect(reportedAttachments.last.single.filename, "shot.png");
     expect(tester.takeException(), isNull);
   });
 
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final clipboard = _NoOpImageClipboard();
     final images = [
@@ -205,6 +291,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -281,9 +369,10 @@ void main() {
   ) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final clipboard = _NoOpImageClipboard();
     // Each fits alone; the three together exceed the 50 MB aggregate budget.
@@ -309,6 +398,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -500,9 +591,10 @@ void main() {
   testWidgets("unsupported voice forces a text-first composer without a VoiceInputCubit", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final attachmentDispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final attachmentDispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final imageClipboard = _NoOpImageClipboard();
 
@@ -521,6 +613,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: PromptInput(
               initialSelection: null,
@@ -568,9 +662,10 @@ void main() {
   testWidgets("defers surface-style synchronization while dependencies rebuild", (tester) async {
     final inputMode = ValueNotifier(ChatInputMode.textFirst);
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
-    final attachmentDispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final attachmentDispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: false,
     );
     final imageClipboard = _NoOpImageClipboard();
     final voiceCubit = _MockVoiceInputCubit();
@@ -600,6 +695,8 @@ void main() {
               presentation: ComposerPresentation.touch,
               attachmentDispatcher: () => attachmentDispatcher,
               imageClipboard: () => imageClipboard,
+              droppedPaths: null,
+              attachKind: ComposerAttachKind.images,
               child: Scaffold(
                 body: Column(
                   children: [
@@ -658,9 +755,10 @@ void main() {
     final draftIdentity = ValueNotifier("first-session");
     addTearDown(draftIdentity.dispose);
     final downscale = _PendingDownscaleBuilder();
-    final dispatcher = ComposerAttachmentDispatcher(
-      imagePicker: _NoOpComposerImagePicker(),
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
       downscaleBuilder: downscale,
+      bridgeIsLocal: false,
     );
     final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
     final clipboard = _FixedImageClipboard(bytes: png);
@@ -678,6 +776,8 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
           child: Scaffold(
             body: ValueListenableBuilder(
               valueListenable: draftIdentity,
@@ -752,9 +852,10 @@ Future<void> _pumpCommandComposer({
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(
-    imagePicker: _NoOpComposerImagePicker(),
+  final attachmentDispatcher = composerAttachmentDispatcherForTest(
+    filePicker: const NoOpComposerFilePicker(),
     downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
   final composer = ValueListenableBuilder<CommandInfo?>(
@@ -767,6 +868,8 @@ Future<void> _pumpCommandComposer({
       presentation: ComposerPresentation.touch,
       attachmentDispatcher: () => attachmentDispatcher,
       imageClipboard: () => imageClipboard,
+      droppedPaths: null,
+      attachKind: ComposerAttachKind.images,
       child: Scaffold(
         body: PromptInput(
           initialSelection: null,
