@@ -560,11 +560,12 @@ class CodexSessionService({
     required bool force,
   }) async {
     if (!force && _loadedThreads.contains(threadId)) return null;
+    // The rollout's directory adds the thread's project config layers, whose
+    // developer_instructions the resume would otherwise replace.
+    final cwd = (await _catalogRepository.findSessionById(sessionId: threadId))?.cwd;
     final resumed = await _connectedThreadRepository.resumeThread(
       threadId: threadId,
-      // The thread's directory is not known here, so only the user and system
-      // config layers supply the user's part.
-      developerInstructions: await _developerInstructions(cwd: null),
+      developerInstructions: await _developerInstructions(cwd: cwd),
     );
     _loadedThreads.add(threadId);
     _rememberThreadModel(threadId: threadId, model: resumed.thread.model);

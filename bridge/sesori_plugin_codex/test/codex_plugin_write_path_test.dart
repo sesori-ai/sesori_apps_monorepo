@@ -427,13 +427,13 @@ void main() {
         );
       }
 
-      Future<void> resumeSession() async {
+      Future<void> resumeSession({String threadId = "t-existing"}) async {
         // Respond to: initialize, thread/resume, turn/start.
         fake.respondInOrder([
           const _Response(result: _initOk),
-          const _Response(
+          _Response(
             result: {
-              "thread": {"id": "t-existing"},
+              "thread": {"id": threadId},
             },
           ),
           const _Response(
@@ -445,7 +445,7 @@ void main() {
         await plugin.sendPrompt(
           fastMode: false,
           promptId: "prompt-1",
-          sessionId: "t-existing",
+          sessionId: threadId,
           parts: const [PluginPromptPart.text(text: "go on")],
           variant: null,
           agent: null,
@@ -465,6 +465,20 @@ void main() {
 
         expect(fake.sentParamsFor("config/read"), isEmpty);
         expect(fake.sentParamsFor("thread/resume")["developerInstructions"], equals(sesoriAgentInstructions));
+      });
+
+      test("thread/resume keeps the developer instructions of the thread's project config", () async {
+        const threadId = "0199a0f0-0000-7000-8000-000000000001";
+        writeScopedThread(id: threadId, parentId: null);
+        fake.configuredDeveloperInstructions = "Use the project's lint rules.";
+
+        await resumeSession(threadId: threadId);
+
+        expect(fake.sentParamsFor("config/read"), equals({"cwd": "/work/sample"}));
+        expect(
+          fake.sentParamsFor("thread/resume")["developerInstructions"],
+          equals("Use the project's lint rules.\n\n$sesoriAgentInstructions"),
+        );
       });
 
       for (final (method, run) in [("thread/start", createSession), ("thread/resume", resumeSession)]) {

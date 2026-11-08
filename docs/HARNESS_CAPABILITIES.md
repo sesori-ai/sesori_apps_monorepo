@@ -103,7 +103,7 @@ resolves relative file paths.
 | Harness | Sesori availability |
 |---|---|
 | Claude Code | ✅ `--append-system-prompt` on every launch. The CLI records a conversation's system prompt on its first request and keeps it until compaction, so a session created before this keeps its old prompt until then. |
-| Codex | ✅ `developerInstructions` on `thread/start` and `thread/resume`, after the user's own `developer_instructions` from `config/read`, which the field would otherwise replace. Codex records them as developer messages, which the transcript drops. A resume reads only the user and system config layers. |
+| Codex | ✅ `developerInstructions` on `thread/start` and `thread/resume`, after the user's own `developer_instructions` from `config/read`, which the field would otherwise replace. Codex records them as developer messages, which the transcript drops. A resume reads the config from the thread's rollout directory. |
 | Pi, OMP | ⬜ `--append-system-prompt`, but a CLI value replaces the user's discovered `APPEND_SYSTEM.md`, so it must be passed along. Checked on Pi 1.5.0 and OMP 18.16.0, 2026-11-07. |
 | Grok | ⬜ `session/new` `_meta.rules`, which needs an ACP activation hook. Checked on 1.0.30, 2026-11-07. |
 | DeepSeek | ⬜ Needs the Sesori adapter to register a system-prompt section. |
