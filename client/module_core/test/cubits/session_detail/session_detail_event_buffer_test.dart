@@ -714,6 +714,7 @@ void main() {
         inputMode: ComposerInputMode.typed,
         attachments: [
           ComposerAttachment(
+            kind: ComposerAttachmentKind.image,
             mime: "image/png",
             bytes: Uint8List(1),
             filename: "shot.png",
@@ -1019,6 +1020,7 @@ void main() {
         inputMode: ComposerInputMode.typed,
         attachments: [
           ComposerAttachment(
+            kind: ComposerAttachmentKind.image,
             mime: "image/png",
             bytes: Uint8List(1),
             filename: "shot.png",

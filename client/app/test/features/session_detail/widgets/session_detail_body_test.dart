@@ -41,10 +41,14 @@ void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachm
   when(
     () => dispatcher.pick(
       attachmentsSupported: any(named: "attachmentsSupported"),
+      fileUploadsSupported: any(named: "fileUploadsSupported"),
       stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
     ),
-  ).thenAnswer((_) async => ComposerAttachOutcome(attachments: [image()], insertedText: null, rejections: const {}));
+  ).thenAnswer((_) async => _stagedOutcome(attachment: image()));
 }
+
+ComposerAttachOutcome _stagedOutcome({required ComposerAttachment attachment}) =>
+    ComposerAttachOutcome(attachments: [attachment], insertedText: null, rejections: const {});
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
@@ -503,8 +507,18 @@ void main() {
   });
 
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
-    final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
-    final second = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "second.png");
+    final first = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "first.png",
+    );
+    final second = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "second.png",
+    );
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
     var consumed = 0;
@@ -815,7 +829,12 @@ void main() {
     );
     when(() => cubit.launchStartedAt).thenReturn(handoff.startedAt);
     when(() => cubit.launchAttachments).thenReturn([
-      ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "staged.png"),
+      ComposerAttachment(
+        kind: ComposerAttachmentKind.image,
+        mime: "image/png",
+        bytes: _tinyPng,
+        filename: "staged.png",
+      ),
     ]);
     when(cubit.acknowledgeLaunchAttachments).thenReturn(null);
 
@@ -4768,11 +4787,22 @@ void main() {
   });
 
   testWidgets("expanded editor keyboard paste stages an image attachment", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: null,
+    );
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenAnswer((_) async => attachment);
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer((_) async => _stagedOutcome(attachment: attachment));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4788,7 +4818,15 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(imageClipboard.readImage).called(1);
-    verify(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    verify(
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).called(1);
     Navigator.of(tester.element(find.byType(PromptEditorSheet))).pop();
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
@@ -5207,7 +5245,12 @@ void main() {
   });
 
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "screenshot.png",
+    );
     _stubImagePick(attachmentDispatcher, () => attachment);
     final state = _loadedState(
       pendingQuestions: const [],
@@ -5244,11 +5287,22 @@ void main() {
   });
 
   testWidgets("image-only context-menu paste stages an attachment", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: null,
+    );
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenAnswer((_) async => attachment);
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer((_) async => _stagedOutcome(attachment: attachment));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5269,15 +5323,34 @@ void main() {
 
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
     verify(imageClipboard.readImage).called(1);
-    verify(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    verify(
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).called(1);
   });
 
   testWidgets("keyboard image paste stages an attachment without inserting text", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: null,
+    );
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenAnswer((_) async => attachment);
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer((_) async => _stagedOutcome(attachment: attachment));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5317,14 +5390,28 @@ void main() {
 
     expect(editableText.controller.text, "pasted after");
     verify(imageClipboard.readImage).called(1);
-    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    );
   });
 
   testWidgets("an unsupported pasted image falls back to text paste", (tester) async {
     final bytes = Uint8List.fromList(const [0, 1, 2, 3, 4, 5, 6, 7]);
     when(imageClipboard.readImage).thenAnswer((_) async => bytes);
     when(
-      () => attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null),
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: bytes,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
     ).thenThrow(const UnsupportedAttachmentImageError());
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -5417,8 +5504,23 @@ void main() {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
-      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenAnswer((_) async => ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer(
+      (_) async => _stagedOutcome(
+        attachment: ComposerAttachment(
+          kind: ComposerAttachmentKind.image,
+          mime: "image/png",
+          bytes: _tinyPng,
+          filename: null,
+        ),
+      ),
+    );
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -5475,8 +5577,23 @@ void main() {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
-      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenAnswer((_) async => ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer(
+      (_) async => _stagedOutcome(
+        attachment: ComposerAttachment(
+          kind: ComposerAttachmentKind.image,
+          mime: "image/png",
+          bytes: _tinyPng,
+          filename: null,
+        ),
+      ),
+    );
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5494,7 +5611,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsNothing);
-    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(
+      () => attachmentDispatcher.routeImageBytes(
+        bytes: _tinyPng,
+        filename: null,
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    );
   });
 
   testWidgets("accordion offers no attach action when the plugin declares no support", (tester) async {
@@ -5519,7 +5644,12 @@ void main() {
   });
 
   testWidgets("staged attachment survives unresolved support but cannot send", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "screenshot.png",
+    );
     _stubImagePick(attachmentDispatcher, () => attachment);
     when(
       () => cubit.sendMessage(
@@ -5566,7 +5696,12 @@ void main() {
   });
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "screenshot.png",
+    );
     _stubImagePick(attachmentDispatcher, () => attachment);
     when(
       () => cubit.sendMessage(
@@ -5603,7 +5738,12 @@ void main() {
   });
 
   testWidgets("an attachment alone is sendable", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: null,
+    );
     _stubImagePick(attachmentDispatcher, () => attachment);
     when(
       () => cubit.sendMessage(
@@ -5643,8 +5783,8 @@ void main() {
     final huge = Uint8List(maxComposerPromptAttachmentBytes - 32);
     huge.setAll(0, const [0xFF, 0xD8, 0xFF]);
     final answers = <ComposerAttachment>[
-      ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
-      ComposerAttachment(mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
+      ComposerAttachment(kind: ComposerAttachmentKind.image, mime: "image/png", bytes: _tinyPng, filename: "small.png"),
+      ComposerAttachment(kind: ComposerAttachmentKind.image, mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
     ];
     _stubImagePick(attachmentDispatcher, () => answers.removeAt(0));
 
@@ -5662,14 +5802,26 @@ void main() {
     await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Attached images are limited to 50 MB per message."), findsOneWidget);
+    expect(find.text("Attachments are limited to 50 MB per message."), findsOneWidget);
     // The refused image was never staged; the first one is untouched.
     expect(semanticsWithLabel("small.png"), findsOneWidget);
     expect(semanticsWithLabel("huge.jpg"), findsNothing);
   });
 
   testWidgets("an oversized image is rejected with a notice", (tester) async {
-    _stubImagePick(attachmentDispatcher, () => throw const AttachmentTooLargeError());
+    when(
+      () => attachmentDispatcher.pick(
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer(
+      (_) async => const ComposerAttachOutcome(
+        attachments: [],
+        insertedText: null,
+        rejections: {ComposerAttachRejectionReason.overBudget: 1},
+      ),
+    );
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5679,13 +5831,18 @@ void main() {
     await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
-    expect(find.text("That image is too large to attach."), findsOneWidget);
+    expect(find.text("A file wasn't added. Attachments are limited to 50 MB per message."), findsOneWidget);
     // Nothing was staged, so the composer stays in its resting pill.
     expect(find.byType(EditableText), findsNothing);
   });
 
   testWidgets("send is refused while both a command and attachments are staged", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "screenshot.png",
+    );
     _stubImagePick(attachmentDispatcher, () => attachment);
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       stagedCommand: const CommandInfo(
@@ -5716,7 +5873,7 @@ void main() {
 
     // The bridge's command paths carry only text, so the send is refused and
     // both the command chip and the image stay staged.
-    expect(find.text("Images can't be sent with slash commands."), findsOneWidget);
+    expect(find.text("Attachments can't be sent with slash commands."), findsOneWidget);
     expect(semanticsWithLabel("screenshot.png"), findsOneWidget);
     verifyNever(
       () => cubit.sendMessage(
@@ -5813,7 +5970,7 @@ void main() {
         tester.widget<QueuedMessageBubble>(find.byType(QueuedMessageBubble)).displayText,
         "/review One line\nthen another",
       );
-      expect(find.text("1 image"), findsOneWidget);
+      expect(find.text("1 attachment"), findsOneWidget);
       await tester.tap(find.text("Cancel"));
       await tester.pumpAndSettle();
       verify(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote")).called(1);
@@ -5913,7 +6070,7 @@ void main() {
           text: "",
           inputMode: ComposerInputMode.typed,
           attachments: [
-            ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null),
+            ComposerAttachment(kind: ComposerAttachmentKind.image, mime: "image/png", bytes: _tinyPng, filename: null),
           ],
           agent: "coder",
           agentModel: null,
@@ -5927,7 +6084,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    expect(find.text("1 image"), findsOneWidget);
+    expect(find.text("1 attachment"), findsOneWidget);
     expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(Image)), findsOneWidget);
   });
 
@@ -5937,7 +6094,12 @@ void main() {
       text: "Please **review** `main.dart`",
       inputMode: ComposerInputMode.typed,
       attachments: [
-        ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "reference.png"),
+        ComposerAttachment(
+          kind: ComposerAttachmentKind.image,
+          mime: "image/png",
+          bytes: _tinyPng,
+          filename: "reference.png",
+        ),
       ],
       agent: "coder",
       agentModel: null,

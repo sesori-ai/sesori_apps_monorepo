@@ -122,7 +122,12 @@ QueuedSessionSubmission _imageSubmission({required String promptId, required Lis
       inputMode: ComposerInputMode.typed,
       attachments: [
         for (final byteLength in byteLengths)
-          ComposerAttachment(mime: "image/png", bytes: Uint8List(byteLength), filename: null),
+          ComposerAttachment(
+            kind: ComposerAttachmentKind.image,
+            mime: "image/png",
+            bytes: Uint8List(byteLength),
+            filename: null,
+          ),
       ],
       agent: null,
       agentModel: null,

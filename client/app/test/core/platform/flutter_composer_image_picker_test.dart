@@ -59,10 +59,10 @@ void main() {
     ).thenAnswer((_) async => file);
   }
 
-  Future<ComposerAttachment?> pickAttachment() async {
-    final outcome = await attachmentDispatcher.pick(attachmentsSupported: true, stagedAttachmentBytes: 0);
-    return outcome?.attachments.single;
-  }
+  Future<ComposerAttachOutcome?> pickOutcome() =>
+      attachmentDispatcher.pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0);
+
+  Future<ComposerAttachment?> pickAttachment() async => (await pickOutcome())?.attachments.single;
 
   Uint8List jpegBytes([int length = 16]) {
     final bytes = Uint8List(length);
@@ -78,7 +78,14 @@ void main() {
   test("clipboard bytes use shared validation and have no filename", () async {
     final bytes = jpegBytes();
 
-    final attachment = await attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
+    final outcome = await attachmentDispatcher.routeImageBytes(
+      bytes: bytes,
+      filename: null,
+      attachmentsSupported: true,
+      fileUploadsSupported: false,
+      stagedAttachmentBytes: 0,
+    );
+    final attachment = outcome.attachments.single;
 
     expect(attachment.mime, "image/jpeg");
     expect(attachment.bytes, same(bytes));
@@ -182,6 +189,9 @@ void main() {
   test("an image over the outbound composer limit is rejected", () async {
     stubPick(XFile.fromData(jpegBytes(maxComposerPromptAttachmentBytes + 1), name: "huge.jpg"));
 
-    expect(pickAttachment, throwsA(isA<AttachmentTooLargeError>()));
+    final outcome = await pickOutcome();
+
+    expect(outcome?.attachments, isEmpty);
+    expect(outcome?.rejections, {ComposerAttachRejectionReason.overBudget: 1});
   });
 }

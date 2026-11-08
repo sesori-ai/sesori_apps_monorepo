@@ -11,6 +11,7 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/identity/prompt_id.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
+import "../../foundation/models/composer/composer_attachment_delivery.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
@@ -1087,7 +1088,11 @@ class NewSessionCubit({
       logw("Refused a /$normalizedCommand submission carrying ${attachments.length} attachment(s)");
       return;
     }
-    if (attachments.isNotEmpty && !selectedPlugin.supportsPromptAttachments) {
+    if (!canDeliverComposerAttachments(
+      attachments: attachments,
+      inlineImages: selectedPlugin.supportsPromptAttachments,
+      fileUploads: config.supportsFileUploads,
+    )) {
       logw("Refused ${attachments.length} attachment(s) for plugin ${selectedPlugin.id}");
       return;
     }
@@ -1175,7 +1180,11 @@ class NewSessionCubit({
       return;
     }
     final data = current.config.agentModelData;
-    if (attachments.isNotEmpty && data.plugin?.supportsPromptAttachments != true) {
+    if (!canDeliverComposerAttachments(
+      attachments: attachments,
+      inlineImages: data.plugin?.supportsPromptAttachments,
+      fileUploads: data.supportsFileUploads,
+    )) {
       logw("Refused ${attachments.length} follow-up attachment(s) for plugin ${data.plugin?.id}");
       return;
     }

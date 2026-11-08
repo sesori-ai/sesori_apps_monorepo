@@ -1342,24 +1342,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachedImage => 'Attached image';
 
   @override
+  String get sessionDetailAttachedFile => 'Attached file';
+
+  @override
   String sessionDetailAttachmentSizeBytes(int count) {
     return '$count bytes';
   }
 
   @override
-  String get sessionDetailAttachmentTooLarge => 'That image is too large to attach.';
-
-  @override
-  String get sessionDetailAttachmentPickFailed => 'Couldn\'t attach the image.';
+  String get sessionDetailAttachmentPickFailed => 'Couldn\'t add the attachment.';
 
   @override
   String get sessionDetailAttachmentUnsupported => 'That image format isn\'t supported.';
 
   @override
-  String get sessionDetailAttachmentBudgetExceeded => 'Attached images are limited to 50 MB per message.';
+  String get sessionDetailAttachmentBudgetExceeded => 'Attachments are limited to 50 MB per message.';
 
   @override
-  String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';
+  String get sessionDetailAttachmentsNotWithCommands => 'Attachments can\'t be sent with slash commands.';
 
   @override
   String sessionDetailFilesNotTransferable(int count) {
@@ -1368,6 +1368,17 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other: '$count files weren\'t added. Only images can be sent to another computer for now.',
       one: 'A file wasn\'t added. Only images can be sent to another computer for now.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionDetailFoldersNotTransferable(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count folders weren\'t added. Folders can\'t be sent to another computer.',
+      one: 'A folder wasn\'t added. Folders can\'t be sent to another computer.',
     );
     return '$_temp0';
   }
@@ -1384,12 +1395,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String sessionDetailImagesOverBudget(int count) {
+  String sessionDetailAttachmentsOverBudget(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count images weren\'t added. Attached images are limited to 50 MB per message.',
-      one: 'An image wasn\'t added. Attached images are limited to 50 MB per message.',
+      other: '$count files weren\'t added. Attachments are limited to 50 MB per message.',
+      one: 'A file wasn\'t added. Attachments are limited to 50 MB per message.',
     );
     return '$_temp0';
   }
@@ -1413,8 +1424,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count images',
-      one: '1 image',
+      other: '$count attachments',
+      one: '1 attachment',
     );
     return '$_temp0';
   }

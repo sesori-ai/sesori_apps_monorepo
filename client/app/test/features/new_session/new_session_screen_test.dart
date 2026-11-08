@@ -34,6 +34,7 @@ void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachm
   when(
     () => dispatcher.pick(
       attachmentsSupported: any(named: "attachmentsSupported"),
+      fileUploadsSupported: any(named: "fileUploadsSupported"),
       stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
     ),
   ).thenAnswer((_) async => ComposerAttachOutcome(attachments: [image()], insertedText: null, rejections: const {}));
@@ -3274,7 +3275,12 @@ void main() {
   });
 
   testWidgets("restores a coalesced failed submission without remounting the composer", (tester) async {
-    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    final attachment = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: "image/png",
+      bytes: _tinyPng,
+      filename: "screenshot.png",
+    );
     _stubImagePick(attachmentDispatcher, () => attachment);
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(

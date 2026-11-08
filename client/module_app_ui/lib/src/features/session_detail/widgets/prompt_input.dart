@@ -547,8 +547,18 @@ class _PromptInputState() extends State<PromptInput> {
 
   bool get _hasSendableContent {
     final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
-    return widget.canSend && hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
+    return widget.canSend && hasContent && _canDeliverAttachments;
   }
+
+  bool get _canDeliverAttachments => canDeliverComposerAttachments(
+    attachments: _attachments,
+    inlineImages: widget.attachmentsSupported,
+    fileUploads: widget.fileUploadsSupported,
+  );
+
+  /// Whether the plus, a paste or a drop can stage anything: an image for a
+  /// harness that takes them, or a file for a bridge that saves uploads.
+  bool get _takesAttachments => (widget.attachmentsSupported ?? false) || (widget.fileUploadsSupported ?? false);
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
@@ -654,10 +664,10 @@ class _PromptInputState() extends State<PromptInput> {
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
-    if (attachments.isNotEmpty && widget.attachmentsSupported != true) return false;
+    if (!_canDeliverAttachments) return false;
     if (stagedCommand != null && attachments.isNotEmpty) {
-      // The bridge's command paths read only the text part, so images sent
-      // with a command would silently vanish. Refuse the combination and
+      // The bridge's command paths read only the text part, so attachments
+      // sent with a command would silently vanish. Refuse the combination and
       // keep both staged for the user to untangle.
       _showComposerNotice(context.loc.sessionDetailAttachmentsNotWithCommands);
       return false;
@@ -709,7 +719,8 @@ class _PromptInputState() extends State<PromptInput> {
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
     final restorationRequested = widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
-    if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
+    if (oldWidget.attachmentsSupported != widget.attachmentsSupported ||
+        oldWidget.fileUploadsSupported != widget.fileUploadsSupported) {
       _startPasteGeneration();
     }
     if (draftChanged || restorationRequested) {
@@ -724,9 +735,27 @@ class _PromptInputState() extends State<PromptInput> {
       _restoreInitialAttachments();
     }
     // Switching the new-session harness to one that drops image parts strands
-    // whatever was staged for the previous pick, so drop it with the action.
-    if (widget.attachmentsSupported == false && _attachments.isNotEmpty) {
-      setState(_attachments.clear);
+    // the images staged for the previous pick, and a bridge that turns out not
+    // to save uploads strands the files, so each goes with its capability.
+    // Only a known `false` drops them: null is a capability still resolving,
+    // such as during a dropped connection, and keeps what is staged.
+    final dropsImages = widget.attachmentsSupported == false;
+    final dropsFiles = widget.fileUploadsSupported == false;
+    if ((dropsImages || dropsFiles) &&
+        _attachments.any(
+          (attachment) => switch (attachment.kind) {
+            ComposerAttachmentKind.image => dropsImages,
+            ComposerAttachmentKind.file => dropsFiles,
+          },
+        )) {
+      setState(
+        () => _attachments.removeWhere(
+          (attachment) => switch (attachment.kind) {
+            ComposerAttachmentKind.image => dropsImages,
+            ComposerAttachmentKind.file => dropsFiles,
+          },
+        ),
+      );
       _reportAttachments();
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController ||
@@ -2306,7 +2335,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   Widget _buildComposerContextMenu({required EditableTextState editableTextState}) {
     final buttonItems = [...editableTextState.contextMenuButtonItems];
-    if (!kIsWeb && ((widget.attachmentsSupported ?? false) || _fileClipboard != null)) {
+    if (!kIsWeb && (_takesAttachments || _fileClipboard != null)) {
       final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
       final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
       final existingPasteCallback = existingPaste?.onPressed;
@@ -2346,29 +2375,39 @@ class _PromptInputState() extends State<PromptInput> {
     return PregoImageAttachmentStrip(
       children: [
         for (var index = 0; index < _attachments.length; index++)
-          PregoImageAttachmentPreview(
-            key: ObjectKey(_attachments[index]),
-            imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
-            onOpen: () => _openAttachment(attachment: _attachments[index]),
-            removeLabel: loc.sessionDetailRemoveAttachment,
-            onRemove: () {
-              setState(() => _attachments.removeAt(index));
-              _reportAttachments();
-            },
-            image: Hero(
-              tag: ObjectKey(_attachments[index]),
-              child: Image.memory(
-                _attachments[index].bytes,
-                // Decode at thumbnail scale rather than retaining full-resolution
-                // rasters for every staged image. Original bytes still get sent.
-                cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
+          if (_attachments[index].kind == ComposerAttachmentKind.file)
+            PregoFileAttachmentPreview(
+              key: ObjectKey(_attachments[index]),
+              fileName: _attachments[index].filename ?? loc.sessionDetailAttachedFile,
+              removeLabel: loc.sessionDetailRemoveAttachment,
+              onRemove: () => _removeAttachment(index: index),
+            )
+          else
+            PregoImageAttachmentPreview(
+              key: ObjectKey(_attachments[index]),
+              imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
+              onOpen: () => _openAttachment(attachment: _attachments[index]),
+              removeLabel: loc.sessionDetailRemoveAttachment,
+              onRemove: () => _removeAttachment(index: index),
+              image: Hero(
+                tag: ObjectKey(_attachments[index]),
+                child: Image.memory(
+                  _attachments[index].bytes,
+                  // Decode at thumbnail scale rather than retaining full-resolution
+                  // rasters for every staged image. Original bytes still get sent.
+                  cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                ),
               ),
             ),
-          ),
       ],
     );
+  }
+
+  void _removeAttachment({required int index}) {
+    setState(() => _attachments.removeAt(index));
+    _reportAttachments();
   }
 
   void _openAttachment({required ComposerAttachment attachment}) {
@@ -2577,9 +2616,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// and send sit at rest.
   static const double _pointerVoiceGroupWidth = _actionButtonSize * 2 + PregoSpacing.sm;
 
-  /// Nearly every harness takes images, so the action holds its place while
-  /// support is unknown instead of growing in once it is known.
-  bool get _offersAttachImage => widget.attachmentsSupported ?? true;
+  /// Nearly every harness takes images, and new bridges save files, so the
+  /// action holds its place while support is unknown instead of growing in
+  /// once it is known. It leaves only when neither can take anything.
+  bool get _offersAttachImage => (widget.attachmentsSupported ?? true) || (widget.fileUploadsSupported ?? true);
 
   Widget _buildOptionsAccordion() {
     return PregoPickerPopover(
@@ -2600,7 +2640,7 @@ class _PromptInputState() extends State<PromptInput> {
           _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
           toggle();
         },
-        onAttachImageTap: (widget.attachmentsSupported ?? false) ? _handleAttachImage : null,
+        onAttachImageTap: _takesAttachments ? _handleAttachImage : null,
         onOpenChanged: (isOpen) {
           if (isOpen != _optionsOpen) setState(() => _optionsOpen = isOpen);
         },
@@ -2625,6 +2665,7 @@ class _PromptInputState() extends State<PromptInput> {
   Future<void> _handleAttachImage() => _attach(
     outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
       attachmentsSupported: widget.attachmentsSupported,
+      fileUploadsSupported: widget.fileUploadsSupported,
       stagedAttachmentBytes: stagedAttachmentBytes,
     ),
   );
@@ -2656,6 +2697,7 @@ class _PromptInputState() extends State<PromptInput> {
         outcome: (stagedAttachmentBytes) => _attachmentDispatcher.routeHostPaths(
           paths: paths,
           attachmentsSupported: widget.attachmentsSupported,
+          fileUploadsSupported: widget.fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
         ),
       ),
@@ -2707,9 +2749,6 @@ class _PromptInputState() extends State<PromptInput> {
         _insertAtCaret(text: text);
       }
       if (result.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: result.rejections));
-    } on AttachmentTooLargeError {
-      if (!mounted || isStale()) return _PasteResult.stale;
-      _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
     } on UnsupportedAttachmentImageError {
       if (!mounted || isStale()) return _PasteResult.stale;
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
@@ -2730,8 +2769,9 @@ class _PromptInputState() extends State<PromptInput> {
         if (rejections[reason] case final count?)
           switch (reason) {
             ComposerAttachRejectionReason.notTransferable => loc.sessionDetailFilesNotTransferable(count),
+            ComposerAttachRejectionReason.folderNotTransferable => loc.sessionDetailFoldersNotTransferable(count),
             ComposerAttachRejectionReason.attachmentsUnsupported => loc.sessionDetailImagesNotAccepted(count),
-            ComposerAttachRejectionReason.overBudget => loc.sessionDetailImagesOverBudget(count),
+            ComposerAttachRejectionReason.overBudget => loc.sessionDetailAttachmentsOverBudget(count),
           },
     ].join("\n");
   }
@@ -2776,9 +2816,15 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// Reads an image before allowing Flutter's normal text paste to run. An
-  /// image wins when the clipboard exposes both binary and text formats.
+  /// image wins when the clipboard exposes both binary and text formats. It is
+  /// staged as an image when the harness takes images, and as a file when only
+  /// the bridge saves uploads.
+  ///
+  /// The image is routed right away, so a slow downscale doesn't hold up a
+  /// later paste; it stages only once earlier inserts have, and is checked
+  /// then against the budget they left.
   Future<_PasteResult> _handlePasteImage({required Future<void> earlierInsertsSettled}) async {
-    if (widget.attachmentsSupported != true) return _PasteResult.unhandled;
+    if (!_takesAttachments) return _PasteResult.unhandled;
     final draftIdentity = widget.draftIdentity;
     final pasteGeneration = _pasteGeneration;
     final Uint8List? bytes;
@@ -2802,20 +2848,23 @@ class _PromptInputState() extends State<PromptInput> {
     // Downscaling an oversized image awaits too, so every outcome checks
     // staleness again before it touches the composer.
     try {
-      final attachment = await _attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
+      final outcome = await _attachmentDispatcher.routeImageBytes(
+        bytes: bytes,
+        filename: null,
+        attachmentsSupported: widget.attachmentsSupported,
+        fileUploadsSupported: widget.fileUploadsSupported,
+        stagedAttachmentBytes: _stagedAttachmentBytes,
+      );
       await earlierInsertsSettled;
       if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
         return _PasteResult.stale;
       }
-      if (_stageAttachment(attachment: attachment)) return _PasteResult.handled;
-      // The staged strip is already at its aggregate budget, so no image was
-      // added; fall back so the clipboard's text is not swallowed.
-      return _PasteResult.unhandled;
-    } on AttachmentTooLargeError {
-      if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
-        return _PasteResult.stale;
+      if (outcome.attachments case [final attachment] when _stageAttachment(attachment: attachment)) {
+        return _PasteResult.handled;
       }
-      _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
+      // Nothing was staged, so fall back and keep the clipboard's text from
+      // being swallowed.
+      if (outcome.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: outcome.rejections));
       return _PasteResult.unhandled;
     } on UnsupportedAttachmentImageError {
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
@@ -2863,6 +2912,7 @@ class _PromptInputState() extends State<PromptInput> {
       outcome: (stagedAttachmentBytes) => dispatcher.routeClipboardPaths(
         paths: paths,
         attachmentsSupported: widget.attachmentsSupported,
+        fileUploadsSupported: widget.fileUploadsSupported,
         stagedAttachmentBytes: stagedAttachmentBytes,
       ),
     );
@@ -2914,7 +2964,7 @@ class _PromptInputState() extends State<PromptInput> {
     return !mounted ||
         draftIdentity != widget.draftIdentity ||
         pasteGeneration != _pasteGeneration ||
-        widget.attachmentsSupported != true;
+        !_takesAttachments;
   }
 
   /// Stages an attachment and reports whether it fit the aggregate budget.

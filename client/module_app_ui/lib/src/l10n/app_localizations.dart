@@ -2509,7 +2509,7 @@ abstract class AppLocalizations {
   /// **'Attach image'**
   String get sessionDetailAttachImage;
 
-  /// Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths when the bridge is local, and rejected otherwise.
+  /// Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths when the bridge is local, attached as files when a bridge on another computer saves them, and rejected otherwise.
   ///
   /// In en, this message translates to:
   /// **'Attach files'**
@@ -2521,11 +2521,17 @@ abstract class AppLocalizations {
   /// **'Remove attachment'**
   String get sessionDetailRemoveAttachment;
 
-  /// Fallback accessibility label of a staged attachment thumbnail when the image has no filename.
+  /// Fallback accessibility label of a staged image thumbnail when the image has no filename. A staged file always shows its name.
   ///
   /// In en, this message translates to:
   /// **'Attached image'**
   String get sessionDetailAttachedImage;
+
+  /// Fallback name of a staged file tile when the file has no name.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached file'**
+  String get sessionDetailAttachedFile;
 
   /// Byte size shown in a transcript attachment metadata overlay.
   ///
@@ -2533,16 +2539,10 @@ abstract class AppLocalizations {
   /// **'{count} bytes'**
   String sessionDetailAttachmentSizeBytes(int count);
 
-  /// Snackbar shown when a picked image exceeds the inline attachment size limit.
+  /// Snackbar shown when picking, dropping or pasting an image or file fails for a reason other than the size limit.
   ///
   /// In en, this message translates to:
-  /// **'That image is too large to attach.'**
-  String get sessionDetailAttachmentTooLarge;
-
-  /// Snackbar shown when the gallery picker fails for a reason other than the size limit.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t attach the image.'**
+  /// **'Couldn\'t add the attachment.'**
   String get sessionDetailAttachmentPickFailed;
 
   /// Snackbar shown when the picked file is not a recognized image format and cannot be attached.
@@ -2551,35 +2551,41 @@ abstract class AppLocalizations {
   /// **'That image format isn\'t supported.'**
   String get sessionDetailAttachmentUnsupported;
 
-  /// Snackbar shown when adding another image would push the message's combined attachment size past the outbound composer limit.
+  /// Snackbar shown when adding another image or file would push the message's combined attachment size past the outbound composer limit.
   ///
   /// In en, this message translates to:
-  /// **'Attached images are limited to 50 MB per message.'**
+  /// **'Attachments are limited to 50 MB per message.'**
   String get sessionDetailAttachmentBudgetExceeded;
 
-  /// Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images.
+  /// Snackbar shown when sending while both a slash command and image or file attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the attachments.
   ///
   /// In en, this message translates to:
-  /// **'Images can\'t be sent with slash commands.'**
+  /// **'Attachments can\'t be sent with slash commands.'**
   String get sessionDetailAttachmentsNotWithCommands;
 
-  /// Notice shown when picked or dropped files could not be added because the active bridge runs on another computer and only images can reach it. The count covers the files not added for this reason; when a drop has several reasons, each reason's notice is shown on its own line.
+  /// Notice shown when picked or dropped files could not be added because the active bridge runs on another computer and, being an older version, only images can reach it. The count covers the files not added for this reason; when a drop has several reasons, each reason's notice is shown on its own line.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{A file wasn\'t added. Only images can be sent to another computer for now.} other{{count} files weren\'t added. Only images can be sent to another computer for now.}}'**
   String sessionDetailFilesNotTransferable(int count);
 
-  /// Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer, so their paths cannot be used either. Shown on its own line alongside the other reasons' notices when a drop has several.
+  /// Notice shown when picked, dropped or pasted folders could not be added because the active bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{A folder wasn\'t added. Folders can\'t be sent to another computer.} other{{count} folders weren\'t added. Folders can\'t be sent to another computer.}}'**
+  String sessionDetailFoldersNotTransferable(int count);
+
+  /// Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer that can't save them as files, so neither their paths nor a file upload can be used. Shown on its own line alongside the other reasons' notices when a drop has several.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{An image wasn\'t added. This agent doesn\'t accept images.} other{{count} images weren\'t added. This agent doesn\'t accept images.}}'**
   String sessionDetailImagesNotAccepted(int count);
 
-  /// Notice shown when picked or dropped images could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.
+  /// Notice shown when picked, dropped or pasted images or files could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{An image wasn\'t added. Attached images are limited to 50 MB per message.} other{{count} images weren\'t added. Attached images are limited to 50 MB per message.}}'**
-  String sessionDetailImagesOverBudget(int count);
+  /// **'{count, plural, =1{A file wasn\'t added. Attachments are limited to 50 MB per message.} other{{count} files weren\'t added. Attachments are limited to 50 MB per message.}}'**
+  String sessionDetailAttachmentsOverBudget(int count);
 
   /// Notice shown when files are dropped on the composer while it is recording or transcribing voice input.
   ///
@@ -2605,10 +2611,10 @@ abstract class AppLocalizations {
   /// **'Open all {count} lines'**
   String codeBlockOpenAll(int count);
 
-  /// Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.
+  /// Body of a queued-message bubble whose submission has image or file attachments but no text, e.g. '1 attachment'.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 image} other{{count} images}}'**
+  /// **'{count, plural, =1{1 attachment} other{{count} attachments}}'**
   String sessionDetailQueuedAttachmentCount(int count);
 
   /// Accessibility label of the button that opens the fullscreen message editor.

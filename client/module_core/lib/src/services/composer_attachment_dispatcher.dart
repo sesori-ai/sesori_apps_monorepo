@@ -18,6 +18,9 @@ import "models/composer_attach_outcome.dart";
 /// renderer can decode honestly.
 final class const UnsupportedAttachmentImageError() implements Exception;
 
+/// The image exceeds the per-prompt cap even once downscaled.
+final class const _ImageTooLargeError() implements Exception;
+
 /// Dispatches platform picks, drops, copied files and clipboard bytes through the shared
 /// composer attachment validation pipeline.
 @lazySingleton
@@ -33,22 +36,30 @@ class ComposerAttachmentDispatcher({
   /// Opens the shell's picker and routes what it returns, or returns `null`
   /// when the user dismisses it.
   ///
-  /// [stagedAttachmentBytes] is what the composer already holds, so images are
-  /// staged only while they fit the rest of the prompt's attachment budget.
+  /// [stagedAttachmentBytes] is what the composer already holds, so
+  /// attachments are staged only while they fit the rest of the prompt's
+  /// attachment budget.
   Future<ComposerAttachOutcome?> pick({
     required bool? attachmentsSupported,
+    required bool? fileUploadsSupported,
     required int stagedAttachmentBytes,
   }) async {
     switch (await _filePicker.pick()) {
       case null:
         return null;
       case ComposerPickedImage(:final bytes, :final filename):
-        final attachment = await attachmentFromBytes(bytes: bytes, filename: filename);
-        return ComposerAttachOutcome(attachments: [attachment], insertedText: null, rejections: const {});
+        return await routeImageBytes(
+          bytes: bytes,
+          filename: filename,
+          attachmentsSupported: attachmentsSupported,
+          fileUploadsSupported: fileUploadsSupported,
+          stagedAttachmentBytes: stagedAttachmentBytes,
+        );
       case ComposerPickedHostPaths(:final paths):
         return await routeHostPaths(
           paths: paths,
           attachmentsSupported: attachmentsSupported,
+          fileUploadsSupported: fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
         );
     }
@@ -63,6 +74,7 @@ class ComposerAttachmentDispatcher({
   Future<ComposerAttachOutcome?> routeClipboardPaths({
     required List<String> paths,
     required bool? attachmentsSupported,
+    required bool? fileUploadsSupported,
     required int stagedAttachmentBytes,
   }) async {
     if (paths.isEmpty) return null;
@@ -72,24 +84,31 @@ class ComposerAttachmentDispatcher({
     return await routeHostPaths(
       paths: paths,
       attachmentsSupported: attachmentsSupported,
+      fileUploadsSupported: fileUploadsSupported,
       stagedAttachmentBytes: stagedAttachmentBytes,
     );
   }
 
-  /// Decides what each path on this computer becomes in the composer.
+  /// Decides what each path on this computer becomes in the composer, by the
+  /// first rule that applies:
   ///
-  /// A supported image is staged while the backend accepts attachments and,
-  /// once downscaled, it fits the rest of the budget. Anything else is inserted as its path when
-  /// the active bridge runs on this computer, since the agent can read it
-  /// there, and is otherwise turned away: nothing but images can reach another
-  /// computer yet.
+  /// 1. A supported image is staged as an image while the backend accepts
+  ///    attachments and, once downscaled, it fits the rest of the budget.
+  /// 2. Anything else is inserted as its path when the active bridge runs on
+  ///    this computer, since the agent can read it there.
+  /// 3. A regular file is staged as a file, with its original bytes, when the
+  ///    bridge on another computer saves uploads and the file fits the rest of
+  ///    the budget. Its size is checked before it is read.
+  /// 4. Anything else is turned away, with the reason.
   Future<ComposerAttachOutcome> routeHostPaths({
     required List<String> paths,
     required bool? attachmentsSupported,
+    required bool? fileUploadsSupported,
     required int stagedAttachmentBytes,
   }) async {
     final bridgeId = _connectionService.activeConfig?.bridgeId;
     final bridgeIsLocal = bridgeId != null && _locality.isLocalBridge(bridgeId: bridgeId);
+    final stagesFiles = !bridgeIsLocal && (fileUploadsSupported ?? false);
     var remainingBytes = maxComposerPromptAttachmentBytes - stagedAttachmentBytes;
     final attachments = <ComposerAttachment>[];
     final insertedPaths = <String>[];
@@ -98,6 +117,7 @@ class ComposerAttachmentDispatcher({
       final route = await _routeHostPath(
         hostPath: hostPath,
         attachmentsSupported: attachmentsSupported,
+        stagesFiles: stagesFiles,
         remainingBytes: remainingBytes,
       );
       switch (route) {
@@ -120,6 +140,7 @@ class ComposerAttachmentDispatcher({
   Future<_HostPathRoute> _routeHostPath({
     required String hostPath,
     required bool? attachmentsSupported,
+    required bool stagesFiles,
     required int remainingBytes,
   }) async {
     try {
@@ -127,56 +148,149 @@ class ComposerAttachmentDispatcher({
       switch (await _hostFiles.kindOf(path: hostPath)) {
         case HostRegularFile(sizeBytes: final size):
           sizeBytes = size;
-        case HostDirectory() || HostOtherPath():
+        case HostDirectory():
+          return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.folderNotTransferable);
+        case HostOtherPath():
           return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
       }
-      if (await _hostFiles.imageFormatOf(path: hostPath) == null) {
-        return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
+      final isImage = await _hostFiles.imageFormatOf(path: hostPath) != null;
+      if (isImage && (attachmentsSupported ?? false)) {
+        if (await _stageHostImage(hostPath: hostPath, sizeBytes: sizeBytes, remainingBytes: remainingBytes)
+            case final image?) {
+          return _HostPathStaged(attachment: image);
+        }
+        if (!stagesFiles) return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
+      } else if (!stagesFiles) {
+        return _HostPathNotStaged(
+          reason: isImage
+              ? ComposerAttachRejectionReason.attachmentsUnsupported
+              : ComposerAttachRejectionReason.notTransferable,
+        );
       }
-      if (attachmentsSupported != true) {
-        return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.attachmentsUnsupported);
-      }
-      // A file above the per-prompt cap is never read: downscaling only
-      // starts from bytes that could have been sent as they are, so a huge
-      // file is never loaded whole.
-      if (sizeBytes > maxComposerPromptAttachmentBytes) {
+      // Checked before the read, so a file that can't fit is never loaded.
+      if (sizeBytes > remainingBytes) {
         return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
       }
-      // Downscaled first, so a large image that shrinks to fit still stages.
-      final attachment = await attachmentFromBytes(
-        bytes: await _hostFiles.readAll(path: hostPath),
-        filename: path.basename(hostPath),
+      final bytes = await _hostFiles.readAll(path: hostPath);
+      // The file can grow between the size check and the read.
+      if (bytes.length > remainingBytes) {
+        return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
+      }
+      return _HostPathStaged(
+        attachment: _fileFromBytes(bytes: bytes, filename: path.basename(hostPath)),
       );
-      if (attachment.bytes.length > remainingBytes) {
-        return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
-      }
-      return _HostPathStaged(attachment: attachment);
-    } on AttachmentTooLargeError {
-      return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
     } on Object catch (error, stackTrace) {
-      logw("Could not read $hostPath as a composer image; treating it as a plain file", error, stackTrace);
+      logw("Could not read $hostPath for the composer; turning it away", error, stackTrace);
       return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
     }
   }
 
+  /// The image at [hostPath], downscaled, or null when even downscaled it
+  /// doesn't fit [remainingBytes].
+  Future<ComposerAttachment?> _stageHostImage({
+    required String hostPath,
+    required int sizeBytes,
+    required int remainingBytes,
+  }) async {
+    // A file above the per-prompt cap is never read: downscaling only starts
+    // from bytes that could have been sent as they are, so a huge file is
+    // never loaded whole.
+    if (sizeBytes > maxComposerPromptAttachmentBytes) return null;
+    try {
+      // Downscaled first, so a large image that shrinks to fit still stages.
+      final image = await _imageFromBytes(
+        bytes: await _hostFiles.readAll(path: hostPath),
+        filename: path.basename(hostPath),
+      );
+      return image.bytes.length > remainingBytes ? null : image;
+    } on _ImageTooLargeError {
+      return null;
+    }
+  }
+
+  /// Decides what image bytes handed over without a path become: a photo from
+  /// the gallery picker, or an image pasted from the clipboard, which has no
+  /// [filename].
+  ///
+  /// They are staged as a downscaled image when the harness takes images, and
+  /// otherwise as a file with their original bytes when the bridge saves
+  /// uploads, named after the picked file or `pasted-image.<ext>`. Throws
+  /// [UnsupportedAttachmentImageError] when the bytes are not a supported
+  /// image and an image, or a name for them, is needed.
+  Future<ComposerAttachOutcome> routeImageBytes({
+    required Uint8List bytes,
+    required String? filename,
+    required bool? attachmentsSupported,
+    required bool? fileUploadsSupported,
+    required int stagedAttachmentBytes,
+  }) async {
+    final ComposerAttachment attachment;
+    if (attachmentsSupported ?? false) {
+      try {
+        attachment = await _imageFromBytes(bytes: bytes, filename: filename);
+      } on _ImageTooLargeError {
+        return _rejected(reason: ComposerAttachRejectionReason.overBudget);
+      }
+    } else if (fileUploadsSupported ?? false) {
+      attachment = _fileFromBytes(
+        bytes: bytes,
+        filename: _nameOf(filename: filename) ?? _pastedImageName(bytes: bytes),
+      );
+    } else {
+      return _rejected(reason: ComposerAttachRejectionReason.attachmentsUnsupported);
+    }
+    if (attachment.bytes.length > maxComposerPromptAttachmentBytes - stagedAttachmentBytes) {
+      return _rejected(reason: ComposerAttachRejectionReason.overBudget);
+    }
+    return ComposerAttachOutcome(attachments: [attachment], insertedText: null, rejections: const {});
+  }
+
+  static ComposerAttachOutcome _rejected({required ComposerAttachRejectionReason reason}) =>
+      ComposerAttachOutcome(attachments: const [], insertedText: null, rejections: {reason: 1});
+
+  static String? _nameOf({required String? filename}) {
+    final trimmed = filename?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  static String _pastedImageName({required Uint8List bytes}) {
+    final format = detectSupportedRasterImageFormat(bytes: bytes);
+    if (format == null) throw const UnsupportedAttachmentImageError();
+    return "pasted-image${format.filenameExtension}";
+  }
+
+  /// A file the bridge saves for the agent: its original bytes, sent as
+  /// [composerFileAttachmentMime] under its own name.
+  static ComposerAttachment _fileFromBytes({required Uint8List bytes, required String filename}) => ComposerAttachment(
+    kind: ComposerAttachmentKind.file,
+    mime: composerFileAttachmentMime,
+    bytes: bytes,
+    filename: filename,
+  );
+
   /// Validates [bytes] as a supported image and shrinks an oversized one
   /// before the transport limit is checked, so a large screenshot can still
   /// fit once downscaled.
-  Future<ComposerAttachment> attachmentFromBytes({
+  Future<ComposerAttachment> _imageFromBytes({
     required Uint8List bytes,
     required String? filename,
   }) async {
     final format = detectSupportedRasterImageFormat(bytes: bytes);
     if (format == null) throw const UnsupportedAttachmentImageError();
 
-    final trimmedName = filename?.trim();
-    final name = trimmedName == null || trimmedName.isEmpty ? null : trimmedName;
-    final original = ComposerAttachment(mime: format.mime, bytes: bytes, filename: name);
+    final name = _nameOf(filename: filename);
+    final original = ComposerAttachment(
+      kind: ComposerAttachmentKind.image,
+      mime: format.mime,
+      bytes: bytes,
+      filename: name,
+    );
     final ComposerAttachment attachment;
     switch (await _downscaleBuilder.downscale(bytes: bytes, format: format)) {
       case ComposerImageDownscaled(bytes: final downscaled):
         const jpeg = SupportedRasterImageFormat.jpeg;
         attachment = ComposerAttachment(
+          kind: ComposerAttachmentKind.image,
           mime: jpeg.mime,
           bytes: downscaled,
           filename: name == null ? null : path.setExtension(name, jpeg.filenameExtension),
@@ -189,7 +303,7 @@ class ComposerAttachmentDispatcher({
     }
 
     if (attachment.bytes.length > maxComposerPromptAttachmentBytes) {
-      throw const AttachmentTooLargeError();
+      throw const _ImageTooLargeError();
     }
     return attachment;
   }

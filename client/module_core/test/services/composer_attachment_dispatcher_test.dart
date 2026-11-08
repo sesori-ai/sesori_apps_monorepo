@@ -78,7 +78,8 @@ void main() {
   group("ComposerAttachmentDispatcher", () {
     test("returns null when selection is dismissed", () async {
       expect(
-        await dispatcherFor(picked: null).pick(attachmentsSupported: true, stagedAttachmentBytes: 0),
+        await dispatcherFor(picked: null)
+            .pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0),
         isNull,
       );
     });
@@ -90,7 +91,8 @@ void main() {
       );
 
       final outcome =
-          await dispatcher.pick(attachmentsSupported: true, stagedAttachmentBytes: 0) ?? fail("no image picked");
+          await dispatcher.pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0) ??
+          fail("no image picked");
 
       final attachment = outcome.attachments.single;
       expect(attachment.mime, "image/jpeg");
@@ -111,44 +113,60 @@ void main() {
       ];
 
       for (final (prefix, mime) in cases) {
-        final attachment = await dispatcher.attachmentFromBytes(
+        final outcome = await dispatcher.routeImageBytes(
           bytes: bytesWithPrefix(prefix: prefix),
           filename: "image",
+          attachmentsSupported: true,
+          fileUploadsSupported: false,
+          stagedAttachmentBytes: 0,
         );
-        expect(attachment.mime, mime);
+        expect(outcome.attachments.single.mime, mime);
+        expect(outcome.attachments.single.kind, ComposerAttachmentKind.image);
       }
     });
 
     test("converts an empty filename to null", () async {
-      final attachment = await dispatcherFor(picked: null).attachmentFromBytes(
+      final outcome = await dispatcherFor(picked: null).routeImageBytes(
         bytes: bytesWithPrefix(prefix: const [0xFF, 0xD8, 0xFF]),
         filename: "   ",
+        attachmentsSupported: true,
+        fileUploadsSupported: false,
+        stagedAttachmentBytes: 0,
       );
 
-      expect(attachment.filename, isNull);
+      expect(outcome.attachments.single.filename, isNull);
     });
 
     test("rejects unsupported bytes", () async {
       await expectLater(
-        dispatcherFor(picked: null).attachmentFromBytes(
+        dispatcherFor(picked: null).routeImageBytes(
           bytes: Uint8List.fromList(List<int>.generate(16, (index) => index)),
           filename: "blob.bin",
+          attachmentsSupported: true,
+          fileUploadsSupported: false,
+          stagedAttachmentBytes: 0,
         ),
         throwsA(isA<UnsupportedAttachmentImageError>()),
       );
     });
 
-    test("rejects bytes that stay above the outbound limit", () async {
+    test("turns away bytes that stay above the outbound limit", () async {
       // Not decodable, so the downscale keeps the original and the limit applies.
       final bytes = bytesWithPrefix(
         prefix: const [0xFF, 0xD8, 0xFF],
         length: maxComposerPromptAttachmentBytes + 1,
       );
 
-      await expectLater(
-        dispatcherFor(picked: null).attachmentFromBytes(bytes: bytes, filename: "huge.jpg"),
-        throwsA(isA<AttachmentTooLargeError>()),
+      final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        bytes: bytes,
+        filename: "huge.jpg",
+        attachmentsSupported: true,
+        fileUploadsSupported: false,
+        stagedAttachmentBytes: 0,
       );
+
+      expect(outcome.attachments, isEmpty);
+      expect(outcome.rejections, {ComposerAttachRejectionReason.overBudget: 1});
     });
 
     test("stages an oversized image as a downscaled JPEG with a matching filename", () async {
@@ -163,7 +181,8 @@ void main() {
       );
 
       final outcome =
-          await dispatcher.pick(attachmentsSupported: true, stagedAttachmentBytes: 0) ?? fail("no image picked");
+          await dispatcher.pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0) ??
+          fail("no image picked");
 
       final attachment = outcome.attachments.single;
       expect(attachment.mime, "image/jpeg");
@@ -195,6 +214,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
         paths: [imagePath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -208,6 +228,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
         paths: [imagePath],
         attachmentsSupported: null,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -220,6 +241,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
         paths: [imagePath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: maxComposerPromptAttachmentBytes,
       );
 
@@ -231,6 +253,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
         paths: [notesPath, folderPath, spacedPath, quotedPath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -244,18 +267,23 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
         paths: [notesPath, imagePath, folderPath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
       expect(outcome.attachments.single.filename, "shot.png");
       expect(outcome.insertedText, isNull);
-      expect(outcome.rejections, {ComposerAttachRejectionReason.notTransferable: 2});
+      expect(outcome.rejections, {
+        ComposerAttachRejectionReason.notTransferable: 1,
+        ComposerAttachRejectionReason.folderNotTransferable: 1,
+      });
     });
 
     test("treats a missing connection as a remote bridge", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: null).routeHostPaths(
         paths: [notesPath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -267,6 +295,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
         paths: [imagePath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: maxComposerPromptAttachmentBytes,
       );
 
@@ -278,11 +307,13 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
         paths: [notesPath, imagePath, folderPath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: maxComposerPromptAttachmentBytes,
       );
 
       expect(outcome.rejections, {
-        ComposerAttachRejectionReason.notTransferable: 2,
+        ComposerAttachRejectionReason.notTransferable: 1,
+        ComposerAttachRejectionReason.folderNotTransferable: 1,
         ComposerAttachRejectionReason.overBudget: 1,
       });
     });
@@ -299,6 +330,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
         paths: [largePath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: maxComposerPromptAttachmentBytes - png.length + 1,
       );
 
@@ -313,6 +345,7 @@ void main() {
       final outcome = await dispatcher.routeHostPaths(
         paths: ["/photos/huge.png"],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -324,7 +357,7 @@ void main() {
       final outcome = await dispatcherFor(
         picked: ComposerPickedHostPaths(paths: [notesPath, imagePath]),
         activeBridgeId: _localBridgeId,
-      ).pick(attachmentsSupported: true, stagedAttachmentBytes: 0);
+      ).pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0);
 
       expect(outcome?.attachments.single.filename, "shot.png");
       expect(outcome?.insertedText, notesPath);
@@ -334,6 +367,7 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeClipboardPaths(
         paths: [notesPath, imagePath, folderPath],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -348,11 +382,13 @@ void main() {
       final someMissing = await dispatcher.routeClipboardPaths(
         paths: [notesPath, "${root.path}/missing.txt"],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
       final allMissing = await dispatcher.routeClipboardPaths(
         paths: ["${root.path}/missing.txt", "${root.path}/gone.png"],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
@@ -364,10 +400,221 @@ void main() {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeClipboardPaths(
         paths: const [],
         attachmentsSupported: true,
+        fileUploadsSupported: false,
         stagedAttachmentBytes: 0,
       );
 
       expect(outcome, isNull);
+    });
+
+    group("on a bridge on another computer that saves uploads", () {
+      ComposerAttachmentDispatcher remote({HostFileClient fileClient = const HostFileClient()}) =>
+          dispatcherFor(picked: null, activeBridgeId: "another-computer", fileClient: fileClient);
+
+      test("stages any other file as a file with its original bytes and name", () async {
+        final outcome = await remote().routeHostPaths(
+          paths: [notesPath, spacedPath],
+          attachmentsSupported: true,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.rejections, isEmpty);
+        expect(outcome.insertedText, isNull);
+        expect([for (final file in outcome.attachments) file.kind], everyElement(ComposerAttachmentKind.file));
+        expect([for (final file in outcome.attachments) file.mime], everyElement("application/octet-stream"));
+        expect([for (final file in outcome.attachments) file.filename], ["notes.dart", "my report.pdf"]);
+        expect(outcome.attachments.first.bytes, File(notesPath).readAsBytesSync());
+      });
+
+      test("keeps staging an image the harness takes as an image", () async {
+        final outcome = await remote().routeHostPaths(
+          paths: [imagePath],
+          attachmentsSupported: true,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.attachments.single.kind, ComposerAttachmentKind.image);
+        expect(outcome.attachments.single.mime, "image/png");
+      });
+
+      test("stages an image the harness can't take as a file", () async {
+        final outcome = await remote().routeHostPaths(
+          paths: [imagePath],
+          attachmentsSupported: false,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        final file = outcome.attachments.single;
+        expect(file.kind, ComposerAttachmentKind.file);
+        expect(file.filename, "shot.png");
+        expect(file.bytes, File(imagePath).readAsBytesSync());
+      });
+
+      test("turns a folder away with its own reason", () async {
+        final outcome = await remote().routeHostPaths(
+          paths: [folderPath],
+          attachmentsSupported: true,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.attachments, isEmpty);
+        expect(outcome.rejections, {ComposerAttachRejectionReason.folderNotTransferable: 1});
+      });
+
+      test("turns away a file over the rest of the budget without reading it", () async {
+        final fileClient = _OversizedImageFileClient();
+
+        final outcome = await remote(fileClient: fileClient).routeHostPaths(
+          paths: ["/photos/huge.png"],
+          attachmentsSupported: false,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.rejections, {ComposerAttachRejectionReason.overBudget: 1});
+        expect(fileClient.fullReads, 0);
+      });
+
+      test("judges each file against the budget the earlier ones left", () async {
+        final notesBytes = File(notesPath).lengthSync();
+
+        final outcome = await remote().routeHostPaths(
+          paths: [notesPath, notesPath],
+          attachmentsSupported: true,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: maxComposerPromptAttachmentBytes - notesBytes,
+        );
+
+        expect(outcome.attachments, hasLength(1));
+        expect(outcome.rejections, {ComposerAttachRejectionReason.overBudget: 1});
+      });
+
+      test("still inserts paths when the bridge runs on this computer", () async {
+        final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
+          paths: [notesPath],
+          attachmentsSupported: false,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.attachments, isEmpty);
+        expect(outcome.insertedText, notesPath);
+      });
+
+      test("stages copied files the same way", () async {
+        final outcome = await remote().routeClipboardPaths(
+          paths: [notesPath],
+          attachmentsSupported: true,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome?.attachments.single.kind, ComposerAttachmentKind.file);
+      });
+
+      test("an unresolved upload capability stages no file", () async {
+        final outcome = await remote().routeHostPaths(
+          paths: [notesPath, imagePath],
+          attachmentsSupported: false,
+          fileUploadsSupported: null,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.attachments, isEmpty);
+        expect(outcome.rejections, {
+          ComposerAttachRejectionReason.notTransferable: 1,
+          ComposerAttachRejectionReason.attachmentsUnsupported: 1,
+        });
+      });
+    });
+  });
+
+  group("routeImageBytes", () {
+    final png = bytesWithPrefix(prefix: _png);
+
+    test("stages the bytes as a file named after the picked file when the harness takes no images", () async {
+      final bytes = bytesWithPrefix(prefix: [0, 0, 0, 24, ..."ftypheic".codeUnits]);
+      final outcome = await dispatcherFor(
+        picked: ComposerPickedImage(bytes: bytes, filename: "IMG_0001.HEIC"),
+      ).pick(attachmentsSupported: false, fileUploadsSupported: true, stagedAttachmentBytes: 0);
+
+      final file = outcome?.attachments.single;
+      expect(file?.kind, ComposerAttachmentKind.file);
+      expect(file?.mime, "application/octet-stream");
+      expect(file?.filename, "IMG_0001.HEIC");
+      expect(file?.bytes, same(bytes));
+    });
+
+    test("names pasted bytes after their image type", () async {
+      final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        bytes: png,
+        filename: null,
+        attachmentsSupported: false,
+        fileUploadsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(outcome.attachments.single.kind, ComposerAttachmentKind.file);
+      expect(outcome.attachments.single.filename, "pasted-image.png");
+    });
+
+    test("rejects pasted bytes that are no supported image, since they have no name", () async {
+      await expectLater(
+        dispatcherFor(picked: null).routeImageBytes(
+          bytes: Uint8List.fromList(List<int>.generate(16, (index) => index)),
+          filename: null,
+          attachmentsSupported: false,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        ),
+        throwsA(isA<UnsupportedAttachmentImageError>()),
+      );
+    });
+
+    test("stages an image when the harness takes images, whatever the bridge saves", () async {
+      final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        bytes: png,
+        filename: null,
+        attachmentsSupported: true,
+        fileUploadsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(outcome.attachments.single.kind, ComposerAttachmentKind.image);
+      expect(outcome.attachments.single.filename, isNull);
+    });
+
+    test("turns the bytes away when neither the harness nor the bridge can take them", () async {
+      final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        bytes: png,
+        filename: null,
+        attachmentsSupported: false,
+        fileUploadsSupported: false,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(outcome.attachments, isEmpty);
+      expect(outcome.rejections, {ComposerAttachRejectionReason.attachmentsUnsupported: 1});
+    });
+
+    test("turns away an image or a file over the rest of the budget", () async {
+      final dispatcher = dispatcherFor(picked: null);
+      for (final attachmentsSupported in [true, false]) {
+        final outcome = await dispatcher.routeImageBytes(
+          bytes: png,
+          filename: null,
+          attachmentsSupported: attachmentsSupported,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: maxComposerPromptAttachmentBytes - png.length + 1,
+        );
+
+        expect(outcome.attachments, isEmpty, reason: "attachmentsSupported: $attachmentsSupported");
+        expect(outcome.rejections, {ComposerAttachRejectionReason.overBudget: 1});
+      }
     });
   });
 }

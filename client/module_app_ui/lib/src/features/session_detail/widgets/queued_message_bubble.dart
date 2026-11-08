@@ -421,26 +421,52 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
         runSpacing: PregoSpacing.sm,
         children: [
           for (final attachment in attachments)
-            Semantics(
-              image: true,
-              label: attachment.filename ?? context.loc.sessionDetailAttachedImage,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(prego.radius.lg),
-                child: Image.memory(
-                  attachment.bytes,
-                  width: _thumbnailSize,
-                  height: _thumbnailSize,
-                  cacheWidth: (_thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => ColoredBox(
-                    color: prego.colors.bgSurface2,
-                    child: Icon(TablerRegular.photo_off, color: prego.colors.textSecondary),
+            if (attachment.kind == ComposerAttachmentKind.file)
+              _QueuedFilePreview(
+                fileName: attachment.filename ?? context.loc.sessionDetailAttachedFile,
+                size: _thumbnailSize,
+              )
+            else
+              Semantics(
+                image: true,
+                label: attachment.filename ?? context.loc.sessionDetailAttachedImage,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(prego.radius.lg),
+                  child: Image.memory(
+                    attachment.bytes,
+                    width: _thumbnailSize,
+                    height: _thumbnailSize,
+                    cacheWidth: (_thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) => ColoredBox(
+                      color: prego.colors.bgSurface2,
+                      child: Icon(TablerRegular.photo_off, color: prego.colors.textSecondary),
+                    ),
                   ),
                 ),
               ),
-            ),
         ],
+      ),
+    );
+  }
+}
+
+/// A queued file, named the way its staged tile was.
+class const _QueuedFilePreview({required final String fileName, required final double size}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: fileName,
+      child: Tooltip(
+        message: fileName,
+        excludeFromSemantics: true,
+        child: ExcludeSemantics(
+          child: SizedBox.square(
+            dimension: size,
+            child: PregoFileAttachmentFace(fileName: fileName),
+          ),
+        ),
       ),
     );
   }
@@ -455,7 +481,7 @@ class const _QueuedAttachmentCount({required final int count}) extends Stateless
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(TablerRegular.photo, size: PregoIconSize.sm, color: prego.colors.textBrandPrimary),
+          Icon(TablerRegular.paperclip, size: PregoIconSize.sm, color: prego.colors.textBrandPrimary),
           const SizedBox(width: PregoSpacing.xs),
           Text(
             context.loc.sessionDetailQueuedAttachmentCount(count),

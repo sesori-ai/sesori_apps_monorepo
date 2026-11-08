@@ -52,8 +52,12 @@ Future<AppLocalizations> _pump(
       fail("AppLocalizations is not in scope.");
 }
 
-ComposerAttachment _attachment(String filename) =>
-    ComposerAttachment(mime: "image/png", bytes: Uint8List.fromList(const [1, 2, 3]), filename: filename);
+ComposerAttachment _attachment(String filename) => ComposerAttachment(
+  kind: ComposerAttachmentKind.image,
+  mime: "image/png",
+  bytes: Uint8List.fromList(const [1, 2, 3]),
+  filename: filename,
+);
 
 void main() {
   testWidgets("shows a prompt and its images as a sending bubble from the first frame", (tester) async {

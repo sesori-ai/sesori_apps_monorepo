@@ -76,6 +76,58 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   }
 
+  testWidgets("file tile shows a glyph and the extension, names the file and removes it", (tester) async {
+    final semantics = tester.ensureSemantics();
+    var removed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Center(
+            child: PregoFileAttachmentPreview(
+              fileName: "Quarterly report.pdf",
+              removeLabel: "Remove attachment",
+              onRemove: () => removed = true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byType(PregoFileAttachmentPreview)), const Size(52, 52));
+    expect(find.byIcon(TablerRegular.file), findsOneWidget);
+    expect(find.text("PDF"), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Quarterly report.pdf"),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSemantics(find.bySemanticsLabel("Quarterly report.pdf")),
+      matchesSemantics(label: "Quarterly report.pdf"),
+    );
+    final tile = tester.getRect(find.byType(PregoFileAttachmentPreview));
+    await tester.tapAt(tile.topRight + const Offset(-8, 8));
+    await tester.pumpAndSettle();
+    expect(removed, isTrue);
+    semantics.dispose();
+  });
+
+  testWidgets("file face shows no extension for a name without one", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: const Scaffold(
+          body: Center(
+            child: SizedBox.square(dimension: 64, child: PregoFileAttachmentFace(fileName: "Makefile")),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(TablerRegular.file), findsOneWidget);
+    expect(find.byType(Text), findsNothing);
+  });
+
   for (final direction in TextDirection.values) {
     testWidgets("edge fades track both scroll directions and clear after removal in $direction", (tester) async {
       Future<void> pump({required int count}) => tester.pumpWidget(
