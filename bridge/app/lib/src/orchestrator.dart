@@ -80,6 +80,7 @@ import "repositories/project_glossary_publication_repository.dart";
 import "repositories/project_glossary_repository.dart";
 import "repositories/project_glossary_scope_repository.dart";
 import "repositories/project_repository.dart";
+import "repositories/prompt_upload_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/scratch_repository.dart";
@@ -346,6 +347,10 @@ class Orchestrator({
       sessionDao: _database.sessionDao,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
+    final promptUploadRepository = PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: sesoriUploadsDirectory(),
+    );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
@@ -581,6 +586,7 @@ class Orchestrator({
       sessionMutationDispatcher: sessionMutationDispatcher,
       chatHistoryService: chatHistoryService,
       scratchRepository: scratchRepository,
+      promptUploadRepository: promptUploadRepository,
     );
     final sessionAbortService = SessionAbortService(
       continuations: sessionContinuations,

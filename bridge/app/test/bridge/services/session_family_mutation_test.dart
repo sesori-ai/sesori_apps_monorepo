@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -285,6 +286,7 @@ class _Fixture() {
       sessionMutationDispatcher: mutations,
       chatHistoryService: chatHistory.service,
       scratchRepository: _UnusedScratchRepository(),
+      promptUploadRepository: _NoPromptUploadRepository(),
     );
   }
 
@@ -562,4 +564,16 @@ class _UnusedScratchRepository() implements ScratchRepository {
 
   @override
   Future<void> deleteSessionDirectoryIfUnused({required String path}) => throw UnimplementedError();
+}
+
+class _NoPromptUploadRepository() implements PromptUploadRepository {
+  @override
+  Future<String> save({required String sessionId, required List<int> bytes, required String filename}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteSessions({required List<String> sessionIds}) async {}
+
+  @override
+  Future<void> deleteFileFoldersDatedBefore({required DateTime cutoff}) => throw UnimplementedError();
 }

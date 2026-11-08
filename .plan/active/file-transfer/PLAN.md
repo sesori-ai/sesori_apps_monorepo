@@ -160,9 +160,13 @@ this plan changes a wire contract and adds a bridge class.
   ```
 - **Layering.** The work splits across the usual bridge layers:
   - *API (Layer 1):* `FilesystemApi` gains `writeOwnerOnlyFile({path, bytes})`.
-    It writes with flush and mode 600 through `createHardenedFile` from
-    `foundation/data_directory_hardening.dart`. No `api/` class depends on
-    another.
+    It creates the file, sets mode 600 on POSIX with the async `hardenPath` from
+    `foundation/data_directory_hardening.dart` (on Windows `hardenPath` sets no
+    mode and the profile directory's permissions apply), then writes with flush.
+    The 700 and 600 modes elsewhere in this plan are POSIX-only too. It also
+    gains `createOwnerOnlyDirectory`, `createOwnerOnlyTemporaryDirectory` and
+    `listDirectoriesAsync`, so no upload path blocks the isolate. No `api/`
+    class depends on another.
   - *Repository (Layer 2):* a new `PromptUploadRepository` owns the uploads
     folder on disk. `SessionRepository` keeps only plugin-part mapping, the id
     reservation and the capability lookups.
@@ -210,20 +214,23 @@ this plan changes a wire contract and adds a bridge class.
     Lifetime). `SessionCreationService` is the only caller.
 - **`PromptUploadRepository`** (`bridge/app/lib/src/repositories/prompt_upload_repository.dart`),
   following `ScratchRepository`. It depends on `FilesystemApi` and the uploads
-  root path, and is constructed in `bridge_runtime_runner.dart`/`orchestrator.dart`.
+  root path, and is constructed in `Orchestrator.create`, beside `ScratchRepository`.
   - Its root is a new `sesoriUploadsDirectory()` = `~/.sesori/uploads` in
     sesori_bridge_foundation, beside worktrees and scratch (D1).
   - Layout: `~/.sesori/uploads/<sessionId>/<YYYY-MM-DD>-<random>/<name>`. The
     per-session level makes deleting a session's files one recursive delete. The
-    per-file folder is made with `FilesystemApi.createTemporaryDirectory`, so
-    names never collide and no dedupe logic is needed.
+    per-file folder is made with `FilesystemApi.createOwnerOnlyTemporaryDirectory`,
+    so names never collide and no dedupe logic is needed.
   - The session id is a bridge-generated `ses_<hex>` id from the bridge's own
     DB, never client text, so it is safe as a path segment. The repository still
     rejects an id that isn't a single plain segment, with a `StateError`.
-  - The root and folders are mode 700 and files are mode 600.
-    `FilesystemApi.createTemporaryDirectory` uses the default umask, so the
-    repository hardens the root, each session folder and each per-file folder
-    with `hardenPath` right after creating them. On a failed write
+  - The root and folders are mode 700 and files are mode 600. The root and
+    session folders are created with the default umask, so the repository
+    creates them through `FilesystemApi.createOwnerOnlyDirectory`, which hardens
+    them right after creating them; the repository never runs `chmod` itself.
+    `createOwnerOnlyTemporaryDirectory`, the layout's one per-file folder call,
+    hardens the folder it creates the same way, so its 700 mode doesn't rely on
+    Dart's `createTemp`. On a failed write
     the per-file folder is deleted and the error propagates, so the send fails
     visibly.
   - Methods: `save({sessionId, bytes, filename}) → path`,
@@ -233,12 +240,15 @@ this plan changes a wire contract and adds a bridge class.
   - Name sanitizing:
     - Keep only the basename.
     - Replace these with `_`: whitespace, control characters, `"` `'` and
-      backticks, `* ? < > | :`, and both path separators.
+      backticks, `* ? < > | :`, the shell syntax `$ ; & ( ) [ ] { } !`, and
+      both path separators.
     - Use `attachment` when the name is `.`, `..` or empty.
-    - Cap the stem so the whole name stays at most 120 characters.
+    - Cap the stem, on whole code points and keeping the extension, so the
+      whole name stays at most 120 characters and 240 UTF-8 bytes (ext4 allows
+      255 bytes per name, so long CJK names would otherwise fail to save).
 
-    Removing whitespace and quotes keeps the noted path tappable, and keeps it
-    shell-safe for agents.
+    Removing whitespace and quotes keeps the noted path tappable, and removing
+    shell syntax keeps it one unquoted shell word for agents.
 - **Note text** is a visible text part (D3):
   ``Attached file "My Report.pdf": `/Users/me/.sesori/uploads/ses_3f9a…/2026-11-08-k3j2/My_Report.pdf` ``.
   The original name stays readable, and the path is inline code, so it opens the
@@ -364,12 +374,26 @@ this plan changes a wire contract and adds a bridge class.
   - One pure module_core function, `promptFilesSentEvent({attachments})`,
     returns the event or `null`, so the three seams share the rule.
   - *Privacy:* no names, extensions, mimes, sizes, paths or ids.
-  - *Desktop:* `DesktopProductAnalyticsDeliveryService` maps it to `null`, like
-    `transcript_prompts_opened`, because it is outside the warehouse allowlist.
-    Desktop-originated prompts are therefore not counted until a later change
-    widens that allowlist (auth server plus analytics platform).
-  - *Reporting:* read in GA4 explorations, like `transcript_prompts_opened` and
-    `founder_call_*`. No curated BigQuery model until a dashboard needs it.
+  - *Desktop (user follow-up, 2026-11-08):* recorded on desktop too.
+    `DesktopProductAnalyticsDeliveryService` returns its parameters, and the
+    desktop allowlist is widened in the other repositories:
+    - `sesori_auth_server`: `ProductAnalyticsEventName.PromptFilesSent`, its two
+      parameter enums and a `z.strictObject` branch in
+      `productAnalyticsEventBodySchema` (`src/types/product-analytics.ts`), plus
+      tests. Until this is deployed, the server answers 400 and the desktop
+      client drops the event without retrying.
+    - `sesori_analytics_platform`: the event and its `file_count` and `source`
+      columns in `sql/10_events_flattened.sql` (allowlist, parameter list,
+      value check, projection), `tests/schema_allowlist_assertions.sql`,
+      `tests/metric_contract_assertions.sql`, and the event table in
+      `docs/reference/full-runbook.md`. This also brings the mobile GA4 rows into
+      the warehouse.
+    - **Merge order:** the auth server change is deployed and the analytics
+      platform change is merged before, or together with, the client step 8
+      PR, so no desktop event is dropped. The step 8 PR body records this.
+  - *Reporting:* the flattened events model above. A curated metric (for
+    example a count in `20_user_activity_daily.sql`) waits until a dashboard
+    needs it.
 
 ## PR series (slug `file-transfer`)
 
@@ -382,7 +406,7 @@ this plan changes a wire contract and adds a bridge class.
 | 5 | `⚙️ [file-transfer] Send any file to a bridge on another computer [step 5/10]` | 4 | ~1,350 |
 | 6 | `⚙️ [file-transfer] Pick photos or any file on mobile [step 6/10]` | 5 | ~700 |
 | 7 | `⚙️ [file-transfer] Paste files copied in the file manager on desktop [step 7/10]` | 1 (parallel ok) | ~350 |
-| 8 | `🌿 [file-transfer] Report accepted prompts that carry files [step 8/10]` | 5, 6, 7 | ~350 |
+| 8 | `⚙️ [file-transfer] Report accepted prompts that carry files [step 8/10]` | 5, 6, 7, and the auth server and analytics platform PRs | ~350, plus ~150 and ~150 in the other two repos |
 | 9 | `🌱 [file-transfer] Reconcile the attachments regression docs [step 9/10]` | 2-8 | ~150 |
 | 10 | `🌱 [file-transfer] Record the verification and retire the plan [step 10/10]` | 9 | ~100 |
 
@@ -403,16 +427,19 @@ then adds the attachment source to both.
 ### Step 2 (🚧: host file writes, path safety, lifecycle hook)
 - `bridge/sesori_bridge_foundation/.../sesori_data_directory.dart`: add
   `sesoriUploadsDirectory()`.
-- `bridge/app/lib/src/api/filesystem_api.dart`: add `writeOwnerOnlyFile`.
+- `bridge/app/lib/src/api/filesystem_api.dart`: add `writeOwnerOnlyFile`,
+  `createOwnerOnlyDirectory`, `createOwnerOnlyTemporaryDirectory` and
+  `listDirectoriesAsync`.
 - `bridge/app/lib/src/repositories/prompt_upload_repository.dart`: new, as
   described above: `save`, `deleteSessions`, `deleteFileFoldersDatedBefore`, the
   layout, the session-id segment check and the name sanitizing.
 - `bridge/app/lib/src/services/session_deletion_service.dart`: take
   `PromptUploadRepository`, and delete the family's uploads in `onDeleted`.
-- `bridge_runtime_runner.dart` and `orchestrator.dart`: construct the
-  repository and pass it in.
-- Tests: sanitizing, modes, layout, the segment check, a failed write removing its
-  folder, the dated delete, and the deletion hook (every family member, whatever
+- `orchestrator.dart`: construct the repository and pass it in.
+- Tests: the new `FilesystemApi` methods (modes, missing parents, an existing
+  folder), sanitizing, modes, layout, the segment check, a failed write removing
+  its folder, the dated delete, no synchronous probe in the delete or the sweep,
+  and the deletion hook (every family member, whatever
   `deleteSessionFolder` says, failure logged and not propagated).
 - PR body: **What**: the bridge can keep prompt uploads per session and removes
   them when a session is deleted. **Expected result**: no user-visible or
@@ -432,7 +459,7 @@ then adds the attachment source to both.
   the two capability lookups, and `createSession(reservedSessionId:)`.
 - `session_prompt_service.dart` and `session_creation_service.dart`: call the
   delivery service as described above.
-- `bridge_runtime_runner.dart` and `orchestrator.dart`: wire in the service.
+- `orchestrator.dart`: wire in the service.
 - `docs/HARNESS_CAPABILITIES.md`: add a short section on whether each harness
   reads a saved file, and whether it asks first. Fill it in from the live checks.
 - Plan review: approved by `architecture-plan-review` on 2026-11-08 after one
@@ -524,7 +551,7 @@ then adds the attachment source to both.
   - A copied web link still pastes as text.
   - A copied image still pastes as an image.
 
-### Step 8 (🌿: one closed analytics event at existing seams)
+### Step 8 (⚙️: one closed analytics event at existing seams, across three repos)
 - module_core, following `add-analytics`:
   - `product_analytics_event.dart`: `PromptFilesSentEvent` (`prompt_files_sent`)
     with `AnalyticsFileCountBucket` and `AnalyticsFileSource`, as described above.
@@ -538,16 +565,23 @@ then adds the attachment source to both.
     (`SessionDetailCubit`, and create and follow-up in `SessionLaunchService`).
 - module_app_ui: pass the source at the drop and paste call sites in
   `PromptInput`.
-- module_desktop_core: `PromptFilesSentEvent() => null` in the delivery switch,
-  with the reason.
+- module_desktop_core: `PromptFilesSentEvent() => event.parameters` in the
+  delivery switch.
+- Cross-repo PRs, each in its own worktree under
+  `/Users/alexandrudochioiu/.claude-worktrees/<repo>/<name>` and following that
+  repo's `AGENTS.md`: `sesori_auth_server` and `sesori_analytics_platform`, as
+  described under Analytics. They merge (and the auth server deploys) first.
 - `docs/regression/analytics.md`: add the event, its parameters and where it
   fires.
 - Tests: exact wire name and parameter values, each bucket and `mixed`; emitted
   only on success and only with a file attachment; not for image-only prompts;
-  no sensitive values; the desktop switch returns `null`.
+  no sensitive values; the desktop switch returns the two parameters. In the
+  auth server, the schema accepts every valid value and rejects unknown ones; in
+  the analytics platform, the fixture assertions cover the event.
 - Expected result: no user-visible change. On mobile, an accepted prompt with
-  files sends one `prompt_files_sent` to Firebase. Desktop sends nothing new. No
-  database change.
+  files sends one `prompt_files_sent` to Firebase; on desktop, one to the auth
+  server's product events. No client database change; the auth server stores
+  the new event in its existing product events collection.
 
 ## Complexity budget
 
@@ -580,7 +614,7 @@ then adds the attachment source to both.
   - deletion hooks on paths other than `SessionDeletionService`, or a startup
     orphan reconcile (the sweep covers them);
   - a startup sweep or timer, or content-hash dedupe;
-  - a curated warehouse model or desktop delivery for the analytics event;
+  - a curated warehouse metric for the analytics event (only its flattened rows);
   - upload progress UI, or a hidden note with a transcript file chip;
   - Claude `--add-dir` (D1 = A);
   - mime sniffing for non-images, or `file_picker`.
@@ -651,7 +685,6 @@ then adds the attachment source to both.
     upload, whichever comes first. A session that runs past 30 days loses its
     older files. Files of a create that bound to an existing session, of a
     failed create, or of a session removed outside Sesori go only by age.
-  - `prompt_files_sent` is not delivered from desktop.
   - An image the harness takes is always sent inline and downscaled. Its original
     can't be sent as a file.
   - Some harnesses ask before reading outside the session folder.
@@ -664,7 +697,8 @@ then adds the attachment source to both.
 | Automated: shared | L1 | The flag is omitted → `false`, and it round-trips |
 | Automated: bridge/app | L2 | Image to a capable plugin stays inline. An octet-stream part is saved and replaced in place. An image to Grok is saved. Create joins the notes into `userVisibleText`. An accepted retry isn't saved again. Sanitizing (`../x`, `a\b`, `.`, spaces, 300 characters), 600/700 modes, one folder per file under the session's folder, and a sweep that removes only folders over 30 days, skips unparseable ones and keeps session folders. Create saves under the id it then commits; on the existing-binding path it commits the bound id. Deleting a session family removes every member's upload folder whatever `deleteSessionFolder` says, and a failed upload delete is logged and doesn't fail the delete. The handler sets the flag. |
 | Automated: module_core | L2 | The full routing table, including old bridge, folder, over budget, Grok image and the local path. `canDeliverComposerAttachments`. Repository mapping and the 404 fallback. `routeClipboardPaths` with all, some or none of the paths existing. `prompt_files_sent`: wire name and values, buckets, `mixed`, success-only at all three seams, none for image-only prompts. |
-| Automated: module_desktop_core | L1 | The delivery switch returns `null` for `prompt_files_sent`. |
+| Automated: module_desktop_core | L1 | The delivery switch returns the two parameters for `prompt_files_sent`. |
+| Automated: auth server and analytics platform | L1 | The schema accepts the event with every valid value and rejects others; the warehouse fixture assertions cover it. |
 | Automated: module_app_ui | L2 | File tile in the strip, queued bubble and launch view. Clear rules. Plus gating. Source menu. Paste order with a fake `FileClipboard`. |
 | Automated: client/app | L1 | The picker dispatches by source and handles `oversizedCount` (with fake channels) |
 | iOS simulator → `sesori-local-testing` bridge slot (remote from the phone) | L3 | A Photos image to Claude goes inline (regression). A Files PDF and a `.txt` reach the agent, which quotes them, and the noted path opens the preview. A 49 MB file sends, and a 51 MB file gets the notice. Deleting that session from the app removes its folder under `~/.sesori/uploads`. The menu shows Photos only on a Grok-less old-bridge path, which is automated only. |
@@ -703,7 +737,9 @@ a released v1.11.0 bridge live is optional.
   before copying. `file_selector` on iOS.
 - **D6. Analytics: B.** One closed event, `prompt_files_sent`, when a prompt with
   saved files is accepted, with a file-count bucket and the source (picker, drop
-  or paste). Built per `add-analytics` in step 8.
+  or paste). Built per `add-analytics` in step 8. Follow-up the same day:
+  record it on desktop too, by widening the auth server and warehouse
+  allowlists (option B over mobile-only).
 
 ### Critical files
 - bridge/app/lib/src/services/prompt_part_delivery_service.dart (new)

@@ -56,8 +56,17 @@ String sesoriWorktreesDirectory() => path.join(_sesoriHomeDirectory(), "worktree
 /// Throws [StateError] when the home environment variable is unset.
 String sesoriScratchDirectory() => path.join(_sesoriHomeDirectory(), "scratch");
 
-/// `<home>/.sesori`, the one home folder that holds Sesori's worktrees and
-/// scratch folders.
+/// The root that holds the files sent with prompts, one folder per session:
+/// `<home>/.sesori/uploads`.
+///
+/// A hidden home folder, like the scratch root, so cloud-sync tools and
+/// editors leave the files alone, and outside every project, so agents read
+/// them by absolute path. Shared by every bridge data directory. Throws
+/// [StateError] when the home environment variable is unset.
+String sesoriUploadsDirectory() => path.join(_sesoriHomeDirectory(), "uploads");
+
+/// `<home>/.sesori`, the one home folder that holds Sesori's worktrees,
+/// scratch folders and prompt uploads.
 String _sesoriHomeDirectory() => path.join(_requireUserHome(environment: Platform.environment), ".sesori");
 
 /// Resolves the persistent attachment root shared by every bridge data directory

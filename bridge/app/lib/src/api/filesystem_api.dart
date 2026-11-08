@@ -2,6 +2,8 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 
+import "../foundation/data_directory_hardening.dart";
+
 /// Layer 1 data access over the host filesystem (`dart:io`).
 ///
 /// Each method is a thin wrapper around a single `dart:io` operation. They
@@ -32,6 +34,13 @@ class const FilesystemApi() {
   /// Lists the immediate child directories of [path].
   List<Directory> listDirectories({required String path}) {
     return Directory(path).listSync(followLinks: false).whereType<Directory>().toList();
+  }
+
+  /// Asynchronous [listDirectories], so a large or slow folder does not block
+  /// the isolate.
+  Future<List<Directory>> listDirectoriesAsync({required String path}) async {
+    final entries = await Directory(path).list(followLinks: false).toList();
+    return entries.whereType<Directory>().toList();
   }
 
   /// Whether [directoryPath] contains a `.git` entry (a git working copy).
@@ -97,6 +106,34 @@ class const FilesystemApi() {
   /// random characters, and returns its path.
   Future<String> createTemporaryDirectory({required String parent, required String prefix}) async {
     final directory = await Directory(parent).createTemp(prefix);
+    return directory.path;
+  }
+
+  /// Writes [bytes] to the file at [path], which only the current user can
+  /// read or write, and flushes it to disk before completing.
+  Future<void> writeOwnerOnlyFile({required String path, required List<int> bytes}) async {
+    final file = await File(path).create();
+    await hardenPath(targetPath: path, mode: ownerOnlyFileMode);
+    await file.writeAsBytes(bytes, flush: true);
+  }
+
+  /// Creates the directory at [path] and any missing parents, then lets only
+  /// the current user open it. Hardens an existing directory too.
+  Future<void> createOwnerOnlyDirectory({required String path}) async {
+    await Directory(path).create(recursive: true);
+    await hardenPath(targetPath: path, mode: ownerOnlyDirectoryMode);
+  }
+
+  /// [createTemporaryDirectory], but only the current user can open the new
+  /// directory. When hardening fails, removes the directory and rethrows.
+  Future<String> createOwnerOnlyTemporaryDirectory({required String parent, required String prefix}) async {
+    final directory = await Directory(parent).createTemp(prefix);
+    try {
+      await hardenPath(targetPath: directory.path, mode: ownerOnlyDirectoryMode);
+    } on Object {
+      await directory.delete(recursive: true);
+      rethrow;
+    }
     return directory.path;
   }
 
