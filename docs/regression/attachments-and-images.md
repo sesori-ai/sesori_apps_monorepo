@@ -85,8 +85,8 @@ content the transcript renders live and after reload.
   original bytes and name (a file glyph over its extension, the name as its
   tooltip and label); a folder is not added. On an older bridge on another
   computer nothing but a stageable image is added. Either way one notice has a
-  line per reason (file, folder, images the agent doesn't take, the 50 MB
-  budget), each counting the files turned away for it. This works regardless of
+  line per reason (file, folder, a path that couldn't be read, images the
+  agent doesn't take, the 50 MB budget), each counting the files turned away for it. This works regardless of
   backend attachment support. The plus action is offered while the backend
   takes images or the bridge saves uploads. A pasted or picked image for a
   backend without images (Grok) stages as a file, named after the picked file

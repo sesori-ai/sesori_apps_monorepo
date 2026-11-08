@@ -516,6 +516,18 @@ void main() {
         expect(outcome?.attachments.single.kind, ComposerAttachmentKind.file);
       });
 
+      test("names a path that is gone as unreadable", () async {
+        final outcome = await remote().routeHostPaths(
+          paths: ["$notesPath.gone"],
+          attachmentsSupported: false,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+
+        expect(outcome.attachments, isEmpty);
+        expect(outcome.rejections, {ComposerAttachRejectionReason.unreadable: 1});
+      });
+
       test("an unresolved upload capability stages no file", () async {
         final outcome = await remote().routeHostPaths(
           paths: [notesPath, imagePath],

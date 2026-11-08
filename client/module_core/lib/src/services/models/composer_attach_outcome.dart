@@ -19,11 +19,14 @@ final class const ComposerAttachOutcome({
 /// Why a chosen file could not be added.
 enum ComposerAttachRejectionReason() {
   /// Not an image, and the bridge on another computer can't take other files
-  /// (it predates file uploads), or the file couldn't be read.
+  /// (it predates file uploads).
   notTransferable,
 
   /// A folder, which can't be sent to a bridge on another computer.
   folderNotTransferable,
+
+  /// Gone, not a regular file, or failed to read.
+  unreadable,
 
   /// An image the backend does not accept, on a bridge that can't take it as
   /// a file either.

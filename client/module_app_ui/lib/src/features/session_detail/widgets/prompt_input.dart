@@ -737,25 +737,13 @@ class _PromptInputState() extends State<PromptInput> {
     // Switching the new-session harness to one that drops image parts strands
     // the images staged for the previous pick, and a bridge that turns out not
     // to save uploads strands the files, so each goes with its capability.
-    // Only a known `false` drops them: null is a capability still resolving,
-    // such as during a dropped connection, and keeps what is staged.
-    final dropsImages = widget.attachmentsSupported == false;
-    final dropsFiles = widget.fileUploadsSupported == false;
-    if ((dropsImages || dropsFiles) &&
-        _attachments.any(
-          (attachment) => switch (attachment.kind) {
-            ComposerAttachmentKind.image => dropsImages,
-            ComposerAttachmentKind.file => dropsFiles,
-          },
-        )) {
-      setState(
-        () => _attachments.removeWhere(
-          (attachment) => switch (attachment.kind) {
-            ComposerAttachmentKind.image => dropsImages,
-            ComposerAttachmentKind.file => dropsFiles,
-          },
-        ),
-      );
+    bool stranded(ComposerAttachment attachment) => isComposerAttachmentStranded(
+      attachment: attachment,
+      inlineImages: widget.attachmentsSupported,
+      fileUploads: widget.fileUploadsSupported,
+    );
+    if (_attachments.any(stranded)) {
+      setState(() => _attachments.removeWhere(stranded));
       _reportAttachments();
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController ||
@@ -2770,6 +2758,7 @@ class _PromptInputState() extends State<PromptInput> {
           switch (reason) {
             ComposerAttachRejectionReason.notTransferable => loc.sessionDetailFilesNotTransferable(count),
             ComposerAttachRejectionReason.folderNotTransferable => loc.sessionDetailFoldersNotTransferable(count),
+            ComposerAttachRejectionReason.unreadable => loc.sessionDetailFilesUnreadable(count),
             ComposerAttachRejectionReason.attachmentsUnsupported => loc.sessionDetailImagesNotAccepted(count),
             ComposerAttachRejectionReason.overBudget => loc.sessionDetailAttachmentsOverBudget(count),
           },

@@ -1076,12 +1076,17 @@
     "description": "Notice shown when picked, dropped or pasted folders could not be added because the active bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
     "placeholders": {"count": {"type": "int"}}
   },
+  "sessionDetailFilesUnreadable": "{count, plural, =1{A file wasn't added. It couldn't be read.} other{{count} files weren't added. They couldn't be read.}}",
+  "@sessionDetailFilesUnreadable": {
+    "description": "Notice shown when picked, dropped or pasted paths could not be added because they are gone, are not regular files, or failed to read, on a bridge on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
+    "placeholders": {"count": {"type": "int"}}
+  },
   "sessionDetailImagesNotAccepted": "{count, plural, =1{An image wasn't added. This agent doesn't accept images.} other{{count} images weren't added. This agent doesn't accept images.}}",
   "@sessionDetailImagesNotAccepted": {
     "description": "Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer that can't save them as files, so neither their paths nor a file upload can be used. Shown on its own line alongside the other reasons' notices when a drop has several.",
     "placeholders": {"count": {"type": "int"}}
   },
-  "sessionDetailAttachmentsOverBudget": "{count, plural, =1{A file wasn't added. Attachments are limited to 50 MB per message.} other{{count} files weren't added. Attachments are limited to 50 MB per message.}}",
+  "sessionDetailAttachmentsOverBudget": "{count, plural, =1{An attachment wasn't added. Attachments are limited to 50 MB per message.} other{{count} attachments weren't added. Attachments are limited to 50 MB per message.}}",
   "@sessionDetailAttachmentsOverBudget": {
     "description": "Notice shown when picked, dropped or pasted images or files could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
     "placeholders": {"count": {"type": "int"}}

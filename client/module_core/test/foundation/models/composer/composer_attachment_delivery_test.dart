@@ -30,4 +30,11 @@ void main() {
     expect(canDeliverComposerAttachments(attachments: [image], inlineImages: null, fileUploads: true), isFalse);
     expect(canDeliverComposerAttachments(attachments: [file], inlineImages: true, fileUploads: null), isFalse);
   });
+
+  test("only a known false strands a staged attachment of its kind", () {
+    expect(isComposerAttachmentStranded(attachment: image, inlineImages: false, fileUploads: true), isTrue);
+    expect(isComposerAttachmentStranded(attachment: file, inlineImages: true, fileUploads: false), isTrue);
+    expect(isComposerAttachmentStranded(attachment: image, inlineImages: null, fileUploads: false), isFalse);
+    expect(isComposerAttachmentStranded(attachment: file, inlineImages: false, fileUploads: null), isFalse);
+  });
 }

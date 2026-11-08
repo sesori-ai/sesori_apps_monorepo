@@ -265,6 +265,34 @@ void main() {
     expect(bubble.isCommand, isTrue);
   });
 
+  testWidgets("shows a file beside an image as a named file face", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _pump(
+      tester,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Read the report"),
+        attachments: [
+          _attachment("a.png"),
+          ComposerAttachment(
+            kind: ComposerAttachmentKind.file,
+            mime: composerFileAttachmentMime,
+            bytes: Uint8List.fromList(const [1, 2, 3]),
+            filename: "report.pdf",
+          ),
+        ],
+      ),
+      transcriptWidth: null,
+    );
+
+    final bubble = find.byType(QueuedMessageBubble);
+    expect(find.descendant(of: bubble, matching: find.byType(Image)), findsOneWidget);
+    expect(find.descendant(of: bubble, matching: find.byType(PregoFileAttachmentFace)), findsOneWidget);
+    expect(find.descendant(of: bubble, matching: find.text("PDF")), findsOneWidget);
+    expect(find.bySemanticsLabel("report.pdf"), findsOneWidget);
+    expect(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "report.pdf"), findsOneWidget);
+    semantics.dispose();
+  });
+
   testWidgets("shows only the images of an attachment-only prompt", (tester) async {
     await _pump(
       tester,

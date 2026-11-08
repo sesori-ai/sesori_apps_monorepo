@@ -2575,6 +2575,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{A folder wasn\'t added. Folders can\'t be sent to another computer.} other{{count} folders weren\'t added. Folders can\'t be sent to another computer.}}'**
   String sessionDetailFoldersNotTransferable(int count);
 
+  /// Notice shown when picked, dropped or pasted paths could not be added because they are gone, are not regular files, or failed to read, on a bridge on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{A file wasn\'t added. It couldn\'t be read.} other{{count} files weren\'t added. They couldn\'t be read.}}'**
+  String sessionDetailFilesUnreadable(int count);
+
   /// Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer that can't save them as files, so neither their paths nor a file upload can be used. Shown on its own line alongside the other reasons' notices when a drop has several.
   ///
   /// In en, this message translates to:
@@ -2584,7 +2590,7 @@ abstract class AppLocalizations {
   /// Notice shown when picked, dropped or pasted images or files could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{A file wasn\'t added. Attachments are limited to 50 MB per message.} other{{count} files weren\'t added. Attachments are limited to 50 MB per message.}}'**
+  /// **'{count, plural, =1{An attachment wasn\'t added. Attachments are limited to 50 MB per message.} other{{count} attachments weren\'t added. Attachments are limited to 50 MB per message.}}'**
   String sessionDetailAttachmentsOverBudget(int count);
 
   /// Notice shown when files are dropped on the composer while it is recording or transcribing voice input.

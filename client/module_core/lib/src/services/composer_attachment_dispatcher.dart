@@ -151,7 +151,7 @@ class ComposerAttachmentDispatcher({
         case HostDirectory():
           return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.folderNotTransferable);
         case HostOtherPath():
-          return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
+          return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.unreadable);
       }
       final isImage = await _hostFiles.imageFormatOf(path: hostPath) != null;
       if (isImage && (attachmentsSupported ?? false)) {
@@ -181,7 +181,7 @@ class ComposerAttachmentDispatcher({
       );
     } on Object catch (error, stackTrace) {
       logw("Could not read $hostPath for the composer; turning it away", error, stackTrace);
-      return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);
+      return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.unreadable);
     }
   }
 

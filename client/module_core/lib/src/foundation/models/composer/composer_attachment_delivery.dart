@@ -13,3 +13,15 @@ bool canDeliverComposerAttachments({
     ComposerAttachmentKind.file => fileUploads ?? false,
   },
 );
+
+/// Whether a staged [attachment] can no longer reach the agent and should be
+/// cleared: only a known `false` strands it. Null is a capability still
+/// resolving, such as during a dropped connection, and keeps what is staged.
+bool isComposerAttachmentStranded({
+  required ComposerAttachment attachment,
+  required bool? inlineImages,
+  required bool? fileUploads,
+}) => switch (attachment.kind) {
+  ComposerAttachmentKind.image => inlineImages == false,
+  ComposerAttachmentKind.file => fileUploads == false,
+};

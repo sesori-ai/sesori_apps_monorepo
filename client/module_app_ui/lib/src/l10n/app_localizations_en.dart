@@ -1384,6 +1384,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sessionDetailFilesUnreadable(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files weren\'t added. They couldn\'t be read.',
+      one: 'A file wasn\'t added. It couldn\'t be read.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String sessionDetailImagesNotAccepted(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1399,8 +1410,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count files weren\'t added. Attachments are limited to 50 MB per message.',
-      one: 'A file wasn\'t added. Attachments are limited to 50 MB per message.',
+      other: '$count attachments weren\'t added. Attachments are limited to 50 MB per message.',
+      one: 'An attachment wasn\'t added. Attachments are limited to 50 MB per message.',
     );
     return '$_temp0';
   }

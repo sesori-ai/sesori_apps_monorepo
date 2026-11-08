@@ -5831,7 +5831,7 @@ void main() {
     await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
-    expect(find.text("A file wasn't added. Attachments are limited to 50 MB per message."), findsOneWidget);
+    expect(find.text("An attachment wasn't added. Attachments are limited to 50 MB per message."), findsOneWidget);
     // Nothing was staged, so the composer stays in its resting pill.
     expect(find.byType(EditableText), findsNothing);
   });
