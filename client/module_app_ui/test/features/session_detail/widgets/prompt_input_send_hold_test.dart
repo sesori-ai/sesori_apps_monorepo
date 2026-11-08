@@ -207,9 +207,15 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(sendSpins(tester), isFalse);
+    expect(sent, isEmpty);
+
+    // The old draft's image is still being prepared, but it will be
+    // discarded, so Send in the new draft goes out at once.
+    await pressSend(tester);
+    expect(sent.single.attachments, isEmpty);
 
     downscale.result.complete(const ComposerImageKept());
     await tester.pumpAndSettle();
-    expect(sent, isEmpty);
+    expect(sent, hasLength(1));
   });
 }

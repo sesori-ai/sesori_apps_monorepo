@@ -12,7 +12,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// so the GIF keeps its animation, and it turns HEIC into JPEG. It also keeps a
 /// 24 MP photo from reaching core larger than core will decode. Android
 /// re-encodes any resized pick, which flattens an animated GIF, so Android hands
-/// over the original and core downscales it.
+/// over the original: core downscales it unless it is a GIF, which stays at its
+/// original size.
 @LazySingleton(as: ComposerFilePicker)
 class FlutterComposerImagePicker({required final ImagePicker picker}) implements ComposerFilePicker {
   static final double _maxDimension = ComposerImageDownscaleBuilder.maxLongSide.toDouble();

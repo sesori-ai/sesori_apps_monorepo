@@ -238,7 +238,12 @@ class _PromptInputState() extends State<PromptInput> {
   bool _voiceBusy = false;
   int _pendingInserts = 0;
 
-  /// Settles once every pick, paste and drop started so far has settled.
+  /// Picks, pastes and drops in flight for the current paste generation; the
+  /// only ones Send waits for, since older ones are discarded when they land.
+  int _generationInserts = 0;
+
+  /// Settles once every pick, paste and drop started in the current paste
+  /// generation has settled.
   Future<void> _insertsSettled = Future<void>.value();
 
   /// Set while Send waits for inserts to stage; completing it abandons that
@@ -601,7 +606,7 @@ class _PromptInputState() extends State<PromptInput> {
     _cancelSendWait = cancelled;
     setState(() => _sendAwaitsInserts = true);
     try {
-      while (_pendingInserts > 0 && !cancelled.isCompleted) {
+      while (_generationInserts > 0 && !cancelled.isCompleted) {
         await Future.any([_insertsSettled, cancelled.future]);
       }
       return mounted && !cancelled.isCompleted;
@@ -609,6 +614,14 @@ class _PromptInputState() extends State<PromptInput> {
       _cancelSendWait = null;
       if (mounted) setState(() => _sendAwaitsInserts = false);
     }
+  }
+
+  /// Makes every pick, paste and drop in flight stale. Their results are
+  /// discarded, so later inserts and Send no longer wait for them.
+  void _startPasteGeneration() {
+    _pasteGeneration++;
+    _generationInserts = 0;
+    _insertsSettled = Future<void>.value();
   }
 
   void _cancelHeldSend() {
@@ -621,7 +634,7 @@ class _PromptInputState() extends State<PromptInput> {
   Future<bool> _submitHeldComposer({required bool fromDictation}) async {
     // Checked without awaiting when nothing is in flight, so a plain send
     // still goes out in the same turn.
-    if (_pendingInserts > 0 && !await _awaitPendingInserts()) return false;
+    if (_generationInserts > 0 && !await _awaitPendingInserts()) return false;
     if (!mounted || !widget.canSend) return false;
 
     final wasFocused = _focusNode.hasFocus;
@@ -657,7 +670,7 @@ class _PromptInputState() extends State<PromptInput> {
     );
     if (stagedCommand != null) widget.onCommandCleared();
 
-    _pasteGeneration++;
+    _startPasteGeneration();
     if (_attachments.isNotEmpty) {
       setState(_attachments.clear);
       _reportAttachments();
@@ -683,14 +696,14 @@ class _PromptInputState() extends State<PromptInput> {
     final restorationRequested = widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
     if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
-      _pasteGeneration++;
+      _startPasteGeneration();
     }
     if (draftChanged || restorationRequested) {
       // A draft identity change means this state moved to another composer. A
       // restoration key change means a fast failed send reused this composer.
       // Both replace authored content exactly once, and abandon a send still
       // waiting for the old draft's images.
-      _pasteGeneration++;
+      _startPasteGeneration();
       _cancelHeldSend();
       _attachments.clear();
       _applyDraft(draft: widget.initialDraft, notify: false);
@@ -2714,9 +2727,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// stage in the order they were added even when an earlier one takes longer
   /// to downscale.
   _InsertTurn _startInsert() {
-    final turn = _InsertTurn(earlierSettled: _insertsSettled);
+    final turn = _InsertTurn(earlierSettled: _insertsSettled, pasteGeneration: _pasteGeneration);
     _insertsSettled = turn.settled;
     _pendingInserts++;
+    _generationInserts++;
     _reportBusy();
     return turn;
   }
@@ -2724,6 +2738,7 @@ class _PromptInputState() extends State<PromptInput> {
   void _settleInsert({required _InsertTurn turn}) {
     turn.settle();
     _pendingInserts--;
+    if (turn.pasteGeneration == _pasteGeneration) _generationInserts--;
     _reportBusy();
   }
 
@@ -3209,7 +3224,7 @@ class _PromptInputState() extends State<PromptInput> {
 }
 
 /// One pick, paste or drop in flight.
-final class _InsertTurn({required final Future<void> earlierSettled}) {
+final class _InsertTurn({required final Future<void> earlierSettled, required final int pasteGeneration}) {
   final _settled = Completer<void>();
 
   Future<void> get settled => _settled.future;
