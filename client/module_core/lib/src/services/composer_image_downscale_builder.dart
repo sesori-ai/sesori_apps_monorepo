@@ -27,15 +27,18 @@ final class const ComposerImageDownscaleFailed({
 /// image budgets coding backends accept.
 ///
 /// An image above [_thresholdBytes] that is not a GIF (GIFs keep their
-/// animation) is resized so its long side is at most [_maxLongSide] pixels,
+/// animation) is resized so its long side is at most [maxLongSide] pixels,
 /// never upscaled, and re-encoded as a JPEG. Transparency is composited onto
 /// white because JPEG has no alpha channel. The work runs off the calling
 /// isolate.
 @lazySingleton
 class const ComposerImageDownscaleBuilder() {
   static const _thresholdBytes = 1024 * 1024;
-  static const _maxLongSide = 2048;
-  static const _jpegQuality = 85;
+  /// The longest side, in pixels, of an image this builder re-encodes.
+  static const maxLongSide = 2048;
+
+  /// The JPEG quality this builder re-encodes at.
+  static const jpegQuality = 85;
   static const _maxDecodedPixels = 24 * 1024 * 1024;
 
   Future<ComposerImageDownscaleResult> downscale({
@@ -67,15 +70,15 @@ class const ComposerImageDownscaleBuilder() {
       // JPEG re-encoding drops the EXIF orientation, so apply it to the pixels.
       final oriented = image.bakeOrientation(frame);
       final longSide = math.max(oriented.width, oriented.height);
-      final resized = longSide <= _maxLongSide
+      final resized = longSide <= maxLongSide
           ? oriented
           : image.copyResize(
               oriented,
-              width: oriented.width >= oriented.height ? _maxLongSide : null,
-              height: oriented.width >= oriented.height ? null : _maxLongSide,
+              width: oriented.width >= oriented.height ? maxLongSide : null,
+              height: oriented.width >= oriented.height ? null : maxLongSide,
               interpolation: image.Interpolation.average,
             );
-      final encoded = image.encodeJpg(_onWhite(source: resized), quality: _jpegQuality);
+      final encoded = image.encodeJpg(_onWhite(source: resized), quality: jpegQuality);
       return encoded.length < bytes.length ? ComposerImageDownscaled(bytes: encoded) : const ComposerImageKept();
     } on Object catch (cause, stackTrace) {
       return ComposerImageDownscaleFailed(cause: cause, stackTrace: stackTrace);

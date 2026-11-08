@@ -4,12 +4,14 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 /// Mobile gallery picker for composer images.
 ///
-/// The plugin performs the platform re-encoding/downscale pass; shared core
-/// validates the returned bytes and creates the transport attachment.
+/// Shared core owns the staged-image size rule ([ComposerImageDownscaleBuilder])
+/// and validates the returned bytes. The plugin's native pass applies the same
+/// limits up front, which keeps a full-resolution photo out of memory and turns
+/// formats such as HEIC into a JPEG core can stage, so its picks arrive already
+/// within the rule.
 @LazySingleton(as: ComposerImagePicker)
 class FlutterComposerImagePicker({required final ImagePicker picker}) implements ComposerImagePicker {
-  static const double _maxDimension = 2048;
-  static const int _jpegQuality = 85;
+  static final double _maxDimension = ComposerImageDownscaleBuilder.maxLongSide.toDouble();
 
   final ImagePicker _picker = picker;
 
@@ -19,7 +21,7 @@ class FlutterComposerImagePicker({required final ImagePicker picker}) implements
       source: ImageSource.gallery,
       maxWidth: _maxDimension,
       maxHeight: _maxDimension,
-      imageQuality: _jpegQuality,
+      imageQuality: ComposerImageDownscaleBuilder.jpegQuality,
       requestFullMetadata: false,
     );
     if (file == null) return null;
