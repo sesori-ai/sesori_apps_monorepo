@@ -137,13 +137,18 @@ Record the results below and move the plan to `.plan/completed/`.
 
 ### Results
 
-Step 2 merged as #2403 (squash `eb1b489c5b`).
+Step 2 merged as #2403 (squash `eb1b489c5b`, PR head `0dfb5a8adf`). Commits
+after `cd5ad733d6` change docs only.
 
-- L1: Claude 500 and Codex 586 tests pass; `dart analyze --fatal-infos` is
-  clean for foundation, Claude, Codex and app; `tool/dart_format.sh` reports no
-  changes.
-- L3, local bridge slot 1, debug API only (no app UI, so no simulator), Claude
-  Code 2.1.318 and Codex 0.166.0, on 2026-11-07:
+- L1, in the step 2 worktree: `dart test` in `bridge/sesori_plugin_claude`
+  (500 pass, at `e13a3f4c19`; the plugin is unchanged after it) and in
+  `bridge/sesori_plugin_codex` (586 pass, at `cd5ad733d6`);
+  `dart analyze --fatal-infos` in foundation, Claude, Codex and app, clean;
+  `tool/dart_format.sh` on the touched packages, no changes.
+- L3, the bridge built from the code of `e13a3f4c19` (run before its rebase
+  onto main, which moved only docs), started with `sesori-local-testing` on
+  slot 1 and driven through its debug API only (no app UI, so no simulator).
+  Claude Code 2.1.318 and Codex 0.166.0, on 2026-11-07:
   - Claude: the new session quoted the note verbatim, and quoted it again after
     a bridge restart resumed it.
   - Codex: the agent declined to disclose its developer instructions. The
@@ -154,8 +159,8 @@ Step 2 merged as #2403 (squash `eb1b489c5b`).
   - Both test sessions were deleted through the bridge, which removed their
     transcript and rollout files; the test project was hidden and its
     directory removed.
-- The L3 run predates the review fix that reads a resumed Codex thread's
-  config with its rollout `cwd`. That path, where project-level
+- The L3 run predates `cd5ad733d6`, the review fix that reads a resumed
+  Codex thread's config with its rollout `cwd`. That path, where project-level
   `developer_instructions` are kept ahead of the note, is covered by the
   write-path unit test only.
 
