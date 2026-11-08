@@ -16,7 +16,7 @@ void main() {
     setUp(() {
       parent = Directory.systemTemp.createTempSync("prompt-upload-repository-");
       uploadsRoot = p.join(parent.path, "uploads");
-      repository = PromptUploadRepository(filesystemApi: const FilesystemApi(), uploadsRoot: uploadsRoot);
+      repository = PromptUploadRepository(filesystemApi: _AsyncOnlyFilesystemApi(), uploadsRoot: uploadsRoot);
     });
 
     tearDown(() => parent.delete(recursive: true));
@@ -66,6 +66,7 @@ void main() {
         "tab\tnew\nline": "tab_new_line",
         "bell\u0007.txt": "bell_.txt",
         "a\"b'c`d*e?f<g>h|i:j.txt": "a_b_c_d_e_f_g_h_i_j.txt",
+        r"a$b;c&d(e)f[g]h{i}j!k.txt": "a_b_c_d_e_f_g_h_i_j_k.txt",
         "${"x" * 296}.pdf": "${"x" * 116}.pdf",
         "a.${"e" * 300}": "a.${"e" * 118}",
       };
@@ -181,7 +182,17 @@ void main() {
   });
 }
 
-class _FailingWriteFilesystemApi() extends FilesystemApi {
+/// Fails on the synchronous probes, so a test fails when the repository
+/// blocks the isolate with one: the delete hook and the sweep run unawaited.
+class _AsyncOnlyFilesystemApi() extends FilesystemApi {
+  @override
+  FileSystemEntityType entityType({required String path}) => fail("probed $path synchronously");
+
+  @override
+  List<Directory> listDirectories({required String path}) => fail("listed $path synchronously");
+}
+
+class _FailingWriteFilesystemApi() extends _AsyncOnlyFilesystemApi {
   @override
   Future<void> writeOwnerOnlyFile({required String path, required List<int> bytes}) async {
     throw FileSystemException("No space left on device", path);
@@ -190,11 +201,11 @@ class _FailingWriteFilesystemApi() extends FilesystemApi {
 
 /// Removes each of [_racedPaths] just before the repository lists or deletes
 /// it, as a concurrent sweep or session delete would.
-class _RacingFilesystemApi({required final Set<String> _racedPaths}) extends FilesystemApi {
+class _RacingFilesystemApi({required final Set<String> _racedPaths}) extends _AsyncOnlyFilesystemApi {
   @override
-  List<Directory> listDirectories({required String path}) {
+  Future<List<Directory>> listDirectoriesAsync({required String path}) {
     _race(path: path);
-    return super.listDirectories(path: path);
+    return super.listDirectoriesAsync(path: path);
   }
 
   @override

@@ -65,6 +65,28 @@ void main() {
     expect(Directory(created).existsSync(), isTrue);
     expect(_mode(path: created), 0x1c0);
   }, testOn: "!windows");
+
+  test("owner-only file writes store the bytes in a file only the user can open", () async {
+    final directory = await Directory.systemTemp.createTemp("filesystem_api_test");
+    addTearDown(() => directory.delete(recursive: true));
+    final target = p.join(directory.path, "file.bin");
+
+    await const FilesystemApi().writeOwnerOnlyFile(path: target, bytes: [1, 2, 3]);
+
+    expect(File(target).readAsBytesSync(), [1, 2, 3]);
+    expect(_mode(path: target), 0x180);
+  }, testOn: "!windows");
+
+  test("async directory listing returns only the immediate child directories", () async {
+    final directory = await Directory.systemTemp.createTemp("filesystem_api_test");
+    addTearDown(() => directory.delete(recursive: true));
+    await Directory(p.join(directory.path, "a", "nested")).create(recursive: true);
+    await File(p.join(directory.path, "file.txt")).writeAsString("x");
+
+    final directories = await const FilesystemApi().listDirectoriesAsync(path: directory.path);
+
+    expect(directories.map((entry) => entry.path), [p.join(directory.path, "a")]);
+  });
 }
 
 int _mode({required String path}) => FileStat.statSync(path).mode & 0x1ff;

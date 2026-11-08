@@ -160,9 +160,11 @@ this plan changes a wire contract and adds a bridge class.
   ```
 - **Layering.** The work splits across the usual bridge layers:
   - *API (Layer 1):* `FilesystemApi` gains `writeOwnerOnlyFile({path, bytes})`.
-    It writes with flush and mode 600 through `createHardenedFile` from
-    `foundation/data_directory_hardening.dart`. No `api/` class depends on
-    another.
+    It creates the file, sets mode 600 with the async `hardenPath` from
+    `foundation/data_directory_hardening.dart`, then writes with flush. It also
+    gains `createOwnerOnlyDirectory`, `createOwnerOnlyTemporaryDirectory` and
+    `listDirectoriesAsync`, so no upload path blocks the isolate. No `api/`
+    class depends on another.
   - *Repository (Layer 2):* a new `PromptUploadRepository` owns the uploads
     folder on disk. `SessionRepository` keeps only plugin-part mapping, the id
     reservation and the capability lookups.
@@ -216,8 +218,8 @@ this plan changes a wire contract and adds a bridge class.
     sesori_bridge_foundation, beside worktrees and scratch (D1).
   - Layout: `~/.sesori/uploads/<sessionId>/<YYYY-MM-DD>-<random>/<name>`. The
     per-session level makes deleting a session's files one recursive delete. The
-    per-file folder is made with `FilesystemApi.createTemporaryDirectory`, so
-    names never collide and no dedupe logic is needed.
+    per-file folder is made with `FilesystemApi.createOwnerOnlyTemporaryDirectory`,
+    so names never collide and no dedupe logic is needed.
   - The session id is a bridge-generated `ses_<hex>` id from the bridge's own
     DB, never client text, so it is safe as a path segment. The repository still
     rejects an id that isn't a single plain segment, with a `StateError`.
@@ -225,9 +227,9 @@ this plan changes a wire contract and adds a bridge class.
     session folders are created with the default umask, so the repository
     creates them through `FilesystemApi.createOwnerOnlyDirectory`, which hardens
     them right after creating them; the repository never runs `chmod` itself.
-    Dart's `createTemp` already makes the per-file folder 700;
-    `FilesystemApi.createOwnerOnlyTemporaryDirectory` hardens it too, as
-    cheap insurance that doesn't rely on how Dart creates temp folders. On a failed write
+    `createOwnerOnlyTemporaryDirectory`, the layout's one per-file folder call,
+    hardens the folder it creates the same way, so its 700 mode doesn't rely on
+    Dart's `createTemp`. On a failed write
     the per-file folder is deleted and the error propagates, so the send fails
     visibly.
   - Methods: `save({sessionId, bytes, filename}) → path`,
@@ -237,14 +239,15 @@ this plan changes a wire contract and adds a bridge class.
   - Name sanitizing:
     - Keep only the basename.
     - Replace these with `_`: whitespace, control characters, `"` `'` and
-      backticks, `* ? < > | :`, and both path separators.
+      backticks, `* ? < > | :`, the shell syntax `$ ; & ( ) [ ] { } !`, and
+      both path separators.
     - Use `attachment` when the name is `.`, `..` or empty.
     - Cap the stem, on whole code points and keeping the extension, so the
       whole name stays at most 120 characters and 240 UTF-8 bytes (ext4 allows
       255 bytes per name, so long CJK names would otherwise fail to save).
 
-    Removing whitespace and quotes keeps the noted path tappable, and keeps it
-    shell-safe for agents.
+    Removing whitespace and quotes keeps the noted path tappable, and removing
+    shell syntax keeps it one unquoted shell word for agents.
 - **Note text** is a visible text part (D3):
   ``Attached file "My Report.pdf": `/Users/me/.sesori/uploads/ses_3f9a…/2026-11-08-k3j2/My_Report.pdf` ``.
   The original name stays readable, and the path is inline code, so it opens the
@@ -423,15 +426,19 @@ then adds the attachment source to both.
 ### Step 2 (🚧: host file writes, path safety, lifecycle hook)
 - `bridge/sesori_bridge_foundation/.../sesori_data_directory.dart`: add
   `sesoriUploadsDirectory()`.
-- `bridge/app/lib/src/api/filesystem_api.dart`: add `writeOwnerOnlyFile`.
+- `bridge/app/lib/src/api/filesystem_api.dart`: add `writeOwnerOnlyFile`,
+  `createOwnerOnlyDirectory`, `createOwnerOnlyTemporaryDirectory` and
+  `listDirectoriesAsync`.
 - `bridge/app/lib/src/repositories/prompt_upload_repository.dart`: new, as
   described above: `save`, `deleteSessions`, `deleteFileFoldersDatedBefore`, the
   layout, the session-id segment check and the name sanitizing.
 - `bridge/app/lib/src/services/session_deletion_service.dart`: take
   `PromptUploadRepository`, and delete the family's uploads in `onDeleted`.
 - `orchestrator.dart`: construct the repository and pass it in.
-- Tests: sanitizing, modes, layout, the segment check, a failed write removing its
-  folder, the dated delete, and the deletion hook (every family member, whatever
+- Tests: the new `FilesystemApi` methods (modes, missing parents, an existing
+  folder), sanitizing, modes, layout, the segment check, a failed write removing
+  its folder, the dated delete, no synchronous probe in the delete or the sweep,
+  and the deletion hook (every family member, whatever
   `deleteSessionFolder` says, failure logged and not propagated).
 - PR body: **What**: the bridge can keep prompt uploads per session and removes
   them when a session is deleted. **Expected result**: no user-visible or
