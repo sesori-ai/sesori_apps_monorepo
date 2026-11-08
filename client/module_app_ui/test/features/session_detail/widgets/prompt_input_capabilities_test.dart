@@ -101,6 +101,17 @@ class const _FixedFileClipboard({required final List<String> _paths}) implements
   Future<List<String>> readPaths() async => _paths;
 }
 
+/// Hands out one copied-file read per paste, in order, and counts the reads.
+class _QueuedFileClipboard({required final List<List<String>> _copies}) implements FileClipboard {
+  int reads = 0;
+
+  @override
+  Future<List<String>> readPaths() async {
+    reads++;
+    return _copies.removeAt(0);
+  }
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -617,6 +628,71 @@ void main() {
 
       expect(text, contains("https://example.com/"));
       expect(imageClipboard.reads, 1);
+    });
+
+    group("while an earlier pasted image is still preparing", () {
+      late _QueuedDownscaleBuilder downscale;
+      late _QueuedFileClipboard fileClipboard;
+      late TextEditingController controller;
+      late BuildContext actionContext;
+
+      Future<void> pumpBehindSlowImage({required WidgetTester tester}) async {
+        downscale = _QueuedDownscaleBuilder();
+        // The first paste holds only the image; the second holds copied files.
+        fileClipboard = _QueuedFileClipboard(
+          copies: [
+            const [],
+            [notesPath],
+          ],
+        );
+        await _pumpAttachComposer(
+          tester: tester,
+          dispatcher: composerAttachmentDispatcherForTest(
+            filePicker: const NoOpComposerFilePicker(),
+            downscaleBuilder: downscale,
+            bridgeIsLocal: true,
+          ),
+          clipboard: _QueuedImageClipboard(images: [icon]),
+          fileClipboard: fileClipboard,
+          droppedPaths: null,
+          voiceCubit: null,
+          attachmentsSupported: true,
+          onAttachmentsChanged: (_) {},
+        );
+        await tester.showKeyboard(find.byType(EditableText));
+        actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+        controller = tester.widget<TextField>(find.byType(TextField)).controller ?? fail("the field has no controller");
+        Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+        await tester.pump();
+        expect(downscale.results, hasLength(1));
+      }
+
+      testWidgets("reads the copied files as paste is pressed", (tester) async {
+        await pumpBehindSlowImage(tester: tester);
+
+        Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+        await tester.pump();
+        expect(fileClipboard.reads, 2);
+
+        downscale.results.single.complete(const ComposerImageKept());
+        await _settleFileReads(tester);
+        await tester.pumpAndSettle();
+        expect(controller.text.trim(), "see attached $notesPath");
+      });
+
+      testWidgets("types the copied paths over the selection from when paste was pressed", (tester) async {
+        await pumpBehindSlowImage(tester: tester);
+
+        controller.selection = const TextSelection.collapsed(offset: 0);
+        Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+        await tester.pump();
+        controller.selection = TextSelection.collapsed(offset: controller.text.length);
+
+        downscale.results.single.complete(const ComposerImageKept());
+        await _settleFileReads(tester);
+        await tester.pumpAndSettle();
+        expect(controller.text, "$notesPath see attached");
+      });
     });
   });
 

@@ -23,6 +23,12 @@ void main() {
     expect(await clipboard.readPaths(), ["/work/report.pdf"]);
   });
 
+  test("hands over copied files whose text is a Windows path", () async {
+    final clipboard = clipboardWith(files: [r"C:\work\report.pdf"], text: r"C:\work\report.pdf");
+
+    expect(await clipboard.readPaths(), [r"C:\work\report.pdf"]);
+  });
+
   test("reads a copied web link as no files, though macOS reports it as a path", () async {
     final clipboard = clipboardWith(files: ["/"], text: " https://example.com/\n");
 

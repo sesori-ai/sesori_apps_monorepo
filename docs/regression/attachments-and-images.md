@@ -88,8 +88,11 @@ content the transcript renders live and after reload.
   result never lands in a composer that moved to another draft.
 - On desktop, a paste takes files copied in Finder or Explorer first, then an
   image, then text. Copied files go through the drop rule above, whatever the
-  backend's attachment support, so a Finder copy never pastes as the file's
-  icon or name. The paste falls back to the image or text when any copied path
+  backend's attachment support, so a Finder copy of files that still exist
+  never pastes as the file's icon or name. A late result keeps the selection
+  from when paste was pressed, unless the text changed meanwhile. Copied files
+  are read when paste is pressed, even while an earlier image is still
+  preparing. The paste falls back to the image or text when any copied path
   no longer exists, and when the clipboard's text is a link to anything other
   than a file: macOS reports a copied `https://example.com/` as the path `/`,
   and that paste stays text. Mobile paste takes only image bytes and text.

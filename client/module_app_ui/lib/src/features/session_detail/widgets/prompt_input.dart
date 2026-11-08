@@ -2662,7 +2662,7 @@ class _PromptInputState() extends State<PromptInput> {
   Future<void> _attach({required Future<ComposerAttachOutcome?> Function(int stagedAttachmentBytes) outcome}) async {
     final turn = _startInsert();
     try {
-      await _insertOutcome(turn: turn, outcome: outcome);
+      await _insertOutcome(turn: turn, pastedOver: null, outcome: outcome);
     } finally {
       _settleInsert(turn: turn);
     }
@@ -2671,8 +2671,12 @@ class _PromptInputState() extends State<PromptInput> {
   /// Applies what a pick, a drop or pasted files add within [turn]: staged
   /// images, paths at the caret, and one notice for whatever could not be
   /// added. Reports [_PasteResult.unhandled] when [outcome] has nothing to add.
+  ///
+  /// [pastedOver] is the field as it was when paste was pressed, so pasted
+  /// paths replace that selection; it is `null` for picks and drops.
   Future<_PasteResult> _insertOutcome({
     required _InsertTurn turn,
+    required TextEditingValue? pastedOver,
     required Future<ComposerAttachOutcome?> Function(int stagedAttachmentBytes) outcome,
   }) async {
     // The result can settle after this state was reused for another session
@@ -2694,7 +2698,10 @@ class _PromptInputState() extends State<PromptInput> {
       for (final attachment in result.attachments) {
         _stageAttachment(attachment: attachment);
       }
-      if (result.insertedText case final text?) _insertAtCaret(text: text);
+      if (result.insertedText case final text?) {
+        if (pastedOver != null) _restorePasteSelection(initialValue: pastedOver);
+        _insertAtCaret(text: text);
+      }
       if (result.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: result.rejections));
     } on AttachmentTooLargeError {
       if (!mounted || isStale()) return _PasteResult.stale;
@@ -2825,26 +2832,36 @@ class _PromptInputState() extends State<PromptInput> {
   /// Adds the files copied in the file manager like a drop, where the shell
   /// pastes files. It is not gated on image support: copied files are routed
   /// like dropped ones, whatever the backend takes.
-  Future<_PasteResult> _handlePasteFiles({required _InsertTurn turn}) async {
+  ///
+  /// The copied files are read right away, so a copy made while an earlier
+  /// image is still preparing doesn't replace them; only routing waits for it.
+  Future<_PasteResult> _handlePasteFiles({
+    required _InsertTurn turn,
+    required TextEditingValue initialValue,
+  }) async {
     final fileClipboard = _fileClipboard;
     if (fileClipboard == null) return _PasteResult.unhandled;
+    final draftIdentity = widget.draftIdentity;
+    final List<String> paths;
+    try {
+      paths = await fileClipboard().readPaths();
+    } catch (error, stackTrace) {
+      loge("Failed to read pasted files", error, stackTrace);
+      return _PasteResult.unhandled;
+    }
+    if (!mounted || draftIdentity != widget.draftIdentity || turn.pasteGeneration != _pasteGeneration) {
+      return _PasteResult.stale;
+    }
+    if (paths.isEmpty) return _PasteResult.unhandled;
     final dispatcher = _attachmentDispatcher;
     return await _insertOutcome(
       turn: turn,
-      outcome: (stagedAttachmentBytes) async {
-        final List<String> paths;
-        try {
-          paths = await fileClipboard().readPaths();
-        } catch (error, stackTrace) {
-          loge("Failed to read pasted files", error, stackTrace);
-          return null;
-        }
-        return await dispatcher.routeClipboardPaths(
-          paths: paths,
-          attachmentsSupported: widget.attachmentsSupported,
-          stagedAttachmentBytes: stagedAttachmentBytes,
-        );
-      },
+      pastedOver: initialValue,
+      outcome: (stagedAttachmentBytes) => dispatcher.routeClipboardPaths(
+        paths: paths,
+        attachmentsSupported: widget.attachmentsSupported,
+        stagedAttachmentBytes: stagedAttachmentBytes,
+      ),
     );
   }
 
@@ -2860,17 +2877,13 @@ class _PromptInputState() extends State<PromptInput> {
     // whichever lands has landed.
     final turn = _startInsert();
     try {
-      var result = await _handlePasteFiles(turn: turn);
+      var result = await _handlePasteFiles(turn: turn, initialValue: initialValue);
       if (result == _PasteResult.unhandled) {
         result = await _handlePasteImage(earlierInsertsSettled: turn.earlierSettled);
       }
       switch (result) {
         case _PasteResult.unhandled:
-          // Restore the caret captured when paste was pressed so the fallback
-          // replaces the same selection, unless the user typed meanwhile.
-          if (_controller.text == initialValue.text && initialValue.selection.isValid) {
-            _controller.selection = initialValue.selection;
-          }
+          _restorePasteSelection(initialValue: initialValue);
           await onTextPaste();
           return;
         case _PasteResult.handled:
@@ -2883,6 +2896,14 @@ class _PromptInputState() extends State<PromptInput> {
       loge("Failed to handle composer paste", error, stackTrace);
     } finally {
       _settleInsert(turn: turn);
+    }
+  }
+
+  /// Restores the selection captured when paste was pressed, so what lands
+  /// late replaces the same selection, unless the user typed meanwhile.
+  void _restorePasteSelection({required TextEditingValue initialValue}) {
+    if (_controller.text == initialValue.text && initialValue.selection.isValid) {
+      _controller.selection = initialValue.selection;
     }
   }
 

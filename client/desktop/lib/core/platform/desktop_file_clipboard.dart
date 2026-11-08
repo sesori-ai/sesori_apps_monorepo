@@ -31,7 +31,8 @@ class DesktopFileClipboard.forTesting({
     if (paths.isEmpty) return paths;
     final text = await _readText();
     final link = text == null ? null : Uri.tryParse(text.trim());
-    if (link != null && link.hasScheme && link.scheme != "file") return const [];
+    // A one-letter scheme is a Windows drive, as in `C:\work\report.pdf`.
+    if (link != null && link.scheme.length > 1 && link.scheme != "file") return const [];
     return paths;
   }
 }
