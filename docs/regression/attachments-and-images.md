@@ -86,6 +86,16 @@ content the transcript renders live and after reload.
   plus action. Images from several picks, pastes and drops stage in the order
   they were added, even when an earlier one takes longer to downscale. A late
   result never lands in a composer that moved to another draft.
+- On desktop, a paste takes files copied in Finder or Explorer first, then an
+  image, then text. Copied files go through the drop rule above, whatever the
+  backend's attachment support, so a Finder copy of files that still exist
+  never pastes as the file's icon or name. A late result keeps the selection
+  from when paste was pressed, unless the text changed meanwhile. Copied files
+  are read when paste is pressed, even while an earlier image is still
+  preparing. The paste falls back to the image or text when any copied path
+  no longer exists, and when the clipboard's text is a link to anything other
+  than a file: macOS reports a copied `https://example.com/` as the path `/`,
+  and that paste stays text. Mobile paste takes only image bytes and text.
 - Send pressed while a pick, paste or drop is still preparing an image waits
   for it: the Send button shows a spinner and further presses do nothing, then
   the prompt goes out once, with every image that staged. An image that fails
@@ -213,8 +223,7 @@ content the transcript renders live and after reload.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; an oversized PNG is staged as a JPEG at most 2048 px on its long side with transparency on white and orientation applied, while a small image and a GIF stay untouched; Send pressed while an image is still being prepared waits with a spinner, sends once with it, goes without an image that fails to stage, and is abandoned when the draft changes; an Android pick hands a GIF over untouched, re-encodes any other photo above 2048 px on its long side, or in a format shared core can't read, through the platform decoder to a JPEG at most 2048 px on its long side, and hands one the platform can't decode to shared core, which turns it away only when it can't read the format either; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
-| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget and local versus remote bridges; dropped paths reach the composer as staged images and caret text; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). Automated bridge, no plugin: the bridge advertises file uploads; an image goes inline to a plugin that takes images, and every other `file_data` part is saved owner-only (700 folders, 600 files) under the session's folder and replaced in place by its note; a repeated accepted prompt and a command save nothing; a create saves under the id it commits, and joins the notes into its live user message; saved names are sanitized and never escape their folder; deleting a session family removes every member's uploads whatever `deleteSessionFolder` says; the sweep removes only folders dated more than 30 days back and skips unparseable ones. |
-| L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
+| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget and local versus remote bridges; dropped paths reach the composer as staged images and caret text; copied files route only when every path exists and paste ahead of the clipboard's image and text, whatever the backend's attachment support, and the desktop clipboard adapter reads a copied web link as no files; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). Automated bridge, no plugin: the bridge advertises file uploads; an image goes inline to a plugin that takes images, and every other `file_data` part is saved owner-only (700 folders, 600 files) under the session's folder and replaced in place by its note; a repeated accepted prompt and a command save nothing; a create saves under the id it commits, and joins the notes into its live user message; saved names are sanitized and never escape their folder; deleting a session family removes every member's uploads whatever `deleteSessionFolder` says; the sweep removes only folders dated more than 30 days back and skips unparseable ones. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
@@ -276,6 +285,8 @@ account-level rejection without changing the descriptor's capability claim.
   notice; a notice for mixed reasons names only one of them; images stage out
   of the order they were added; or a pane under another page or a dialog takes
   the drop.
+- A copied web link pastes as a path, or a Finder copy pastes as the file's
+  icon or name instead of the file.
 - An image above the downscale threshold is staged unshrunk although it could
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a
   transparent image gets a black background, a downscale blocks the UI, or a
@@ -317,8 +328,8 @@ account-level rejection without changing the descriptor's capability claim.
   of a session removed outside Sesori go only by age. Some harnesses ask before
   reading outside the session's working directory (see
   `docs/HARNESS_CAPABILITIES.md`).
-- Pasting files copied in a file manager is not supported; paste still takes
-  only image bytes and text.
+- Pasting files copied in a file manager works on desktop only. On Windows and
+  Linux it is covered only by adapter tests.
 - Mobile is unchanged: its picker stays a gallery image picker with no drop.
 - An Android GIF above the 50 MB budget is turned away as too large, since
   it is never shrunk. HEIF photos need Android 9 (API 28) or later; on Android
@@ -344,5 +355,5 @@ ACP image mapping used by Antigravity and Copilot, and descriptor capability dec
 shared client composer validation, attachment cache, loader, viewer, and
 surface tests under `client/module_core` and `client/module_app_ui`; mobile
 picker, voice, and keyboard composition under `client/app`; desktop picker,
-file, and session-detail adapters under `client/desktop`; and the shared
+file, copied-file clipboard and session-detail adapters under `client/desktop`; and the shared
 pasteboard and share adapters under `client/module_app_ui/lib/src/platform/`.

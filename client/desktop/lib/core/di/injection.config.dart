@@ -30,6 +30,8 @@ import 'package:sesori_desktop/core/platform/desktop_composer_file_picker.dart'
     as _i262;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
     as _i227;
+import 'package:sesori_desktop/core/platform/desktop_file_clipboard.dart'
+    as _i683;
 import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
     as _i524;
 import 'package:sesori_desktop/core/platform/desktop_file_save_client.dart'
@@ -149,6 +151,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i903.MasterKeyStore>(
       () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
     );
+    gh.lazySingleton<_i948.FileClipboard>(() => _i683.DesktopFileClipboard());
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i202.DesktopActiveBridgeLocality(
         statusTracker: gh<_i316.BridgeStatusTracker>(),
