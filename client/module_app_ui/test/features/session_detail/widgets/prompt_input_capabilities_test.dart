@@ -49,8 +49,8 @@ class _PendingDownscaleBuilder() implements ComposerImageDownscaleBuilder {
   }) => result.future;
 }
 
-/// Hands out one image per paste, in order.
-class _QueuedImageClipboard({required final List<Uint8List> _images}) implements ImageClipboard {
+/// Hands out one clipboard read per paste, in order; `null` is a text-only paste.
+class _QueuedImageClipboard({required final List<Uint8List?> _images}) implements ImageClipboard {
   @override
   Future<Uint8List?> readImage() async => _images.removeAt(0);
 
@@ -429,6 +429,42 @@ void main() {
     downscale.results[0].complete(const ComposerImageKept());
     await tester.pumpAndSettle();
     expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, second]);
+  });
+
+  testWidgets("a text-only paste between two images does not let the later image jump the queue", (tester) async {
+    final first = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 1]);
+    final third = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 3]);
+    final downscale = _QueuedDownscaleBuilder();
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await _pumpAttachComposer(
+      tester: tester,
+      dispatcher: composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        downscaleBuilder: downscale,
+        bridgeIsLocal: false,
+      ),
+      clipboard: _QueuedImageClipboard(images: [first, null, third]),
+      droppedPaths: null,
+      voiceCubit: null,
+      attachmentsSupported: true,
+      onAttachmentsChanged: reportedAttachments.add,
+    );
+
+    await tester.showKeyboard(find.byType(EditableText));
+    final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+    for (var paste = 0; paste < 3; paste++) {
+      Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+      await tester.pump();
+    }
+    expect(downscale.results, hasLength(2));
+
+    downscale.results[1].complete(const ComposerImageKept());
+    await tester.pump();
+    expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+
+    downscale.results[0].complete(const ComposerImageKept());
+    await tester.pumpAndSettle();
+    expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, third]);
   });
 
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {

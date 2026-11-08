@@ -2607,6 +2607,9 @@ class _PromptInputState() extends State<PromptInput> {
       // Routed only once earlier inserts have staged, so each file is judged
       // against the budget that is really left.
       await turn.earlierSettled;
+      // The composer may have moved on while this waited; don't open a picker
+      // or read files for it.
+      if (!mounted || isStale()) return;
       final result = await outcome(_stagedAttachmentBytes);
       if (!mounted || isStale() || result == null) return;
       for (final attachment in result.attachments) {
@@ -3166,5 +3169,7 @@ final class _InsertTurn({required final Future<void> earlierSettled}) {
 
   Future<void> get settled => _settled.future;
 
-  void settle() => _settled.complete();
+  /// Completes only once every earlier turn has settled too, so the latest
+  /// turn's [settled] covers everything started before it.
+  void settle() => _settled.complete(earlierSettled);
 }
