@@ -186,34 +186,31 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
   Widget _body({required FilePreviewState state, required _Rendering? rendering}) => switch (state) {
     FilePreviewLoading() => const Center(child: PregoActivityIndicator(color: null)),
     FilePreviewShowsText(:final content) when rendering == _Rendering.markdown => _MarkdownPreview(content: content),
-    // The web view never insets its page for the home indicator, so it stops above it.
-    FilePreviewShowsText(:final content) when rendering == _Rendering.html => Padding(
-      padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerUp: (_) => _htmlPageTouchedAt = DateTime.now(),
-            child: WebViewWidget(
-              controller: _htmlPage ??= _loadHtmlPage(
-                content: content,
-                openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
-                justTouched: () => _htmlPageJustTouched,
-                onLoaded: () {
-                  if (mounted && !_htmlPageLoaded) setState(() => _htmlPageLoaded = true);
-                },
-              ),
+    // The page fills to the bottom edge, under the home indicator, as in Safari.
+    FilePreviewShowsText(:final content) when rendering == _Rendering.html => Stack(
+      fit: StackFit.expand,
+      children: [
+        Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerUp: (_) => _htmlPageTouchedAt = DateTime.now(),
+          child: WebViewWidget(
+            controller: _htmlPage ??= _loadHtmlPage(
+              content: content,
+              openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+              justTouched: () => _htmlPageJustTouched,
+              onLoaded: () {
+                if (mounted && !_htmlPageLoaded) setState(() => _htmlPageLoaded = true);
+              },
             ),
           ),
-          if (!_htmlPageLoaded)
-            ColoredBox(
-              key: const Key("file-preview-html-loading"),
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: const Center(child: PregoActivityIndicator(color: null)),
-            ),
-        ],
-      ),
+        ),
+        if (!_htmlPageLoaded)
+          ColoredBox(
+            key: const Key("file-preview-html-loading"),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: const Center(child: PregoActivityIndicator(color: null)),
+          ),
+      ],
     ),
     FilePreviewShowsText(:final content) => _CodePreview(
       content: content,
