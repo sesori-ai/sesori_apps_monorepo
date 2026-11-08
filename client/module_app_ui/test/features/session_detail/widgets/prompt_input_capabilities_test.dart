@@ -33,6 +33,24 @@ class _PendingComposerImagePicker() implements ComposerImagePicker {
   Future<ComposerPickedImage?> pickImage() => pick.future;
 }
 
+class _FixedImageClipboard({required final Uint8List _bytes}) implements ImageClipboard {
+  @override
+  Future<Uint8List?> readImage() async => _bytes;
+
+  @override
+  Future<void> writeImage({required Uint8List bytes}) async {}
+}
+
+class _PendingDownscaleBuilder() implements ComposerImageDownscaleBuilder {
+  final result = Completer<ComposerImageDownscaleResult>();
+
+  @override
+  Future<ComposerImageDownscaleResult> downscale({
+    required Uint8List bytes,
+    required SupportedRasterImageFormat format,
+  }) => result.future;
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -44,7 +62,10 @@ void main() {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
     final picker = _PendingComposerImagePicker();
-    final dispatcher = ComposerAttachmentDispatcher(imagePicker: picker);
+    final dispatcher = ComposerAttachmentDispatcher(
+      imagePicker: picker,
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    );
     final clipboard = _NoOpImageClipboard();
     final busy = <bool>[];
     final selections = <({int base, int extent})>[];
@@ -155,7 +176,10 @@ void main() {
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final dispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+    final dispatcher = ComposerAttachmentDispatcher(
+      imagePicker: _NoOpComposerImagePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    );
     final clipboard = _NoOpImageClipboard();
     final images = [
       for (var i = 0; i < 8; i++)
@@ -257,7 +281,10 @@ void main() {
   ) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final dispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+    final dispatcher = ComposerAttachmentDispatcher(
+      imagePicker: _NoOpComposerImagePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    );
     final clipboard = _NoOpImageClipboard();
     // Each fits alone; the three together exceed the 50 MB aggregate budget.
     final images = [
@@ -473,7 +500,10 @@ void main() {
   testWidgets("unsupported voice forces a text-first composer without a VoiceInputCubit", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
-    final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+    final attachmentDispatcher = ComposerAttachmentDispatcher(
+      imagePicker: _NoOpComposerImagePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    );
     final imageClipboard = _NoOpImageClipboard();
 
     await tester.pumpWidget(
@@ -538,7 +568,10 @@ void main() {
   testWidgets("defers surface-style synchronization while dependencies rebuild", (tester) async {
     final inputMode = ValueNotifier(ChatInputMode.textFirst);
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
-    final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+    final attachmentDispatcher = ComposerAttachmentDispatcher(
+      imagePicker: _NoOpComposerImagePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    );
     final imageClipboard = _NoOpImageClipboard();
     final voiceCubit = _MockVoiceInputCubit();
     whenListen(
@@ -619,6 +652,84 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(surfaceStyle.value, PregoComposerSurfaceStyle.subtle);
   });
+  testWidgets("a pasted image still being prepared does not land in the composer that replaced it", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final draftIdentity = ValueNotifier("first-session");
+    addTearDown(draftIdentity.dispose);
+    final downscale = _PendingDownscaleBuilder();
+    final dispatcher = ComposerAttachmentDispatcher(
+      imagePicker: _NoOpComposerImagePicker(),
+      downscaleBuilder: downscale,
+    );
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final clipboard = _FixedImageClipboard(bytes: png);
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          child: Scaffold(
+            body: ValueListenableBuilder(
+              valueListenable: draftIdentity,
+              builder: (context, identity, _) => PromptInput(
+                initialSelection: null,
+                onBusyChanged: null,
+                onSelectionChanged: null,
+                isBusy: false,
+                hasMessages: false,
+                canSend: true,
+                onSend: ({required draft, required command, required attachments}) {},
+                onVoiceTranscriptionFinished: null,
+                onDraftChanged: (_) {},
+                onDraftCleared: () {},
+                onAbort: () {},
+                surfaceStyleController: surfaceStyle,
+                composerHeader: null,
+                composerTrailing: null,
+                availableCommands: const [],
+                stagedCommand: null,
+                onCommandSelected: (_) {},
+                onCommandCleared: () {},
+                attachmentsSupported: true,
+                draftIdentity: identity,
+                restorationKey: null,
+                initialDraft: ComposerDraft.typed(text: "see attached"),
+                initialAttachments: const [],
+                onAttachmentsChanged: reportedAttachments.add,
+                autofocus: false,
+                onInitialAttachmentsConsumed: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.showKeyboard(find.byType(EditableText));
+    final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pump();
+
+    draftIdentity.value = "second-session";
+    await tester.pump();
+    downscale.result.complete(const ComposerImageKept());
+    await tester.pumpAndSettle();
+
+    expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+    expect(find.bySemanticsLabel("Attached image"), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 const _stagedCommand = CommandInfo(
@@ -641,7 +752,10 @@ Future<void> _pumpCommandComposer({
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+  final attachmentDispatcher = ComposerAttachmentDispatcher(
+    imagePicker: _NoOpComposerImagePicker(),
+    downscaleBuilder: const ComposerImageDownscaleBuilder(),
+  );
   final imageClipboard = _NoOpImageClipboard();
   final composer = ValueListenableBuilder<CommandInfo?>(
     valueListenable: command,

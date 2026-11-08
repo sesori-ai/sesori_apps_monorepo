@@ -97,7 +97,10 @@ Future<void> _pumpComposer({
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
-  final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+  final attachmentDispatcher = ComposerAttachmentDispatcher(
+    imagePicker: _NoOpComposerImagePicker(),
+    downscaleBuilder: const ComposerImageDownscaleBuilder(),
+  );
   final imageClipboard = _NoOpImageClipboard();
 
   await tester.pumpWidget(

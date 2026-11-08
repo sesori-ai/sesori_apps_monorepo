@@ -1,5 +1,7 @@
+import "dart:math" as math;
 import "dart:typed_data";
 
+import "package:image/image.dart" as image;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
@@ -15,19 +17,20 @@ void main() {
     return bytes;
   }
 
+  ComposerAttachmentDispatcher dispatcherFor({required ComposerPickedImage? picked}) => ComposerAttachmentDispatcher(
+    imagePicker: _StubComposerImagePicker(result: picked),
+    downscaleBuilder: const ComposerImageDownscaleBuilder(),
+  );
+
   group("ComposerAttachmentDispatcher", () {
     test("returns null when selection is dismissed", () async {
-      final dispatcher = ComposerAttachmentDispatcher(imagePicker: _StubComposerImagePicker(result: null));
-
-      expect(await dispatcher.pickImage(), isNull);
+      expect(await dispatcherFor(picked: null).pickImage(), isNull);
     });
 
     test("validates picked bytes and normalizes the filename", () async {
       final bytes = bytesWithPrefix(prefix: const [0xFF, 0xD8, 0xFF]);
-      final dispatcher = ComposerAttachmentDispatcher(
-        imagePicker: _StubComposerImagePicker(
-          result: ComposerPickedImage(bytes: bytes, filename: "  photo.jpg  "),
-        ),
+      final dispatcher = dispatcherFor(
+        picked: ComposerPickedImage(bytes: bytes, filename: "  photo.jpg  "),
       );
 
       final attachment = await dispatcher.pickImage() ?? fail("no image picked");
@@ -37,8 +40,8 @@ void main() {
       expect(attachment.filename, "photo.jpg");
     });
 
-    test("recognizes supported composer image signatures", () {
-      final dispatcher = ComposerAttachmentDispatcher(imagePicker: _StubComposerImagePicker(result: null));
+    test("recognizes supported composer image signatures", () async {
+      final dispatcher = dispatcherFor(picked: null);
       final cases = <(List<int>, String)>[
         (const [0xFF, 0xD8, 0xFF], "image/jpeg"),
         (const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], "image/png"),
@@ -48,7 +51,7 @@ void main() {
       ];
 
       for (final (prefix, mime) in cases) {
-        final attachment = dispatcher.attachmentFromBytes(
+        final attachment = await dispatcher.attachmentFromBytes(
           bytes: bytesWithPrefix(prefix: prefix),
           filename: "image",
         );
@@ -56,10 +59,8 @@ void main() {
       }
     });
 
-    test("converts an empty filename to null", () {
-      final dispatcher = ComposerAttachmentDispatcher(imagePicker: _StubComposerImagePicker(result: null));
-
-      final attachment = dispatcher.attachmentFromBytes(
+    test("converts an empty filename to null", () async {
+      final attachment = await dispatcherFor(picked: null).attachmentFromBytes(
         bytes: bytesWithPrefix(prefix: const [0xFF, 0xD8, 0xFF]),
         filename: "   ",
       );
@@ -67,11 +68,9 @@ void main() {
       expect(attachment.filename, isNull);
     });
 
-    test("rejects unsupported bytes", () {
-      final dispatcher = ComposerAttachmentDispatcher(imagePicker: _StubComposerImagePicker(result: null));
-
-      expect(
-        () => dispatcher.attachmentFromBytes(
+    test("rejects unsupported bytes", () async {
+      await expectLater(
+        dispatcherFor(picked: null).attachmentFromBytes(
           bytes: Uint8List.fromList(List<int>.generate(16, (index) => index)),
           filename: "blob.bin",
         ),
@@ -79,17 +78,35 @@ void main() {
       );
     });
 
-    test("rejects bytes above the outbound limit", () {
-      final dispatcher = ComposerAttachmentDispatcher(imagePicker: _StubComposerImagePicker(result: null));
+    test("rejects bytes that stay above the outbound limit", () async {
+      // Not decodable, so the downscale keeps the original and the limit applies.
       final bytes = bytesWithPrefix(
         prefix: const [0xFF, 0xD8, 0xFF],
         length: maxComposerPromptAttachmentBytes + 1,
       );
 
-      expect(
-        () => dispatcher.attachmentFromBytes(bytes: bytes, filename: "huge.jpg"),
+      await expectLater(
+        dispatcherFor(picked: null).attachmentFromBytes(bytes: bytes, filename: "huge.jpg"),
         throwsA(isA<AttachmentTooLargeError>()),
       );
+    });
+
+    test("stages an oversized image as a downscaled JPEG with a matching filename", () async {
+      final random = math.Random(7);
+      final source = image.Image(width: 2600, height: 900);
+      for (final pixel in source) {
+        pixel.setRgb(random.nextInt(256), random.nextInt(256), random.nextInt(256));
+      }
+      final png = image.encodePng(source, level: 1);
+      final dispatcher = dispatcherFor(
+        picked: ComposerPickedImage(bytes: png, filename: "screenshot.png"),
+      );
+
+      final attachment = await dispatcher.pickImage() ?? fail("no image picked");
+
+      expect(attachment.mime, "image/jpeg");
+      expect(attachment.filename, "screenshot.jpg");
+      expect(attachment.bytes.length, lessThan(png.length));
     });
   });
 }

@@ -17,7 +17,10 @@ void main() {
   setUp(() {
     imagePicker = MockImagePicker();
     picker = FlutterComposerImagePicker(picker: imagePicker);
-    attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: picker);
+    attachmentDispatcher = ComposerAttachmentDispatcher(
+      imagePicker: picker,
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+    );
   });
 
   void stubPick(XFile? file) {
@@ -43,10 +46,10 @@ void main() {
     expect(await attachmentDispatcher.pickImage(), isNull);
   });
 
-  test("clipboard bytes use shared validation and have no filename", () {
+  test("clipboard bytes use shared validation and have no filename", () async {
     final bytes = jpegBytes();
 
-    final attachment = attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
+    final attachment = await attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
 
     expect(attachment.mime, "image/jpeg");
     expect(attachment.bytes, same(bytes));

@@ -4752,7 +4752,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
       () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenReturn(attachment);
+    ).thenAnswer((_) async => attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5228,7 +5228,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
       () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenReturn(attachment);
+    ).thenAnswer((_) async => attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5257,7 +5257,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
       () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenReturn(attachment);
+    ).thenAnswer((_) async => attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5398,7 +5398,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
       () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
+    ).thenAnswer((_) async => ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -5437,7 +5437,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
       () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
-    ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
+    ).thenAnswer((_) async => ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
