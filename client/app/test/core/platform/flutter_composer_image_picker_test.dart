@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:flutter/foundation.dart";
@@ -6,6 +7,7 @@ import "package:image_picker/image_picker.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/flutter_composer_image_picker.dart";
+import "package:sesori_mobile/core/platform/platform_image_shrinker.dart";
 
 class MockImagePicker() extends Mock implements ImagePicker;
 
@@ -13,14 +15,29 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockActiveBridgeLocality() extends Mock implements ActiveBridgeLocality;
 
+/// Stands in for the platform decoder: returns [result] for any input, or the
+/// input untouched when [result] is unset, and records what it was given.
+class _FakeShrinker() implements PlatformImageShrinker {
+  final shrunk = <Uint8List>[];
+  Uint8List? Function(Uint8List bytes) result = (bytes) => bytes;
+
+  @override
+  Future<Uint8List?> shrink({required Uint8List bytes}) async {
+    shrunk.add(bytes);
+    return result(bytes);
+  }
+}
+
 void main() {
   late MockImagePicker imagePicker;
+  late _FakeShrinker shrinker;
   late FlutterComposerImagePicker picker;
   late ComposerAttachmentDispatcher attachmentDispatcher;
 
   setUp(() {
     imagePicker = MockImagePicker();
-    picker = FlutterComposerImagePicker(picker: imagePicker);
+    shrinker = _FakeShrinker();
+    picker = FlutterComposerImagePicker(picker: imagePicker, shrinker: shrinker);
     attachmentDispatcher = ComposerAttachmentDispatcher(
       filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
@@ -94,12 +111,49 @@ void main() {
     verify(() => imagePicker.pickImage(source: ImageSource.gallery, requestFullMetadata: false)).called(1);
   });
 
+  test("Android hands a GIF over untouched so it stays animated", () async {
+    final gif = Uint8List.fromList([...latin1.encode("GIF89a"), 1, 0, 1, 0, 0, 0]);
+    stubPick(XFile.fromData(gif, name: "anim.gif"));
+
+    final attachment = await pickAttachment();
+
+    expect(attachment?.mime, "image/gif");
+    expect(attachment?.bytes, gif);
+    expect(shrinker.shrunk, isEmpty);
+  });
+
+  test("Android shrinks any other photo with the platform decoder and names it after the result", () async {
+    final heic = Uint8List.fromList([0, 0, 0, 24, ...latin1.encode("ftypheic"), 0, 0, 0, 0]);
+    final jpeg = jpegBytes();
+    shrinker.result = (_) => jpeg;
+    final file = File("${Directory.systemTemp.createTempSync("picker_test").path}/IMG_0001.HEIC")
+      ..writeAsBytesSync(heic);
+    addTearDown(() => file.parent.deleteSync(recursive: true));
+    stubPick(XFile(file.path));
+
+    final attachment = await pickAttachment();
+
+    expect(shrinker.shrunk, [heic]);
+    expect(attachment?.mime, "image/jpeg");
+    expect(attachment?.bytes, jpeg);
+    expect(attachment?.filename, "IMG_0001.jpg");
+  });
+
+  test("a photo the platform can't decode is turned away as unsupported", () async {
+    shrinker.result = (_) => null;
+    stubPick(XFile.fromData(jpegBytes(), name: "photo.heic"));
+
+    expect(pickAttachment, throwsA(isA<UnsupportedAttachmentImageError>()));
+  });
+
   test("iOS applies the shared size rule natively", () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    stubPick(null);
+    stubPick(XFile.fromData(jpegBytes(), name: "photo.jpg"));
 
     await pickAttachment();
+
+    expect(shrinker.shrunk, isEmpty);
 
     verify(
       () => imagePicker.pickImage(

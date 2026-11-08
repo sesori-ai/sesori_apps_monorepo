@@ -85,12 +85,32 @@ class const ComposerImageDownscaleBuilder() {
               height: math.max(1, (oriented.height * scale).round()),
               interpolation: image.Interpolation.average,
             );
-      final encoded = image.encodeJpg(_onWhite(source: resized), quality: jpegQuality);
+      final encoded = _encodeJpeg(source: resized);
       return encoded.length < bytes.length ? ComposerImageDownscaled(bytes: encoded) : const ComposerImageKept();
     } on Object catch (cause, stackTrace) {
       return ComposerImageDownscaleFailed(cause: cause, stackTrace: stackTrace);
     }
   }
+
+  /// Encodes straight (not premultiplied) RGBA pixels that a platform decoder
+  /// produced, the way [downscale] re-encodes, off the calling isolate.
+  Future<Uint8List> encodeRgbaAsJpeg({required Uint8List rgba, required int width, required int height}) {
+    return Isolate.run(
+      () => _encodeJpeg(
+        source: image.Image.fromBytes(
+          width: width,
+          height: height,
+          bytes: rgba.buffer,
+          bytesOffset: rgba.offsetInBytes,
+          numChannels: 4,
+          order: image.ChannelOrder.rgba,
+        ),
+      ),
+    );
+  }
+
+  static Uint8List _encodeJpeg({required image.Image source}) =>
+      image.encodeJpg(_onWhite(source: source), quality: jpegQuality);
 
   static image.Image _onWhite({required image.Image source}) {
     if (!source.hasAlpha) return source;
