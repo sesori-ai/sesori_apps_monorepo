@@ -71,6 +71,15 @@ final class const _VoiceTranscribing({
 
 final class const _VoiceCancelling() extends _VoiceGesturePresentation;
 
+/// Whether Send is held until in-flight inserts stage.
+sealed class const _SendHold();
+
+final class const _SendNotHeld() extends _SendHold;
+
+/// Completing [cancelled] abandons the held send because the composer moved
+/// to another draft.
+final class const _SendHeld({required final Completer<void> cancelled}) extends _SendHold;
+
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
 // ignore: use_primary_constructors
 enum _PasteImageResult { noImage, handled, stale }
@@ -246,10 +255,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// generation has settled.
   Future<void> _insertsSettled = Future<void>.value();
 
-  /// Set while Send waits for inserts to stage; completing it abandons that
-  /// send because the composer moved to another draft.
-  Completer<void>? _cancelSendWait;
-  bool _sendAwaitsInserts = false;
+  _SendHold _sendHold = const _SendNotHeld();
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
@@ -603,16 +609,18 @@ class _PromptInputState() extends State<PromptInput> {
   /// went away meanwhile, so nothing is sent into the wrong session.
   Future<bool> _awaitPendingInserts() async {
     final cancelled = Completer<void>();
-    _cancelSendWait = cancelled;
-    setState(() => _sendAwaitsInserts = true);
+    setState(() => _sendHold = _SendHeld(cancelled: cancelled));
     try {
       while (_generationInserts > 0 && !cancelled.isCompleted) {
         await Future.any([_insertsSettled, cancelled.future]);
       }
       return mounted && !cancelled.isCompleted;
     } finally {
-      _cancelSendWait = null;
-      if (mounted) setState(() => _sendAwaitsInserts = false);
+      if (mounted) {
+        setState(() => _sendHold = const _SendNotHeld());
+      } else {
+        _sendHold = const _SendNotHeld();
+      }
     }
   }
 
@@ -625,8 +633,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _cancelHeldSend() {
-    final cancel = _cancelSendWait;
-    if (cancel != null && !cancel.isCompleted) cancel.complete();
+    if (_sendHold case _SendHeld(:final cancelled) when !cancelled.isCompleted) cancelled.complete();
   }
 
   /// [_submitComposer]'s body, run while it holds [_isSubmitting], so a second
@@ -3190,7 +3197,7 @@ class _PromptInputState() extends State<PromptInput> {
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
       size: PregoButtonsSolidSize.lg,
       // A send held for an image still being prepared.
-      isLoading: _sendAwaitsInserts,
+      isLoading: _sendHold is _SendHeld,
       onPressed: onPressed,
     );
   }
