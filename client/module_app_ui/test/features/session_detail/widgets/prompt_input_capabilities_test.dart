@@ -112,6 +112,14 @@ class _QueuedFileClipboard({required final List<List<String>> _copies}) implemen
   }
 }
 
+/// Fails the copied-file read only when the test completes it.
+class _PendingFailingFileClipboard() implements FileClipboard {
+  final failure = Completer<List<String>>();
+
+  @override
+  Future<List<String>> readPaths() => failure.future;
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -1269,6 +1277,90 @@ void main() {
     downscale.result.complete(const ComposerImageKept());
     await tester.pumpAndSettle();
 
+    expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+    expect(find.bySemanticsLabel("Attached image"), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("a failed copied-file read does not paste into the composer that replaced it", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final draftIdentity = ValueNotifier("first-session");
+    addTearDown(draftIdentity.dispose);
+    final dispatcher = composerAttachmentDispatcherForTest(
+      filePicker: const NoOpComposerFilePicker(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      bridgeIsLocal: true,
+    );
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    final imageClipboard = _CountingImageClipboard(bytes: png);
+    final fileClipboard = _PendingFailingFileClipboard();
+    final reportedAttachments = <List<ComposerAttachment>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => imageClipboard,
+          fileClipboard: () => fileClipboard,
+          droppedPaths: null,
+          attachKind: ComposerAttachKind.images,
+          child: Scaffold(
+            body: ValueListenableBuilder(
+              valueListenable: draftIdentity,
+              builder: (context, identity, _) => PromptInput(
+                initialSelection: null,
+                onBusyChanged: null,
+                onSelectionChanged: null,
+                isBusy: false,
+                hasMessages: false,
+                canSend: true,
+                onSend: ({required draft, required command, required attachments}) {},
+                onVoiceTranscriptionFinished: null,
+                onDraftChanged: (_) {},
+                onDraftCleared: () {},
+                onAbort: () {},
+                surfaceStyleController: surfaceStyle,
+                composerHeader: null,
+                composerTrailing: null,
+                availableCommands: const [],
+                stagedCommand: null,
+                onCommandSelected: (_) {},
+                onCommandCleared: () {},
+                attachmentsSupported: true,
+                draftIdentity: identity,
+                restorationKey: null,
+                initialDraft: ComposerDraft.typed(text: "see attached"),
+                initialAttachments: const [],
+                onAttachmentsChanged: reportedAttachments.add,
+                autofocus: false,
+                onInitialAttachmentsConsumed: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.showKeyboard(find.byType(EditableText));
+    final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+    Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+    await tester.pump();
+
+    draftIdentity.value = "second-session";
+    await tester.pump();
+    fileClipboard.failure.completeError(StateError("pasteboard unavailable"));
+    await tester.pumpAndSettle();
+
+    expect(imageClipboard.reads, 0);
     expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
     expect(find.bySemanticsLabel("Attached image"), findsNothing);
     expect(tester.takeException(), isNull);

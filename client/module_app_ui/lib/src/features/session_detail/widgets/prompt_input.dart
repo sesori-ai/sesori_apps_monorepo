@@ -2842,13 +2842,12 @@ class _PromptInputState() extends State<PromptInput> {
     final fileClipboard = _fileClipboard;
     if (fileClipboard == null) return _PasteResult.unhandled;
     final draftIdentity = widget.draftIdentity;
-    final List<String> paths;
-    try {
-      paths = await fileClipboard().readPaths();
-    } catch (error, stackTrace) {
+    // A failed read still goes through the staleness check below, so it never
+    // falls back into a composer that replaced this one.
+    final paths = await fileClipboard().readPaths().catchError((Object error, StackTrace stackTrace) {
       loge("Failed to read pasted files", error, stackTrace);
-      return _PasteResult.unhandled;
-    }
+      return const <String>[];
+    });
     if (!mounted || draftIdentity != widget.draftIdentity || turn.pasteGeneration != _pasteGeneration) {
       return _PasteResult.stale;
     }
