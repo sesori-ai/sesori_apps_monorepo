@@ -57,6 +57,10 @@ default app; otherwise it shows a read-only preview.
     touches a link copies its full URL or path, never the short label.
 - A relative path resolves against the session's directory, with Windows path
   rules when that directory is on a drive.
+- Claude Code and Codex agents are told so through their native system prompt
+  or developer instructions, and asked to write a file outside the session's
+  directory as an absolute path. The note never appears in the transcript;
+  `docs/HARNESS_CAPABILITIES.md` lists the other harnesses.
 - When the active bridge runs on this computer, the file opens in the system's
   default app and the line is dropped. If that launch fails, the preview opens
   instead.
@@ -87,9 +91,9 @@ default app; otherwise it shows a read-only preview.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: repository outcomes for text, image, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, FIFO and device left unopened, followed link, denied read, and denied lookup; handler `400` and passthrough; wire tags. Client: path recognition, the open-locally or preview decision, repository `404` mapping, cubit states, and the preview page for each state. |
+| L1 Smoke | Automated: repository outcomes for text, image, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, FIFO and device left unopened, followed link, denied read, and denied lookup; handler `400` and passthrough; wire tags. Client: path recognition, the open-locally or preview decision, repository `404` mapping, cubit states, and the preview page for each state. Bridge: the Sesori note in Claude launch arguments and Codex `thread/start`/`thread/resume`, after the user's developer instructions, and absent from mapped Codex history. |
 | L2 Routine | Headless bridge: request a text file, an image, and a missing path, and confirm each outcome. |
-| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, a page with its own background fills to the bottom edge with no app-coloured strip above the home indicator, and scrolled to its end a page with a bottom margin keeps its last line clear of the indicator, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. Desktop on the same computer: confirm the file opens in its default app. |
+| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, a page with its own background fills to the bottom edge with no app-coloured strip above the home indicator, and scrolled to its end a page with a bottom margin keeps its last line clear of the indicator, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. Desktop on the same computer: confirm the file opens in its default app. A Claude Code session repeats the Sesori note when asked, a Codex session's rollout records it as a developer message, and neither transcript shows it, new or resumed. |
 | L4 Extended | A client against a bridge older than this route shows "Update the bridge to preview files". Headless bridge: on macOS, request a file under a Full Disk Access-protected folder without access and confirm `denied`. |
 | L5 Full | No additional coverage. |
 
@@ -109,6 +113,8 @@ default app; otherwise it shows a read-only preview.
   below it, a tapped web or `mailto` link in it does nothing, or its script
   opens something outside the app without a tap.
 - A remote bridge's path is opened on this computer instead of previewed.
+- The Sesori note shows in a transcript, or a new Claude Code or Codex session
+  does not receive it.
 
 ## Sources
 
@@ -121,6 +127,7 @@ default app; otherwise it shows a read-only preview.
 - `client/module_core/lib/src/foundation/models/file_reference/file_reference.dart`
 - `client/module_core/lib/src/repositories/file_preview_repository.dart`
 - `client/module_core/lib/src/services/file_reference_open_service.dart`
+- `bridge/sesori_bridge_foundation/lib/src/sesori_agent_instructions.dart`
 - `client/module_core/lib/src/cubits/file_preview/file_preview_cubit.dart`
 - `client/module_app_ui/lib/src/features/session_detail/file_preview/`
 - `client/module_app_ui/lib/src/features/session_detail/session_detail_markdown_link_handler.dart`

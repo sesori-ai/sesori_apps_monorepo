@@ -1,3 +1,5 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
+
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 import "claude_process_launch.dart";
@@ -111,6 +113,10 @@ class ClaudeLaunchSpec({
     // assistant output on both --session-id and --resume launches.
     "--replay-user-messages",
     ...permissionPromptToolArguments,
+    // Sent on every launch. The CLI records the system prompt on a
+    // conversation's first request and replays that record on resume until the
+    // conversation is compacted, which is when a resumed launch's text applies.
+    "--append-system-prompt", sesoriAgentInstructions,
     // Pattern-bound rather than null-checked so a later edit cannot separate the
     // check from the dereference.
     if (permissionMode case final mode?) ...["--permission-mode", mode.cliValue],

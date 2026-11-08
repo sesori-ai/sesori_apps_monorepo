@@ -12,6 +12,7 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -316,7 +317,7 @@ void main() {
 
       // Inspect sent frames.
       final methods = fake.sentMethods;
-      expect(methods, equals(["initialize", "thread/start", "turn/start"]));
+      expect(methods, equals(["initialize", "config/read", "thread/start", "turn/start"]));
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
@@ -396,6 +397,88 @@ void main() {
 
       expect(fake.sentParamsFor("thread/start").containsKey("serviceTier"), isFalse);
       expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("default"));
+    });
+
+    group("Sesori developer instructions", () {
+      Future<void> createSession() async {
+        // Respond to: initialize, thread/start, turn/start.
+        fake.respondInOrder([
+          const _Response(result: _initOk),
+          const _Response(
+            result: {
+              "thread": {"id": "t-note", "cwd": "/work/sample"},
+            },
+          ),
+          const _Response(
+            result: {
+              "turn": {"id": "u-note"},
+            },
+          ),
+        ]);
+        await plugin.createSession(
+          fastMode: false,
+          directory: "/work/sample",
+          parentSessionId: null,
+          parts: const [PluginPromptPart.text(text: "hello codex")],
+          userVisibleText: "hello codex",
+          variant: null,
+          agent: "Agent",
+          model: null,
+        );
+      }
+
+      Future<void> resumeSession() async {
+        // Respond to: initialize, thread/resume, turn/start.
+        fake.respondInOrder([
+          const _Response(result: _initOk),
+          const _Response(
+            result: {
+              "thread": {"id": "t-existing"},
+            },
+          ),
+          const _Response(
+            result: {
+              "turn": {"id": "u-1"},
+            },
+          ),
+        ]);
+        await plugin.sendPrompt(
+          fastMode: false,
+          promptId: "prompt-1",
+          sessionId: "t-existing",
+          parts: const [PluginPromptPart.text(text: "go on")],
+          variant: null,
+          agent: null,
+          model: null,
+        );
+      }
+
+      test("thread/start carries the note, reading the config of the session's directory", () async {
+        await createSession();
+
+        expect(fake.sentParamsFor("config/read"), equals({"cwd": "/work/sample"}));
+        expect(fake.sentParamsFor("thread/start")["developerInstructions"], equals(sesoriAgentInstructions));
+      });
+
+      test("thread/resume carries the note again", () async {
+        await resumeSession();
+
+        expect(fake.sentParamsFor("config/read"), isEmpty);
+        expect(fake.sentParamsFor("thread/resume")["developerInstructions"], equals(sesoriAgentInstructions));
+      });
+
+      for (final (method, run) in [("thread/start", createSession), ("thread/resume", resumeSession)]) {
+        test("$method keeps the user's configured developer instructions ahead of the note", () async {
+          fake.configuredDeveloperInstructions = "Answer in French.";
+
+          await run();
+
+          expect(
+            fake.sentParamsFor(method)["developerInstructions"],
+            equals("Answer in French.\n\n$sesoriAgentInstructions"),
+          );
+        });
+      }
     });
 
     test("createSession forwards inline image data to Codex turn input", () async {
@@ -499,7 +582,7 @@ void main() {
         );
       }
 
-      expect(fake.sentMethods, ["initialize", "thread/resume"]);
+      expect(fake.sentMethods, ["initialize", "config/read", "thread/resume"]);
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
@@ -565,6 +648,7 @@ void main() {
       expect(fake.sentMethods, [
         "initialize",
         "skills/list",
+        "config/read",
         "thread/resume",
         "turn/start",
         "thread/compact/start",
@@ -863,7 +947,7 @@ void main() {
       );
 
       final methods = fake.sentMethods;
-      expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
+      expect(methods, equals(["initialize", "config/read", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing-child"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing-child"));
       expect(plugin.currentWorkState, PluginWorkState.busy);
@@ -1488,7 +1572,7 @@ void main() {
         model: null,
       );
 
-      expect(fake.sentMethods, equals(["initialize", "thread/start", "turn/start"]));
+      expect(fake.sentMethods, equals(["initialize", "config/read", "thread/start", "turn/start"]));
       expect(fake.sentMethods, isNot(contains("thread/resume")));
     });
 
@@ -1540,7 +1624,15 @@ void main() {
 
       expect(
         fake.sentMethods,
-        equals(["initialize", "thread/start", "turn/start", "thread/resume", "turn/start"]),
+        equals([
+          "initialize",
+          "config/read",
+          "thread/start",
+          "turn/start",
+          "config/read",
+          "thread/resume",
+          "turn/start",
+        ]),
       );
     });
 
@@ -3428,7 +3520,7 @@ void main() {
         model: null,
       );
 
-      expect(fake.sentMethods, equals(["initialize", "thread/start", "turn/start"]));
+      expect(fake.sentMethods, equals(["initialize", "config/read", "thread/start", "turn/start"]));
       expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
         "mode": "default",
         "settings": {
@@ -4319,6 +4411,9 @@ class _FakeAppServer() {
   /// `thread/name/updated` while `turn/start` is still in flight).
   void Function(String method)? onRequest;
 
+  /// The user's `developer_instructions` that `config/read` reports.
+  String? configuredDeveloperInstructions;
+
   List<String> get sentMethods => _sent.map((f) => f.method).toList(growable: false);
 
   Map<String, dynamic> sentParamsFor(String method) {
@@ -4382,6 +4477,19 @@ class _FakeAppServer() {
     onRequest?.call(method);
     final id = decoded["id"] as Object?;
     if (id == null) return; // notification from client (none today)
+    // Every thread start and resume reads the config first; answering it here
+    // keeps each test's canned responses about the thread flow itself.
+    if (method == "config/read") {
+      _sendResponse(
+        id,
+        _Response(
+          result: {
+            "config": {"developer_instructions": ?configuredDeveloperInstructions},
+          },
+        ),
+      );
+      return;
+    }
     if (_responsesToHold.remove(method)) {
       _heldRequestIds[method] = id;
       return;

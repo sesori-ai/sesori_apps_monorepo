@@ -1,5 +1,6 @@
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, sesoriAgentInstructions;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../codex_config_reader.dart";
@@ -547,6 +548,7 @@ class CodexSessionService({
       model: model,
       modelProvider: modelProvider,
       fastMode: fastMode,
+      developerInstructions: await _developerInstructions(cwd: cwd),
     );
     _loadedThreads.add(thread.id);
     _rememberThreadModel(threadId: thread.id, model: thread.model ?? model);
@@ -558,10 +560,26 @@ class CodexSessionService({
     required bool force,
   }) async {
     if (!force && _loadedThreads.contains(threadId)) return null;
-    final resumed = await _connectedThreadRepository.resumeThread(threadId: threadId);
+    final resumed = await _connectedThreadRepository.resumeThread(
+      threadId: threadId,
+      // The thread's directory is not known here, so only the user and system
+      // config layers supply the user's part.
+      developerInstructions: await _developerInstructions(cwd: null),
+    );
     _loadedThreads.add(threadId);
     _rememberThreadModel(threadId: threadId, model: resumed.thread.model);
     return resumed;
+  }
+
+  /// The user's own developer instructions followed by the Sesori note, the
+  /// way Codex's TUI adds its own surface note. A thread's
+  /// `developerInstructions` replaces the configured value, so sending only
+  /// the note would drop the user's. Codex does not persist them, so every
+  /// start and resume sends them.
+  Future<String> _developerInstructions({required String? cwd}) async {
+    final configured = await _connectedThreadRepository.readDeveloperInstructions(cwd: cwd);
+    if (configured == null) return sesoriAgentInstructions;
+    return "$configured\n\n$sesoriAgentInstructions";
   }
 
   Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId, bool started})> startTurn({

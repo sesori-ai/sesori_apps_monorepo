@@ -93,6 +93,24 @@ after one command token such as `/review`.
 | Claude Code, Codex, Pi, ACP family | ✅ Hidden from prompts and commands, live and after history load. |
 | OpenCode | ✅ Hidden from prompts. ⬜ Still visible after a native command whose template puts `$ARGUMENTS` after other text: the server expands the note into the middle of the message. Checked in code on 2026-10-26. |
 
+## Sesori agent instructions
+
+Every session gets `sesoriAgentInstructions` from `sesori_bridge_foundation`
+through the harness's own system-prompt or developer-instructions input, never
+through a prompt or the user's instruction files. Today it says how the app
+resolves relative file paths.
+
+| Harness | Sesori availability |
+|---|---|
+| Claude Code | ✅ `--append-system-prompt` on every launch. The CLI records a conversation's system prompt on its first request and keeps it until compaction, so a session created before this keeps its old prompt until then. |
+| Codex | ✅ `developerInstructions` on `thread/start` and `thread/resume`, after the user's own `developer_instructions` from `config/read`, which the field would otherwise replace. Codex records them as developer messages, which the transcript drops. A resume reads only the user and system config layers. |
+| Pi, OMP | ⬜ `--append-system-prompt`, but a CLI value replaces the user's discovered `APPEND_SYSTEM.md`, so it must be passed along. Checked on Pi 1.5.0 and OMP 18.16.0, 2026-11-07. |
+| Grok | ⬜ `session/new` `_meta.rules`, which needs an ACP activation hook. Checked on 1.0.30, 2026-11-07. |
+| DeepSeek | ⬜ Needs the Sesori adapter to register a system-prompt section. |
+| OpenCode | ⬜ v1 `system` on each prompt; v2 only an experimental instruction-entry route. Checked on 2.2.5, 2026-11-07. |
+| GitHub Copilot | ⬜ `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`, unverified whether it adds to the user's instructions. Checked on 1.0.80, 2026-11-07. |
+| Cursor, Hermes, Antigravity | 🚫 No system-prompt input on the ACP seam Sesori drives. Checked on Cursor 2026.07.23 and Hermes 0.21.5, 2026-11-07; Antigravity in plugin code only. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a
