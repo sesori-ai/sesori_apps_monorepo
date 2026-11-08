@@ -574,7 +574,7 @@ void main() {
       expect(refreshed.supportsPromptAttachments, isNull);
     });
 
-    test("file upload capability follows each load and drops with the connection", () async {
+    test("file upload capability follows each load and is unresolved without the connection", () async {
       final mockLoadService = MockSessionDetailLoadService();
       SessionDetailSnapshot snapshot({required bool supportsFileUploads}) {
         return SessionDetailSnapshot(
@@ -625,7 +625,7 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await awaitState(
         cubit: cubit,
-        predicate: (state) => state is SessionDetailLoaded && state.supportsFileUploads,
+        predicate: (state) => state is SessionDetailLoaded && state.supportsFileUploads == true,
         description: "refresh carrying file upload support",
       );
 
@@ -638,7 +638,7 @@ void main() {
 
       expect(
         cubit.state,
-        isA<SessionDetailLoaded>().having((s) => s.supportsFileUploads, "supportsFileUploads", isFalse),
+        isA<SessionDetailLoaded>().having((s) => s.supportsFileUploads, "supportsFileUploads", isNull),
       );
     });
 

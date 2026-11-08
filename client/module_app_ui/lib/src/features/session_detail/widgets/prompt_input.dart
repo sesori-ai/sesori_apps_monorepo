@@ -183,8 +183,9 @@ class const PromptInput({
   /// images while current bridge capability is being resolved.
   required final bool? attachmentsSupported,
 
-  /// Whether the bridge saves files that are not inline images.
-  required final bool fileUploadsSupported,
+  /// Whether the bridge saves files that are not inline images. Null keeps
+  /// already staged files while current bridge capability is being resolved.
+  required final bool? fileUploadsSupported,
 
   /// Stable identity used only to detect when this widget state is reused for
   /// another composer. Persistence remains owned by the parent Cubit.

@@ -138,7 +138,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required BuildContext context,
     required bool hasMessages,
     required bool? attachmentsSupported,
-    required bool fileUploadsSupported,
+    required bool? fileUploadsSupported,
     required bool isBusy,
     required List<ComposerAttachment> initialAttachments,
     required VoidCallback onInitialAttachmentsConsumed,

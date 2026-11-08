@@ -409,11 +409,10 @@ class SessionDetailLoadService({
 
   static const _PromptCapabilities _unresolvedPromptCapabilities = (
     supportsPromptAttachments: null,
-    supportsFileUploads: false,
+    supportsFileUploads: null,
   );
 
-  /// Reads both prompt capabilities from one plugin listing. A session without
-  /// a plugin id comes from a bridge that predates file uploads too.
+  /// Reads both prompt capabilities from one plugin listing.
   Future<_PromptCapabilities> _loadPromptCapabilities({required String? pluginId}) async {
     if (pluginId == null) return _unresolvedPromptCapabilities;
 
@@ -447,8 +446,8 @@ class const SessionDetailSnapshot({
   required final bool? supportsPromptAttachments,
 
   /// Whether the session's bridge saves prompt files that are not inline
-  /// images; false when its plugin listing could not be read.
-  required final bool supportsFileUploads,
+  /// images, or `null` when its plugin listing could not be read.
+  required final bool? supportsFileUploads,
   required final List<MessageWithParts> messages,
 
   /// Cursor for the page before [messages], or null when the transcript is
@@ -496,7 +495,7 @@ class const SessionDetailSnapshot({
 /// user messages precede it, when the bridge counts them.
 typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBefore});
 
-typedef _PromptCapabilities = ({bool? supportsPromptAttachments, bool supportsFileUploads});
+typedef _PromptCapabilities = ({bool? supportsPromptAttachments, bool? supportsFileUploads});
 
 typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,

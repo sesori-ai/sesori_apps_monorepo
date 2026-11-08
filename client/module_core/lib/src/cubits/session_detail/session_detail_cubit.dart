@@ -2277,11 +2277,11 @@ class SessionDetailCubit(
       _connectionRefreshQueued = false;
       final current = state;
       if (current is SessionDetailLoaded &&
-          (current.supportsPromptAttachments != null || current.supportsFileUploads)) {
+          (current.supportsPromptAttachments != null || current.supportsFileUploads != null)) {
         // Plugin capabilities belong to the bridge behind the connection and
         // must be resolved again before another bridge can receive images or
         // files.
-        emit(current.copyWith(supportsPromptAttachments: null, supportsFileUploads: false));
+        emit(current.copyWith(supportsPromptAttachments: null, supportsFileUploads: null));
       }
       return;
     }

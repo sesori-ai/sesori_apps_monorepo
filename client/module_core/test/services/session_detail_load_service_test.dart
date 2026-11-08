@@ -222,7 +222,7 @@ void main() {
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
-      expect(result.snapshot.supportsFileUploads, isFalse);
+      expect(result.snapshot.supportsFileUploads, isNull);
     });
 
     test("load reads the bridge's file upload capability from the same plugin listing", () async {
@@ -285,7 +285,7 @@ void main() {
       expect(snapshot.agents, hasLength(1));
       expect(snapshot.providerData?.items, hasLength(1));
       expect(snapshot.supportsPromptAttachments, isNull);
-      expect(snapshot.supportsFileUploads, isFalse);
+      expect(snapshot.supportsFileUploads, isNull);
       verifyNever(
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
