@@ -329,6 +329,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -550,6 +551,32 @@ void main() {
     expect(tester.element(find.byType(NewSessionView)).read<NewSessionCubit>().state.project.id, "project-2");
   });
 
+  testWidgets("the composer learns whether the bridge saves files", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          supportsFileUploads: true,
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<PromptInput>(find.byType(PromptInput)).fileUploadsSupported, isTrue);
+  });
+
   testWidgets("a sent dictation has a landing over the composer", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
@@ -694,6 +721,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: false,
+          supportsFileUploads: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -932,6 +960,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: const [
             PluginMetadata(
               id: "failed-id",
@@ -998,6 +1027,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: const [
             PluginMetadata(
               id: "other-id",
@@ -1175,6 +1205,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: [
             for (var index = 0; index < 8; index++)
               PluginMetadata(
@@ -1278,6 +1309,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: const [toolA, toolB],
         ),
       ),
@@ -1367,6 +1399,7 @@ void main() {
             PluginDiscoverySnapshot(
               bridgeId: null,
               supportsSessionOptions: true,
+              supportsFileUploads: false,
               plugins: const [toolA, toolB],
             ),
           ),
@@ -1411,6 +1444,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: const [toolA, toolB],
         ),
       ),
@@ -1440,6 +1474,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: null,
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: const [
               PluginMetadata(
                 id: "plugin-1",
@@ -1545,7 +1580,12 @@ void main() {
   testWidgets("names the missing harness and hides unavailable controls", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          supportsFileUploads: false,
+          plugins: const [],
+        ),
       ),
     );
 
@@ -1572,6 +1612,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: discoveryCalls == 1
               ? const []
               : const [
@@ -1624,6 +1665,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: discoveryCalls == 1
               ? const []
               : const [
@@ -1686,7 +1728,12 @@ void main() {
 
   testWidgets("holds the no-harness notice still through a reconnect that finds none again", (tester) async {
     final noHarness = ApiResponse.success(
-      PluginDiscoverySnapshot(bridgeId: "bridge-1", supportsSessionOptions: true, plugins: const []),
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-1",
+        supportsSessionOptions: true,
+        supportsFileUploads: false,
+        plugins: const [],
+      ),
     );
     final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
     var discoveryCalls = 0;
@@ -1731,6 +1778,7 @@ void main() {
       PluginDiscoverySnapshot(
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
+        supportsFileUploads: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -1812,6 +1860,7 @@ void main() {
       PluginDiscoverySnapshot(
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
+        supportsFileUploads: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -1911,6 +1960,7 @@ void main() {
       PluginDiscoverySnapshot(
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
+        supportsFileUploads: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -2100,6 +2150,7 @@ void main() {
       PluginDiscoverySnapshot(
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
+        supportsFileUploads: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -2370,7 +2421,12 @@ void main() {
       ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null),
     );
     final noHarness = ApiResponse.success(
-      PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+      PluginDiscoverySnapshot(
+        bridgeId: null,
+        supportsSessionOptions: true,
+        supportsFileUploads: false,
+        plugins: const [],
+      ),
     );
     for (final (name, outcome, width) in [
       ("discovery fails", failed, 800.0),
@@ -2459,7 +2515,12 @@ void main() {
   testWidgets("opens harness settings from the empty harness notice", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
-        PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          supportsFileUploads: false,
+          plugins: const [],
+        ),
       ),
     );
 
@@ -3220,6 +3281,7 @@ void main() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: true,
+          supportsFileUploads: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -3844,7 +3906,12 @@ void main() {
 
         discovery.complete(
           ApiResponse.success(
-            PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+            PluginDiscoverySnapshot(
+              bridgeId: null,
+              supportsSessionOptions: true,
+              supportsFileUploads: false,
+              plugins: const [],
+            ),
           ),
         );
         await tester.pump();

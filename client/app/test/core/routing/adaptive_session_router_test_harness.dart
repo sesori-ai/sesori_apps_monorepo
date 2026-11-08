@@ -136,6 +136,7 @@ class AdaptiveSessionRouterTestHarness() {
         PluginDiscoverySnapshot(
           bridgeId: null,
           supportsSessionOptions: false,
+          supportsFileUploads: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -391,6 +392,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
     bridgeQueuedPrompts: const [],
     pluginId: "opencode",
     supportsPromptAttachments: false,
+    supportsFileUploads: false,
     messages: const [],
     olderMessagesCursor: null,
     userMessagesBefore: null,

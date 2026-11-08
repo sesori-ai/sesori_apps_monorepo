@@ -995,10 +995,15 @@ void main() {
         // Several cooldown windows pass while disconnected: no retry fires.
         async.elapse(_cooldown * 3);
         expect(messageLoads, 1);
-        expect(
-          emitted.whereType<SessionDetailLoaded>().where((state) => state.isRefreshing),
-          hasLength(1),
-        );
+        // One refresh started. The drop itself only marks the bridge's
+        // capabilities unresolved on the refreshing state.
+        final loaded = emitted.whereType<SessionDetailLoaded>().toList();
+        final refreshStarts = [
+          for (var i = 0; i < loaded.length; i++)
+            if (loaded[i].isRefreshing && (i == 0 || !loaded[i - 1].isRefreshing)) loaded[i],
+        ];
+        expect(refreshStarts, hasLength(1));
+        expect(loaded.last.supportsFileUploads, isNull);
 
         connectionStatus.add(connectedStatus);
         async.elapse(Duration.zero);

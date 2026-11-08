@@ -33,6 +33,7 @@ void main() {
     const response = PluginListResponse(
       bridgeId: "br_abc12345",
       supportsSessionOptions: true,
+      supportsFileUploads: true,
       plugins: [
         PluginMetadata(
           id: "plugin-b",
@@ -64,6 +65,7 @@ void main() {
             "supportsSessionOptions",
             response.supportsSessionOptions,
           )
+          .having((value) => value.data.supportsFileUploads, "supportsFileUploads", isTrue)
           .having((value) => value.data.plugins, "plugins", response.plugins),
     );
   });
@@ -78,6 +80,7 @@ void main() {
       isA<SuccessResponse<PluginDiscoverySnapshot>>()
           .having((value) => value.data.bridgeId, "bridgeId", isNull)
           .having((value) => value.data.supportsSessionOptions, "supportsSessionOptions", isFalse)
+          .having((value) => value.data.supportsFileUploads, "supportsFileUploads", isFalse)
           .having(
             (value) => value.data.plugins.single.supportsPromptAttachments,
             "supportsPromptAttachments",
@@ -127,6 +130,24 @@ void main() {
 
     expect(result.data.plugins.first.supportsPromptAttachments, isTrue);
     expect(result.data.plugins.last.supportsPromptAttachments, isFalse);
+  });
+
+  test("reports no file uploads from a bridge whose listing omits the flag", () async {
+    final response = PluginListResponse.fromJson(const {
+      "bridgeId": "br_abc12345",
+      "supportsSessionOptions": true,
+      "plugins": <Object>[],
+    });
+    when(api.listPlugins).thenAnswer((_) async => ApiResponse.success(response));
+
+    expect(
+      await repository.listPlugins(),
+      isA<SuccessResponse<PluginDiscoverySnapshot>>().having(
+        (value) => value.data.supportsFileUploads,
+        "supportsFileUploads",
+        isFalse,
+      ),
+    );
   });
 
   test("surfaces errors other than an unsupported discovery route", () async {

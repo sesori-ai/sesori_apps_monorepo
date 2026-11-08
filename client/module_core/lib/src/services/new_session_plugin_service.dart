@@ -11,6 +11,9 @@ import "models/new_session_options_source.dart";
 final class const NewSessionPluginDiscovery({
   required final String? bridgeId,
   required final NewSessionOptionsSource optionsSource,
+
+  /// Whether the bridge saves prompt files that are not inline images.
+  required final bool supportsFileUploads,
   required final List<PluginMetadata> plugins,
   required final PluginMetadata? selected,
 });
@@ -46,6 +49,7 @@ class NewSessionPluginService({
             optionsSource: data.supportsSessionOptions
                 ? NewSessionOptionsSource.aggregate
                 : NewSessionOptionsSource.legacy,
+            supportsFileUploads: data.supportsFileUploads,
             plugins: plugins,
             selected: selected,
           ),

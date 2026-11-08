@@ -1227,6 +1227,7 @@ class SessionDetailCubit(
               availableProviders: availableProviders,
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
+              supportsFileUploads: snapshot.supportsFileUploads,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               session: refreshedSession,
               selectedAgent: preservedSelectedAgent,
@@ -2275,10 +2276,12 @@ class SessionDetailCubit(
     if (!isConnected) {
       _connectionRefreshQueued = false;
       final current = state;
-      if (current is SessionDetailLoaded && current.supportsPromptAttachments != null) {
+      if (current is SessionDetailLoaded &&
+          (current.supportsPromptAttachments != null || current.supportsFileUploads != null)) {
         // Plugin capabilities belong to the bridge behind the connection and
-        // must be resolved again before another bridge can receive images.
-        emit(current.copyWith(supportsPromptAttachments: null));
+        // must be resolved again before another bridge can receive images or
+        // files.
+        emit(current.copyWith(supportsPromptAttachments: null, supportsFileUploads: null));
       }
       return;
     }
@@ -3435,6 +3438,7 @@ class SessionDetailCubit(
       session: session,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
+      supportsFileUploads: snapshot.supportsFileUploads,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: derived.childStatuses,

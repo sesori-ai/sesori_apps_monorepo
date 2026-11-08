@@ -222,6 +222,39 @@ void main() {
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
+      expect(result.snapshot.supportsFileUploads, isNull);
+    });
+
+    test("load reads the bridge's file upload capability from the same plugin listing", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      pluginRepository = stubbedPluginRepository(
+        plugins: const [
+          PluginMetadata(
+            id: "plugin-1",
+            displayName: "Plugin One",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+          ),
+        ],
+        supportsFileUploads: true,
+      );
+      service = SessionDetailLoadService(
+        repository: repository,
+        pluginRepository: pluginRepository,
+        connectionService: connectionService,
+      );
+
+      final result = await _load(service: service, projectId: "project-1");
+
+      expect(
+        result,
+        isA<SessionDetailLoadResultLoaded>()
+            .having((value) => value.snapshot.supportsFileUploads, "supportsFileUploads", isTrue)
+            .having((value) => value.snapshot.supportsPromptAttachments, "supportsPromptAttachments", isFalse),
+      );
+      verify(() => pluginRepository.listPlugins()).called(1);
     });
 
     test("load marks archived sessions and names their options from the cache alone", () async {
@@ -252,6 +285,7 @@ void main() {
       expect(snapshot.agents, hasLength(1));
       expect(snapshot.providerData?.items, hasLength(1));
       expect(snapshot.supportsPromptAttachments, isNull);
+      expect(snapshot.supportsFileUploads, isNull);
       verifyNever(
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),

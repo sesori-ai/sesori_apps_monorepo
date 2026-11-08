@@ -49,6 +49,7 @@ PluginDiscoverySnapshot _pluginSnapshot({
 }) => PluginDiscoverySnapshot(
   bridgeId: bridgeId,
   supportsSessionOptions: false,
+  supportsFileUploads: false,
   plugins: plugins,
 );
 
@@ -437,6 +438,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-a",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: [discoveryCalls == 1 ? pluginA : refreshedA],
           ),
         );
@@ -481,6 +483,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-a",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: const [pluginA],
           ),
         ),
@@ -970,6 +973,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-a",
             supportsSessionOptions: true,
+            supportsFileUploads: false,
             plugins: const [pluginA],
           ),
         );
@@ -1114,6 +1118,7 @@ void main() {
           PluginDiscoverySnapshot(
             bridgeId: "bridge-a",
             supportsSessionOptions: discoveryCalls == 1,
+            supportsFileUploads: false,
             plugins: const [pluginA],
           ),
         );

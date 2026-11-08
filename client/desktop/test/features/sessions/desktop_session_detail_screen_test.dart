@@ -132,6 +132,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     session: session,
     pluginId: "opencode",
     supportsPromptAttachments: true,
+    supportsFileUploads: false,
     assistantAgentModel: null,
     children: const [_child],
     childStatuses: const {"child-1": SessionStatus.idle()},

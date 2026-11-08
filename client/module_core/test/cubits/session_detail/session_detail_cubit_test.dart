@@ -3953,6 +3953,7 @@ void _stubPromptAttachmentCapability({
       PluginDiscoverySnapshot(
         bridgeId: "bridge-test",
         supportsSessionOptions: true,
+        supportsFileUploads: false,
         plugins: [
           PluginMetadata(
             id: pluginId,

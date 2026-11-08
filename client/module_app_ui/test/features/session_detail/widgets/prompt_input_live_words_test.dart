@@ -909,6 +909,7 @@ class _ComposerHostState() extends State<_ComposerHost> {
         onCommandSelected: (_) {},
         onCommandCleared: () {},
         attachmentsSupported: false,
+        fileUploadsSupported: false,
         draftIdentity: "live-words-test",
         restorationKey: null,
         initialDraft: ComposerDraft.typed(text: ""),

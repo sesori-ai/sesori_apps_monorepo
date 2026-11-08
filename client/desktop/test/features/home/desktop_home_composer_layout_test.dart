@@ -84,6 +84,7 @@ class const _Answers({
       NewSessionPluginDiscovery(
         bridgeId: "bridge",
         optionsSource: NewSessionOptionsSource.aggregate,
+        supportsFileUploads: false,
         plugins: plugins,
         selected: plugins.firstOrNull,
       ),

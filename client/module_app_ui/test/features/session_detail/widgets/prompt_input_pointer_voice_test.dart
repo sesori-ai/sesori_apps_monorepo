@@ -818,6 +818,7 @@ Future<void> _pumpPointerComposer({
                 onCommandSelected: (_) {},
                 onCommandCleared: () {},
                 attachmentsSupported: attachmentsSupported,
+                fileUploadsSupported: false,
                 draftIdentity: "pointer-voice-test",
                 restorationKey: null,
                 initialDraft: ComposerDraft.typed(text: initialText),

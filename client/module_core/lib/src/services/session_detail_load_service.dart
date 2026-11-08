@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -182,9 +183,9 @@ class SessionDetailLoadService({
         requireComplete: requireCompleteOptions && !isArchived,
         mode: isArchived ? SessionOptionsRequestMode.cacheOnly : optionsMode,
       );
-      final promptAttachmentSupportFuture = isArchived
-          ? Future<bool?>.value(null)
-          : _loadPromptAttachmentSupport(pluginId: pluginId);
+      final promptCapabilitiesFuture = isArchived
+          ? Future.value(_unresolvedPromptCapabilities)
+          : _loadPromptCapabilities(pluginId: pluginId);
       // Stage 4 child discovery persists legacy bindings. Pending input must
       // observe those bindings rather than race the compatibility backfill.
       final childrenResponse = await childrenFuture;
@@ -205,9 +206,9 @@ class SessionDetailLoadService({
         statusesFuture,
         queuedPromptsFuture,
       ).wait;
-      final (optionsResult, supportsPromptAttachments) = await (
+      final (optionsResult, promptCapabilities) = await (
         optionsFuture,
-        promptAttachmentSupportFuture,
+        promptCapabilitiesFuture,
       ).wait;
       final options = switch (optionsResult) {
         _SessionDetailOptionsAvailable(:final options) => options,
@@ -255,7 +256,8 @@ class SessionDetailLoadService({
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           pluginId: pluginId,
-          supportsPromptAttachments: supportsPromptAttachments,
+          supportsPromptAttachments: promptCapabilities.supportsPromptAttachments,
+          supportsFileUploads: promptCapabilities.supportsFileUploads,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
           userMessagesBefore: messagesPage.userMessagesBefore,
@@ -405,23 +407,31 @@ class SessionDetailLoadService({
     }
   }
 
-  Future<bool?> _loadPromptAttachmentSupport({required String? pluginId}) async {
-    if (pluginId == null) return null;
+  static const _PromptCapabilities _unresolvedPromptCapabilities = (
+    supportsPromptAttachments: null,
+    supportsFileUploads: null,
+  );
+
+  /// Reads both prompt capabilities from one plugin listing.
+  Future<_PromptCapabilities> _loadPromptCapabilities({required String? pluginId}) async {
+    if (pluginId == null) return _unresolvedPromptCapabilities;
 
     try {
       switch (await _pluginRepository.listPlugins()) {
         case SuccessResponse(:final data):
-          for (final plugin in data.plugins) {
-            if (plugin.id == pluginId) return plugin.supportsPromptAttachments;
-          }
-          return null;
+          return (
+            supportsPromptAttachments: data.plugins
+                .firstWhereOrNull((plugin) => plugin.id == pluginId)
+                ?.supportsPromptAttachments,
+            supportsFileUploads: data.supportsFileUploads,
+          );
         case ErrorResponse(:final error):
-          logw("Failed to load prompt attachment capability for plugin $pluginId", error);
-          return null;
+          logw("Failed to load prompt capabilities for plugin $pluginId", error);
+          return _unresolvedPromptCapabilities;
       }
     } on Object catch (error, stackTrace) {
-      logw("Failed to load prompt attachment capability for plugin $pluginId", error, stackTrace);
-      return null;
+      logw("Failed to load prompt capabilities for plugin $pluginId", error, stackTrace);
+      return _unresolvedPromptCapabilities;
     }
   }
 }
@@ -434,6 +444,11 @@ class const SessionDetailSnapshot({
   /// Whether the session's plugin explicitly declares inline attachment
   /// support, or `null` when plugin metadata could not be resolved.
   required final bool? supportsPromptAttachments,
+
+  /// Whether the session's bridge saves prompt files that are not inline
+  /// images, or `null` when the session is archived or has no plugin id, or
+  /// its plugin listing could not be read.
+  required final bool? supportsFileUploads,
   required final List<MessageWithParts> messages,
 
   /// Cursor for the page before [messages], or null when the transcript is
@@ -480,6 +495,8 @@ class const SessionDetailSnapshot({
 /// One page of history plus the cursor for the page before it and how many
 /// user messages precede it, when the bridge counts them.
 typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBefore});
+
+typedef _PromptCapabilities = ({bool? supportsPromptAttachments, bool? supportsFileUploads});
 
 typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,

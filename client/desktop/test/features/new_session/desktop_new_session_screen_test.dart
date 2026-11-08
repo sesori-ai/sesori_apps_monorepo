@@ -44,6 +44,7 @@ class _MockComposerAttachmentDispatcher() extends Mock implements ComposerAttach
 const _config = NewSessionComposeConfig(
   availablePlugins: [],
   selectedPlugin: null,
+  supportsFileUploads: false,
   options: NewSessionOptionsLoadState.unsupported(),
   backendScope: NewSessionBackendScope.verified(bridgeId: null),
   isPluginDiscoveryInFlight: false,
@@ -353,6 +354,7 @@ void main() {
       config: NewSessionComposeConfig(
         availablePlugins: [],
         selectedPlugin: null,
+        supportsFileUploads: false,
         options: NewSessionOptionsLoadState.loading(source: null),
         backendScope: NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null),
         isPluginDiscoveryInFlight: true,
@@ -365,6 +367,7 @@ void main() {
       config: const NewSessionComposeConfig(
         availablePlugins: [],
         selectedPlugin: null,
+        supportsFileUploads: false,
         options: NewSessionOptionsLoadState.loading(source: null),
         backendScope: NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null),
         isPluginDiscoveryInFlight: false,
@@ -375,6 +378,7 @@ void main() {
     const foundConfig = NewSessionComposeConfig(
       availablePlugins: [plugin],
       selectedPlugin: plugin,
+      supportsFileUploads: false,
       options: NewSessionOptionsLoadState.unsupported(),
       backendScope: NewSessionBackendScope.verified(bridgeId: null),
       isPluginDiscoveryInFlight: false,

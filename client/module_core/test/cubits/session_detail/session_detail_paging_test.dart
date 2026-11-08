@@ -609,6 +609,7 @@ SessionDetailSnapshot _snapshot({
   bridgeQueuedPrompts: const [],
   pluginId: "plugin-1",
   supportsPromptAttachments: true,
+  supportsFileUploads: false,
   messages: messages,
   olderMessagesCursor: olderMessagesCursor,
   userMessagesBefore: userMessagesBefore,

@@ -154,6 +154,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -214,6 +215,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: [],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -303,6 +305,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -375,6 +378,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -432,6 +436,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -506,6 +511,7 @@ void main() {
           bridgeQueuedPrompts: const [],
           pluginId: "codex",
           supportsPromptAttachments: supportsPromptAttachments,
+          supportsFileUploads: false,
           messages: const <MessageWithParts>[],
           olderMessagesCursor: null,
           userMessagesBefore: null,
@@ -568,6 +574,74 @@ void main() {
       expect(refreshed.supportsPromptAttachments, isNull);
     });
 
+    test("file upload capability follows each load and is unresolved without the connection", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      SessionDetailSnapshot snapshot({required bool supportsFileUploads}) {
+        return SessionDetailSnapshot(
+          areOptionsStale: false,
+          bridgeQueuedPrompts: const [],
+          pluginId: "codex",
+          supportsPromptAttachments: false,
+          supportsFileUploads: supportsFileUploads,
+          messages: const <MessageWithParts>[],
+          olderMessagesCursor: null,
+          userMessagesBefore: null,
+          awaitingHarnessSync: false,
+          pendingQuestions: const <PendingQuestion>[],
+          pendingPermissions: const <PendingPermission>[],
+          childSessions: const <Session>[],
+          statuses: const <String, SessionStatus>{},
+          agents: const <AgentInfo>[],
+          providerData: null,
+          commands: const <CommandInfo>[],
+          canonicalSessionTitle: null,
+          promptDefaults: null,
+          isRootSession: true,
+          isArchived: false,
+          cannotContinueMessage: null,
+        );
+      }
+
+      when(
+        () => mockLoadService.load(
+          session: any(named: "session"),
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) async => SessionDetailLoadResult.loaded(snapshot: snapshot(supportsFileUploads: false)));
+      when(
+        () => mockLoadService.reload(
+          session: any(named: "session"),
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) async => SessionDetailLoadResult.loaded(snapshot: snapshot(supportsFileUploads: true)));
+
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having((s) => s.supportsFileUploads, "supportsFileUploads", isFalse),
+      );
+
+      mockConnectionService.emitDataMayBeStale();
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && (state.supportsFileUploads ?? false),
+        description: "refresh carrying file upload support",
+      );
+
+      connectionStatus.add(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having((s) => s.supportsFileUploads, "supportsFileUploads", isNull),
+      );
+    });
+
     test("queued attachment waits for a current capability load after reconnect", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final refreshes = <Completer<SessionDetailLoadResult>>[];
@@ -576,6 +650,7 @@ void main() {
         bridgeQueuedPrompts: [],
         pluginId: "codex",
         supportsPromptAttachments: true,
+        supportsFileUploads: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -697,6 +772,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -764,6 +840,7 @@ void main() {
         bridgeQueuedPrompts: [],
         pluginId: "opencode",
         supportsPromptAttachments: false,
+        supportsFileUploads: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -854,6 +931,7 @@ void main() {
         bridgeQueuedPrompts: [],
         pluginId: "codex",
         supportsPromptAttachments: true,
+        supportsFileUploads: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -876,6 +954,7 @@ void main() {
         bridgeQueuedPrompts: [],
         pluginId: "codex",
         supportsPromptAttachments: false,
+        supportsFileUploads: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -1005,6 +1084,7 @@ void main() {
         bridgeQueuedPrompts: [],
         pluginId: "codex",
         supportsPromptAttachments: true,
+        supportsFileUploads: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -1134,6 +1214,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1215,6 +1296,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1256,6 +1338,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1330,6 +1413,7 @@ void main() {
         bridgeQueuedPrompts: const [],
         pluginId: "opencode",
         supportsPromptAttachments: false,
+        supportsFileUploads: false,
         messages: messages,
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -1758,6 +1842,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1823,6 +1908,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1912,6 +1998,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[newest],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1990,6 +2077,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[assistant],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2068,6 +2156,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: messages,
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2139,6 +2228,7 @@ void main() {
             bridgeQueuedPrompts: [],
             pluginId: "opencode",
             supportsPromptAttachments: false,
+            supportsFileUploads: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2256,6 +2346,7 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? 
       bridgeQueuedPrompts: const [],
       pluginId: "opencode",
       supportsPromptAttachments: false,
+      supportsFileUploads: false,
       messages: messages,
       olderMessagesCursor: olderMessagesCursor,
       userMessagesBefore: null,

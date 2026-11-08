@@ -481,8 +481,12 @@ then adds the attachment source to both.
   `SessionDetailSnapshot`/`SessionDetailLoaded` and
   `session_detail_load_service.dart` get a `supportsFileUploads` bool, read from
   the same `listPlugins` call.
-- `PromptInput` gains `required bool fileUploadsSupported`, passed down but not
-  yet used for any gate. The plus gate changes in step 5, together with the
+- `SessionDetailSnapshot`/`SessionDetailLoaded` hold it as `bool?`, like
+  `supportsPromptAttachments`: null while unresolved (failed listing, archived,
+  no plugin id, dropped connection). The models built only after discovery
+  answers stay `bool`.
+- `PromptInput` gains `required bool? fileUploadsSupported` (null keeps staged
+  files while resolving), passed down but not yet used for any gate. The plus gate changes in step 5, together with the
   routes that make it useful, so no build offers a plus whose picks can't be sent.
 - Expected result: no user-visible or database change.
 
@@ -495,13 +499,14 @@ then adds the attachment source to both.
   - `SessionApi` sends each file with octet-stream on both paths.
 - module_app_ui:
   - The plus is offered when `attachmentsSupported == true ||
-    fileUploadsSupported`.
+    fileUploadsSupported == true`.
   - The staged strip, `_QueuedAttachmentPreviews` and
     `session_launch_submission_view.dart` show a file tile for a file: the same
     52px tile, a file glyph, the extension label, the name in semantics and
     tooltip, and the close badge.
   - The `didUpdateWidget` clear rule changes: drop image attachments when inline
-    images become unsupported, and drop files when uploads become unsupported.
+    images become unsupported, and drop files when uploads become unsupported
+    (`false`, never null, so a connection blip keeps them).
     Today's clear-all rule would wipe a Grok session's files on every rebuild.
   - Strings: `sessionDetailFoldersNotTransferable`, and
     `sessionDetailImagesOverBudget` renamed to

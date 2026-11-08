@@ -89,6 +89,7 @@ void main() {
                 onCommandSelected: (_) {},
                 onCommandCleared: () {},
                 attachmentsSupported: true,
+                fileUploadsSupported: false,
                 draftIdentity: identity,
                 restorationKey: null,
                 initialDraft: ComposerDraft.typed(text: "see attached"),

@@ -700,7 +700,9 @@ mixin _$NewSessionComposeConfig {
 
 /// The harnesses the bridge last reported, kept until another answer
 /// replaces them; null until a bridge has answered at all.
- List<PluginMetadata>? get availablePlugins; PluginMetadata? get selectedPlugin; NewSessionOptionsLoadState get options; NewSessionBackendScope get backendScope; bool get isPluginDiscoveryInFlight; NewSessionProjectWorktreeCapability get projectWorktreeCapability;
+ List<PluginMetadata>? get availablePlugins; PluginMetadata? get selectedPlugin;/// Whether the bridge last reported saving prompt files that are not
+/// inline images, kept like [availablePlugins]; false until it answers.
+ bool get supportsFileUploads; NewSessionOptionsLoadState get options; NewSessionBackendScope get backendScope; bool get isPluginDiscoveryInFlight; NewSessionProjectWorktreeCapability get projectWorktreeCapability;
 /// Create a copy of NewSessionComposeConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -712,20 +714,20 @@ $NewSessionComposeConfigCopyWith<NewSessionComposeConfig> get copyWith => _$NewS
 @override
 bool operator ==(Object other) {
   final _this = this as NewSessionComposeConfig;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, _this.availablePlugins)&&(identical(other.selectedPlugin, _this.selectedPlugin) || other.selectedPlugin == _this.selectedPlugin)&&(identical(other.options, _this.options) || other.options == _this.options)&&(identical(other.backendScope, _this.backendScope) || other.backendScope == _this.backendScope)&&(identical(other.isPluginDiscoveryInFlight, _this.isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == _this.isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, _this.projectWorktreeCapability) || other.projectWorktreeCapability == _this.projectWorktreeCapability));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, _this.availablePlugins)&&(identical(other.selectedPlugin, _this.selectedPlugin) || other.selectedPlugin == _this.selectedPlugin)&&(identical(other.supportsFileUploads, _this.supportsFileUploads) || other.supportsFileUploads == _this.supportsFileUploads)&&(identical(other.options, _this.options) || other.options == _this.options)&&(identical(other.backendScope, _this.backendScope) || other.backendScope == _this.backendScope)&&(identical(other.isPluginDiscoveryInFlight, _this.isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == _this.isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, _this.projectWorktreeCapability) || other.projectWorktreeCapability == _this.projectWorktreeCapability));
 }
 
 
 @override
 int get hashCode {
   final _this = this as NewSessionComposeConfig;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.availablePlugins),_this.selectedPlugin,_this.options,_this.backendScope,_this.isPluginDiscoveryInFlight,_this.projectWorktreeCapability);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.availablePlugins),_this.selectedPlugin,_this.supportsFileUploads,_this.options,_this.backendScope,_this.isPluginDiscoveryInFlight,_this.projectWorktreeCapability);
 }
 
 @override
 String toString() {
   final _this = this as NewSessionComposeConfig;
-  return 'NewSessionComposeConfig(availablePlugins: ${_this.availablePlugins}, selectedPlugin: ${_this.selectedPlugin}, options: ${_this.options}, backendScope: ${_this.backendScope}, isPluginDiscoveryInFlight: ${_this.isPluginDiscoveryInFlight}, projectWorktreeCapability: ${_this.projectWorktreeCapability})';
+  return 'NewSessionComposeConfig(availablePlugins: ${_this.availablePlugins}, selectedPlugin: ${_this.selectedPlugin}, supportsFileUploads: ${_this.supportsFileUploads}, options: ${_this.options}, backendScope: ${_this.backendScope}, isPluginDiscoveryInFlight: ${_this.isPluginDiscoveryInFlight}, projectWorktreeCapability: ${_this.projectWorktreeCapability})';
 }
 
 
@@ -736,7 +738,7 @@ abstract mixin class $NewSessionComposeConfigCopyWith<$Res>  {
   factory $NewSessionComposeConfigCopyWith(NewSessionComposeConfig value, $Res Function(NewSessionComposeConfig) _then) = _$NewSessionComposeConfigCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata>? availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+ List<PluginMetadata>? availablePlugins, PluginMetadata? selectedPlugin, bool supportsFileUploads, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -753,11 +755,12 @@ class _$NewSessionComposeConfigCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionComposeConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? availablePlugins = freezed,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? availablePlugins = freezed,Object? selectedPlugin = freezed,Object? supportsFileUploads = null,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(NewSessionComposeConfig(
 availablePlugins: freezed == availablePlugins ? _self.availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>?,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as PluginMetadata?,supportsFileUploads: null == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
+as bool,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
 as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
@@ -803,7 +806,7 @@ $NewSessionBackendScopeCopyWith<$Res> get backendScope {
 
 
 class _NewSessionComposeConfig implements NewSessionComposeConfig {
-  const _NewSessionComposeConfig({required  List<PluginMetadata>? availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
+  const _NewSessionComposeConfig({required  List<PluginMetadata>? availablePlugins, required this.selectedPlugin, required this.supportsFileUploads, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
   
 
 /// The harnesses the bridge last reported, kept until another answer
@@ -820,6 +823,9 @@ class _NewSessionComposeConfig implements NewSessionComposeConfig {
 }
 
 @override final  PluginMetadata? selectedPlugin;
+/// Whether the bridge last reported saving prompt files that are not
+/// inline images, kept like [availablePlugins]; false until it answers.
+@override final  bool supportsFileUploads;
 @override final  NewSessionOptionsLoadState options;
 @override final  NewSessionBackendScope backendScope;
 @override final  bool isPluginDiscoveryInFlight;
@@ -835,18 +841,18 @@ _$NewSessionComposeConfigCopyWith<_NewSessionComposeConfig> get copyWith => __$N
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.supportsFileUploads, supportsFileUploads) || other.supportsFileUploads == supportsFileUploads)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,supportsFileUploads,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
 }
 
 @override
 String toString() {
-    return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
+    return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, supportsFileUploads: $supportsFileUploads, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
 }
 
 
@@ -857,7 +863,7 @@ abstract mixin class _$NewSessionComposeConfigCopyWith<$Res> implements $NewSess
   factory _$NewSessionComposeConfigCopyWith(_NewSessionComposeConfig value, $Res Function(_NewSessionComposeConfig) _then) = __$NewSessionComposeConfigCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata>? availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+ List<PluginMetadata>? availablePlugins, PluginMetadata? selectedPlugin, bool supportsFileUploads, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -874,11 +880,12 @@ class __$NewSessionComposeConfigCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionComposeConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? availablePlugins = freezed,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? availablePlugins = freezed,Object? selectedPlugin = freezed,Object? supportsFileUploads = null,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(_NewSessionComposeConfig(
 availablePlugins: freezed == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>?,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as PluginMetadata?,supportsFileUploads: null == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
+as bool,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
 as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
