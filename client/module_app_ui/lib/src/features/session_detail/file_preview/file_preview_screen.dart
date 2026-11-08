@@ -186,34 +186,32 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
   Widget _body({required FilePreviewState state, required _Rendering? rendering}) => switch (state) {
     FilePreviewLoading() => const Center(child: PregoActivityIndicator(color: null)),
     FilePreviewShowsText(:final content) when rendering == _Rendering.markdown => _MarkdownPreview(content: content),
-    // The web view never insets its page for the home indicator, so it stops above it.
-    FilePreviewShowsText(:final content) when rendering == _Rendering.html => Padding(
-      padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerUp: (_) => _htmlPageTouchedAt = DateTime.now(),
-            child: WebViewWidget(
-              controller: _htmlPage ??= _loadHtmlPage(
-                content: content,
-                openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
-                justTouched: () => _htmlPageJustTouched,
-                onLoaded: () {
-                  if (mounted && !_htmlPageLoaded) setState(() => _htmlPageLoaded = true);
-                },
-              ),
+    // The page fills to the bottom edge, under the home indicator, as in
+    // Safari, with room at its end to scroll its last line out from under it.
+    FilePreviewShowsText(:final content) when rendering == _Rendering.html => Stack(
+      fit: StackFit.expand,
+      children: [
+        Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerUp: (_) => _htmlPageTouchedAt = DateTime.now(),
+          child: WebViewWidget(
+            controller: _htmlPage ??= _loadHtmlPage(
+              page: _withBottomRoom(content: content, bottomInset: MediaQuery.viewPaddingOf(context).bottom),
+              openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+              justTouched: () => _htmlPageJustTouched,
+              onLoaded: () {
+                if (mounted && !_htmlPageLoaded) setState(() => _htmlPageLoaded = true);
+              },
             ),
           ),
-          if (!_htmlPageLoaded)
-            ColoredBox(
-              key: const Key("file-preview-html-loading"),
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: const Center(child: PregoActivityIndicator(color: null)),
-            ),
-        ],
-      ),
+        ),
+        if (!_htmlPageLoaded)
+          ColoredBox(
+            key: const Key("file-preview-html-loading"),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: const Center(child: PregoActivityIndicator(color: null)),
+          ),
+      ],
     ),
     FilePreviewShowsText(:final content) => _CodePreview(
       content: content,
@@ -334,13 +332,22 @@ enum _Rendering() {
   html,
 }
 
-/// Loads the page an HTML file describes into a web view. Its scripts and
-/// in-page anchors work, but it never navigates away: a link tapped while
+/// [content] with [bottomInset] of room after its end, so its last line can
+/// scroll out from under the home indicator: the web view keeps no inset of
+/// its own. The style goes last, where the parser moves it into the body;
+/// anything before a doctype would put the page in quirks mode. A spacer at
+/// the end of the body, unlike padding on the root, also follows content that
+/// overflows a body held to the viewport's height.
+String _withBottomRoom({required String content, required double bottomInset}) =>
+    bottomInset <= 0 ? content : "$content<style>body::after{content:'';display:block;height:${bottomInset}px}</style>";
+
+/// Loads [page], an HTML file's text, into a web view. Its scripts and in-page
+/// anchors work, but it never navigates away: a link tapped while
 /// [justTouched] holds opens outside the app, and anything else is blocked.
 /// [onLoaded] runs once the file has loaded. Relative assets beside the file
 /// do not load; only the file is here.
 WebViewController _loadHtmlPage({
-  required String content,
+  required String page,
   required ExternalLinkOpener openExternalLink,
   required bool Function() justTouched,
   required VoidCallback onLoaded,
@@ -368,7 +375,7 @@ WebViewController _loadHtmlPage({
     final scheme = Uri.tryParse(url)?.scheme ?? "";
     if (scheme.isEmpty || scheme == "about" || scheme == "data") return;
     if (!justTouched()) unawaited(controller.setJavaScriptMode(JavaScriptMode.disabled));
-    unawaited(controller.loadHtmlString(content));
+    unawaited(controller.loadHtmlString(page));
   }
 
   unawaited(controller.setJavaScriptMode(JavaScriptMode.unrestricted));
@@ -377,7 +384,7 @@ WebViewController _loadHtmlPage({
       NavigationDelegate(onNavigationRequest: decide, onPageStarted: returnToFile, onPageFinished: (_) => onLoaded()),
     ),
   );
-  unawaited(controller.loadHtmlString(content));
+  unawaited(controller.loadHtmlString(page));
   return controller;
 }
 

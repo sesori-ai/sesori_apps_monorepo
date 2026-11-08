@@ -607,6 +607,7 @@ void main() {
           final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
           final result = switch (decoded["method"]) {
             "initialize" => _initOk,
+            "config/read" => _configReadOk,
             "thread/resume" => const {
               "model": "gpt-5.4-mini",
               "modelProvider": "openai",
@@ -774,6 +775,9 @@ void main() {
   });
 }
 
+/// A `config/read` result with no user developer instructions.
+const Map<String, dynamic> _configReadOk = {"config": <String, dynamic>{}};
+
 const Map<String, dynamic> _initOk = {
   "userAgent": "codex-cli/0.121.0",
   "codexHome": "/Users/test/.codex",
@@ -807,6 +811,10 @@ Future<({CodexPlugin plugin, int Function() connectionCount})> _dropMidTurn({
     if (connection == 1) firstSocket.complete(socket);
     socket.listen((frame) async {
       final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+      if (decoded["method"] == "config/read") {
+        socket.add(jsonEncode({"jsonrpc": "2.0", "id": decoded["id"], "result": _configReadOk}));
+        return;
+      }
       final body = await reply(
         connection: connection,
         method: decoded["method"] as String,

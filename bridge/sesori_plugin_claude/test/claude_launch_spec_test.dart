@@ -1,4 +1,5 @@
 import "package:claude_plugin/claude_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
 import "package:test/test.dart";
 
 // Real UUIDs: the launch contract rejects anything else.
@@ -50,6 +51,19 @@ void main() {
           specFor(launch).arguments,
           containsAllInOrder(["--permission-prompt-tool", "stdio"]),
           reason: "$launch must still route permission asks over stdio",
+        );
+      }
+    });
+
+    test("appends the Sesori note to the system prompt on new and resumed launches", () {
+      for (final launch in [
+        ClaudeNewSession(sessionId: _newSessionId),
+        ClaudeResumedSession(sessionId: _oldSessionId),
+      ]) {
+        expect(
+          specFor(launch).arguments,
+          containsAllInOrder(["--append-system-prompt", sesoriAgentInstructions]),
+          reason: "$launch must carry the Sesori note",
         );
       }
     });

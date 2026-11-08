@@ -281,7 +281,7 @@ void main() {
         );
         expect(find.byKey(const Key("fake-web-view")), findsOneWidget);
         final controller = webViews.controllers.single;
-        expect(controller.loadedHtml, [page]);
+        expect(controller.loadedHtml, [page], reason: "without a bottom inset the page needs no room");
         expect(controller.javaScriptMode, JavaScriptMode.unrestricted);
 
         await tester.tap(find.byKey(const Key("file-preview-source-toggle")));
@@ -293,6 +293,44 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byKey(const Key("fake-web-view")), findsOneWidget);
         expect(webViews.controllers.single, same(controller), reason: "the page is kept, not loaded again");
+      });
+
+      testWidgets("fills to the bottom edge, under the home indicator", (tester) async {
+        tester.view.padding = FakeViewPadding(bottom: 34 * tester.view.devicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        webViews.controllers.single.finishPage(url: "about:blank");
+        await tester.pump();
+
+        final screen = tester.getRect(find.byType(FilePreviewScreen));
+        expect(tester.getRect(find.byKey(const Key("fake-web-view"))).bottom, screen.bottom);
+      });
+
+      testWidgets("adds room under the home indicator to the page but not its source", (tester) async {
+        tester.view.viewPadding = FakeViewPadding(bottom: 34 * tester.view.devicePixelRatio);
+        addTearDown(tester.view.resetViewPadding);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.html", line: null),
+          state: const FilePreviewShowsText(content: page),
+          openExternalLink: _ignoreLink,
+        );
+        const roomy = "$page<style>body::after{content:'';display:block;height:34.0px}</style>";
+        final controller = webViews.controllers.single;
+        expect(controller.loadedHtml, [roomy]);
+
+        controller.startPage(url: "https://example.com/auto-submit");
+        expect(controller.loadedHtml, [roomy, roomy], reason: "the file comes back with its room");
+
+        await tester.tap(find.byKey(const Key("file-preview-source-toggle")));
+        await tester.pumpAndSettle();
+        expect(find.textContaining(page, findRichText: true), findsOneWidget);
+        expect(find.textContaining("<style>", findRichText: true), findsNothing);
       });
 
       testWidgets("opens on its source when the reference names a line", (tester) async {

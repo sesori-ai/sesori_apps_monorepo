@@ -53,6 +53,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     required String? model,
     required String? modelProvider,
     required bool fastMode,
+    required String developerInstructions,
   }) async {
     final dto = await _request(
       operation: "thread/start",
@@ -61,9 +62,20 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
         model: model,
         modelProvider: modelProvider,
         fastMode: fastMode,
+        developerInstructions: developerInstructions,
       ),
     );
     return _mapRequired(dto: dto, operation: "thread/start");
+  }
+
+  /// The user's configured `developer_instructions`, seen from [cwd] when
+  /// given, or null when none are set.
+  Future<String?> readDeveloperInstructions({required String? cwd}) async {
+    final config = await _request(
+      operation: "config/read",
+      request: () => _appServerApi.readConfig(cwd: cwd),
+    );
+    return _usefulText(value: config.config.developerInstructions);
   }
 
   /// Reads a stored or loaded thread without resuming it. Sub-agent threads
@@ -77,10 +89,13 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return _mapRequired(dto: dto, operation: "thread/read");
   }
 
-  Future<CodexResumedThread> resumeThread({required String threadId}) async {
+  Future<CodexResumedThread> resumeThread({
+    required String threadId,
+    required String developerInstructions,
+  }) async {
     final dto = await _request(
       operation: "thread/resume",
-      request: () => _appServerApi.resumeThread(threadId: threadId),
+      request: () => _appServerApi.resumeThread(threadId: threadId, developerInstructions: developerInstructions),
     );
     return CodexResumedThread(
       thread: _mapRequired(dto: dto, operation: "thread/resume"),

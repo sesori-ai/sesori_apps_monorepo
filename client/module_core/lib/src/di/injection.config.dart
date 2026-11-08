@@ -73,7 +73,7 @@ import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
 import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
     as _i898;
 import 'package:sesori_dart_core/src/foundation/io/host_file_client.dart'
-    as _i978;
+    as _i685;
 import 'package:sesori_dart_core/src/foundation/io/plugin_authentication_loopback_server.dart'
     as _i456;
 import 'package:sesori_dart_core/src/foundation/io/temporary_directory_client.dart'
@@ -300,7 +300,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i384.SessionLaunchStorage>(
       () => _i384.SessionLaunchStorage(),
     );
-    gh.lazySingleton<_i978.HostFileClient>(() => const _i978.HostFileClient());
+    gh.lazySingleton<_i685.HostFileClient>(() => const _i685.HostFileClient());
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
     );
@@ -558,6 +558,15 @@ extension GetItInjectableX on _i174.GetIt {
         claimStorage: gh<_i275.AttributionClaimStorage>(),
       ),
     );
+    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
+      () => _i705.ComposerAttachmentDispatcher(
+        filePicker: gh<_i907.ComposerFilePicker>(),
+        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
+        fileClient: gh<_i685.HostFileClient>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
+      ),
+    );
     gh.lazySingleton<_i479.ConnectionNotificationObservationApi>(
       () => _i479.ConnectionNotificationObservationApi(
         connectionService: gh<_i369.ConnectionService>(),
@@ -620,15 +629,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i723.FeedbackPromptRepository(
         configApi: gh<_i373.FeedbackPromptConfigApi>(),
         storage: gh<_i945.FeedbackPromptStorage>(),
-      ),
-    );
-    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
-      () => _i705.ComposerAttachmentDispatcher(
-        filePicker: gh<_i907.ComposerFilePicker>(),
-        downscaleBuilder: gh<_i293.ComposerImageDownscaleBuilder>(),
-        fileClient: gh<_i978.HostFileClient>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        locality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
     gh.lazySingleton<_i996.FileReferenceOpenService>(
