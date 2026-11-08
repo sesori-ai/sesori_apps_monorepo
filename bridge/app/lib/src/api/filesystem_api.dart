@@ -36,6 +36,13 @@ class const FilesystemApi() {
     return Directory(path).listSync(followLinks: false).whereType<Directory>().toList();
   }
 
+  /// Asynchronous [listDirectories], so a large or slow folder does not block
+  /// the isolate.
+  Future<List<Directory>> listDirectoriesAsync({required String path}) async {
+    final entries = await Directory(path).list(followLinks: false).toList();
+    return entries.whereType<Directory>().toList();
+  }
+
   /// Whether [directoryPath] contains a `.git` entry (a git working copy).
   bool gitDirectoryExists({required String directoryPath}) {
     final type = FileSystemEntity.typeSync(
@@ -105,7 +112,9 @@ class const FilesystemApi() {
   /// Writes [bytes] to the file at [path], which only the current user can
   /// read or write, and flushes it to disk before completing.
   Future<void> writeOwnerOnlyFile({required String path, required List<int> bytes}) async {
-    await createHardenedFile(filePath: path).writeAsBytes(bytes, flush: true);
+    final file = await File(path).create();
+    await hardenPath(targetPath: path, mode: ownerOnlyFileMode);
+    await file.writeAsBytes(bytes, flush: true);
   }
 
   /// Creates the directory at [path] and any missing parents, then lets only

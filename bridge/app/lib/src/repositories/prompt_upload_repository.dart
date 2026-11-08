@@ -1,5 +1,5 @@
 import "dart:convert" show utf8;
-import "dart:io" show Directory, FileSystemEntityType, PathNotFoundException;
+import "dart:io" show Directory, PathNotFoundException;
 
 import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
@@ -23,9 +23,10 @@ class PromptUploadRepository({
   static const _maxNameBytes = 240;
   static const _fallbackName = "attachment";
 
-  /// Characters that would break the noted path as inline code, as one shell
-  /// word, or as a single path segment.
-  static final _unsafeNameCharacters = RegExp(r"""[\s\x00-\x1F\x7F"'`*?<>|:/\\]""");
+  /// Characters that would break the noted path as inline code, as one
+  /// unquoted shell word (splitting, expansion, globbing), or as a single path
+  /// segment.
+  static final _unsafeNameCharacters = RegExp(r"""[\s\x00-\x1F\x7F"'`*?<>|:/\\$;&()\[\]{}!]""");
   static final _pathSeparator = RegExp(r"[/\\]");
   static final _datedFolderName = RegExp(r"^\d{4}-\d{2}-\d{2}-");
 
@@ -68,7 +69,7 @@ class PromptUploadRepository({
   /// folder that something else removed meanwhile is skipped.
   Future<void> deleteFileFoldersDatedBefore({required DateTime cutoff}) async {
     final cutoffDay = DateTime(cutoff.year, cutoff.month, cutoff.day);
-    for (final sessionFolder in _filesystemApi.listDirectories(path: _uploadsRoot)) {
+    for (final sessionFolder in await _filesystemApi.listDirectoriesAsync(path: _uploadsRoot)) {
       await _deleteFileFoldersDatedBefore(sessionFolder: sessionFolder.path, cutoffDay: cutoffDay);
     }
   }
@@ -76,7 +77,7 @@ class PromptUploadRepository({
   Future<void> _deleteFileFoldersDatedBefore({required String sessionFolder, required DateTime cutoffDay}) async {
     final List<Directory> fileFolders;
     try {
-      fileFolders = _filesystemApi.listDirectories(path: sessionFolder);
+      fileFolders = await _filesystemApi.listDirectoriesAsync(path: sessionFolder);
     } on PathNotFoundException {
       Log.d("Skipped the upload folder $sessionFolder; its session was deleted meanwhile");
       return;
@@ -94,8 +95,12 @@ class PromptUploadRepository({
 
   Future<void> _deleteSessionFolder({required String sessionId}) async {
     final sessionFolder = _sessionFolder(sessionId: sessionId);
-    if (_filesystemApi.entityType(path: sessionFolder) != FileSystemEntityType.directory) return;
-    await _filesystemApi.deleteDirectoryRecursivelyAsync(path: sessionFolder);
+    try {
+      await _filesystemApi.deleteDirectoryRecursivelyAsync(path: sessionFolder);
+    } on PathNotFoundException {
+      // The usual case: most sessions never had a file sent with a prompt.
+      return;
+    }
   }
 
   /// Session ids are the bridge's own `ses_` ids, never client text; this
