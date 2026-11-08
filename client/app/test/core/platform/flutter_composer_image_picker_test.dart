@@ -7,7 +7,7 @@ import "package:image_picker/image_picker.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/flutter_composer_image_picker.dart";
-import "package:sesori_mobile/core/platform/platform_image_shrinker.dart";
+import "package:sesori_mobile/core/platform/platform_image_downscale_builder.dart";
 
 class MockImagePicker() extends Mock implements ImagePicker;
 
@@ -15,29 +15,29 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockActiveBridgeLocality() extends Mock implements ActiveBridgeLocality;
 
-/// Stands in for the platform decoder: returns [result] for any input, or the
-/// input untouched when [result] is unset, and records what it was given.
-class _FakeShrinker() implements PlatformImageShrinker {
-  final shrunk = <Uint8List>[];
-  Uint8List? Function(Uint8List bytes) result = (bytes) => bytes;
+/// Stands in for the platform decoder: returns [result] for any input and
+/// records what it was given.
+class _FakeDownscaleBuilder() implements PlatformImageDownscaleBuilder {
+  final given = <Uint8List>[];
+  PlatformImageDownscaleResult result = const PlatformImageKept();
 
   @override
-  Future<Uint8List?> shrink({required Uint8List bytes}) async {
-    shrunk.add(bytes);
-    return result(bytes);
+  Future<PlatformImageDownscaleResult> downscale({required Uint8List bytes}) async {
+    given.add(bytes);
+    return result;
   }
 }
 
 void main() {
   late MockImagePicker imagePicker;
-  late _FakeShrinker shrinker;
+  late _FakeDownscaleBuilder downscaleBuilder;
   late FlutterComposerImagePicker picker;
   late ComposerAttachmentDispatcher attachmentDispatcher;
 
   setUp(() {
     imagePicker = MockImagePicker();
-    shrinker = _FakeShrinker();
-    picker = FlutterComposerImagePicker(picker: imagePicker, shrinker: shrinker);
+    downscaleBuilder = _FakeDownscaleBuilder();
+    picker = FlutterComposerImagePicker(picker: imagePicker, downscaleBuilder: downscaleBuilder);
     attachmentDispatcher = ComposerAttachmentDispatcher(
       filePicker: picker,
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
@@ -119,13 +119,12 @@ void main() {
 
     expect(attachment?.mime, "image/gif");
     expect(attachment?.bytes, gif);
-    expect(shrinker.shrunk, isEmpty);
   });
 
   test("Android shrinks any other photo with the platform decoder and names it after the result", () async {
     final heic = Uint8List.fromList([0, 0, 0, 24, ...latin1.encode("ftypheic"), 0, 0, 0, 0]);
     final jpeg = jpegBytes();
-    shrinker.result = (_) => jpeg;
+    downscaleBuilder.result = PlatformImageDownscaled(jpeg: jpeg);
     final file = File("${Directory.systemTemp.createTempSync("picker_test").path}/IMG_0001.HEIC")
       ..writeAsBytesSync(heic);
     addTearDown(() => file.parent.deleteSync(recursive: true));
@@ -133,15 +132,15 @@ void main() {
 
     final attachment = await pickAttachment();
 
-    expect(shrinker.shrunk, [heic]);
+    expect(downscaleBuilder.given, [heic]);
     expect(attachment?.mime, "image/jpeg");
     expect(attachment?.bytes, jpeg);
     expect(attachment?.filename, "IMG_0001.jpg");
   });
 
   test("a photo the platform can't decode is turned away as unsupported", () async {
-    shrinker.result = (_) => null;
-    stubPick(XFile.fromData(jpegBytes(), name: "photo.heic"));
+    final heic = Uint8List.fromList([0, 0, 0, 24, ...latin1.encode("ftypheic"), 0, 0, 0, 0]);
+    stubPick(XFile.fromData(heic, name: "photo.heic"));
 
     expect(pickAttachment, throwsA(isA<UnsupportedAttachmentImageError>()));
   });
@@ -153,7 +152,7 @@ void main() {
 
     await pickAttachment();
 
-    expect(shrinker.shrunk, isEmpty);
+    expect(downscaleBuilder.given, isEmpty);
 
     verify(
       () => imagePicker.pickImage(

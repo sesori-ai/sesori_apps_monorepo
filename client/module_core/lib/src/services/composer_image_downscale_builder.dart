@@ -5,6 +5,7 @@ import "dart:typed_data";
 import "package:image/image.dart" as image;
 import "package:injectable/injectable.dart";
 
+import "../foundation/image/composer_jpeg_builder.dart";
 import "../foundation/models/image/supported_raster_image_format.dart";
 
 sealed class const ComposerImageDownscaleResult();
@@ -37,9 +38,6 @@ class const ComposerImageDownscaleBuilder() {
 
   /// The longest side, in pixels, of an image this builder re-encodes.
   static const maxLongSide = 2048;
-
-  /// The JPEG quality this builder re-encodes at.
-  static const jpegQuality = 85;
   static const _maxDecodedPixels = 24 * 1000 * 1000;
 
   Future<ComposerImageDownscaleResult> downscale({
@@ -85,38 +83,11 @@ class const ComposerImageDownscaleBuilder() {
               height: math.max(1, (oriented.height * scale).round()),
               interpolation: image.Interpolation.average,
             );
-      final encoded = _encodeJpeg(source: resized);
+      final encoded = ComposerJpegBuilder.encode(source: resized);
       return encoded.length < bytes.length ? ComposerImageDownscaled(bytes: encoded) : const ComposerImageKept();
     } on Object catch (cause, stackTrace) {
       return ComposerImageDownscaleFailed(cause: cause, stackTrace: stackTrace);
     }
-  }
-
-  /// Encodes straight (not premultiplied) RGBA pixels that a platform decoder
-  /// produced, the way [downscale] re-encodes, off the calling isolate.
-  Future<Uint8List> encodeRgbaAsJpeg({required Uint8List rgba, required int width, required int height}) {
-    return Isolate.run(
-      () => _encodeJpeg(
-        source: image.Image.fromBytes(
-          width: width,
-          height: height,
-          bytes: rgba.buffer,
-          bytesOffset: rgba.offsetInBytes,
-          numChannels: 4,
-          order: image.ChannelOrder.rgba,
-        ),
-      ),
-    );
-  }
-
-  static Uint8List _encodeJpeg({required image.Image source}) =>
-      image.encodeJpg(_onWhite(source: source), quality: jpegQuality);
-
-  static image.Image _onWhite({required image.Image source}) {
-    if (!source.hasAlpha) return source;
-    final background = image.Image(width: source.width, height: source.height);
-    image.fill(background, color: image.ColorRgb8(255, 255, 255));
-    return image.compositeImage(background, source.convert(format: image.Format.uint8, numChannels: 4));
   }
 
   static image.Decoder _decoderFor({required SupportedRasterImageFormat format}) => switch (format) {

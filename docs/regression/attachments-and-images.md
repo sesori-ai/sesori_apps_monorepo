@@ -40,8 +40,9 @@ content the transcript renders live and after reload.
   HEIF included, is decoded by the platform straight to at most 2048 px on its
   long side, so a photo of any resolution is never decoded in full, and is
   re-encoded as a JPEG at quality 85 off the UI isolate. A photo already
-  within that size in a format shared core reads is handed over as it is.
-  A photo the platform can't decode gets the unsupported-format notice.
+  within that size in a format shared core reads is handed over as it is, and
+  so is a photo the platform can't decode: shared core then shrinks it as above
+  when it reads the format, and otherwise gives the unsupported-format notice.
   Staged images are memory-only. They are cleared when the target stops
   supporting attachments, the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot

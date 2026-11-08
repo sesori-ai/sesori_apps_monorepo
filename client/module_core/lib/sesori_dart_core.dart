@@ -161,6 +161,7 @@ export "src/cubits/voice_input/voice_input_state.dart";
 export "src/di/cubit_composition.dart";
 export "src/di/injection.dart";
 export "src/errors/remote_failure_reason.dart";
+export "src/foundation/image/composer_jpeg_builder.dart";
 export "src/foundation/io/file_attachment_thumbnail_storage.dart";
 export "src/foundation/io/host_file_client.dart";
 export "src/foundation/io/plugin_authentication_loopback_server.dart";
