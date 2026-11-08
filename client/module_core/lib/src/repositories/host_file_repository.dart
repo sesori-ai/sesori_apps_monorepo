@@ -16,8 +16,9 @@ class HostFileRepository({required final HostFileClient _client}) {
 
   /// The supported image format the file at [path] starts with, read from its
   /// first bytes only, or null when it is not one.
-  Future<SupportedRasterImageFormat?> imageFormatOf({required String path}) async =>
-      detectSupportedRasterImageFormat(bytes: await _client.readHeader(path: path, length: _headerBytes));
+  Future<SupportedRasterImageFormat?> imageFormatOf({required String path}) async => detectSupportedRasterImageFormat(
+    bytes: await _client.readHeader(path: path, length: _headerBytes),
+  );
 
   Future<Uint8List> readAll({required String path}) => _client.readAll(path: path);
 }
