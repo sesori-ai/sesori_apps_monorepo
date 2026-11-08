@@ -196,6 +196,17 @@ content the transcript renders live and after reload.
   bytes is persisted before its live event is delivered, so a delivered
   reference is always fetchable; if that write fails, every subscriber receives
   bounded metadata rather than a dangling identifier or oversized inline frame.
+- The bridge advertises `supportsFileUploads`; an older bridge omits it and
+  reads as unsupported. It passes a `file_data` part to the plugin unchanged
+  only when its mime starts with `image/` and the plugin takes attachments.
+  Every other one (any file, or an image for Grok) is saved as
+  `~/.sesori/uploads/<sessionId>/<YYYY-MM-DD>-<random>/<sanitized name>`,
+  owner-only, and replaced in the same position by a visible
+  ``Attached file "<name>": `<path>` `` note, which a new session's live user
+  message shows too. A repeated accepted prompt saves nothing again, and a
+  command or a create with a command saves nothing. Deleting a session from
+  Sesori removes its uploads folder, and each save sweeps file folders older
+  than 30 days.
 
 ## Regression Levels
 
@@ -230,6 +241,9 @@ account-level rejection without changing the descriptor's capability claim.
   the bridge queue; retained preview bytes exceed the session's aggregate budget.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
+- A non-image `file_data` part reaches a plugin; a saved name escapes its
+  folder or a saved file isn't owner-only; a new session's files land under an
+  id other than its own; a deleted session's uploads folder stays.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload
   crosses the plugin/client boundary; a raw parser error reaches a client payload
   or user-facing error, or local diagnostics discard useful parser error and
@@ -295,6 +309,11 @@ account-level rejection without changing the descriptor's capability claim.
   model rejection must stay visible and does not justify reading path-only provider output.
 - Only images reach a bridge on another computer: a non-image file dropped or
   picked there is turned away with a notice until remote file transfer exists.
+- Saved prompt files go when their session is deleted from Sesori, or 30 days
+  after upload, whichever comes first. Files of a create that bound to an
+  existing session, of a failed create, or of a session removed outside Sesori
+  go only by age. Some harnesses ask before reading outside the session folder
+  (see `docs/HARNESS_CAPABILITIES.md`).
 - Pasting files copied in a file manager is not supported; paste still takes
   only image bytes and text.
 - Mobile is unchanged: its picker stays a gallery image picker with no drop.

@@ -50,6 +50,7 @@ void main() {
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
         sessionOptionsService: FakeSessionOptionsService(),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       addTearDown(dispatcher.dispose);
       addTearDown(service.dispose);

@@ -69,6 +69,7 @@ void main() {
         dispatcher: promptDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
         sessionOptionsService: FakeSessionOptionsService(),
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       );
       service = SessionEventService(
         sessionViews: const PassThroughSessionViews(),

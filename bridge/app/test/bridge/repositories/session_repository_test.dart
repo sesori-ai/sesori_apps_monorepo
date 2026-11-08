@@ -426,7 +426,7 @@ void main() {
       expect(plugin.getSessionsCalls, isZero);
     });
 
-    test("createSession returns committed canonical facts and is immediately queryable", () async {
+    test("createSession commits under the reserved id with canonical facts and is immediately queryable", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = singlePluginSessionRepository(
@@ -456,6 +456,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        reservedSessionId: "ses_reserved",
         fastMode: false,
         pluginId: plugin.id,
         projectId: "stable-project",
@@ -477,7 +478,7 @@ void main() {
       final row = await db.sessionDao.getSession(sessionId: created.id);
       final detail = await repository.getCatalogSession(sessionId: created.id);
 
-      expect(created.id, startsWith("ses_"));
+      expect(created.id, "ses_reserved");
       expect(created.pluginId, plugin.id);
       expect(created.projectID, "stable-project");
       expect(created.directory, "/repo/.worktrees/blue-otter");
@@ -529,6 +530,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        reservedSessionId: "ses_reserved",
         fastMode: false,
         pluginId: derivedPlugin.id,
         projectId: "child-project",
@@ -556,7 +558,7 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: created.id))?.parentSessionId, "stable-parent");
     });
 
-    test("createSession preserves stable identity and bridge title precedence", () async {
+    test("createSession keeps an already bound id over the reserved one, with bridge title precedence", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = singlePluginSessionRepository(
@@ -596,6 +598,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        reservedSessionId: "ses_reserved",
         fastMode: false,
         pluginId: plugin.id,
         projectId: "stable-project",
@@ -615,6 +618,7 @@ void main() {
       );
 
       expect(created.id, "stable-session");
+      expect(await db.sessionDao.getSession(sessionId: "ses_reserved"), isNull);
       expect(created.title, "Bridge title");
       expect((await db.sessionDao.getSession(sessionId: "stable-session"))?.catalogTitle, "Backend title");
       expect(await repository.getCatalogSession(sessionId: "stable-session"), created);
@@ -636,6 +640,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.createSession(
+          reservedSessionId: await repository.reserveSessionId(),
           fastMode: false,
           pluginId: plugin.id,
           projectId: "/repo",
@@ -674,6 +679,7 @@ void main() {
 
       await expectLater(
         repository.createSession(
+          reservedSessionId: "ses_reserved",
           fastMode: false,
           pluginId: "other-plugin",
           projectId: "/repo",

@@ -830,6 +830,30 @@ The explicit event is additive across the client/bridge wire boundary. Older
 clients ignore it and converge on refresh; newer clients retain snapshot
 reconciliation when connected to an older bridge.
 
+## Saved prompt files
+
+The bridge core saves every prompt file that doesn't reach the plugin as an
+inline image under `~/.sesori/uploads/<sessionId>/` and gives the agent a text
+note with the path, the same way for every harness. Grok takes no inline
+images, so its images are saved too. Whether the agent can then read the file
+depends on the harness, because the folder is outside the session's working
+directory, as phase 1's inserted local paths are:
+
+| Harness | Reads a saved file | Asks first |
+|---|---|---|
+| Codex | Expected: the default sandbox restricts writes, not reads. | Not expected. |
+| OpenCode | Expected. | Expected: the default agent sets `external_directory: * → ask`, relayed as a permission prompt. |
+| Claude Code | Expected. | Expected: Sesori passes no `--add-dir`. |
+| Copilot (ACP) | Expected, through its own tools. | Expected outside trusted directories. |
+| Cursor, Hermes, OMP, Antigravity, DeepSeek (ACP) | Expected, through their own tools; Sesori's ACP client advertises `fs.readTextFile: false`. | Unverified. |
+| Grok | Expected. | Unverified. |
+| Pi | Expected: no sandbox. | Not expected. |
+
+These cells come from the harness configurations Sesori launches, not from a
+live run yet. The per-harness live check (send a `.txt` holding a known
+sentence and record any prompt) runs once clients send files, and replaces
+"Expected" with what it finds.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

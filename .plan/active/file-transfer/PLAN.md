@@ -182,11 +182,12 @@ this plan changes a wire contract and adds a bridge class.
     not called and nothing is saved.
   - After a save, it starts the sweep unawaited, with the cutoff
     `clock.now() - 30 days`. A sweep failure is logged.
-  - `SessionPromptService._sendPrompt` calls it right after the `isAccepted`
-    check (about l.106), with `inlineImages` from
+  - `SessionPromptService._sendPrompt` calls it after the `isAccepted` check
+    (about l.106), in the prompt branch, with `inlineImages` from
     `SessionRepository.inlineImagesSupportedForSession({sessionId})`. So a
-    repeated accepted prompt is never saved again.
-    `SessionContinuationService` sends only text and doesn't call it.
+    repeated accepted prompt is never saved again, and a command, which sends
+    only its text, saves nothing. `SessionContinuationService` sends only text,
+    so nothing is saved for it.
   - `SessionCreationService._createSession` calls
     `SessionRepository.reserveSessionId()`, then the delivery service with
     `inlineImages` from `SessionRepository.inlineImagesSupported({pluginId})`.
@@ -452,7 +453,9 @@ then adds the attachment source to both.
   delivery service as described above.
 - `orchestrator.dart`: wire in the service.
 - `docs/HARNESS_CAPABILITIES.md`: add a short section on whether each harness
-  reads a saved file, and whether it asks first. Fill it in from the live checks.
+  reads a saved file, and whether it asks first. Step 3 fills it with the cells
+  expected from each harness's launch configuration, since no client sends
+  files yet; the per-harness live cell in the matrix below replaces them.
 - Plan review: approved by `architecture-plan-review` on 2026-11-08 after one
   revision (layering, the bytes route, the desktop clipboard adapter, step
   boundaries and the up-front bridge split).

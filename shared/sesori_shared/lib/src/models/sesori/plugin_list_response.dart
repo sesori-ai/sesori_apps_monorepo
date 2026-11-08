@@ -41,6 +41,14 @@ sealed class PluginListResponse with _$PluginListResponse {
     // which means session options are unsupported. Remove @Default and require
     // supportsSessionOptions once those bridges are unsupported.
     @Default(false) bool supportsSessionOptions,
+
+    /// Whether the bridge saves prompt files that it doesn't pass to the
+    /// plugin inline, and gives the agent their paths (see
+    /// `PromptPart.fileData`).
+    // COMPATIBILITY 2026-11-08 (v1.12.0): Bridges before file uploads omit this, so
+    // only images reach them and the client says so. Remove @Default and require
+    // supportsFileUploads once those bridges are unsupported.
+    @Default(false) bool supportsFileUploads,
   }) = _PluginListResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);

@@ -10,6 +10,7 @@ import "../repositories/project_catalog_identity_calculator.dart";
 import "../repositories/scratch_repository.dart";
 import "../repositories/session_metadata_repository.dart";
 import "../repositories/session_repository.dart";
+import "prompt_part_delivery_service.dart";
 import "session_mutation_dispatcher.dart";
 import "session_options_service.dart";
 import "session_prompt_service.dart";
@@ -25,6 +26,7 @@ class SessionCreationService({
   required final SessionOptionsService _sessionOptionsService,
   required final ScratchRepository _scratchRepository,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+  required final PromptPartDeliveryService _promptPartDelivery,
 }) {
   final PendingOperations _lateMetadataWork = PendingOperations();
   bool _acceptingLateMetadata = true;
@@ -63,13 +65,27 @@ class SessionCreationService({
             ),
       fastMode: request.fastMode,
     );
-    final userTexts = _extractTexts(parts: request.parts);
-    final firstText = userTexts.firstOrNull;
-    final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
+    final firstText = _extractTexts(parts: request.parts).firstOrNull;
     await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
     );
+    // Reserved before the plugin call, so the first prompt's files are saved
+    // under the id the session is committed with.
+    final reservedSessionId = await _sessionRepository.reserveSessionId();
+    // A create with a command sends none of the user's parts (see
+    // _buildPromptParts), so it saves nothing.
+    final userParts = normalizedCommand == null
+        ? await _promptPartDelivery.deliverableParts(
+            sessionId: reservedSessionId,
+            inlineImages: _sessionRepository.inlineImagesSupported(pluginId: request.pluginId),
+            parts: request.parts,
+          )
+        : request.parts;
+    // From the delivered parts, so each saved file's note shows in place and
+    // the live user message matches the reloaded one.
+    final userTexts = _extractTexts(parts: userParts);
+    final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
     final WorktreeResult? worktreeResult;
     final _SessionCreationWorktreeState worktreeState;
     if (_projectCatalogIdentityCalculator.isScratchRoot(path: request.projectId)) {
@@ -89,12 +105,13 @@ class SessionCreationService({
       );
     }
     final created = await _sessionRepository.createSession(
+      reservedSessionId: reservedSessionId,
       pluginId: request.pluginId,
       projectId: request.projectId,
       directory: worktreeState.directory,
       parentSessionId: null,
       parts: _buildPromptParts(
-        parts: request.parts,
+        parts: userParts,
         worktreeResult: worktreeResult,
         command: normalizedCommand,
       ),

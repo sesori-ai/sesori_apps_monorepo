@@ -297,6 +297,15 @@ class FakeSessionRepository({
       AutoContinuationAvailability.unavailable;
 
   @override
+  bool inlineImagesSupported({required String pluginId}) => true;
+
+  @override
+  Future<bool> inlineImagesSupportedForSession({required String sessionId}) async => true;
+
+  @override
+  Future<String> reserveSessionId() async => "ses_reserved";
+
+  @override
   Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
       SessionContinuationReadiness.unavailable;
 
@@ -419,6 +428,7 @@ class FakeSessionRepository({
 
   @override
   Future<Session> createSession({
+    required String reservedSessionId,
     required String pluginId,
     required String projectId,
     required String directory,

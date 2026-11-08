@@ -1,3 +1,4 @@
+import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/catalog_hydrations_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
@@ -12,12 +13,14 @@ import "package:sesori_bridge/src/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/repositories/project_activity_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/services/prompt_part_delivery_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "plugin_runtime_test_support.dart";
@@ -158,5 +161,14 @@ ScratchRepository testScratchRepository({required AppDatabase db, required Strin
       scratchRoot: scratchRoot,
       pathContext: p.context,
     ),
+  );
+}
+
+/// A real [PromptPartDeliveryService] that saves under [uploadsRoot], which
+/// tests that never send a file part can leave as a path that does not exist.
+PromptPartDeliveryService testPromptPartDeliveryService({required String uploadsRoot}) {
+  return PromptPartDeliveryService(
+    uploads: PromptUploadRepository(filesystemApi: const FilesystemApi(), uploadsRoot: uploadsRoot),
+    clock: const Clock(),
   );
 }
