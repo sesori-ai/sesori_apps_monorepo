@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:bloc_test/bloc_test.dart";
+import "package:desktop_drop/desktop_drop.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -38,6 +39,7 @@ class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileA
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
 class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
+class _MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 const _config = NewSessionComposeConfig(
   availablePlugins: [],
@@ -110,6 +112,73 @@ void main() {
     await tester.pump();
     expect(find.byType(EditableText), findsOneWidget);
   });
+  testWidgets("files dropped on the page reach its composer", (tester) async {
+    final newSessionCubit = _MockNewSessionCubit();
+    final inputModeCubit = _MockChatInputModeCubit();
+    final dispatcher = _MockComposerAttachmentDispatcher();
+    getIt.registerSingleton<ComposerAttachmentDispatcher>(dispatcher);
+    when(
+      () => dispatcher.routeHostPaths(
+        paths: any(named: "paths"),
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
+      ),
+    ).thenAnswer(
+      (_) async => const ComposerAttachOutcome(attachments: [], insertedText: "/work/notes.dart", rejections: {}),
+    );
+    when(() => newSessionCubit.state).thenReturn(_state);
+    whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
+    when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
+    when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+    when(newSessionCubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
+    when(() => newSessionCubit.canSubmit).thenReturn(true);
+    when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
+    when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
+    whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
+          BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+          _projectList(projects: const []),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DesktopNewSessionView(
+            onBack: () {},
+            onOpenHarnessSettings: () {},
+            onSessionCreated: ({required session, required project}) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    tester
+        .widget<DropTarget>(find.byType(DropTarget))
+        .onDragDone
+        ?.call(
+          DropDoneDetails(
+            files: [DropItemFile("/work/notes.dart")],
+            localPosition: Offset.zero,
+            globalPosition: Offset.zero,
+          ),
+        );
+    await tester.pumpAndSettle();
+
+    verify(
+      () => dispatcher.routeHostPaths(
+        paths: ["/work/notes.dart"],
+        attachmentsSupported: any(named: "attachmentsSupported"),
+        stagedAttachmentBytes: 0,
+      ),
+    ).called(1);
+  });
+
   testWidgets("the page is one centred column under the toolbar, and choosing another project moves its composer", (
     tester,
   ) async {

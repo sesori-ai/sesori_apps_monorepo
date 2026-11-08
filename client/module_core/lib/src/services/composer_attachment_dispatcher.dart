@@ -45,7 +45,7 @@ class ComposerAttachmentDispatcher({
         return null;
       case ComposerPickedImage(:final bytes, :final filename):
         final attachment = await attachmentFromBytes(bytes: bytes, filename: filename);
-        return ComposerAttachOutcome(attachments: [attachment], insertedText: null, rejection: null);
+        return ComposerAttachOutcome(attachments: [attachment], insertedText: null, rejections: const {});
       case ComposerPickedHostPaths(:final paths):
         return await routeHostPaths(
           paths: paths,
@@ -57,8 +57,8 @@ class ComposerAttachmentDispatcher({
 
   /// Decides what each path on this computer becomes in the composer.
   ///
-  /// A supported image is staged while the backend accepts attachments and it
-  /// fits the rest of the budget. Anything else is inserted as its path when
+  /// A supported image is staged while the backend accepts attachments and,
+  /// once downscaled, it fits the rest of the budget. Anything else is inserted as its path when
   /// the active bridge runs on this computer, since the agent can read it
   /// there, and is otherwise turned away: nothing but images can reach another
   /// computer yet.
@@ -72,7 +72,7 @@ class ComposerAttachmentDispatcher({
     var remainingBytes = maxComposerPromptAttachmentBytes - stagedAttachmentBytes;
     final attachments = <ComposerAttachment>[];
     final insertedPaths = <String>[];
-    final rejections = <ComposerAttachRejectionReason>[];
+    final rejections = <ComposerAttachRejectionReason, int>{};
     for (final hostPath in paths) {
       final route = await _routeHostPath(
         hostPath: hostPath,
@@ -86,18 +86,13 @@ class ComposerAttachmentDispatcher({
         case _HostPathNotStaged() when bridgeIsLocal:
           insertedPaths.add(_needsQuotes.hasMatch(hostPath) ? '"${hostPath.replaceAll('"', r'\"')}"' : hostPath);
         case _HostPathNotStaged(:final reason):
-          rejections.add(reason);
+          rejections.update(reason, (count) => count + 1, ifAbsent: () => 1);
       }
     }
     return ComposerAttachOutcome(
       attachments: attachments,
       insertedText: insertedPaths.isEmpty ? null : insertedPaths.join(" "),
-      rejection: rejections.isEmpty
-          ? null
-          : ComposerAttachRejection(
-              reason: ComposerAttachRejectionReason.values.firstWhere(rejections.contains),
-              count: rejections.length,
-            ),
+      rejections: rejections,
     );
   }
 
@@ -121,15 +116,23 @@ class ComposerAttachmentDispatcher({
       if (attachmentsSupported != true) {
         return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.attachmentsUnsupported);
       }
-      // Checked before reading, so a huge file is never loaded.
-      if (sizeBytes > remainingBytes) {
+      // A file above the per-prompt cap is never read: downscaling only
+      // starts from bytes that could have been sent as they are, so a huge
+      // file is never loaded whole.
+      if (sizeBytes > maxComposerPromptAttachmentBytes) {
         return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
       }
+      // Downscaled first, so a large image that shrinks to fit still stages.
       final attachment = await attachmentFromBytes(
         bytes: await _fileClient.readAll(path: hostPath),
         filename: path.basename(hostPath),
       );
+      if (attachment.bytes.length > remainingBytes) {
+        return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
+      }
       return _HostPathStaged(attachment: attachment);
+    } on AttachmentTooLargeError {
+      return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
     } on Object catch (error, stackTrace) {
       logw("Could not read $hostPath as a composer image; treating it as a plain file", error, stackTrace);
       return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.notTransferable);

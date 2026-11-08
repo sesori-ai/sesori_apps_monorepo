@@ -8,8 +8,12 @@ import "package:sesori_desktop/core/widgets/desktop_composer_presentation_scope.
 import "package:sesori_desktop/core/widgets/desktop_pane_drop_target.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// Stands in for a composer: listens to the pane's drops while mounted.
-class const _Listener({required final List<List<String>> _received}) extends StatefulWidget {
+/// Stands in for a composer: listens to the pane's drops while mounted, and
+/// pauses them while [_paused] (recording, for a real composer).
+class const _Listener({
+  required final List<List<String>> _received,
+  final bool _paused = false,
+}) extends StatefulWidget {
   @override
   State<_Listener> createState() => _ListenerState();
 }
@@ -21,6 +25,7 @@ class _ListenerState() extends State<_Listener> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _subscription ??= ComposerPresentationScope.of(context).droppedPaths?.listen(widget._received.add);
+    if (widget._paused) _subscription?.pause();
   }
 
   @override
@@ -63,20 +68,19 @@ void main() {
     ),
   );
 
-  testWidgets("hints and delivers only while a composer listens", (tester) async {
+  testWidgets("hints and delivers only while a composer listens, keeping the hint in step", (tester) async {
     await pumpPane(tester, children: const [Spacer()]);
 
     dropTarget(tester).onDragEntered?.call(_details);
     await tester.pumpAndSettle();
     expect(hintOpacity(tester), 0);
 
+    // A composer that appears mid-drag shows the hint without a new drag.
     final received = <List<String>>[];
     await pumpPane(
       tester,
       children: [Expanded(child: _Listener(received: received))],
     );
-    dropTarget(tester).onDragExited?.call(_details);
-    dropTarget(tester).onDragEntered?.call(_details);
     await tester.pumpAndSettle();
     expect(hintOpacity(tester), 1);
 
@@ -86,6 +90,35 @@ void main() {
       ["/work/notes.dart", "/work/lib"],
     ]);
     expect(hintOpacity(tester), 0);
+  });
+
+  testWidgets("a drop with no composer listening shows a notice", (tester) async {
+    await pumpPane(tester, children: const [Spacer()]);
+
+    drop(tester);
+    await tester.pump();
+
+    expect(find.text("Files can't be added here"), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets("a paused composer shows no hint and its drop gets a notice", (tester) async {
+    final received = <List<String>>[];
+    await pumpPane(
+      tester,
+      children: [Expanded(child: _Listener(received: received, paused: true))],
+    );
+
+    dropTarget(tester).onDragEntered?.call(_details);
+    await tester.pumpAndSettle();
+    expect(hintOpacity(tester), 0);
+
+    drop(tester);
+    await tester.pump();
+
+    expect(find.text("Finish recording before adding files"), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+    expect(received, isEmpty);
   });
 
   testWidgets("a drop reaches only the composer that listened last", (tester) async {

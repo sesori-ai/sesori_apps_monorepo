@@ -237,6 +237,9 @@ class _PromptInputState() extends State<PromptInput> {
   bool _reportedBusy = false;
   bool _voiceBusy = false;
   int _pendingInserts = 0;
+
+  /// Settles once every pick, paste and drop started so far has settled.
+  Future<void> _insertsSettled = Future<void>.value();
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
@@ -1342,6 +1345,7 @@ class _PromptInputState() extends State<PromptInput> {
     _renderedVoiceState = capabilities.voiceSupport.isSupported
         ? context.select<VoiceInputCubit, VoiceInputState>((cubit) => _withoutLiveWords(state: cubit.state))
         : const VoiceInputState.idle();
+    _pauseDropsWhileVoiceBusy();
     // A press is never a return: words landing in the box can swap the layout, and
     // its caption with them, leaving the last report settled and never turned back.
     final coverSettled = _voicePresentation != _VoicePresentation.recording && (_coverFade?.isCompleted ?? false);
@@ -2555,10 +2559,28 @@ class _PromptInputState() extends State<PromptInput> {
     ),
   );
 
+  /// Recording and transcription own the field, so the composer pauses its
+  /// drops meanwhile: the pane then shows no drop hint and answers a drop with
+  /// a notice instead of handing it over.
+  void _pauseDropsWhileVoiceBusy() {
+    final subscription = _droppedPathsSub;
+    if (subscription == null) return;
+    final busy = _voicePresentation != _VoicePresentation.idle;
+    if (busy == subscription.isPaused) return;
+    if (busy) {
+      subscription.pause();
+    } else {
+      subscription.resume();
+    }
+  }
+
   void _handleDroppedPaths(List<String> paths) {
-    // Like the attach action, a drop waits out recording and transcription,
-    // which own the field until they settle.
-    if (_voicePresentation != _VoicePresentation.idle) return;
+    // A drop delivered just before recording paused the subscription still
+    // waits out recording and transcription, like the attach action.
+    if (_voicePresentation != _VoicePresentation.idle) {
+      _showComposerNotice(context.loc.sessionDetailFinishRecordingBeforeAddingFiles);
+      return;
+    }
     unawaited(
       _attach(
         outcome: (stagedAttachmentBytes) => _attachmentDispatcher.routeHostPaths(
@@ -2580,15 +2602,16 @@ class _PromptInputState() extends State<PromptInput> {
     final draftIdentity = widget.draftIdentity;
     final pasteGeneration = _pasteGeneration;
     bool isStale() => draftIdentity != widget.draftIdentity || pasteGeneration != _pasteGeneration;
-    _startInsert();
+    final turn = _startInsert();
     try {
       final result = await outcome(_stagedAttachmentBytes);
+      await turn.earlierSettled;
       if (!mounted || isStale() || result == null) return;
       for (final attachment in result.attachments) {
         if (!_stageAttachment(attachment: attachment)) break;
       }
       if (result.insertedText case final text?) _insertAtCaret(text: text);
-      if (result.rejection case final rejection?) _showComposerNotice(_rejectionNotice(rejection: rejection));
+      if (result.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: result.rejections));
     } on AttachmentTooLargeError {
       if (!mounted || isStale()) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
@@ -2600,17 +2623,23 @@ class _PromptInputState() extends State<PromptInput> {
       if (!mounted || isStale()) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
     } finally {
-      _settleInsert();
+      _settleInsert(turn: turn);
     }
   }
 
-  String _rejectionNotice({required ComposerAttachRejection rejection}) {
+  /// One line per reason, each with its own count, so a drop turned away for
+  /// several reasons gets one notice that covers them all.
+  String _rejectionNotice({required Map<ComposerAttachRejectionReason, int> rejections}) {
     final loc = context.loc;
-    return switch (rejection.reason) {
-      ComposerAttachRejectionReason.notTransferable => loc.sessionDetailFilesNotTransferable(rejection.count),
-      ComposerAttachRejectionReason.attachmentsUnsupported => loc.sessionDetailImagesNotAccepted(rejection.count),
-      ComposerAttachRejectionReason.overBudget => loc.sessionDetailImagesOverBudget(rejection.count),
-    };
+    return [
+      for (final reason in ComposerAttachRejectionReason.values)
+        if (rejections[reason] case final count?)
+          switch (reason) {
+            ComposerAttachRejectionReason.notTransferable => loc.sessionDetailFilesNotTransferable(count),
+            ComposerAttachRejectionReason.attachmentsUnsupported => loc.sessionDetailImagesNotAccepted(count),
+            ComposerAttachRejectionReason.overBudget => loc.sessionDetailImagesOverBudget(count),
+          },
+    ].join("\n");
   }
 
   /// Types [text] over the selection, or at the end when the field has none,
@@ -2632,20 +2661,27 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// An image pick or a paste, whose result lands after an await.
-  void _startInsert() {
+  /// An image pick, paste or drop, whose result lands after an await. Its
+  /// turn stages only after the ones started before it have settled, so images
+  /// stage in the order they were added even when an earlier one takes longer
+  /// to downscale.
+  _InsertTurn _startInsert() {
+    final turn = _InsertTurn(earlierSettled: _insertsSettled);
+    _insertsSettled = turn.settled;
     _pendingInserts++;
     _reportBusy();
+    return turn;
   }
 
-  void _settleInsert() {
+  void _settleInsert({required _InsertTurn turn}) {
+    turn.settle();
     _pendingInserts--;
     _reportBusy();
   }
 
   /// Reads an image before allowing Flutter's normal text paste to run. An
   /// image wins when the clipboard exposes both binary and text formats.
-  Future<_PasteImageResult> _handlePasteImage() async {
+  Future<_PasteImageResult> _handlePasteImage({required Future<void> earlierInsertsSettled}) async {
     if (widget.attachmentsSupported != true) return _PasteImageResult.noImage;
     final draftIdentity = widget.draftIdentity;
     final pasteGeneration = _pasteGeneration;
@@ -2671,6 +2707,7 @@ class _PromptInputState() extends State<PromptInput> {
     // staleness again before it touches the composer.
     try {
       final attachment = await _attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
+      await earlierInsertsSettled;
       if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
         return _PasteImageResult.stale;
       }
@@ -2707,9 +2744,9 @@ class _PromptInputState() extends State<PromptInput> {
   }) async {
     // The text fallback reads the clipboard too, so the paste is busy until
     // whichever lands has landed.
-    _startInsert();
+    final turn = _startInsert();
     try {
-      switch (await _handlePasteImage()) {
+      switch (await _handlePasteImage(earlierInsertsSettled: turn.earlierSettled)) {
         case _PasteImageResult.noImage:
           // Restore the caret captured when paste was pressed so the fallback
           // replaces the same selection, unless the user typed meanwhile.
@@ -2727,7 +2764,7 @@ class _PromptInputState() extends State<PromptInput> {
     } catch (error, stackTrace) {
       loge("Failed to handle composer paste", error, stackTrace);
     } finally {
-      _settleInsert();
+      _settleInsert(turn: turn);
     }
   }
 
@@ -3119,4 +3156,13 @@ class _PromptInputState() extends State<PromptInput> {
       onPressed: onPressed,
     );
   }
+}
+
+/// One pick, paste or drop in flight.
+final class _InsertTurn({required final Future<void> earlierSettled}) {
+  final _settled = Completer<void>();
+
+  Future<void> get settled => _settled.future;
+
+  void settle() => _settled.complete();
 }

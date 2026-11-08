@@ -36,7 +36,7 @@ void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachm
       attachmentsSupported: any(named: "attachmentsSupported"),
       stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
     ),
-  ).thenAnswer((_) async => ComposerAttachOutcome(attachments: [image()], insertedText: null, rejection: null));
+  ).thenAnswer((_) async => ComposerAttachOutcome(attachments: [image()], insertedText: null, rejections: const {}));
 }
 
 class MockImageClipboard() extends Mock implements ImageClipboard;

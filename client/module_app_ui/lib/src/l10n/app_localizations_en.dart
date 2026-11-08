@@ -1395,6 +1395,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sessionDetailFinishRecordingBeforeAddingFiles => 'Finish recording before adding files';
+
+  @override
+  String get desktopDropNoComposer => 'Files can\'t be added here';
+
+  @override
   String get desktopDropFilesHint => 'Drop files to add them to your prompt';
 
   @override

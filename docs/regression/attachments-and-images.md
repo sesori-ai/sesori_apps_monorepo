@@ -59,21 +59,26 @@ content the transcript renders live and after reload.
   removing all images removes the strip.
 - On desktop, files dragged anywhere over the session-detail pane, the
   new-session pane or the home composer show a full-pane "Drop files to add
-  them to your prompt" hint and go to that pane's composer, only while a
-  composer is mounted there to receive them, and to exactly one composer when
-  a cross-fade briefly mounts two. A pane under a pushed page or a dialog takes
-  no drops, and a composer ignores them while recording or transcribing, as
-  it disables the attach action then. Picked and dropped paths share one rule in
-  shared core: a supported raster image (by its header bytes) is staged while
-  the backend accepts attachments and it fits the rest of the prompt's 50 MB
-  budget, read in full only then. Anything else, including folders and images
-  that are unsupported or over budget, is typed into the prompt at the caret as
-  its absolute path when the active bridge runs on this computer; paths with
-  whitespace are quoted and separated by spaces. On a bridge on another
-  computer it is not added, and one notice counts what was turned away. This
-  works regardless of backend attachment support, which still gates the plus
-  action. A late result never lands in a composer that moved to another draft
-  or was sent in the meantime.
+  them to your prompt" hint and go to that pane's composer, and to exactly one
+  composer when a cross-fade briefly mounts two. The hint shows only while a
+  composer there can take files, and follows a composer that appears or starts
+  recording mid-drag. A drop on a pane with no composer gets a "Files can't be
+  added here" notice; while the composer records or transcribes there is no
+  hint, and a drop gets "Finish recording before adding files". A pane under a
+  pushed page or a dialog takes no drops. Picked and dropped paths share one
+  rule in shared core: a supported raster image (by its header bytes) is staged
+  while the backend accepts attachments and, once downscaled, it fits the rest
+  of the prompt's 50 MB budget. A file above 50 MB is never read in full.
+  Anything else, including folders and images that are unsupported or over
+  budget, is typed into the prompt at the caret as its absolute path when the
+  active bridge runs on this computer; paths with whitespace are quoted and
+  separated by spaces. On a bridge on another computer it is not added, and one
+  notice has a line per reason, each counting the files turned away for it.
+  This works regardless of backend attachment support, which still gates the
+  plus action. Images from several picks, pastes and drops stage in the order
+  they were added, even when an earlier one takes longer to downscale. A late
+  result never lands in a composer that moved to another draft or was sent in
+  the meantime.
 - Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
   Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
   copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
@@ -241,8 +246,10 @@ account-level rejection without changing the descriptor's capability claim.
 - A dropped or picked file is lost without a notice, inserted twice, read in
   full when it is not a stageable image, typed as a path for a bridge on
   another computer, or staged into a composer other than the pane's; a drop
-  over a pane without a composer shows the hint; or a pane under another page
-  or a dialog takes the drop.
+  over a pane without a ready composer shows the hint or passes without a
+  notice; a notice for mixed reasons names only one of them; images stage out
+  of the order they were added; or a pane under another page or a dialog takes
+  the drop.
 - An image above the downscale threshold is staged unshrunk although it could
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a
   transparent image gets a black background, a downscale blocks the UI, or a
@@ -278,8 +285,6 @@ account-level rejection without changing the descriptor's capability claim.
 - Mobile is unchanged: its picker stays a gallery image picker with no drop.
 - The plus action follows backend attachment support, so a backend without it
   offers no picker even on a local bridge, where drop still inserts paths.
-- The desktop pane hint reflects whether a composer listens when the drag
-  enters, not live during the drag.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and
   account entitlement; a visible upstream rejection is expected coverage, not a

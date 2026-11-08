@@ -11,12 +11,12 @@ final class const ComposerAttachOutcome({
   /// already separated and quoted.
   required final String? insertedText,
 
-  /// The files that could not be added, if any.
-  required final ComposerAttachRejection? rejection,
+  /// How many files were not added for each reason; empty when every file
+  /// was added.
+  required final Map<ComposerAttachRejectionReason, int> rejections,
 });
 
-/// Why chosen files could not be added. When several apply, the outcome
-/// reports the first in declaration order.
+/// Why a chosen file could not be added.
 enum ComposerAttachRejectionReason() {
   /// Not an image, so it cannot reach a bridge on another computer yet.
   notTransferable,
@@ -27,10 +27,3 @@ enum ComposerAttachRejectionReason() {
   /// An image too large for what is left of the prompt's attachment budget.
   overBudget,
 }
-
-final class const ComposerAttachRejection({
-  required final ComposerAttachRejectionReason reason,
-
-  /// Every file that was not added, whatever its own reason.
-  required final int count,
-});

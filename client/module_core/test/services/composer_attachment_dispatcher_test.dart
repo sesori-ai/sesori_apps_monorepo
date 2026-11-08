@@ -25,6 +25,28 @@ class const _Locality({required final String? _localBridgeId}) implements Active
   Stream<String?> get localBridgeIdStream => Stream.value(_localBridgeId);
 }
 
+/// A PNG one byte over the per-prompt cap, counting full reads.
+class _OversizedImageFileClient() implements HostFileClient {
+  int fullReads = 0;
+
+  @override
+  Future<HostPathKind> kindOf({required String path}) async =>
+      const HostRegularFile(sizeBytes: maxComposerPromptAttachmentBytes + 1);
+
+  @override
+  Future<Uint8List> readHeader({required String path, required int length}) async {
+    final header = Uint8List(length);
+    header.setAll(0, _png);
+    return header;
+  }
+
+  @override
+  Future<Uint8List> readAll({required String path}) async {
+    fullReads++;
+    return Uint8List(0);
+  }
+}
+
 const _localBridgeId = "this-computer";
 const _png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
@@ -35,7 +57,11 @@ void main() {
     return bytes;
   }
 
-  ComposerAttachmentDispatcher dispatcherFor({required ComposerPickResult? picked, String? activeBridgeId}) {
+  ComposerAttachmentDispatcher dispatcherFor({
+    required ComposerPickResult? picked,
+    String? activeBridgeId,
+    HostFileClient fileClient = const HostFileClient(),
+  }) {
     final connectionService = _MockConnectionService();
     when(() => connectionService.activeConfig).thenReturn(
       ServerConnectionConfig(relayHost: "relay.example", authToken: null, bridgeId: activeBridgeId),
@@ -43,7 +69,7 @@ void main() {
     return ComposerAttachmentDispatcher(
       filePicker: _StubComposerFilePicker(result: picked),
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
-      fileClient: const HostFileClient(),
+      fileClient: fileClient,
       connectionService: connectionService,
       locality: const _Locality(localBridgeId: _localBridgeId),
     );
@@ -71,7 +97,7 @@ void main() {
       expect(attachment.bytes, same(bytes));
       expect(attachment.filename, "photo.jpg");
       expect(outcome.insertedText, isNull);
-      expect(outcome.rejection, isNull);
+      expect(outcome.rejections, isEmpty);
     });
 
     test("recognizes supported composer image signatures", () async {
@@ -175,7 +201,7 @@ void main() {
       expect(outcome.attachments.single.mime, "image/png");
       expect(outcome.attachments.single.filename, "shot.png");
       expect(outcome.insertedText, isNull);
-      expect(outcome.rejection, isNull);
+      expect(outcome.rejections, isEmpty);
     });
 
     test("inserts an image's path on a local bridge whose backend takes no attachments", () async {
@@ -187,7 +213,7 @@ void main() {
 
       expect(outcome.attachments, isEmpty);
       expect(outcome.insertedText, imagePath);
-      expect(outcome.rejection, isNull);
+      expect(outcome.rejections, isEmpty);
     });
 
     test("inserts an image's path on a local bridge once the budget is spent", () async {
@@ -211,7 +237,7 @@ void main() {
       expect(outcome.attachments, isEmpty);
       final escapedQuotedPath = quotedPath.replaceAll('"', r'\"');
       expect(outcome.insertedText, '$notesPath $folderPath "$spacedPath" "$escapedQuotedPath"');
-      expect(outcome.rejection, isNull);
+      expect(outcome.rejections, isEmpty);
     });
 
     test("stages a mixed drop's images and turns the rest away on a remote bridge", () async {
@@ -223,8 +249,7 @@ void main() {
 
       expect(outcome.attachments.single.filename, "shot.png");
       expect(outcome.insertedText, isNull);
-      expect(outcome.rejection?.reason, ComposerAttachRejectionReason.notTransferable);
-      expect(outcome.rejection?.count, 2);
+      expect(outcome.rejections, {ComposerAttachRejectionReason.notTransferable: 2});
     });
 
     test("treats a missing connection as a remote bridge", () async {
@@ -235,7 +260,7 @@ void main() {
       );
 
       expect(outcome.insertedText, isNull);
-      expect(outcome.rejection?.reason, ComposerAttachRejectionReason.notTransferable);
+      expect(outcome.rejections, {ComposerAttachRejectionReason.notTransferable: 1});
     });
 
     test("names an over-budget image on a remote bridge", () async {
@@ -246,8 +271,53 @@ void main() {
       );
 
       expect(outcome.attachments, isEmpty);
-      expect(outcome.rejection?.reason, ComposerAttachRejectionReason.overBudget);
-      expect(outcome.rejection?.count, 1);
+      expect(outcome.rejections, {ComposerAttachRejectionReason.overBudget: 1});
+    });
+
+    test("counts each reason a remote drop turns files away for", () async {
+      final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
+        paths: [notesPath, imagePath, folderPath],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: maxComposerPromptAttachmentBytes,
+      );
+
+      expect(outcome.rejections, {
+        ComposerAttachRejectionReason.notTransferable: 2,
+        ComposerAttachRejectionReason.overBudget: 1,
+      });
+    });
+
+    test("stages an image larger than the remaining budget once downscaling makes it fit", () async {
+      final random = math.Random(7);
+      final source = image.Image(width: 2600, height: 900);
+      for (final pixel in source) {
+        pixel.setRgb(random.nextInt(256), random.nextInt(256), random.nextInt(256));
+      }
+      final png = image.encodePng(source, level: 1);
+      final largePath = (File("${root.path}/large.png")..writeAsBytesSync(png)).path;
+
+      final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
+        paths: [largePath],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: maxComposerPromptAttachmentBytes - png.length + 1,
+      );
+
+      expect(outcome.attachments.single.filename, "large.jpg");
+      expect(outcome.rejections, isEmpty);
+    });
+
+    test("never reads an image above the per-prompt cap", () async {
+      final fileClient = _OversizedImageFileClient();
+      final dispatcher = dispatcherFor(picked: null, activeBridgeId: "another-computer", fileClient: fileClient);
+
+      final outcome = await dispatcher.routeHostPaths(
+        paths: ["/photos/huge.png"],
+        attachmentsSupported: true,
+        stagedAttachmentBytes: 0,
+      );
+
+      expect(outcome.rejections, {ComposerAttachRejectionReason.overBudget: 1});
+      expect(fileClient.fullReads, 0);
     });
 
     test("routes picked host paths the same way", () async {

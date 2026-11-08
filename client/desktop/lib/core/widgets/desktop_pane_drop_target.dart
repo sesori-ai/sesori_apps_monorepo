@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:desktop_drop/desktop_drop.dart";
+import "package:flutter/scheduler.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -9,9 +10,11 @@ import "package:theme_prego/module_prego.dart";
 /// composer in it, which decides what each becomes.
 ///
 /// A drop goes only to the composer that listened last, so a cross-fade that
-/// briefly keeps two composers mounted never adds a file twice. With no
-/// composer listening (a read-only or blocked session) the pane shows no hint,
-/// so a drop it then ignores was never offered.
+/// briefly keeps two composers mounted never adds a file twice. A composer
+/// pauses its subscription while it cannot take files (recording or
+/// transcribing). With no composer ready (none listening in a read-only or
+/// blocked session, or the composer paused) the pane shows no hint, and a
+/// drop that lands anyway gets a notice saying why it was not added.
 class const DesktopPaneDropTarget({
   super.key,
   required final Widget child,
@@ -33,8 +36,31 @@ class _DesktopPaneDropTargetState() extends State<DesktopPaneDropTarget> {
 
   void _listen(MultiStreamController<List<String>> listener) {
     _listeners.add(listener);
-    listener.onCancel = () => _listeners.remove(listener);
+    _listenersChanged();
+    listener
+      ..onPause = _listenersChanged
+      ..onResume = _listenersChanged
+      ..onCancel = () {
+        _listeners.remove(listener);
+        _listenersChanged();
+      };
   }
+
+  /// Keeps a hint already showing in step with whether a composer is ready.
+  /// Composers subscribe and pause while building, so the rebuild waits for
+  /// the frame to finish.
+  void _listenersChanged() {
+    if (!_hovering) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  /// The composer a drop goes to, or null when none can take it now.
+  MultiStreamController<List<String>>? get _readyListener => switch (_listeners.lastOrNull) {
+    final listener? when !listener.isPaused => listener,
+    _ => null,
+  };
 
   /// Every mounted target hears every drop inside its bounds, so a pane under
   /// a pushed page, or under a dialog on an outer navigator, takes none.
@@ -65,16 +91,26 @@ class _DesktopPaneDropTargetState() extends State<DesktopPaneDropTarget> {
       for (final item in details.files)
         if ((item is DropItemFile || item is DropItemDirectory) && item.path.isNotEmpty) item.path,
     ];
-    if (paths.isEmpty || _listeners.isEmpty || !_isFrontmost()) return;
-    _listeners.last.add(paths);
+    if (paths.isEmpty || !_isFrontmost()) return;
+    final loc = context.loc;
+    switch (_listeners.lastOrNull) {
+      case null:
+        _showNotice(loc.desktopDropNoComposer);
+      case final listener when listener.isPaused:
+        _showNotice(loc.sessionDetailFinishRecordingBeforeAddingFiles);
+      case final listener:
+        listener.add(paths);
+    }
   }
+
+  void _showNotice(String message) => PregoPopupAlertPresenter.of(
+    context,
+  ).show(title: message, variant: PregoPopupAlertsNotificationsVariant.warning);
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    // ponytail: listening is read when the drag enters, not tracked live; a
-    // composer that appears mid-drag shows the hint from the next drag on.
-    final showsHint = _hovering && _listeners.isNotEmpty;
+    final showsHint = _hovering && _readyListener != null;
     return DropTarget(
       onDragEntered: (_) => _setHovering(_isFrontmost()),
       onDragExited: (_) => _setHovering(false),
