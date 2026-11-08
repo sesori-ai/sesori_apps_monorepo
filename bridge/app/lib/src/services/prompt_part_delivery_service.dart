@@ -17,6 +17,8 @@ class PromptPartDeliveryService({
   static const uploadLifetime = Duration(days: 30);
 
   static const _unnamedFileName = "attachment";
+  static final _noteQuoteBreakers = RegExp('[`"]');
+  static final _controlCharacters = RegExp(r"[\x00-\x1F\x7F]");
 
   /// Returns [parts] as the plugin should receive them.
   ///
@@ -37,7 +39,7 @@ class PromptPartDeliveryService({
         case PromptPartFileData(:final mime) when inlineImages && mime.startsWith("image/"):
           delivered.add(part);
         case PromptPartFileData(:final base64, :final filename):
-          final name = filename ?? _unnamedFileName;
+          final name = filename == null || filename.isEmpty ? _unnamedFileName : filename;
           final path = await _uploads.save(sessionId: sessionId, bytes: base64Decode(base64), filename: name);
           delivered.add(
             PromptPart.text(
@@ -54,9 +56,12 @@ class PromptPartDeliveryService({
   }
 
   /// Visible in the user's message. The path is inline code, so it opens the
-  /// file preview; a backtick in the original name would end that code early.
+  /// file preview. In the original name, a backtick would end that code early
+  /// and a double quote would end the quoted name, so both become `'`; a line
+  /// break or other control character becomes a space.
   static String _note({required String name, required String path}) {
-    return 'Attached file "${name.replaceAll("`", "'")}": `$path`';
+    final shownName = name.replaceAll(_noteQuoteBreakers, "'").replaceAll(_controlCharacters, " ");
+    return 'Attached file "$shownName": `$path`';
   }
 
   Future<void> _sweepExpiredUploads() async {

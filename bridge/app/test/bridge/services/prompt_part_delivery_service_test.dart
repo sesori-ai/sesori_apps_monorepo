@@ -59,18 +59,33 @@ void main() {
     expect(delivered, const [PromptPart.text(text: 'Attached file "shot.png": `/uploads/ses_1/shot.png`')]);
   });
 
-  test("names an unnamed file and keeps a backtick in the name from ending the path's code", () async {
+  test("names a file without a name, or with an empty one, attachment", () async {
     final delivered = await deliver(
       parts: const [
         PromptPart.fileData(mime: "application/octet-stream", base64: "", filename: null),
-        PromptPart.fileData(mime: "application/octet-stream", base64: "", filename: "a`b.txt"),
+        PromptPart.fileData(mime: "application/octet-stream", base64: "", filename: ""),
       ],
     );
 
-    expect(uploads.saves.map((save) => save.filename), ["attachment", "a`b.txt"]);
+    expect(uploads.saves.map((save) => save.filename), ["attachment", "attachment"]);
     expect(delivered, const [
       PromptPart.text(text: 'Attached file "attachment": `/uploads/ses_1/attachment`'),
+      PromptPart.text(text: 'Attached file "attachment": `/uploads/ses_1/attachment`'),
+    ]);
+  });
+
+  test("keeps backticks, double quotes and line breaks in the name from breaking the note", () async {
+    final delivered = await deliver(
+      parts: const [
+        PromptPart.fileData(mime: "application/octet-stream", base64: "", filename: "a`b.txt"),
+        PromptPart.fileData(mime: "application/octet-stream", base64: "", filename: 'my "final"\r\nnotes.txt'),
+      ],
+    );
+
+    expect(uploads.saves.map((save) => save.filename), ["a`b.txt", 'my "final"\r\nnotes.txt']);
+    expect(delivered, const [
       PromptPart.text(text: 'Attached file "a\'b.txt": `/uploads/ses_1/a`b.txt`'),
+      PromptPart.text(text: 'Attached file "my \'final\'  notes.txt": `/uploads/ses_1/my "final"\r\nnotes.txt`'),
     ]);
   });
 
