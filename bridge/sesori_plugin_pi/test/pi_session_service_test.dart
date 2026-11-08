@@ -3172,6 +3172,35 @@ void main() {
       userVisibleText: "visible",
     );
     expect(context.message, startsWith(PiPersistedUserTextCodec.marker));
+    // The bridge joins the visible texts of a create, including each saved
+    // file's note, with a blank line, as Pi joins the text it executes.
+    const visibleWithNotes = 'Read these\n\nAttached file "a.txt": `/u/a.txt`\n\nAttached file "b.txt": `/u/b.txt`';
+    final withNotes = fixture.repository.mapPrompt(
+      parts: const [
+        PluginPromptPart.text(text: "private context\n"),
+        PluginPromptPart.text(text: "Read these"),
+        PluginPromptPart.text(text: 'Attached file "a.txt": `/u/a.txt`'),
+        PluginPromptPart.text(text: "  "),
+        PluginPromptPart.text(text: 'Attached file "b.txt": `/u/b.txt`'),
+      ],
+      userVisibleText: visibleWithNotes,
+    );
+    expect(withNotes.message, endsWith("private context\n\n\n$visibleWithNotes"));
+    expect(
+      const PiPersistedUserTextCodec().decodeVisibleText(persistedText: withNotes.message),
+      visibleWithNotes,
+    );
+    // A later prompt shows all of its text, so the note stays a separate
+    // paragraph and the message is sent as it is.
+    const laterParts = [
+      PluginPromptPart.text(text: "Read this"),
+      PluginPromptPart.text(text: 'Attached file "a.txt": `/u/a.txt`'),
+    ];
+    final later = fixture.repository.mapPrompt(
+      parts: laterParts,
+      userVisibleText: PiSessionProcessRepository.promptText(parts: laterParts),
+    );
+    expect(later.message, 'Read this\n\nAttached file "a.txt": `/u/a.txt`');
     final imageOnly = fixture.repository.mapPrompt(
       parts: [
         PluginPromptPart.fileData(mime: "image/png", base64: base64Encode([1]), filename: "a.png"),
