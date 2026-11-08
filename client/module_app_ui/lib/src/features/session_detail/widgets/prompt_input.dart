@@ -2703,7 +2703,7 @@ class _PromptInputState() extends State<PromptInput> {
       if (!mounted || isStale()) return _PasteResult.stale;
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
     } catch (error) {
-      loge("Failed to attach an image", error);
+      loge("Failed to attach", error);
       if (!mounted || isStale()) return _PasteResult.stale;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
     }
