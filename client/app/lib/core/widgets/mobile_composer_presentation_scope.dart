@@ -23,6 +23,7 @@ class const MobileComposerPresentationScope({
         presentation: ComposerPresentation.touch,
         attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
         imageClipboard: getIt.get<ImageClipboard>,
+        fileClipboard: null,
         droppedPaths: null,
         attachKind: ComposerAttachKind.images,
         child: child,
