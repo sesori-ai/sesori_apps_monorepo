@@ -39,7 +39,11 @@ class PromptPartDeliveryService({
         case PromptPartFileData(:final base64, :final filename):
           final name = filename ?? _unnamedFileName;
           final path = await _uploads.save(sessionId: sessionId, bytes: base64Decode(base64), filename: name);
-          delivered.add(PromptPart.text(text: _note(name: name, path: path)));
+          delivered.add(
+            PromptPart.text(
+              text: _note(name: name, path: path),
+            ),
+          );
           savedAny = true;
         case PromptPartText() || PromptPartFilePath() || PromptPartFileUrl():
           delivered.add(part);
