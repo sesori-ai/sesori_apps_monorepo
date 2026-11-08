@@ -65,6 +65,17 @@ void main() {
       expect(decoded.height, greaterThan(decoded.width));
     });
 
+    test("shrinks an extreme panorama to at least a pixel high", () async {
+      final png = image.encodePng(noise(width: 120000, height: 4), level: 1);
+      expect(png.length, greaterThan(1024 * 1024));
+
+      final jpeg = downscaledBytes(await builder.downscale(bytes: png, format: SupportedRasterImageFormat.png));
+
+      final decoded = image.decodeJpg(jpeg) ?? fail("not a JPEG");
+      expect(decoded.width, 2048);
+      expect(decoded.height, 1);
+    });
+
     test("keeps a small image untouched", () async {
       final png = image.encodePng(noise(width: 64, height: 64));
 

@@ -23,13 +23,17 @@ content the transcript renders live and after reload.
   Shared core validates picked or clipboard bytes by raster signature and the
   outbound size bound rather than trusting an extension or platform MIME.
   Before the size bound applies, shared core shrinks any staged image above
-  1 MiB except a GIF, which keeps its animation: off the UI isolate, it bakes
-  the EXIF orientation, resizes the long side to at most 2048 px without
-  upscaling, composites transparency onto white and re-encodes a JPEG at
-  quality 85, renaming the file's extension to match. It keeps the original
-  when the result is not smaller, when decoding fails, or when the image
-  exceeds 24 MP decoded. An oversized screenshot or photo therefore stays
-  well inside the inline image budgets backends accept.
+  1 MiB except a GIF, which shared core leaves untouched so it keeps its
+  animation: off the UI isolate, it bakes the EXIF orientation, resizes the
+  long side to at most 2048 px without upscaling, composites transparency onto
+  white and re-encodes a JPEG at quality 85, renaming the file's extension to
+  match. A typical oversized screenshot or photo therefore stays well inside
+  the inline image budgets backends accept. It keeps the original when the
+  result is not smaller, when decoding fails, or when the image exceeds 24
+  million pixels decoded; such an original is still held to the size bound and
+  can still exceed a backend's own limit. Mobile's gallery picker already
+  applies the same size and quality natively before shared core sees the
+  bytes, so an animated GIF picked there may arrive as a still image.
   Staged images are memory-only. They are cleared when the target stops
   supporting attachments, the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot

@@ -40,7 +40,7 @@ class const ComposerImageDownscaleBuilder() {
 
   /// The JPEG quality this builder re-encodes at.
   static const jpegQuality = 85;
-  static const _maxDecodedPixels = 24 * 1024 * 1024;
+  static const _maxDecodedPixels = 24 * 1000 * 1000;
 
   Future<ComposerImageDownscaleResult> downscale({
     required Uint8List bytes,
@@ -49,7 +49,12 @@ class const ComposerImageDownscaleBuilder() {
     if (bytes.length <= _thresholdBytes || format == SupportedRasterImageFormat.gif) {
       return const ComposerImageKept();
     }
-    return await Isolate.run(() => _downscale(bytes: bytes, format: format));
+    try {
+      return await Isolate.run(() => _downscale(bytes: bytes, format: format));
+    } on Object catch (cause, stackTrace) {
+      // The isolate itself can fail, for example when it runs out of memory.
+      return ComposerImageDownscaleFailed(cause: cause, stackTrace: stackTrace);
+    }
   }
 
   static ComposerImageDownscaleResult _downscale({
@@ -70,13 +75,14 @@ class const ComposerImageDownscaleBuilder() {
 
       // JPEG re-encoding drops the EXIF orientation, so apply it to the pixels.
       final oriented = image.bakeOrientation(frame);
-      final longSide = math.max(oriented.width, oriented.height);
-      final resized = longSide <= maxLongSide
+      final scale = maxLongSide / math.max(oriented.width, oriented.height);
+      final resized = scale >= 1
           ? oriented
           : image.copyResize(
               oriented,
-              width: oriented.width >= oriented.height ? maxLongSide : null,
-              height: oriented.width >= oriented.height ? null : maxLongSide,
+              // At least a pixel each way, so an extreme panorama still shrinks.
+              width: math.max(1, (oriented.width * scale).round()),
+              height: math.max(1, (oriented.height * scale).round()),
               interpolation: image.Interpolation.average,
             );
       final encoded = image.encodeJpg(_onWhite(source: resized), quality: jpegQuality);
