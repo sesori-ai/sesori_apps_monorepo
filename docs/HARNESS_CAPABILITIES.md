@@ -95,15 +95,16 @@ after one command token such as `/review`.
 
 ## Sesori agent instructions
 
-Every session gets `sesoriAgentInstructions` from `sesori_bridge_foundation`
-through the harness's own system-prompt or developer-instructions input, never
-through a prompt or the user's instruction files. Today it says how the app
+Claude Code and Codex sessions get `sesoriAgentInstructions` from
+`sesori_bridge_foundation` through the harness's own system-prompt or
+developer-instructions input, never through a prompt or the user's instruction
+files; the other harnesses do not get it yet. Today it says how the app
 resolves relative file paths.
 
 | Harness | Sesori availability |
 |---|---|
-| Claude Code | ✅ `--append-system-prompt` on every launch. The CLI records a conversation's system prompt on its first request and keeps it until compaction, so a session created before this keeps its old prompt until then. |
-| Codex | ✅ `developerInstructions` on `thread/start` and `thread/resume`, after the user's own `developer_instructions` from `config/read`, which the field would otherwise replace. Codex records them as developer messages, which the transcript drops. A resume reads the config from the thread's rollout directory. |
+| Claude Code | ✅ `--append-system-prompt` on every launch. The CLI records a conversation's system prompt on its first request and keeps it until compaction, so a session created before this keeps its old prompt until then. Verified live on 2.1.318, 2026-11-08. |
+| Codex | ✅ `developerInstructions` on `thread/start` and `thread/resume`, after the user's own `developer_instructions` from `config/read`, which the field would otherwise replace. Codex records them as developer messages, which the transcript drops. A resume reads the config from the thread's rollout directory. A failing `config/read` fails the start or resume. Verified live on 0.166.0, 2026-11-08; both fields exist since 0.139.0. |
 | Pi, OMP | ⬜ `--append-system-prompt`, but a CLI value replaces the user's discovered `APPEND_SYSTEM.md`, so it must be passed along. Checked on Pi 1.5.0 and OMP 18.16.0, 2026-11-07. |
 | Grok | ⬜ `session/new` `_meta.rules`, which needs an ACP activation hook. Checked on 1.0.30, 2026-11-07. |
 | DeepSeek | ⬜ Needs the Sesori adapter to register a system-prompt section. |

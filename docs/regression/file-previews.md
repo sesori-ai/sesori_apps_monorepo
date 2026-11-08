@@ -113,8 +113,8 @@ default app; otherwise it shows a read-only preview.
   below it, a tapped web or `mailto` link in it does nothing, or its script
   opens something outside the app without a tap.
 - A remote bridge's path is opened on this computer instead of previewed.
-- The Sesori note shows in a transcript, or a new Claude Code or Codex session
-  does not receive it.
+- The Sesori note shows in a transcript, or a new or resumed Claude Code or Codex
+  session does not receive it.
 
 ## Sources
 
