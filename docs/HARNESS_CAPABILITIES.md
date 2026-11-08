@@ -837,7 +837,8 @@ inline image under `~/.sesori/uploads/<sessionId>/` and gives the agent a text
 note with the path, the same way for every harness. Grok takes no inline
 images, so its images are saved too. Whether the agent can then read the file
 depends on the harness, because the folder is outside the session's working
-directory, as phase 1's inserted local paths are:
+directory, like the local paths Sesori inserts as text when a file is dropped
+on a bridge on the same computer:
 
 | Harness | Reads a saved file | Asks first |
 |---|---|---|
@@ -849,10 +850,12 @@ directory, as phase 1's inserted local paths are:
 | Grok | Expected. | Unverified. |
 | Pi | Expected: no sandbox. | Not expected. |
 
-These cells come from the harness configurations Sesori launches, not from a
-live run yet. The per-harness live check (send a `.txt` holding a known
-sentence and record any prompt) runs once clients send files, and replaces
-"Expected" with what it finds.
+Every "Expected" cell is unverified: it was read on 2026-11-08 from the launch
+configuration Sesori passes each harness (sandbox, permission and directory
+flags), against no particular harness version, and no live run backs it yet.
+The per-harness live check (send a `.txt` holding a known sentence and record
+any prompt) runs once clients send files, and replaces each cell with what it
+finds and the harness version it ran on.
 
 ## Sub-agents
 

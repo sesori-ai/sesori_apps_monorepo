@@ -684,9 +684,10 @@ then adds the attachment source to both.
     carries anything beyond its two enums.
 - **New known limitations:**
   - Files over 50 MB can't be sent.
-  - Saved files go when their session is deleted from Sesori, or 30 days after
-    upload, whichever comes first. A session that runs past 30 days loses its
-    older files. Files of a create that bound to an existing session, of a
+  - Saved files go, best-effort, when their session is deleted from Sesori, or
+    in the sweep after a later save once they are over 30 days old, so with no
+    later upload they can stay longer. A session that runs past 30 days loses
+    its older files. Files of a create that bound to an existing session, of a
     failed create, or of a session removed outside Sesori go only by age.
   - An image the harness takes is always sent inline and downscaled. Its original
     can't be sent as a file.

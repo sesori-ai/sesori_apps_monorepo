@@ -540,6 +540,7 @@ void main() {
               presentation: ComposerPresentation.touch,
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
+              fileClipboard: null,
               droppedPaths: null,
               attachKind: ComposerAttachKind.images,
               child: PromptInput(

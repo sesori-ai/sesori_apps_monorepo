@@ -62,6 +62,7 @@ void main() {
           presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(

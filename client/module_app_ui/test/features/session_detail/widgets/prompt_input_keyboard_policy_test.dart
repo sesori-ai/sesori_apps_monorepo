@@ -119,6 +119,7 @@ Future<void> _pumpComposer({
         presentation: ComposerPresentation.touch,
         attachmentDispatcher: () => attachmentDispatcher,
         imageClipboard: () => imageClipboard,
+        fileClipboard: null,
         droppedPaths: null,
         attachKind: ComposerAttachKind.images,
         child: Scaffold(

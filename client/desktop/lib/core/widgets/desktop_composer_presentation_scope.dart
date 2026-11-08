@@ -23,6 +23,7 @@ class const DesktopComposerPresentationScope({
       presentation: ComposerPresentation.pointer,
       attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
       imageClipboard: getIt.get<ImageClipboard>,
+      fileClipboard: getIt.get<FileClipboard>,
       droppedPaths: DesktopPaneDropTarget.droppedPathsOf(context),
       attachKind: ComposerAttachKind.files,
       child: child,

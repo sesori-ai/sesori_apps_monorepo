@@ -856,6 +856,7 @@ class const _ComposerApp({
             bridgeIsLocal: false,
           ),
           imageClipboard: _NoOpImageClipboard.new,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: home(const _ComposerHost()),

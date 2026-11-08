@@ -794,6 +794,7 @@ Future<void> _pumpPointerComposer({
             presentation: ComposerPresentation.pointer,
             attachmentDispatcher: () => attachmentDispatcher,
             imageClipboard: () => imageClipboard,
+            fileClipboard: null,
             droppedPaths: null,
             attachKind: ComposerAttachKind.images,
             child: Scaffold(

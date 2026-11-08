@@ -3436,6 +3436,7 @@ Future<_Composer> _pumpComposer({
           presentation: presentation,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: Scaffold(

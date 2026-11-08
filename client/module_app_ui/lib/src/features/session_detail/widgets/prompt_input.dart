@@ -82,30 +82,30 @@ final class const _SendHeld({required final Completer<void> cancelled}) extends 
 
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
 // ignore: use_primary_constructors
-enum _PasteImageResult { noImage, handled, stale }
+enum _PasteResult { unhandled, handled, stale }
 
 final class _ComposerPasteAction({
   required final Future<void> Function({
     required TextEditingValue initialValue,
     required FutureOr<void> Function() onTextPaste,
-    required VoidCallback? onImagePasted,
+    required VoidCallback? onAttachmentPasted,
   })
-  _pasteImageOrText,
+  _pasteClipboard,
   required final TextEditingController _controller,
 }) extends Action<PasteTextIntent> {
   @override
   Object? invoke(PasteTextIntent intent) {
     // callingAction is available only during this synchronous override call,
-    // so retain Flutter's normal text-paste action before reading the image.
+    // so retain Flutter's normal text-paste action before reading the clipboard.
     final textPasteAction = callingAction;
     final initialValue = _controller.value;
     unawaited(
-      _pasteImageOrText(
+      _pasteClipboard(
         initialValue: initialValue,
         onTextPaste: () {
           textPasteAction?.invoke(intent);
         },
-        onImagePasted: null,
+        onAttachmentPasted: null,
       ),
     );
     return null;
@@ -334,11 +334,14 @@ class _PromptInputState() extends State<PromptInput> {
 
   ImageClipboard get _imageClipboard => ComposerPresentationScope.read(context).imageClipboard();
 
+  ComposerCapabilityProvider<FileClipboard>? get _fileClipboard =>
+      ComposerPresentationScope.read(context).fileClipboard;
+
   @override
   void initState() {
     super.initState();
     _pasteAction = _ComposerPasteAction(
-      pasteImageOrText: _pasteImageOrText,
+      pasteClipboard: _pasteClipboard,
       controller: _controller,
     );
     _applyDraft(draft: widget.initialDraft, notify: false);
@@ -2303,7 +2306,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   Widget _buildComposerContextMenu({required EditableTextState editableTextState}) {
     final buttonItems = [...editableTextState.contextMenuButtonItems];
-    if (!kIsWeb && (widget.attachmentsSupported ?? false)) {
+    if (!kIsWeb && ((widget.attachmentsSupported ?? false) || _fileClipboard != null)) {
       final pasteIndex = buttonItems.indexWhere((item) => item.type == ContextMenuButtonType.paste);
       final existingPaste = pasteIndex < 0 ? null : buttonItems[pasteIndex];
       final existingPasteCallback = existingPaste?.onPressed;
@@ -2311,15 +2314,15 @@ class _PromptInputState() extends State<PromptInput> {
         type: ContextMenuButtonType.paste,
         label: existingPaste?.label,
         onPressed: () {
-          // Preserve the selection from the paste intent; the image probe may
+          // Preserve the selection from the paste intent; the file and image probes may
           // outlive the menu, so a later caret move must not redirect the text
           // fallback.
           final initialValue = editableTextState.textEditingValue;
           unawaited(
-            _pasteImageOrText(
+            _pasteClipboard(
               initialValue: initialValue,
               onTextPaste: existingPasteCallback ?? () => editableTextState.pasteText(SelectionChangedCause.toolbar),
-              onImagePasted: editableTextState.hideToolbar,
+              onAttachmentPasted: editableTextState.hideToolbar,
             ),
           );
         },
@@ -2659,44 +2662,63 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Applies what a pick or a drop adds: staged images, paths at the caret,
-  /// and one notice for whatever could not be added.
+  /// Applies what a pick or a drop adds, in a turn of its own.
   Future<void> _attach({required Future<ComposerAttachOutcome?> Function(int stagedAttachmentBytes) outcome}) async {
+    final turn = _startInsert();
+    try {
+      await _insertOutcome(turn: turn, pastedOver: null, outcome: outcome);
+    } finally {
+      _settleInsert(turn: turn);
+    }
+  }
+
+  /// Applies what a pick, a drop or pasted files add within [turn]: staged
+  /// images, paths at the caret, and one notice for whatever could not be
+  /// added. Reports [_PasteResult.unhandled] when [outcome] has nothing to add.
+  ///
+  /// [pastedOver] is the field as it was when paste was pressed, so pasted
+  /// paths replace that selection; it is `null` for picks and drops.
+  Future<_PasteResult> _insertOutcome({
+    required _InsertTurn turn,
+    required TextEditingValue? pastedOver,
+    required Future<ComposerAttachOutcome?> Function(int stagedAttachmentBytes) outcome,
+  }) async {
     // The result can settle after this state was reused for another session
     // (didUpdateWidget cleared the strip), after a send, or after the harness
     // changed whether it takes attachments. A late result must not leak into
     // the composer that replaced the one where it started.
     final draftIdentity = widget.draftIdentity;
-    final pasteGeneration = _pasteGeneration;
-    bool isStale() => draftIdentity != widget.draftIdentity || pasteGeneration != _pasteGeneration;
-    final turn = _startInsert();
+    bool isStale() => draftIdentity != widget.draftIdentity || turn.pasteGeneration != _pasteGeneration;
     try {
       // Routed only once earlier inserts have staged, so each file is judged
       // against the budget that is really left.
       await turn.earlierSettled;
       // The composer may have moved on while this waited; don't open a picker
       // or read files for it.
-      if (!mounted || isStale()) return;
+      if (!mounted || isStale()) return _PasteResult.stale;
       final result = await outcome(_stagedAttachmentBytes);
-      if (!mounted || isStale() || result == null) return;
+      if (!mounted || isStale()) return _PasteResult.stale;
+      if (result == null) return _PasteResult.unhandled;
       for (final attachment in result.attachments) {
         _stageAttachment(attachment: attachment);
       }
-      if (result.insertedText case final text?) _insertAtCaret(text: text);
+      if (result.insertedText case final text?) {
+        if (pastedOver != null) _restorePasteSelection(initialValue: pastedOver);
+        _insertAtCaret(text: text);
+      }
       if (result.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: result.rejections));
     } on AttachmentTooLargeError {
-      if (!mounted || isStale()) return;
+      if (!mounted || isStale()) return _PasteResult.stale;
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
     } on UnsupportedAttachmentImageError {
-      if (!mounted || isStale()) return;
+      if (!mounted || isStale()) return _PasteResult.stale;
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
     } catch (error) {
-      loge("Failed to attach an image", error);
-      if (!mounted || isStale()) return;
+      loge("Failed to attach", error);
+      if (!mounted || isStale()) return _PasteResult.stale;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
-    } finally {
-      _settleInsert(turn: turn);
     }
+    return _PasteResult.handled;
   }
 
   /// One line per reason, each with its own count, so a drop turned away for
@@ -2755,8 +2777,8 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// Reads an image before allowing Flutter's normal text paste to run. An
   /// image wins when the clipboard exposes both binary and text formats.
-  Future<_PasteImageResult> _handlePasteImage({required Future<void> earlierInsertsSettled}) async {
-    if (widget.attachmentsSupported != true) return _PasteImageResult.noImage;
+  Future<_PasteResult> _handlePasteImage({required Future<void> earlierInsertsSettled}) async {
+    if (widget.attachmentsSupported != true) return _PasteResult.unhandled;
     final draftIdentity = widget.draftIdentity;
     final pasteGeneration = _pasteGeneration;
     final Uint8List? bytes;
@@ -2765,17 +2787,17 @@ class _PromptInputState() extends State<PromptInput> {
     } catch (error, stackTrace) {
       loge("Failed to read a pasted image", error, stackTrace);
       return _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)
-          ? _PasteImageResult.stale
-          : _PasteImageResult.noImage;
+          ? _PasteResult.stale
+          : _PasteResult.unhandled;
     }
 
     // Never let an asynchronous paste land in a composer that replaced the
     // one where the action started.
     if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
-      return _PasteImageResult.stale;
+      return _PasteResult.stale;
     }
-    if (!mounted) return _PasteImageResult.stale;
-    if (bytes == null) return _PasteImageResult.noImage;
+    if (!mounted) return _PasteResult.stale;
+    if (bytes == null) return _PasteResult.unhandled;
 
     // Downscaling an oversized image awaits too, so every outcome checks
     // staleness again before it touches the composer.
@@ -2783,62 +2805,108 @@ class _PromptInputState() extends State<PromptInput> {
       final attachment = await _attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
       await earlierInsertsSettled;
       if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
-        return _PasteImageResult.stale;
+        return _PasteResult.stale;
       }
-      if (_stageAttachment(attachment: attachment)) return _PasteImageResult.handled;
+      if (_stageAttachment(attachment: attachment)) return _PasteResult.handled;
       // The staged strip is already at its aggregate budget, so no image was
       // added; fall back so the clipboard's text is not swallowed.
-      return _PasteImageResult.noImage;
+      return _PasteResult.unhandled;
     } on AttachmentTooLargeError {
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
-        return _PasteImageResult.stale;
+        return _PasteResult.stale;
       }
       _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
-      return _PasteImageResult.noImage;
+      return _PasteResult.unhandled;
     } on UnsupportedAttachmentImageError {
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
-        return _PasteImageResult.stale;
+        return _PasteResult.stale;
       }
       _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
-      return _PasteImageResult.noImage;
+      return _PasteResult.unhandled;
     } catch (error, stackTrace) {
       loge("Failed to attach a pasted image", error, stackTrace);
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
-        return _PasteImageResult.stale;
+        return _PasteResult.stale;
       }
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
-      return _PasteImageResult.noImage;
+      return _PasteResult.unhandled;
     }
   }
 
-  Future<void> _pasteImageOrText({
+  /// Adds the files copied in the file manager like a drop, where the shell
+  /// pastes files. It is not gated on image support: copied files are routed
+  /// like dropped ones, whatever the backend takes.
+  ///
+  /// The copied files are read right away, so a copy made while an earlier
+  /// image is still preparing doesn't replace them; only routing waits for it.
+  Future<_PasteResult> _handlePasteFiles({
+    required _InsertTurn turn,
+    required TextEditingValue initialValue,
+  }) async {
+    final fileClipboard = _fileClipboard;
+    if (fileClipboard == null) return _PasteResult.unhandled;
+    final draftIdentity = widget.draftIdentity;
+    // A failed read still goes through the staleness check below, so it never
+    // falls back into a composer that replaced this one.
+    final paths = await fileClipboard().readPaths().catchError((Object error, StackTrace stackTrace) {
+      loge("Failed to read pasted files", error, stackTrace);
+      return const <String>[];
+    });
+    if (!mounted || draftIdentity != widget.draftIdentity || turn.pasteGeneration != _pasteGeneration) {
+      return _PasteResult.stale;
+    }
+    if (paths.isEmpty) return _PasteResult.unhandled;
+    final dispatcher = _attachmentDispatcher;
+    return await _insertOutcome(
+      turn: turn,
+      pastedOver: initialValue,
+      outcome: (stagedAttachmentBytes) => dispatcher.routeClipboardPaths(
+        paths: paths,
+        attachmentsSupported: widget.attachmentsSupported,
+        stagedAttachmentBytes: stagedAttachmentBytes,
+      ),
+    );
+  }
+
+  /// Pastes copied files first, then an image, then text. On macOS a copied
+  /// Finder file also reads as an image (its icon) and as text (its name), so
+  /// the files must win.
+  Future<void> _pasteClipboard({
     required TextEditingValue initialValue,
     required FutureOr<void> Function() onTextPaste,
-    required VoidCallback? onImagePasted,
+    required VoidCallback? onAttachmentPasted,
   }) async {
     // The text fallback reads the clipboard too, so the paste is busy until
     // whichever lands has landed.
     final turn = _startInsert();
     try {
-      switch (await _handlePasteImage(earlierInsertsSettled: turn.earlierSettled)) {
-        case _PasteImageResult.noImage:
-          // Restore the caret captured when paste was pressed so the fallback
-          // replaces the same selection, unless the user typed meanwhile.
-          if (_controller.text == initialValue.text && initialValue.selection.isValid) {
-            _controller.selection = initialValue.selection;
-          }
+      var result = await _handlePasteFiles(turn: turn, initialValue: initialValue);
+      if (result == _PasteResult.unhandled) {
+        result = await _handlePasteImage(earlierInsertsSettled: turn.earlierSettled);
+      }
+      switch (result) {
+        case _PasteResult.unhandled:
+          _restorePasteSelection(initialValue: initialValue);
           await onTextPaste();
           return;
-        case _PasteImageResult.handled:
-          if (mounted) onImagePasted?.call();
+        case _PasteResult.handled:
+          if (mounted) onAttachmentPasted?.call();
           return;
-        case _PasteImageResult.stale:
+        case _PasteResult.stale:
           return;
       }
     } catch (error, stackTrace) {
       loge("Failed to handle composer paste", error, stackTrace);
     } finally {
       _settleInsert(turn: turn);
+    }
+  }
+
+  /// Restores the selection captured when paste was pressed, so what lands
+  /// late replaces the same selection, unless the user typed meanwhile.
+  void _restorePasteSelection({required TextEditingValue initialValue}) {
+    if (_controller.text == initialValue.text && initialValue.selection.isValid) {
+      _controller.selection = initialValue.selection;
     }
   }
 

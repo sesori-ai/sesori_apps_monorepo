@@ -941,6 +941,7 @@ Future<_ScreenState> _pumpScreen({
             bridgeIsLocal: false,
           ),
           imageClipboard: _NoOpImageClipboard.new,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: _Screen(buildsRows: buildsRows, rowsArrive: rowsArrive),
@@ -1125,6 +1126,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
             bridgeIsLocal: false,
           ),
           imageClipboard: _NoOpImageClipboard.new,
+          fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.images,
           child: SentBubbleLanding(

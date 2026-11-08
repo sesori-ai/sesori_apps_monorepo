@@ -18,7 +18,7 @@ import "models/composer_attach_outcome.dart";
 /// renderer can decode honestly.
 final class const UnsupportedAttachmentImageError() implements Exception;
 
-/// Dispatches platform picks, drops and clipboard bytes through the shared
+/// Dispatches platform picks, drops, copied files and clipboard bytes through the shared
 /// composer attachment validation pipeline.
 @lazySingleton
 class ComposerAttachmentDispatcher({
@@ -52,6 +52,28 @@ class ComposerAttachmentDispatcher({
           stagedAttachmentBytes: stagedAttachmentBytes,
         );
     }
+  }
+
+  /// Routes the files copied in the file manager like a drop, or returns
+  /// `null` when the clipboard holds no files, so the paste falls back to an
+  /// image or text.
+  ///
+  /// Every path must exist: a path that doesn't is not a copied file, and
+  /// the clipboard's text is what the user meant to paste.
+  Future<ComposerAttachOutcome?> routeClipboardPaths({
+    required List<String> paths,
+    required bool? attachmentsSupported,
+    required int stagedAttachmentBytes,
+  }) async {
+    if (paths.isEmpty) return null;
+    for (final hostPath in paths) {
+      if (await _hostFiles.kindOf(path: hostPath) is HostOtherPath) return null;
+    }
+    return await routeHostPaths(
+      paths: paths,
+      attachmentsSupported: attachmentsSupported,
+      stagedAttachmentBytes: stagedAttachmentBytes,
+    );
   }
 
   /// Decides what each path on this computer becomes in the composer.
