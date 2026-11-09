@@ -185,7 +185,9 @@ void main() {
       );
 
       late List<ClaudeTranscriptRecordDto> records;
-      final warnings = _captureWarnings(() => records = api.readTailRecords(transcriptPath: path));
+      final warnings = _captureWarnings(
+        () => records = api.readTailRecords(transcriptPath: path, sessionId: _sessionA),
+      );
       final titles = records.where((record) => record.type != "user").toList();
 
       expect(warnings, isEmpty);
@@ -208,7 +210,10 @@ void main() {
       File(path).writeAsStringSync("$title$padding", mode: FileMode.append);
       expect(title.length + padding.length, ClaudeTranscriptApi.tailByteBudget);
 
-      expect(api.readTailRecords(transcriptPath: path).single.aiTitle, "At the edge");
+      expect(
+        api.readTailRecords(transcriptPath: path, sessionId: _sessionA).map((record) => record.aiTitle).nonNulls,
+        ["At the edge"],
+      );
     });
 
     test("keeps the first record of a transcript smaller than the tail budget", () {
@@ -222,7 +227,10 @@ void main() {
         ],
       );
 
-      expect(api.readTailRecords(transcriptPath: path).map((record) => record.type), ["ai-title", "user"]);
+      expect(api.readTailRecords(transcriptPath: path, sessionId: _sessionA).map((record) => record.type), [
+        "ai-title",
+        "user",
+      ]);
     });
 
     test("ends with the newest timestamped record, skipping exit metadata after it", () {
@@ -238,10 +246,76 @@ void main() {
         ],
       );
 
-      final newest = api.readTailRecords(transcriptPath: path).single;
+      final newest = api.readTailRecords(transcriptPath: path, sessionId: _sessionA).single;
 
       expect(newest.type, "assistant");
       expect(newest.timestamp, DateTime.utc(2026, 8, 4, 11, 30));
+    });
+
+    test("dates the root by its own newest turn, not a later sidechain or foreign record", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA),
+          {"type": "assistant", "sessionId": _sessionA, "timestamp": "2026-08-04T11:30:00.000Z"},
+          {"type": "assistant", "sessionId": _sessionA, "isSidechain": true, "timestamp": "2026-08-04T12:00:00.000Z"},
+          {"type": "assistant", "sessionId": _sessionB, "timestamp": "2026-08-04T12:30:00.000Z"},
+        ],
+      );
+
+      expect(
+        api.readTailRecords(transcriptPath: path, sessionId: _sessionA).single.timestamp,
+        DateTime.utc(2026, 8, 4, 11, 30),
+      );
+    });
+
+    test("looks further back when the last turn outgrows the tail window", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA),
+          {
+            "type": "user",
+            "sessionId": _sessionA,
+            "timestamp": "2026-08-04T11:30:00.000Z",
+            "toolUseResult": {"stdout": "x" * (ClaudeTranscriptApi.tailByteBudget * 2)},
+          },
+          {"type": "cost-state", "sessionId": _sessionA, "totalCostUSD": 0.1},
+        ],
+      );
+
+      expect(
+        api.readTailRecords(transcriptPath: path, sessionId: _sessionA).single.timestamp,
+        DateTime.utc(2026, 8, 4, 11, 30),
+      );
+    });
+
+    test("warns about a malformed timestamped record inside the tail window", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA),
+          {"type": "cost-state", "sessionId": _sessionA, "totalCostUSD": 0.1},
+        ],
+      );
+      final lines = File(path).readAsLinesSync();
+      final corrupt = jsonEncode({"type": "assistant", "timestamp": "2026-08-04T11:30:00.000Z"})
+          .replaceFirst("{", "{{");
+      File(path).writeAsStringSync("${lines.first}\n$corrupt\n${lines.last}\n");
+
+      late List<ClaudeTranscriptRecordDto> records;
+      final output = _captureWarnings(
+        () => records = api.readTailRecords(transcriptPath: path, sessionId: _sessionA),
+      );
+
+      expect(records.single.timestamp, DateTime.utc(2026, 8, 4, 10));
+      expect("skipping malformed transcript record".allMatches(output), hasLength(1));
     });
 
     test("keeps every complete record when the file ends mid-write", () {

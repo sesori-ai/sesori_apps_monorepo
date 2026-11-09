@@ -305,7 +305,7 @@ ClaudeSessionRecord? _readRootRecord({
   final List<ClaudeTranscriptRecordDto> tail;
   try {
     header = transcriptApi.readHeader(transcriptPath: path);
-    tail = transcriptApi.readTailRecords(transcriptPath: path);
+    tail = transcriptApi.readTailRecords(transcriptPath: path, sessionId: id);
   } on Object catch (error, stackTrace) {
     Log.w("[claude] failed to read transcript header or tail", error, stackTrace);
     return null;

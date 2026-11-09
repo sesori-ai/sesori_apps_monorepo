@@ -466,8 +466,8 @@ void main() {
 /// Holds the scan isolate after each parse, so a test can act mid-scan.
 final class _SlowTailTranscriptApi({required super.environment}) extends ClaudeTranscriptApi {
   @override
-  List<ClaudeTranscriptRecordDto> readTailRecords({required String transcriptPath}) {
-    final tail = super.readTailRecords(transcriptPath: transcriptPath);
+  List<ClaudeTranscriptRecordDto> readTailRecords({required String transcriptPath, required String sessionId}) {
+    final tail = super.readTailRecords(transcriptPath: transcriptPath, sessionId: sessionId);
     sleep(const Duration(milliseconds: 800));
     return tail;
   }
