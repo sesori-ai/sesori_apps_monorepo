@@ -8,7 +8,7 @@ part "file_preview.g.dart";
 ///
 /// Large enough for a self-contained HTML page with inline images. Even
 /// escaped twice as JSON, such text stays far below the relay's per-message
-/// cap ([RelayProtocol.maxMessageBytes]), and the response is deflated.
+/// cap (`RelayProtocol.maxMessageBytes`), and the response is deflated.
 const maxFilePreviewBytes = 20 * 1024 * 1024;
 
 /// Asks the bridge for a read-only preview of the file at [path], which must
