@@ -1339,8 +1339,7 @@ void main() {
             ),
           ).thenAnswer((_) => send.future);
           final cubit = await createLoadedCubit(supportsPromptAttachments: true);
-          final attachment = ComposerAttachment(
-            kind: ComposerAttachmentKind.image,
+          final attachment = ComposerImageAttachment(
             mime: "image/png",
             bytes: base64Decode(
               "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -2919,8 +2918,7 @@ void main() {
       });
 
       group("the launch's composer before the first load", () {
-        final image = ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        final image = ComposerImageAttachment(
           mime: "image/png",
           bytes: utf8.encode("png"),
           filename: "a.png",

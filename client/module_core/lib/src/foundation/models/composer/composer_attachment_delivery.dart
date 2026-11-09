@@ -8,9 +8,9 @@ bool canDeliverComposerAttachments({
   required bool? inlineImages,
   required bool? fileUploads,
 }) => attachments.every(
-  (attachment) => switch (attachment.kind) {
-    ComposerAttachmentKind.image => inlineImages ?? false,
-    ComposerAttachmentKind.file => fileUploads ?? false,
+  (attachment) => switch (attachment) {
+    ComposerImageAttachment() => inlineImages ?? false,
+    ComposerFileAttachment() => fileUploads ?? false,
   },
 );
 
@@ -21,7 +21,7 @@ bool isComposerAttachmentStranded({
   required ComposerAttachment attachment,
   required bool? inlineImages,
   required bool? fileUploads,
-}) => switch (attachment.kind) {
-  ComposerAttachmentKind.image => inlineImages == false,
-  ComposerAttachmentKind.file => fileUploads == false,
+}) => switch (attachment) {
+  ComposerImageAttachment() => inlineImages == false,
+  ComposerFileAttachment() => fileUploads == false,
 };

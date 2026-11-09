@@ -1342,9 +1342,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachedImage => 'Attached image';
 
   @override
-  String get sessionDetailAttachedFile => 'Attached file';
-
-  @override
   String sessionDetailAttachmentSizeBytes(int count) {
     return '$count bytes';
   }

@@ -4,11 +4,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
 void main() {
-  ComposerAttachment attachment({required ComposerAttachmentKind kind}) =>
-      ComposerAttachment(kind: kind, mime: "image/png", bytes: Uint8List(1), filename: "a.png");
-
-  final image = attachment(kind: ComposerAttachmentKind.image);
-  final file = attachment(kind: ComposerAttachmentKind.file);
+  final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List(1), filename: "a.png");
+  final file = ComposerFileAttachment(bytes: Uint8List(1), filename: "a.png");
 
   test("delivers nothing staged whatever the capabilities", () {
     expect(canDeliverComposerAttachments(attachments: const [], inlineImages: null, fileUploads: null), isTrue);

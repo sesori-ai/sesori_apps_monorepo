@@ -3275,8 +3275,7 @@ void main() {
   });
 
   testWidgets("restores a coalesced failed submission without remounting the composer", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "screenshot.png",

@@ -421,19 +421,18 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
         runSpacing: PregoSpacing.sm,
         children: [
           for (final attachment in attachments)
-            if (attachment.kind == ComposerAttachmentKind.file)
-              _QueuedFilePreview(
-                fileName: attachment.filename ?? context.loc.sessionDetailAttachedFile,
+            switch (attachment) {
+              ComposerFileAttachment(:final filename) => _QueuedFilePreview(
+                fileName: filename,
                 size: _thumbnailSize,
-              )
-            else
-              Semantics(
+              ),
+              ComposerImageAttachment(:final filename, :final bytes) => Semantics(
                 image: true,
-                label: attachment.filename ?? context.loc.sessionDetailAttachedImage,
+                label: filename ?? context.loc.sessionDetailAttachedImage,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(prego.radius.lg),
                   child: Image.memory(
-                    attachment.bytes,
+                    bytes,
                     width: _thumbnailSize,
                     height: _thumbnailSize,
                     cacheWidth: (_thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
@@ -446,6 +445,7 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
                   ),
                 ),
               ),
+            },
         ],
       ),
     );

@@ -1625,8 +1625,7 @@ void main() {
     ) async {
       final attachments = [
         for (var i = 0; i < 2; i++)
-          ComposerAttachment(
-            kind: ComposerAttachmentKind.image,
+          ComposerImageAttachment(
             mime: "image/png",
             bytes: base64Decode(
               "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -1716,8 +1715,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: base64Decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",

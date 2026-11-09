@@ -1041,10 +1041,6 @@
   "@sessionDetailAttachedImage": {
     "description": "Fallback accessibility label of a staged image thumbnail when the image has no filename. A staged file always shows its name."
   },
-  "sessionDetailAttachedFile": "Attached file",
-  "@sessionDetailAttachedFile": {
-    "description": "Fallback name of a staged file tile when the file has no name."
-  },
   "sessionDetailAttachmentSizeBytes": "{count} bytes",
   "@sessionDetailAttachmentSizeBytes": {
     "description": "Byte size shown in a transcript attachment metadata overlay.",

@@ -222,19 +222,12 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       if (text.isNotEmpty || attachments.isEmpty) PromptPart.text(text: text),
       for (final attachment in attachments)
         PromptPart.fileData(
-          mime: _wireMime(attachment: attachment),
+          mime: attachment.mime,
           base64: base64Encode(attachment.bytes),
           filename: attachment.filename,
         ),
     ];
   }
-
-  /// A file goes out as [composerFileAttachmentMime], so the bridge saves it
-  /// and names its path to the agent instead of passing it on inline.
-  static String _wireMime({required ComposerAttachment attachment}) => switch (attachment.kind) {
-    ComposerAttachmentKind.image => attachment.mime,
-    ComposerAttachmentKind.file => composerFileAttachmentMime,
-  };
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
@@ -618,7 +611,7 @@ final class _BoundedCreateSessionBody({
         for (final part in request.parts) part.toJson(),
         for (final attachment in attachments)
           {
-            "mime": SessionApi._wireMime(attachment: attachment),
+            "mime": attachment.mime,
             "base64": BoundedBase64Value(bytes: attachment.bytes),
             "filename": ?attachment.filename,
             "type": "file_data",

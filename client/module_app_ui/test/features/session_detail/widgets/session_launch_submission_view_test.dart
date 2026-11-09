@@ -52,8 +52,7 @@ Future<AppLocalizations> _pump(
       fail("AppLocalizations is not in scope.");
 }
 
-ComposerAttachment _attachment(String filename) => ComposerAttachment(
-  kind: ComposerAttachmentKind.image,
+ComposerAttachment _attachment(String filename) => ComposerImageAttachment(
   mime: "image/png",
   bytes: Uint8List.fromList(const [1, 2, 3]),
   filename: filename,
@@ -273,9 +272,7 @@ void main() {
         draft: ComposerDraft.typed(text: "Read the report"),
         attachments: [
           _attachment("a.png"),
-          ComposerAttachment(
-            kind: ComposerAttachmentKind.file,
-            mime: composerFileAttachmentMime,
+          ComposerFileAttachment(
             bytes: Uint8List.fromList(const [1, 2, 3]),
             filename: "report.pdf",
           ),
