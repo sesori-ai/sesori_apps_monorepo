@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/services.dart" show MethodCall, SystemChannels;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:markdown/markdown.dart" as md;
@@ -265,6 +266,56 @@ void main() {
       await tester.tap(find.byKey(const Key("file-preview-source-toggle")));
       await tester.pumpAndSettle();
       expect(_spanWithText(tester, "# Title"), isNotNull);
+    });
+
+    testWidgets("cuts a very long line short but copies it whole", (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call case MethodCall(method: "Clipboard.setData", arguments: {"text": final String text})) copied = text;
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      // Over the highlighting limit, so the lines are plain.
+      final content = "${"a" * 250000}\nshort";
+      await _pumpScreen(
+        tester,
+        reference: const FileReference(absolutePath: "/repo/page.txt", line: null),
+        state: FilePreviewShowsText(content: content),
+        openExternalLink: _ignoreLink,
+      );
+      expect(_spanWithText(tester, "${"a" * 10000}…"), isNotNull);
+      expect(_spanWithText(tester, "short"), isNotNull);
+
+      await tester.tap(find.byTooltip("Copy"));
+      await tester.pump();
+      expect(copied, content);
+    });
+
+    testWidgets("cuts a very long highlighted line short", (tester) async {
+      await _pumpScreen(
+        tester,
+        reference: const FileReference(absolutePath: "/repo/data.dart", line: null),
+        state: FilePreviewShowsText(content: "final data = '${"x" * 25000}';\nvoid main() {}"),
+        openExternalLink: _ignoreLink,
+      );
+      final rows = [
+        for (final text in tester.widgetList<RichText>(find.byType(RichText)))
+          if (text.text.toPlainText().startsWith("final data")) text.text.toPlainText(),
+      ];
+      expect(rows, hasLength(1));
+      expect(rows.single, hasLength(10001));
+      expect(rows.single, endsWith("x…"));
+    });
+
+    testWidgets("shows a very large Markdown file only as its source", (tester) async {
+      await _pumpScreen(
+        tester,
+        reference: const FileReference(absolutePath: "/repo/notes.md", line: null),
+        state: FilePreviewShowsText(content: "# Title\n${"word " * 250000}"),
+        openExternalLink: _ignoreLink,
+      );
+      expect(_spanWithText(tester, "# Title"), isNotNull);
+      expect(find.byKey(const Key("file-preview-source-toggle")), findsNothing);
     });
 
     group("HTML", () {

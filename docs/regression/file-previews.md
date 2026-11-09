@@ -71,8 +71,11 @@ default app; otherwise it shows a read-only preview.
 - The preview is a full-screen page that slides up and closes with its close
   button or Escape:
   - Text shows line numbers and, with a line, starts scrolled to that line with
-    it highlighted. Markdown renders with the session's styles and has a source
-    toggle; with a line it opens on the source.
+    it highlighted. A line over 10,000 characters, such as an inline image's
+    data, shows its first 10,000 and an ellipsis; Copy still copies the whole
+    file. Markdown renders with the session's styles and has a source toggle;
+    with a line it opens on the source. Markdown over about 1 MiB (1,048,576
+    characters) shows only its source, with no toggle, because rendering builds every block at once.
   - HTML (`.html`, `.htm`) renders in a web view on iOS, Android and macOS,
     with the same source toggle and line rule; a loading indicator shows
     until the page has loaded, and switching back to it shows the page where
@@ -100,7 +103,7 @@ default app; otherwise it shows a read-only preview.
 |---|---|
 | L1 Smoke | Automated: repository outcomes for text, image, PDF with and without `acceptsPdf`, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, FIFO and device left unopened, followed link, denied read, and denied lookup; handler `400` and passthrough, including `acceptsPdf`; wire tags and a request without `acceptsPdf`. Client: path recognition, the open-locally or preview decision, repository `404` mapping, cubit states, and the preview page for each state. Bridge: the Sesori note in Claude launch arguments and Codex `thread/start`/`thread/resume`, after the user's developer instructions, and absent from mapped Codex history. |
 | L2 Routine | Headless bridge: request a text file, an image, and a missing path, and confirm each outcome. |
-| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, a page with its own background fills to the bottom edge with no app-coloured strip above the home indicator, and scrolled to its end a page that ends flush with no bottom margin, and one that sets `html,body{height:100%}`, keeps its last line clear of the indicator, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. Desktop on the same computer: confirm the file opens in its default app. A Claude Code session repeats the Sesori note when asked, a Codex session's rollout records it as a developer message, and neither transcript shows it, new or resumed. |
+| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, a page with its own background fills to the bottom edge with no app-coloured strip above the home indicator, and scrolled to its end a page that ends flush with no bottom margin, and one that sets `html,body{height:100%}`, keeps its last line clear of the indicator, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. A self-contained HTML page of 10+ MiB with inline images renders, and its source opens within about half a second and scrolls sideways smoothly; Markdown of several MiB opens on its source with no toggle. Desktop on the same computer: confirm the file opens in its default app. A Claude Code session repeats the Sesori note when asked, a Codex session's rollout records it as a developer message, and neither transcript shows it, new or resumed. |
 | L4 Extended | A client against a bridge older than this route shows "Update the bridge to preview files". Headless bridge: on macOS, request a file under a Full Disk Access-protected folder without access and confirm `denied`. |
 | L5 Full | No additional coverage. |
 
@@ -109,6 +112,8 @@ default app; otherwise it shows a read-only preview.
 - A domain outcome answered with a non-200 status.
 - A text file over 20 MiB, or an image over the image cap, returned in full.
 - A preview under the cap that times out on a slow link before two minutes.
+- A large file's source or Markdown view freezes the app for seconds or
+  balloons its memory, for example a line of megabytes laid out whole.
 - A directory listing, a write, or binary bytes returned as text.
 - A `pdf` outcome sent to a request without `acceptsPdf`.
 - A `500` without a bridge log line naming the path.

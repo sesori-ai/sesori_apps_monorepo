@@ -27,6 +27,15 @@ const _headerHeight = 52.0;
 /// as plain text so opening them stays quick.
 const _maxHighlightedLength = 200 * 1024;
 
+/// Each line shows at most this many characters, then an ellipsis, so one
+/// huge line, such as an inline image's data, lays out quickly. Copy still
+/// takes the whole file.
+const _maxShownLineLength = 10000;
+
+/// Markdown up to this many characters renders; larger files, which would
+/// build a widget for every block at once, show only their source.
+const _maxRenderedMarkdownLength = 1024 * 1024;
+
 const _maxDecodedImageDimension = 2048;
 
 /// Matches lines with non-ASCII characters, which are measured with a
@@ -102,11 +111,13 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     null => false,
   };
 
-  /// How the file renders besides its source, or null when it has only source.
-  /// HTML needs a web view, which Windows and Linux lack.
-  _Rendering? get _rendering {
+  /// How [content] renders besides its source, or null when it has only
+  /// source. HTML needs a web view, which Windows and Linux lack.
+  _Rendering? _renderingOf({required String content}) {
     final name = widget.reference.fileName.toLowerCase();
-    if (name.endsWith(".md") || name.endsWith(".markdown")) return _Rendering.markdown;
+    if (name.endsWith(".md") || name.endsWith(".markdown")) {
+      return content.length > _maxRenderedMarkdownLength ? null : _Rendering.markdown;
+    }
     if (!name.endsWith(".html") && !name.endsWith(".htm")) return null;
     return switch (defaultTargetPlatform) {
       TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.macOS => _Rendering.html,
@@ -118,7 +129,10 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final state = context.watch<FilePreviewCubit>().state;
-    final rendering = _rendering;
+    final rendering = switch (state) {
+      FilePreviewShowsText(:final content) => _renderingOf(content: content),
+      _ => null,
+    };
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.escape): widget.onClose,
@@ -420,8 +434,13 @@ class _CodePreviewState() extends State<_CodePreview> {
         ? null
         : CodeHighlighter.highlight(code: code, language: widget.language, brightness: brightness, baseStyle: style);
     final lines = highlighted == null
-        ? [for (final text in code.split("\n")) TextSpan(text: text, style: style)]
-        : splitSpanIntoLines(span: highlighted);
+        ? [
+            for (final text in code.split("\n"))
+              _clipLine(
+                line: TextSpan(text: text, style: style),
+              ),
+          ]
+        : [for (final line in splitSpanIntoLines(span: highlighted)) _clipLine(line: line)];
     var widest = 0.0;
     final measured = <InlineSpan>[];
     for (final line in lines) {
@@ -539,6 +558,44 @@ class _CodePreviewState() extends State<_CodePreview> {
       },
     );
   }
+}
+
+/// [line], a plain line or one from [splitSpanIntoLines], cut after
+/// [_maxShownLineLength] characters with an ellipsis.
+TextSpan _clipLine({required TextSpan line}) {
+  if (line case TextSpan(:final text?, :final style)) {
+    return text.length <= _maxShownLineLength
+        ? line
+        : TextSpan(
+            text: _clipText(text: text, length: _maxShownLineLength),
+            style: style,
+          );
+  }
+  var room = _maxShownLineLength;
+  final kept = <InlineSpan>[];
+  for (final piece in line.children ?? const <InlineSpan>[]) {
+    switch (piece) {
+      case TextSpan(:final text?, :final style) when text.length > room:
+        kept.add(
+          TextSpan(
+            text: _clipText(text: text, length: room),
+            style: style,
+          ),
+        );
+        return TextSpan(style: line.style, children: kept);
+      case TextSpan(:final text?):
+        room -= text.length;
+    }
+    kept.add(piece);
+  }
+  return line;
+}
+
+/// The first [length] characters of [text], never ending between the halves
+/// of a surrogate pair, and an ellipsis.
+String _clipText({required String text, required int length}) {
+  final end = length > 0 && (text.codeUnitAt(length - 1) & 0xFC00) == 0xD800 ? length - 1 : length;
+  return "${text.substring(0, end)}…";
 }
 
 /// Splits a highlighted span into one span per line, each carrying the
