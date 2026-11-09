@@ -2390,6 +2390,12 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       fake.holdNextResponse("turn/start");
+      // A fixed number of event-loop turns raced the send's I/O on slow CI;
+      // waiting for the request itself guarantees the response is held.
+      final freshTurnRequested = Completer<void>();
+      fake.onRequest = (method) {
+        if (method == "turn/start" && !freshTurnRequested.isCompleted) freshTurnRequested.complete();
+      };
       final secondPrompt = plugin.sendPrompt(
         fastMode: false,
         promptId: "prompt-2",
@@ -2399,13 +2405,7 @@ void main() {
         agent: null,
         model: null,
       );
-      for (
-        var attempt = 0;
-        attempt < 100 && fake.sentMethods.where((method) => method == "turn/start").length < 2;
-        attempt++
-      ) {
-        await Future<void>.delayed(Duration.zero);
-      }
+      await freshTurnRequested.future.timeout(const Duration(seconds: 5));
       fake.pushNotification("thread/status/changed", {
         "threadId": "t-stale-active",
         "status": {"type": "active"},
