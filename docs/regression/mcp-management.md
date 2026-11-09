@@ -631,8 +631,12 @@ provider, packaged client, relay/device and original final L4 remain unqualified
 
 Pi and the ACP family retain existing command, permission and bounded-form
 flows. They do not implement the optional structured MCP inventory/authentication
-interfaces. An inactive adapter returns `pluginInactive`; an active adapter
-without the optional interface returns `unsupportedHarness`. Neither read
+interfaces, and their descriptors declare no `mcpCapabilities`. Once a request
+passes validation and its session or project scope resolves, every MCP route
+answers `unsupportedHarness` for them, whether the adapter is running or
+dormant. Invalid requests and unresolvable scopes fail earlier, as before, and
+an unknown plugin id still gets a 503. `pluginInactive` is reserved for a
+harness that declares the capability but is not running. Neither read
 creates/resumes a session, executes a command, opens a browser or writes
 configuration. Generic approvals still select only native offered
 options; supported legacy ACP forms still preserve native reply encoding and

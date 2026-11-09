@@ -141,6 +141,13 @@ class const CodexPluginDescriptor({
   @override
   bool get supportsPromptAttachments => true;
 
+  @override
+  Set<PluginMcpCapability> get mcpCapabilities => const {
+    PluginMcpCapability.management,
+    PluginMcpCapability.authentication,
+    PluginMcpCapability.connectorSetup,
+  };
+
   /// Backend-namespaced ownership filename in shared runtime storage.
   static const String ownershipFileName = "codex-processes.json";
 

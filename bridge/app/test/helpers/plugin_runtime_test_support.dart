@@ -17,12 +17,15 @@ TestPluginRuntime createTestPluginRuntime({
 
 PluginRuntime createAlwaysCurrentTestPluginRuntime() => _AlwaysCurrentTestPluginRuntime();
 
-PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> pluginIds}) {
+PluginRuntime createRegisteredTestPluginRuntime({
+  required Iterable<String> pluginIds,
+  Map<String, Set<PluginMcpCapability>> mcpCapabilities = const {},
+}) {
   return PluginRuntime(
     registrations: [
       for (final pluginId in pluginIds)
         PluginRuntimeRegistration(
-          descriptor: _TestDescriptor(id: pluginId),
+          descriptor: _TestDescriptor(id: pluginId, mcpCapabilities: mcpCapabilities[pluginId] ?? const {}),
           config: const PluginConfig(values: {}),
           stateDirectory: ".",
           store: const _UnusedHostJsonStore(),
@@ -90,6 +93,21 @@ class TestPluginRuntime({
 
   @override
   bool supportsPromptAttachments({required String pluginId}) => promptAttachmentPluginIds.contains(pluginId);
+
+  /// Mirrors a descriptor that declares exactly the MCP interfaces its plugin
+  /// implements, so declared support holds while the plugin is stopped.
+  @override
+  Set<PluginMcpCapability> mcpCapabilities({required String pluginId, required Enum operation}) {
+    final plugin = _plugins[pluginId];
+    if (plugin == null) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unknown");
+    }
+    return {
+      if (plugin is McpManagementPluginApi) PluginMcpCapability.management,
+      if (plugin is McpAuthenticationPluginApi) PluginMcpCapability.authentication,
+      if (plugin is McpConnectorSetupPluginApi) PluginMcpCapability.connectorSetup,
+    };
+  }
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {
@@ -389,7 +407,10 @@ class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   }) => throw UnsupportedError("test runtime is already active");
 }
 
-class const _TestDescriptor({@override required final String id}) extends BridgePluginDescriptor {
+class const _TestDescriptor({
+  @override required final String id,
+  @override required final Set<PluginMcpCapability> mcpCapabilities,
+}) extends BridgePluginDescriptor {
   @override
   String get displayName => id;
 

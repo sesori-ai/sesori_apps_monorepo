@@ -8,6 +8,7 @@ import "bridge_plugin.dart";
 import "plugin_activation_policy.dart";
 import "plugin_config.dart";
 import "plugin_control_capability.dart";
+import "plugin_mcp_capability.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
 import "plugin_residency_policy.dart";
@@ -94,6 +95,14 @@ abstract class const BridgePluginDescriptor() {
       PluginControlCapability.idleTimeout,
     };
   }
+
+  /// The optional MCP interfaces the started plugin implements.
+  ///
+  /// Must match the plugin returned by [start], whatever the configuration.
+  /// The bridge reads this while the plugin is dormant, so a harness without
+  /// MCP support reports itself unsupported rather than inactive. The default
+  /// declares none.
+  Set<PluginMcpCapability> get mcpCapabilities => const {};
 
   /// Inspects whether this plugin's runtime and authentication are already set
   /// up without installing, starting, or initiating a login flow.
