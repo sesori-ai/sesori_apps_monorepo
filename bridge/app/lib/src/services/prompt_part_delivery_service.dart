@@ -13,7 +13,7 @@ class PromptPartDeliveryService({
   required final PromptUploadRepository _uploads,
   required final Clock _clock,
 }) {
-  /// Saved files older than this are swept after each save.
+  /// Saved files older than this are swept at bridge startup and after each save.
   static const uploadLifetime = Duration(days: 30);
 
   static const _unnamedFileName = "attachment";
@@ -51,7 +51,7 @@ class PromptPartDeliveryService({
           delivered.add(part);
       }
     }
-    if (savedAny) unawaited(_sweepExpiredUploads());
+    if (savedAny) unawaited(sweepExpiredUploads());
     return delivered;
   }
 
@@ -64,7 +64,10 @@ class PromptPartDeliveryService({
     return 'Attached file "$shownName": `$path`';
   }
 
-  Future<void> _sweepExpiredUploads() async {
+  /// Best-effort: deletes every saved file older than [uploadLifetime], in
+  /// every session's folder, and only logs a failure. Runs at bridge startup
+  /// too, so a computer that stops receiving files still sheds its last ones.
+  Future<void> sweepExpiredUploads() async {
     final cutoff = _clock.now().subtract(uploadLifetime);
     try {
       await _uploads.deleteFileFoldersDatedBefore(cutoff: cutoff);

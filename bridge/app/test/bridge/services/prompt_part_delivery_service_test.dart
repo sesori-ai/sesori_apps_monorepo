@@ -121,6 +121,19 @@ void main() {
     expect(uploads.sweepCutoffs, hasLength(1));
   });
 
+  test("the startup sweep removes uploads older than 30 days without a save", () async {
+    await service.sweepExpiredUploads();
+
+    expect(uploads.sweepCutoffs, [now.subtract(const Duration(days: 30))]);
+  });
+
+  test("a failed startup sweep is logged, not thrown", () async {
+    uploads.sweepError = StateError("sweep failed");
+
+    await expectLater(service.sweepExpiredUploads(), completes);
+    expect(uploads.sweepCutoffs, hasLength(1));
+  });
+
   test("a failed save propagates", () async {
     uploads.saveError = StateError("disk full");
 
