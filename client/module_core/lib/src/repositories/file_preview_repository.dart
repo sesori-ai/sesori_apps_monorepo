@@ -36,9 +36,12 @@ class FilePreviewRepository({required final FilesystemApi _api}) {
         } on FormatException catch (error, stackTrace) {
           return FilePreviewFailed(innerError: error, stackTrace: stackTrace);
         }
-      // This app does not ask for PDFs yet, so a bridge never sends one.
-      case FilePreviewPdf():
-        return const FilePreviewContentUnavailable(reason: FilePreviewUnavailableReason.unsupported);
+      case FilePreviewPdf(:final base64):
+        try {
+          return FilePreviewPdfContent(bytes: await Isolate.run(() => base64Decode(base64)));
+        } on FormatException catch (error, stackTrace) {
+          return FilePreviewFailed(innerError: error, stackTrace: stackTrace);
+        }
       case FilePreviewMissing():
         return const FilePreviewContentUnavailable(reason: FilePreviewUnavailableReason.missing);
       case FilePreviewTooLarge():

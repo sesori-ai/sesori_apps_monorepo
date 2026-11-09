@@ -42,6 +42,30 @@ void main() {
     ).called(1);
   });
 
+  test("asks for a file preview that may be a PDF", () async {
+    when(
+      () => client.postDecodedInBackground<FilePreviewResponse>(
+        path: "/filesystem/file",
+        fromJson: any(named: "fromJson"),
+        body: any(named: "body"),
+        sensitiveResponse: true,
+        timeout: const Duration(minutes: 2),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(const FilePreviewResponse.missing()));
+
+    await api.readFilePreview(path: "/a/report.pdf");
+
+    verify(
+      () => client.postDecodedInBackground<FilePreviewResponse>(
+        path: "/filesystem/file",
+        fromJson: any(named: "fromJson"),
+        body: const FilePreviewRequest(path: "/a/report.pdf", acceptsPdf: true),
+        sensitiveResponse: true,
+        timeout: const Duration(minutes: 2),
+      ),
+    ).called(1);
+  });
+
   test("propagates errors", () async {
     final error = ApiError.generic();
     when(

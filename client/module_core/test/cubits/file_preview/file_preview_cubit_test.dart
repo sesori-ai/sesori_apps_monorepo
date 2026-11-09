@@ -39,6 +39,11 @@ void main() {
     );
   });
 
+  test("shows a PDF", () async {
+    final state = await settledState(result: FilePreviewPdfContent(bytes: Uint8List.fromList([37, 80, 68, 70])));
+    expect(state, isA<FilePreviewShowsPdf>().having((s) => s.bytes, "bytes", [37, 80, 68, 70]));
+  });
+
   final unavailable = <FilePreviewResult, FilePreviewUnavailableReason>{
     for (final reason in [
       FilePreviewUnavailableReason.missing,

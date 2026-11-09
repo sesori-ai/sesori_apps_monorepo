@@ -48,7 +48,10 @@ class FilesystemApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<FilePreviewResponse>> readFilePreview({required String path}) {
     return _client.postDecodedInBackground(
       path: "/filesystem/file",
-      body: FilePreviewRequest(path: path),
+      // A bridge that predates PDF previews ignores acceptsPdf and answers
+      // unsupported for a PDF, so the app shows it as it shows any other
+      // binary file: "This file can't be previewed".
+      body: FilePreviewRequest(path: path, acceptsPdf: true),
       fromJson: FilePreviewResponse.fromJson,
       sensitiveResponse: true,
       timeout: _previewTimeout,
