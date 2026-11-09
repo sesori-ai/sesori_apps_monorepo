@@ -290,7 +290,7 @@ state.
   [cockpit contract](desktop-cockpit-shell.md).
 - The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
   shared session-row timeline below, with search and the All, Running and Unread chips. Each row names its
-  project, except a "No project" row, which names none. The large title reads "All projects" with a chevron, and a
+  project, a "No project" row saying "No project" as its session header does. The large title reads "All projects" with a chevron, and a
   tap opens the project picker in filter mode: the folder projects, with "All projects" pinned below them, beside
   "No project" when the bridge has it. Picking a project, or "No project", narrows the list to it: the title takes
   its name ("No project" for "No project"), rows stop naming the project, and an empty result names the project.
@@ -506,7 +506,10 @@ state.
   nothing jumps when the bridge drops or returns.
 - A session row leads with the harness logo, in a square of the same size for
   every harness, so titles line up; screen readers hear the harness name from
-  it. Right after the title's text comes its status mark: a turning sparkle
+  it. The logo rests as a quiet grey glyph and shows its own colours, breathing
+  (about every 1.6 s, to about a third), only while an agent works: not while
+  the session waits for the user, and not for being the open session. With
+  reduced motion it stays lit and still. Right after the title's text comes its status mark: a turning sparkle
   while running, an amber dot while waiting for the user (which wins over
   running), a resting sparkle when unread. A quiet session shows no mark and
   keeps no space for one. A long title fades out before the mark, so the mark
@@ -515,16 +518,23 @@ state.
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, retrying, background tasks), then the project
-  when the list gives one; it names neither the harness, which session detail
+  words ("Waiting" in amber, retrying), then the project when the list gives
+  one, then background tasks as a quiet count: a stack glyph and the number,
+  which screen readers hear as "2 background tasks". Waiting and retrying hide
+  the count. A plain running session has no words on the line; the sparkle and
+  the lit logo say it, and screen readers hear "Running" from the mark. The
+  line names neither the harness, which session detail
   still shows, nor the branch. The home and Archived while filtered to one
   project give no project; across
-  every project the home and Archived name each row's. Screen
+  every project the home and Archived name each row's, "No project" included. Screen
   readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
-  text size under touch. Under a pointer (the desktop app) rows keep the same
-  type, line boxes and line gap, with 8px vertical padding instead of touch's
-  12px, so they are 62px; the launching row and the loading skeleton follow.
+  text size under touch. Under a pointer (the desktop app) the title is
+  13.5/19 and the meta line 12/16, 2px apart, in 6px vertical padding and a
+  1px margin, so rows are 51px whatever the meta line holds; the harness logo
+  (14px) ends the meta line under the time instead of leading the title, and
+  the count's tooltip gives its words. The launching row and the loading
+  skeleton follow.
   Rows grow with
   accessibility text rather than clipping or overflowing. Regular rows form
   one timeline with no Running section, in updated-time date buckets, and a
@@ -556,7 +566,8 @@ state.
   list has neither sessions nor a launching row.
 - A session being created leads Today on the phone home and in the desktop
   sidebar, as a launching row of the same height as a session
-  row: the harness logo, the first line of its first message (or "Untitled
+  row: the harness logo (on the phone only, lit and breathing as the session
+  is already at work), the first line of its first message (or "Untitled
   session") with the AI sparkle right after it, and
   "Creating… · `<harness>`" with no time.
   Tapping it explains that the session is still being created and opens
@@ -820,7 +831,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A scratch session folder appears as a project, a scratch session lists outside "No project", "No project" is
   missing, hidden, or renamed back after startup, a hide request for it succeeds, or a scratch folder path reports
   kind `scratch`. An import fails because "No project" is missing instead of leaving scratch sessions out.
-- A "No project" row names a project, a project list or Settings › Projects lists "No project" as a folder, or
+- A "No project" row names another project, or the unfiltered list leaves its "No project" out, a project list or Settings › Projects lists "No project" as a folder, or
   filtering to it titles the home with anything but "No project".
 - The computer menu checks a computer other than the one the header names, a switch leaves the previous
   computer's projects or a pushed page on screen, the header keeps the old name, or picking the current computer
@@ -922,7 +933,12 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   name, misaligns titles between quiet and busy rows or between harnesses,
   pushes its status mark off the line behind a long title,
   shows a project in a list filtered to one project, changes height when its
-  meta line is empty, or clips its meta line under enlarged text.
+  meta line is empty or holds a status word, a project or a count, or clips its
+  meta line under enlarged text. The harness logo shows colour while the
+  session waits for the user, while it is quiet, or only because it is open; a
+  lit logo breathes under reduced motion; a desktop row shows "Running" in
+  words or the words "background tasks", or its logo is anywhere but the end
+  of the meta line.
 - In a scrolled session list, a row or date heading arriving or leaving above
   the screen, such as a renamed row moving to the top, shifts the rows on
   screen, or the rows below a row that moved away snap up instead of closing

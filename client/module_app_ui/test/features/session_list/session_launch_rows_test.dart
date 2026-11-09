@@ -199,7 +199,14 @@ void main() {
     expect(launchRow, findsOneWidget);
     expect(find.text("Fix the bug"), findsOneWidget);
     expect(find.textContaining("Creating…"), findsOneWidget);
-    expect(find.descendant(of: launchRow, matching: find.byType(PregoBrandLogo)), findsOneWidget);
+    // Lit, as the session is already at work.
+    expect(
+      find.descendant(
+        of: launchRow,
+        matching: find.descendant(of: find.byType(PregoBreathing), matching: find.byType(PregoBrandLogo)),
+      ),
+      findsOneWidget,
+    );
     final below = rowBelowTop(tester);
     expect(below, greaterThan(tester.getBottomLeft(launchRow).dy - 1), reason: "the launch row leads");
     expect(below, greaterThan(belowBefore));

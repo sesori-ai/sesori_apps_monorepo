@@ -761,8 +761,9 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                     row: row,
                     bottomPadding: bottomPadding,
                     tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
-                    // A "No project" session has no project to name.
-                    labelsProject: state.projectId == null && row.project.id != state.scratchProjectId,
+                    // Across every project each row names its own, a "No project"
+                    // session's as "No project", as its session header does.
+                    labelsProject: state.projectId == null,
                   ),
                   SessionListItemEntry(item: _LoaderItem(:final status)) => IgnorePointer(
                     ignoring: _replacing,

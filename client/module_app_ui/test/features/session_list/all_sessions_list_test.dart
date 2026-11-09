@@ -487,38 +487,62 @@ void main() {
     }
   });
 
-  testWidgets("unfiltered, a No project row names no project", (tester) async {
+  group("a session with no project", () {
     const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
     final now = DateTime.now();
-    await pumpList(
-      tester,
-      mode: AllSessionsMode.active,
-      initial: state(
-        query: "",
-        failure: null,
-        rows: [
-          row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
-          AllSessionsRow(
-            session: testSession(id: "jot", title: "Jot down ideas", updatedAt: now.millisecondsSinceEpoch),
-            project: scratch,
-            isRunning: false,
-            isUnseen: false,
-            isAwaitingInput: false,
-            isRetrying: false,
-            backgroundTaskCount: 0,
-          ),
-        ],
-        scratchProjectId: scratch.id,
-      ),
-      projectList: const ProjectListState.loaded(
-        projects: [project, scratch],
-        folderProjects: [project],
-        scratchProject: scratch,
-      ),
+    final jot = AllSessionsRow(
+      session: testSession(id: "jot", title: "Jot down ideas", updatedAt: now.millisecondsSinceEpoch),
+      project: scratch,
+      isRunning: false,
+      isUnseen: false,
+      isAwaitingInput: false,
+      isRetrying: false,
+      backgroundTaskCount: 0,
     );
-    expect(find.text("Jot down ideas"), findsOneWidget);
-    expect(find.text("Project One"), findsOneWidget);
-    expect(find.text("No project"), findsNothing);
+    const projectList = ProjectListState.loaded(
+      projects: [project, scratch],
+      folderProjects: [project],
+      scratchProject: scratch,
+    );
+
+    testWidgets("says No project unfiltered, as its session header does, in the project's grey", (tester) async {
+      await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: state(
+          query: "",
+          failure: null,
+          rows: [
+            row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
+            jot,
+          ],
+          scratchProjectId: scratch.id,
+        ),
+        projectList: projectList,
+      );
+      expect(find.text("Jot down ideas"), findsOneWidget);
+      expect(find.text("No project"), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text("No project")).style?.color,
+        tester.widget<Text>(find.text("Project One")).style?.color,
+      );
+    });
+
+    testWidgets("names none in a list filtered to No project", (tester) async {
+      await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: state(
+          query: "",
+          failure: null,
+          rows: [jot],
+          scratchProjectId: scratch.id,
+        ).copyWith(projectId: scratch.id),
+        projectList: projectList,
+      );
+      expect(find.text("Jot down ideas"), findsOneWidget);
+      expect(find.text("No project"), findsNothing);
+    });
   });
 
   group("a change at rest", () {
