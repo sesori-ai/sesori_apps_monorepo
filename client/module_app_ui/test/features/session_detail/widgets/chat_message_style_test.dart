@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
+import "package:sesori_app_ui/src/widgets/chat_link.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -62,6 +63,37 @@ void main() {
         }
       });
     }
+
+    testWidgets("${brightness.name} user bubble keeps a long file link inside it", (tester) async {
+      tester.view.physicalSize = const Size(402, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const name = "image_picker_A3883905-28EE-472D-BAFC-82C4A8501772-41735-00000058381D0921.jpg";
+
+      await tester.pumpWidget(
+        _app(
+          brightness: brightness,
+          child: const Column(
+            children: [
+              UserMessageBubble(
+                markdown: "Attached file: `/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$name`",
+                attachments: [],
+                outlined: false,
+                transitionDuration: Duration.zero,
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final bubbleRect = tester.getRect(find.byType(AnimatedContainer));
+      final linkRect = tester.getRect(find.byType(ChatLink));
+      expect(bubbleRect.contains(linkRect.topLeft), isTrue, reason: "link $linkRect, bubble $bubbleRect");
+      expect(bubbleRect.contains(linkRect.bottomRight), isTrue, reason: "link $linkRect, bubble $bubbleRect");
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets("${brightness.name} assistant keeps chat typography while streaming and settled", (tester) async {
       for (final streaming in [true, false]) {
