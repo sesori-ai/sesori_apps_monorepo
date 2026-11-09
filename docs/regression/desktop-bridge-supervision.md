@@ -88,7 +88,8 @@ and keep native close/quit behavior safe.
   session's default PATH and harness configuration exported from a shell
   profile (gateway base URLs, auth tokens, proxies) work after autostart or an
   application-menu launch as they do for a terminal-started bridge. The probe
-  runs `$SHELL -ilc` (bash, zsh, dash and fish); without an executable
+  runs `$SHELL -ilc` (bash, zsh, dash, fish), `-ic` for csh/tcsh (which read
+  `.cshrc`, not `.login`) and `-l -i -c` for nushell; without an executable
   `$SHELL` macOS uses `/bin/zsh`, and Linux uses the user's `/etc/passwd`
   shell, then `/bin/sh`. Windows runs no probe. The probe shell sees
   `SESORI_RESOLVING_ENVIRONMENT=1` so profiles can skip slow work. Shell values override inherited ones except `PWD`,

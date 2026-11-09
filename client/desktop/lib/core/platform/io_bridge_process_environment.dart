@@ -161,10 +161,22 @@ class IoBridgeProcessEnvironment.forTesting({
     "AUTH_BACKEND_URL",
   };
 
+  /// Flags that run [command] in an interactive login [shell], following VS
+  /// Code's shell-environment probe. csh and tcsh accept `-l` only as their
+  /// sole flag, so they run as an interactive non-login shell (reading
+  /// `.cshrc`/`.tcshrc`, not `.login`); nushell needs separate flags.
+  @visibleForTesting
+  static List<String> loginShellArguments({required String shell, required String command}) =>
+      switch (shell.substring(shell.lastIndexOf("/") + 1)) {
+        "csh" || "tcsh" => <String>["-ic", command],
+        "nu" => <String>["-l", "-i", "-c", command],
+        _ => <String>["-ilc", command],
+      };
+
   Future<Map<String, String>?> _readLoginShellEnvironment({required LoginShellPlatform platform}) async {
     final String shell = _shellExecutable(platform: platform);
-    // The same login + interactive flags and command work for zsh, bash, dash
-    // and fish. The marker is printed by a printf executable rather than a
+    // The command works unchanged in zsh, bash, dash, fish, csh/tcsh and
+    // nushell. The marker is printed by a printf executable rather than a
     // shell builtin or function; macOS always ships /usr/bin/printf, while some
     // Linux distributions (such as NixOS) only guarantee /usr/bin/env.
     final String command = switch (platform) {
@@ -175,7 +187,7 @@ class IoBridgeProcessEnvironment.forTesting({
     try {
       result = await _runProcess(
         executable: shell,
-        arguments: <String>["-ilc", command],
+        arguments: loginShellArguments(shell: shell, command: command),
         // Process.start adds this to the inherited environment.
         environment: const <String, String>{resolvingEnvironmentVariable: "1"},
         timeout: _shellTimeout,

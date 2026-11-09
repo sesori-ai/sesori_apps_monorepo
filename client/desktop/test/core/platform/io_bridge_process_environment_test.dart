@@ -175,6 +175,27 @@ void main() {
       });
     }
 
+    test("maps each login shell to its interactive login flags", () {
+      const String command = "printf x";
+      for (final (String shell, List<String> expected) in <(String, List<String>)>[
+        ("/bin/zsh", <String>["-ilc", command]),
+        ("/bin/bash", <String>["-ilc", command]),
+        ("/bin/sh", <String>["-ilc", command]),
+        ("/usr/bin/fish", <String>["-ilc", command]),
+        ("/bin/csh", <String>["-ic", command]),
+        ("/usr/local/bin/tcsh", <String>["-ic", command]),
+        ("/opt/homebrew/bin/nu", <String>["-l", "-i", "-c", command]),
+        ("/opt/nu/bin/zsh", <String>["-ilc", command]),
+        ("/home/me/bin/nush", <String>["-ilc", command]),
+      ]) {
+        expect(
+          IoBridgeProcessEnvironment.loginShellArguments(shell: shell, command: command),
+          expected,
+          reason: shell,
+        );
+      }
+    });
+
     test("falls back to the Linux passwd shell, then /bin/sh, without a usable SHELL", () async {
       if (Platform.isWindows) return;
       final String passwdShell = Platform.resolvedExecutable;
