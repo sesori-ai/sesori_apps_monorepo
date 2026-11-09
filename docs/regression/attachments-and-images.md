@@ -257,8 +257,11 @@ gives the agent their path.
   as one, a blank line apart, OpenCode v2 joins a prompt's text the same way,
   and Codex shows a message's text items the same way. A queued prompt's
   preview in Claude and the ACP plugins joins its texts a blank line apart too.
-  A save that fails removes its folder and
-  fails the send visibly. A repeated accepted prompt saves nothing again, and a
+  Prompts sent before this join are exempt (only the internal
+  `v1.12.0-internal.1153` build sent notes without it): after reload their ACP
+  messages still show the note glued to the text, and so do their Codex
+  messages when recorded by a Codex CLI older than 0.165. A save that fails removes
+  its folder and fails the send visibly. A repeated accepted prompt saves nothing again, and a
   command or a create with a command saves nothing. Deleting a session from
   Sesori removes its uploads folder, and each save starts a best-effort sweep
   of file folders dated more than 30 days before it. An accepted prompt with

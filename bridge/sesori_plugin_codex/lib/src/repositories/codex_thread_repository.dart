@@ -123,7 +123,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   }) async {
     final input = <CodexTurnInputDto>[];
     var remainingInlineBytes = maxInlineMessageAttachmentBytes;
-    for (final part in _joinAdjacentTextParts(parts: parts)) {
+    for (final part in joinAdjacentPromptTextParts(parts: parts)) {
       final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
       input.add(mapped.input);
       remainingInlineBytes -= mapped.inlineBytes;
@@ -202,36 +202,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     CodexThreadSource.subAgentOther => _usefulText(value: thread.parentThreadId),
     CodexThreadSource.unknown || null => null,
   };
-
-  /// Joins each run of adjacent text parts into one, a blank line apart, as
-  /// the bridge joins a prompt's visible texts. Codex keeps one text item per
-  /// part, so one item keeps a saved file's note its own paragraph wherever
-  /// Codex shows or stores the message as one string. A run of several drops
-  /// its blank texts; a lone part is sent as it is.
-  static List<PluginPromptPart> _joinAdjacentTextParts({required List<PluginPromptPart> parts}) {
-    final joined = <PluginPromptPart>[];
-    final run = <PluginPromptPartText>[];
-    void flushRun() {
-      if (run.length == 1) {
-        joined.add(run.single);
-      } else if (run.isNotEmpty) {
-        final texts = run.map((part) => part.text).where((text) => text.trim().isNotEmpty);
-        joined.add(PluginPromptPart.text(text: texts.join("\n\n")));
-      }
-      run.clear();
-    }
-
-    for (final part in parts) {
-      if (part is PluginPromptPartText) {
-        run.add(part);
-        continue;
-      }
-      flushRun();
-      joined.add(part);
-    }
-    flushRun();
-    return joined;
-  }
 
   ({CodexTurnInputDto input, int inlineBytes}) _mapTurnInput({
     required PluginPromptPart part,

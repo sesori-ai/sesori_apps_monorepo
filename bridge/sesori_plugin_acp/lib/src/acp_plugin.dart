@@ -1092,7 +1092,7 @@ abstract class AcpPlugin({
     } else {
       // A fresh session has an empty chain, so this dispatches immediately;
       // the selection is applied inside the turn like every other prompt.
-      final blocks = _contentBlocks(_joinAdjacentTextParts(parts: parts));
+      final blocks = _contentBlocks(joinAdjacentPromptTextParts(parts: parts));
       if (blocks.isNotEmpty) {
         _enqueueTurn(
           sessionId: session.sessionId,
@@ -1130,7 +1130,7 @@ abstract class AcpPlugin({
         .where((part) => part.trim().isNotEmpty)
         .join("\n\n")
         .trim();
-    final joinedParts = _joinAdjacentTextParts(parts: parts);
+    final joinedParts = joinAdjacentPromptTextParts(parts: parts);
     final blocks = _contentBlocks(joinedParts);
     if (blocks.isEmpty) return;
     final turn = _QueuedAcpTurn(
@@ -1870,37 +1870,6 @@ abstract class AcpPlugin({
       // Other mime types have no ACP inline block and are dropped.
       PluginPromptPartFileData(:final mime, :final base64) => _inlineContentBlock(mime: mime, base64: base64),
     };
-  }
-
-  /// Joins each run of adjacent text parts into one, a blank line apart, as
-  /// the bridge joins a prompt's visible texts. Adjacent text blocks become one
-  /// text part of the live user message, where the last would replace the
-  /// others, and an agent's replay runs them together, so a saved file's note
-  /// would hide or glue onto the user's text. A run of several drops its blank
-  /// texts; a lone part is kept as it is.
-  static List<PluginPromptPart> _joinAdjacentTextParts({required List<PluginPromptPart> parts}) {
-    final joined = <PluginPromptPart>[];
-    final run = <PluginPromptPartText>[];
-    void flushRun() {
-      if (run.length == 1) {
-        joined.add(run.single);
-      } else if (run.isNotEmpty) {
-        final texts = run.map((part) => part.text).where((text) => text.trim().isNotEmpty);
-        joined.add(PluginPromptPart.text(text: texts.join("\n\n")));
-      }
-      run.clear();
-    }
-
-    for (final part in parts) {
-      if (part is PluginPromptPartText) {
-        run.add(part);
-        continue;
-      }
-      flushRun();
-      joined.add(part);
-    }
-    flushRun();
-    return joined;
   }
 
   List<Map<String, dynamic>> _contentBlocks(List<PluginPromptPart> parts) =>
