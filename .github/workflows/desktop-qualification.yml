@@ -271,6 +271,14 @@ jobs:
           architecture: arm64
       - name: Set up ARM Xcode
         uses: ./.ci-workflow/.github/actions/setup-xcode
+      # SwiftPM reuses binary artifacts from its shared cache, so a hit skips
+      # the GitHub release downloads (Sparkle) that intermittently return 504.
+      # SwiftPM still verifies each artifact against its pinned checksum.
+      - name: Cache SwiftPM GitHub release artifacts
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
+          key: swiftpm-github-artifacts-${{ hashFiles('client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
       - name: Bootstrap pinned ARM SDK
         env:
           SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
