@@ -220,12 +220,10 @@ final class const ClaudePluginDescriptor({
       final status = ClaudeAuthStatusDto.fromJson(jsonDecodeMap(authResult.stdout));
       return switch (status.loggedIn) {
         true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
-        // A gateway behind a custom base URL owns authentication, so the CLI
-        // reports "not logged in" while working through it. A real gateway
-        // auth failure still surfaces at turn time as authentication required.
-        false when _baseUrls(environment: environment).usesCustomBaseUrl() => PluginSetupReady.versioned(
-          runtimeVersion: runtimeVersion,
-        ),
+        // Trusted even behind a custom base URL: without credentials the CLI
+        // refuses to send any request, gateway or not. Gateway credentials
+        // (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `apiKeyHelper`) already
+        // report logged in.
         false => PluginSetupAuthenticationRequired.versioned(
           actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
           runtimeVersion: runtimeVersion,
@@ -327,7 +325,10 @@ final class const ClaudePluginDescriptor({
         ),
       ),
       // Read at failure time, so a gateway configured after start still counts.
-      usesCustomBaseUrl: _baseUrls(environment: host.environment).usesCustomBaseUrl,
+      usesCustomBaseUrl: ClaudeBaseUrlRepository(
+        settings: ClaudeSettingsApi(environment: host.environment),
+        environment: host.environment,
+      ).usesCustomBaseUrl,
       transcripts: ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: host.environment),
       ),
@@ -368,11 +369,6 @@ final class const ClaudePluginDescriptor({
     final configured = config.value(binOption)?.trim();
     return configured == null || configured.isEmpty ? defaultBinary : configured;
   }
-
-  static ClaudeBaseUrlRepository _baseUrls({required Map<String, String> environment}) => ClaudeBaseUrlRepository(
-    settings: ClaudeSettingsApi(environment: environment),
-    environment: environment,
-  );
 
   static SemanticVersion? _parseVersion(String output) {
     final match = RegExp(r"(?:^|\s)(\d+\.\d+\.\d+)(?:\s|$)").firstMatch(output);
