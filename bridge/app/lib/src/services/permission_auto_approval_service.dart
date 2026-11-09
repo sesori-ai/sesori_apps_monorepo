@@ -94,7 +94,9 @@ class PermissionAutoApprovalService({
     try {
       if (!await _anySessionMayBeYolo()) return;
       rootSessionIds = [
-        for (final summary in await _sessionRepository.getProjectActivitySummaries())
+        // An archived root's row can carry an active sub-agent's request; the
+        // permission read below drops the archived session's own requests.
+        for (final summary in await _sessionRepository.getProjectActivitySummaries(includeArchived: true))
           for (final session in summary.activeSessions)
             if (session.awaitingInput) session.id,
       ];

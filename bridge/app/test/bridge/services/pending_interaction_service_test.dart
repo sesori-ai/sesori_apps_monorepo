@@ -310,6 +310,24 @@ void main() {
         expect(await autoApproval.resolveSnapshot(permissions: const [first]), [first]);
       });
 
+      test("the sweep still reaches an archived root, whose row can carry a sub-agent's request", () async {
+        sessionRepository
+          ..activitySummaries = const [
+            ProjectActivitySummary(
+              id: "project",
+              activeSessions: [
+                ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+              ],
+            ),
+          ]
+          ..archivedSessionIds.add("session-one");
+        permissionRepository.pendingPermissions = const [first];
+
+        await autoApproval.approvePending();
+
+        expect(permissionRepository.requestIds, ["first"]);
+      });
+
       test("with no session in YOLO the sweep reads nothing", () async {
         await settingsRepository.updateYolo(enabled: false);
         sessionRepository.approvalOverrides["session-one"] = SessionApprovalMode.ask;
@@ -354,10 +372,21 @@ class _FamilyRepository(final Map<String, SessionFamilyScope> scopes) implements
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
+  final Set<String> archivedSessionIds = {};
+
   @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries({bool includeArchived = false}) async {
     activitySummaryReads++;
-    return activitySummaries;
+    return [
+      for (final summary in activitySummaries)
+        ProjectActivitySummary(
+          id: summary.id,
+          activeSessions: [
+            for (final session in summary.activeSessions)
+              if (includeArchived || !archivedSessionIds.contains(session.id)) session,
+          ],
+        ),
+    ];
   }
 
   @override

@@ -407,7 +407,7 @@ class FakeSessionRepository({
   Future<void> deletePersistedSession({required String pluginId, required String backendSessionId}) async {}
 
   @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => [
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries({bool includeArchived = false}) async => [
     for (final summary in _plugin.getActiveSessionsSummary())
       ProjectActivitySummary(
         id: summary.id,

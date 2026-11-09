@@ -815,7 +815,11 @@ class SessionRepository({
   /// without this remap the activity badge lands on a project id the phone
   /// doesn't show. A native plugin owns its own attribution and passes
   /// through 1:1.
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
+  ///
+  /// Archived sessions are left out unless [includeArchived]: no client shows
+  /// their activity, but an archived root's row can still carry an active
+  /// sub-agent's pending input.
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries({bool includeArchived = false}) async {
     final results = await Future.wait(
       _runtime.activePluginIds.map((pluginId) async {
         try {
@@ -846,7 +850,10 @@ class SessionRepository({
               generation: generation,
             ),
           );
-          return await _mapPluginProjectActivitySummaries(observation: observation);
+          return await _mapPluginProjectActivitySummaries(
+            observation: observation,
+            includeArchived: includeArchived,
+          );
         } on Object catch (error, stackTrace) {
           Log.w("Could not read activity summaries from plugin $pluginId", error, stackTrace);
           return const <ProjectActivitySummary>[];
@@ -914,22 +921,24 @@ class SessionRepository({
 
   Future<List<ProjectActivitySummary>> _mapPluginProjectActivitySummaries({
     required _PluginActivityObservation observation,
+    required bool includeArchived,
   }) async {
     final bindings = await _sessionDao.getSessionsByBackendIds(
       pluginId: observation.pluginId,
       backendSessionIds: observation.backendSessionIds.toList(growable: false),
     );
+    // Archive state is local: a backend can still report an archived session
+    // running, or waiting on a request it can never get an answer to.
+    bool isListed(SessionDto binding) => includeArchived || binding.archivedAt == null;
 
     ActiveSession? mapActiveSession(PluginActiveSession active) {
       final binding = bindings[active.id];
-      // Archive state is local: a backend can still report an archived session
-      // running, or waiting on a request it can never get an answer to.
-      if (binding == null || binding.archivedAt != null) return null;
+      if (binding == null || !isListed(binding)) return null;
       return active.toSharedActiveSession(
         sessionId: binding.sessionId,
         childSessionIds: [
           for (final backendChildId in active.childSessionIds)
-            if (bindings[backendChildId] case final child? when child.archivedAt == null) child.sessionId,
+            if (bindings[backendChildId] case final child? when isListed(child)) child.sessionId,
         ],
         lastUserActivityAt: binding.lastUserMessageAt,
         updatedAt: binding.updatedAt,
