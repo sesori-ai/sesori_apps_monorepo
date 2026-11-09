@@ -717,12 +717,77 @@ then adds the attachment source to both.
 | Automated: module_app_ui | L2 | File tile in the strip, queued bubble and launch view. Clear rules. Plus gating. Source menu. Paste order with a fake `FileClipboard`. |
 | Automated: client/app | L1 | The picker dispatches by source and handles `oversizedCount` (with fake channels) |
 | iOS simulator → `sesori-local-testing` bridge slot (remote from the phone) | L3 | A Photos image to Claude goes inline (regression). A Files PDF and a `.txt` reach the agent, which quotes them, and the noted path opens the preview. A 49 MB file sends, and a 51 MB file gets the notice. Deleting that session from the app removes its folder under `~/.sesori/uploads`. The menu shows Photos only on a Grok-less old-bridge path, which is automated only. |
-| macOS cell (pasteboard, desktop locality) | L3 | Desktop connected to a CLI bridge slot it doesn't supervise, so the bridge counts as remote: a dropped PDF shows a tile, sends, and the agent reads it. Pasting a Finder copy of two files stages them. With the supervised local bridge active, the same paste inserts paths. A copied `https://example.com/` from Safari pastes as text. |
+| macOS cell (pasteboard, desktop locality) | L3 | Desktop connected to a CLI bridge slot it doesn't supervise, so the bridge counts as remote: a dropped PDF shows a tile, sends, and the agent reads it. Pasting a Finder copy of two files stages them. With the supervised local bridge active, the same paste inserts paths. A copied `https://example.com/` from Safari pastes as text. The remote and local halves run one after the other: on one computer and account, a CLI bridge and the supervised bridge share a bridge id and push each other off the relay. |
 | Android cell (Kotlin picker) | L3 | A small PDF stages. A video over 50 MB gets the notice and doesn't crash. Multi-select works. |
 | Per harness, live, from the iOS simulator | L3 | Send a `.txt` holding a known sentence; the agent quotes it; record any prompt. Run this for Claude, Codex, OpenCode, Pi, Cursor, Copilot, Grok, Hermes, OMP, Antigravity and DeepSeek. Any harness that isn't installed is recorded as unverified, and the user must accept that in PLAN.md before retirement. |
 
 An older bridge is covered only by the automated decode and routing tests. Running
 a released v1.11.0 bridge live is optional.
+
+### Results (step 10, 2026-11-08)
+
+**Status: not retired.** The Android cell fails. Four harnesses are unverified,
+and the user hasn't accepted that yet.
+
+The automated cells ran in CI on the merged step PRs: #2412 (2), #2413 (3),
+#2414 (4), #2415 (5), #2417 (6), #2411 (7) and #2419 (8), plus the auth server
+and analytics platform PRs for `prompt_files_sent`. The L3 cells ran on the code of `2d1349fdf8` (step 9's
+head). It matches main after step 9, apart from #2422 and #2423, which landed
+later.
+
+- **iOS simulator: pass.** Slot 2, headless `sesori-dev-2`, with a bridge on
+  the same Mac reached through the relay, so it was remote.
+  - A Photos image to Claude stayed inline: Claude quoted its text without
+    tools, and nothing was saved.
+  - A Files PDF and `.txt` were picked together. Claude quoted both. Both were
+    saved owner-only under the session's folder.
+  - Both noted paths are tappable. The `.txt` opens a text preview. The PDF
+    opens the preview's documented `unsupported` state ("This file can't be
+    previewed").
+  - A 49,000,000-byte file arrived intact in about 18 s. A 51,000,000-byte
+    file showed the 50 MB notice and staged nothing.
+  - Deleting the session from the app removed its `~/.sesori/uploads` folder.
+- **macOS: pass.** Slot 4 CLI bridge and a debug desktop build, with the
+  remote and local halves run in turn (see the cell).
+  - A real drag of a PDF staged a tile, and Claude quoted it.
+  - A pasted Finder-shaped copy of two files staged two tiles, and Claude read
+    both.
+  - With the supervised local bridge, the same paste inserted both paths.
+  - A Safari-shaped `https://example.com/` pasted as text on both bridges.
+  - The clipboard was written through `NSPasteboard`, the same way Finder and
+    Safari write it, and pasted with an AppleScript Cmd+V.
+- **Android: fail.** Slot 3, headless `sesori-dev-3-android` on API 36.
+  - A small PDF staged and Grok read it.
+  - A 59.95 MB video showed the notice without a crash, and so did an
+    oversize file picked together with a small one.
+  - Multi-select of three files worked when the picker was open for about
+    2 s.
+  - Any Files pick that keeps the picker open for more than about 5 s is
+    dropped, with no tile and no notice. This failed 2 of 2 cold-start runs at
+    6–7 s and passed 7 of 7 at 1–2 s; already-running apps fail the same way.
+  - Cause: Android drops the app's sockets in the background, so the relay
+    reconnects. The session screen then resets the attachment capabilities to
+    unknown (`session_detail_cubit.dart` l.2281-2287), and the composer
+    discards the pick in flight on any capability change (`prompt_input.dart`
+    l.722-725, l.2742/2751).
+- **Per harness, live from the iOS simulator:** Claude, Codex, OpenCode, Pi,
+  OMP, DeepSeek and Grok quoted the file. Only Claude asked first. Per-harness
+  cells and versions are in `docs/HARNESS_CAPABILITIES.md` "Saved prompt
+  files".
+- **Unverified, needs the user's acceptance here before retirement:**
+  - Hermes 0.21.5: installed, but its model router's credentials are expired
+    (Anthropic OAuth expired, xAI 403), so no turn reached a model.
+  - Cursor: CLI 2026.07.23 is older than the required 2026.09.23.
+  - Copilot: not installed.
+  - Antigravity: not installed.
+- **Other failures found:**
+  - Codex shows the note glued to the user's text ("…exactly.Attached
+    file…"), because `CodexUserContentMapper.mapContentText` joins text items
+    with `""`.
+  - A Grok prompt with a file loses the typed text from the bubble and the
+    stored history, because the note overwrites it (`acp_event_mapper.dart`
+    near l.476).
+  - Both are the separator problem that step 3 fixed for Pi.
 
 ## Risks
 
