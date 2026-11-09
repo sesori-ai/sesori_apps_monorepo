@@ -909,6 +909,13 @@ void main() {
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect((events.whereType<BridgeSseSessionStatus>().last.status as PluginSessionStatusRetry).next, retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+      // Session lists read the summary, which only a republication refreshes.
+      expect(
+        events
+            .skipWhile((event) => !(event is BridgeSseSessionStatus && event.status is PluginSessionStatusRetry))
+            .whereType<BridgeSseProjectUpdated>(),
+        isNotEmpty,
+      );
       expect(
         await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
         PluginQuotaContinuationReadiness.retrying,
@@ -916,6 +923,7 @@ void main() {
 
       // The retried request streaming again is the recovery signal; the turn
       // is still running, so the session returns to busy rather than idle.
+      events.clear();
       process.emit({
         "type": "stream_event",
         "session_id": testSessionId,
@@ -934,6 +942,7 @@ void main() {
         isA<PluginSessionStatusBusy>(),
       );
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
+      expect(events.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
       expect(
         await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
         PluginQuotaContinuationReadiness.busy,
@@ -1440,6 +1449,66 @@ void main() {
       await subscription.cancel();
     });
 
+    test("keeps the main agent running in the summary while a sub-agent's shell outlives that sub-agent", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      _launchAgent(process);
+      process.emit(_result());
+      process.emit({
+        "type": "system",
+        "subtype": "task_started",
+        "session_id": testSessionId,
+        "task_id": "sub-agent-shell",
+        "tool_use_id": "toolu-sub-agent-bash",
+        "description": "Run the build",
+        "task_type": "local_bash",
+        "owned_by_subagent": true,
+        "is_backgrounded": true,
+        "parent_task_id": "abc123",
+      });
+      await pump();
+
+      // While the sub-agent runs, its shell is its own work.
+      final whileAgentRuns = harness.plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(whileAgentRuns.mainAgentRunning, isFalse);
+      expect(whileAgentRuns.childSessionIds, ["agent-abc123"]);
+
+      // The sub-agent finishes, the wake-up turn it opens ends, and its shell
+      // still runs: the session stays busy, and with no running child left the
+      // summary must count the shell as the main agent's work.
+      process.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-agent"));
+      process.emit(_result());
+      await pump();
+
+      expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
+      final afterAgent = harness.plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(afterAgent.childSessionIds, isEmpty);
+      expect(afterAgent.mainAgentRunning, isTrue);
+    });
+
+    test("republishes the summary when a sub-agent starts running mid-turn", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      // No turn boundary follows, so only the child's own start can refresh
+      // the background task count session lists show.
+      _launchAgent(process);
+      await pump();
+
+      expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.childSessionIds, ["agent-abc123"]);
+      expect(
+        events
+            .skipWhile((event) => !(event is BridgeSseSessionStatus && event.sessionID == "agent-abc123"))
+            .whereType<BridgeSseProjectUpdated>(),
+        isNotEmpty,
+      );
+      await subscription.cancel();
+    });
+
     test("a SendMessage-resumed sub-agent runs in its child status, the summary and the stop count alike", () async {
       await harness.createSession();
       final process = harness.processes.single;
@@ -1774,6 +1843,12 @@ Map<String, Object?> _assistantToolUse({required String id, required String name
 
 /// Launches the background sub-agent `abc123` and has it finish.
 void _runAgentToCompletion(FakeClaudeProcess process) {
+  _launchAgent(process);
+  process.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-agent"));
+}
+
+/// Launches the background sub-agent `abc123`, which keeps running.
+void _launchAgent(FakeClaudeProcess process) {
   process.emit(
     _assistantToolUse(
       id: "toolu-agent",
@@ -1794,7 +1869,6 @@ void _runAgentToCompletion(FakeClaudeProcess process) {
     "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
   });
   process.emit(_agentTaskFrame(subtype: "task_started", toolUseId: "toolu-agent"));
-  process.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-agent"));
 }
 
 /// Resumes `abc123` through `SendMessage`; the CLI registers the run under
