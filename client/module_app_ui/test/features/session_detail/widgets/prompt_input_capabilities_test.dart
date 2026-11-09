@@ -367,7 +367,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("a drop turned away for several reasons gets one notice naming each", (tester) async {
+  testWidgets("a drop turned away for several reasons gets one notice naming each, and it stays up longer", (
+    tester,
+  ) async {
     final drops = StreamController<List<String>>();
     addTearDown(drops.close);
     final root = Directory.systemTemp.createTempSync("composer_drop_reasons_test");
@@ -404,7 +406,11 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.pumpAndSettle(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 3500));
+    expect(find.textContaining("A folder wasn't added."), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("A folder wasn't added."), findsNothing);
   });
 
   group("on a bridge on another computer that saves uploads", () {

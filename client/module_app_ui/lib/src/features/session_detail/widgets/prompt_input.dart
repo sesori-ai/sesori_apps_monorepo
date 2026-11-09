@@ -232,9 +232,10 @@ class _PromptInputState() extends State<PromptInput> {
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
 
-  /// A notice that something passed the size limit often comes as a picker
-  /// closes, while the eyes are still on their way back, so it stays up longer.
-  static const _overBudgetNoticeDuration = Duration(seconds: 5);
+  /// A notice that something wasn't added often comes as a picker closes or a
+  /// drop lands, while the eyes are still on their way back, and it names the
+  /// reason as well as what was left out, so it stays up longer.
+  static const _rejectedAttachmentNoticeDuration = Duration(seconds: 5);
   final _controller = TextEditingController();
   late final _wordsBox = ComposerWordsBox(controller: _controller);
   final _textScrollController = ScrollController();
@@ -419,7 +420,10 @@ class _PromptInputState() extends State<PromptInput> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (exceededBudget) {
-        _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded, duration: _overBudgetNoticeDuration);
+        _showComposerNotice(
+          context.loc.sessionDetailAttachmentBudgetExceeded,
+          duration: _rejectedAttachmentNoticeDuration,
+        );
       }
       onConsumed();
     });
@@ -2794,15 +2798,9 @@ class _PromptInputState() extends State<PromptInput> {
     return _PasteResult.handled;
   }
 
-  /// One notice for whatever could not be added. It stays up longer when it
-  /// includes the size limit, like the other over-budget notices.
+  /// One notice for whatever could not be added.
   void _showRejectionNotice({required Map<ComposerAttachRejectionReason, int> rejections}) {
-    _showComposerNotice(
-      _rejectionNotice(rejections: rejections),
-      duration: rejections.containsKey(ComposerAttachRejectionReason.overBudget)
-          ? _overBudgetNoticeDuration
-          : PregoPopupAlertPresenter.defaultDuration,
-    );
+    _showComposerNotice(_rejectionNotice(rejections: rejections), duration: _rejectedAttachmentNoticeDuration);
   }
 
   /// One line per reason, each with its own count, so a drop turned away for
@@ -3017,7 +3015,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// Stages an attachment and reports whether it fit the aggregate budget.
   bool _stageAttachment({required ComposerAttachment attachment}) {
     if (_attachmentsDecodedSizeWith(attachment: attachment) > maxComposerPromptAttachmentBytes) {
-      _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded, duration: _overBudgetNoticeDuration);
+      _showComposerNotice(
+        context.loc.sessionDetailAttachmentBudgetExceeded,
+        duration: _rejectedAttachmentNoticeDuration,
+      );
       return false;
     }
     setState(() => _attachments.add(attachment));

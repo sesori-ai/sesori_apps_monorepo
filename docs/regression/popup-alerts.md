@@ -32,8 +32,9 @@ and render above the current route, below the top navigation bar.
   transient feedback.
 - An alert may carry an action and its own duration. The Archived alert offers Undo and stays for
   the whole undo window instead of the three-second default; pressing Undo dismisses it.
-  The composer's notices that something passed the 50 MB attachment limit stay
-  five seconds; its other notices keep the default.
+  The composer's notices that an attachment wasn't added (past the 50 MB
+  limit, or turned away for another reason) stay five seconds; its other
+  notices keep the default.
 - Alerts presented from asynchronous operations remain visible when the source
   row or modal is removed, and alerts raised from a modal or full-screen image
   viewer render above that route rather than behind it.
