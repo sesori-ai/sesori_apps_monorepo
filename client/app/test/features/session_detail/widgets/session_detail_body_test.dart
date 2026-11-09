@@ -556,7 +556,7 @@ void main() {
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               fileClipboard: null,
               droppedPaths: null,
-              attachKind: ComposerAttachKind.images,
+              attachKind: ComposerAttachKind.photosAndFiles,
               child: PromptInput(
                 initialSelection: null,
                 onBusyChanged: null,

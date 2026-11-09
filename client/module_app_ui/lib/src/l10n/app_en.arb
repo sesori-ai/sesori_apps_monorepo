@@ -1029,6 +1029,18 @@
   "@sessionDetailAttachImage": {
     "description": "Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message."
   },
+  "sessionDetailAttachPhotosOrFiles": "Attach photos or files",
+  "@sessionDetailAttachPhotosOrFiles": {
+    "description": "Accessibility label of the mobile advanced-options action that opens a menu to attach a photo from the library or any file from Files, offered when the bridge on another computer saves uploads."
+  },
+  "sessionDetailAttachFromPhotos": "Photos",
+  "@sessionDetailAttachFromPhotos": {
+    "description": "Menu item under the mobile attach action that opens the photo library picker."
+  },
+  "sessionDetailAttachFromFiles": "Files",
+  "@sessionDetailAttachFromFiles": {
+    "description": "Menu item under the mobile attach action that opens the system file picker for any files, which are sent to the bridge on another computer to save."
+  },
   "sessionDetailAttachFiles": "Attach files",
   "@sessionDetailAttachFiles": {
     "description": "Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths when the bridge is local, attached as files when a bridge on another computer saves them, and rejected otherwise."

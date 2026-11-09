@@ -3438,7 +3438,7 @@ Future<_Composer> _pumpComposer({
           imageClipboard: () => imageClipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,

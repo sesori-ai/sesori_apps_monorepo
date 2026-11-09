@@ -4,7 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// A picker the user always dismisses.
 class const NoOpComposerFilePicker() implements ComposerFilePicker {
   @override
-  Future<ComposerPickResult?> pick() async => null;
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async => null;
 }
 
 class _MockConnectionService() extends Mock implements ConnectionService;

@@ -1333,6 +1333,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachImage => 'Attach image';
 
   @override
+  String get sessionDetailAttachPhotosOrFiles => 'Attach photos or files';
+
+  @override
+  String get sessionDetailAttachFromPhotos => 'Photos';
+
+  @override
+  String get sessionDetailAttachFromFiles => 'Files';
+
+  @override
   String get sessionDetailAttachFiles => 'Attach files';
 
   @override

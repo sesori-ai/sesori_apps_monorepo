@@ -2609,7 +2609,23 @@ class _PromptInputState() extends State<PromptInput> {
   /// once it is known. It leaves only when neither can take anything.
   bool get _offersAttachImage => (widget.attachmentsSupported ?? true) || (widget.fileUploadsSupported ?? true);
 
+  /// Where the plus picks from. Desktop's file dialog covers everything. On
+  /// mobile, Photos applies whenever an image can be staged, inline or saved
+  /// as a file, and Files only where the bridge saves uploads.
+  List<ComposerPickSource> _attachSources({required ComposerAttachKind attachKind}) {
+    if (!_takesAttachments) return const [];
+    return switch (attachKind) {
+      ComposerAttachKind.files => const [ComposerPickSource.files],
+      ComposerAttachKind.photosAndFiles => [
+        ComposerPickSource.photos,
+        if (widget.fileUploadsSupported ?? false) ComposerPickSource.files,
+      ],
+    };
+  }
+
   Widget _buildOptionsAccordion() {
+    final attachKind = ComposerPresentationScope.of(context).attachKind;
+    final attachSources = _attachSources(attachKind: attachKind);
     return PregoPickerPopover(
       pointerWidth: 360,
       onClosed: () {
@@ -2620,15 +2636,17 @@ class _PromptInputState() extends State<PromptInput> {
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
         isTyping: _hasText,
         showAttachImage: _offersAttachImage,
-        attachTooltip: switch (ComposerPresentationScope.of(context).attachKind) {
-          ComposerAttachKind.images => context.loc.sessionDetailAttachImage,
+        attachTooltip: switch (attachKind) {
           ComposerAttachKind.files => context.loc.sessionDetailAttachFiles,
+          ComposerAttachKind.photosAndFiles when attachSources.length > 1 => context.loc.sessionDetailAttachPhotosOrFiles,
+          ComposerAttachKind.photosAndFiles => context.loc.sessionDetailAttachImage,
         },
         onSlashCommandsTap: () {
           _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
           toggle();
         },
-        onAttachImageTap: _takesAttachments ? _handleAttachImage : null,
+        attachSources: attachSources,
+        onAttach: (source) => unawaited(_handleAttach(source: source)),
         onOpenChanged: (isOpen) {
           if (isOpen != _optionsOpen) setState(() => _optionsOpen = isOpen);
         },
@@ -2647,11 +2665,12 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Opens the shell's picker. Adding an image switches the composer to the
-  /// typing layout (via [_showsTypingLayout]) so the preview strip is visible,
-  /// without raising the keyboard.
-  Future<void> _handleAttachImage() => _attach(
+  /// Opens the shell's picker for [source]. Adding an attachment switches the
+  /// composer to the typing layout (via [_showsTypingLayout]) so the preview
+  /// strip is visible, without raising the keyboard.
+  Future<void> _handleAttach({required ComposerPickSource source}) => _attach(
     outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
+      source: source,
       attachmentsSupported: widget.attachmentsSupported,
       fileUploadsSupported: widget.fileUploadsSupported,
       stagedAttachmentBytes: stagedAttachmentBytes,

@@ -28,17 +28,32 @@ class _PendingComposerFilePicker() implements ComposerFilePicker {
   Completer<ComposerPickResult?> result = Completer();
 
   @override
-  Future<ComposerPickResult?> pick() => result.future;
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) => result.future;
 }
 
-/// A picker the user always dismisses, counting how often it opens.
+/// A picker the user always dismisses, recording the source of each opening.
 class _CountingComposerFilePicker() implements ComposerFilePicker {
-  int picks = 0;
+  final sources = <ComposerPickSource>[];
+  int get picks => sources.length;
 
   @override
-  Future<ComposerPickResult?> pick() async {
-    picks++;
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async {
+    sources.add(source);
     return null;
+  }
+}
+
+/// Hands over [paths] from Files and nothing from Photos, recording each source.
+class _FilesComposerFilePicker({required final List<String> _paths}) implements ComposerFilePicker {
+  final sources = <ComposerPickSource>[];
+
+  @override
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async {
+    sources.add(source);
+    return switch (source) {
+      ComposerPickSource.photos => null,
+      ComposerPickSource.files => ComposerPickedHostPaths(paths: _paths, oversizedCount: 0),
+    };
   }
 }
 
@@ -166,7 +181,7 @@ void main() {
           imageClipboard: () => clipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: PromptInput(
               initialSelection: (base: 5, extent: 2),
@@ -291,7 +306,7 @@ void main() {
           imageClipboard: () => clipboard,
           fileClipboard: null,
           droppedPaths: drops.stream,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: PromptInput(
               initialSelection: (base: 3, extent: 3),
@@ -355,6 +370,7 @@ void main() {
     final libPath = (Directory("${root.path}/lib")..createSync()).path;
     await _pumpAttachComposer(
       tester: tester,
+      attachKind: ComposerAttachKind.files,
       dispatcher: composerAttachmentDispatcherForTest(
         filePicker: const NoOpComposerFilePicker(),
         downscaleBuilder: const ComposerImageDownscaleBuilder(),
@@ -399,6 +415,7 @@ void main() {
 
     Future<void> pumpRemote({
       required WidgetTester tester,
+      required ComposerAttachKind attachKind,
       required ComposerAttachmentDispatcher dispatcher,
       required ImageClipboard clipboard,
       required Stream<List<String>>? droppedPaths,
@@ -407,6 +424,7 @@ void main() {
       required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
     }) => _pumpAttachComposer(
       tester: tester,
+      attachKind: attachKind,
       dispatcher: dispatcher,
       clipboard: clipboard,
       fileClipboard: const _FixedFileClipboard(paths: []),
@@ -430,6 +448,7 @@ void main() {
       final picker = _CountingComposerFilePicker();
       await pumpRemote(
         tester: tester,
+        attachKind: ComposerAttachKind.files,
         dispatcher: remoteDispatcher(filePicker: picker),
         clipboard: _NoOpImageClipboard(),
         droppedPaths: null,
@@ -445,6 +464,7 @@ void main() {
 
       await pumpRemote(
         tester: tester,
+        attachKind: ComposerAttachKind.files,
         dispatcher: remoteDispatcher(filePicker: picker),
         clipboard: _NoOpImageClipboard(),
         droppedPaths: null,
@@ -459,6 +479,65 @@ void main() {
       expect(_tooltip("Attach files"), findsNothing);
     });
 
+    testWidgets("on mobile the plus offers Photos and Files where uploads are saved, and a Files pick stages a file", (
+      tester,
+    ) async {
+      final picker = _FilesComposerFilePicker(paths: [notesPath]);
+      final reportedAttachments = <List<ComposerAttachment>>[];
+      await pumpRemote(
+        tester: tester,
+        attachKind: ComposerAttachKind.photosAndFiles,
+        dispatcher: remoteDispatcher(filePicker: picker),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: true,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+      await tester.tap(_tooltip("More actions"));
+      await tester.pumpAndSettle();
+      await tester.tap(_tooltip("Attach photos or files"));
+      await tester.pumpAndSettle();
+      expect(picker.sources, isEmpty, reason: "The plus only opens the menu.");
+      expect(find.text("Photos"), findsOneWidget);
+
+      await tester.tap(find.text("Files"));
+      await _settleFileReads(tester);
+      await tester.pumpAndSettle();
+
+      expect(picker.sources, [ComposerPickSource.files]);
+      final staged = reportedAttachments.last.single;
+      expect(staged.kind, ComposerAttachmentKind.file);
+      expect(staged.filename, "notes.dart");
+      expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
+    });
+
+    testWidgets("on mobile the plus opens the gallery straight away until the bridge says it saves uploads", (
+      tester,
+    ) async {
+      final picker = _CountingComposerFilePicker();
+      for (final fileUploadsSupported in [false, null]) {
+        await pumpRemote(
+          tester: tester,
+          attachKind: ComposerAttachKind.photosAndFiles,
+          dispatcher: remoteDispatcher(filePicker: picker),
+          clipboard: _NoOpImageClipboard(),
+          droppedPaths: null,
+          attachmentsSupported: true,
+          fileUploadsSupported: fileUploadsSupported,
+          onAttachmentsChanged: (_) {},
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(_tooltip("More actions"));
+        await tester.pumpAndSettle();
+        await tester.tap(_tooltip("Attach image"));
+        await tester.pumpAndSettle();
+        expect(find.text("Files"), findsNothing, reason: "fileUploadsSupported: $fileUploadsSupported");
+      }
+
+      expect(picker.sources, [ComposerPickSource.photos, ComposerPickSource.photos]);
+    });
+
     testWidgets("a dropped file stages as a named tile the close button removes", (tester) async {
       final drops = StreamController<List<String>>();
       addTearDown(drops.close);
@@ -466,6 +545,7 @@ void main() {
       final semantics = tester.ensureSemantics();
       await pumpRemote(
         tester: tester,
+        attachKind: ComposerAttachKind.files,
         dispatcher: remoteDispatcher(filePicker: const NoOpComposerFilePicker()),
         clipboard: _NoOpImageClipboard(),
         droppedPaths: drops.stream,
@@ -508,6 +588,7 @@ void main() {
       final reportedAttachments = <List<ComposerAttachment>>[];
       await pumpRemote(
         tester: tester,
+        attachKind: ComposerAttachKind.files,
         dispatcher: remoteDispatcher(filePicker: const NoOpComposerFilePicker()),
         clipboard: _FixedImageClipboard(bytes: png),
         droppedPaths: null,
@@ -536,6 +617,7 @@ void main() {
       final dispatcher = remoteDispatcher(filePicker: const NoOpComposerFilePicker());
       Future<void> pumpWith({required bool attachmentsSupported, required bool? fileUploadsSupported}) => pumpRemote(
         tester: tester,
+        attachKind: ComposerAttachKind.files,
         dispatcher: dispatcher,
         clipboard: _NoOpImageClipboard(),
         droppedPaths: drops.stream,
@@ -580,6 +662,7 @@ void main() {
     final reportedAttachments = <List<ComposerAttachment>>[];
     await _pumpAttachComposer(
       tester: tester,
+      attachKind: ComposerAttachKind.files,
       dispatcher: composerAttachmentDispatcherForTest(
         filePicker: const NoOpComposerFilePicker(),
         // Each image takes 60% of the budget, so only one fits.
@@ -616,6 +699,7 @@ void main() {
     addTearDown(voiceCubit.close);
     await _pumpAttachComposer(
       tester: tester,
+      attachKind: ComposerAttachKind.files,
       dispatcher: composerAttachmentDispatcherForTest(
         filePicker: const NoOpComposerFilePicker(),
         downscaleBuilder: const ComposerImageDownscaleBuilder(),
@@ -648,6 +732,7 @@ void main() {
     final reportedAttachments = <List<ComposerAttachment>>[];
     await _pumpAttachComposer(
       tester: tester,
+      attachKind: ComposerAttachKind.files,
       dispatcher: composerAttachmentDispatcherForTest(
         filePicker: const NoOpComposerFilePicker(),
         downscaleBuilder: downscale,
@@ -686,6 +771,7 @@ void main() {
     final reportedAttachments = <List<ComposerAttachment>>[];
     await _pumpAttachComposer(
       tester: tester,
+      attachKind: ComposerAttachKind.files,
       dispatcher: composerAttachmentDispatcherForTest(
         filePicker: const NoOpComposerFilePicker(),
         downscaleBuilder: downscale,
@@ -752,6 +838,7 @@ void main() {
       addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
       await _pumpAttachComposer(
         tester: tester,
+        attachKind: ComposerAttachKind.files,
         dispatcher: composerAttachmentDispatcherForTest(
           filePicker: const NoOpComposerFilePicker(),
           downscaleBuilder: const ComposerImageDownscaleBuilder(),
@@ -861,6 +948,7 @@ void main() {
         );
         await _pumpAttachComposer(
           tester: tester,
+          attachKind: ComposerAttachKind.files,
           dispatcher: composerAttachmentDispatcherForTest(
             filePicker: const NoOpComposerFilePicker(),
             downscaleBuilder: downscale,
@@ -947,7 +1035,7 @@ void main() {
           imageClipboard: () => clipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -1057,7 +1145,7 @@ void main() {
           imageClipboard: () => clipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -1274,7 +1362,7 @@ void main() {
           imageClipboard: () => imageClipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: PromptInput(
               initialSelection: null,
@@ -1358,7 +1446,7 @@ void main() {
               imageClipboard: () => imageClipboard,
               fileClipboard: null,
               droppedPaths: null,
-              attachKind: ComposerAttachKind.images,
+              attachKind: ComposerAttachKind.photosAndFiles,
               child: Scaffold(
                 body: Column(
                   children: [
@@ -1441,7 +1529,7 @@ void main() {
           imageClipboard: () => clipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: ValueListenableBuilder(
               valueListenable: draftIdentity,
@@ -1525,7 +1613,7 @@ void main() {
           imageClipboard: () => imageClipboard,
           fileClipboard: () => fileClipboard,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: ValueListenableBuilder(
               valueListenable: draftIdentity,
@@ -1620,7 +1708,7 @@ Future<void> _pumpCommandComposer({
       imageClipboard: () => imageClipboard,
       fileClipboard: null,
       droppedPaths: null,
-      attachKind: ComposerAttachKind.images,
+      attachKind: ComposerAttachKind.photosAndFiles,
       child: Scaffold(
         body: PromptInput(
           initialSelection: null,
@@ -1669,6 +1757,7 @@ Future<void> _pumpCommandComposer({
 
 Future<void> _pumpAttachComposer({
   required WidgetTester tester,
+  required ComposerAttachKind attachKind,
   required ComposerAttachmentDispatcher dispatcher,
   required ImageClipboard clipboard,
   required FileClipboard? fileClipboard,
@@ -1690,7 +1779,7 @@ Future<void> _pumpAttachComposer({
     imageClipboard: () => clipboard,
     fileClipboard: fileClipboard == null ? null : () => fileClipboard,
     droppedPaths: droppedPaths,
-    attachKind: ComposerAttachKind.files,
+    attachKind: attachKind,
     child: Scaffold(
       body: PromptInput(
         initialSelection: null,

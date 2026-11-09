@@ -9,16 +9,17 @@ void main() {
       openFiles: () async => [XFile("/work/notes.dart"), XFile("/work/clip.mp4")],
     );
 
-    final picked = await picker.pick();
+    final picked = await picker.pick(source: ComposerPickSource.files);
 
     expect(picked, isA<ComposerPickedHostPaths>());
     if (picked is! ComposerPickedHostPaths) return;
     expect(picked.paths, ["/work/notes.dart", "/work/clip.mp4"]);
+    expect(picked.oversizedCount, 0);
   });
 
   test("adapter returns null when selection is dismissed", () async {
     final picker = DesktopComposerFilePicker.forTesting(openFiles: () async => const []);
 
-    expect(await picker.pick(), isNull);
+    expect(await picker.pick(source: ComposerPickSource.files), isNull);
   });
 }

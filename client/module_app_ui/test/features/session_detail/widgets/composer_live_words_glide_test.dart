@@ -943,7 +943,7 @@ Future<_ScreenState> _pumpScreen({
           imageClipboard: _NoOpImageClipboard.new,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: _Screen(buildsRows: buildsRows, rowsArrive: rowsArrive),
         ),
       ),
@@ -1128,7 +1128,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
           imageClipboard: _NoOpImageClipboard.new,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: SentBubbleLanding(
             child: Scaffold(
               body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
