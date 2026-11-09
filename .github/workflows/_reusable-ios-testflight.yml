@@ -88,6 +88,16 @@ jobs:
           workspace: client
           platform: ios
 
+      # SwiftPM reuses binary artifacts from its shared cache, so a hit skips
+      # the GitHub release download of PDFium's XCFramework (pdfium_flutter,
+      # pinned by pubspec.lock), which can intermittently return 504.
+      # SwiftPM still verifies each artifact against its pinned checksum.
+      - name: Cache SwiftPM GitHub release artifacts
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
+          key: swiftpm-github-artifacts-ios-${{ hashFiles('client/pubspec.lock') }}
+
       - name: Cache CocoaPods
         uses: actions/cache@v5
         with:
