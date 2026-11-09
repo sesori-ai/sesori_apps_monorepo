@@ -140,6 +140,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
       sessionRepository = SessionRepository(
         runtime: runtime,
