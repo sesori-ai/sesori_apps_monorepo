@@ -158,8 +158,8 @@ account against a real property.
   carries a route path instead of a pinned screen, or the home reports a screen other than `sessions`.
 - A "No project" creation reports `workspace_kind` `project` or `dedicated_worktree`, or a folder project's reports
   `no_project`.
-- `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or carries
-  anything beyond its two pinned parameters.
+- `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or
+  carries anything beyond its two pinned parameters.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is
   observed; an analytics failure blocks a product outcome; or copy overclaims.
 - Singular starts in debug/profile/unsupported builds or before successful interactive authentication while an
