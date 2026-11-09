@@ -3338,8 +3338,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open a running session to inspect its MCP servers. Reading inventory will not start a session.';
 
   @override
-  String get mcpPluginInactive =>
-      'This integration is inactive. Enable it in harness settings before reading inventory.';
+  String get mcpPluginInactive => 'This integration isn\'t running. Start a session with it, then refresh.';
+
+  @override
+  String get mcpPluginInactiveAction => 'This integration isn\'t running. Start a session with it, then try again.';
 
   @override
   String get mcpServers => 'Configured servers';
