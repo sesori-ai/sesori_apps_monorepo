@@ -6,6 +6,7 @@ import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/desktop_attention_preference.dart";
 import "../foundation/desktop_automatic_updates.dart";
 import "../foundation/desktop_sidebar_layout.dart";
+import "../foundation/desktop_text_size.dart";
 import "../foundation/platform/window_host.dart";
 
 /// Layer-2 aggregate over instance coordination and persisted desktop state.
@@ -32,6 +33,10 @@ class DesktopInstanceRepository._create({
 
   Future<void> writeSidebarLayout({required DesktopSidebarLayout layout}) =>
       _storage.writeSidebarLayout(layout: layout);
+
+  Future<DesktopTextSize> readTextSize() => _storage.readTextSize();
+
+  Future<void> writeTextSize({required DesktopTextSize size}) => _storage.writeTextSize(size: size);
 
   Future<WindowBounds?> readWindowBounds() => _storage.readWindowBounds();
 

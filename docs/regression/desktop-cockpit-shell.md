@@ -307,7 +307,14 @@ The main pane hosts one full-width routed page.
   its in-window Back, which fades back to the tab's own page; picking any tab leaves it. The Harnesses overview
   keeps pull-to-refresh. The selected tab uses the main sidebar's fill.
   Theme is a Light/Dark/System segmented control that drops below its label at
-  large text sizes. Bridge's connected-bridge intro sits inside its section.
+  large text sizes. Text size, under it, is a Small/Default/Large/Larger control (90/100/115/130%) that scales
+  every text in the window, multiplied with the system's own text scaling; a pick applies at once and is restored
+  before the first frame of the next launch. Cmd/Ctrl+= or + (Shift+= and the keypad's + too) steps it up,
+  Cmd/Ctrl+- down, stopping at either end, and Cmd/Ctrl+0 returns to Default; they work while typing and do not
+  repeat on a held key. On macOS the View menu lists Increase, Decrease and Reset Text Size with the same keys; a
+  key press reaches only one of them. Transcript text keeps the phone's 14/20 at Default while the interface
+  around it stays compact. At Larger, sidebar rows, headings, menus and the diff file headers grow instead of
+  clipping or overflowing. Bridge's connected-bridge intro sits inside its section.
   Escape/outside dismiss;
   active text editing and owned dialogs retain their closer dismissal order.
 - General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.
@@ -438,6 +445,13 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Headless explicit refresh ordering, shared-instance factory parameters, completed failed winners,
   later owning reads, partial failure and useful diagnostic causes. Presentation covers keyboard
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
+- Text size: the four steps, clamping at both ends, reset, menu commands and ordered writes
+  (`desktop_text_size_cubit_test`); the stored size by name with a default for a missing, unknown or unreadable
+  file (`desktop_instance_storage_test`); the root scaler multiplying the system's, the shortcuts with both
+  modifiers and while typing (`desktop_text_size_scope_test`); the View menu's channel
+  (`method_channel_desktop_app_menu_test`); the General row (`desktop_settings_screens_test`); pointer sidebar
+  rows and headings at 130% with packaged fonts (`session_list_desktop_text_size_test`); the desktop transcript at
+  14/20 beside the compact interface (`prego_theme_data_test`).
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel persistence, click and drag-past-minimum collapse with the width it reopens at,
   intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
   narrow-window mode, JSON round-trip with an unknown key ignored, storage failure fallback.
@@ -466,6 +480,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under the list's
   top, and the chrome's brightness under light, dark and System, including a system appearance switch after a forced
   value. Windows and Linux keep native chrome.
+- Text size from General, the shortcuts and the View menu: each step in the sidebar, a session page with tool
+  rows and the sticky prompt, the composer and its pills, menus and Settings, nothing clipped at Larger, and the
+  size kept across a relaunch with no jump on the first frame.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
   session-list navigation/actions on a live bridge, paging to the loader row and its Retry, palette typing
   against a bridge with many sessions, and native indicator scrolling/clipping

@@ -39,6 +39,22 @@ void main() {
     expect(theme.appBarTheme.systemOverlayStyle, SystemUiOverlayStyle.light);
   });
 
+  test("desktop transcripts read at the phone's size while the interface stays compact", () {
+    for (final (desktop, phone) in [
+      (PregoTextTheme.desktopLight, PregoTextTheme.light),
+      (PregoTextTheme.desktopDark, PregoTextTheme.dark),
+    ]) {
+      expect(desktop.chat.regular.fontSize, 14);
+      expect(desktop.chat.regular.height, 20 / 14);
+      expect(desktop.chat.regular.fontSize, phone.chat.regular.fontSize);
+      expect(desktop.chat.regular.height, phone.chat.regular.height);
+      expect(desktop.inlineCodeSize, 13);
+      expect(desktop.inlineCodeSize, phone.inlineCodeSize);
+      expect(desktop.code, phone.code);
+      expect(desktop.textMd.regular.fontSize, lessThan(phone.textMd.regular.fontSize ?? 0));
+    }
+  });
+
   test("a rebuilt theme equals the last, so the app does not animate between them", () {
     for (final brightness in Brightness.values) {
       expect(buildPregoThemeData(brightness: brightness), buildPregoThemeData(brightness: brightness));

@@ -1939,6 +1939,36 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get desktopSettingsTheme;
 
+  /// No description provided for @desktopSettingsTextSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get desktopSettingsTextSize;
+
+  /// No description provided for @desktopSettingsTextSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get desktopSettingsTextSizeSmall;
+
+  /// No description provided for @desktopSettingsTextSizeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get desktopSettingsTextSizeDefault;
+
+  /// No description provided for @desktopSettingsTextSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get desktopSettingsTextSizeLarge;
+
+  /// No description provided for @desktopSettingsTextSizeLarger.
+  ///
+  /// In en, this message translates to:
+  /// **'Larger'**
+  String get desktopSettingsTextSizeLarger;
+
   /// No description provided for @settingsSectionAnalytics.
   ///
   /// In en, this message translates to:

@@ -75,7 +75,7 @@ class const DesktopBridgeRecoveryCard({
     }
     final messageStyle = context.prego.textTheme.textSm.regular.copyWith(color: colors.textPrimary);
     final firstLineHeight = switch (messageStyle) {
-      TextStyle(:final fontSize?, :final height?) => fontSize * height,
+      TextStyle(:final fontSize?, :final height?) => MediaQuery.textScalerOf(context).scale(fontSize) * height,
       _ => null,
     };
     return Padding(

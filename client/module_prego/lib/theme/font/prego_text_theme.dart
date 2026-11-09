@@ -192,14 +192,15 @@ class PregoTextTheme {
         color: variant.color,
         boldWeight: _desktopBold,
       ),
+      // A transcript reads at the phone's size: only the interface around it is compact.
       chat = FontVariation(
-        fontSize: 13.5,
-        height: 21,
+        fontSize: 14,
+        height: 20,
         letterSpacing: 0,
         color: variant.color,
         boldWeight: _desktopBold,
       ),
-      inlineCodeSize = 12,
+      inlineCodeSize = 13,
       code = TextStyle(
         fontFamily: monoFontFamily,
         fontFamilyFallback: monoFontFamilyFallback,

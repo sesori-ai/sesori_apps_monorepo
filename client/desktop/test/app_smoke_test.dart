@@ -70,6 +70,7 @@ void main() {
         hiddenLaunch: false,
         initialAppearance: AppearanceMode.dark,
         initialChatInputMode: ChatInputMode.voiceFirst,
+        initialTextSize: DesktopTextSize.standard,
       ),
     );
     await tester.pump();

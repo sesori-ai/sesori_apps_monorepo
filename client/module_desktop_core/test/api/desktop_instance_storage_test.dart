@@ -122,6 +122,30 @@ void main() {
     expect(await storage.readAutomaticUpdates(), DesktopAutomaticUpdates.disabled);
     expect(File(path.join(root.path, "desktop-instance", "automatic-updates")).readAsStringSync(), "disabled");
   });
+
+  test("the text size defaults to standard and round-trips by name", () async {
+    expect(await storage.readTextSize(), DesktopTextSize.standard);
+
+    await storage.writeTextSize(size: DesktopTextSize.larger);
+
+    expect(await storage.readTextSize(), DesktopTextSize.larger);
+    expect(File(path.join(root.path, "desktop-instance", "text-size")).readAsStringSync(), "larger");
+  });
+
+  test("an unknown or unreadable text size falls back to standard", () async {
+    final file = File(path.join(root.path, "desktop-instance", "text-size"));
+    file.createSync(recursive: true);
+    file.writeAsStringSync("enormous");
+    expect(await storage.readTextSize(), DesktopTextSize.standard);
+
+    final unreadable = DesktopInstanceStorage(applicationSupportDirectory: _FailingApplicationSupportDirectory());
+    expect(await unreadable.readTextSize(), DesktopTextSize.standard);
+  });
+}
+
+class _FailingApplicationSupportDirectory() implements DesktopApplicationSupportDirectory {
+  @override
+  Future<Directory> resolve() async => throw const FileSystemException("unavailable");
 }
 
 class _FixedApplicationSupportDirectory({required final Directory directory})
