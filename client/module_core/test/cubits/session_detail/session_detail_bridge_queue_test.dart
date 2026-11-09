@@ -2126,14 +2126,20 @@ void main() {
       await cubit.sendMessage(text: "look", command: null, inputMode: ComposerInputMode.typed, attachments: [staged]);
       cubit
         ..stageCommand(_reviewCommand)
-        ..saveComposerDraft(draft: ComposerDraft.typed(text: "this"))
+        ..saveComposerDraft(
+          draft: ComposerDraft(text: " spoken", voiceSpans: [VoiceOriginSpan(start: 1, end: 7)]),
+        )
         ..trackComposerAttachments(attachments: [held]);
 
       abortCompleter.complete(ApiResponse.success(true));
       expect(await aborting, isA<SessionAbortAccepted>());
 
-      // The staged command becomes text, or the returned words would be its arguments.
-      expect(cubit.composerDraft, ComposerDraft.typed(text: "look\n\n/review this"));
+      // The staged command becomes text, or the returned words would be its
+      // arguments, and its dictated arguments stay dictated.
+      expect(
+        cubit.composerDraft,
+        ComposerDraft(text: "look\n\n/review spoken", voiceSpans: [VoiceOriginSpan(start: 14, end: 20)]),
+      );
       expect(cubit.restoredAttachments, [staged, held]);
       final state = cubit.state as SessionDetailLoaded;
       expect(state.stagedCommand, isNull);
@@ -2161,6 +2167,7 @@ void main() {
           ),
         ),
       );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "steer it"));
       await Future<void>.delayed(Duration.zero);
 
       abortCompleter.complete(ApiResponse.success(true));
@@ -2168,6 +2175,34 @@ void main() {
 
       expect(cubit.composerDraft, ComposerDraft.typed(text: ""));
       expect((cubit.state as SessionDetailLoaded).composerRestorations, 0);
+    });
+
+    test("a stop returns a queued prompt whose echo has no words yet", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+      ).thenAnswer((_) => abortCompleter.future);
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: MessageTime(created: 200, completed: null),
+            promptId: "prm_1",
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      abortCompleter.complete(ApiResponse.success(true));
+      await aborting;
+
+      // A bare envelope does not show the prompt, so nothing says it arrived.
+      expect(cubit.composerDraft, ComposerDraft.typed(text: "steer it"));
+      expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
     });
 
     test("a refused stop leaves the queue queued and the composer as it was", () async {

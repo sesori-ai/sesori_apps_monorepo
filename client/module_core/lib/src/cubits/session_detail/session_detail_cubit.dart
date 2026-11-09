@@ -3415,7 +3415,7 @@ class SessionDetailCubit(
     final delivered = <String>{
       if (current case SessionDetailLoaded(:final messages))
         for (final message in messages)
-          if (message.info case MessageUser(promptId: final promptId?)) promptId,
+          if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
     };
     final queuedNow = _unsentQueuedPrompts();
     // The launch's follow-ups never reached the bridge, whatever the stop's
@@ -3504,10 +3504,16 @@ class SessionDetailCubit(
   /// blank line, with their images before its own. A [stagedCommand] becomes
   /// its literal text, as the restored words would otherwise be its arguments.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
-    final held = switch ((command: stagedCommand?.name, args: _composerDraft.text.trim())) {
+    final held = switch ((command: stagedCommand?.name, args: _draftCalculator.trim(draft: _composerDraft))) {
       (command: null, args: _) => _composerDraft,
-      (command: final String name, args: "") => ComposerDraft.typed(text: "/$name"),
-      (command: final String name, :final args) => ComposerDraft.typed(text: "/$name $args"),
+      (command: final String name, :final args) when args.text.isEmpty => ComposerDraft.typed(text: "/$name"),
+      // Typed in front of the arguments, so dictated ones keep their spans.
+      (command: final String name, :final args) => _draftCalculator.replaceTyped(
+        draft: args,
+        start: 0,
+        end: 0,
+        replacement: "/$name ",
+      ),
     };
     saveComposerDraft(
       draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
