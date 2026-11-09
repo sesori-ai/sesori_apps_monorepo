@@ -500,6 +500,28 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a queued prompt's preview keeps its text parts a blank line apart, in order", () async {
+      await harness.createSession();
+      await waitForFrame(harness.processes.single, "user");
+      const note = 'Attached file "notes.txt": `/uploads/notes.txt`';
+
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prm_note",
+        sessionId: testSessionId,
+        parts: const [
+          PluginPromptPart.text(text: "Read this exactly."),
+          PluginPromptPart.text(text: note),
+        ],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+
+      final entry = (await harness.plugin.getQueuedPrompts(sessionId: testSessionId)).single;
+      expect(entry.text, "Read this exactly.\n\n$note");
+    });
+
     test("queues a steering prompt, stamps its echo, and consumes the entry after the message", () async {
       await harness.createSession();
       final first = harness.processes.single;

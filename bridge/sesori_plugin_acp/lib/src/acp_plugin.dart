@@ -1128,7 +1128,7 @@ abstract class AcpPlugin({
         .whereType<PluginPromptPartText>()
         .map((part) => part.text)
         .where((part) => part.trim().isNotEmpty)
-        .join("\n")
+        .join("\n\n")
         .trim();
     final joinedParts = _joinAdjacentTextParts(parts: parts);
     final blocks = _contentBlocks(joinedParts);

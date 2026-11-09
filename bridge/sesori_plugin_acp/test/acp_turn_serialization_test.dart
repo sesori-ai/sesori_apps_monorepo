@@ -950,6 +950,31 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    test("a queued prompt's preview keeps its text parts a blank line apart, in order", () async {
+      const note = 'Attached file "a.txt": `/u/a.txt`';
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      await waitForFrame("session/prompt");
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-queued-note",
+        sessionId: sessionId,
+        parts: const [
+          PluginPromptPart.text(text: "Read this exactly."),
+          PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "shot.png"),
+          PluginPromptPart.text(text: note),
+        ],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final queued = (await plugin.getQueuedPrompts(sessionId: sessionId)).single;
+      expect(queued.text, "Read this exactly.\n\n$note");
+    });
+
     test("a queued prompt can be cancelled before ACP dispatch", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");

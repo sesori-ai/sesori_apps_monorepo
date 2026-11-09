@@ -254,8 +254,10 @@ gives the agent their path.
   ([file previews](file-previews.md)) when it reads as one. In every harness,
   live and after reload, the user's message shows the typed text, a blank
   line, then the note: Pi, Codex and the ACP plugins send adjacent text parts
-  as one, a blank line apart, and Codex shows a message's text items the same
-  way. A save that fails removes its folder and
+  as one, a blank line apart, OpenCode v2 joins a prompt's text the same way,
+  and Codex shows a message's text items the same way. A queued prompt's
+  preview in Claude and the ACP plugins joins its texts a blank line apart too.
+  A save that fails removes its folder and
   fails the send visibly. A repeated accepted prompt saves nothing again, and a
   command or a create with a command saves nothing. Deleting a session from
   Sesori removes its uploads folder, and each save starts a best-effort sweep
