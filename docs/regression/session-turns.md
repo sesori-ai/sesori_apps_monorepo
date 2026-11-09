@@ -264,6 +264,12 @@ defaults and queued client sends coherent.
   background and streams more output as `in_progress`. Failure signal: the
   sub-agent row stays hidden behind a stale streaming reply or a finished
   command card that reopened as running.
+- OpenCode session lists and the chat agree on a running session. An OpenCode
+  v2 session that starts while the bridge's cold start lists sessions still
+  shows running in the list once the cold start reads its details. An OpenCode
+  v1 status of an unknown type keeps the session's last known activity, as the
+  chat does, instead of dropping it from the summary. Failure signal: the
+  sidebar row reads idle while the open chat shows Working.
 - Claude tasks, OpenCode child sessions, and Grok children expose scoped stop.
   The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is

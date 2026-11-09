@@ -238,6 +238,17 @@ void main() {
     expect(service.buildSummary(), isEmpty);
   });
 
+  test("a session that starts during the cold start's metadata read still counts as running", () async {
+    // Live activity is read after the session listing, so a session created in
+    // between is active with no listed metadata.
+    repository.unlisted = [root.copyWith(id: "fresh")];
+    repository.active = {"fresh"};
+    final events = await service.coldStart();
+
+    expect(events.whereType<BridgeSseSessionStatus>().single.sessionID, "fresh");
+    expect(service.buildSummary().single.activeSessions.single.id, "fresh");
+  });
+
   test("a refresh settles a turn that ended unseen with idle and its newest reply", () async {
     final idle = isA<BridgeSseSessionIdle>().having((event) => event.sessionID, "sessionID", "child");
     repository.active = {"child"};
@@ -644,6 +655,10 @@ void main() {
 
 class FakeRepository() implements OpenCodeV2Repository {
   List<shared.Session> sessions = [root, child];
+
+  /// Sessions only a details read finds, such as one created after the
+  /// metadata listing.
+  List<shared.Session> unlisted = [];
   Set<String> active = {};
   Set<String> loaded = {project, worktree};
   List<PermissionRequest> permissions = [];
@@ -667,7 +682,7 @@ class FakeRepository() implements OpenCodeV2Repository {
   Future<shared.Session> getSessionDetails({required String sessionId}) async {
     calls.add("session:$sessionId");
     if (metadataFailure case final failure?) throw failure;
-    return sessions.firstWhere((session) => session.id == sessionId);
+    return [...sessions, ...unlisted].firstWhere((session) => session.id == sessionId);
   }
 
   @override

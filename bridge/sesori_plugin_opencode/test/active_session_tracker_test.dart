@@ -460,6 +460,18 @@ void main() {
         expect(tracker.workState, PluginWorkState.unknown);
       });
 
+      test("an unknown live status keeps the session's last known activity", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), directory: null);
+        tracker.handleEvent(_sessionBusy("s1"), directory: null);
+
+        // The chat never receives the unknown status and keeps showing busy.
+        tracker.handleEvent(_sessionUnknown("s1"), directory: null);
+
+        expect(tracker.buildSummary().single.activeSessions.single.id, "s1");
+      });
+
       test("pending user input remains busy even after the session reports idle", () async {
         final tracker = await _coldStartedTracker(projects: const []);
 
