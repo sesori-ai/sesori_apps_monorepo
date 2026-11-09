@@ -96,7 +96,8 @@ enum PluginSetupSource() {
   inspection,
 
   /// An operation the running plugin performed failed authentication, which
-  /// stopped it. Only a fresh inspection replaces that status.
+  /// stopped it. It lasts until an inspection finds the login or access no
+  /// longer refused.
   authenticationFailure,
 }
 
@@ -318,9 +319,14 @@ class PluginRuntime({
     for (final (:inspection, :setup) in results) {
       final slot = inspection.slot;
       if (slot.setupInspectionRevision == inspection.revision && slot.generation == inspection.generation) {
+        // A check that still finds the login or access refused leaves the
+        // harness held back by the failure; any other result replaces it.
+        final stillRefused = setup is PluginSetupAuthenticationRequired || setup is PluginSetupUnavailable;
         slot
           ..setup = setup
-          ..setupSource = PluginSetupSource.inspection;
+          ..setupSource = slot.setupSource == PluginSetupSource.authenticationFailure && stillRefused
+              ? PluginSetupSource.authenticationFailure
+              : PluginSetupSource.inspection;
       }
     }
     _publishSnapshots();

@@ -19,8 +19,7 @@ mixin _$PluginMetadata {
  String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;/// Set while the bridge holds this harness back after a refused request,
 /// which lists it although its [state] is unavailable, so the user can
 /// pick it, read why and check setup again; [actionHint] then says what to
-/// fix. Null for every other harness. Bridges before this field leave such
-/// a harness out of the list instead.
+/// fix. Null for every other harness.
 @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? get failureBlock; bool get supportsPromptAttachments;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
@@ -108,8 +107,7 @@ class _PluginMetadata implements PluginMetadata {
 /// Set while the bridge holds this harness back after a refused request,
 /// which lists it although its [state] is unavailable, so the user can
 /// pick it, read why and check setup again; [actionHint] then says what to
-/// fix. Null for every other harness. Bridges before this field leave such
-/// a harness out of the list instead.
+/// fix. Null for every other harness.
 @override@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) final  PluginFailureBlock? failureBlock;
 @override@JsonKey() final  bool supportsPromptAttachments;
 

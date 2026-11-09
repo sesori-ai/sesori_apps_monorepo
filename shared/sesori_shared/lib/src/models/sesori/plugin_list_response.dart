@@ -37,8 +37,10 @@ sealed class PluginMetadata with _$PluginMetadata {
     /// Set while the bridge holds this harness back after a refused request,
     /// which lists it although its [state] is unavailable, so the user can
     /// pick it, read why and check setup again; [actionHint] then says what to
-    /// fix. Null for every other harness. Bridges before this field leave such
-    /// a harness out of the list instead.
+    /// fix. Null for every other harness.
+    // COMPATIBILITY 2026-11-09 (v1.12.0): Bridges before this field omit it and
+    // leave a held-back harness out of the list, so null (not held back) needs
+    // no fallback. Nothing to remove once those bridges are unsupported.
     @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) required PluginFailureBlock? failureBlock,
     // COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
     // per-plugin capability. Unknown plugins stay disabled; the client

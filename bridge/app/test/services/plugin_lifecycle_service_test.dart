@@ -2758,6 +2758,31 @@ void main() {
     );
     expect(service.selectableMetadataSnapshot.single.failureBlock, PluginFailureBlock.authenticationRequired);
 
+    // The shutdown the refusal starts keeps it listed as held back, while a
+    // restart's shutdown, which may start again, does not.
+    repository.publish(
+      state: const PluginRuntimeStopping(),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+      transition: PluginRuntimeTransition.stopping,
+      setup: const PluginSetupUnavailable(actionHint: gatewayHint),
+      setupSource: PluginSetupSource.authenticationFailure,
+      startAllowed: false,
+    );
+    final stopping = service.selectableMetadataSnapshot.single;
+    expect(stopping.failureBlock, PluginFailureBlock.unavailable);
+    expect(stopping.state, PluginLifecycleState.unavailable);
+    expect(stopping.actionHint, gatewayHint);
+    repository.publish(
+      state: const PluginRuntimeStopping(),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+      transition: PluginRuntimeTransition.stopping,
+      setup: const PluginSetupUnavailable(actionHint: gatewayHint),
+      setupSource: PluginSetupSource.authenticationFailure,
+    );
+    expect(service.selectableMetadataSnapshot, isEmpty);
+
     // The same setup found by inspection, as for a harness never installed or
     // never set up, keeps the harness out of the list.
     repository.publish(
@@ -3174,6 +3199,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRu
     PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
     PluginSetupStatus setup = const PluginSetupReady(),
     PluginSetupSource setupSource = PluginSetupSource.inspection,
+    bool startAllowed = true,
   }) {
     _current = [
       _snapshot(
@@ -3184,6 +3210,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRu
         generationResidency: generationResidency,
         setup: setup,
         setupSource: setupSource,
+        startAllowed: startAllowed,
       ),
     ];
     _snapshots.add(snapshot);

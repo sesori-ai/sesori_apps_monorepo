@@ -1109,14 +1109,17 @@ class PluginLifecycleService({
     for (final snapshot in snapshots) {
       final current = _metadataById[snapshot.pluginId];
       if (current == null) continue;
-      final state = _lifecycleState(
-        runtimeState: snapshot.state,
-        unavailableState: PluginLifecycleState.unavailable,
-      );
+      final failureBlock = _failureBlockOf(snapshot);
+      final state = failureBlock != null
+          ? PluginLifecycleState.unavailable
+          : _lifecycleState(
+              runtimeState: snapshot.state,
+              unavailableState: PluginLifecycleState.unavailable,
+            );
       _metadataById[snapshot.pluginId] = current.copyWith(
         state: state,
         actionHint: _metadataActionHint(snapshot: snapshot, state: state),
-        failureBlock: _failureBlockOf(snapshot),
+        failureBlock: failureBlock,
       );
     }
     if (!_metadataSubject.isClosed) _metadataSubject.add(_orderedMetadata());
@@ -1133,19 +1136,22 @@ class PluginLifecycleService({
           plugin.id: () {
             final snapshot = snapshots[plugin.id];
             final runtimeState = snapshot?.state;
-            final state = _lifecycleState(
-              runtimeState: runtimeState,
-              unavailableState: _setupById[plugin.id] is PluginSetupReady
-                  ? PluginLifecycleState.ready
-                  : PluginLifecycleState.unavailable,
-            );
+            final failureBlock = snapshot == null ? null : _failureBlockOf(snapshot);
+            final state = failureBlock != null
+                ? PluginLifecycleState.unavailable
+                : _lifecycleState(
+                    runtimeState: runtimeState,
+                    unavailableState: _setupById[plugin.id] is PluginSetupReady
+                        ? PluginLifecycleState.ready
+                        : PluginLifecycleState.unavailable,
+                  );
             return PluginMetadata(
               id: plugin.id,
               displayName: plugin.displayName,
               isDefault: false,
               state: state,
               actionHint: _metadataActionHint(snapshot: snapshot, state: state),
-              failureBlock: snapshot == null ? null : _failureBlockOf(snapshot),
+              failureBlock: failureBlock,
               supportsPromptAttachments: plugin.supportsPromptAttachments,
             );
           }(),
@@ -1201,11 +1207,23 @@ class PluginLifecycleService({
   }
 
   /// What holds an enabled harness back after an operation it ran failed
-  /// authentication, until setup is inspected again. A harness blocked by
-  /// inspection itself, such as one never installed or logged in, has none.
+  /// authentication, from the shutdown that failure starts until an
+  /// inspection finds setup no longer blocked. A harness blocked by inspection
+  /// alone, such as one never installed or logged in, has none.
   static PluginFailureBlock? _failureBlockOf(PluginRuntimeSnapshot snapshot) {
+    final heldBack = switch (snapshot.state) {
+      PluginRuntimeBlocked() => true,
+      // The shutdown after the refusal; a restart's shutdown may start again.
+      PluginRuntimeStopping() => !snapshot.startAllowed,
+      PluginRuntimeDormant() ||
+      PluginRuntimeStarting() ||
+      PluginRuntimeActive() ||
+      PluginRuntimeDegraded() ||
+      PluginRuntimeDisabled() ||
+      PluginRuntimeFailed() => false,
+    };
     if (snapshot.accessGate != PluginRuntimeAccessGate.enabled ||
-        snapshot.state is! PluginRuntimeBlocked ||
+        !heldBack ||
         snapshot.setupSource != PluginSetupSource.authenticationFailure) {
       return null;
     }
@@ -1577,8 +1595,9 @@ class PluginLifecycleService({
     _syncIdleTimers(_lifecycleRepository.snapshot);
   }
 
-  /// The plugin's own hint while it is degraded, otherwise the generic hint
-  /// for [state].
+  /// The setup's hint for a harness held back after a refused request, the
+  /// plugin's own hint while it is degraded, otherwise the generic hint for
+  /// [state].
   static String? _metadataActionHint({
     required PluginRuntimeSnapshot? snapshot,
     required PluginLifecycleState state,
