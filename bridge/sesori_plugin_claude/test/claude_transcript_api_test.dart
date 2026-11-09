@@ -184,8 +184,9 @@ void main() {
         ],
       );
 
-      late List<ClaudeTranscriptRecordDto> titles;
-      final warnings = _captureWarnings(() => titles = api.readTailTitleRecords(transcriptPath: path));
+      late List<ClaudeTranscriptRecordDto> records;
+      final warnings = _captureWarnings(() => records = api.readTailRecords(transcriptPath: path));
+      final titles = records.where((record) => record.type != "user").toList();
 
       expect(warnings, isEmpty);
       expect(titles.map((record) => record.type).toSet(), {"ai-title", "custom-title"});
@@ -207,7 +208,7 @@ void main() {
       File(path).writeAsStringSync("$title$padding", mode: FileMode.append);
       expect(title.length + padding.length, ClaudeTranscriptApi.tailByteBudget);
 
-      expect(api.readTailTitleRecords(transcriptPath: path).single.aiTitle, "At the edge");
+      expect(api.readTailRecords(transcriptPath: path).single.aiTitle, "At the edge");
     });
 
     test("keeps the first record of a transcript smaller than the tail budget", () {
@@ -221,7 +222,26 @@ void main() {
         ],
       );
 
-      expect(api.readTailTitleRecords(transcriptPath: path).single.aiTitle, "Only title");
+      expect(api.readTailRecords(transcriptPath: path).map((record) => record.type), ["ai-title", "user"]);
+    });
+
+    test("ends with the newest timestamped record, skipping exit metadata after it", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA),
+          {"type": "assistant", "sessionId": _sessionA, "timestamp": "2026-08-04T11:30:00.000Z"},
+          {"type": "last-prompt", "lastPrompt": "done", "sessionId": _sessionA},
+          {"type": "cost-state", "sessionId": _sessionA, "totalCostUSD": 0.1},
+        ],
+      );
+
+      final newest = api.readTailRecords(transcriptPath: path).single;
+
+      expect(newest.type, "assistant");
+      expect(newest.timestamp, DateTime.utc(2026, 8, 4, 11, 30));
     });
 
     test("keeps every complete record when the file ends mid-write", () {

@@ -305,7 +305,7 @@ ClaudeSessionRecord? _readRootRecord({
   final List<ClaudeTranscriptRecordDto> tail;
   try {
     header = transcriptApi.readHeader(transcriptPath: path);
-    tail = transcriptApi.readTailTitleRecords(transcriptPath: path);
+    tail = transcriptApi.readTailRecords(transcriptPath: path);
   } on Object catch (error, stackTrace) {
     Log.w("[claude] failed to read transcript header or tail", error, stackTrace);
     return null;
@@ -345,11 +345,14 @@ ClaudeSessionRecord? _readRootRecord({
   // Without a directory the bridge cannot attribute the session to a project.
   if (cwd == null) return null;
 
-  // The tail holds the newest title records. A small file is read twice,
-  // which repeats the same records in the same order.
+  // The tail holds the newest title records and the newest timestamped one.
+  // A small file is read twice, which repeats the same records in the same
+  // order.
+  DateTime? activeAt;
   for (final line in tail) {
-    if (_mapTranscriptRecord(line) case ClaudeTranscriptTitleRecord(:final kind, :final title, :final sessionId)
-        when sessionId == null || sessionId == id) {
+    if (line.sessionId != null && line.sessionId != id) continue;
+    activeAt = line.timestamp ?? activeAt;
+    if (_mapTranscriptRecord(line) case ClaudeTranscriptTitleRecord(:final kind, :final title)) {
       titles[kind] = title;
     }
   }
@@ -363,7 +366,9 @@ ClaudeSessionRecord? _readRootRecord({
         titles[ClaudeTranscriptTitleKind.generated] ??
         prompts.map(_promptTitle).nonNulls.firstOrNull,
     createdAt: createdAt,
-    updatedAt: modified,
+    // The file's mtime also moves when the CLI appends metadata without a turn,
+    // such as `cost-state` when its process exits, so it is only the fallback.
+    updatedAt: activeAt ?? modified,
   );
 }
 

@@ -33,7 +33,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// time, and the `ai-title` record — sits in the first few lines. Measured
   /// across 60 real transcripts the title record's line number was at most 50
   /// (median 13), so 64 clears the observed range with margin. A title written
-  /// past the bound is still found by [readTailTitleRecords] once the CLI
+  /// past the bound is still found by [readTailRecords] once the CLI
   /// re-appends it.
   ///
   /// The bound is what makes enumeration affordable: reading these transcripts
@@ -41,7 +41,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// measured on.
   static const int headerLineBudget = 64;
 
-  /// How many trailing bytes [readTailTitleRecords] scans.
+  /// How many trailing bytes [readTailRecords] scans.
   ///
   /// The CLI keeps re-appending a session's title records as its transcript
   /// grows, so a `/rename` made long after the header still sits near the end.
@@ -86,12 +86,12 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   }
 
   /// Decodes the `custom-title` and `ai-title` records within the last
-  /// [tailByteBudget] bytes.
+  /// [tailByteBudget] bytes, then the newest record there with a timestamp.
   ///
   /// The tail is mostly tool output, so other lines are dropped before they
   /// are decoded. The CLI writes compact JSON, which makes the type a plain
   /// substring; the same text inside a prompt is escaped and never matches.
-  List<ClaudeTranscriptRecordDto> readTailTitleRecords({required String transcriptPath}) {
+  List<ClaudeTranscriptRecordDto> readTailRecords({required String transcriptPath}) {
     final handle = File(transcriptPath).openSync();
     final int start;
     final List<int> bytes;
@@ -107,14 +107,28 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     }
     final lines = const LineSplitter().convert(const Utf8Decoder(allowMalformed: true).convert(bytes));
     // The first line is the end of a record before the window, or empty.
+    final window = start > 0 ? lines.skip(1).toList(growable: false) : lines;
     final titles = [
-      for (final line in start > 0 ? lines.skip(1) : lines)
+      for (final line in window)
         if (_titleTypes.any(line.contains)) line,
     ];
-    return _decodeRecords(titles, ignoreMalformedLastLine: true);
+    return [..._decodeRecords(titles, ignoreMalformedLastLine: true), ?_newestTimestampedRecord(window)];
   }
 
   static const List<String> _titleTypes = ['"type":"custom-title"', '"type":"ai-title"'];
+
+  /// The last record in [lines] with its own timestamp. The metadata the CLI
+  /// appends without a turn, such as `cost-state` when its process exits,
+  /// carries none, so this dates the session's last real activity.
+  ClaudeTranscriptRecordDto? _newestTimestampedRecord(List<String> lines) {
+    for (final line in lines.reversed) {
+      if (!line.contains('"timestamp":"')) continue;
+      // A half-written line is skipped quietly, as at the end of a live file.
+      final record = _decodeRecords([line], ignoreMalformedLastLine: true).firstOrNull;
+      if (record?.timestamp != null) return record;
+    }
+    return null;
+  }
 
   /// Decodes every record in a transcript.
   List<ClaudeTranscriptRecordDto> readTranscript({required String transcriptPath}) {
