@@ -40,7 +40,12 @@ void main() {
       (ComposerAttachmentSource.drop, AnalyticsFileSource.drop),
       (ComposerAttachmentSource.paste, AnalyticsFileSource.paste),
     ]) {
-      final event = promptFilesSentEvent(attachments: [_file(source: source), _file(source: source)]);
+      final event = promptFilesSentEvent(
+        attachments: [
+          _file(source: source),
+          _file(source: source),
+        ],
+      );
       expect(event?.source, expected, reason: source.name);
     }
   });
@@ -57,7 +62,12 @@ void main() {
   });
 
   test("an image's way in does not make the files mixed", () {
-    final event = promptFilesSentEvent(attachments: [_image, _file(source: ComposerAttachmentSource.drop)]);
+    final event = promptFilesSentEvent(
+      attachments: [
+        _image,
+        _file(source: ComposerAttachmentSource.drop),
+      ],
+    );
 
     expect(event?.source, AnalyticsFileSource.drop);
   });
