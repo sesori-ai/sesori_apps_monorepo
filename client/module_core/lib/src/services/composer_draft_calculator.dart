@@ -158,6 +158,23 @@ final class const ComposerDraftCalculator() {
     replacementIsVoice: false,
   );
 
+  /// [drafts] in order as one draft, a blank line between each, so every
+  /// draft keeps its voice spans at its new offset. Blank drafts add nothing.
+  ComposerDraft joinParagraphs({required List<ComposerDraft> drafts}) {
+    final text = StringBuffer();
+    final voiceSpans = <VoiceOriginSpan>[];
+    for (final draft in drafts) {
+      if (draft.text.trim().isEmpty) continue;
+      if (text.isNotEmpty) text.write("\n\n");
+      final offset = text.length;
+      for (final span in draft.voiceSpans) {
+        voiceSpans.add(VoiceOriginSpan(start: offset + span.start, end: offset + span.end));
+      }
+      text.write(draft.text);
+    }
+    return ComposerDraft(text: text.toString(), voiceSpans: voiceSpans);
+  }
+
   ComposerDraft appendVoiceTranscript({
     required ComposerDraft draft,
     required String transcript,

@@ -139,4 +139,17 @@ void main() {
     expect(result.text, "voice");
     expect(result.voiceSpans, [VoiceOriginSpan(start: 0, end: 5)]);
   });
+  test("joinParagraphs joins drafts in order with blank lines, keeping each one's voice spans", () {
+    final result = calculator.joinParagraphs(
+      drafts: [
+        ComposerDraft.typed(text: "first"),
+        ComposerDraft.typed(text: "  "),
+        voiceDraft("spoken", 0, 6),
+        voiceDraft("typed then voice", 11, 16),
+      ],
+    );
+
+    expect(result.text, "first\n\nspoken\n\ntyped then voice");
+    expect(result.voiceSpans, [VoiceOriginSpan(start: 7, end: 13), VoiceOriginSpan(start: 26, end: 31)]);
+  });
 }

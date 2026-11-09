@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
@@ -1989,6 +1990,7 @@ void main() {
       await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      expect(cubit.composerDraft, ComposerDraft.typed(text: "parked"));
       expect(feedbackPromptService.stoppedSessions, [_sessionId]);
       expect(feedbackPromptService.refusedStops, isEmpty);
     });
@@ -2068,7 +2070,123 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
-    test("ambiguous abort failure clears work queued during request", () async {
+    test("an accepted stop returns the bridge queue to the composer, in order, before the draft", () async {
+      const dictated = QueuedSessionPrompt(
+        id: "prm_2",
+        dispatchState: QueuedPromptDispatchState.queued,
+        text: '🎙️ "spoken words"',
+        command: null,
+        createdAt: 101,
+      );
+      const dispatched = QueuedSessionPrompt(
+        id: "prm_steering",
+        dispatchState: QueuedPromptDispatchState.dispatched,
+        text: "steered, never echoed",
+        command: null,
+        createdAt: 102,
+      );
+      const command = QueuedSessionPrompt(
+        id: "prm_3",
+        dispatchState: QueuedPromptDispatchState.queued,
+        text: "the diff",
+        command: "review",
+        createdAt: 103,
+      );
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+      ).thenAnswer((_) async => ApiResponse.success(true));
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt, dictated, dispatched, command]);
+      cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+
+      expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortAccepted>());
+
+      expect(
+        cubit.composerDraft,
+        ComposerDraft(
+          text: "steer it\n\nspoken words\n\nsteered, never echoed\n\n/review the diff\n\nhalf typed",
+          voiceSpans: [VoiceOriginSpan(start: 10, end: 22)],
+        ),
+      );
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.composerRestorations, 1);
+      // The stop dropped what it returned, so the rows leave as the draft fills.
+      expect(state.bridgeQueuedPrompts, isEmpty);
+    });
+
+    test("a stop returns a message staged while it runs, with its images and the composer's", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+      ).thenAnswer((_) => abortCompleter.future);
+      final staged = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: null);
+      final held = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([2]), filename: null);
+      final cubit = await createLoadedCubit(supportsPromptAttachments: true, commands: const [_reviewCommand]);
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.sendMessage(text: "look", command: null, inputMode: ComposerInputMode.typed, attachments: [staged]);
+      cubit
+        ..stageCommand(_reviewCommand)
+        ..saveComposerDraft(draft: ComposerDraft.typed(text: "this"))
+        ..trackComposerAttachments(attachments: [held]);
+
+      abortCompleter.complete(ApiResponse.success(true));
+      expect(await aborting, isA<SessionAbortAccepted>());
+
+      // The staged command becomes text, or the returned words would be its arguments.
+      expect(cubit.composerDraft, ComposerDraft.typed(text: "look\n\n/review this"));
+      expect(cubit.restoredAttachments, [staged, held]);
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.stagedCommand, isNull);
+      expect(state.queuedMessages, isEmpty);
+      expect(state.composerRestorations, 1);
+      cubit.acknowledgeRestoredAttachments();
+      expect(cubit.restoredAttachments, isEmpty);
+    });
+
+    test("a stop does not return a queued prompt the transcript shows delivered", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+      ).thenAnswer((_) => abortCompleter.future);
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: MessageTime(created: 200, completed: null),
+            promptId: "prm_1",
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      abortCompleter.complete(ApiResponse.success(true));
+      await aborting;
+
+      expect(cubit.composerDraft, ComposerDraft.typed(text: ""));
+      expect((cubit.state as SessionDetailLoaded).composerRestorations, 0);
+    });
+
+    test("a refused stop leaves the queue queued and the composer as it was", () async {
+      const rejection = SessionAbortRejection(runningSubAgentCount: 1, mainAgentRunning: true);
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.confirm),
+      ).thenThrow(SessionAbortRejectedException(rejection: rejection, innerError: StateError("409")));
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+      cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+
+      expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm), isA<SessionAbortRejected>());
+
+      expect(cubit.composerDraft, ComposerDraft.typed(text: "half typed"));
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.bridgeQueuedPrompts, const [_queuedPrompt]);
+      expect(state.composerRestorations, 0);
+    });
+
+    test("ambiguous abort failure clears work queued during request into the composer", () async {
       final abortCompleter = Completer<ApiResponse<bool>>();
       when(
         () => mockSessionRepository.abortSession(
@@ -2090,6 +2208,7 @@ void main() {
       abortCompleter.completeError(StateError("502 after cancellation"));
       expect(await aborting, isA<SessionAbortFailed>());
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+      expect(cubit.composerDraft, ComposerDraft.typed(text: "ambiguous"));
     });
 
     test("confirmed cancellation removes the entry without a failure notice", () async {
