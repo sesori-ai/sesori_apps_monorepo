@@ -415,6 +415,42 @@ void main() {
       expect(states.map((state) => state.agentModelData?.isLoading), everyElement(isFalse));
     });
 
+    test("a harness picked while the list refresh is in flight keeps both the pick and the new list", () async {
+      const pluginC = PluginMetadata(
+        id: "plugin-c",
+        displayName: "Plugin C",
+        isDefault: false,
+        state: PluginLifecycleState.ready,
+        actionHint: null,
+      );
+      final refreshed = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) {
+        discoveryCalls++;
+        if (discoveryCalls == 1) {
+          return Future.value(ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB])));
+        }
+        return refreshed.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      emitPluginManagementChanged();
+      await _waitUntil(() => discoveryCalls == 2);
+      cubit.selectPlugin(pluginId: "plugin-b");
+      await _waitForComposer(cubit);
+      refreshed.complete(
+        ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB, pluginC])),
+      );
+      await _waitUntil(() => cubit.state.agentModelData?.plugins?.length == 3);
+
+      expect(cubit.state.agentModelData?.plugins, [pluginA, pluginB, pluginC]);
+      expect(cubit.state.agentModelData?.plugin, pluginB);
+      expect(discoveryCalls, 2);
+    });
+
     test("a harness change elsewhere that leaves the list as it was emits nothing", () async {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {

@@ -154,6 +154,7 @@ class NewSessionCubit({
 
   Future<void> _discoverPlugins() async {
     final generation = ++_loadGeneration;
+    ++_pluginListGeneration;
     final beforeDiscovery = state.agentModelData;
     _emitStateUpdate(
       options: _loadingState(
@@ -230,6 +231,8 @@ class NewSessionCubit({
   /// Settings or anywhere else, so the picker never offers a stale list. While
   /// the selected harness is still offered only the list changes, and the
   /// selection and its options stay on screen; otherwise this rediscovers.
+  /// The answer is matched against the selection on screen when it lands, so
+  /// a harness or project picked meanwhile neither discards it nor is undone.
   Future<void> _refreshPluginList() async {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return;
     final data = state.agentModelData;
@@ -241,7 +244,6 @@ class NewSessionCubit({
       return;
     }
 
-    final generation = _loadGeneration;
     final listGeneration = ++_pluginListGeneration;
     final ApiResponse<NewSessionPluginDiscovery> response;
     try {
@@ -253,21 +255,29 @@ class NewSessionCubit({
       logw("New session: failed to refresh the harness list", error, stackTrace);
       return;
     }
-    if (listGeneration != _pluginListGeneration || !_canApplyLoad(generation: generation, pluginId: null)) return;
+    // A newer list refresh or a rediscovery started since asks the bridge
+    // later, so its answer is the one to keep.
+    if (isClosed || listGeneration != _pluginListGeneration) return;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return;
     switch (response) {
       case ErrorResponse(:final error):
         logw("New session: failed to refresh the harness list", error);
       case SuccessResponse(data: final discovery):
         final current = state.agentModelData;
-        if (current == null) return;
-        if (discovery.bridgeId != backendScope.bridgeId || discovery.selected?.id != selected.id) {
+        // A connection lost meanwhile rediscovers once it is back.
+        if (current == null || current.backendScope is! NewSessionBackendScopeVerified) return;
+        final selectedId = current.plugin?.id;
+        final stillSelected = discovery.plugins.firstWhereOrNull(
+          (plugin) => plugin.id == selectedId && plugin.isRoutable,
+        );
+        if (stillSelected == null || discovery.bridgeId != current.backendScope.lastIdentifiedBridgeId) {
           await _discoverPlugins();
           return;
         }
         if (const ListEquality<PluginMetadata>().equals(discovery.plugins, current.plugins)) return;
         _emitConfigurationUpdate(
           availablePlugins: discovery.plugins,
-          selectedPlugin: discovery.selected,
+          selectedPlugin: stillSelected,
           options: current.optionsState,
           backendScope: current.backendScope,
           isPluginDiscoveryInFlight: current.isPluginDiscoveryInFlight,
