@@ -16,8 +16,10 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
   Anthropic's own base URL. A custom `ANTHROPIC_BASE_URL` (a gateway that owns authentication) reports ready even
   while logged out. It is read from `env` in `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`),
   which overrides the bridge environment as it does for the CLI; `https://api.anthropic.com` and empty values do not
-  count. A gateway auth failure still surfaces at turn time as authentication required. Setup never reads or logs
-  any other settings value.
+  count. A gateway auth failure still surfaces at turn time as authentication required, with a hint to check the
+  gateway's credentials and configuration instead of logging in to Claude; the hint never includes the URL, which
+  can carry credentials. Nothing re-inspects setup on its own afterwards: it stays blocked until the user refreshes
+  setup, logs in, or restarts the harness or bridge. Setup never reads or logs any other settings value.
 - A login spawns `claude auth login --claudeai` through the host process service in the plugin state directory. The
   bridge environment is inherited unchanged except `BROWSER=true`, which the CLI treats as "no browser". `HOME` is
   never overridden, so the credential lands where sessions already read it. The login spawn uses its own process
