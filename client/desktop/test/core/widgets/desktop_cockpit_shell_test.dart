@@ -43,6 +43,7 @@ void main() {
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
   late AllSessionsCubit sessions;
+  late MockSseEventTracker activity;
   late _MockRefreshService refreshService;
   late _MockWindowHost windowHost;
   late _MockAuthGateCubit authGate;
@@ -168,6 +169,7 @@ void main() {
     refreshService = _MockRefreshService();
     when(() => refreshService.scan).thenAnswer((_) => BehaviorSubject.seeded(const CatalogRescanState.idle()));
     when(refreshService.refresh).thenAnswer((_) async => true);
+    activity = MockSseEventTracker();
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
@@ -219,7 +221,7 @@ void main() {
                 window: window,
                 projectInventory: projectInventory,
                 filterTracker: filterTracker,
-                sseEventTracker: MockSseEventTracker(),
+                sseEventTracker: activity,
                 sessionUnseenTracker: FakeSessionUnseenTracker(),
               ),
             ),
@@ -616,6 +618,36 @@ void main() {
     expect(tester.getTopLeft(title).dx, titleInset + besideOpenPanel(width: 288));
     expect(restore, findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
+
+  testWidgets("the hidden sidebar's toggle carries an amber dot while any session waits, listed or not", (
+    tester,
+  ) async {
+    seedTwoProjects();
+    const waiting = SessionActivityInfo(
+      awaitingInput: true,
+      isRunning: false,
+      lastUserActivityAt: null,
+      updatedAt: null,
+    );
+    final dot = find.byKey(const Key("desktop-sidebar-needs-you"));
+    await tester.pumpWidget(app(state: running));
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(dot, findsNothing);
+
+    // The list is filtered to the other project, so it shows no row for it.
+    filter.add("project-1");
+    activity.emitSessionActivity({
+      "project-2": {"s2": waiting},
+    });
+    await tester.pumpAndSettle();
+    expect(dot, findsOneWidget);
+
+    activity.emitSessionActivity(const {});
+    await tester.pumpAndSettle();
+    expect(dot, findsNothing);
+  });
 
   testWidgets("Archived is the row under Search, not a footer button, and opens Archived", (tester) async {
     var archivedOpens = 0;

@@ -2946,8 +2946,8 @@ class SessionDetailCubit(
 
   void acknowledgeLaunchAttachments() => _launchAttachments = const [];
 
-  /// The images a restoring composer stages in place of its own: those of the
-  /// queued messages a stop moved back, then the ones it already held. Empty
+  /// The images a restoring composer stages in place of its own: the ones it
+  /// already held, then those of the queued messages a stop moved back. Empty
   /// once staged; see [acknowledgeRestoredAttachments].
   List<ComposerAttachment> get restoredAttachments => _restoredAttachments;
 

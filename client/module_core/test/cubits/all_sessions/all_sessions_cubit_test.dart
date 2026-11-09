@@ -255,6 +255,47 @@ void main() {
     });
   });
 
+  test("a session waiting on the user counts whatever the list shows, unless hidden or in an unlisted project", () {
+    const waiting = SessionActivityInfo(
+      awaitingInput: true,
+      isRunning: false,
+      lastUserActivityAt: null,
+      updatedAt: null,
+    );
+    bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two"), _session(id: "a", updatedAt: 1)];
+    withCubit((cubit, async) {
+      expect(cubit.state.anySessionAwaitingInput, isFalse);
+
+      // Filtered away from its project and searched for something else.
+      cubit.selectProject(projectId: "one");
+      cubit.setQuery(query: "nothing matches");
+      activity.emitSessionActivity({
+        "two": {"b": waiting},
+      });
+      async.elapse(SessionWindowService.queryDelay);
+      expect(ids(cubit), isEmpty);
+      expect(cubit.state.anySessionAwaitingInput, isTrue);
+
+      // Inside its archive's Undo window.
+      cubit.setHiddenSessionIds(sessionIds: {"b"});
+      expect(cubit.state.anySessionAwaitingInput, isFalse);
+
+      // On a page the list never loaded.
+      activity.emitSessionActivity({
+        "one": {"unloaded": waiting},
+      });
+      async.elapse(Duration.zero);
+      expect(cubit.state.anySessionAwaitingInput, isTrue);
+
+      // In a project the inventory does not list.
+      activity.emitSessionActivity({
+        "gone": {"stray": waiting},
+      });
+      async.elapse(Duration.zero);
+      expect(cubit.state.anySessionAwaitingInput, isFalse);
+    });
+  });
+
   test("the default project is the filter, otherwise No project, otherwise the newest session's", () {
     const noScratch = ProjectListState.loaded(
       projects: [_one, _two],

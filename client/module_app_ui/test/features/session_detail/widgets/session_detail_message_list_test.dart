@@ -7,6 +7,7 @@ import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
@@ -512,6 +513,69 @@ Future<_SessionDetailMessageListHarnessState> _pumpTurns(
   await tester.pumpAndSettle();
   return tester.state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness));
 }
+
+/// Shows [messages] as [_pumpTurns] does, as the desktop shell presents them:
+/// under a pointer, on a session page that can show a prompt's attachments.
+Future<void> _pumpPointerTurns(WidgetTester tester, {required List<MessageWithParts> messages}) async {
+  await tester.pumpWidget(
+    PregoInteractionScope(
+      mode: PregoInteractionMode.pointer,
+      child: SessionDetailPresentationScope(
+        messageImageRepository: _UnpreviewedImageRepository.new,
+        imageSaver: () => throw UnimplementedError("Saving images is not under test"),
+        imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
+        imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
+        sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+        createExternalActionCubit: ({required requestId, required sessionId}) =>
+            throw UnimplementedError("External actions are not under test"),
+        createPendingFormCubit: ({required requestId, required sessionId}) =>
+            throw UnimplementedError("Forms are not under test"),
+        createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
+        canShareImages: false,
+        openExternalLink: ({required url, required mode}) async => false,
+        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+        openHarnessSettings: () {},
+        openBridgeSettings: () {},
+        child: _SessionDetailMessageListHarness(
+          initialMessages: messages,
+          initialStreamingText: const {},
+          topInset: _topInset,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Previews no attachment, so an image keeps its placeholder: a tile the size
+/// its preview takes.
+class _UnpreviewedImageRepository() extends Mock implements MessageImageRepository {
+  @override
+  bool canLoad({required MessageAttachment attachment}) => false;
+
+  @override
+  bool canLoadOriginal({required MessageAttachment attachment}) => false;
+}
+
+/// A prompt of an attached screenshot and a line of [text].
+MessageWithParts _imagePrompt({required String messageId, required String text}) => MessageWithParts(
+  info: Message.user(promptId: null, id: messageId, sessionID: "session-1", agent: null, time: null),
+  parts: [
+    MessagePart.file(
+      id: "$messageId-image",
+      sessionID: "session-1",
+      messageID: messageId,
+      attachment: const MessageAttachment.storedImage(
+        attachmentId: "screenshot",
+        bridgeId: "bridge-1",
+        mime: "image/png",
+        filename: "screenshot.png",
+        byteLength: 1024,
+      ),
+    ),
+    MessagePart.text(id: "$messageId-part", sessionID: "session-1", messageID: messageId, text: text),
+  ],
+);
 
 /// A bubble still waiting, which a delivered message's row no longer is.
 final _waitingBubble = find.byWidgetPredicate(
@@ -4985,6 +5049,56 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
       await expectThreeLineCompaction(tester);
+    });
+
+    group("under a pointer", () {
+      // The desktop transcript column's narrow and wide measures.
+      for (final width in [620.0, 960.0]) {
+        testWidgets("lifts off the rows under it with a halo in a $width column", (tester) async {
+          await tester.binding.setSurfaceSize(Size(width, 600));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          debugDisableShadows = false;
+          await _pumpPointerTurns(tester, messages: tallTurns);
+          await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
+
+          final pin = pinOf(tester, "u6") ?? fail("u6 is not pinned");
+          expect(pin.elevation, 1);
+          final halo = RRect.fromRectAndRadius(
+            pinnedBubble(tester, "u6"),
+            const Radius.circular(UserMessageBubble.radius),
+          ).inflate(14);
+          // The rows fade out at the top edge, then the halo lifts the bubble
+          // off them, rather than a band hiding the rows across the column.
+          expect(
+            pins(tester),
+            paints
+              ..rect(rect: Rect.fromLTWH(0, 0, width, 10))
+              ..rrect(rrect: halo),
+          );
+          debugDisableShadows = true;
+        });
+
+        testWidgets("compacts a prompt with an image to three lines in a $width column", (tester) async {
+          await tester.binding.setSurfaceSize(Size(width, 600));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          await _pumpPointerTurns(
+            tester,
+            messages: [
+              for (final message in _turnsWithPrompt(id: "u4", text: "A\nB\nC"))
+                if (message.info.id == "u3") _imagePrompt(messageId: "u3", text: "See the screenshot") else message,
+            ],
+          );
+          await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+          final threeLines = pinOf(tester, "u4") ?? fail("u4 is not pinned");
+          expect(threeLines.height, threeLines.fullHeight);
+
+          await _scrollRowTo(tester, rowId: "a3-1", top: _topInset - 100);
+
+          final image = pinOf(tester, "u3") ?? fail("u3 is not pinned");
+          expect(image.fullHeight, greaterThan(threeLines.height), reason: "the fixture must compact");
+          expect(image.height, moreOrLessEquals(threeLines.height, epsilon: 1));
+        });
+      }
     });
 
     testWidgets("pins nothing over the messages before the first prompt", (tester) async {
