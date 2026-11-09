@@ -178,6 +178,21 @@ enum AnalyticsVoiceMode({required final String wireValue}) {
   onDevice(wireValue: "on_device"),
 }
 
+/// How many saved files an accepted prompt carried.
+enum AnalyticsFileCountBucket({required final String wireValue}) {
+  one(wireValue: "1"),
+  twoToFour(wireValue: "2_4"),
+  fivePlus(wireValue: "5_plus"),
+}
+
+/// How a prompt's saved files were added; [mixed] means more than one way.
+enum AnalyticsFileSource({required final String wireValue}) {
+  picker(wireValue: "picker"),
+  drop(wireValue: "drop"),
+  paste(wireValue: "paste"),
+  mixed(wireValue: "mixed"),
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -195,6 +210,10 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsSubmission submission,
     required AnalyticsWorkspaceKind workspaceKind,
   }) = SessionCreatedWithMessageEvent;
+  const factory promptFilesSent({
+    required AnalyticsFileCountBucket fileCount,
+    required AnalyticsFileSource source,
+  }) = PromptFilesSentEvent;
   const factory sessionCreationFailed({
     required AnalyticsSessionCreationFailureReason failureReason,
     required AnalyticsWorkspaceKind workspaceKind,
@@ -339,6 +358,21 @@ final class const SessionCreatedWithMessageEvent({
     "input_mode": inputMode.wireValue,
     "workspace_kind": workspaceKind.wireValue,
   };
+}
+
+/// A prompt carrying at least one file the bridge saves was accepted, reported
+/// beside its `session_message_sent` or `session_created_with_message`. Inline
+/// images don't count, and the files' names, types, sizes and paths stay off
+/// the wire.
+final class const PromptFilesSentEvent({
+  required final AnalyticsFileCountBucket fileCount,
+  required final AnalyticsFileSource source,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "prompt_files_sent";
+
+  @override
+  Map<String, String> get parameters => {"file_count": fileCount.wireValue, "source": source.wireValue};
 }
 
 final class const SessionCreationFailedEvent({

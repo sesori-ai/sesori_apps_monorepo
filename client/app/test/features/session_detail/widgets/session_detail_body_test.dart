@@ -4793,6 +4793,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -4817,6 +4818,7 @@ void main() {
     verify(imageClipboard.readImage).called(1);
     verify(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5291,6 +5293,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5320,6 +5323,7 @@ void main() {
     verify(imageClipboard.readImage).called(1);
     verify(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5338,6 +5342,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5386,6 +5391,7 @@ void main() {
     verify(imageClipboard.readImage).called(1);
     verifyNever(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5400,6 +5406,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) async => bytes);
     when(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: bytes,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5499,6 +5506,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5571,6 +5579,7 @@ void main() {
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),
@@ -5605,6 +5614,7 @@ void main() {
     expect(semanticsWithLabel("Attached image"), findsNothing);
     verifyNever(
       () => attachmentDispatcher.routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: _tinyPng,
         filename: null,
         attachmentsSupported: any(named: "attachmentsSupported"),

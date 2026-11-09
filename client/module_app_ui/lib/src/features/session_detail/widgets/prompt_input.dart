@@ -2704,6 +2704,7 @@ class _PromptInputState() extends State<PromptInput> {
       _attach(
         outcome: (stagedAttachmentBytes) => _attachmentDispatcher.routeHostPaths(
           paths: paths,
+          source: ComposerAttachmentSource.drop,
           attachmentsSupported: widget.attachmentsSupported,
           fileUploadsSupported: widget.fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
@@ -2860,6 +2861,7 @@ class _PromptInputState() extends State<PromptInput> {
       final outcome = await _attachmentDispatcher.routeImageBytes(
         bytes: bytes,
         filename: null,
+        source: ComposerAttachmentSource.paste,
         attachmentsSupported: widget.attachmentsSupported,
         fileUploadsSupported: widget.fileUploadsSupported,
         stagedAttachmentBytes: _stagedAttachmentBytes,

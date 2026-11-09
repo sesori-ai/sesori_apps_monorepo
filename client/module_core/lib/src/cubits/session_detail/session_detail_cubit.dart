@@ -19,6 +19,7 @@ import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/composer/unsent_composer.dart";
 import "../../foundation/models/file_reference/file_reference.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
+import "../../foundation/models/product_analytics/prompt_files_sent_event_builder.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_composer.dart";
@@ -2930,6 +2931,9 @@ class SessionDetailCubit(
     _reportProductEvent(
       event: ProductAnalyticsEvent.sessionMessageSent(submission: analyticsSubmission),
     );
+    if (promptFilesSentEvent(attachments: submission.attachments) case final filesSent?) {
+      _reportProductEvent(event: filesSent);
+    }
   }
 
   AnalyticsInputMode _analyticsInputMode(ComposerInputMode inputMode) => switch (inputMode) {

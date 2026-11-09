@@ -134,6 +134,7 @@ class DesktopProductAnalyticsDeliveryService({
     SessionActivityViewedEvent() ||
     SessionMessageSentEvent() ||
     SessionCreatedWithMessageEvent() ||
+    PromptFilesSentEvent() ||
     SessionCreationFailedEvent() ||
     SessionQuestionAnsweredEvent() ||
     SessionQuestionRejectedEvent() ||

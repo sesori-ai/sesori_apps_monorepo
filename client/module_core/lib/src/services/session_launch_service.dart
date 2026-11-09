@@ -6,11 +6,13 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../errors/api_error_remote_failure_x.dart";
+import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/composer/composer_draft.dart";
 import "../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../foundation/models/composer/prompt_send_failure.dart";
 import "../foundation/models/composer/queued_session_submission.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
+import "../foundation/models/product_analytics/prompt_files_sent_event_builder.dart";
 import "../foundation/models/session_launch/launch_follow_up.dart";
 import "../foundation/models/session_launch/session_launch.dart";
 import "../foundation/models/session_launch/session_launch_composer.dart";
@@ -134,14 +136,15 @@ class SessionLaunchService({
       projectName: projectName,
       submission: submission,
     );
+    final attachments = switch (submission) {
+      NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
+      NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
+    };
     final response = await _sessionRepository.createSessionWithMessage(
       projectId: projectId,
       pluginId: pluginId,
       text: submission.outgoingText,
-      attachments: switch (submission) {
-        NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
-        NewSessionCommandSubmissionSnapshot() => const [],
-      },
+      attachments: attachments,
       agent: agent,
       model: model,
       variant: variant,
@@ -164,6 +167,9 @@ class SessionLaunchService({
             workspaceKind: _workspaceKind(projectKind: projectKind, dedicatedWorktree: session.hasWorktree),
           ),
         );
+        if (promptFilesSentEvent(attachments: attachments) case final filesSent?) {
+          _reportProductEvent(event: filesSent);
+        }
         _launchRepository.promote(launchId: launchId, session: session);
         unawaited(_deliverFollowUps(launchId: launchId));
       case ErrorResponse(:final error):
@@ -222,6 +228,9 @@ class SessionLaunchService({
                 },
               ),
             );
+            if (promptFilesSentEvent(attachments: submission.attachments) case final filesSent?) {
+              _reportProductEvent(event: filesSent);
+            }
             continue;
           case ErrorResponse(:final error):
             logw("Failed to send $context", error);

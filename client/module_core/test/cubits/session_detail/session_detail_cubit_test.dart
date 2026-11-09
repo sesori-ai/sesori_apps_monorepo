@@ -1815,6 +1815,13 @@ void main() {
             command: null,
           ),
         ).called(1);
+        // An inline image is not a saved file.
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event", that: isA<PromptFilesSentEvent>()),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
       },
     );
 
@@ -1897,6 +1904,7 @@ void main() {
             inputMode: ComposerInputMode.typed,
             attachments: [
               ComposerFileAttachment(
+                source: ComposerAttachmentSource.picker,
                 bytes: Uint8List(4),
                 filename: "report.pdf",
               ),
@@ -1918,6 +1926,21 @@ void main() {
                 command: any(named: "command"),
               ),
             ).called(1);
+            verifyInOrder([
+              () => mockProductAnalyticsService.logEvent(
+                event: const ProductAnalyticsEvent.sessionMessageSent(
+                  submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+                ),
+                occurredAtUtc: any(named: "occurredAtUtc"),
+              ),
+              () => mockProductAnalyticsService.logEvent(
+                event: const ProductAnalyticsEvent.promptFilesSent(
+                  fileCount: AnalyticsFileCountBucket.one,
+                  source: AnalyticsFileSource.picker,
+                ),
+                occurredAtUtc: any(named: "occurredAtUtc"),
+              ),
+            ]);
           } else {
             verifyNever(
               () => mockSourceRepository.sendMessage(
@@ -3158,6 +3181,69 @@ void main() {
       expect(sentPromptIds[1], sentPromptIds[0]);
       expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
     });
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "a failed send with files reports nothing",
+      build: () {
+        _stubPromptAttachmentCapability(
+          repository: mockPluginRepository,
+          pluginId: "grok",
+          supportsPromptAttachments: false,
+          supportsFileUploads: true,
+        );
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId, pluginId: "grok"),
+        );
+        when(
+          () => mockSourceRepository.sendMessage(
+            promptId: any(named: "promptId"),
+            attachments: any(named: "attachments"),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: null,
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          text: "read this",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [
+            ComposerFileAttachment(bytes: Uint8List(4), filename: "report.pdf", source: ComposerAttachmentSource.drop),
+          ],
+        );
+      },
+      verify: (_) {
+        verify(
+          () => mockSourceRepository.sendMessage(
+            promptId: any(named: "promptId"),
+            attachments: any(named: "attachments", that: hasLength(1)),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: null,
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
+      },
+    );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage holds a failed send for Retry",

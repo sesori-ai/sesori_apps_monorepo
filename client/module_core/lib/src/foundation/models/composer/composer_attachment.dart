@@ -45,12 +45,27 @@ final class const ComposerImageAttachment({
   @override required final String? filename,
 }) extends ComposerAttachment;
 
+/// How the user added a staged file to the composer.
+enum ComposerAttachmentSource() {
+  /// The attach button's photo or file picker.
+  picker,
+
+  /// Dropped on the composer.
+  drop,
+
+  /// Pasted: copied files, or an image from the clipboard.
+  paste,
+}
+
 /// Any other file, or an image the harness can't take. The bridge saves it and
 /// gives the agent its path, so it always goes out as
 /// [composerFileAttachmentMime] under its original name.
 final class const ComposerFileAttachment({
   @override required final Uint8List bytes,
   @override required final String filename,
+
+  /// How it was added, for analytics only; it never reaches the bridge.
+  required final ComposerAttachmentSource source,
 }) extends ComposerAttachment {
   @override
   String get mime => composerFileAttachmentMime;
