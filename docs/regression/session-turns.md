@@ -49,6 +49,8 @@ defaults and queued client sends coherent.
   A recording under way when the notice takes the composer's place is cancelled,
   since its release and cancel controls are hidden; the draft and staged
   attachments stay for when the composer returns.
+  A turn the block cuts off (a gateway or login failure mid-turn) ends with it:
+  its Working or Retrying row stops.
   Open response dialogs close without answering when availability changes.
 - Disconnects, background/resume reconnects, and the management snapshot refresh
   that follows preserve a loaded chat's last known availability. A usable chat

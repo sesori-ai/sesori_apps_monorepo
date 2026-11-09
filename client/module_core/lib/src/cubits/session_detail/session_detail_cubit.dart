@@ -412,7 +412,7 @@ class SessionDetailCubit(
     switch (current) {
       case SessionDetailLoaded(:final interaction):
         if (!next.canInteract) {
-          emit(current.copyWith(interaction: next));
+          emit(_endTurnInHarnessBlock(current: current.copyWith(interaction: next)));
         } else if (!interaction.canInteract) {
           _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
         } else {
@@ -427,6 +427,24 @@ class SessionDetailCubit(
       case SessionDetailLoading() || SessionDetailFailed():
         break;
     }
+  }
+
+  /// A harness that loses its login or setup mid-turn is shut down before the
+  /// turn reports its end, so the turn ends here and its Working or Retrying
+  /// row stops.
+  SessionDetailLoaded _endTurnInHarnessBlock({required SessionDetailLoaded current}) {
+    if (current.interaction case SessionInteractionBlocked(
+      reason: SessionInteractionBlockedReason.authenticationRequired || SessionInteractionBlockedReason.unavailable,
+    )) {
+      return current.copyWith(
+        sessionStatus: const SessionStatus.idle(),
+        childStatuses: {
+          for (final MapEntry(:key, :value) in current.childStatuses.entries)
+            key: isChildRunning(status: value) ? const SessionStatus.idle() : value,
+        },
+      );
+    }
+    return current;
   }
 
   /// Check setup: has the bridge inspect the session's harness setup again, as

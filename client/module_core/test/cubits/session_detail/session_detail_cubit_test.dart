@@ -1137,6 +1137,50 @@ void main() {
       });
     });
 
+    // The bridge shuts the harness down on a gateway or login failure before
+    // the turn reports idle, so only the block says the turn is over.
+    test("a turn cut off by a harness block stops its Retrying row", () async {
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.active),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      sessionEvents.add(
+        const SesoriSessionStatus(
+          sessionID: sessionId,
+          status: SessionStatus.retry(attempt: 1, message: "authentication_failed", next: 0, since: null),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.sessionStatus is SessionStatusRetry,
+        description: "retrying turn",
+      );
+
+      snapshots.add(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.unavailable,
+          runtime: PluginRuntimeState.stopping,
+          actionHint: "Check the gateway's credentials and configuration, then refresh setup.",
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "blocked",
+      );
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.sessionStatus, const SessionStatus.idle());
+      expect(state.retryErrorMessage, isNull);
+    });
+
     test("Check setup joining a refresh in flight also waits for the one queued behind it", () async {
       final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
         managementFixture(
