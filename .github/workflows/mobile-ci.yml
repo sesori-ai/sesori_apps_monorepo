@@ -117,6 +117,8 @@ jobs:
         working-directory: client
 
       - name: Prefetch sqlite3 native library
+        # module_prego does not depend on sqlite3.
+        if: matrix.package != 'module_prego'
         uses: ./.github/actions/prefetch-sqlite3-native
         with:
           workspace: client

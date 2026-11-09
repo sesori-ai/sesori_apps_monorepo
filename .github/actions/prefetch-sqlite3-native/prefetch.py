@@ -19,13 +19,15 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.request import url2pathname
 
 REPO = "simolus3/sqlite3.dart"
 URL = f"https://github.com/{REPO}/releases/download/{{tag}}/{{name}}"
 SHARED_BUILD_DIR = Path(".dart_tool/hooks_runner/shared/sqlite3/build")
 ARCHITECTURES = {"X64": "x64", "ARM64": "arm64"}
+# Bounds each gh or curl run so a stalled download falls through to a retry.
+COMMAND_TIMEOUT_SECONDS = 120
 
 
 def fail(message: str) -> None:
@@ -34,10 +36,13 @@ def fail(message: str) -> None:
 
 
 def sqlite3_root(*, workspace: Path) -> Path:
-    config = json.loads((workspace / ".dart_tool/package_config.json").read_text())
+    config_file = (workspace / ".dart_tool/package_config.json").resolve()
+    config = json.loads(config_file.read_text())
     for package in config["packages"]:
         if package["name"] == "sqlite3":
-            return Path(url2pathname(urlparse(package["rootUri"]).path))
+            # A rootUri may be relative to the config file.
+            root = urljoin(config_file.as_uri(), package["rootUri"])
+            return Path(url2pathname(urlparse(root).path))
     fail(f"package:sqlite3 is not in {workspace}'s package config; run dart pub get first")
 
 
@@ -51,7 +56,7 @@ def pinned_assets(*, workspace: Path) -> tuple[str, dict[str, str]]:
     return tag.group(1), hashes
 
 
-def targets() -> list[tuple[str, str]]:
+def runner_assets() -> list[tuple[str, str]]:
     """(release asset name, file name the hook stores) for this runner."""
     runner_os = os.environ["RUNNER_OS"]
     arch = ARCHITECTURES.get(os.environ["RUNNER_ARCH"])
@@ -78,7 +83,7 @@ def download_commands(*, tag: str, name: str, partial: Path) -> list[list[str]]:
           "--output", str(partial), "--clobber"]
     curl = ["curl", "--fail", "--location", "--silent", "--show-error",
             "--retry", "3", "--retry-all-errors", "--retry-delay", "5",
-            "--connect-timeout", "30", "--max-time", "120",
+            "--connect-timeout", "30", "--max-time", str(COMMAND_TIMEOUT_SECONDS),
             "--output", str(partial), URL.format(tag=tag, name=name)]
     return [gh, curl] if shutil.which("gh") else [curl]
 
@@ -87,7 +92,13 @@ def download(*, tag: str, name: str, destination: Path, expected: str) -> None:
     partial = destination.with_name(destination.name + ".prefetch")
     for attempt in range(1, 6):
         for command in download_commands(tag=tag, name=name, partial=partial):
-            if subprocess.run(command).returncode != 0:
+            try:
+                # curl retries inside its own run, so give it room for them.
+                timeout = COMMAND_TIMEOUT_SECONDS * (4 if command[0] == "curl" else 1)
+                if subprocess.run(command, timeout=timeout).returncode != 0:
+                    continue
+            except subprocess.TimeoutExpired:
+                print(f"::warning::{command[0]} timed out fetching {name}")
                 continue
             actual = sha256(path=partial)
             if actual == expected:
@@ -100,20 +111,29 @@ def download(*, tag: str, name: str, destination: Path, expected: str) -> None:
     fail(f"Could not download a verified {name} from {REPO} release {tag}")
 
 
+def targets(*, hashes: dict[str, str]) -> list[tuple[str, str, str]]:
+    """(release asset name, stored file name, pinned SHA-256) for this runner."""
+    pinned = []
+    for name, stored_name in runner_assets():
+        expected = hashes.get(name)
+        if expected is None:
+            fail(f"package:sqlite3 pins no hash for {name}")
+        pinned.append((name, stored_name, expected))
+    return pinned
+
+
 def plan(*, workspace: Path) -> None:
-    tag, _ = pinned_assets(workspace=workspace)
-    names = "-".join(name for name, _ in targets())
+    tag, hashes = pinned_assets(workspace=workspace)
+    # The pinned hashes, not just the names, so a re-pinned asset gets a fresh cache.
+    pins = "-".join(f"{name}@{expected[:12]}" for name, _, expected in targets(hashes=hashes))
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         output.write(f"path={(workspace / SHARED_BUILD_DIR).as_posix()}\n")
-        output.write(f"key=sqlite3-native-{tag}-{names}\n")
+        output.write(f"key=sqlite3-native-{tag}-{pins}\n")
 
 
 def seed(*, workspace: Path) -> None:
     tag, hashes = pinned_assets(workspace=workspace)
-    for name, stored_name in targets():
-        expected = hashes.get(name)
-        if expected is None:
-            fail(f"package:sqlite3 pins no hash for {name}")
+    for name, stored_name, expected in targets(hashes=hashes):
         # The hook's PrebuiltSqliteLibrary.dirname.
         destination = workspace / SHARED_BUILD_DIR / f"download-{expected[:8]}" / stored_name
         if destination.is_file() and sha256(path=destination) == expected:
