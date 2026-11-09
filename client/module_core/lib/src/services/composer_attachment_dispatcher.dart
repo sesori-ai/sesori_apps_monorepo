@@ -53,6 +53,7 @@ class ComposerAttachmentDispatcher({
         return await routeImageBytes(
           bytes: bytes,
           filename: filename,
+          source: ComposerAttachmentSource.picker,
           attachmentsSupported: attachmentsSupported,
           fileUploadsSupported: fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
@@ -60,6 +61,7 @@ class ComposerAttachmentDispatcher({
       case ComposerPickedHostPaths(:final paths, :final oversizedCount):
         final routed = await routeHostPaths(
           paths: paths,
+          source: ComposerAttachmentSource.picker,
           attachmentsSupported: attachmentsSupported,
           fileUploadsSupported: fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
@@ -95,6 +97,7 @@ class ComposerAttachmentDispatcher({
     }
     return await routeHostPaths(
       paths: paths,
+      source: ComposerAttachmentSource.paste,
       attachmentsSupported: attachmentsSupported,
       fileUploadsSupported: fileUploadsSupported,
       stagedAttachmentBytes: stagedAttachmentBytes,
@@ -112,8 +115,11 @@ class ComposerAttachmentDispatcher({
   ///    bridge on another computer saves uploads and the file fits the rest of
   ///    the budget. Its size is checked before it is read.
   /// 4. Anything else is turned away, with the reason.
+  ///
+  /// [source] is how the paths were added, recorded on the staged files.
   Future<ComposerAttachOutcome> routeHostPaths({
     required List<String> paths,
+    required ComposerAttachmentSource source,
     required bool? attachmentsSupported,
     required bool? fileUploadsSupported,
     required int stagedAttachmentBytes,
@@ -128,6 +134,7 @@ class ComposerAttachmentDispatcher({
     for (final hostPath in paths) {
       final route = await _routeHostPath(
         hostPath: hostPath,
+        source: source,
         attachmentsSupported: attachmentsSupported,
         stagesFiles: stagesFiles,
         remainingBytes: remainingBytes,
@@ -151,6 +158,7 @@ class ComposerAttachmentDispatcher({
 
   Future<_HostPathRoute> _routeHostPath({
     required String hostPath,
+    required ComposerAttachmentSource source,
     required bool? attachmentsSupported,
     required bool stagesFiles,
     required int remainingBytes,
@@ -189,7 +197,7 @@ class ComposerAttachmentDispatcher({
         return const _HostPathNotStaged(reason: ComposerAttachRejectionReason.overBudget);
       }
       return _HostPathStaged(
-        attachment: _fileFromBytes(bytes: bytes, filename: path.basename(hostPath)),
+        attachment: ComposerFileAttachment(bytes: bytes, filename: path.basename(hostPath), source: source),
       );
     } on Object catch (error, stackTrace) {
       logw("Could not read $hostPath for the composer; turning it away", error, stackTrace);
@@ -228,10 +236,12 @@ class ComposerAttachmentDispatcher({
   /// otherwise as a file with their original bytes when the bridge saves
   /// uploads, named after the picked file or `pasted-image.<ext>`. Throws
   /// [UnsupportedAttachmentImageError] when the bytes are not a supported
-  /// image and an image, or a name for them, is needed.
+  /// image and an image, or a name for them, is needed. [source] is how the
+  /// bytes were added, recorded when they are staged as a file.
   Future<ComposerAttachOutcome> routeImageBytes({
     required Uint8List bytes,
     required String? filename,
+    required ComposerAttachmentSource source,
     required bool? attachmentsSupported,
     required bool? fileUploadsSupported,
     required int stagedAttachmentBytes,
@@ -244,9 +254,10 @@ class ComposerAttachmentDispatcher({
         return _rejected(reason: ComposerAttachRejectionReason.overBudget);
       }
     } else if (fileUploadsSupported ?? false) {
-      attachment = _fileFromBytes(
+      attachment = ComposerFileAttachment(
         bytes: bytes,
         filename: _nameOf(filename: filename) ?? _pastedImageName(bytes: bytes),
+        source: source,
       );
     } else {
       return _rejected(reason: ComposerAttachRejectionReason.attachmentsUnsupported);
@@ -270,14 +281,6 @@ class ComposerAttachmentDispatcher({
     if (format == null) throw const UnsupportedAttachmentImageError();
     return "pasted-image${format.filenameExtension}";
   }
-
-  /// A file the bridge saves for the agent: its original bytes, sent as
-  /// [composerFileAttachmentMime] under its own name.
-  static ComposerFileAttachment _fileFromBytes({required Uint8List bytes, required String filename}) =>
-      ComposerFileAttachment(
-        bytes: bytes,
-        filename: filename,
-      );
 
   /// Validates [bytes] as a supported image and shrinks an oversized one
   /// before the transport limit is checked, so a large screenshot can still

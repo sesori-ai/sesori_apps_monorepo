@@ -5,7 +5,7 @@ import "package:test/test.dart";
 
 void main() {
   final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List(1), filename: "a.png");
-  final file = ComposerFileAttachment(bytes: Uint8List(1), filename: "a.png");
+  final file = ComposerFileAttachment(source: ComposerAttachmentSource.picker, bytes: Uint8List(1), filename: "a.png");
 
   test("delivers nothing staged whatever the capabilities", () {
     expect(canDeliverComposerAttachments(attachments: const [], inlineImages: null, fileUploads: null), isTrue);
