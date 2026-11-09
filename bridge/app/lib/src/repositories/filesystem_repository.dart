@@ -185,12 +185,13 @@ class FilesystemRepository({
   }
 
   /// A read-only preview of the file at [absolutePath], following links: its
-  /// text up to [maxFilePreviewBytes], or a known image up to
-  /// [maxTranscriptImageBytes].
+  /// text up to [maxFilePreviewBytes], a known image up to
+  /// [maxTranscriptImageBytes], or, when the client [acceptsPdf], a PDF up to
+  /// [maxFilePreviewBytes].
   ///
   /// Rethrows a [FileSystemException] that is neither a permission denial nor
   /// a missing file.
-  FilePreviewResponse readPreviewFile({required String absolutePath}) {
+  FilePreviewResponse readPreviewFile({required String absolutePath, required bool acceptsPdf}) {
     try {
       var entityType = _filesystemApi.entityType(path: absolutePath);
       // Resolving follows a link to its target. A failed lookup also reports
@@ -210,6 +211,11 @@ class FilesystemRepository({
         final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxTranscriptImageBytes);
         if (bytes.length > maxTranscriptImageBytes) return const FilePreviewResponse.tooLarge();
         return FilePreviewResponse.image(mime: imageMime, base64: base64Encode(bytes), byteLength: bytes.length);
+      }
+      if (extension == "pdf" && acceptsPdf) {
+        final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewBytes);
+        if (bytes.length > maxFilePreviewBytes) return const FilePreviewResponse.tooLarge();
+        return FilePreviewResponse.pdf(base64: base64Encode(bytes));
       }
       if (_binaryExtensions.contains(extension)) return const FilePreviewResponse.unsupported();
 

@@ -22,7 +22,8 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
   configuration, then refresh setup, and never includes the URL, which can carry credentials. A first-party auth
   failure (no custom base URL) reports authentication required with the login hint. Nothing re-inspects setup on its
   own afterwards: it stays blocked until the user refreshes setup (Check setup in harness settings or on the chat's
-  blocked notice), logs in (first-party only), or enables or restarts the harness or bridge. The base-URL lookup happens only when a turn fails authentication, and it reads only that
+  blocked notice), logs in (first-party only), or enables or restarts the harness or bridge. The base-URL lookup
+  happens only when a turn fails authentication, and it reads only that
   key; no other settings value is read or logged.
 - A login spawns `claude auth login --claudeai` through the host process service in the plugin state directory. The
   bridge environment is inherited unchanged except `BROWSER=true`, which the CLI treats as "no browser". `HOME` is
