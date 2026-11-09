@@ -6,6 +6,10 @@ import "client/relay_http_client.dart";
 
 @lazySingleton
 class FilesystemApi({required final RelayHttpApiClient _client}) {
+  /// A preview can be tens of megabytes, so a slow link gets as long as a
+  /// transcript attachment download.
+  static const _previewTimeout = Duration(minutes: 2);
+
   /// How many child directories one browse request asks the bridge for.
   ///
   /// The bridge sorts by name and truncates to this many, so the value is a
@@ -47,6 +51,7 @@ class FilesystemApi({required final RelayHttpApiClient _client}) {
       body: FilePreviewRequest(path: path),
       fromJson: FilePreviewResponse.fromJson,
       sensitiveResponse: true,
+      timeout: _previewTimeout,
     );
   }
 }

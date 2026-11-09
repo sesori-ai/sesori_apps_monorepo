@@ -129,12 +129,14 @@ void main() {
           fromJson: _countedValue,
           body: {"key": "value"},
           sensitiveResponse: false,
+          timeout: RelayHttpApiClient.defaultRequestTimeout,
         );
         final malformed = await client.postDecodedInBackground<String>(
           path: "/session/messages/through",
           fromJson: _countedValue,
           body: {"key": "value"},
           sensitiveResponse: false,
+          timeout: RelayHttpApiClient.defaultRequestTimeout,
         );
 
         expect(decoded, isA<SuccessResponse<String>>().having((response) => response.data, "data", "ok"));

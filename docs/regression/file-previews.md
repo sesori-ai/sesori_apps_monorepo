@@ -17,7 +17,8 @@ default app; otherwise it shows a read-only preview.
   directory or writes anything.
 - A relative path or one with a `..` segment is a client bug and gets `400`.
 - Every domain outcome is a `200` with a tagged `FilePreviewResponse`:
-  - `text`: UTF-8 content of at most 1 MiB.
+  - `text`: UTF-8 content of at most 20 MiB, enough for an HTML page with
+    inline images.
   - `image`: base64 bytes with a MIME type for `png`, `jpg`/`jpeg`, `gif`, and
     `webp`, up to `maxTranscriptImageBytes` (20 MiB).
   - `too_large`: over the cap for its kind.
@@ -103,7 +104,8 @@ default app; otherwise it shows a read-only preview.
 ## Failure Signals
 
 - A domain outcome answered with a non-200 status.
-- A text file over 1 MiB, or an image over the image cap, returned in full.
+- A text file over 20 MiB, or an image over the image cap, returned in full.
+- A preview under the cap that times out on a slow link before two minutes.
 - A directory listing, a write, or binary bytes returned as text.
 - A `500` without a bridge log line naming the path.
 - Ordinary inline code such as `foo()` or `v1.2` becomes tappable, or a web

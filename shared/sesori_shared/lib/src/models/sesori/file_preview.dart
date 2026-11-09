@@ -5,7 +5,11 @@ part "file_preview.g.dart";
 
 /// The largest text file, in bytes, that `POST /filesystem/file` returns.
 /// Images use [maxTranscriptImageBytes] instead.
-const maxFilePreviewTextBytes = 1024 * 1024;
+///
+/// Large enough for a self-contained HTML page with inline images. Even
+/// escaped twice as JSON, such text stays far below the relay's per-message
+/// cap ([RelayProtocol.maxMessageBytes]), and the response is deflated.
+const maxFilePreviewBytes = 20 * 1024 * 1024;
 
 /// Asks the bridge for a read-only preview of the file at [path], which must
 /// be absolute. The client resolves a relative reference before sending it.
@@ -22,7 +26,7 @@ sealed class FilePreviewRequest with _$FilePreviewRequest {
 /// outcome sent with HTTP 200, so a 404 means the bridge has no such route.
 @Freezed(unionKey: "type", fromJson: true, toJson: true)
 sealed class FilePreviewResponse with _$FilePreviewResponse {
-  /// A UTF-8 text file of at most [maxFilePreviewTextBytes] bytes.
+  /// A UTF-8 text file of at most [maxFilePreviewBytes] bytes.
   @FreezedUnionValue("text")
   const factory text({
     required String content,

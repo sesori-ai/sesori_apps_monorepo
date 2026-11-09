@@ -70,6 +70,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
           sensitiveResponse: false,
+          timeout: RelayHttpApiClient.defaultRequestTimeout,
         ),
       ).thenAnswer((_) async => ApiResponse.success(sessions));
 
@@ -82,6 +83,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
           sensitiveResponse: false,
+          timeout: RelayHttpApiClient.defaultRequestTimeout,
         ),
       ).called(1);
     });

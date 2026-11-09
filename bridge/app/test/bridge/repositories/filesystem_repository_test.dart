@@ -315,8 +315,8 @@ void main() {
     });
 
     test("returns text at exactly the cap and refuses one byte more", () {
-      File("${tempDir.path}/fits.txt").writeAsBytesSync(List.filled(maxFilePreviewTextBytes, 0x61));
-      File("${tempDir.path}/over.txt").writeAsBytesSync(List.filled(maxFilePreviewTextBytes + 1, 0x61));
+      File("${tempDir.path}/fits.txt").writeAsBytesSync(List.filled(maxFilePreviewBytes, 0x61));
+      File("${tempDir.path}/over.txt").writeAsBytesSync(List.filled(maxFilePreviewBytes + 1, 0x61));
 
       expect(preview("fits.txt"), isA<FilePreviewText>());
       expect(preview("over.txt"), const FilePreviewResponse.tooLarge());
