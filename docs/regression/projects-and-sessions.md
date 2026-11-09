@@ -290,13 +290,14 @@ state.
   [cockpit contract](desktop-cockpit-shell.md).
 - The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
   shared session-row timeline below, with search and the All, Running and Unread chips. Each row names its
-  project, a "No project" row saying "No project" as its session header does. The large title reads "All projects" with a chevron, and a
-  tap opens the project picker in filter mode: the folder projects, with "All projects" pinned below them, beside
-  "No project" when the bridge has it. Picking a project, or "No project", narrows the list to it: the title takes
-  its name ("No project" for "No project"), rows stop naming the project, and an empty result names the project.
-  "All projects" restores the whole list; while it is already shown, the button carries the check and only closes.
-  This is the filter Archived shares; it resets on restart, on a computer switch, on sign-out, so signing in again
-  opens on "All projects" like a launch, and when its project leaves the list. The bar holds the computer button and Settings, and a round glass + for New session floats at the bottom
+  project, a "No project" row saying "No project" as its session header does. The large title reads "All projects"
+  with a chevron, and a tap opens the project picker in filter mode: the folder projects, with "All projects" pinned
+  below them, beside "No project" when the bridge has it. Picking a project, or "No project", narrows the list to it:
+  the title takes its name ("No project" for "No project"), rows stop naming the project, and an empty result names
+  the project. "All projects" restores the whole list; while it is already shown, the button carries the check and
+  only closes. This is the filter Archived shares; it resets on restart, on a computer switch, on sign-out, so signing
+  in again opens on "All projects" like a launch, and when its project leaves the list. The bar holds the computer
+  button and Settings, and a round glass + for New session floats at the bottom
   right, above the home indicator, holding still while the list scrolls under it. New session grows out of the + as a
   circle over the still home and shrinks back into it on Back ([navigation transitions](navigation-transitions.md)).
   It opens in the filtered project, else "No project", else the project of the newest session, else asks for a project,
@@ -507,7 +508,7 @@ state.
 - A session row leads with the harness logo, in a square of the same size for
   every harness, so titles line up; screen readers hear the harness name from
   it. The logo rests as a quiet grey glyph and shows its own colours, breathing
-  (about every 1.6 s, to about a third), only while an agent works: not while
+  (about every 1.6 s, fading to about a third opacity), only while an agent works: not while
   the session waits for the user, and not for being the open session. With
   reduced motion it stays lit and still. Right after the title's text comes its status mark: a turning sparkle
   while running, an amber dot while waiting for the user (which wins over
@@ -518,7 +519,7 @@ state.
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, retrying), then the project when the list gives
+  words ("Waiting" in amber, else retrying), then the project when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
   the count. A plain running session has no words on the line; the sparkle and
@@ -831,8 +832,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A scratch session folder appears as a project, a scratch session lists outside "No project", "No project" is
   missing, hidden, or renamed back after startup, a hide request for it succeeds, or a scratch folder path reports
   kind `scratch`. An import fails because "No project" is missing instead of leaving scratch sessions out.
-- A "No project" row names another project, or the unfiltered list leaves its "No project" out, a project list or Settings › Projects lists "No project" as a folder, or
-  filtering to it titles the home with anything but "No project".
+- A "No project" row names another project, or the unfiltered list leaves its "No project" out, a project list or
+  Settings › Projects lists "No project" as a folder, or filtering to it titles the home with anything but
+  "No project".
 - The computer menu checks a computer other than the one the header names, a switch leaves the previous
   computer's projects or a pushed page on screen, the header keeps the old name, or picking the current computer
   reconnects.

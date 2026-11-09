@@ -41,30 +41,30 @@ The main pane hosts one full-width routed page.
 - Collapse hides the sidebar completely: the panel slides out past the window's start edge in 180 ms and back in
   200 ms while the page narrows or widens to match, and the panel never squeezes its rows on the way. Only the
   toggle and the word Sesori remain, with an amber dot on the toggle's corner while any unarchived session waits for the
-  user's answer, whether or not the list's filter, search, chip or loaded pages show it. The toggle and Cmd/Ctrl+B bring the sidebar back
-  at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
-  screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
-  sits on the handle's own screen reader node, not on the window behind it.
+  user's answer, whether or not the list's filter, search, chip or loaded pages show it. The toggle and Cmd/Ctrl+B
+  bring the sidebar back at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus
+  order and the screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize
+  handle's name sits on the handle's own screen reader node, not on the window behind it.
 - Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
   toggle shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
   restores the user's choice. Windows narrower than 1000 pixels open the sidebar at 240 pixels. The native minimum
   window remains 560 × 480.
 - Pointer shells set light, small type in Satoshi at every size, with Medium the heaviest weight: 12.5 pt rows,
-  11.5 pt metadata, a 13.5 pt transcript and 12 pt code. The sidebar's session rows are roomier: a 13.5 pt title and 12 pt time over a
-  12 pt metadata line, 2 points apart in 6 points of padding, 51 points a row whatever the metadata line holds. Nested corners follow one rule, inner radius equals outer
-  minus the gap, so the composer's send button is concentric with the composer. Vertical scrollbars are macOS's overlay
-  style, 6 points thick and inset 3, showing only while scrolling. Light builds surfaces from tone with a faint
-  hairline rather than a drawn outline. The phone keeps its own type, radii and scrollbars.
+  11.5 pt metadata, a 13.5 pt transcript and 12 pt code. The sidebar's session rows are roomier: a 13.5 pt title and
+  12 pt time over a 12 pt metadata line, 2 points apart in 6 points of padding, 51 points a row whatever the metadata
+  line holds. Nested corners follow one rule, inner radius equals outer minus the gap, so the composer's send button
+  is concentric with the composer. Vertical scrollbars are macOS's overlay style, 6 points thick and inset 3, showing
+  only while scrolling. Light builds surfaces from tone with a faint hairline rather than a drawn outline. The phone
+  keeps its own type, radii and scrollbars.
 - A pointer shell's session row has no leading state column. Title and metadata sit flush left, and a long title fades
   out, never an ellipsis or a second line. The state mark sits just before the time: a turning star for working, a
   resting blue star for finished or unread, and an amber dot for waiting. A row with no mark gives that room to its title.
-  The metadata line reads "Waiting" or "Running (retrying)" when either applies, the project, then background tasks as a
-  stack glyph and their number (the words in its tooltip), and ends with the harness glyph under the time, which hover
-  actions cover. A plain running row has no "Running" word; screen readers still hear it from the mark, and hear a
-  waiting row's state once, from the mark, not the "Waiting" word. A launching row ends its metadata line with the
-  harness glyph too, lit. The harness
-  glyph is a quiet grey, and only while an agent works does it show its own colours, breathing; being the open session
-  does not colour it.
+  The metadata line reads "Waiting" while the session waits for the user, otherwise "Running (retrying)" while a retry
+  runs, then the project, then background tasks as a stack glyph and their number (the words in its tooltip), and ends
+  with the harness glyph under the time, which hover actions cover. A plain running row has no "Running" word; screen
+  readers still hear it from the mark, and hear a waiting row's state once, from the mark, not the "Waiting" word. A
+  launching row ends its metadata line with the harness glyph too, lit. The harness glyph is a quiet grey, and only
+  while an agent works does it show its own colours, breathing; being the open session does not colour it.
 - A pointer shell dictates by clicking the mic: the composer keeps its size, the X and pencil take the options' place
   as its other small buttons, a quiet waveform fills the row, the wide Send takes the mic's, and the input's placeholder
   says Listening; Enter sends and Esc cancels. On a running session Stop keeps its place beside Send, so the agent stays
@@ -479,7 +479,8 @@ width jumping on reversal beyond a bound, automatic collapse overwriting user pr
 activity marks, a session row whose height changes with its metadata line, a harness glyph lit for a session that is
 not working, duplicate project inventories or sessions windows, reads repeated on rebuild, a page that jumps while the
 sidebar slides, a panel that squeezes its rows, a toggle that moves on collapse or sits over a toolbar's
-content, a hidden sidebar's toggle without its amber dot while a session the list leaves out waits, a card-like sidebar, a chip or composer action that shifts when toggled or typing, lost project context, a second session-list pane,
+content, a hidden sidebar's toggle without its amber dot while a session the list leaves out waits, a card-like
+sidebar, a chip or composer action that shifts when toggled or typing, lost project context, a second session-list pane,
 sidebar browsing clearing unread
 state,
 stale/missing session rows, a palette whose session rows jump or lose the highlight as the bridge answers, a
