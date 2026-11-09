@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io" as io;
 import "dart:math";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
@@ -13,7 +14,9 @@ import "../claude_approval_registry.dart";
 import "../claude_event_dispatcher.dart";
 import "../claude_history_mapper.dart";
 import "../claude_plugin_impl.dart";
+import "../foundation/claude_config_directory.dart";
 import "../foundation/claude_login_environment.dart";
+import "../foundation/trimmed_or_null.dart";
 import "../repositories/claude_authentication_repository.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
 import "../repositories/claude_mcp_authentication_repository.dart";
@@ -30,6 +33,8 @@ import "../services/claude_session_service.dart";
 import "claude_bridge_plugin.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
+const String _baseUrlVariable = "ANTHROPIC_BASE_URL";
+const String _defaultBaseUrl = "https://api.anthropic.com";
 
 typedef ClaudeBridgePluginFactory = ClaudeBridgePlugin Function({
   required ClaudePlugin plugin,
@@ -218,6 +223,12 @@ final class const ClaudePluginDescriptor({
       final status = ClaudeAuthStatusDto.fromJson(jsonDecodeMap(authResult.stdout));
       return switch (status.loggedIn) {
         true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
+        // A gateway behind a custom base URL owns authentication, so the CLI
+        // reports "not logged in" while working through it. A real gateway
+        // auth failure still surfaces at turn time as authentication required.
+        false when await _usesCustomBaseUrl(environment: environment) => PluginSetupReady.versioned(
+          runtimeVersion: runtimeVersion,
+        ),
         false => PluginSetupAuthenticationRequired.versioned(
           actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
           runtimeVersion: runtimeVersion,
@@ -357,6 +368,37 @@ final class const ClaudePluginDescriptor({
   String _binary(PluginConfig config) {
     final configured = config.value(binOption)?.trim();
     return configured == null || configured.isEmpty ? defaultBinary : configured;
+  }
+
+  /// Whether Claude Code sends requests to a base URL other than Anthropic's.
+  ///
+  /// Follows the CLI's precedence: an `env.ANTHROPIC_BASE_URL` in the user
+  /// settings file, even an empty one, overrides the process environment.
+  static Future<bool> _usesCustomBaseUrl({required Map<String, String> environment}) async {
+    final configured = await _settingsBaseUrl(environment: environment) ?? environment[_baseUrlVariable];
+    final baseUrl = trimmedOrNull(value: configured)?.replaceFirst(RegExp(r"/+$"), "");
+    return baseUrl != null && baseUrl != _defaultBaseUrl;
+  }
+
+  /// `env.ANTHROPIC_BASE_URL` from `<config dir>/settings.json`, or null when
+  /// the file or the key is absent or unreadable. Never reads other values.
+  static Future<String?> _settingsBaseUrl({required Map<String, String> environment}) async {
+    final configDirectory = claudeConfigDirectory(environment: environment);
+    if (configDirectory == null) return null;
+    final settingsPath = p.join(configDirectory, "settings.json");
+    try {
+      final settings = jsonDecodeMap(await io.File(settingsPath).readAsString());
+      return switch (settings["env"]) {
+        {_baseUrlVariable: final String value} => value,
+        _ => null,
+      };
+    } on io.PathNotFoundException {
+      return null;
+    } on Object catch (error) {
+      // The error is not logged: a parse error quotes the file, which can hold tokens.
+      Log.w("[claude] ignored unreadable settings at '$settingsPath' (${error.runtimeType})");
+      return null;
+    }
   }
 
   static SemanticVersion? _parseVersion(String output) {
