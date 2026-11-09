@@ -36,15 +36,19 @@ defaults and queued client sends coherent.
   Check setup has the bridge inspect the harness setup again, as harness settings'
   Check setup does; a still-blocked answer updates the notice's reason and hint in
   place. The notice and the composer cross-fade as they trade places while their
-  room eases between their heights, held to the bottom edge. When the bridge has not
-  answered the check a Check setup starts within about 300 ms, its label cross-fades into a spinner in its
-  own room (reduced motion keeps the fades), so nothing moves, and takes no press,
+  room eases between their heights, held to the bottom edge. A press of Check setup
+  starts one check. If that check has not finished about 300 ms after the press,
+  the same button's label cross-fades into a spinner in its own room (reduced
+  motion keeps the fades), so nothing moves, and the button takes no press,
   reading to screen readers as disabled, until the check ends, which after a
   login includes the refresh that brings the composer back; a faster answer
   never shows the spinner. An old bridge that cannot report availability
   offers the shared bridge update steps instead of Harness Settings. Composer,
   voice/attachment entry, slash commands, prompt selections, stop, remote queued-
   prompt cancellation and question/permission replies cannot mutate the session.
+  A recording under way when the notice takes the composer's place is cancelled,
+  since its release and cancel controls are hidden; the draft and staged
+  attachments stay for when the composer returns.
   Open response dialogs close without answering when availability changes.
 - Disconnects, background/resume reconnects, and the management snapshot refresh
   that follows preserve a loaded chat's last known availability. A usable chat

@@ -9,11 +9,13 @@ import "../features/session_detail/widgets/transcript_motion.dart";
 /// motion: the one leaving fades out as the one arriving fades in over it,
 /// while the room they share eases from one's height to the other's, so the
 /// page around them glides rather than jumps. A change within one, such as its
-/// pills loading or its Recheck being pressed, shows in place.
+/// pills loading or its Check setup being pressed, shows in place.
 /// Reduced motion keeps the cross-fade and gives the room its new height at once.
 ///
 /// A notice hides the composer rather than replacing it, so staged images,
-/// which live only in the composer, survive until the notice clears.
+/// which live only in the composer, survive until the notice clears. The
+/// composer learns it is hidden through [ComposerSetAside], so it can stop
+/// what has no control left on screen, such as a recording.
 class const ComposerOrNotice({
   super.key,
 
@@ -134,7 +136,7 @@ class _ComposerOrNoticeState() extends State<ComposerOrNotice> with TickerProvid
       key: const ValueKey("composer_or_notice_composer"),
       presence: _composer.eased,
       shown: notice == null,
-      child: widget.composer,
+      child: ComposerSetAside._(setAside: notice != null, child: widget.composer),
     );
     // Plugin-provided guidance can outgrow a short phone at large text.
     final noticeMaxHeight = MediaQuery.sizeOf(context).height / 2;
@@ -159,10 +161,22 @@ class _ComposerOrNoticeState() extends State<ComposerOrNotice> with TickerProvid
   }
 }
 
+/// Tells the composer under a [ComposerOrNotice] whether a notice has taken
+/// its place, from the moment the notice starts fading in until it has gone.
+class const ComposerSetAside._({required final bool setAside, required super.child}) extends InheritedWidget {
+  /// Whether a notice stands in place of the composer at [context]; false
+  /// outside a [ComposerOrNotice].
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ComposerSetAside>()?.setAside ?? false;
+
+  @override
+  bool updateShouldNotify(ComposerSetAside oldWidget) => setAside != oldWidget.setAside;
+}
+
 /// A child of [_CrossFadeRoom] at its [presence]: it fades with it, takes no
 /// taps, focus or semantics unless [shown], and once gone stays mounted
 /// offstage. One leaving fades out as it was: its own animations hold still,
-/// so a Recheck answered as its card leaves keeps showing that it checked.
+/// so a Check setup answered as its card leaves keeps showing that it checked.
 class const _CrossFadeRoomOccupant({
   super.key,
   required final Animation<double> presence,
