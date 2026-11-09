@@ -827,8 +827,8 @@ later.
 - **Shared bridge id for a CLI and the supervised bridge on one computer: A.**
   Kept for now. The macOS cell runs its halves in turn.
 - **Test bridges' uploads: A, kept in the shared `~/.sesori/uploads`.** The user
-  asked that they still get cleaned at some point, and they do, by code
-  already on main:
+  asked that they still get cleaned at some point, and they do, by the
+  existing sweep plus its startup run from #2431:
   - Every bridge saves under `sesoriUploadsDirectory()`, `<home>/.sesori/uploads`,
     whatever its `--data-dir` (`bridge/sesori_bridge_foundation/lib/src/sesori_data_directory.dart:66`,
     wired in `bridge/app/lib/src/orchestrator.dart:353`).
