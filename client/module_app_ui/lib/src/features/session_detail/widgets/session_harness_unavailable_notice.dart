@@ -10,7 +10,10 @@ class const SessionHarnessUnavailableNotice({
   required final SessionInteractionState interaction,
   required final bool historyUnavailable,
   required final VoidCallback onOpenHarnessSettings,
-  required final Future<void> Function() onRecheck,
+
+  /// Has the bridge inspect the harness setup again, the way harness settings'
+  /// Check setup does.
+  required final Future<void> Function() onCheckSetup,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -43,7 +46,20 @@ class const SessionHarnessUnavailableNotice({
       if (blocked?.refreshError != null && blocked?.reason != SessionInteractionBlockedReason.statusCheckFailed)
         loc.sessionDetailHarnessRefreshWarning,
     ].join("\n");
-    final canRecheck = blocked?.reason == SessionInteractionBlockedReason.authenticationRequired;
+    // A block recorded by setup inspection clears only when setup is inspected
+    // again, even once the user has fixed it outside Sesori.
+    final canCheckSetup = switch (blocked?.reason) {
+      SessionInteractionBlockedReason.authenticationRequired || SessionInteractionBlockedReason.unavailable => true,
+      SessionInteractionBlockedReason.disabled ||
+      SessionInteractionBlockedReason.runtimeMissing ||
+      SessionInteractionBlockedReason.stopping ||
+      SessionInteractionBlockedReason.notInspected ||
+      SessionInteractionBlockedReason.unknownStatus ||
+      SessionInteractionBlockedReason.missingHarness ||
+      SessionInteractionBlockedReason.statusCheckFailed ||
+      SessionInteractionBlockedReason.contentLoadFailed ||
+      null => false,
+    };
 
     // An old bridge is fixed on the computer running it, which harness
     // settings cannot do, so it offers the update steps instead.
@@ -56,7 +72,7 @@ class const SessionHarnessUnavailableNotice({
           ? null
           : onOpenHarnessSettings,
       onShowBridgeUpdate: bridgeOutdated ? () => showBridgeUpdateSheet(context: context) : null,
-      onRecheck: canRecheck ? onRecheck : null,
+      recheck: canCheckSetup ? (label: loc.harnessManagementRefreshSetup, onPressed: onCheckSetup) : null,
     );
   }
 }

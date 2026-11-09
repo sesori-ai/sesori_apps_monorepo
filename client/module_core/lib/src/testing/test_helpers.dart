@@ -94,8 +94,32 @@ MockPluginManagementService stubbedPluginManagementService() {
   final snapshots = Stream.value(result).shareValueSeeded(result);
   when(() => mock.snapshots).thenAnswer((_) => snapshots);
   when(mock.refresh).thenAnswer((_) async {});
+  stubSetupCheck(service: mock, onCheck: () {});
   when(mock.onDispose).thenAnswer((_) async {});
   return mock;
+}
+
+/// Answers a harness setup check (the refresh command) on [service] by running
+/// [onCheck], which may publish the snapshot the inspection finds, then
+/// reporting success.
+void stubSetupCheck({required MockPluginManagementService service, required void Function() onCheck}) {
+  when(
+    () => service.command(
+      pluginId: any(named: "pluginId"),
+      request: const PluginLifecycleCommandRequest.refresh(),
+    ),
+  ).thenAnswer((_) async {
+    onCheck();
+    return const PluginManagementMutationResult.success(
+      response: PluginManagementResponse(
+        snapshotToken: "test",
+        bridgeId: "bridge",
+        defaultPluginId: null,
+        defaultIdleTimeoutMins: 45,
+        plugins: [],
+      ),
+    );
+  });
 }
 
 class MockBridgeSettingsService() extends Mock implements BridgeSettingsService;

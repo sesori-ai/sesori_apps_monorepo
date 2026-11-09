@@ -119,7 +119,7 @@ reconnect or restart.
 - On restored eligibility, the client refreshes history, options and pending input
   before interaction resumes. Failed content restoration keeps the transcript
   read-only, directs the user to reopen the chat, and does not misreport a successful
-  availability check or offer a harness-status Recheck action.
+  availability check or offer a Check setup action.
 - A first or externally stale backend replay adopts the latest assistant/error
   message's agent, provider, model, and available variant as the session's prompt
   defaults. The bridge persists that selection and returns it with the replay so
@@ -425,7 +425,7 @@ rules where supported.
   interaction the load began with. A resumed blocked chat stays undeclared and
   marks its own updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
-  blocked state other than authentication-required offers harness-status Recheck.
+  blocked state other than authentication-required or unavailable offers Check setup.
 - The prompt index misses a prompt or lists a hidden one, kinds a prompt
   differently from the app's loaded-range turns, numbers prompts differently
   from `userMessagesBefore`, drops an image-only prompt, answers 404 for a

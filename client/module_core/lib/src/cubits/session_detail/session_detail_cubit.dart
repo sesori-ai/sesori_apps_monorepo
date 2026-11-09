@@ -79,7 +79,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   waitingForConnection("waiting_for_connection"),
   harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
-  recheck("recheck"),
+  checkSetup("check_setup"),
 }
 
 enum _SessionRefreshAction() {
@@ -185,7 +185,7 @@ class SessionDetailCubit(
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
 
-  /// The reload behind the unavailable shell. Recheck and the harness turning
+  /// The reload behind the unavailable shell. Check setup and the harness turning
   /// available usually ask for one together, so they share it.
   Future<void>? _shellReload;
 
@@ -429,21 +429,26 @@ class SessionDetailCubit(
     }
   }
 
-  Future<void> recheckHarnessAvailability() async {
-    await _pluginManagementService.refresh();
+  /// Check setup: has the bridge inspect the session's harness setup again, as
+  /// harness settings does, then lets the session continue when that finds it
+  /// usable. Only a fresh inspection notices a fix made outside Sesori, such as
+  /// a login in a terminal or a corrected gateway; a plain status read keeps
+  /// reporting the block the bridge last recorded.
+  Future<void> checkHarnessSetup() async {
+    await _inspectHarnessSetup();
     if (isClosed) return;
     // A blocked reload reads store-only, so it cannot wake the harness. From
-    // the unavailable shell that makes Recheck the user's retry as well: the
-    // read may have failed for a reason enabling the harness would not fix.
+    // the unavailable shell that makes Check setup the user's retry as well:
+    // the read may have failed for a reason enabling the harness would not fix.
     if (state is SessionDetailHarnessUnavailable) {
-      await _reloadShell(trigger: _SessionRefreshTrigger.recheck);
+      await _reloadShell(trigger: _SessionRefreshTrigger.checkSetup);
       return;
     }
     if (!_interaction.canInteract) return;
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
-      // Recheck shows it is checking until this returns, so it waits for the
-      // refresh that swaps the notice for the composer. Joining one already in
+      // Check setup shows it is checking until this returns, so it waits for
+      // the refresh that swaps the notice for the composer. Joining one already in
       // flight queued another behind it, which starts as that one completes
       // and may be the one that applies the harness, so it waits for that one
       // too, but no further. Refreshes catch their own failures.
@@ -453,6 +458,37 @@ class SessionDetailCubit(
       }
     } else if (state is SessionDetailFailed) {
       await reload();
+    }
+  }
+
+  /// Runs the setup inspection and returns once its snapshot is published, so
+  /// the block it clears or updates is already applied. When the bridge cannot
+  /// run one, a status read still shows whatever changed meanwhile.
+  Future<void> _inspectHarnessSetup() async {
+    final session = _sessionMetadata;
+    if (session == null) {
+      await _pluginManagementService.refresh();
+      return;
+    }
+    final result = await _pluginManagementService.command(
+      pluginId: session.pluginId,
+      request: const PluginLifecycleCommandRequest.refresh(),
+    );
+    switch (result) {
+      // An uncertain outcome has already been reconciled with a status read.
+      case PluginManagementMutationResultSuccess() || PluginManagementMutationResultUncertain():
+        return;
+      case PluginManagementMutationResultNotFound():
+        logw("Harness setup check for session $_sessionId found no harness ${session.pluginId}");
+        await _pluginManagementService.refresh();
+      case PluginManagementMutationResultConflict(:final conflict):
+        logw(
+          "Harness setup check for session $_sessionId conflicted: ${conflict.reasons.map((reason) => reason.name).join(", ")}",
+        );
+        await _pluginManagementService.refresh();
+      case PluginManagementMutationResultFailure(:final error):
+        logw("Harness setup check for session $_sessionId failed", error);
+        await _pluginManagementService.refresh();
     }
   }
 
@@ -471,7 +507,7 @@ class SessionDetailCubit(
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     final previous = state;
     // The unavailable shell already shows what this screen still owes, and it
-    // stays up until the answer: Recheck shows the check meanwhile, so a
+    // stays up until the answer: Check setup shows the check meanwhile, so a
     // harness still blocked leaves the notice where it was.
     if (previous is! SessionDetailHarnessUnavailable) {
       emit(

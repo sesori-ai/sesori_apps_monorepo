@@ -166,6 +166,7 @@ PluginManagementLoadResult managementFixture({
   required PluginSetupState setup,
   required PluginRuntimeState runtime,
   String pluginId = "harness",
+  String actionHint = "Open harness settings",
 }) => PluginManagementLoadResult.supported(
   response: PluginManagementResponse(
     snapshotToken: "test",
@@ -179,7 +180,7 @@ PluginManagementLoadResult managementFixture({
           displayName: "Test harness",
           state: setup,
           runtimeVersion: null,
-          actionHint: "Open harness settings",
+          actionHint: actionHint,
         ),
         runtimeState: runtime,
         workState: PluginManagementWorkState.idle,
