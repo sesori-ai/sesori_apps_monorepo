@@ -479,11 +479,8 @@ class const _SidebarTitleBar({
                       color: autoCollapsed ? prego.colors.textDisabled : null,
                     ),
                     // While the sidebar is out of sight, an amber dot says a session
-                    // in it waits on the reader's answer.
-                    if (collapsed &&
-                        context.select(
-                          (AllSessionsCubit cubit) => cubit.state.rows.any((row) => row.isAwaitingInput),
-                        ))
+                    // waits on the reader's answer, whether or not the list shows it.
+                    if (collapsed && context.select((AllSessionsCubit cubit) => cubit.state.anySessionAwaitingInput))
                       PositionedDirectional(
                         top: -2,
                         end: -2,

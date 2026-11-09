@@ -53,6 +53,7 @@ export 'icons/vespr_icons.g.dart';
 export 'interactions/prego_horizontal_drag_gesture_detector.dart';
 export 'interactions/prego_interaction_scope.dart';
 export 'interactions/prego_swipe_actions.dart';
+export 'motion/prego_breathing.dart';
 export 'motion/prego_desktop_scroll_behavior.dart';
 export 'motion/prego_pointer_motion.dart';
 export 'motion/prego_reduced_motion.dart';
