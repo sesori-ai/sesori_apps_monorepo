@@ -194,7 +194,8 @@ def pdfium_release(*, workspace: Path) -> str | None:
         fail(f"{hook} changed shape; update this script for the new pdfium_dart hook")
     release = match.group(1).replace("%2F", "/")
     if release not in PDFIUM_PINS:
-        fail(f"pdfium_dart fetches PDFium release {release}; add its archive hashes to PDFIUM_PINS")
+        fail(f"pdfium_dart fetches PDFium release {release}; add its archive hashes to PDFIUM_PINS "
+             f"in {Path(__file__).name}, listed by the gh api command above it")
     return release
 
 
