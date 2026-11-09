@@ -91,9 +91,11 @@ and keep native close/quit behavior safe.
   runs `$SHELL -ilc` (bash, zsh, dash, fish), `-ic` for csh/tcsh (which read
   `.cshrc`, not `.login`), `-l -i -c` for nushell and xonsh (whose probe
   passes the NUL marker as a raw string, since xonsh decodes quoted escapes),
-  and `-Login -NonInteractive -Command` for PowerShell (`pwsh`), which sources
-  `/etc/profile` and `~/.profile` through `/bin/sh` and then its own `$PROFILE`;
-  a profile that prompts fails its prompt instead of hanging the probe. Without an executable
+  and `-Login -NonInteractive -Command` for PowerShell (`pwsh` and
+  `pwsh-preview`), which sources `/etc/profile` and `~/.profile` through
+  `/bin/sh` and then its own `$PROFILE`. If that profile asks for input, the
+  prompt raises an error instead of waiting, and the rest of the profile and
+  the probe still run, so the probe doesn't hang. Without an executable
   `$SHELL` macOS uses `/bin/zsh`, and Linux uses the user's `/etc/passwd`
   shell, then `/bin/sh`. Windows runs no probe. A bash login shell reads
   `.bash_profile` or `.profile`, not `.bashrc`, so `.bashrc` exports arrive only
