@@ -1,5 +1,7 @@
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/services/composer_draft_calculator.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -151,5 +153,66 @@ void main() {
 
     expect(result.text, "first\n\nspoken\n\ntyped then voice");
     expect(result.voiceSpans, [VoiceOriginSpan(start: 7, end: 13), VoiceOriginSpan(start: 26, end: 31)]);
+  });
+
+  test("submissionDraft keeps a dictated send dictated and a command as its typed text", () {
+    ComposerDraft? draftOf(QueuedSessionSubmission submission) => calculator.submissionDraft(submission: submission);
+
+    expect(
+      draftOf(
+        const QueuedSessionSubmission.text(
+          promptId: "prm_1",
+          text: "spoken",
+          inputMode: ComposerInputMode.voiceAssisted,
+          attachments: [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        ),
+      ),
+      ComposerDraft(text: "spoken", voiceSpans: [VoiceOriginSpan(start: 0, end: 6)]),
+    );
+    expect(
+      draftOf(
+        const QueuedSessionSubmission.command(
+          promptId: "prm_2",
+          text: "the diff",
+          command: "review",
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        ),
+      ),
+      ComposerDraft.typed(text: "/review the diff"),
+    );
+  });
+
+  test("bridgePromptDraft unwraps dictated text and spells out commands", () {
+    ComposerDraft? draftOf({required String? text, required String? command}) => calculator.bridgePromptDraft(
+      prompt: QueuedSessionPrompt(id: "prm_1", text: text, command: command, createdAt: 100),
+    );
+
+    expect(
+      draftOf(text: wrapDictatedText(text: "spoken"), command: null),
+      ComposerDraft(text: "spoken", voiceSpans: [VoiceOriginSpan(start: 0, end: 6)]),
+    );
+    expect(draftOf(text: "typed", command: null), ComposerDraft.typed(text: "typed"));
+    expect(draftOf(text: "the diff", command: "review"), ComposerDraft.typed(text: "/review the diff"));
+    expect(draftOf(text: null, command: "review"), ComposerDraft.typed(text: "/review"));
+    expect(draftOf(text: null, command: null), isNull);
+  });
+
+  test("typedCommand types the command ahead of its trimmed arguments, keeping their voice spans", () {
+    expect(
+      calculator.typedCommand(command: "review", args: voiceDraft(" spoken ", 1, 7)),
+      ComposerDraft(text: "/review spoken", voiceSpans: [VoiceOriginSpan(start: 8, end: 14)]),
+    );
+    expect(
+      calculator.typedCommand(
+        command: "review",
+        args: ComposerDraft.typed(text: "  "),
+      ),
+      ComposerDraft.typed(text: "/review"),
+    );
   });
 }

@@ -3479,7 +3479,7 @@ class SessionDetailCubit(
       for (final prompt in bridgePrompts)
         (
           promptId: prompt.id,
-          draft: _bridgePromptDraft(prompt: prompt),
+          draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
           attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
         ),
       for (final submission in [
@@ -3496,7 +3496,7 @@ class SessionDetailCubit(
 
   static _UnsentPrompt _unsentSubmission({required QueuedSessionSubmission submission}) => (
     promptId: submission.promptId,
-    draft: _submissionDraft(submission: submission),
+    draft: _draftCalculator.submissionDraft(submission: submission),
     attachments: submission.attachments,
   );
 
@@ -3504,16 +3504,9 @@ class SessionDetailCubit(
   /// blank line, with their images before its own. A [stagedCommand] becomes
   /// its literal text, as the restored words would otherwise be its arguments.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
-    final held = switch ((command: stagedCommand?.name, args: _draftCalculator.trim(draft: _composerDraft))) {
-      (command: null, args: _) => _composerDraft,
-      (command: final String name, :final args) when args.text.isEmpty => ComposerDraft.typed(text: "/$name"),
-      // Typed in front of the arguments, so dictated ones keep their spans.
-      (command: final String name, :final args) => _draftCalculator.replaceTyped(
-        draft: args,
-        start: 0,
-        end: 0,
-        replacement: "/$name ",
-      ),
+    final held = switch (stagedCommand) {
+      null => _composerDraft,
+      CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
     };
     saveComposerDraft(
       draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
@@ -3521,35 +3514,6 @@ class SessionDetailCubit(
     _restoredAttachments = [for (final prompt in unsent) ...prompt.attachments, ..._composerAttachments];
     _composerRestorations++;
   }
-
-  /// The words of a staged send as the composer held them, or null for one
-  /// that carries only images.
-  static ComposerDraft? _submissionDraft({required QueuedSessionSubmission submission}) {
-    final text = submission.plainText;
-    if (text == null) return null;
-    return submission.command == null && submission.inputMode == ComposerInputMode.voiceAssisted
-        ? ComposerDraft(
-            text: text,
-            voiceSpans: [VoiceOriginSpan(start: 0, end: text.length)],
-          )
-        : ComposerDraft.typed(text: text);
-  }
-
-  /// The words of a bridge-queued prompt, with a dictated one's marker taken
-  /// off again, or null for one that carries only attachments.
-  static ComposerDraft? _bridgePromptDraft({required QueuedSessionPrompt prompt}) =>
-      switch ((command: prompt.command, text: prompt.text)) {
-        (command: null, text: null) => null,
-        (:final String command, text: null) => ComposerDraft.typed(text: "/$command"),
-        (:final String command, :final String text) => ComposerDraft.typed(text: "/$command $text"),
-        (command: null, :final String text) => switch (unwrapDictatedText(text: text)) {
-          final words when words == text || words.isEmpty => ComposerDraft.typed(text: text),
-          final words => ComposerDraft(
-            text: words,
-            voiceSpans: [VoiceOriginSpan(start: 0, end: words.length)],
-          ),
-        },
-      };
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {
     final children = [...snapshot.childSessions];
