@@ -414,7 +414,7 @@ next pull.
 
 | Harness | Status |
 |---|---|
-| Claude Code | ✅ Transcript modification time, re-read on every scan. |
+| Claude Code | ✅ The newest timestamped record in the transcript's last 64 KiB, re-read on every scan; the modification time only when that window has none. The transcript's modification time alone is not activity: the CLI appends untimestamped metadata such as `cost-state` when its process exits (#2462). |
 | Codex | ✅ Newest of rollout modification time, session-index activity and creation time, so terminal and desktop work counts even when the session index is stale or absent. Verified live on `0.167.0` (2026-11-09): a `codex exec resume` turn moved its session to the top after one pull. |
 | OpenCode | ✅ The session's `time_updated`, from the read-only database snapshot or the running server. |
 | Pi | ✅ Session file modification time, re-read on every scan. |
