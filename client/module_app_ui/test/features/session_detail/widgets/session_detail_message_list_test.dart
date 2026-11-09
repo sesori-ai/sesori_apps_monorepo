@@ -541,6 +541,20 @@ Future<void> _scrollRowTo(WidgetTester tester, {required String rowId, required 
   expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 }
 
+/// Shows [messages] in a 900x700 window whose bottom 300 px a keyboard covers,
+/// leaving the list a 400 px viewport.
+Future<void> _pumpBehindKeyboard(WidgetTester tester, {required List<MessageWithParts> messages}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(900, 700);
+  tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(_SessionDetailMessageListHarness(initialMessages: messages, initialStreamingText: const {}));
+  await tester.pumpAndSettle();
+}
+
+/// The keyboard closes, and the list's viewport grows by its height.
+void _hideKeyboard(WidgetTester tester) => tester.view.viewInsets = FakeViewPadding.zero;
+
 Future<void> _detachViewport(WidgetTester tester) async {
   await tester.drag(find.byKey(_listViewKey), const Offset(0, -500));
   await tester.pumpAndSettle();
@@ -3559,6 +3573,56 @@ void main() {
 
     expect(_position(tester).pixels, lessThanOrEqualTo(20));
     expect(find.byKey(_jumpToLatestKey), findsNothing);
+  }, variant: _pinchPlatforms);
+
+  testWidgets("a swipe that hides the keyboard leaves no Jump to latest once the transcript fits", (tester) async {
+    await _pumpBehindKeyboard(tester, messages: _userMessages(count: 3));
+    final position = _position(tester);
+    expect(position.maxScrollExtent, greaterThan(20));
+
+    // The swipe's touch closes the keyboard while it drags the list.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    _hideKeyboard(tester);
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(position.maxScrollExtent, 0);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+  }, variant: _pinchPlatforms);
+
+  testWidgets("hiding the keyboard after scrolling away leaves no Jump to latest once the transcript fits", (
+    tester,
+  ) async {
+    await _pumpBehindKeyboard(tester, messages: _userMessages(count: 3));
+    await tester.drag(find.byKey(_listViewKey), const Offset(0, 100));
+    await tester.pumpAndSettle();
+    expect(_position(tester).pixels, greaterThan(20));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    _hideKeyboard(tester);
+    await tester.pumpAndSettle();
+
+    expect(_position(tester).maxScrollExtent, 0);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+  }, variant: _pinchPlatforms);
+
+  testWidgets("hiding the keyboard keeps Jump to latest while the list is still away from latest", (tester) async {
+    await _pumpBehindKeyboard(tester, messages: _userMessages(count: 12));
+    await tester.drag(find.byKey(_listViewKey), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    _hideKeyboard(tester);
+    await tester.pumpAndSettle();
+
+    expect(_position(tester).pixels, greaterThan(20));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   }, variant: _pinchPlatforms);
 
   testWidgets("desktop pointer scroll detaches immediately", (tester) async {
