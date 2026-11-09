@@ -19,8 +19,7 @@ class _NoOpImageClipboard() implements ImageClipboard {
 /// tree, which is what `find.byTooltip` reads.
 Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
 
-bool _fieldHasFocus(WidgetTester tester) =>
-    tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
+bool _fieldHasFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
 
 void main() {
   final images = [

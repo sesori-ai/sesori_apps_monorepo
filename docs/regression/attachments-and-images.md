@@ -77,6 +77,9 @@ content the transcript renders live and after reload.
   disappear when the remaining images fit.
   Removing one image preserves the remaining image identities and send bytes;
   removing all images removes the strip.
+  While the typing box is open but unfocused, a tap on its padding or the gaps
+  around the text field focuses the field; the tiles keep their own open and
+  remove taps, and a tap on the strip between tiles leaves focus alone.
 - On desktop, files dragged anywhere over the session-detail pane, the
   new-session pane or the home pane show a full-pane "Drop files to add
   them to your prompt" hint and go to that pane's composer, and to exactly one
