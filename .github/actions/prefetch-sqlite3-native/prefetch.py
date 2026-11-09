@@ -48,7 +48,7 @@ PDFIUM_BUILD_DIR = Path(".dart_tool/hooks_runner/shared/pdfium_dart/build")
 # SHA-256 of each archive the pdfium_dart hook can fetch, per release. When a
 # pdfrx update moves to a new release, add its pins from the release API:
 #   gh api repos/bblanchon/pdfium-binaries/releases/tags/<release> \
-#     --jq '.assets[] | "\(.name) \(.digest)"'
+#     --jq '.assets[] | "\(.name) \(.digest | ltrimstr("sha256:"))"'
 PDFIUM_PINS = {
     "chromium/8125": {
         "pdfium-android-arm.tgz": "ac4ac5319ded88ba5d885747a6b2641e7f712c9797de0770465104abe4dbf7da",

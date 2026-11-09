@@ -590,6 +590,25 @@ void main() {
         expect(find.byType(PdfViewer), findsOneWidget);
       });
 
+      testWidgets("opens each load's bytes, not another open preview of the same path", (tester) async {
+        Future<PdfDocumentRefKey> keyFor(Uint8List bytes) async {
+          await _pumpScreen(
+            tester,
+            reference: const FileReference(absolutePath: "/repo/report.pdf", line: null),
+            state: FilePreviewShowsPdf(bytes: bytes),
+            openExternalLink: _ignoreLink,
+          );
+          return tester.widget<PdfViewer>(find.byType(PdfViewer)).documentRef.key;
+        }
+
+        final first = Uint8List.fromList(utf8.encode("%PDF-1.4 first"));
+        // pdfrx shares one open document per key, so an edited file read again
+        // while an earlier preview of it is still open, closing, must not get
+        // the earlier document.
+        expect(await keyFor(first), isNot(await keyFor(Uint8List.fromList(utf8.encode("%PDF-1.4 edited")))));
+        expect(await keyFor(first), await keyFor(first));
+      });
+
       testWidgets("zooms in where a double tap lands, and leaves other taps alone", (tester) async {
         await _pumpScreen(
           tester,

@@ -778,10 +778,15 @@ class _ImagePreviewState() extends State<_ImagePreview> {
 /// that did not load.
 class const _PdfPreview({required final Uint8List bytes, required final String path}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => PdfViewer.data(
-    bytes,
-    // pdfrx shares one open document per source name while a viewer shows it.
-    sourceName: path,
+  Widget build(BuildContext context) => PdfViewer(
+    PdfDocumentRefData(
+      bytes,
+      sourceName: path,
+      // pdfrx shares one open document per key while a viewer shows it, so the
+      // key holds this load's bytes: an edited file read again while an
+      // earlier preview of it is still closing gets its own document.
+      key: PdfDocumentRefKey(path, [bytes]),
+    ),
     params: PdfViewerParams(
       backgroundColor: context.prego.colors.bgSecondary,
       boundaryMargin: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
