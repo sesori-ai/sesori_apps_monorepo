@@ -90,14 +90,8 @@ List<SessionListEntry<T>> groupUnderHeadings<T>({
 }
 
 /// A date heading row of a session list.
-class const SessionListHeading({
-  super.key,
-  required final String heading,
-  required final bool isFirst,
-
-  /// Whether the heading names sessions blocked on the reader.
-  final bool emphasized = false,
-}) extends StatelessWidget {
+class const SessionListHeading({super.key, required final String heading, required final bool isFirst})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     // Filling the width keeps the text at the start inset under a parent that
@@ -115,9 +109,7 @@ class const SessionListHeading({
                     ? context.prego.textTheme.textXs
                     : context.prego.textTheme.textSm)
                 .medium
-                .copyWith(
-                  color: emphasized ? context.prego.colors.pointerWarningText : context.prego.colors.textTertiary,
-                ),
+                .copyWith(color: context.prego.colors.textTertiary),
       ),
     ),
   );

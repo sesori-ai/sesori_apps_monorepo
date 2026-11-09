@@ -2249,9 +2249,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListAwaitingInput => 'Awaiting input';
 
   @override
-  String get sessionListNeedsYou => 'Needs you';
-
-  @override
   String get sessionListWaiting => 'Waiting';
 
   @override
