@@ -37,17 +37,30 @@ typedef LaunchEnvironmentProcessRunner = Future<LaunchEnvironmentProcessResult> 
   required Duration timeout,
 });
 
+/// Desktop platforms whose GUI launches miss the login-shell environment.
+@visibleForTesting
+enum LoginShellPlatform() {
+  /// Falls back to `/bin/zsh`, the default macOS login shell.
+  macOS,
+
+  /// Falls back to the user's `/etc/passwd` shell, then `/bin/sh`.
+  linux,
+}
+
 /// Supplies the environment used when the desktop starts its supervised
 /// helper.
 ///
-/// A macOS LaunchAgent receives a small launchd environment rather than the
-/// user's interactive shell environment, so harness configuration exported
-/// from a shell profile (user-installed harnesses on PATH, gateway base URLs,
-/// auth tokens, proxies) would otherwise be missing. Like VS Code, we run the
-/// user's login shell once per bridge start and import its full environment,
-/// so the supervised bridge sees what a terminal-started bridge sees. This
-/// deliberately includes credential-bearing variables: the bridge and its
-/// harnesses need them, and they come from the user's own shell profile.
+/// A macOS LaunchAgent receives a small launchd environment, and a Linux
+/// desktop started from an application menu, a `.desktop` file or XDG
+/// autostart receives the graphical session's environment. Neither includes
+/// what the user exports from shell startup files such as `.zshrc` or
+/// `.bashrc`, so harness configuration (user-installed harnesses on PATH,
+/// gateway base URLs, auth tokens, proxies) would otherwise be missing. Like
+/// VS Code, we run the user's login shell once per bridge start and import its
+/// full environment, so the supervised bridge sees what a terminal-started
+/// bridge sees. This deliberately includes credential-bearing variables: the
+/// bridge and its harnesses need them, and they come from the user's own shell
+/// profile. Windows has no such gap, so it never runs a shell.
 ///
 /// While the probe runs, the shell sees [resolvingEnvironmentVariable] set to
 /// `1`, so profiles can skip slow interactive work (the counterpart of VS
@@ -62,17 +75,23 @@ typedef LaunchEnvironmentProcessRunner = Future<LaunchEnvironmentProcessResult> 
 /// nothing, so the bridge inherits the app's environment unchanged.
 @LazySingleton(as: BridgeProcessEnvironment)
 class IoBridgeProcessEnvironment.forTesting({
-  required final bool _isMacOS,
+  required final LoginShellPlatform? _platform,
   required final Map<String, String> _baseEnvironment,
   required final LaunchEnvironmentProcessRunner _runProcess,
   required final Duration _shellTimeout,
+  required final String? Function() _readPasswdFile,
 }) implements BridgeProcessEnvironment {
   new()
     : this.forTesting(
-        isMacOS: Platform.isMacOS,
+        platform: Platform.isMacOS
+            ? LoginShellPlatform.macOS
+            : Platform.isLinux
+            ? LoginShellPlatform.linux
+            : null,
         baseEnvironment: Platform.environment,
         runProcess: _runLoginShell,
         shellTimeout: const Duration(seconds: 5),
+        readPasswdFile: _readSystemPasswdFile,
       );
 
   @visibleForTesting
@@ -94,10 +113,11 @@ class IoBridgeProcessEnvironment.forTesting({
   }
 
   Future<Map<String, String>?> _resolve() async {
-    if (!_isMacOS) {
+    final LoginShellPlatform? platform = _platform;
+    if (platform == null) {
       return const <String, String>{};
     }
-    final Map<String, String>? shellEnvironment = await _readLoginShellEnvironment();
+    final Map<String, String>? shellEnvironment = await _readLoginShellEnvironment(platform: platform);
     if (shellEnvironment == null) {
       // A failed probe must not rewrite the inherited environment based on guesses.
       return null;
@@ -105,7 +125,7 @@ class IoBridgeProcessEnvironment.forTesting({
     final String? shellPath = shellEnvironment["PATH"];
     final Iterable<String> shellEntries = shellPath == null ? const <String>[] : _absolutePathEntries(value: shellPath);
     if (shellEntries.isEmpty) {
-      logw("The macOS login shell returned no usable absolute PATH entries; preserving the inherited environment");
+      logw("The login shell returned no usable absolute PATH entries; preserving the inherited environment");
       return null;
     }
     final Map<String, String> imported = <String, String>{
@@ -115,7 +135,7 @@ class IoBridgeProcessEnvironment.forTesting({
     };
     // Names only: values can hold credentials.
     logd(
-      "Imported ${imported.length} variables from the macOS login shell: "
+      "Imported ${imported.length} variables from the login shell: "
       "${(imported.keys.toList()..sort()).join(", ")}",
     );
     return Map<String, String>.unmodifiable(imported);
@@ -141,20 +161,28 @@ class IoBridgeProcessEnvironment.forTesting({
     "AUTH_BACKEND_URL",
   };
 
-  Future<Map<String, String>?> _readLoginShellEnvironment() async {
-    final String shell = _shellExecutable(environment: _baseEnvironment);
+  Future<Map<String, String>?> _readLoginShellEnvironment({required LoginShellPlatform platform}) async {
+    final String shell = _shellExecutable(platform: platform);
+    // The same login + interactive flags and command work for zsh, bash, dash
+    // and fish. The marker is printed by a printf executable rather than a
+    // shell builtin or function; macOS always ships /usr/bin/printf, while some
+    // Linux distributions (such as NixOS) only guarantee /usr/bin/env.
+    final String command = switch (platform) {
+      LoginShellPlatform.macOS => r"/usr/bin/printf '\000'; /usr/bin/env -0",
+      LoginShellPlatform.linux => r"/usr/bin/env printf '\000'; /usr/bin/env -0",
+    };
     final LaunchEnvironmentProcessResult result;
     try {
       result = await _runProcess(
         executable: shell,
-        arguments: const <String>["-ilc", r"/usr/bin/printf '\000'; /usr/bin/env -0"],
+        arguments: <String>["-ilc", command],
         // Process.start adds this to the inherited environment.
         environment: const <String, String>{resolvingEnvironmentVariable: "1"},
         timeout: _shellTimeout,
       );
     } on Object catch (error, stackTrace) {
       logw(
-        "Failed to resolve the macOS login-shell environment; preserving the inherited environment",
+        "Failed to resolve the login-shell environment; preserving the inherited environment",
         error,
         stackTrace,
       );
@@ -162,7 +190,7 @@ class IoBridgeProcessEnvironment.forTesting({
     }
     if (result.exitCode != 0) {
       logw(
-        "The macOS login shell exited with code ${result.exitCode}; preserving the inherited environment"
+        "The login shell exited with code ${result.exitCode}; preserving the inherited environment"
         "${_stderrDetails(stderr: result.stderr)}",
       );
       return null;
@@ -173,7 +201,7 @@ class IoBridgeProcessEnvironment.forTesting({
         return variables;
       case OversizedLaunchShellEnvironment(:final String? path):
         logw(
-          "The macOS login-shell environment exceeded $_maxCapturedShellEnvironmentBytes bytes; "
+          "The login-shell environment exceeded $_maxCapturedShellEnvironmentBytes bytes; "
           "importing only its PATH",
         );
         return path == null ? const <String, String>{} : <String, String>{"PATH": path};
@@ -258,12 +286,51 @@ class IoBridgeProcessEnvironment.forTesting({
 
   static const int _maxLoggedShellStderrCharacters = 4 * 1024;
 
-  static String _shellExecutable({required Map<String, String> environment}) {
-    final String? configured = environment["SHELL"]?.trim();
+  String _shellExecutable({required LoginShellPlatform platform}) {
+    final String? configured = _baseEnvironment["SHELL"]?.trim();
     if (configured != null && _isExecutableFile(path: configured)) {
       return configured;
     }
-    return "/bin/zsh";
+    switch (platform) {
+      case LoginShellPlatform.macOS:
+        return "/bin/zsh";
+      case LoginShellPlatform.linux:
+        final String? passwdShell = _passwdShell();
+        if (passwdShell != null && _isExecutableFile(path: passwdShell)) {
+          return passwdShell;
+        }
+        return "/bin/sh";
+    }
+  }
+
+  /// The shell field of the current user's `/etc/passwd` entry. Users that only
+  /// exist in a directory service are not listed there; they fall through to
+  /// `/bin/sh`.
+  String? _passwdShell() {
+    final String? user = _nonEmpty(value: _baseEnvironment["USER"]) ?? _nonEmpty(value: _baseEnvironment["LOGNAME"]);
+    final String? passwd = _readPasswdFile();
+    if (user == null || passwd == null) return null;
+    for (final String line in const LineSplitter().convert(passwd)) {
+      final List<String> fields = line.split(":");
+      if (fields.length == 7 && fields.first == user) {
+        return _nonEmpty(value: fields.last);
+      }
+    }
+    return null;
+  }
+
+  static String? _nonEmpty({required String? value}) {
+    final String? trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  static String? _readSystemPasswdFile() {
+    try {
+      return File("/etc/passwd").readAsStringSync();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to read /etc/passwd to find the login shell", error, stackTrace);
+      return null;
+    }
   }
 
   // POSIX owner/group/other execute bits (octal 0111).
@@ -277,7 +344,7 @@ class IoBridgeProcessEnvironment.forTesting({
       final FileStat stat = FileStat.statSync(path);
       return stat.type == FileSystemEntityType.file && (stat.mode & _posixExecuteBits) != 0;
     } on Object catch (error, stackTrace) {
-      logw("Failed to inspect the configured macOS login shell; using /bin/zsh", error, stackTrace);
+      logw("Failed to inspect a candidate login shell; trying the next fallback", error, stackTrace);
       return false;
     }
   }
