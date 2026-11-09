@@ -3418,8 +3418,8 @@ class SessionDetailCubit(
           if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
     };
     final queuedNow = _unsentQueuedPrompts();
-    // The launch's follow-ups never reached the bridge, whatever the stop's
-    // outcome, so none may send after it.
+    // The launch's follow-ups the bridge has not accepted are this screen's to
+    // return like its own staged sends, so none may send after the stop.
     final launchFollowUps = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
     _unsentLaunchFollowUps = const [];
     final returned = <String>{};

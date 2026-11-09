@@ -670,6 +670,12 @@ defaults and queued client sends coherent.
   keeps the bridge's rows until its queue event, accepting a possible duplicate
   over a loss). A refused or not-performed stop leaves the queue and composer
   untouched.
+- The same holds for messages typed while a new session was still being
+  created. While the stop is decided, none of them starts sending (one already
+  sending finishes). A stop that moves the queue back into the composer also
+  takes every one the bridge has not accepted out of the launch and returns it
+  in the same draft, after older bridge-owned ones and before any sent from the
+  session screen, so none sends after Stop. A refused stop lets them send.
 - One prompt renders as one bubble that transforms in place: sending (staged
   locally while the POST is in flight, and accepted but not yet listed by the
   bridge) → queued (bridge-owned) → sent (the
@@ -965,7 +971,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   triggers a completion notification, or queued sends reorder, vanish, or
   resend. A stop drops a queued or still-sending message instead of returning
   it to the composer, returns one the transcript already shows, reorders them,
-  or overwrites what the composer held. A plain Claude prompt sent to a busy resident process waits for the
+  or overwrites what the composer held. A message typed while the session was
+  being created still sends after an accepted Stop. A plain Claude prompt sent to a busy resident process waits for the
   running turn to finish before reaching stdin, carries a priority other than
   `next`, or incorrectly reports idle between an active turn and its queued
   continuation. A bridge-queued prompt disappears after leaving and reopening

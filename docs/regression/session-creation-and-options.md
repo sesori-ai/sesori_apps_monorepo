@@ -419,7 +419,9 @@ variant, and worktree mode, and creating the session with its first input.
   The follow-ups follow it in the same rows, sent in press order once the session
   exists, whether or not any screen is open, each saying "Queued" or "Sending"
   only two seconds after it was sent; a failed one offers Retry, and Remove after
-  an authoritative rejection. The session screen's composer is
+  an authoritative rejection. Stop on the session screen returns the ones not
+  yet accepted to its composer instead of sending them (see
+  [session turns](session-turns.md)). The session screen's composer is
   there from its first frame, in the new-session composer's place, with the
   committed options (read-only), any unsent text with its caret or selection
   (including which end is active), command and images, and the keyboard up when
