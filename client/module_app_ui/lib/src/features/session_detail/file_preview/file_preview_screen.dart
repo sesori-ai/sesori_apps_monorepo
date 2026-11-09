@@ -442,15 +442,21 @@ class _CodePreviewState() extends State<_CodePreview> {
     if (key == _linesKey) return _laidOut;
     _linesKey = key;
     final code = widget.content.replaceAll("\t", "    ");
+    final wordSpacing = style.wordSpacing ?? 0;
+    double estimate({required String text, required double perChar}) =>
+        text.length * perChar + (wordSpacing == 0 ? 0 : " ".allMatches(text).length * wordSpacing);
     if (code.length > _maxHighlightedLength) {
-      final texts = [
-        for (final text in code.split("\n"))
-          text.length > _maxShownLineLength ? _clipText(text: text, length: _maxShownLineLength) : text,
-      ];
+      final texts = <String>[];
       var widest = 0.0;
-      for (final text in texts) {
-        final perChar = _nonAscii.hasMatch(text) ? charWidth * 2 : charWidth;
-        widest = math.max(widest, text.length * perChar);
+      for (final line in code.split("\n")) {
+        final cut = line.length > _maxShownLineLength;
+        final text = cut ? _clipText(text: line, length: _maxShownLineLength) : line;
+        texts.add(text);
+        // A cut line is classified without its ellipsis, which is not ASCII,
+        // and the ellipsis is estimated at two digit widths.
+        final body = cut ? text.substring(0, text.length - 1) : text;
+        final perChar = _nonAscii.hasMatch(body) ? charWidth * 2 : charWidth;
+        widest = math.max(widest, estimate(text: text, perChar: perChar) + (cut ? charWidth : 0));
       }
       return _laidOut = (texts: texts, highlighted: null, widest: widest);
     }
@@ -474,7 +480,7 @@ class _CodePreviewState() extends State<_CodePreview> {
     for (final line in lines) {
       final text = line.toPlainText();
       if (!_nonAscii.hasMatch(text)) {
-        widest = math.max(widest, text.length * charWidth);
+        widest = math.max(widest, estimate(text: text, perChar: charWidth));
         continue;
       }
       if (measured.isNotEmpty) measured.add(const TextSpan(text: "\n"));
@@ -503,7 +509,17 @@ class _CodePreviewState() extends State<_CodePreview> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final style = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
+    // Resolved the way [Text] resolves each row, over the ambient text style
+    // and with the platform's spacing overrides, so rows are measured as they
+    // show.
+    final style = DefaultTextStyle.of(context).style.merge(
+      prego.textTheme.code.copyWith(
+        color: prego.colors.textPrimary,
+        height: MediaQuery.maybeLineHeightScaleFactorOverrideOf(context),
+        letterSpacing: MediaQuery.maybeLetterSpacingOverrideOf(context),
+        wordSpacing: MediaQuery.maybeWordSpacingOverrideOf(context),
+      ),
+    );
     final textScaler = MediaQuery.textScalerOf(context);
     final glyph = TextPainter(
       text: TextSpan(text: "0", style: style),
