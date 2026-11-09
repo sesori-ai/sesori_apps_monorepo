@@ -18,6 +18,7 @@ on:
       - '.github/workflows/_reusable-bridge-build.yml'
       - '.tool-versions'
       - '.github/actions/resolve-flutter-dart-version/**'
+      - '.github/actions/prefetch-sqlite3-native/**'
       - '.github/workflows/bridge-ci.yml'
       - '.github/scripts/run_test_shard.sh'
   pull_request:
@@ -80,6 +81,12 @@ jobs:
       - name: Get analyzer plugin dependencies
         run: dart pub get
         working-directory: shared/no_slop_linter
+
+      - name: Prefetch sqlite3 native library
+        if: startsWith(matrix.task, 'test-')
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
 
       # One workspace-wide pass is several times faster than per-package runs.
       - name: Analyze bridge workspace
@@ -161,6 +168,11 @@ jobs:
         run: dart pub get
         working-directory: bridge
 
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+
       - name: Test that runtimes start inside the job and end with the bridge
         run: dart test test/server/api/windows_job_object_api_test.dart
         working-directory: bridge/app
@@ -185,6 +197,11 @@ jobs:
       - name: Get dependencies (workspace)
         run: dart pub get
         working-directory: bridge
+
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
 
       - name: Verify offline OpenCode SSE generation is fresh
         working-directory: bridge/sesori_plugin_opencode
@@ -214,6 +231,11 @@ jobs:
       - name: Get dependencies (workspace)
         run: dart pub get
         working-directory: bridge
+
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
 
       - name: Compile smoke test
         shell: bash

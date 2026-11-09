@@ -19,6 +19,7 @@ on:
       - 'shared/**'
       - '.tool-versions'
       - '.github/actions/resolve-flutter-dart-version/**'
+      - '.github/actions/prefetch-sqlite3-native/**'
       - '.github/workflows/mobile-ci.yml'
       - '.github/scripts/run_test_shard.sh'
       - 'tool/dart_format.sh'
@@ -114,6 +115,11 @@ jobs:
       - name: Get dependencies (workspace)
         run: dart pub get
         working-directory: client
+
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
 
       - name: Run tests for ${{ matrix.package }} (shard ${{ matrix.shard }})
         # The default of half the cores leaves a 4-core runner mostly idle
