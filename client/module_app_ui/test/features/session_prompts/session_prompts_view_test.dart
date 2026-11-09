@@ -235,6 +235,13 @@ void main() {
     expect(find.text("No prompts in this session yet"), findsOneWidget);
   });
 
+  testWidgets("its close button is as bright as the app's other close and back buttons", (tester) async {
+    await _pump(tester, entries: const [], anchor: null);
+
+    final icon = find.descendant(of: find.byKey(const Key("session-prompts-close")), matching: find.byType(Icon));
+    expect(IconTheme.of(tester.element(icon)).color, PregoDesignSystem.light.colors.textPrimary);
+  });
+
   testWidgets("a row is one labelled button that returns to its prompt; close closes", (tester) async {
     final semantics = tester.ensureSemantics();
     final calls = await _pump(
