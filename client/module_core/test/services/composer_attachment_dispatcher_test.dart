@@ -128,6 +128,7 @@ void main() {
 
       for (final (prefix, mime) in cases) {
         final outcome = await dispatcher.routeImageBytes(
+          source: ComposerAttachmentSource.paste,
           bytes: bytesWithPrefix(prefix: prefix),
           filename: "image",
           attachmentsSupported: true,
@@ -141,6 +142,7 @@ void main() {
 
     test("converts an empty filename to null", () async {
       final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: bytesWithPrefix(prefix: const [0xFF, 0xD8, 0xFF]),
         filename: "   ",
         attachmentsSupported: true,
@@ -154,6 +156,7 @@ void main() {
     test("rejects unsupported bytes", () async {
       await expectLater(
         dispatcherFor(picked: null).routeImageBytes(
+          source: ComposerAttachmentSource.paste,
           bytes: Uint8List.fromList(List<int>.generate(16, (index) => index)),
           filename: "blob.bin",
           attachmentsSupported: true,
@@ -172,6 +175,7 @@ void main() {
       );
 
       final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: bytes,
         filename: "huge.jpg",
         attachmentsSupported: true,
@@ -231,6 +235,7 @@ void main() {
 
     test("stages a supported image without inserting its path", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [imagePath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -245,6 +250,7 @@ void main() {
 
     test("inserts an image's path on a local bridge whose backend takes no attachments", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [imagePath],
         attachmentsSupported: null,
         fileUploadsSupported: false,
@@ -258,6 +264,7 @@ void main() {
 
     test("inserts an image's path on a local bridge once the budget is spent", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [imagePath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -270,6 +277,7 @@ void main() {
 
     test("inserts non-image files and folders on a local bridge, quoting paths with spaces or quotes", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [notesPath, folderPath, spacedPath, quotedPath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -284,6 +292,7 @@ void main() {
 
     test("stages a mixed drop's images and turns the rest away on a remote bridge", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [notesPath, imagePath, folderPath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -300,6 +309,7 @@ void main() {
 
     test("treats a missing connection as a remote bridge", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: null).routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [notesPath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -312,6 +322,7 @@ void main() {
 
     test("names an over-budget image on a remote bridge", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [imagePath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -324,6 +335,7 @@ void main() {
 
     test("counts each reason a remote drop turns files away for", () async {
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [notesPath, imagePath, folderPath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -347,6 +359,7 @@ void main() {
       final largePath = (File("${root.path}/large.png")..writeAsBytesSync(png)).path;
 
       final outcome = await dispatcherFor(picked: null, activeBridgeId: "another-computer").routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: [largePath],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -362,6 +375,7 @@ void main() {
       final dispatcher = dispatcherFor(picked: null, activeBridgeId: "another-computer", fileClient: fileClient);
 
       final outcome = await dispatcher.routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: ["/photos/huge.png"],
         attachmentsSupported: true,
         fileUploadsSupported: false,
@@ -427,6 +441,7 @@ void main() {
       expect(attachment.mime, composerFileAttachmentMime);
       expect(attachment.filename, "notes.dart");
       expect(attachment.bytes, File(notesPath).readAsBytesSync());
+      expect(attachment.source, ComposerAttachmentSource.picker);
       expect(outcome?.rejections, isEmpty);
     });
 
@@ -513,6 +528,7 @@ void main() {
 
       test("stages any other file as a file with its original bytes and name", () async {
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [notesPath, spacedPath],
           attachmentsSupported: true,
           fileUploadsSupported: true,
@@ -529,6 +545,7 @@ void main() {
 
       test("keeps staging an image the harness takes as an image", () async {
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [imagePath],
           attachmentsSupported: true,
           fileUploadsSupported: true,
@@ -541,6 +558,7 @@ void main() {
 
       test("stages an image the harness can't take as a file", () async {
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [imagePath],
           attachmentsSupported: false,
           fileUploadsSupported: true,
@@ -555,6 +573,7 @@ void main() {
 
       test("turns a folder away with its own reason", () async {
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [folderPath],
           attachmentsSupported: true,
           fileUploadsSupported: true,
@@ -569,6 +588,7 @@ void main() {
         final fileClient = _OversizedImageFileClient();
 
         final outcome = await remote(fileClient: fileClient).routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: ["/photos/huge.png"],
           attachmentsSupported: false,
           fileUploadsSupported: true,
@@ -583,6 +603,7 @@ void main() {
         final notesBytes = File(notesPath).lengthSync();
 
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [notesPath, notesPath],
           attachmentsSupported: true,
           fileUploadsSupported: true,
@@ -595,6 +616,7 @@ void main() {
 
       test("still inserts paths when the bridge runs on this computer", () async {
         final outcome = await dispatcherFor(picked: null, activeBridgeId: _localBridgeId).routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [notesPath],
           attachmentsSupported: false,
           fileUploadsSupported: true,
@@ -603,6 +625,42 @@ void main() {
 
         expect(outcome.attachments, isEmpty);
         expect(outcome.insertedText, notesPath);
+      });
+
+      test("records how each staged file was added", () async {
+        List<ComposerAttachmentSource> sourcesOf(ComposerAttachOutcome? outcome) => [
+          for (final attachment in outcome?.attachments ?? const <ComposerAttachment>[])
+            if (attachment case ComposerFileAttachment(:final source)) source,
+        ];
+
+        for (final source in [ComposerAttachmentSource.drop, ComposerAttachmentSource.paste]) {
+          final routed = await remote().routeHostPaths(
+            paths: [notesPath, spacedPath],
+            source: source,
+            attachmentsSupported: false,
+            fileUploadsSupported: true,
+            stagedAttachmentBytes: 0,
+          );
+          expect(sourcesOf(routed), [source, source]);
+        }
+        final copied = await remote().routeClipboardPaths(
+          paths: [notesPath],
+          attachmentsSupported: false,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+        expect(sourcesOf(copied), [ComposerAttachmentSource.paste]);
+        final picked =
+            await dispatcherFor(
+              picked: ComposerPickedHostPaths(paths: [notesPath], oversizedCount: 0),
+              activeBridgeId: "another-computer",
+            ).pick(
+              source: ComposerPickSource.files,
+              attachmentsSupported: false,
+              fileUploadsSupported: true,
+              stagedAttachmentBytes: 0,
+            );
+        expect(sourcesOf(picked), [ComposerAttachmentSource.picker]);
       });
 
       test("stages copied files the same way", () async {
@@ -618,6 +676,7 @@ void main() {
 
       test("names a path that is gone as unreadable", () async {
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: ["$notesPath.gone"],
           attachmentsSupported: false,
           fileUploadsSupported: true,
@@ -630,6 +689,7 @@ void main() {
 
       test("an unresolved upload capability stages no file", () async {
         final outcome = await remote().routeHostPaths(
+          source: ComposerAttachmentSource.drop,
           paths: [notesPath, imagePath],
           attachmentsSupported: false,
           fileUploadsSupported: null,
@@ -661,14 +721,16 @@ void main() {
           );
 
       final file = outcome?.attachments.single;
-      expect(file, isA<ComposerFileAttachment>());
-      expect(file?.mime, "application/octet-stream");
-      expect(file?.filename, "IMG_0001.HEIC");
-      expect(file?.bytes, same(bytes));
+      if (file is! ComposerFileAttachment) fail("expected a staged file, got $file");
+      expect(file.mime, "application/octet-stream");
+      expect(file.filename, "IMG_0001.HEIC");
+      expect(file.bytes, same(bytes));
+      expect(file.source, ComposerAttachmentSource.picker);
     });
 
     test("names pasted bytes after their image type", () async {
       final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: png,
         filename: null,
         attachmentsSupported: false,
@@ -676,13 +738,16 @@ void main() {
         stagedAttachmentBytes: 0,
       );
 
-      expect(outcome.attachments.single, isA<ComposerFileAttachment>());
-      expect(outcome.attachments.single.filename, "pasted-image.png");
+      final file = outcome.attachments.single;
+      if (file is! ComposerFileAttachment) fail("expected a staged file, got $file");
+      expect(file.filename, "pasted-image.png");
+      expect(file.source, ComposerAttachmentSource.paste);
     });
 
     test("rejects pasted bytes that are no supported image, since they have no name", () async {
       await expectLater(
         dispatcherFor(picked: null).routeImageBytes(
+          source: ComposerAttachmentSource.paste,
           bytes: Uint8List.fromList(List<int>.generate(16, (index) => index)),
           filename: null,
           attachmentsSupported: false,
@@ -695,6 +760,7 @@ void main() {
 
     test("stages an image when the harness takes images, whatever the bridge saves", () async {
       final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: png,
         filename: null,
         attachmentsSupported: true,
@@ -708,6 +774,7 @@ void main() {
 
     test("turns the bytes away when neither the harness nor the bridge can take them", () async {
       final outcome = await dispatcherFor(picked: null).routeImageBytes(
+        source: ComposerAttachmentSource.paste,
         bytes: png,
         filename: null,
         attachmentsSupported: false,
@@ -723,6 +790,7 @@ void main() {
       final dispatcher = dispatcherFor(picked: null);
       for (final attachmentsSupported in [true, false]) {
         final outcome = await dispatcher.routeImageBytes(
+          source: ComposerAttachmentSource.paste,
           bytes: png,
           filename: null,
           attachmentsSupported: attachmentsSupported,

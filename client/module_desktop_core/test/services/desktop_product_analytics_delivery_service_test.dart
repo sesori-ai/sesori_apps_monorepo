@@ -163,6 +163,14 @@ void main() {
         },
       ),
       (
+        event: const ProductAnalyticsEvent.promptFilesSent(
+          fileCount: AnalyticsFileCountBucket.twoToFour,
+          source: AnalyticsFileSource.mixed,
+        ),
+        name: "prompt_files_sent",
+        params: const {"file_count": "2_4", "source": "mixed"},
+      ),
+      (
         event: const ProductAnalyticsEvent.sessionCreationFailed(
           failureReason: AnalyticsSessionCreationFailureReason.networkDown,
           workspaceKind: AnalyticsWorkspaceKind.noProject,
@@ -265,8 +273,8 @@ void main() {
       ),
     ];
 
-    test("covers all 23 event names in the contract", () {
-      expect(sentEvents.map((event) => event.name).toSet(), hasLength(23));
+    test("covers all 24 event names in the contract", () {
+      expect(sentEvents.map((event) => event.name).toSet(), hasLength(24));
     });
 
     for (final sent in sentEvents) {
@@ -382,6 +390,14 @@ void main() {
       (
         client: AnalyticsFeedbackSource.values.map((value) => value.wireValue),
         contract: const {"automatic", "settings"},
+      ),
+      (
+        client: AnalyticsFileCountBucket.values.map((value) => value.wireValue),
+        contract: const {"1", "2_4", "5_plus"},
+      ),
+      (
+        client: AnalyticsFileSource.values.map((value) => value.wireValue),
+        contract: const {"picker", "drop", "paste", "mixed"},
       ),
       (
         client: OnboardingSurface.values.map((value) => value.wireValue),

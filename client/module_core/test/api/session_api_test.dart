@@ -467,6 +467,7 @@ void main() {
         attachments: [
           // An image staged as a file for a harness that takes no images.
           ComposerFileAttachment(
+            source: ComposerAttachmentSource.picker,
             bytes: Uint8List.fromList(const [1, 2]),
             filename: "shot.png",
           ),
@@ -529,6 +530,7 @@ void main() {
         text: "",
         attachments: [
           ComposerFileAttachment(
+            source: ComposerAttachmentSource.picker,
             bytes: Uint8List.fromList(const [4, 5, 6]),
             filename: "report.pdf",
           ),

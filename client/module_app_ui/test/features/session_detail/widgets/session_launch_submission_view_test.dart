@@ -273,6 +273,7 @@ void main() {
         attachments: [
           _attachment("a.png"),
           ComposerFileAttachment(
+            source: ComposerAttachmentSource.picker,
             bytes: Uint8List.fromList(const [1, 2, 3]),
             filename: "report.pdf",
           ),

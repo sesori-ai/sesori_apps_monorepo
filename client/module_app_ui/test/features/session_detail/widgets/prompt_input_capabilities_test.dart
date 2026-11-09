@@ -595,7 +595,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final staged = reportedAttachments.last.single;
-      expect(staged, isA<ComposerFileAttachment>());
+      if (staged is! ComposerFileAttachment) fail("expected a staged file, got $staged");
+      expect(staged.source, ComposerAttachmentSource.drop);
       expect(staged.filename, "notes.dart");
       expect(staged.mime, composerFileAttachmentMime);
       expect(utf8.decode(staged.bytes), "void main() {}");
@@ -639,7 +640,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final staged = reportedAttachments.last.single;
-      expect(staged, isA<ComposerFileAttachment>());
+      if (staged is! ComposerFileAttachment) fail("expected a staged file, got $staged");
+      expect(staged.source, ComposerAttachmentSource.paste);
       expect(staged.filename, "pasted-image.png");
       expect(staged.mime, composerFileAttachmentMime);
       expect(staged.bytes, png);

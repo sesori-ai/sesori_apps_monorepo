@@ -120,6 +120,7 @@ void main() {
     getIt.registerSingleton<ComposerAttachmentDispatcher>(dispatcher);
     when(
       () => dispatcher.routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: any(named: "paths"),
         attachmentsSupported: any(named: "attachmentsSupported"),
         fileUploadsSupported: any(named: "fileUploadsSupported"),
@@ -174,6 +175,7 @@ void main() {
 
     verify(
       () => dispatcher.routeHostPaths(
+        source: ComposerAttachmentSource.drop,
         paths: ["/work/notes.dart"],
         attachmentsSupported: any(named: "attachmentsSupported"),
         fileUploadsSupported: any(named: "fileUploadsSupported"),

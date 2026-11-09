@@ -534,6 +534,7 @@ void main() {
             draft: ComposerDraft.typed(text: "read this"),
             attachments: [
               ComposerFileAttachment(
+                source: ComposerAttachmentSource.picker,
                 bytes: Uint8List(4),
                 filename: "report.pdf",
               ),

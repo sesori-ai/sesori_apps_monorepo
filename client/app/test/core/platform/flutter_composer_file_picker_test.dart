@@ -101,6 +101,7 @@ void main() {
     final bytes = jpegBytes();
 
     final outcome = await attachmentDispatcher.routeImageBytes(
+      source: ComposerAttachmentSource.paste,
       bytes: bytes,
       filename: null,
       attachmentsSupported: true,

@@ -130,6 +130,27 @@ void main() {
         "session_diff_viewed",
         const {"change_state": "non_empty"},
       ),
+      for (final (fileCount, wireValue) in [
+        (AnalyticsFileCountBucket.one, "1"),
+        (AnalyticsFileCountBucket.twoToFour, "2_4"),
+        (AnalyticsFileCountBucket.fivePlus, "5_plus"),
+      ])
+        (
+          ProductAnalyticsEvent.promptFilesSent(fileCount: fileCount, source: AnalyticsFileSource.picker),
+          "prompt_files_sent",
+          {"file_count": wireValue, "source": "picker"},
+        ),
+      for (final (source, wireValue) in [
+        (AnalyticsFileSource.picker, "picker"),
+        (AnalyticsFileSource.drop, "drop"),
+        (AnalyticsFileSource.paste, "paste"),
+        (AnalyticsFileSource.mixed, "mixed"),
+      ])
+        (
+          ProductAnalyticsEvent.promptFilesSent(fileCount: AnalyticsFileCountBucket.one, source: source),
+          "prompt_files_sent",
+          {"file_count": "1", "source": wireValue},
+        ),
       for (final (entry, wireValue) in [
         (AnalyticsPromptsEntry.sessionBar, "session_bar"),
         (AnalyticsPromptsEntry.pinch, "pinch"),

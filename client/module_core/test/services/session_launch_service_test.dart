@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -169,6 +170,82 @@ void main() {
     expect(selectionTracker.read(pluginId: "plugin-1")?.agentName, "plan");
   });
 
+  group("prompt_files_sent on create", () {
+    final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List(1), filename: "shot.png");
+    ComposerFileAttachment file({required ComposerAttachmentSource source}) =>
+        ComposerFileAttachment(bytes: Uint8List(1), filename: "notes.pdf", source: source);
+
+    Future<void> launchWith({required List<ComposerAttachment> attachments}) => service.launch(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "plugin-1",
+      startedAt: DateTime.utc(2026, 9, 27),
+      projectName: null,
+      projectKind: ProjectKind.folder,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Hello"),
+        attachments: attachments,
+      ),
+      agent: null,
+      model: null,
+      variant: null,
+      fastMode: false,
+      dedicatedWorktree: false,
+    );
+
+    void verifyNoFilesSent() => verifyNever(
+      () => productAnalyticsService.logEvent(
+        event: any(named: "event", that: isA<PromptFilesSentEvent>()),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    );
+
+    test("follows the created event when the first message carries files", () async {
+      final pending = launchWith(
+        attachments: [
+          image,
+          file(source: ComposerAttachmentSource.drop),
+          file(source: ComposerAttachmentSource.paste),
+        ],
+      );
+      response.complete(ApiResponse.success(testSession(id: "session-1")));
+      await pending;
+
+      verifyInOrder([
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            workspaceKind: AnalyticsWorkspaceKind.project,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.promptFilesSent(
+            fileCount: AnalyticsFileCountBucket.twoToFour,
+            source: AnalyticsFileSource.mixed,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ]);
+    });
+
+    test("is not reported for a first message holding only inline images", () async {
+      final pending = launchWith(attachments: [image]);
+      response.complete(ApiResponse.success(testSession(id: "session-1")));
+      await pending;
+
+      verifyNoFilesSent();
+    });
+
+    test("is not reported when the create fails", () async {
+      final pending = launchWith(attachments: [file(source: ComposerAttachmentSource.picker)]);
+      response.complete(ApiResponse.error(ApiError.generic()));
+      await pending;
+
+      verifyNoFilesSent();
+    });
+  });
+
   test("a failed create publishes its reason, reports it and logs the original error", () async {
     final records = <LogRecord>[];
     setLogSink(sink: _RecordingSink(records: records));
@@ -317,6 +394,55 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(2);
+    });
+
+    test("a follow-up with files reports them once it is accepted, not when it fails", () async {
+      sendResponses.add(ApiResponse.error(ApiError.generic()));
+      final pending = launch();
+      service.addFollowUp(
+        launchId: "launch-1",
+        submission: QueuedSessionSubmission.text(
+          promptId: "prm_a",
+          text: "and then this",
+          inputMode: ComposerInputMode.typed,
+          attachments: [
+            ComposerFileAttachment(bytes: Uint8List(1), filename: "notes.pdf", source: ComposerAttachmentSource.picker),
+          ],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        ),
+      );
+      response.complete(ApiResponse.success(testSession(id: "session-1")));
+      await pending;
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(
+        () => productAnalyticsService.logEvent(
+          event: any(named: "event", that: isA<PromptFilesSentEvent>()),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+
+      service.retryFollowUp(promptId: "prm_a");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(sentPromptIds, ["prm_a", "prm_a"]);
+      verifyInOrder([
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionMessageSent(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.promptFilesSent(
+            fileCount: AnalyticsFileCountBucket.one,
+            source: AnalyticsFileSource.picker,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ]);
     });
 
     test("a dictated follow-up reaches the bridge marked", () async {

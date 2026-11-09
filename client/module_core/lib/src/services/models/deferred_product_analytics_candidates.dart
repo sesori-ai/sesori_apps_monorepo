@@ -58,6 +58,7 @@ final class DeferredProductAnalyticsCandidates {
     AnalyticsActivationReadyEvent() ||
     ProjectInventoryLoadedEvent(inventoryState: AnalyticsInventoryState.empty) ||
     SessionActivityViewedEvent(activityState: AnalyticsActivityState.empty) ||
+    PromptFilesSentEvent() ||
     SessionCreationFailedEvent() ||
     VoiceTranscriptionCompletedEvent() ||
     SessionQuestionAnsweredEvent() ||
