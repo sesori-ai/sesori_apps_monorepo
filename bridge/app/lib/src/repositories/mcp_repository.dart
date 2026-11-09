@@ -31,6 +31,13 @@ class McpRepository({
       scope: request.target.scope,
       operation: McpOperation.authenticate,
     );
+    if (!_supports(
+      pluginId: request.pluginId,
+      capability: PluginMcpCapability.authentication,
+      operation: McpOperation.authenticate,
+    )) {
+      throw const McpAuthenticationUnavailableException(reason: McpAuthenticationUnavailableReason.unsupportedHarness);
+    }
     yield* _runtime.useStreamIfActive(
       pluginId: request.pluginId,
       operation: McpOperation.authenticate,
@@ -195,6 +202,13 @@ class McpRepository({
 
   Future<McpInventoryResult> getInventory({required String pluginId, required McpScope scope}) async {
     final nativeScope = await _resolveScope(pluginId: pluginId, scope: scope, operation: McpOperation.getInventory);
+    if (!_supports(
+      pluginId: pluginId,
+      capability: PluginMcpCapability.management,
+      operation: McpOperation.getInventory,
+    )) {
+      return _inventoryUnsupported(scope: scope);
+    }
     final result = await _runtime.useIfActive(
       pluginId: pluginId,
       operation: McpOperation.getInventory,
@@ -203,11 +217,7 @@ class McpRepository({
         if (plugin case final McpManagementPluginApi supported) {
           management = supported;
         } else {
-          return McpInventoryUnavailable(
-            scope: scope,
-            reason: McpInventoryUnavailableReason.unsupportedHarness,
-            message: "This integration does not yet expose MCP inventory.",
-          );
+          return _inventoryUnsupported(scope: scope);
         }
         final native = await management.getMcpInventory(scope: nativeScope);
         if (native case PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace)) {
@@ -244,6 +254,13 @@ class McpRepository({
         statusCode: 400,
       ),
     };
+    if (!_supports(
+      pluginId: pluginId,
+      capability: PluginMcpCapability.management,
+      operation: McpOperation.executeAction,
+    )) {
+      return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+    }
     final result = await _runtime.useIfActive(
       pluginId: pluginId,
       operation: McpOperation.executeAction,
@@ -291,6 +308,13 @@ class McpRepository({
       scope: target.scope,
       operation: McpOperation.executeAction,
     );
+    if (!_supports(
+      pluginId: pluginId,
+      capability: PluginMcpCapability.authentication,
+      operation: McpOperation.executeAction,
+    )) {
+      return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+    }
     final result = await _runtime.useIfActive(
       pluginId: pluginId,
       operation: McpOperation.executeAction,
@@ -338,6 +362,13 @@ class McpRepository({
     required McpConnectorOfferTarget target,
   }) async {
     final scope = await _resolveScope(pluginId: pluginId, scope: target.scope, operation: McpOperation.executeAction);
+    if (!_supports(
+      pluginId: pluginId,
+      capability: PluginMcpCapability.connectorSetup,
+      operation: McpOperation.executeAction,
+    )) {
+      return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+    }
     final result = await _runtime.useIfActive(
       pluginId: pluginId,
       operation: McpOperation.executeAction,
@@ -375,6 +406,20 @@ class McpRepository({
     );
     return result ?? const McpControlUnavailable(reason: McpActionUnavailableReason.pluginInactive);
   }
+
+  /// Declared support is static, so it is checked before the activity gate: a
+  /// harness that never manages MCP is unsupported whether or not it runs.
+  bool _supports({
+    required String pluginId,
+    required PluginMcpCapability capability,
+    required McpOperation operation,
+  }) => _runtime.mcpCapabilities(pluginId: pluginId, operation: operation).contains(capability);
+
+  McpInventoryUnavailable _inventoryUnsupported({required McpScope scope}) => McpInventoryUnavailable(
+    scope: scope,
+    reason: McpInventoryUnavailableReason.unsupportedHarness,
+    message: "This integration does not yet expose MCP inventory.",
+  );
 
   McpControlFailed _actionFailed({
     required String pluginId,
