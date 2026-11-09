@@ -401,13 +401,25 @@ Only OMP is assessed here. Other harnesses are not assessed.
 |---|---|
 | OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
 
-## External Codex session activity
+## External session activity
 
-Codex catalog scans refresh existing sessions using the newest of rollout file
-modification time, session-index activity, and creation time. This includes
-terminal and desktop work whose session-index timestamp is stale or absent,
-without resuming threads or reading full transcripts for activity. The bridge
-retains its existing monotonic timestamp merge and local title overrides.
+Every pull-to-refresh imports from each routable harness. The import moves an
+existing session's time forward to the time the harness reports, so work done
+in the harness's own terminal or desktop app reorders the list after the next
+pull. The bridge keeps its monotonic timestamp merge and local title overrides,
+and only a manual refresh imports.
+
+| Harness | Status |
+|---|---|
+| Claude Code | ✅ Transcript modification time, re-read on every scan. |
+| Codex | ✅ Newest of rollout modification time, session-index activity and creation time, so terminal and desktop work counts even when the session index is stale or absent. Verified live on `0.167.0`: a `codex exec resume` turn moved its session to the top after one pull. |
+| OpenCode | ✅ The session's `time_updated`, from the read-only database snapshot or the running server. |
+| Pi | ✅ Session file modification time, re-read on every scan. |
+| OMP | ✅ ACP `session/list` `updatedAt`. Verified live on `18.18.5`: Sesori's long-running ACP process reports a turn made by a separate `omp -c -p` process, and one pull moved the session to the top. |
+| Grok | ✅ Root sessions: ACP `session/list` `updatedAt`, verified live on `1.0.30` against a long-running ACP process after a separate `grok -c -p` turn. Sub-agent sessions use `summary.json` `updated_at`, not verified live. |
+| Hermes | ✅ Sessions created through ACP, whose `updatedAt` Hermes re-reads from its database on every `session/list`. 🚫 Sessions started in the Hermes CLI or desktop app: Hermes's ACP `session/list` returns only sessions whose source is `acp` (read in the v0.21.5 source, not verified live). |
+| DeepSeek | 🚫 Sesori starts DeepSeek with a bridge-owned `--state-dir`, so sessions a DeepSeek CLI keeps in its own state are not in the store Sesori lists. |
+| Cursor, Copilot, Antigravity | Not verified: the time is the ACP `session/list` `updatedAt` each harness reports. |
 
 ## Pending requests on archive
 
