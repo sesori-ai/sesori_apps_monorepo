@@ -9,7 +9,38 @@ enum PregoEllipsis() {
   start,
 
   /// "feature/que…ueing-fix": for branches and slugs, whose both ends matter.
-  middle,
+  middle;
+
+  /// The character that stands for the dropped ones.
+  static const String glyph = "…";
+
+  /// The most characters of [text] that fit [maxWidth] around the ellipsis, or
+  /// [text] itself when it fits as it is. [measure] returns a candidate's
+  /// width; text that fits costs one call, and text that does not costs a
+  /// binary search over the number of characters kept.
+  String fit({required String text, required double maxWidth, required double Function(String candidate) measure}) {
+    if (measure(text) <= maxWidth) return text;
+    final characters = text.characters;
+    String shorten(int count) => switch (this) {
+      PregoEllipsis.start => glyph + characters.takeLast(count).toString().trimLeft(),
+      // The odd character goes to the head, which is read first.
+      PregoEllipsis.middle =>
+        characters.take(count - count ~/ 2).toString().trimRight() +
+            glyph +
+            characters.takeLast(count ~/ 2).toString().trimLeft(),
+    };
+    var low = 0;
+    var high = characters.length;
+    while (low < high) {
+      final mid = (low + high + 1) ~/ 2;
+      if (measure(shorten(mid)) <= maxWidth) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return shorten(low);
+  }
 }
 
 /// One line of text that, when it does not fit, drops characters at [ellipsis]
@@ -82,8 +113,6 @@ class RenderEllipsisText({
   required TextDirection textDirection,
   required TextScaler textScaler,
 }) extends RenderBox {
-  static const String _ellipsisGlyph = "…";
-
   final TextPainter _painter = TextPainter(maxLines: 1);
 
   String _text = text;
@@ -141,34 +170,11 @@ class RenderEllipsisText({
   /// The text as last laid out: whole, or shortened to fit.
   String get shownText => _fit(constraints.maxWidth);
 
-  /// The most characters of the text that fit [maxWidth] around the ellipsis,
-  /// or the whole text when it fits as it is.
-  String _fit(double maxWidth) {
-    if (_measure(_text) <= maxWidth) return _text;
-    final characters = _text.characters;
-    String shorten(int count) => switch (_ellipsis) {
-      PregoEllipsis.start => _ellipsisGlyph + characters.takeLast(count).toString().trimLeft(),
-      // The odd character goes to the head, which is read first.
-      PregoEllipsis.middle =>
-        characters.take(count - count ~/ 2).toString().trimRight() +
-            _ellipsisGlyph +
-            characters.takeLast(count ~/ 2).toString().trimLeft(),
-    };
-    var low = 0;
-    var high = characters.length;
-    while (low < high) {
-      final mid = (low + high + 1) ~/ 2;
-      if (_measure(shorten(mid)) <= maxWidth) {
-        low = mid;
-      } else {
-        high = mid - 1;
-      }
-    }
-    return shorten(low);
-  }
+  /// The text, or as much of it as fits [maxWidth] around the ellipsis.
+  String _fit(double maxWidth) => _ellipsis.fit(text: _text, maxWidth: maxWidth, measure: _measure);
 
   @override
-  double computeMinIntrinsicWidth(double height) => math.min(_measure(_ellipsisGlyph), _measure(_text));
+  double computeMinIntrinsicWidth(double height) => math.min(_measure(PregoEllipsis.glyph), _measure(_text));
 
   @override
   double computeMaxIntrinsicWidth(double height) => _measure(_text);

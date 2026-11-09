@@ -97,6 +97,90 @@ void main() {
     expect(chatLink.style?.decoration, TextDecoration.none);
   });
 
+  group("in a narrow message", () {
+    const width = 360.0;
+    const fileName = "image_picker_A3883905-28EE-472D-BAFC-82C4A8501772-41735-00000058381D0921.jpg";
+
+    Future<void> pumpNarrow({required WidgetTester tester, required String markdown}) async {
+      tapped = [];
+      void onTapLink(String text, String? href, String title) => tapped.add(href ?? "");
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: width,
+                child: MarkdownBody(
+                  data: markdown,
+                  selectable: false,
+                  onTapLink: onTapLink,
+                  styleSheet: buildChatMessageMarkdownStyleSheet(prego: PregoDesignSystem.light),
+                  inlineSyntaxes: sessionMarkdownInlineSyntaxes,
+                  builders: buildSessionMarkdownBuilders(
+                    highlightEnabled: false,
+                    copyTooltip: null,
+                    onTapLink: onTapLink,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    RenderParagraph drawnLink({required WidgetTester tester, required String label}) => tester.renderObject(
+      find
+          .descendant(
+            of: link(label: label),
+            matching: find.byType(RichText),
+          )
+          .first,
+    );
+
+    String drawnLabel(RenderParagraph paragraph) =>
+        paragraph.text.toPlainText(includeSemanticsLabels: false, includePlaceholders: false);
+
+    testWidgets("a short label is drawn whole", (tester) async {
+      await pumpNarrow(tester: tester, markdown: "See `lib/src/path.dart:12`.");
+
+      final paragraph = drawnLink(tester: tester, label: "path.dart (line 12)");
+      expect(drawnLabel(paragraph), "path.dart (line 12)");
+      expect(paragraph.didExceedMaxLines, isFalse);
+    });
+
+    testWidgets("a long label loses its middle, keeps its extension and fits the line", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpNarrow(tester: tester, markdown: "Attached file: `/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName`");
+
+      final paragraph = drawnLink(tester: tester, label: fileName);
+      final drawn = drawnLabel(paragraph);
+      expect(drawn, startsWith("image_pick"));
+      expect(drawn, contains("…"));
+      expect(drawn, endsWith(".jpg"));
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(tester.getSize(link(label: fileName)).width, lessThanOrEqualTo(width));
+      // Screen readers, taps and the tooltip keep the whole name and path.
+      expect(find.bySemanticsLabel(RegExp(RegExp.escape(fileName))), findsWidgets);
+      await tester.tap(link(label: fileName));
+      expect(tapped, ["/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName"]);
+      expect(
+        tester
+            .widget<Tooltip>(
+              find.descendant(
+                of: link(label: fileName),
+                matching: find.byType(Tooltip),
+              ),
+            )
+            .message,
+        "/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName",
+      );
+      semantics.dispose();
+    });
+  });
+
   testWidgets("a tap opens the original target", (tester) async {
     await pumpMessage(tester: tester);
 
