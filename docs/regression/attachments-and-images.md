@@ -251,7 +251,11 @@ gives the agent their path.
   owner-only on POSIX, and replaced in the same position by a visible
   ``Attached file "<name>": `<path>` `` note, which a new session's live user
   message shows too, and whose path opens the file preview
-  ([file previews](file-previews.md)) when it reads as one. A save that fails removes its folder and
+  ([file previews](file-previews.md)) when it reads as one. In every harness,
+  live and after reload, the user's message shows the typed text, a blank
+  line, then the note: Pi, Codex and the ACP plugins send adjacent text parts
+  as one, a blank line apart, and Codex shows a message's text items the same
+  way. A save that fails removes its folder and
   fails the send visibly. A repeated accepted prompt saves nothing again, and a
   command or a create with a command saves nothing. Deleting a session from
   Sesori removes its uploads folder, and each save starts a best-effort sweep
@@ -298,7 +302,9 @@ older than file uploads).
   after reload.
 - A `file_data` part other than an image for a harness that takes images
   reaches a plugin; a saved name escapes its folder or a saved file isn't
-  owner-only; the note is missing from a new session's live user message; a
+  owner-only; the note is missing from a new session's live user message; the
+  note replaces the typed text or runs on from its last sentence, live or after
+  reload; a
   new session's files land under an id other than its own; a deleted
   session's uploads folder stays.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload

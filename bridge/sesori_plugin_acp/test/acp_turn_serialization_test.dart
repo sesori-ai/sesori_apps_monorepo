@@ -266,6 +266,46 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("a prompt's adjacent text parts reach the agent and its message a blank line apart", () async {
+      const note = 'Attached file "a.txt": `/u/a.txt`';
+      const joined = "Read this exactly.\n\n$note";
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-joined",
+        sessionId: sessionId,
+        parts: const [
+          PluginPromptPart.text(text: "Read this exactly."),
+          PluginPromptPart.text(text: " "),
+          PluginPromptPart.text(text: note),
+          PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "shot.png"),
+          PluginPromptPart.text(text: 'Attached file "b.txt": `/u/b.txt`'),
+        ],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final prompt = await waitForFrame("session/prompt");
+
+      final content = (prompt["params"] as Map)["prompt"] as List;
+      expect(content.map((block) => (block as Map)["type"]), ["text", "image", "text"]);
+      expect((content.first as Map)["text"], joined);
+      expect((content.last as Map)["text"], 'Attached file "b.txt": `/u/b.txt`');
+      final parts = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts.map((part) => part.type), [
+        PluginMessagePartType.text,
+        PluginMessagePartType.file,
+        PluginMessagePartType.text,
+      ]);
+      expect(parts.first.text, joined);
+      expect(parts.last.text, 'Attached file "b.txt": `/u/b.txt`');
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("agent output after prompt admission follows the accepted user message", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
@@ -643,6 +683,35 @@ void main() {
 
       expect(emitted.whereType<BridgeSseMessageUpdated>(), hasLength(1));
       expect(emitted.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("an initial create prompt sends its adjacent text parts as one block, a blank line apart", () async {
+      const note = 'Attached file "a.txt": `/u/a.txt`';
+      await connect();
+
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [
+          PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal\n---\n"),
+          PluginPromptPart.text(text: "visible prompt"),
+          PluginPromptPart.text(text: note),
+        ],
+        userVisibleText: "visible prompt\n\n$note",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
+      await creating;
+
+      final prompt = await waitForFrame("session/prompt");
+      final content = (prompt["params"] as Map)["prompt"] as List;
+      expect(content, [
+        {"type": "text", "text": "[SYSTEM CONTEXT — IMPORTANT] internal\n---\n\n\nvisible prompt\n\n$note"},
+      ]);
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 

@@ -510,8 +510,8 @@ class CodexEventMapper({
             // Codex CLI carries none.
             promptId: _optionalString(map: item, key: "clientId"),
           ),
-          text: _userContentMapper.mapSubmittedText(
-            text: _extractContentText(content: item["content"]),
+          text: _userContentMapper.mapContentText(
+            textParts: _contentTexts(content: item["content"]),
           ),
           attachments: _extractUserContentAttachments(content: item["content"]),
         );
@@ -935,19 +935,24 @@ class CodexEventMapper({
   /// Concatenates the `text` of every text-bearing entry in a codex `content`
   /// list (`text` / `input_text` / `output_text`).
   String? _extractContentText({required Object? content}) {
-    if (content is! List) return null;
-    final buffer = StringBuffer();
+    final result = _contentTexts(content: content).join();
+    return result.isEmpty ? null : result;
+  }
+
+  /// The `text` of every text-bearing entry in a codex `content` list.
+  List<String> _contentTexts({required Object? content}) {
+    if (content is! List) return const [];
+    final texts = <String>[];
     for (final entry in content) {
       final map = _asMap(value: entry);
       if (map == null) continue;
       final type = _optionalString(map: map, key: "type");
       if (type == "text" || type == "input_text" || type == "output_text") {
         final text = map["text"];
-        if (text is String) buffer.write(text);
+        if (text is String) texts.add(text);
       }
     }
-    final result = buffer.toString();
-    return result.isEmpty ? null : result;
+    return texts;
   }
 
   List<PluginMessageAttachment> _extractUserContentAttachments({required Object? content}) {

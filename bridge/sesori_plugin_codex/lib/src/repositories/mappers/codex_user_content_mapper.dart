@@ -1,7 +1,9 @@
 final class const CodexUserContentMapper() {
+  /// Joins a user message's text items a blank line apart, as the bridge joins
+  /// a prompt's visible texts, so a saved file's note stays its own paragraph.
   String? mapContentText({required Iterable<String> textParts}) {
     final visible = textParts.where((text) => text.isNotEmpty && !_isGeneratedCodexContext(text: text));
-    return visible.isEmpty ? null : visible.join();
+    return visible.isEmpty ? null : visible.join("\n\n");
   }
 
   String? mapSubmittedText({required String? text}) => text == null || text.isEmpty ? null : text;

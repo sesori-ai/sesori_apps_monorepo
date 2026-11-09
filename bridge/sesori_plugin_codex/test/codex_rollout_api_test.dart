@@ -1808,6 +1808,52 @@ void main() {
       expect(message.parts.single.text, "first prompt");
     });
 
+    test("message projection keeps a user message's text items a blank line apart", () {
+      // A prompt sent before the plugin joined its text parts: the typed text
+      // and a saved file's note are separate items.
+      const note = 'Attached file "a.txt": `/u/a.txt`';
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/11/08/rollout-user-text-items.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccd0",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "msg-prompt",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": "Read this exactly."},
+                {"type": "input_text", "text": note},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "item_completed",
+              "thread_id": "019a0000-1111-2222-3333-ccccccccccd0",
+              "turn_id": "turn-1",
+              "item": {"type": "UserMessage", "id": "user-live-1"},
+              "started_at_ms": null,
+              "completed_at_ms": null,
+            },
+          }),
+        ],
+      );
+
+      final messages = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccd0",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.parts.single.text, "Read this exactly.\n\n$note");
+    });
+
     test("message projection restores image generations with stable persisted and fallback ids", () {
       final path = _writeRollout(
         codexHome,

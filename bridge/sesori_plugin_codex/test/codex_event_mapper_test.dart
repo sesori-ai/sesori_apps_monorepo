@@ -424,6 +424,29 @@ void main() {
       expect(part.text, "hey");
     });
 
+    test("item userMessage keeps its text items a blank line apart, in order", () {
+      const note = 'Attached file "a.txt": `/u/a.txt`';
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "Read this exactly.", "text_elements": <Object?>[]},
+                {"type": "text", "text": note, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect((events[1] as BridgeSseMessagePartUpdated).part.text, "Read this exactly.\n\n$note");
+    });
+
     test("item userMessage carries the prompt id codex echoes as clientId", () {
       final events = mapper.mapParsed(
         notification: const CodexServerNotification(
