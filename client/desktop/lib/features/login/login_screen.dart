@@ -302,7 +302,7 @@ class _ProviderSignInState() extends State<_ProviderSignIn> {
                   : PregoButtonsSolidHierarchy.tertiary,
               size: PregoButtonsSolidSize.xl,
               contentAtStart: true,
-              labelTrailing: lastUsed == AuthProvider.email ? PregoTag(label: loc.desktopLoginLastUsed) : null,
+              labelTrailing: lastUsed == AuthProvider.email ? _LastUsedChip(isEnabled: !isBusy) : null,
               fullWidth: true,
               onPressed: isBusy ? null : widget.onShowEmailForm,
             ),
