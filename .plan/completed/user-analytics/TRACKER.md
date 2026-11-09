@@ -45,6 +45,25 @@ The operational checkpoint and resume sequence below reflect the state as of
 - **No auth-server work is outstanding**; the worktree was removed. All
   analytics-repo work is merged to `main` (`2c4b06d` at last check).
 
+### Screen-reporting defect and data caveat (2026-08-08, monorepo PR #782)
+
+- `product_screen_viewed` under-reported from launch until the fix: the route
+  source read `RouteMatchList.uri.path`, which never reflects imperative `push`
+  routes, so only `session_detail`, `projects`, `sessions` (1 row) and `login`
+  were reported. Fixed on `main` in `7691fea5`, first released in `v1.7.1`
+  (tagged 2026-08-09). That release date is the annotation boundary for the
+  `screen_usage` step change.
+- **Reporting caveat:** for all periods before `v1.7.1` reached users, 7 of 11
+  screens are *absent from the data*, not zero. `screen_usage` (and Looker
+  chart R9) must not read pre-fix periods as "screen unused". The volume step
+  change and first-ever screen values after the release are an
+  instrumentation fix, not user behaviour.
+- **Step 9 impact:** the three-day reconciliation window (~2026-08-09/11) is
+  pre-fix. Reconcile warehouse vs GA4 as-is, and don't flag missing
+  settings/new-session/diff screens as a pipeline discrepancy.
+- The tracker line "Every GoRouter route maps to the pinned screen enum ..."
+  stays unchecked until the new screens are observed in GA4/DebugView.
+
 ### Verified controlled-table evidence (2026-08-06)
 
 `events_20260804` qualifies as the first fully controlled property day:
@@ -645,6 +664,11 @@ clean zero-finding audit.
 7a. ~~**Restore the per-user BigQuery quota.**~~ Completed 2026-08-08 after the
    drill: per-user restored to the approved 2048 MiB and per-project to its
    original 10240 MiB override (verified via quota list).
+   **Temporary Looker-build deviation (2026-08-12, owner-approved):** raised
+   the per-project override from 10240 MiB to 40960 MiB and the per-user
+   override from 2048 MiB to 8192 MiB while building and validating the report.
+   Restore both overrides to the approved values after step 8 unless the owner
+   approves new steady-state quotas.
 8. **Build and restrict Looker.** Not started. Values already approved in SOPS:
    `DASHBOARD_OWNER=alex@vespr.xyz`,
    `DASHBOARD_VIEWER_GROUP=analytics-dashboard-viewers@vespr.xyz`,
