@@ -541,7 +541,7 @@ Layer 0 — Platform Implementations
    factories inside a single shell. Mobile and desktop may each provide their
    own adapter for shared module_core interfaces.
 └─ Examples: FlutterUrlLauncher, AppLifecycleObserver,
-   FlutterComposerImagePicker, CrashlyticsFailureReporter
+   FlutterComposerFilePicker, CrashlyticsFailureReporter
 └─ No cross-dependency between implementations
 └─ Location: lib/core/platform/; adapters both shells use unchanged live once
    in module_app_ui/lib/src/platform/ (B-C1) and each shell registers them
