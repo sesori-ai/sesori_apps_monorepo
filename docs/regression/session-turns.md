@@ -674,7 +674,8 @@ defaults and queued client sends coherent.
   oldest first with a blank line between each, ahead of what the composer
   already held; dictated ones keep their voice marking, a command becomes its
   literal `/name args` text, and a staged command chip becomes text too. Images
-  this surface still holds come back before the composer's own; a bridge entry
+  this surface still holds come back after the composer's own, so images already
+  staged are never pushed past the attachment budget; a bridge entry
   sent from another surface, or past the bounded preview budget, returns its
   words only. Their queued rows leave as the draft fills (an ambiguous failure
   keeps the bridge's rows until its queue event, accepting a possible duplicate

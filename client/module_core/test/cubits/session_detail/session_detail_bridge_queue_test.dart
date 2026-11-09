@@ -2140,7 +2140,9 @@ void main() {
         cubit.composerDraft,
         ComposerDraft(text: "look\n\n/review spoken", voiceSpans: [VoiceOriginSpan(start: 14, end: 20)]),
       );
-      expect(cubit.restoredAttachments, [staged, held]);
+      // The composer's own images go first: the restore stops at the first
+      // image over the budget, and those already fit before the stop.
+      expect(cubit.restoredAttachments, [held, staged]);
       final state = cubit.state as SessionDetailLoaded;
       expect(state.stagedCommand, isNull);
       expect(state.queuedMessages, isEmpty);

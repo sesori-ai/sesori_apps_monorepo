@@ -3508,7 +3508,7 @@ class SessionDetailCubit(
   }
 
   /// Puts [unsent] into the composer ahead of what it holds, each after a
-  /// blank line, with their images before its own. A [stagedCommand] becomes
+  /// blank line, with their images after its own. A [stagedCommand] becomes
   /// its literal text, as the restored words would otherwise be its arguments.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
     final held = switch (stagedCommand) {
@@ -3518,7 +3518,9 @@ class SessionDetailCubit(
     saveComposerDraft(
       draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
     );
-    _restoredAttachments = [for (final prompt in unsent) ...prompt.attachments, ..._composerAttachments];
+    // The composer stages these up to its budget and stops at the first that
+    // does not fit, so its own images, which fit before the stop, go first.
+    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
     _composerRestorations++;
   }
 
