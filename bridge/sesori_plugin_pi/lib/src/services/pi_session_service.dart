@@ -472,7 +472,8 @@ final class PiSessionService({
     final state = _sessions.putIfAbsent(sessionId, () => _PiSessionTurnState(initialDirectory: directory));
     state.directory = directory;
     state.idleGeneration++;
-    final wasIdle = !state.hasWork;
+    // A stop that began idle counts as work without publishing busy.
+    final wasIdle = state.status == const PluginSessionStatus.idle();
     state.queue.add(turn);
     if (wasIdle) {
       state.status = const PluginSessionStatus.busy();
