@@ -665,6 +665,22 @@ defaults and queued client sends coherent.
   Repeated taps on one prompt share the pending cancellation attempt without
   generating a false refusal, and a failed attempt can be retried. Aborting the
   session clears every remaining plugin-owned entry.
+- Stop never loses a typed message. An accepted stop, a stop whose sub-agents
+  did not all stop, and an ambiguous stop failure move every queued message the
+  transcript does not show yet back into the composer: bridge-queued entries
+  (dispatched ones too, since Claude steering a stop interrupts may never be
+  echoed), sends awaiting their listing, the one sending, a failed one, and those
+  staged locally, including any staged while the stop ran. They are joined
+  oldest first with a blank line between each, ahead of what the composer
+  already held; dictated ones keep their voice marking, a command becomes its
+  literal `/name args` text, and a staged command chip becomes text too. Images
+  this surface still holds come back after the composer's own, so images already
+  staged are never pushed past the attachment budget; a bridge entry
+  sent from another surface, or past the bounded preview budget, returns its
+  words only. Their queued rows leave as the draft fills (an ambiguous failure
+  keeps the bridge's rows until its queue event, accepting a possible duplicate
+  over a loss). A refused or not-performed stop leaves the queue and composer
+  untouched.
 - One prompt renders as one bubble that transforms in place: sending (staged
   locally while the POST is in flight, and accepted but not yet listed by the
   bridge) → queued (bridge-owned) → sent (the
@@ -960,7 +976,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   model to a stale catalog default on the next send.
 - A send or cancel succeeds against an archived session, an aborted turn
   triggers a completion notification, or queued sends reorder, vanish, or
-  resend. A plain Claude prompt sent to a busy resident process waits for the
+  resend. A stop drops a queued or still-sending message instead of returning
+  it to the composer, returns one the transcript already shows, reorders them,
+  or overwrites what the composer held. A plain Claude prompt sent to a busy resident process waits for the
   running turn to finish before reaching stdin, carries a priority other than
   `next`, or incorrectly reports idle between an active turn and its queued
   continuation. A bridge-queued prompt disappears after leaving and reopening

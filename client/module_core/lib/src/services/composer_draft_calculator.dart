@@ -1,4 +1,7 @@
+import "package:sesori_shared/sesori_shared.dart";
+
 import "../foundation/models/composer/composer_draft.dart";
+import "../foundation/models/composer/queued_session_submission.dart";
 
 /// Pure edit transformations for composer text and voice-origin spans.
 final class const ComposerDraftCalculator() {
@@ -157,6 +160,60 @@ final class const ComposerDraftCalculator() {
     replacement: replacement,
     replacementIsVoice: false,
   );
+
+  /// The words of a queued [submission] as the composer held them, or null
+  /// for one that carries only images.
+  ComposerDraft? submissionDraft({required QueuedSessionSubmission submission}) {
+    final text = submission.plainText;
+    if (text == null) return null;
+    return submission.command == null && submission.inputMode == ComposerInputMode.voiceAssisted
+        ? ComposerDraft(
+            text: text,
+            voiceSpans: [VoiceOriginSpan(start: 0, end: text.length)],
+          )
+        : ComposerDraft.typed(text: text);
+  }
+
+  /// The words of a bridge-queued [prompt], with a dictated one's marker taken
+  /// off again, or null for one that carries only attachments.
+  ComposerDraft? bridgePromptDraft({required QueuedSessionPrompt prompt}) =>
+      switch ((command: prompt.command, text: prompt.text)) {
+        (command: null, text: null) => null,
+        (:final String command, text: null) => ComposerDraft.typed(text: "/$command"),
+        (:final String command, :final String text) => ComposerDraft.typed(text: "/$command $text"),
+        (command: null, :final String text) => switch (unwrapDictatedText(text: text)) {
+          final words when words == text || words.isEmpty => ComposerDraft.typed(text: text),
+          final words => ComposerDraft(
+            text: words,
+            voiceSpans: [VoiceOriginSpan(start: 0, end: words.length)],
+          ),
+        },
+      };
+
+  /// [args], the composer's words under a staged [command], as the literal
+  /// "/command args" text, so dictated arguments keep their spans.
+  ComposerDraft typedCommand({required String command, required ComposerDraft args}) {
+    final trimmed = trim(draft: args);
+    if (trimmed.text.isEmpty) return ComposerDraft.typed(text: "/$command");
+    return replaceTyped(draft: trimmed, start: 0, end: 0, replacement: "/$command ");
+  }
+
+  /// [drafts] in order as one draft, a blank line between each, so every
+  /// draft keeps its voice spans at its new offset. Blank drafts add nothing.
+  ComposerDraft joinParagraphs({required List<ComposerDraft> drafts}) {
+    final text = StringBuffer();
+    final voiceSpans = <VoiceOriginSpan>[];
+    for (final draft in drafts) {
+      if (draft.text.trim().isEmpty) continue;
+      if (text.isNotEmpty) text.write("\n\n");
+      final offset = text.length;
+      for (final span in draft.voiceSpans) {
+        voiceSpans.add(VoiceOriginSpan(start: offset + span.start, end: offset + span.end));
+      }
+      text.write(draft.text);
+    }
+    return ComposerDraft(text: text.toString(), voiceSpans: voiceSpans);
+  }
 
   ComposerDraft appendVoiceTranscript({
     required ComposerDraft draft,
