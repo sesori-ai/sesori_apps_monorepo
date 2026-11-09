@@ -246,6 +246,16 @@ class _PromptInputState() extends State<PromptInput> {
   final _composerFocusNode = FocusNode(debugLabel: "PromptInput composer", skipTraversal: true);
   late final Action<PasteTextIntent> _pasteAction;
   int _pasteGeneration = 0;
+
+  /// The last answer each capability gave, kept while it reads null. A
+  /// dropped connection resets both to null until the bridge answers again,
+  /// which is a blip rather than a new answer: the plus, pastes and drops
+  /// keep offering and routing by these, and only a change between two
+  /// answers discards what is in flight. Send and the stranded sweep read
+  /// the widget's values, so Send waits for the real answer and a later
+  /// `false` still clears what it strands.
+  bool? _knownAttachmentsSupported;
+  bool? _knownFileUploadsSupported;
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
@@ -355,6 +365,8 @@ class _PromptInputState() extends State<PromptInput> {
       _previousEditingValue = _controller.value;
     }
     _restoreInitialAttachments();
+    _knownAttachmentsSupported = widget.attachmentsSupported;
+    _knownFileUploadsSupported = widget.fileUploadsSupported;
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
@@ -567,8 +579,9 @@ class _PromptInputState() extends State<PromptInput> {
   );
 
   /// Whether the plus, a paste or a drop can stage anything: an image for a
-  /// harness that takes them, or a file for a bridge that saves uploads.
-  bool get _takesAttachments => (widget.attachmentsSupported ?? false) || (widget.fileUploadsSupported ?? false);
+  /// harness that takes them, or a file for a bridge that saves uploads. Read
+  /// from the last answers, so a reconnect doesn't switch them off.
+  bool get _takesAttachments => (_knownAttachmentsSupported ?? false) || (_knownFileUploadsSupported ?? false);
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
@@ -659,6 +672,13 @@ class _PromptInputState() extends State<PromptInput> {
     _insertsSettled = Future<void>.value();
   }
 
+  /// Whether a capability gave an answer other than its last one. Losing an
+  /// answer (null) is no change, and neither is a first answer: anything
+  /// routed before it treated the capability as absent, so it never stages
+  /// more than the answer allows.
+  static bool _capabilityAnswerChanged({required bool? known, required bool? current}) =>
+      known != null && current != null && known != current;
+
   void _cancelHeldSend() {
     if (_sendHold case _SendHeld(:final cancelled) when !cancelled.isCompleted) cancelled.complete();
   }
@@ -729,9 +749,21 @@ class _PromptInputState() extends State<PromptInput> {
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
     final restorationRequested = widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
-    if (oldWidget.attachmentsSupported != widget.attachmentsSupported ||
-        oldWidget.fileUploadsSupported != widget.fileUploadsSupported) {
+    // A pick, paste or drop in flight was routed by the answers when it
+    // started, so only a different answer makes it stale. A null between two
+    // equal answers is a connection blip: a Files pick that outlives Android
+    // closing the backgrounded app's socket still lands.
+    if (_capabilityAnswerChanged(known: _knownAttachmentsSupported, current: widget.attachmentsSupported) ||
+        _capabilityAnswerChanged(known: _knownFileUploadsSupported, current: widget.fileUploadsSupported)) {
       _startPasteGeneration();
+    }
+    if (draftChanged) {
+      // Another composer's answers say nothing about this one's.
+      _knownAttachmentsSupported = widget.attachmentsSupported;
+      _knownFileUploadsSupported = widget.fileUploadsSupported;
+    } else {
+      _knownAttachmentsSupported = widget.attachmentsSupported ?? _knownAttachmentsSupported;
+      _knownFileUploadsSupported = widget.fileUploadsSupported ?? _knownFileUploadsSupported;
     }
     if (draftChanged || restorationRequested) {
       // A draft identity change means this state moved to another composer. A
@@ -2639,7 +2671,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// Nearly every harness takes images, and new bridges save files, so the
   /// action holds its place while support is unknown instead of growing in
   /// once it is known. It leaves only when neither can take anything.
-  bool get _offersAttachImage => (widget.attachmentsSupported ?? true) || (widget.fileUploadsSupported ?? true);
+  bool get _offersAttachImage => (_knownAttachmentsSupported ?? true) || (_knownFileUploadsSupported ?? true);
 
   /// Where the plus picks from. Desktop's file dialog covers everything. On
   /// mobile, Photos applies whenever an image can be staged, inline or saved
@@ -2650,7 +2682,7 @@ class _PromptInputState() extends State<PromptInput> {
       ComposerAttachKind.files => const [ComposerPickSource.files],
       ComposerAttachKind.photosAndFiles => [
         ComposerPickSource.photos,
-        if (widget.fileUploadsSupported ?? false) ComposerPickSource.files,
+        if (_knownFileUploadsSupported ?? false) ComposerPickSource.files,
       ],
     };
   }
@@ -2704,8 +2736,8 @@ class _PromptInputState() extends State<PromptInput> {
   Future<void> _handleAttach({required ComposerPickSource source}) => _attach(
     outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
       source: source,
-      attachmentsSupported: widget.attachmentsSupported,
-      fileUploadsSupported: widget.fileUploadsSupported,
+      attachmentsSupported: _knownAttachmentsSupported,
+      fileUploadsSupported: _knownFileUploadsSupported,
       stagedAttachmentBytes: stagedAttachmentBytes,
     ),
   );
@@ -2737,8 +2769,8 @@ class _PromptInputState() extends State<PromptInput> {
         outcome: (stagedAttachmentBytes) => _attachmentDispatcher.routeHostPaths(
           paths: paths,
           source: ComposerAttachmentSource.drop,
-          attachmentsSupported: widget.attachmentsSupported,
-          fileUploadsSupported: widget.fileUploadsSupported,
+          attachmentsSupported: _knownAttachmentsSupported,
+          fileUploadsSupported: _knownFileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
         ),
       ),
@@ -2899,8 +2931,8 @@ class _PromptInputState() extends State<PromptInput> {
         bytes: bytes,
         filename: null,
         source: ComposerAttachmentSource.paste,
-        attachmentsSupported: widget.attachmentsSupported,
-        fileUploadsSupported: widget.fileUploadsSupported,
+        attachmentsSupported: _knownAttachmentsSupported,
+        fileUploadsSupported: _knownFileUploadsSupported,
         stagedAttachmentBytes: _stagedAttachmentBytes,
       );
       await earlierInsertsSettled;
@@ -2959,8 +2991,8 @@ class _PromptInputState() extends State<PromptInput> {
       pastedOver: initialValue,
       outcome: (stagedAttachmentBytes) => dispatcher.routeClipboardPaths(
         paths: paths,
-        attachmentsSupported: widget.attachmentsSupported,
-        fileUploadsSupported: widget.fileUploadsSupported,
+        attachmentsSupported: _knownAttachmentsSupported,
+        fileUploadsSupported: _knownFileUploadsSupported,
         stagedAttachmentBytes: stagedAttachmentBytes,
       ),
     );
@@ -3008,11 +3040,11 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
+  /// A paste only starts while the composer takes attachments, and a changed
+  /// answer starts a new paste generation, so a capability that reads null
+  /// meanwhile (a connection blip) does not discard the image.
   bool _isPasteStale({required String draftIdentity, required int pasteGeneration}) {
-    return !mounted ||
-        draftIdentity != widget.draftIdentity ||
-        pasteGeneration != _pasteGeneration ||
-        !_takesAttachments;
+    return !mounted || draftIdentity != widget.draftIdentity || pasteGeneration != _pasteGeneration;
   }
 
   /// Stages an attachment and reports whether it fit the aggregate budget.
