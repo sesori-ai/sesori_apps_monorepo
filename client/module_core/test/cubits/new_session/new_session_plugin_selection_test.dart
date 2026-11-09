@@ -4,6 +4,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
@@ -90,6 +91,7 @@ void main() {
     late MockProjectRepository projectRepository;
     late MockConnectionService connectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
+    late StreamController<SseEvent> connectionEvents;
     late NewSessionSelectionTracker selectionTracker;
 
     setUpAll(registerAllFallbackValues);
@@ -103,8 +105,10 @@ void main() {
       projectRepository = MockProjectRepository();
       connectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(connectedStatus);
+      connectionEvents = StreamController<SseEvent>.broadcast();
       selectionTracker = NewSessionSelectionTracker();
       when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
+      when(() => connectionService.events).thenAnswer((_) => connectionEvents.stream);
       when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       when(
         () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -136,7 +140,10 @@ void main() {
       );
     });
 
-    tearDown(() => connectionStatus.close());
+    tearDown(() async {
+      await connectionStatus.close();
+      await connectionEvents.close();
+    });
 
     NewSessionCubit buildCubit({NewSessionOptionsService? optionsService, String? projectId}) => NewSessionCubit(
       connectionService: connectionService,
@@ -370,6 +377,110 @@ void main() {
 
       expect(discoveryCalls, 3);
       expect(cubit.state.agentModelData?.plugins, [refreshedDefault, unavailableB]);
+    });
+
+    void emitPluginManagementChanged() => connectionEvents.add(
+      SseEvent(data: const SesoriSseEvent.pluginManagementChanged(snapshotToken: "token")),
+    );
+
+    test("a harness set up elsewhere joins the list without disturbing the selection", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          _pluginSnapshot(bridgeId: "br_test", plugins: discoveryCalls == 1 ? [pluginA] : [pluginA, pluginB]),
+        );
+      });
+      when(
+        () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      final before = cubit.state.agentModelData ?? fail("no agent and model data");
+      expect(before.plugins, [pluginA]);
+      final states = <NewSessionState>[];
+      final subscription = cubit.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      emitPluginManagementChanged();
+      await _waitUntil(() => cubit.state.agentModelData?.plugins?.length == 2);
+
+      final after = cubit.state.agentModelData ?? fail("no agent and model data");
+      expect(discoveryCalls, 2);
+      expect(after.plugins, [pluginA, pluginB]);
+      expect(after.plugin, pluginA);
+      expect(after.optionsState, before.optionsState);
+      expect(states.map((state) => state.agentModelData?.isLoading), everyElement(isFalse));
+    });
+
+    test("a harness change elsewhere that leaves the list as it was emits nothing", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, pluginB]));
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      final states = <NewSessionState>[];
+      final subscription = cubit.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      emitPluginManagementChanged();
+      await _waitUntil(() => discoveryCalls == 2);
+      await pumpEventQueue();
+
+      expect(states, isEmpty);
+    });
+
+    test("the selected harness turned off elsewhere falls back to the default", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          _pluginSnapshot(bridgeId: "br_test", plugins: discoveryCalls == 1 ? [pluginA, pluginB] : [pluginA]),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectPlugin(pluginId: "plugin-b");
+      await _waitForComposer(cubit);
+      expect(cubit.state.agentModelData?.plugin, pluginB);
+
+      emitPluginManagementChanged();
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return data?.plugin == pluginA && !(data?.isLoading ?? true);
+      });
+
+      expect(cubit.state.agentModelData?.plugins, [pluginA]);
+    });
+
+    test("the first harness set up elsewhere is discovered and selected", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(
+          _pluginSnapshot(bridgeId: "br_test", plugins: discoveryCalls == 1 ? const [] : [pluginA]),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitUntil(() => cubit.state.agentModelData?.plugins?.isEmpty ?? false);
+
+      emitPluginManagementChanged();
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return data?.plugin == pluginA && !(data?.isLoading ?? true);
+      });
+
+      expect(cubit.state.agentModelData?.plugins, [pluginA]);
     });
 
     test("reconnect discovery cannot be superseded by a stale plugin selection", () async {
