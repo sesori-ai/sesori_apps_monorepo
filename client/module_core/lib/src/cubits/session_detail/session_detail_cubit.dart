@@ -426,7 +426,8 @@ class SessionDetailCubit(
     switch (current) {
       case SessionDetailLoaded(:final interaction):
         if (!next.canInteract) {
-          emit(_endTurnInHarnessBlock(current: current.copyWith(interaction: next)));
+          final ended = _endTurnInHarnessBlock(current: current.copyWith(interaction: next));
+          emit(_isHarnessBlock(interaction: next) ? _returnUndeliveredToComposer(current: ended) : ended);
         } else if (!interaction.canInteract) {
           _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
         } else {
@@ -448,18 +449,67 @@ class SessionDetailCubit(
   /// row stops. A status the harness sends after that, such as a retry still in
   /// flight, keeps it stopped while the block lasts.
   SessionDetailLoaded _endTurnInHarnessBlock({required SessionDetailLoaded current}) {
-    if (current.interaction case SessionInteractionBlocked(
+    if (!_isHarnessBlock(interaction: current.interaction)) return current;
+    return current.copyWith(
+      sessionStatus: const SessionStatus.idle(),
+      childStatuses: {
+        for (final MapEntry(:key, :value) in current.childStatuses.entries)
+          key: isChildRunning(status: value) ? const SessionStatus.idle() : value,
+      },
+    );
+  }
+
+  /// Whether [interaction] says the harness lost its login or setup, which
+  /// shuts it down until Check setup.
+  static bool _isHarnessBlock({required SessionInteractionState interaction}) {
+    if (interaction case SessionInteractionBlocked(
       reason: SessionInteractionBlockedReason.authenticationRequired || SessionInteractionBlockedReason.unavailable,
     )) {
-      return current.copyWith(
-        sessionStatus: const SessionStatus.idle(),
-        childStatuses: {
-          for (final MapEntry(:key, :value) in current.childStatuses.entries)
-            key: isChildRunning(status: value) ? const SessionStatus.idle() : value,
-        },
-      );
+      return true;
     }
-    return current;
+    return false;
+  }
+
+  /// A harness shut down by a block drops the sends it accepted and had not
+  /// shown yet, so Check setup's refresh would find them gone. They go back
+  /// into the composer ahead of its draft instead, as a stop returns queued
+  /// messages, for a resend once it returns. A send the transcript shows
+  /// stays there as a sent message.
+  SessionDetailLoaded _returnUndeliveredToComposer({required SessionDetailLoaded current}) {
+    final accepted = {
+      for (final prompt in current.bridgeQueuedPrompts) prompt.id,
+      for (final (:submission, since: _) in _promptQueue.awaitingBridge) submission.promptId,
+    };
+    final delivered = {
+      for (final message in current.messages)
+        if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
+    };
+    final returned = <String>{};
+    final undelivered = [
+      for (final prompt in _unsentQueuedPrompts())
+        if (accepted.contains(prompt.promptId) && !delivered.contains(prompt.promptId) && returned.add(prompt.promptId))
+          prompt,
+    ];
+    if (undelivered.isEmpty) return current;
+    for (final prompt in undelivered) {
+      _promptQueue.removeByPromptId(prompt.promptId);
+    }
+    final restored = undelivered.any((prompt) => prompt.draft != null || prompt.attachments.isNotEmpty);
+    if (restored) _restoreToComposer(unsent: undelivered, stagedCommand: current.stagedCommand);
+    final bridgePrompts = [
+      for (final prompt in current.bridgeQueuedPrompts)
+        if (!returned.contains(prompt.id)) prompt,
+    ];
+    final queue = _queueView(bridgePrompts: bridgePrompts);
+    return current.copyWith(
+      bridgeQueuedPrompts: bridgePrompts,
+      bridgePromptAttachments: queue.bridgePromptAttachments,
+      queuedMessages: queue.queuedMessages,
+      awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+      localSend: queue.localSend,
+      stagedCommand: restored ? null : current.stagedCommand,
+      composerRestorations: _composerRestorations,
+    );
   }
 
   /// Check setup: has the bridge inspect the session's harness setup again, as

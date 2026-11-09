@@ -25,6 +25,7 @@ import "package:sesori_dart_core/src/foundation/models/session_launch/session_la
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_composer.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
@@ -180,6 +181,8 @@ void main() {
       bool firstLoadFails = false,
       // Blocks the session's harness, with nothing stored for the session.
       bool harnessBlocked = false,
+      // The harness's setup and runtime as the bridge reports them over time.
+      ValueStream<PluginManagementLoadResult>? managementSnapshots,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -258,6 +261,9 @@ void main() {
         );
         final snapshots = Stream.value(blocked).shareValueSeeded(blocked);
         when(() => pluginManagementService.snapshots).thenAnswer((_) => snapshots);
+      }
+      if (managementSnapshots != null) {
+        when(() => pluginManagementService.snapshots).thenAnswer((_) => managementSnapshots);
       }
       when(
         () => mockLoadService.reload(
@@ -2628,6 +2634,170 @@ void main() {
       await createLoadedCubit(sessionLaunchRepository: repository);
 
       expect(storage.readAll(), isEmpty);
+    });
+
+    // A gateway or login failure mid-turn makes the bridge shut the harness
+    // down, dropping the sends it accepted and had not shown yet.
+    group("a harness block", () {
+      final ready = managementFixture(
+        pluginId: "plugin-1",
+        setup: PluginSetupState.ready,
+        runtime: PluginRuntimeState.active,
+      );
+      final gatewayRejected = managementFixture(
+        pluginId: "plugin-1",
+        setup: PluginSetupState.unavailable,
+        runtime: PluginRuntimeState.stopping,
+        actionHint: "Check the gateway's credentials and configuration, then refresh setup.",
+      );
+      late BehaviorSubject<PluginManagementLoadResult> snapshots;
+
+      setUp(() {
+        snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(ready);
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: _sessionId,
+            promptId: any(named: "promptId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(null));
+      });
+      tearDown(() => snapshots.close());
+
+      Future<void> block(SessionDetailCubit cubit) async {
+        snapshots.add(gatewayRejected);
+        await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).interaction.canInteract);
+      }
+
+      test("puts an accepted send the harness never showed back into the composer", () async {
+        final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: null);
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots, supportsPromptAttachments: true);
+        await cubit.sendMessage(
+          text: "Fix the build",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [image],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty);
+
+        await block(cubit);
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "Fix the build"));
+        expect(cubit.restoredAttachments, [image]);
+        final state = cubit.state as SessionDetailLoaded;
+        expect(state.composerRestorations, 1);
+        // Its "Sending to" row leaves as the draft fills.
+        expect(state.awaitingBridgeSubmissions, isEmpty);
+
+        // Check setup's refresh finds the prompt gone and leaves the draft be.
+        snapshots.add(ready);
+        await cubit.checkHarnessSetup();
+        expect((cubit.state as SessionDetailLoaded).interaction.canInteract, isTrue);
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "Fix the build"));
+        expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
+      });
+
+      test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
+        const dispatched = QueuedSessionPrompt(
+          id: "prm_steering",
+          dispatchState: QueuedPromptDispatchState.dispatched,
+          text: "steered, never echoed",
+          command: null,
+          createdAt: 101,
+        );
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots, snapshotQueue: const [dispatched]);
+        await cubit.sendMessage(
+          text: "and then",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty);
+        cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+
+        await block(cubit);
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "steered, never echoed\n\nand then\n\nhalf typed"));
+        final state = cubit.state as SessionDetailLoaded;
+        expect(state.composerRestorations, 1);
+        expect(state.bridgeQueuedPrompts, isEmpty);
+        expect(state.awaitingBridgeSubmissions, isEmpty);
+      });
+
+      test("leaves a send the transcript shows as its sent message", () async {
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots);
+        await cubit.sendMessage(
+          text: "delivered",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty);
+        final deliveredId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
+        sessionEvents
+          ..add(
+            SesoriMessageUpdated(
+              info: Message.user(
+                id: "echo-1",
+                sessionID: _sessionId,
+                agent: null,
+                time: const MessageTime(created: 200, completed: null),
+                promptId: deliveredId,
+              ),
+            ),
+          )
+          ..add(_textPartFor(messageId: "echo-1", text: "delivered"));
+        await cubit.sendMessage(
+          text: "never shown",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await _awaitCondition(
+          () => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.any(
+            (entry) => entry.submission.promptId != deliveredId,
+          ),
+        );
+
+        await block(cubit);
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "never shown"));
+        expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
+      });
+
+      test("puts dictated words back as dictated", () async {
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots);
+        await cubit.sendMessage(
+          text: "fix the build",
+          command: null,
+          inputMode: ComposerInputMode.voiceAssisted,
+          attachments: const [],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty);
+
+        await block(cubit);
+
+        expect(
+          cubit.composerDraft,
+          ComposerDraft(text: "fix the build", voiceSpans: [VoiceOriginSpan(start: 0, end: 13)]),
+        );
+      });
+
+      test("restores nothing when every send has been shown", () async {
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots);
+        cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+
+        await block(cubit);
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "half typed"));
+        expect((cubit.state as SessionDetailLoaded).composerRestorations, 0);
+      });
     });
 
     group("launch handoff", () {
