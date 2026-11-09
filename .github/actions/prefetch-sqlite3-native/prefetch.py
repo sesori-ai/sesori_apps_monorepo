@@ -6,8 +6,17 @@ and reuses a file already there when its SHA-256 matches the hash the package
 pins. Those release downloads intermittently return a 504 page, which fails
 the hook. This script puts the same pinned, hash-verified file in place first,
 from the CI cache or a retried download, so the hook takes its reuse path.
-Run by .github/actions/prefetch-sqlite3-native; CI only.
+Run by .github/actions/prefetch-sqlite3-native in CI and release workflows;
+the hook accepts only the pinned hash, so the built bytes never change.
+
+Locally, after `pub get`, it seeds a worktree whose hook download failed. The
+default seeds this host's libraries; add `--platform ios` or `--platform
+android` for those targets. On Windows, run `python` instead of `python3`:
+    python3 .github/actions/prefetch-sqlite3-native/prefetch.py seed --workspace client
 """
+
+# Runners may ship a python3 older than 3.10.
+from __future__ import annotations
 
 import argparse
 import hashlib
@@ -19,6 +28,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from platform import machine, system
 from urllib.parse import urljoin, urlparse
 from urllib.request import url2pathname
 
@@ -26,6 +36,9 @@ REPO = "simolus3/sqlite3.dart"
 URL = f"https://github.com/{REPO}/releases/download/{{tag}}/{{name}}"
 SHARED_BUILD_DIR = Path(".dart_tool/hooks_runner/shared/sqlite3/build")
 ARCHITECTURES = {"X64": "x64", "ARM64": "arm64"}
+# platform.system() and platform.machine() values, as RUNNER_OS and RUNNER_ARCH names.
+HOST_SYSTEMS = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}
+HOST_MACHINES = {"x86_64": "X64", "amd64": "X64", "arm64": "ARM64", "aarch64": "ARM64"}
 # Bounds each gh or curl run so a stalled download falls through to a retry.
 COMMAND_TIMEOUT_SECONDS = 120
 
@@ -35,7 +48,7 @@ def fail(message: str) -> None:
     sys.exit(1)
 
 
-def sqlite3_root(*, workspace: Path) -> Path:
+def sqlite3_root(*, workspace: Path) -> Path | None:
     config_file = (workspace / ".dart_tool/package_config.json").resolve()
     config = json.loads(config_file.read_text())
     for package in config["packages"]:
@@ -43,11 +56,19 @@ def sqlite3_root(*, workspace: Path) -> Path:
             # A rootUri may be relative to the config file.
             root = urljoin(config_file.as_uri(), package["rootUri"])
             return Path(url2pathname(urlparse(root).path))
-    fail(f"package:sqlite3 is not in {workspace}'s package config; run dart pub get first")
+    return None
 
 
-def pinned_assets(*, workspace: Path) -> tuple[str, dict[str, str]]:
-    hashes_file = sqlite3_root(workspace=workspace) / "lib/src/hook/asset_hashes.dart"
+def pinned_assets(*, workspace: Path) -> tuple[str, dict[str, str]] | None:
+    """The pinned release tag and hashes, or None when nothing downloads them."""
+    root = sqlite3_root(workspace=workspace)
+    if root is None or not (root / "hook/build.dart").is_file():
+        # Release workflows may rebuild an older source whose sqlite3 has no build hook.
+        print(f"::notice::{workspace} resolves no sqlite3 build hook; nothing to prefetch")
+        return None
+    hashes_file = root / "lib/src/hook/asset_hashes.dart"
+    if not hashes_file.is_file():
+        fail(f"{hashes_file} is missing; update this script for the new sqlite3 hook")
     text = hashes_file.read_text()
     tag = re.search(r"releaseTag = '([^']+)'", text)
     hashes = dict(re.findall(r"'([^']+)': '([0-9a-f]{64})'", text))
@@ -56,12 +77,19 @@ def pinned_assets(*, workspace: Path) -> tuple[str, dict[str, str]]:
     return tag.group(1), hashes
 
 
-def runner_assets() -> list[tuple[str, str]]:
-    """(release asset name, file name the hook stores) for this runner."""
-    runner_os = os.environ["RUNNER_OS"]
-    arch = ARCHITECTURES.get(os.environ["RUNNER_ARCH"])
+def platform_assets(*, platform: str) -> list[tuple[str, str]]:
+    """(release asset name, file name the hook stores) for the build target."""
+    if platform == "ios":
+        return [("libsqlite3.arm64.ios.dylib", "libsqlite3.dylib")]
+    if platform == "android":
+        # The ABIs `flutter build appbundle --release` targets by default.
+        return [(f"libsqlite3.{a}.android.so", "libsqlite3.so") for a in ("arm", "arm64", "x64")]
+    # Outside Actions, detect this machine.
+    runner_os = os.environ.get("RUNNER_OS") or HOST_SYSTEMS.get(system(), system())
+    runner_arch = os.environ.get("RUNNER_ARCH") or HOST_MACHINES.get(machine().lower(), machine())
+    arch = ARCHITECTURES.get(runner_arch)
     if arch is None:
-        fail(f"Unsupported runner architecture {os.environ['RUNNER_ARCH']}")
+        fail(f"Unsupported architecture {runner_arch}")
     if runner_os == "Linux":
         return [(f"libsqlite3.{arch}.linux.so", "libsqlite3.so")]
     if runner_os == "macOS":
@@ -111,10 +139,10 @@ def download(*, tag: str, name: str, destination: Path, expected: str) -> None:
     fail(f"Could not download a verified {name} from {REPO} release {tag}")
 
 
-def targets(*, hashes: dict[str, str]) -> list[tuple[str, str, str]]:
-    """(release asset name, stored file name, pinned SHA-256) for this runner."""
+def targets(*, hashes: dict[str, str], platform: str) -> list[tuple[str, str, str]]:
+    """(release asset name, stored file name, pinned SHA-256) for the build target."""
     pinned = []
-    for name, stored_name in runner_assets():
+    for name, stored_name in platform_assets(platform=platform):
         expected = hashes.get(name)
         if expected is None:
             fail(f"package:sqlite3 pins no hash for {name}")
@@ -122,23 +150,34 @@ def targets(*, hashes: dict[str, str]) -> list[tuple[str, str, str]]:
     return pinned
 
 
-def plan(*, workspace: Path) -> None:
-    tag, hashes = pinned_assets(workspace=workspace)
-    # The pinned hashes, not just the names, so a re-pinned asset gets a fresh cache.
-    pins = "-".join(f"{name}@{expected[:12]}" for name, _, expected in targets(hashes=hashes))
+def plan(*, workspace: Path, platform: str) -> None:
+    pinned = pinned_assets(workspace=workspace)
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+        if pinned is None:
+            # An empty key makes the action skip its cache and seed steps.
+            output.write("key=\n")
+            return
+        tag, hashes = pinned
+        # The pinned hashes, not just the names, so a re-pinned asset gets a fresh cache.
+        pins = "-".join(f"{name}@{expected[:12]}" for name, _, expected in targets(hashes=hashes, platform=platform))
         output.write(f"path={(workspace / SHARED_BUILD_DIR).as_posix()}\n")
         output.write(f"key=sqlite3-native-{tag}-{pins}\n")
 
 
-def seed(*, workspace: Path) -> None:
-    tag, hashes = pinned_assets(workspace=workspace)
-    for name, stored_name, expected in targets(hashes=hashes):
+def seed(*, workspace: Path, platform: str) -> None:
+    pinned = pinned_assets(workspace=workspace)
+    if pinned is None:
+        return
+    tag, hashes = pinned
+    for name, stored_name, expected in targets(hashes=hashes, platform=platform):
         # The hook's PrebuiltSqliteLibrary.dirname.
         destination = workspace / SHARED_BUILD_DIR / f"download-{expected[:8]}" / stored_name
-        if destination.is_file() and sha256(path=destination) == expected:
-            print(f"Reusing cached sqlite3 native library {destination} ({name})")
-            continue
+        if destination.is_file():
+            if sha256(path=destination) == expected:
+                print(f"Reusing cached sqlite3 native library {destination} ({name})")
+                continue
+            # download() swaps in the verified file over it.
+            print(f"::warning::Replacing {destination}, whose SHA-256 does not match {name}")
         destination.parent.mkdir(parents=True, exist_ok=True)
         download(tag=tag, name=name, destination=destination, expected=expected)
 
@@ -147,8 +186,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["plan", "seed"])
     parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--platform", choices=["host", "ios", "android"], default="host")
     args = parser.parse_args()
-    {"plan": plan, "seed": seed}[args.command](workspace=args.workspace)
+    {"plan": plan, "seed": seed}[args.command](workspace=args.workspace, platform=args.platform)
 
 
 if __name__ == "__main__":

@@ -432,7 +432,9 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                               header,
                               _AnimatedOptions(
                                 key: const Key("new_session_options"),
-                                gap: PregoSpacing.lg,
+                                gap: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                                    ? PregoSpacing.md
+                                    : PregoSpacing.lg,
                                 options: options,
                               ),
                             ],
@@ -471,7 +473,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                 if (isSending)
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: math.max(0, (constraints.maxWidth - chrome.maxContentWidth) / 2) + 16,
+                      horizontal: math.max(0, (constraints.maxWidth - chrome.transcriptWidth) / 2) + 16,
                     ),
                     child: composer,
                   ),
@@ -702,11 +704,17 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         bottomInset: 0,
       ),
     };
+    // Under a pointer the worktree choice is a chip on the setup line.
+    final worktreeInHeader =
+        PregoInteractionScope.of(context) == PregoInteractionMode.pointer && options is _DedicatedWorkspaceRow;
+    final harnessPill = _buildHarnessPill(cubit: cubit, data: composerData);
     final header = NewSessionHeader(
       projectId: state.project.id,
       projectName: state.project.name,
       onProjectSelected: widget.onProjectSelected,
-      harness: _buildHarnessPill(cubit: cubit, data: composerData),
+      harness: worktreeInHeader
+          ? Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: [?harnessPill, options])
+          : harnessPill,
     );
     final chromePage = switch (widget.pageChrome) {
       null => null,
@@ -723,7 +731,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           ),
         },
         header: header,
-        options: options,
+        options: worktreeInHeader ? null : options,
         composer: composer,
         composerShown: composerShown,
       ),
@@ -1361,6 +1369,7 @@ class const _DedicatedWorkspaceRow({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
 
     return SizedBox(
       height: height,
@@ -1368,6 +1377,11 @@ class const _DedicatedWorkspaceRow({
         duration: transcriptMotionDuration,
         switchInCurve: transcriptMotionCurve,
         switchOutCurve: transcriptMotionReverseCurve,
+        // On the setup block's start edge under a pointer.
+        layoutBuilder: (current, previous) => Stack(
+          alignment: pointer ? AlignmentDirectional.centerStart : Alignment.center,
+          children: [...previous, ?current],
+        ),
         child: switch (value) {
           null => PregoShimmer(
             appearDelay: Duration.zero,
@@ -1377,10 +1391,10 @@ class const _DedicatedWorkspaceRow({
           // The label names what the switch does, so they must reach a screen
           // reader as one control rather than as stray text beside a bare
           // toggle.
+          final value when pointer => _WorktreeChip(value: value, onChanged: onChanged),
           final value => MergeSemantics(
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(TablerRegular.git_branch, size: PregoIconSize.sm, color: prego.colors.textTertiary),
                 SizedBox(width: prego.spacing.xs),
@@ -1396,7 +1410,8 @@ class const _DedicatedWorkspaceRow({
                   ),
                 ),
                 Transform.scale(
-                  scale: 0.75,
+                  // The pointer switch is already this small.
+                  scale: pointer ? 1 : 0.75,
                   child: PregoSwitch(
                     key: const Key("new_session_dedicated_workspace"),
                     value: value,
@@ -1465,6 +1480,77 @@ class const _OptionPillsPlaceholder({required final bool compact}) extends State
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// The worktree choice as a pointer shell's setup chip: it names what the session
+/// will work in, either way. Both faces are always laid out, so the chip holds its
+/// width and nothing beside it moves; only the words fade.
+class const _WorktreeChip({required final bool value, required final ValueChanged<bool> onChanged})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final foreground = prego.colors.textSecondary;
+    final shape = BorderRadius.circular(PregoRadius.md);
+    final fade = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 120);
+    final style = prego.textTheme.textXs.medium.copyWith(color: foreground);
+    Widget face({required bool shown, required List<Widget> children}) => ExcludeSemantics(
+      excluding: !shown,
+      child: AnimatedOpacity(
+        opacity: shown ? 1 : 0,
+        duration: fade,
+        curve: pregoPointerEnterCurve,
+        child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: children),
+      ),
+    );
+    return Semantics(
+      toggled: value,
+      button: true,
+      child: DecoratedBox(
+        decoration: pregoComposerSurfaceDecoration(
+          prego: prego,
+          style: PregoComposerSurfaceStyle.subtle,
+          borderRadius: shape,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            key: const Key("new_session_dedicated_workspace"),
+            mouseCursor: WidgetStateMouseCursor.clickable,
+            borderRadius: shape,
+            onTap: () => onChanged(!value),
+            child: SizedBox(
+              height: _DedicatedWorkspaceRow.height,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
+                child: Stack(
+                  alignment: AlignmentDirectional.centerStart,
+                  children: [
+                    face(
+                      shown: value,
+                      children: [
+                        Icon(TablerRegular.git_branch, size: PregoIconSize.sm, color: foreground),
+                        Text(loc.newSessionDedicatedWorkspace, maxLines: 1, style: style),
+                        Icon(TablerRegular.check, size: PregoIconSize.sm, color: foreground),
+                      ],
+                    ),
+                    face(
+                      shown: !value,
+                      children: [
+                        Icon(TablerRegular.git_branch, size: PregoIconSize.sm, color: foreground),
+                        Text(loc.newSessionCurrentCheckout, maxLines: 1, style: style),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

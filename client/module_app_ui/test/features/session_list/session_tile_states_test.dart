@@ -52,7 +52,7 @@ void main() {
   Future<void> pumpTile(WidgetTester tester, SessionTile row, {Widget Function(Widget child)? wrap}) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        theme: ThemeData(extensions: [if (wrap == null) PregoDesignSystem.light else PregoDesignSystem.desktopLight]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Material(child: Column(children: [if (wrap == null) row else wrap(row)])),
@@ -97,15 +97,22 @@ void main() {
         expect(sparkleTwinkles(tester), isTrue);
         final sparkle = find.byType(PregoAiLoader);
         expect(tester.getSize(sparkle), const Size.square(16));
-        // Right beside a short title, well ahead of the time.
-        expect(tester.getTopLeft(sparkle).dx - tester.getTopRight(find.text("My Session")).dx, 4);
-        expect(tester.getTopRight(sparkle).dx, lessThan(tester.getTopLeft(find.text("now")).dx));
-        // A plain live turn carries no words — the twinkle is the signal.
-        expect(find.text("Running"), findsNothing);
-        expect(find.text("now"), findsOneWidget);
+        // On touch a plain live turn carries no words, the twinkle being the signal.
+        expect(find.text("Running"), pointer ? findsOneWidget : findsNothing);
+        if (pointer) {
+          // Just before the time, and the title starts at the row's edge.
+          expect(find.text("now"), findsOneWidget);
+          expect(tester.getTopLeft(find.text("now")).dx - tester.getTopRight(sparkle).dx, 8);
+          expect(tester.getTopLeft(find.text("My Session")).dx, 14);
+        } else {
+          // Right beside a short title, well ahead of the time.
+          expect(tester.getTopLeft(sparkle).dx - tester.getTopRight(find.text("My Session")).dx, 4);
+          expect(tester.getTopRight(sparkle).dx, lessThan(tester.getTopLeft(find.text("now")).dx));
+          expect(find.text("now"), findsOneWidget);
+        }
       });
 
-      testWidgets("an unread session rests on the sparkle and weights its title", (tester) async {
+      testWidgets("an unread session carries its mark and weights its title", (tester) async {
         await pump(
           tester,
           tile(
@@ -114,12 +121,13 @@ void main() {
           ),
         );
 
+        // The resting star: the same mark as working, standing still.
         expect(sparkleTwinkles(tester), isFalse);
         expect(titleWeight(tester, "My Session"), FontWeight.w500);
         expect(find.text("now"), findsOneWidget);
       });
 
-      testWidgets("a waiting session shows an amber dot and says Waiting in amber", (tester) async {
+      testWidgets("a waiting session says Waiting in amber, with an amber dot under a finger", (tester) async {
         await pump(
           tester,
           tile(
@@ -129,19 +137,22 @@ void main() {
         );
 
         expect(find.byType(PregoAiLoader), findsNothing);
-        final dot = tester.widget<Container>(
-          find.descendant(
-            of: find.byType(SessionTile),
-            matching: find.byWidgetPredicate(
-              (widget) => switch (widget) {
-                Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
-                _ => false,
-              },
-            ),
+        final dot = find.descendant(
+          of: find.byType(SessionTile),
+          matching: find.byWidgetPredicate(
+            (widget) => switch (widget) {
+              Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
+              _ => false,
+            },
           ),
         );
-        expect((dot.decoration as BoxDecoration?)?.color, colors.fgWarningPrimary);
-        expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
+        if (pointer) {
+          expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.pointerWarningFill);
+          expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.pointerWarningText);
+        } else {
+          expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.fgWarningPrimary);
+          expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
+        }
         expect(find.text("now"), findsOneWidget);
       });
 
@@ -185,11 +196,22 @@ void main() {
           ),
         );
 
-        expect(tester.getTopLeft(find.byType(PregoBrandLogo)).dx, 12);
-        expect(tester.getTopLeft(find.text("demo-app")).dx, 12);
-        expect(tester.widget<Text>(find.text("demo-app")).style?.color, colors.textTertiary);
-        // The time keeps 16 px from the trailing edge.
-        expect(tester.getTopRight(find.text("now")).dx, 800 - 16);
+        if (pointer) {
+          // The row's text shares one edge, past the 16 px state column; the mark
+          // leads the meta line there.
+          final textEdge = tester.getTopLeft(find.text("My Session")).dx;
+          expect(tester.getTopLeft(find.byType(PregoBrandLogo)).dx, textEdge);
+          expect(tester.getTopLeft(find.text("demo-app")).dx, greaterThan(textEdge));
+        } else {
+          expect(tester.getTopLeft(find.byType(PregoBrandLogo)).dx, 12);
+          expect(tester.getTopLeft(find.text("demo-app")).dx, 12);
+        }
+        expect(
+          tester.widget<Text>(find.text("demo-app")).style?.color,
+          pointer ? colors.textSecondary : colors.textTertiary,
+        );
+        // The time keeps its inset from the trailing edge.
+        expect(tester.getTopRight(find.text("now")).dx, 800 - (pointer ? 14 : 16));
         expect(find.text("sesori/add-search"), findsNothing);
       });
     });
@@ -430,32 +452,37 @@ void main() {
   });
 
   group("in pointer mode", () {
-    testWidgets("a row keeps the touch row's 16 pt title and 2 px gap in 8 px padding rather than 12 px", (
-      tester,
-    ) async {
-      final row = tile(
-        session: testSession(title: "My Session", updatedAt: now),
-        projectLabel: "demo-app",
-      );
-      ({double height, double? titleSize, double titleTop, double metaTop}) metrics() {
-        final top = tester.getTopLeft(find.byType(SessionTile)).dy;
-        return (
-          height: tester.getSize(find.byType(SessionTile)).height,
-          titleSize: tester.widget<Text>(find.text("My Session")).style?.fontSize,
-          titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
-          metaTop: tester.getTopLeft(find.text("demo-app")).dy - top,
+    testWidgets(
+      "a row tightens to a 12.5 pt title over its meta line in 2 px padding, inset 1 px from its neighbours",
+      (
+        tester,
+      ) async {
+        final row = tile(
+          session: testSession(title: "My Session", updatedAt: now),
+          projectLabel: "demo-app",
         );
-      }
+        ({double height, double? titleSize, double titleTop, double metaTop}) metrics() {
+          final top = tester.getTopLeft(find.byType(SessionTile)).dy;
+          return (
+            height: tester.getSize(find.byType(SessionTile)).height,
+            titleSize: tester.widget<Text>(find.text("My Session")).style?.fontSize,
+            titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
+            metaTop: tester.getTopLeft(find.text("demo-app")).dy - top,
+          );
+        }
 
-      await pumpTile(tester, row);
-      final touch = metrics();
-      await pumpPointerTile(tester, row);
+        await pumpTile(tester, row);
+        final touch = metrics();
+        await pumpPointerTile(tester, row);
+        // The theme eases from the touch scale to the desktop one.
+        await tester.pump(const Duration(milliseconds: 300));
 
-      // The 18 px meta text sits centred in its 20 px line, 1 px down.
-      expect(touch, (height: rowHeight, titleSize: 16.0, titleTop: 12.0, metaTop: 12.0 + 24 + 2 + 1));
-      expect(metrics(), (height: rowHeight - 8, titleSize: 16.0, titleTop: 8.0, metaTop: 8.0 + 24 + 2 + 1));
-      expect(find.text("now"), findsOneWidget);
-    });
+        // The 18 px meta text sits centred in its 20 px line, 1 px down.
+        expect(touch, (height: rowHeight, titleSize: 16.0, titleTop: 12.0, metaTop: 12.0 + 24 + 2 + 1));
+        expect(metrics(), (height: 40.0, titleSize: 12.5, titleTop: 3.0, metaTop: 3.0 + 18));
+        expect(find.text("now"), findsOneWidget);
+      },
+    );
 
     testWidgets("hovering swaps the time for the read toggle and Archive, which call the row's handlers", (
       tester,

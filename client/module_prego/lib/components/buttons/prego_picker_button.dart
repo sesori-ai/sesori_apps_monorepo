@@ -1,9 +1,11 @@
 import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
+import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
 import "../prego_ellipsis_text.dart";
 import "../surfaces/prego_surfaces.dart";
+import "prego_voice_send_button.dart" show composerActionRadius;
 
 /// A solid pill that opens a picker: leading glyph, one-line [label], and a
 /// trailing unfold caret signalling the popup. Without [onPressed] it only
@@ -44,19 +46,25 @@ class const PregoPickerButton({
   /// glyph, keeping [label] as its tooltip and accessible name, for rows too
   /// narrow to show a readable label.
   required final bool showLabel,
+
+  /// Draws no surface of its own, for a picker sitting on the composer itself.
+  final bool plain = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final foreground = prego.colors.textSecondary;
-    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final borderRadius = BorderRadius.circular(
+      plain ? composerActionRadius : (pointer ? PregoRadius.md : PregoRadius.full),
+    );
     final onPressed = this.onPressed;
     final content = !showLabel
         ? Center(
             child: Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
           )
         : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: EdgeInsets.symmetric(horizontal: pointer ? 8 : 12),
             child: Row(
               children: [
                 Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
@@ -77,13 +85,11 @@ class const PregoPickerButton({
           );
     final pill = SizedBox(
       width: double.infinity,
-      height: 36,
+      height: pointer ? 28 : 36,
       child: DecoratedBox(
-        decoration: pregoComposerSurfaceDecoration(
-          prego: prego,
-          style: surfaceStyle,
-          borderRadius: borderRadius,
-        ),
+        decoration: plain
+            ? const BoxDecoration()
+            : pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
         child: Padding(
           padding: const EdgeInsets.all(1),
           child: onPressed == null

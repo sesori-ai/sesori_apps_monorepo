@@ -65,6 +65,9 @@ class const AllSessionsList({
   /// list is left blank rather than repeating it.
   required final bool showsLoadFailure,
 
+  /// False where a command palette beside the list searches sessions already.
+  required final bool showsSearchField,
+
   /// Shown once the projects have loaded, when there are no sessions.
   required final Widget emptyState,
 
@@ -309,6 +312,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             for (final MapEntry(key: projectId, value: rows) in launchRows.entries)
               if (state.projectId == null || state.projectId == projectId) ...rows.placeholders,
           ];
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     List<SessionListEntry<_Item>> entriesOf(AllSessionsState state) {
       final headings = _headings.headingsOf(
         rows: state.rows,
@@ -323,17 +327,43 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           loc: loc,
         ),
       );
+      // Only a still-unarchived session hides, as on every list.
+      final sessionItems = [
+        for (final (index, row) in state.rows.indexed)
+          if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
+            _SessionItem(row: row, heading: headings[index]),
+      ];
+      // A pointer list leads with what is blocked on the reader, whatever its date.
+      final needsYou = pointer
+          ? [
+              for (final item in sessionItems)
+                if (item.row.isAwaitingInput && item.row.session.time?.archived == null)
+                  _SessionItem(row: item.row, heading: loc.sessionListNeedsYou),
+            ]
+          : const <_SessionItem>[];
+      final blockedIds = {for (final item in needsYou) item.row.session.id};
+      // Then what is working now, with any session still being created.
+      final running = pointer
+          ? [
+              for (final item in sessionItems)
+                if (item.row.isRunning &&
+                    item.row.session.time?.archived == null &&
+                    !blockedIds.contains(item.row.session.id))
+                  _SessionItem(row: item.row, heading: loc.sessionListRunning),
+            ]
+          : const <_SessionItem>[];
+      final groupedIds = {...blockedIds, for (final item in running) item.row.session.id};
       return groupUnderHeadings<_HeadedItem>(
         items: [
+          ...needsYou,
           for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
-          // Only a still-unarchived session hides, as on every list.
-          for (final (index, row) in state.rows.indexed)
-            if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
-              _SessionItem(row: row, heading: headings[index]),
+          ...running,
+          for (final item in sessionItems)
+            if (!groupedIds.contains(item.row.session.id)) item,
         ],
         headingOf: (item) => switch (item) {
           // A launch is the newest running thing, so it leads Today.
-          _LaunchItem() => sessionDateLabel(date: now, now: now, loc: loc),
+          _LaunchItem() => pointer ? loc.sessionListRunning : sessionDateLabel(date: now, now: now, loc: loc),
           _SessionItem(:final heading) => heading,
         },
       );
@@ -510,28 +540,39 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       padding: EdgeInsets.zero,
       onChanged: (query) => cubit.setQuery(query: query),
     );
+    String chipLabel({required SessionListQuickFilter filter, required SessionListChipCounts counts}) =>
+        switch (filter) {
+          SessionListQuickFilter.all => loc.sessionListFilterAll(counts.all),
+          SessionListQuickFilter.running => loc.sessionListFilterRunning(counts.running),
+          SessionListQuickFilter.unread => loc.sessionListFilterUnread(counts.unread),
+        };
     Widget chip({required SessionListQuickFilter filter, required Key? key, required SessionListChipCounts counts}) =>
         Semantics(
           toggled: chipsState.quickFilter == filter,
-          child: PregoButtonsSolid(
-            key: key,
-            label: switch (filter) {
-              SessionListQuickFilter.all => loc.sessionListFilterAll(counts.all),
-              SessionListQuickFilter.running => loc.sessionListFilterRunning(counts.running),
-              SessionListQuickFilter.unread => loc.sessionListFilterUnread(counts.unread),
-            },
-            hierarchy: chipsState.quickFilter == filter
-                ? PregoButtonsSolidHierarchy.primaryAlt
-                : PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: () => cubit.setQuickFilter(filter: filter),
-          ),
+          child: pointer
+              ? _PointerFilterChip(
+                  key: key,
+                  label: chipLabel(filter: filter, counts: counts),
+                  selected: chipsState.quickFilter == filter,
+                  onPressed: () => cubit.setQuickFilter(filter: filter),
+                )
+              : PregoButtonsSolid(
+                  key: key,
+                  label: chipLabel(filter: filter, counts: counts),
+                  hierarchy: chipsState.quickFilter == filter
+                      ? PregoButtonsSolidHierarchy.primaryAlt
+                      : PregoButtonsSolidHierarchy.secondary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: () => cubit.setQuickFilter(filter: filter),
+                ),
         );
     Widget chips({required Widget Function(SessionListQuickFilter filter) each}) => Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
+      padding: pointer
+          ? const EdgeInsetsDirectional.fromSTEB(6, PregoSpacing.xs, 6, 0)
+          : const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
       child: Wrap(
-        spacing: PregoSpacing.md,
-        runSpacing: PregoSpacing.md,
+        spacing: pointer ? PregoSpacing.xxs : PregoSpacing.md,
+        runSpacing: pointer ? PregoSpacing.xxs : PregoSpacing.md,
         children: [for (final filter in SessionListQuickFilter.values) each(filter)],
       ),
     );
@@ -553,7 +594,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     return SliverMainAxisGroup(
       slivers: [
         // Keyed, so the header keeps its state as the boxes around it come and go.
-        if (searchShown)
+        if (searchShown && list.showsSearchField)
           SliverToBoxAdapter(
             key: const ValueKey("all-sessions-search"),
             child: _holding(
@@ -729,7 +770,11 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 }
                 final bottomPadding = index == shownEntries.length - 1 ? endPadding : 0.0;
                 return switch (entry) {
-                  SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
+                  SessionListHeadingEntry(:final heading) => SessionListHeading(
+                    emphasized: heading == loc.sessionListNeedsYou,
+                    heading: heading,
+                    isFirst: index == 0,
+                  ),
                   SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
                     ignoring: _replacing,
                     child: _launchRowSettling(
@@ -978,16 +1023,15 @@ class const SessionListSkeleton({
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final rowHeight = SessionTileSkeleton.heightOf(
-      pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-    );
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final rowHeight = SessionTileSkeleton.heightOf(pointer: pointer);
     final children = <Widget>[];
     var height = 0.0;
     var row = 0;
     for (var group = 0; height < screenHeight; group++) {
       final isFirst = group == 0;
       children.add(SessionListHeadingSkeleton(isFirst: isFirst, width: _headingWidths[group % _headingWidths.length]));
-      height += SessionListHeadingSkeleton.heightOf(isFirst: isFirst);
+      height += SessionListHeadingSkeleton.heightOf(isFirst: isFirst, pointer: pointer);
       for (var index = 0; index < _groupSizes[group % _groupSizes.length]; index++, row++) {
         children.add(
           SessionTileSkeleton(
@@ -1003,6 +1047,42 @@ class const SessionListSkeleton({
       leaving: leaving,
       appearDelay: appearDelay,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+  }
+}
+
+/// A quick filter in a pointer list's compact filter line: a plain label that
+/// fills while it is the one selected.
+class const _PointerFilterChip({
+  super.key,
+  required final String label,
+  required final bool selected,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final shape = BorderRadius.circular(PregoRadius.sm);
+    return Material(
+      color: selected ? prego.colors.pointerSelectionFill : Colors.transparent,
+      borderRadius: shape,
+      child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
+        onTap: onPressed,
+        borderRadius: shape,
+        hoverColor: prego.colors.bgSecondaryHover.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
+          child: Text(
+            label,
+            maxLines: 1,
+            style: prego.textTheme.textXs.medium.copyWith(
+              color: selected ? prego.colors.textPrimary : prego.colors.textSecondary,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -52,9 +52,9 @@ class const ComposerOptionsAccordion({
 
   /// The pill's width with its actions open, for placing things beside it without
   /// following its size as it gives way to other controls.
-  static double openWidth({required bool showAttachImage}) => showAttachImage
-      ? _joinedStartInset + _iconButtonSize + PregoSpacing.md + _iconButtonSize + PregoSpacing.sm
-      : PregoSpacing.sm + _iconButtonSize + PregoSpacing.sm;
+  static double openWidth({required bool showAttachImage, required bool pointer}) => showAttachImage
+      ? (pointer ? 0 : _joinedStartInset) + _iconButtonSize + PregoSpacing.md + _iconButtonSize + PregoSpacing.sm
+      : (pointer ? 0 : PregoSpacing.sm) + _iconButtonSize + PregoSpacing.sm;
 
   @override
   State<ComposerOptionsAccordion> createState() => _ComposerOptionsAccordionState();
@@ -157,23 +157,32 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
     final isOpen = _isOpen || _isOpenByDefault;
     _reportOpen(isOpen: isOpen);
 
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: prego.colors.bgSurface4,
-        borderRadius: BorderRadius.circular(PregoRadius.full),
-        border: Border.all(color: prego.colors.borderPrimary),
-      ),
+      // Under a pointer the actions are plain glyphs on the composer itself.
+      decoration: pointer
+          ? const BoxDecoration()
+          : BoxDecoration(
+              color: prego.colors.bgSurface4,
+              borderRadius: BorderRadius.circular(PregoRadius.full),
+              border: Border.all(color: prego.colors.borderPrimary),
+            ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(PregoRadius.full),
+        borderRadius: BorderRadius.circular(pointer ? composerActionRadius : PregoRadius.full),
         child: SizedBox(
-          height: 44,
+          height: pointer ? 32 : 44,
           child: _easeWidth(
             child: Padding(
               // Keep a single button centred in a 44pt circle, including
               // command-only harnesses. Expansion remains anchored to the
               // trailing edge.
               padding: EdgeInsetsDirectional.only(
-                start: isOpen && widget.showAttachImage ? ComposerOptionsAccordion._joinedStartInset : PregoSpacing.sm,
+                // Under a pointer the first action takes the composer's own corner inset.
+                start: pointer
+                    ? 0
+                    : isOpen && widget.showAttachImage
+                    ? ComposerOptionsAccordion._joinedStartInset
+                    : PregoSpacing.sm,
                 end: PregoSpacing.sm,
               ),
               child: Row(
@@ -223,10 +232,10 @@ class const _AccordionIconButton({
       showsTooltip: true,
       child: PregoTappable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(PregoRadius.full),
+        borderRadius: BorderRadius.circular(composerActionRadius),
         containerBuilder: (Widget child) =>
             SizedBox.square(dimension: ComposerOptionsAccordion._iconButtonSize, child: child),
-        child: Icon(icon, size: PregoIconSize.md, color: prego.colors.textPrimary),
+        child: Icon(icon, size: 16, color: prego.colors.textSecondary),
       ),
     );
   }

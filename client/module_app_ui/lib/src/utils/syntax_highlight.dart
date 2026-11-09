@@ -56,7 +56,7 @@ Highlight buildSyntaxHighlight() {
 
 /// The GitHub light/dark token theme matching [brightness].
 Map<String, TextStyle> githubThemeFor(Brightness brightness) =>
-    brightness == Brightness.dark ? githubDarkTheme : githubTheme;
+    brightness == Brightness.dark ? _darkTheme : _lightTheme;
 
 /// Renders [code] in [language] to a themed [TextSpan], or null on any grammar
 /// error so callers can fall back to plain text. [language] must already be a
@@ -79,3 +79,13 @@ TextSpan? renderHighlightedSpan({
     return null;
   }
 }
+
+/// GitHub's themes with blue keywords: red is taken, in a diff, by what was removed.
+final Map<String, TextStyle> _darkTheme = {
+  ...githubDarkTheme,
+  "keyword": const TextStyle(color: Color(0xFF79C0FF)),
+};
+final Map<String, TextStyle> _lightTheme = {
+  ...githubTheme,
+  "keyword": const TextStyle(color: Color(0xFF0550AE)),
+};

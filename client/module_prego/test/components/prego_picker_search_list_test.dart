@@ -47,8 +47,8 @@ void main() {
   Finder pill(String label) => find.ancestor(of: find.text(label), matching: find.byType(PregoButtonsSolid));
 
   bool highlighted({required WidgetTester tester, required String label}) {
-    final ring = find.ancestor(of: pill(label), matching: find.byType(DecoratedBox)).first;
-    return (tester.widget<DecoratedBox>(ring).decoration as BoxDecoration).boxShadow != null;
+    final row = find.ancestor(of: find.text(label), matching: find.byType(DecoratedBox)).first;
+    return (tester.widget<DecoratedBox>(row).decoration as BoxDecoration).color != null;
   }
 
   Future<void> press({required WidgetTester tester, required LogicalKeyboardKey key}) async {
@@ -98,7 +98,9 @@ void main() {
     await pumpList(tester: tester, mode: PregoInteractionMode.pointer);
 
     String? focusedPill() =>
-        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<PregoButtonsSolid>()?.label;
+        (FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<InkWell>()?.key
+                as ValueKey<String>?)
+            ?.value;
     for (var i = 0; i < 5 && focusedPill() == null; i++) {
       await press(tester: tester, key: LogicalKeyboardKey.tab);
     }

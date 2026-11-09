@@ -27,7 +27,7 @@ class const TranscriptGroupWidget({
 }) extends StatelessWidget {
   /// The popover's size: wide enough for a command, short enough to stay a
   /// glance; past the height its steps scroll.
-  static const double panelWidth = 560;
+  static const double panelWidth = 588;
   static const double panelMaxHeight = 480;
 
   @override
@@ -43,7 +43,7 @@ class const TranscriptGroupWidget({
 
   Widget _summary({required BuildContext context, required int finishedCount}) {
     final prego = context.prego;
-    Widget button({required VoidCallback onPressed}) => TextButton(
+    Widget button({required VoidCallback onPressed, required bool open}) => TextButton(
       key: ValueKey("transcriptGroup.toggle.${group.id}"),
       onPressed: onPressed,
       style: TextButton.styleFrom(
@@ -51,28 +51,44 @@ class const TranscriptGroupWidget({
         // The chevron's slot already insets the start; the end mirrors it so
         // the target and its hover run past the label instead of stopping at it.
         padding: EdgeInsetsDirectional.only(end: prego.spacing.md),
-        minimumSize: const Size(44, 44),
+        minimumSize: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+            ? const Size(44, 28)
+            : const Size(44, 44),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         alignment: AlignmentDirectional.centerStart,
         // The default stadium hover reads as a pill across the whole row.
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
       ),
-      child: _SummaryRow(finishedCount: finishedCount),
+      child: _SummaryRow(finishedCount: finishedCount, open: open),
     );
     // Spaced as a step row is.
     return Padding(
       key: const ValueKey("transcriptGroup.summary"),
       padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       child: switch (PregoInteractionScope.of(context)) {
-        PregoInteractionMode.pointer => PregoPopover(
-          popoverWidth: panelWidth,
-          popoverMaxHeight: panelMaxHeight,
-          contentScrolls: false,
-          onClosed: null,
-          triggerBuilder: (_, open) => button(onPressed: open),
-          contentBuilder: (_, close) => _panel(from: context, close: close, padding: EdgeInsets.all(prego.spacing.lg)),
+        PregoInteractionMode.pointer => _OpenState(
+          builder: (context, isOpen, setOpen) => PregoPopover(
+            popoverWidth: panelWidth,
+            popoverMaxHeight: panelMaxHeight,
+            contentScrolls: false,
+            onClosed: () => setOpen(false),
+            popoverBorderRadius: PregoRadius.xl,
+            hasPageHalo: true,
+            // Hangs from the summary's start, so it stays over the transcript.
+            placement: AnchoredPanelPlacement.atCorner,
+            triggerBuilder: (_, open) => button(
+              open: isOpen,
+              onPressed: () {
+                setOpen(true);
+                open();
+              },
+            ),
+            contentBuilder: (_, close) =>
+                _panel(from: context, close: close, padding: EdgeInsets.all(prego.spacing.lg)),
+          ),
         ),
         PregoInteractionMode.touch => button(
+          open: false,
           onPressed: () => showPregoModal<void>(
             context: context,
             title: context.loc.transcriptSummarySteps(finishedCount),
@@ -138,7 +154,24 @@ enum _SummarySegment() {
   steps,
 }
 
-class const _SummaryRow({required final int finishedCount}) extends StatelessWidget {
+/// Whether a popover is open, for a trigger that shows it.
+class const _OpenState({
+  required final Widget Function(BuildContext context, bool isOpen, ValueChanged<bool> setOpen) builder,
+}) extends StatefulWidget {
+  @override
+  State<_OpenState> createState() => _OpenStateState();
+}
+
+class _OpenStateState() extends State<_OpenState> {
+  bool _isOpen = false;
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _isOpen, (value) {
+    if (mounted) setState(() => _isOpen = value);
+  });
+}
+
+class const _SummaryRow({required final int finishedCount, required final bool open}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -150,7 +183,12 @@ class const _SummaryRow({required final int finishedCount}) extends StatelessWid
       children: [
         SizedBox.square(
           dimension: TranscriptLiveSparkle.size,
-          child: Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: style.color),
+          child: AnimatedRotation(
+            turns: open ? 0.25 : 0,
+            duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            child: Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: style.color),
+          ),
         ),
         SizedBox(width: prego.spacing.md),
         // Rolls its count as a live row folds in; ellipsizes on a narrow screen.

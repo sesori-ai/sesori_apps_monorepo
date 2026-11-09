@@ -21,7 +21,8 @@ class const TranscriptLiveSparkle({super.key}) extends StatelessWidget {
 }
 
 /// A live row's label. A primary-text band sweeps across the label in the
-/// tertiary text colour, so it reads in both themes. Reduced motion keeps the
+/// tertiary text colour, or the secondary one under a pointer, where it must
+/// read ahead of the finished rows, so it reads in both themes. Reduced motion keeps the
 /// label still in its own colour.
 class const TranscriptLiveLabel({super.key, required final Widget label, required final String? semanticLabel})
     extends StatelessWidget {
@@ -30,7 +31,9 @@ class const TranscriptLiveLabel({super.key, required final Widget label, require
     alignment: AlignmentDirectional.centerStart,
     child: PregoShimmer(
       appearDelay: Duration.zero,
-      baseColor: context.prego.colors.textTertiary,
+      baseColor: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+          ? context.prego.colors.textSecondary
+          : context.prego.colors.textTertiary,
       highlightColor: context.prego.colors.textPrimary,
       semanticLabel: semanticLabel,
       child: label,
@@ -43,6 +46,8 @@ class const TranscriptLiveLabel({super.key, required final Widget label, require
 /// bold label and its detail. A one-line row stands as tall as a button at the
 /// theme's density, so tappable and inert rows match.
 class const TranscriptStepRow({
+  /// How many lines the row's words may take.
+  final int maxLines = 1,
   super.key,
   required final Widget leading,
   required final String label,
@@ -68,7 +73,9 @@ class const TranscriptStepRow({
   /// as a button: its 44 px minimum, adjusted for density as the button
   /// adjusts it.
   static double verticalInset({required BuildContext context}) =>
-      (44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy - TranscriptLiveSparkle.size) / 2;
+      PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+      ? 2
+      : (44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy - TranscriptLiveSparkle.size) / 2;
 
   /// The gap every step widget leaves above and below its row.
   static const double stepGap = 4;
@@ -83,15 +90,32 @@ class const TranscriptStepRow({
       children: [
         TextSpan(
           text: capitalize(label: label),
-          style: prego.textTheme.textSm.bold.copyWith(color: color),
+          style: prego.textTheme.textSm.bold.copyWith(
+            // A settled or live step names itself first; a failed one keeps its colour.
+            color: this.color == null && PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                ? prego.colors.textPrimary
+                : color,
+          ),
         ),
-        if (detail != null) ...[const TextSpan(text: " "), detail],
+        if (detail != null) ...[
+          TextSpan(
+            text: " ",
+            // Under a pointer the label stands clear of what follows it.
+            style: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                ? const TextStyle(letterSpacing: 3)
+                : null,
+          ),
+          detail,
+        ],
       ],
     );
     final text = Text.rich(
       span,
       style: prego.textTheme.textSm.regular.copyWith(color: color),
-      maxLines: 1,
+      strutStyle: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+          ? const StrutStyle(fontSize: 12.5, height: 18 / 12.5, forceStrutHeight: true)
+          : null,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
     );
     // The text reads in place, as a settled row's does, so a row that merges
@@ -105,10 +129,15 @@ class const TranscriptStepRow({
     return Padding(
       padding: EdgeInsets.symmetric(vertical: verticalInset(context: context)),
       child: Row(
+        crossAxisAlignment: maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           SizedBox.square(
             dimension: TranscriptLiveSparkle.size,
-            child: Center(child: leading),
+            child: Center(
+              child: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                  ? Transform.translate(offset: const Offset(0, -1), child: leading)
+                  : leading,
+            ),
           ),
           SizedBox(width: prego.spacing.md),
           Expanded(

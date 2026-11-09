@@ -326,22 +326,22 @@ void main() {
     final midwayRect = tester.getRect(prompt);
     await tester.pumpAndSettle();
 
-    // The same composer, not a new one, now spans the session page's 760 px
+    // The same composer, not a new one, now spans the session page's 620 px
     // composer column at the bottom edge; the toolbar is gone.
     expect(tester.state(prompt), same(promptState));
     expect(find.byType(DesktopPageToolbar), findsNothing);
     final bottomRect = tester.getRect(prompt);
     expect(bottomRect.bottom, greaterThan(centredRect.bottom));
     expect(midwayRect.top, inExclusiveRange(centredRect.top, bottomRect.top));
-    expect(bottomRect.left, (1400 - 760) / 2 + 16);
-    expect(bottomRect.right, 1400 - (1400 - 760) / 2 - 16);
+    expect(bottomRect.left, (1400 - 620) / 2 + 16);
+    expect(bottomRect.right, 1400 - (1400 - 620) / 2 - 16);
     final bubble = find.byType(QueuedMessageBubble);
     expect(find.descendant(of: bubble, matching: find.text("Go")), findsOneWidget);
-    // The session page's 960 px transcript column, centred in the 1400 px pane,
+    // The session page's 620 px transcript column, centred in the 1400 px pane,
     // with its newest row 8 px above the composer.
     final rect = tester.getRect(bubble);
-    expect(rect.left, 220);
-    expect(rect.right, 1180);
+    expect(rect.left, 390);
+    expect(rect.right, 1010);
     expect(rect.bottom, closeTo(bottomRect.top - 8, 0.01));
   });
 

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
@@ -16,7 +17,6 @@ import "desktop_connection_pill.dart";
 import "desktop_page_toolbar.dart";
 import "desktop_sidebar.dart";
 import "desktop_sidebar_expansion.dart";
-import "desktop_window_drag_area.dart";
 
 /// The signed-in [SessionScope] plus the cockpit's own layout owners.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
@@ -98,6 +98,8 @@ class const DesktopCockpitShell({
   required final Widget child,
 }) extends StatelessWidget {
   static const double autoCollapseBreakpoint = 760;
+  static const double narrowWindowWidth = 1000;
+  static const double narrowSidebarWidth = 240;
 
   @override
   Widget build(BuildContext context) {
@@ -214,43 +216,55 @@ class const DesktopCockpitShell({
           fit: StackFit.expand,
           children: [
             child,
-            _SidebarRestoreButton(autoCollapsed: autoCollapsed, onPressed: () => unawaited(sidebar.toggleCollapsed())),
             const PositionedDirectional(
-              top: PregoSpacing.lg,
-              start: PregoSpacing.lg,
-              end: PregoSpacing.lg,
-              child: Align(alignment: Alignment.topCenter, child: DesktopConnectionPill()),
+              top: DesktopPageToolbar.height + PregoSpacing.md,
+              end: PregoSpacing.xl,
+              child: DesktopConnectionPill(),
             ),
           ],
         );
-        // Depth delimits: the sidebar floats as a panel over the base surface
-        // the pages paint, so no divider separates them.
-        final row = Row(
-          children: [
-            _SidebarPanel(
-              windowHost: windowHost,
-              // The gap beside the panel is the resize handle.
-              resizeHandle: Builder(
-                builder: (context) =>
-                    collapsed(context) ? const SizedBox.expand() : _SidebarResizeHandle(sidebar: sidebar),
+        // The sidebar runs the window's full height, its edge a hairline that
+        // lights up under the pointer.
+        final row = Builder(
+          builder: (context) {
+            final saved = context.select((DesktopSidebarCubit cubit) => cubit.state.width);
+            // A window this small keeps more of itself for the page; the saved
+            // width returns with the room for it.
+            final width = constraints.maxWidth < narrowWindowWidth ? math.min(saved, narrowSidebarWidth) : saved;
+            return _SlidingLayout(
+              panelWidth: width,
+              panel: _SidebarPanel(
+                width: width,
+                resizeHandle: Builder(
+                  builder: (context) => collapsed(context)
+                      ? const SizedBox.shrink()
+                      : _SidebarResizeHandle(sidebar: sidebar, width: width),
+                ),
+                child: DesktopSidebar(
+                  windowHost: windowHost,
+                  selectedSessionId: selectedSessionId,
+                  onOpenSession: onOpenSession,
+                  onStartNewSession: startNewSession,
+                  onOpenSearch: openPalette,
+                  onOpenArchived: onOpenArchived,
+                  sessionActions: sessionActions,
+                  onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                  onSwitchComputer: switchComputer,
+                  onManageComputers: onManageComputers,
+                  onOpenBridgeSettings: onOpenBridgeSettings,
+                  onOpenSettings: onOpenSettings,
+                ),
               ),
-              child: DesktopSidebar(
-                windowHost: windowHost,
-                selectedSessionId: selectedSessionId,
-                onOpenSession: onOpenSession,
-                onStartNewSession: startNewSession,
-                onOpenSearch: openPalette,
-                onOpenArchived: onOpenArchived,
-                sessionActions: sessionActions,
-                onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
-                onSwitchComputer: switchComputer,
-                onManageComputers: onManageComputers,
-                onOpenBridgeSettings: onOpenBridgeSettings,
-                onOpenSettings: onOpenSettings,
+              page: content,
+              titleBar: Builder(
+                builder: (context) => _SidebarTitleBar(
+                  collapsed: collapsed(context),
+                  autoCollapsed: autoCollapsed,
+                  onPressed: () => unawaited(sidebar.toggleCollapsed()),
+                ),
               ),
-            ),
-            Expanded(child: content),
-          ],
+            );
+          },
         );
         // Only the animation follows a toggle: the sidebar reads its expansion
         // from it, so the panel's rows are not rebuilt to start one.
@@ -258,8 +272,14 @@ class const DesktopCockpitShell({
           body: Builder(
             builder: (context) => _SidebarExpansionAnimator(
               target: collapsed(context) ? 0 : 1,
-              duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
+              // A shortcut is answered at once; only a click gets the motion.
+              duration: switch ((prefersReducedMotion(context) || pregoActivatedByKeyboard, collapsed(context))) {
+                (true, _) => Duration.zero,
+                (false, true) => const Duration(milliseconds: 180),
+                (false, false) => const Duration(milliseconds: 200),
+              },
+              // Softer than a popover's curve: the whole page moves with this one.
+              curve: const Cubic(0.25, 0.55, 0.2, 1),
               child: row,
             ),
           ),
@@ -316,27 +336,84 @@ class _SidebarExpansionAnimatorState() extends ImplicitlyAnimatedWidgetState<_Si
   );
 }
 
-/// The floating panel and the resize gap beside it. Collapsing slides both out
-/// past the window's edge (D9) while the page widens into their room.
-class const _SidebarPanel({
-  required final WindowHost? windowHost,
-  required final Widget resizeHandle,
-  required final Widget child,
+/// The panel over the page. The panel moves by transform. The page's start edge
+/// follows it frame by frame, so nothing on the page jumps when a toggle begins,
+/// and because the transcript's column is capped, its text keeps its width and
+/// is not laid out again as the page widens.
+class const _SlidingLayout({
+  required final double panelWidth,
+  required final Widget panel,
+  required final Widget page,
+  required final Widget titleBar,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final width = context.select((DesktopSidebarCubit cubit) => cubit.state.width);
-    final expansion = DesktopSidebarExpansion.of(context);
-    final panel = Row(
-      mainAxisSize: MainAxisSize.min,
+    final extent = panelWidth;
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        _TitleBarStrip(
-          windowHost: windowHost,
-          child: FloatingSidebarPanel(key: const Key("desktop-cockpit-sidebar"), width: width, child: child),
+        DesktopSidebarExpansionBuilder(
+          expansion: DesktopSidebarExpansion.of(context),
+          builder: (expansion, page) => Padding(
+            padding: EdgeInsetsDirectional.only(start: extent * expansion),
+            child: page,
+          ),
+          child: page,
         ),
-        SizedBox(width: FloatingSidebarPanel.margin, child: resizeHandle),
+        PositionedDirectional(start: 0, top: 0, bottom: 0, child: panel),
+        titleBar,
       ],
     );
+  }
+}
+
+/// The full-height sidebar and the resize handle astride its edge. Collapsing
+/// slides both out past the window's edge (D9) while the page takes their room.
+class const _SidebarPanel({
+  required final double width,
+  required final Widget resizeHandle,
+  required final Widget child,
+}) extends StatelessWidget {
+  /// How far the handle reaches each side of the edge's middle.
+  static const double _handleReach = 4.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final expansion = DesktopSidebarExpansion.of(context);
+    final prego = context.prego;
+    final extent = width + _handleReach;
+    final panel = SizedBox(
+      width: extent,
+      child: Stack(
+        children: [
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            width: width,
+            child: DecoratedBox(
+              key: const Key("desktop-cockpit-sidebar"),
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                border: BorderDirectional(end: BorderSide(color: prego.colors.borderSecondary)),
+              ),
+              child: Material(
+                color: prego.colors.pointerPanelFill,
+                child: child,
+              ),
+            ),
+          ),
+          PositionedDirectional(
+            start: width - 0.5 - _handleReach,
+            top: 0,
+            bottom: 0,
+            width: _handleReach * 2,
+            child: resizeHandle,
+          ),
+        ],
+      ),
+    );
+    final towardStart = Directionality.of(context) == TextDirection.rtl ? 1.0 : -1.0;
     return DesktopSidebarExpansionSelector<bool>(
       expansion: expansion,
       select: (expansion) => expansion > 0,
@@ -347,9 +424,8 @@ class const _SidebarPanel({
         maintainState: true,
         child: DesktopSidebarExpansionBuilder(
           expansion: expansion,
-          builder: (expansion, panel) => Align(
-            alignment: AlignmentDirectional.centerEnd,
-            widthFactor: expansion,
+          builder: (expansion, panel) => Transform.translate(
+            offset: Offset(towardStart * extent * (1 - expansion), 0),
             child: panel,
           ),
           child: panel,
@@ -359,119 +435,266 @@ class const _SidebarPanel({
   }
 }
 
-/// The panel's margins. On macOS the strip above the panel drags and zooms
-/// the window.
-class const _TitleBarStrip({required final WindowHost? windowHost, required final Widget child})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final windowHost = this.windowHost;
-    const margin = FloatingSidebarPanel.margin;
-    final panel = Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(margin, margin, 0, margin),
-      child: child,
-    );
-    if (windowHost == null) return panel;
-    return DesktopWindowDragArea(windowHost: windowHost, height: margin, zoomOnDoubleClick: true, child: panel);
-  }
-}
+/// The sidebar's toggle and the product's name, on the title line above both the
+/// sidebar and the page. They stay where they are as the sidebar slides, so the
+/// control stays under the pointer and the name never crosses the traffic lights.
+class const _SidebarTitleBar({
+  required final bool collapsed,
+  required final bool autoCollapsed,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
+  static const String _productName = "Sesori";
 
-/// Brings a hidden sidebar back (D9) from the page's top-left corner, past
-/// the traffic lights on macOS. It fades in as the sidebar slides away, riding
-/// just ahead of the title that [DesktopSidebarRestoreInset] moves, so the two
-/// never overlap.
-class const _SidebarRestoreButton({required final bool autoCollapsed, required final VoidCallback onPressed})
-    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final expansion = DesktopSidebarExpansion.of(context);
     final loc = context.loc;
+    final prego = context.prego;
     const size = DesktopSidebarRestoreInset.buttonSize;
-    final travel = DesktopSidebarRestoreInset.buttonStart + size;
-    final towardStart = Directionality.of(context) == TextDirection.rtl ? 1.0 : -1.0;
+    final label = collapsed ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
     return PositionedDirectional(
-      top: (DesktopPageToolbar.height - size) / 2,
+      top: DesktopSidebarRestoreInset.titleLineCentre - size / 2,
       start: DesktopSidebarRestoreInset.buttonStart,
-      child: DesktopSidebarExpansionSelector<bool>(
-        expansion: expansion,
-        select: (expansion) => expansion >= 1,
-        builder: (context, open) => open
-            ? const SizedBox.shrink()
-            : DesktopSidebarExpansionBuilder(
-                expansion: expansion,
-                builder: (expansion, child) => Transform.translate(
-                  offset: Offset(towardStart * travel * expansion, 0),
-                  child: child,
-                ),
-                child: FadeTransition(
-                  opacity: ReverseAnimation(expansion),
-                  child: SizedBox.square(
-                    dimension: size,
-                    child: IconButton(
-                      key: const Key("desktop-sidebar-restore"),
-                      // A window too narrow for the sidebar keeps it hidden.
-                      tooltip: autoCollapsed
-                          ? loc.desktopSidebarExpand
-                          : loc.desktopShortcutHint(
-                              loc.desktopSidebarExpand,
-                              defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
-                            ),
-                      padding: const EdgeInsets.all(PregoSpacing.sm),
-                      onPressed: autoCollapsed ? null : onPressed,
-                      icon: Icon(
-                        TablerRegular.layout_sidebar_left_expand,
-                        size: PregoIconSize.md,
-                        color: autoCollapsed ? context.prego.colors.textDisabled : null,
-                      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: PregoSpacing.xs,
+        children: [
+          SizedBox.square(
+            dimension: size,
+            child: IconButton(
+              key: Key(collapsed ? "desktop-sidebar-restore" : "desktop-sidebar-toggle"),
+              // A window too narrow for the sidebar keeps it hidden.
+              tooltip: autoCollapsed
+                  ? label
+                  : loc.desktopShortcutHint(label, defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B"),
+              padding: EdgeInsets.zero,
+              onPressed: autoCollapsed ? null : onPressed,
+              icon: Transform.translate(
+                offset: DesktopSidebarRestoreInset.toggleGlyphNudge,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      collapsed ? TablerLight.layout_sidebar_left_expand : TablerLight.layout_sidebar_left_collapse,
+                      size: 16,
+                      color: autoCollapsed ? prego.colors.textDisabled : null,
                     ),
-                  ),
+                    // The sidebar's Needs you, while it is out of sight.
+                    if (collapsed &&
+                        context.select(
+                          (AllSessionsCubit cubit) => cubit.state.rows.any((row) => row.isAwaitingInput),
+                        ))
+                      PositionedDirectional(
+                        top: -2,
+                        end: -2,
+                        child: Container(
+                          key: const Key("desktop-sidebar-needs-you"),
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: prego.colors.pointerWarningFill,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
+            ),
+          ),
+          // Decoration in the title bar: clicks reach the window drag beneath it.
+          IgnorePointer(
+            child: ExcludeSemantics(
+              child: Text(
+                _productName,
+                maxLines: 1,
+                style: prego.textTheme.textSm.medium.copyWith(
+                  color: collapsed ? prego.colors.textSecondary : prego.colors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class const _SidebarResizeHandle({required final DesktopSidebarCubit sidebar}) extends StatefulWidget {
+class const _SidebarResizeHandle({
+  required final DesktopSidebarCubit sidebar,
+
+  /// The width the sidebar shows, which a narrow window holds under the saved one.
+  required final double width,
+}) extends StatefulWidget {
   @override
   State<_SidebarResizeHandle> createState() => _SidebarResizeHandleState();
 }
 
-class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> {
-  ({double width, double pointerX})? _dragOrigin;
+class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> with TickerProviderStateMixin {
+  late final AnimationController _lit = AnimationController(
+    vsync: this,
+    duration: pregoPointerEnterDuration,
+    reverseDuration: pregoPointerExitDuration,
+  );
+  final ValueNotifier<double> _pointerY = ValueNotifier(0);
 
-  void _finishDrag() {
-    // A tap or double-click also cancels the drag recognizer, without starting a drag.
-    if (_dragOrigin == null) return;
+  /// Whether letting go of the drag here would collapse the sidebar.
+  late final AnimationController _armed = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 120),
+  );
+  bool _hovering = false;
+
+  /// How far past the sidebar's minimum width a released drag collapses it.
+  static const double _collapseReach = 48;
+
+  ({double width, double savedWidth, double pointerX})? _dragOrigin;
+  double _draggedTo = 0;
+
+  void _updateLit() {
+    if (_hovering || _dragOrigin != null) {
+      _lit.forward();
+    } else {
+      _lit.reverse();
+    }
+  }
+
+  void _finishDrag({required bool released}) {
+    // A tap also cancels the drag recognizer, without starting a drag.
+    final origin = _dragOrigin;
+    if (origin == null) return;
     _dragOrigin = null;
-    unawaited(widget.sidebar.saveLayout());
+    _armed.value = 0;
+    _updateLit();
+    if (released && _draggedTo < DesktopSidebarCubit.minWidth - _collapseReach) {
+      unawaited(widget.sidebar.collapseFromDrag(reopenWidth: origin.savedWidth));
+    } else {
+      unawaited(widget.sidebar.saveLayout());
+    }
+  }
+
+  @override
+  void dispose() {
+    _lit.dispose();
+    _pointerY.dispose();
+    _armed.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => MouseRegion(
     cursor: SystemMouseCursors.resizeLeftRight,
+    onEnter: (event) {
+      _hovering = true;
+      _pointerY.value = event.localPosition.dy;
+      _updateLit();
+    },
+    onHover: (event) => _pointerY.value = event.localPosition.dy,
+    onExit: (_) {
+      _hovering = false;
+      _updateLit();
+    },
     // A node of its own, or its name lands on the whole window.
     child: Semantics(
       container: true,
-      child: Tooltip(
-        message: context.loc.desktopSidebarResize,
-        child: GestureDetector(
-          key: const Key("desktop-sidebar-resize"),
-          behavior: HitTestBehavior.opaque,
-          dragStartBehavior: DragStartBehavior.down,
-          onHorizontalDragStart: (details) =>
-              _dragOrigin = (width: widget.sidebar.state.width, pointerX: details.globalPosition.dx),
-          onHorizontalDragUpdate: (details) {
-            if (_dragOrigin case final origin?) {
-              widget.sidebar.resize(width: origin.width + details.globalPosition.dx - origin.pointerX);
+      tooltip: context.loc.desktopSidebarResize,
+      child: GestureDetector(
+        key: const Key("desktop-sidebar-resize"),
+        behavior: HitTestBehavior.opaque,
+        dragStartBehavior: DragStartBehavior.down,
+        onTap: () => unawaited(widget.sidebar.toggleCollapsed()),
+        onHorizontalDragStart: (details) {
+          _dragOrigin = (
+            width: widget.width,
+            savedWidth: widget.sidebar.state.width,
+            pointerX: details.globalPosition.dx,
+          );
+          _draggedTo = widget.width;
+          _updateLit();
+        },
+        onHorizontalDragUpdate: (details) {
+          _pointerY.value = details.localPosition.dy;
+          if (_dragOrigin case final origin?) {
+            _draggedTo = origin.width + details.globalPosition.dx - origin.pointerX;
+            if (_draggedTo < DesktopSidebarCubit.minWidth - _collapseReach) {
+              _armed.forward();
+            } else {
+              _armed.reverse();
             }
-          },
-          onHorizontalDragEnd: (_) => _finishDrag(),
-          onHorizontalDragCancel: _finishDrag,
-          onDoubleTap: () => unawaited(widget.sidebar.resetWidth()),
-          child: const SizedBox.expand(),
+            widget.sidebar.resize(width: _draggedTo);
+          }
+        },
+        onHorizontalDragEnd: (_) => _finishDrag(released: true),
+        onHorizontalDragCancel: () => _finishDrag(released: false),
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _SidebarEdgeLight(
+              lit: _lit,
+              pointerY: _pointerY,
+              armed: _armed,
+              color: context.prego.colors.textTertiary,
+            ),
+            child: const SizedBox.expand(),
+          ),
         ),
       ),
     ),
   );
+}
+
+/// The stretch of the sidebar's edge near the pointer, brightening in light
+/// themes' ink or dark themes' light, and tapering away along the edge.
+class _SidebarEdgeLight({
+  required final Animation<double> lit,
+  required final ValueListenable<double> pointerY,
+
+  /// Whether a release collapses the sidebar: the whole edge lights to say so.
+  required final Animation<double> armed,
+  required final Color color,
+}) extends CustomPainter {
+  this : super(repaint: Listenable.merge([lit, pointerY, armed]));
+
+  static const double _reach = 110;
+  static const double _thickness = 2;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (lit.value <= 0) return;
+    final strong = color.withValues(alpha: color.a * lit.value);
+    final rect = Rect.fromCenter(
+      center: Offset(size.width / 2, pointerY.value),
+      width: _thickness,
+      height: _reach * 2,
+    );
+    canvas
+      ..save()
+      ..clipRect(Offset.zero & size)
+      ..drawRect(
+        Rect.fromCenter(center: size.center(Offset.zero), width: _thickness, height: size.height),
+        Paint()..color = strong.withValues(alpha: strong.a * armed.value),
+      )
+      ..drawRect(
+        rect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              strong.withValues(alpha: 0),
+              strong.withValues(alpha: strong.a * 0.35),
+              strong,
+              strong.withValues(alpha: strong.a * 0.35),
+              strong.withValues(alpha: 0),
+            ],
+            stops: const [0, 0.25, 0.5, 0.75, 1],
+          ).createShader(rect),
+      )
+      ..restore();
+  }
+
+  @override
+  bool shouldRepaint(_SidebarEdgeLight oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.lit != lit ||
+      oldDelegate.pointerY != pointerY ||
+      oldDelegate.armed != armed;
 }

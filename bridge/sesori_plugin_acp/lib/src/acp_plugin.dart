@@ -1092,7 +1092,7 @@ abstract class AcpPlugin({
     } else {
       // A fresh session has an empty chain, so this dispatches immediately;
       // the selection is applied inside the turn like every other prompt.
-      final blocks = _contentBlocks(parts);
+      final blocks = _contentBlocks(joinAdjacentPromptTextParts(parts: parts));
       if (blocks.isNotEmpty) {
         _enqueueTurn(
           sessionId: session.sessionId,
@@ -1128,9 +1128,10 @@ abstract class AcpPlugin({
         .whereType<PluginPromptPartText>()
         .map((part) => part.text)
         .where((part) => part.trim().isNotEmpty)
-        .join("\n")
+        .join("\n\n")
         .trim();
-    final blocks = _contentBlocks(parts);
+    final joinedParts = joinAdjacentPromptTextParts(parts: parts);
+    final blocks = _contentBlocks(joinedParts);
     if (blocks.isEmpty) return;
     final turn = _QueuedAcpTurn(
       blocks: blocks,
@@ -1147,7 +1148,7 @@ abstract class AcpPlugin({
           attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
           createdAt: DateTime.now().millisecondsSinceEpoch,
         ),
-        visibleParts: List.unmodifiable(parts),
+        visibleParts: List.unmodifiable(joinedParts),
       ),
     );
     final steeringClient = _steeringClientFor(sessionId: sessionId, followUp: turn);

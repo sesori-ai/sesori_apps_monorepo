@@ -46,7 +46,7 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
       // so it is the only one.
       codeblockDecoration: _codeBlockDecoration(prego: prego),
       code: TextStyle(
-        fontSize: 13,
+        fontSize: prego.textTheme.inlineCodeSize,
         color: prego.colors.textPrimary,
       ).monospace,
       // The Material fallback fills quotes with the default purple palette's
@@ -59,10 +59,17 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
 
 /// The same raised inset as a tool's output, so code reads alike wherever it
 /// appears and stands off the grey page in both themes.
-BoxDecoration _codeBlockDecoration({required PregoDesignSystem prego}) => BoxDecoration(
-  color: prego.colors.bgSurface4,
-  borderRadius: BorderRadius.circular(PregoRadius.xs),
-);
+BoxDecoration _codeBlockDecoration({required PregoDesignSystem prego}) => prego.isDesktopScale
+    // The desktop page is too near the usual fill in light, and it glares in dark.
+    ? BoxDecoration(
+        color: prego.colors.brightness == .light ? prego.colors.bgSurface1 : prego.colors.bgSurface2,
+        borderRadius: BorderRadius.circular(PregoRadius.md),
+        border: Border.all(color: prego.colors.borderSecondary),
+      )
+    : BoxDecoration(
+        color: prego.colors.bgSurface4,
+        borderRadius: BorderRadius.circular(PregoRadius.xs),
+      );
 
 BoxDecoration _blockquoteDecoration({required PregoDesignSystem prego}) => BoxDecoration(
   border: Border(left: BorderSide(color: prego.colors.fgQuaternary, width: 3)),
@@ -83,16 +90,17 @@ MarkdownStyleSheet _withTablesAndRules({required PregoDesignSystem prego, requir
 /// Figma chat typography shared by outgoing bubbles and assistant responses.
 MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSystem prego}) {
   final foreground = prego.colors.textPrimary;
-  final body = prego.textTheme.textSm.regular.copyWith(
-    color: foreground,
-    letterSpacing: 0.14,
-  );
+  final body = prego.textTheme.chat.regular.copyWith(color: foreground, letterSpacing: 0.14);
   final base = buildSessionMarkdownStyleSheet(
     prego: prego,
     paragraphStyle: body,
   );
 
-  return base.copyWith(
+  final desktop = prego.isDesktopScale;
+  // Tight list items carry no paragraph, so they take only the block gap.
+  final sheet = base.copyWith(
+    blockSpacing: desktop ? PregoSpacing.xs : null,
+    pPadding: desktop ? const EdgeInsets.symmetric(vertical: PregoSpacing.xxs) : null,
     // [ChatLinkMarkdownBuilder] keeps the surrounding text's size and weight
     // and takes only this colour.
     a: body.copyWith(color: prego.colors.textBrandSecondary),
@@ -101,7 +109,10 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     // The chip must stay translucent: a paragraph paints its selection
     // highlight before its glyphs, so an opaque run background covers the
     // highlight and a selection crossing inline code looks like it skipped it.
-    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.alphaBlack10),
+    code: base.code?.copyWith(
+      color: foreground,
+      backgroundColor: prego.isDesktopScale ? null : prego.colors.alphaBlack10,
+    ),
     h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
     h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
     h3: prego.textTheme.textMd.bold.copyWith(color: foreground),
@@ -109,13 +120,22 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     h5: prego.textTheme.textSm.bold.copyWith(color: foreground),
     h6: prego.textTheme.textSm.bold.copyWith(color: foreground),
     em: body.copyWith(fontStyle: FontStyle.italic),
-    strong: body.copyWith(fontWeight: FontWeight.bold),
+    strong: body.copyWith(fontWeight: prego.textTheme.chat.bold.fontWeight),
     del: body.copyWith(decoration: TextDecoration.lineThrough),
     blockquote: body,
     checkbox: body,
     listBullet: body,
-    tableHead: body.copyWith(fontWeight: FontWeight.bold),
+    tableHead: body.copyWith(fontWeight: prego.textTheme.chat.bold.fontWeight),
     tableBody: body,
+  );
+  if (!desktop) return sheet;
+  return sheet.copyWith(
+    h1Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h2Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h3Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h4Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h5Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h6Padding: const EdgeInsets.only(top: PregoSpacing.lg),
   );
 }
 
@@ -169,7 +189,10 @@ MarkdownStyleSheet buildLegalMarkdownStyleSheet({required PregoDesignSystem preg
       h3Padding: const EdgeInsets.only(top: PregoSpacing.lg, bottom: PregoSpacing.xxs),
       p: body,
       listBullet: body,
-      strong: body.copyWith(color: prego.colors.textPrimary, fontWeight: FontWeight.w600),
+      strong: body.copyWith(
+        color: prego.colors.textPrimary,
+        fontWeight: prego.isDesktopScale ? FontWeight.w500 : FontWeight.w600,
+      ),
       a: body.copyWith(
         color: prego.colors.textBrandSecondary,
         decoration: TextDecoration.underline,

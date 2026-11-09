@@ -3,6 +3,8 @@ import "dart:async";
 import "package:cue/cue.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
+import "../../motion/prego_pointer_motion.dart";
 import "../../motion/prego_reduced_motion.dart";
 import "anchored_flat_panel.dart";
 
@@ -53,6 +55,12 @@ class const PregoPopover({
   /// Corner radius of the open popover.
   final double popoverBorderRadius = 24,
 
+  /// See [AnchoredFlatPanel.hasPageHalo].
+  final bool hasPageHalo = false,
+
+  /// Where the popover hangs from its trigger, and so where it grows from.
+  final AnchoredPanelPlacement placement = AnchoredPanelPlacement.besideTrigger,
+
   /// Minimum gap kept between the popover and the screen edges.
   final EdgeInsets screenPadding = const EdgeInsets.all(12),
 }) extends StatelessWidget {
@@ -60,28 +68,40 @@ class const PregoPopover({
   Widget build(BuildContext context) {
     // Reduced motion opens and closes the popover at once.
     final reduced = prefersReducedMotion(context);
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     // `cue` still imports the SDK Material library and reads its localizations.
-    // ignore: deprecated_member_use
-    return MaterialUiCompatibilityBridge(
-      child: CueModalTransition(
-        barrierColor: Colors.transparent,
-        motion: reduced ? CueMotion.none : const Spring.smooth(),
-        reverseMotion: reduced ? CueMotion.none : const Spring.snappy(),
-        // No alignment: the panel positions itself from the trigger rect so it can
-        // clamp to the screen edges.
-        triggerBuilder: (context, showModal) => triggerBuilder(
-          context,
-          () => unawaited(showModal().then((_) => onClosed?.call())),
-        ),
-        builder: (context, triggerRect) => AnchoredFlatPanel(
-          triggerRect: triggerRect,
-          placement: AnchoredPanelPlacement.besideTrigger,
-          width: popoverWidth,
-          maxHeight: popoverMaxHeight,
-          borderRadius: popoverBorderRadius,
-          screenPadding: screenPadding,
-          contentScrolls: contentScrolls,
-          childBuilder: contentBuilder,
+    return PregoMenuOpenMotion(
+      // ignore: deprecated_member_use
+      builder: (context, instant, open) => MaterialUiCompatibilityBridge(
+        child: CueModalTransition(
+          barrierColor: Colors.transparent,
+          motion: switch ((reduced || instant, pointer)) {
+            (true, _) => CueMotion.none,
+            (false, true) => const CueMotion.curved(pregoPointerEnterDuration, curve: pregoPointerEnterCurve),
+            (false, false) => const Spring.smooth(),
+          },
+          reverseMotion: switch ((reduced || instant, pointer)) {
+            (true, _) => CueMotion.none,
+            (false, true) => const CueMotion.easeOut(Duration(milliseconds: 90)),
+            (false, false) => const Spring.snappy(),
+          },
+          // No alignment: the panel positions itself from the trigger rect so it can
+          // clamp to the screen edges.
+          triggerBuilder: (context, showModal) => triggerBuilder(
+            context,
+            () => open(() => unawaited(showModal().then((_) => onClosed?.call()))),
+          ),
+          builder: (context, triggerRect) => AnchoredFlatPanel(
+            triggerRect: triggerRect,
+            placement: placement,
+            width: popoverWidth,
+            maxHeight: popoverMaxHeight,
+            borderRadius: popoverBorderRadius,
+            screenPadding: screenPadding,
+            contentScrolls: contentScrolls,
+            hasPageHalo: hasPageHalo,
+            childBuilder: contentBuilder,
+          ),
         ),
       ),
     );

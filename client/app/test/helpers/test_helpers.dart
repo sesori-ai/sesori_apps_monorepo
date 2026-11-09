@@ -317,6 +317,7 @@ Widget sessionRowApp({
                 createActions: ({required window}) => actions,
                 selectedSessionId: null,
                 showsLoadFailure: true,
+                showsSearchField: true,
                 disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
                 emptyState: const SizedBox.shrink(),
                 header: null,

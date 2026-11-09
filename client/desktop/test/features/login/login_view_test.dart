@@ -391,13 +391,7 @@ void main() {
       whenListen(lastUsed, const Stream<AuthProvider?>.empty(), initialState: AuthProvider.email);
       await pumpLogin(tester, state: const LoginState.idle());
 
-      expect(
-        find.descendant(
-          of: find.widgetWithText(PregoButtonsSolid, "Sign in with email"),
-          matching: find.byType(PregoTag),
-        ),
-        findsOneWidget,
-      );
+      expect(lastUsedIn("Sign in with email"), findsOneWidget);
       expect(find.text("Last used"), findsOneWidget);
     });
 

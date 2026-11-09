@@ -59,6 +59,7 @@ Future<T?> showPregoModal<T>({
         // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the dialog this helper pushed
         onClose: isDismissible ? () => Navigator.of(dialogContext).pop() : null,
         width: width,
+        anchorsTop: false,
         contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
         scrolls: bodySize == PregoBottomSheetBodySize.natural,
         child: builder(dialogContext),
@@ -102,6 +103,10 @@ class const PregoModalSurface({
   required final VoidCallback? onBack,
   required final VoidCallback onClose,
   required final PregoModalWidth width,
+
+  /// Under a pointer, whether the dialog's top stays put as its content changes
+  /// height, rather than the dialog re-centring around it.
+  required final bool anchorsTop,
   required final bool handleBottomSafeArea,
   required final double topInset,
   required final Widget child,
@@ -125,6 +130,7 @@ class const PregoModalSurface({
         onBack: onBack,
         onClose: onClose,
         width: width,
+        anchorsTop: anchorsTop,
         contentPadding: EdgeInsetsDirectional.zero,
         scrolls: false,
         child: child,
@@ -141,6 +147,7 @@ Future<T?> _showDialogFrame<T>({
   // ignore: no_slop_linter/avoid_raw_modal_presenters, this is the adaptive presenter
   return showDialog<T>(
     context: context,
+    barrierColor: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.55 : 0.14),
     barrierDismissible: isDismissible,
     animationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,
     builder: builder,
@@ -158,6 +165,7 @@ class const _PregoDialogFrame({
   required final VoidCallback? onBack,
   required final VoidCallback? onClose,
   required final PregoModalWidth width,
+  required final bool anchorsTop,
   required final EdgeInsetsGeometry contentPadding,
 
   /// Whether the body scrolls inside the frame. A body that bounds itself
@@ -174,10 +182,15 @@ class const _PregoDialogFrame({
     return Dialog(
       backgroundColor: prego.colors.bgSecondary,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(PregoSpacing.x4l),
+      elevation: 16,
+      shadowColor: Colors.black.withValues(alpha: prego.colors.brightness == .dark ? 1 : 0.4),
+      alignment: anchorsTop ? Alignment.topCenter : null,
+      insetPadding: anchorsTop
+          ? const EdgeInsets.all(PregoSpacing.x4l).copyWith(top: MediaQuery.sizeOf(context).height * 0.2)
+          : const EdgeInsets.all(PregoSpacing.x4l),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(PregoRadius.x4l),
+        borderRadius: BorderRadius.circular(PregoRadius.xl),
         side: BorderSide(color: prego.colors.borderSecondary),
       ),
       child: SizedBox(
@@ -232,7 +245,7 @@ class const _PregoDialogFrame({
                       tooltip: localizations.closeButtonTooltip,
                       visualDensity: VisualDensity.compact,
                       onPressed: onClose,
-                      icon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+                      icon: const Icon(TablerLight.x, size: 16),
                     ),
                 ],
               ),

@@ -110,7 +110,14 @@ void main() {
     when(() => window.key).thenReturn((projectId: null, query: null, filter: SessionListQuickFilter.all));
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        theme: ThemeData(
+          extensions: [
+            if (interaction == PregoInteractionMode.pointer)
+              PregoDesignSystem.desktopLight
+            else
+              PregoDesignSystem.light,
+          ],
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Directionality(
@@ -148,6 +155,7 @@ void main() {
                       createActions: ({required window}) => throw StateError("no row to act on"),
                       selectedSessionId: null,
                       showsLoadFailure: true,
+                      showsSearchField: true,
                       disconnectedBuilder: disconnectedBuilder,
                       emptyState: const Text("Nothing here"),
                       header: header,

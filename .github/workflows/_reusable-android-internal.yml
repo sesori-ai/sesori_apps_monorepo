@@ -47,6 +47,12 @@ jobs:
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
 
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
+          platform: android
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:

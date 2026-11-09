@@ -127,6 +127,7 @@ class _ReasoningModalState() extends State<ReasoningModal> {
     }
 
     return PregoModalSurface(
+      anchorsTop: false,
       title: data.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
       subtitle: null,
       onBack: null,

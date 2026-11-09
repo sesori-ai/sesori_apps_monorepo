@@ -288,7 +288,7 @@ final class ClaudePlugin({
         .whereType<PluginPromptPartText>()
         .map((part) => part.text)
         .where((text) => text.trim().isNotEmpty)
-        .join("\n")
+        .join("\n\n")
         .trim();
     await _enqueueQueued(
       sessionId: sessionId,

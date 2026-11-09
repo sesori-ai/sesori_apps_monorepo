@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
 import "../../utils/lerp_utils.dart";
 
@@ -29,6 +30,11 @@ const double _knobInset = PregoSpacing.xxs;
 
 /// Duration for the toggle animation.
 const Duration _animationDuration = Duration(milliseconds: 200);
+
+/// The desktop switch: a 36×20 track holding a round 16px knob.
+const double _pointerTrackWidth = 36.0;
+const double _pointerTrackHeight = 20.0;
+const double _pointerKnobSize = 16.0;
 
 /// A toggle switch matching the Figma `Toggle - Switch` component.
 ///
@@ -112,9 +118,18 @@ class _PregoSwitchState() extends State<PregoSwitch> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
     final isDisabled = widget._isDisabled;
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final trackWidth = pointer ? _pointerTrackWidth : _trackWidth;
+    final trackHeight = pointer ? _pointerTrackHeight : _trackHeight;
+    final knobWidth = pointer ? _pointerKnobSize : _knobWidth;
+    final knobHeight = pointer ? _pointerKnobSize : _knobHeight;
 
     final trackColorOn = isDisabled ? colors.bgDisabled : colors.bgBrandSolid;
-    final trackColorOff = isDisabled ? colors.bgDisabled : colors.alphaBlack10;
+    final trackColorOff = isDisabled
+        ? colors.bgDisabled
+        : pointer
+        ? (colors.brightness == .light ? const Color(0xFFD1D1D6) : const Color(0xFF4A4A4E))
+        : colors.alphaBlack10;
     final knobColor = isDisabled ? colors.toggleButtonFgDisabled : colors.fgWhite;
 
     return Semantics(
@@ -132,12 +147,12 @@ class _PregoSwitchState() extends State<PregoSwitch> with SingleTickerProviderSt
               final animationValue = _curvedAnimation.value;
               final trackColor = lerpColorNonNull(trackColorOff, trackColorOn, animationValue);
 
-              // Knob slides from _knobInset to (_trackWidth - _knobWidth - _knobInset).
-              final knobOffset = _knobInset + animationValue * (_trackWidth - _knobWidth - _knobInset * 2);
+              // Knob slides from _knobInset to (trackWidth - knobWidth - _knobInset).
+              final knobOffset = _knobInset + animationValue * (trackWidth - knobWidth - _knobInset * 2);
 
               return SizedBox(
-                width: _trackWidth,
-                height: _trackHeight,
+                width: trackWidth,
+                height: trackHeight,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: trackColor,
@@ -161,7 +176,7 @@ class _PregoSwitchState() extends State<PregoSwitch> with SingleTickerProviderSt
                 color: knobColor,
                 borderRadius: BorderRadius.circular(PregoRadius.full),
               ),
-              child: const SizedBox(width: _knobWidth, height: _knobHeight),
+              child: SizedBox(width: knobWidth, height: knobHeight),
             ),
           ),
         ),

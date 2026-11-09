@@ -11,6 +11,30 @@ import "package:theme_prego/module_prego.dart";
 Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
 
 void main() {
+  testWidgets("under a pointer the actions are plain 32 pt glyphs on the composer", (tester) async {
+    await _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.dark,
+      alwaysOpen: true,
+      actionsEnabled: true,
+      showAttachImage: true,
+      attachSources: const [ComposerPickSource.files],
+      onAttach: (_) {},
+      onSlashCommandsTap: () {},
+      mode: PregoInteractionMode.pointer,
+    );
+
+    final accordion = find.byType(ComposerOptionsAccordion);
+    expect(tester.getSize(accordion).height, 32);
+    final decoration =
+        tester
+                .widget<DecoratedBox>(find.descendant(of: accordion, matching: find.byType(DecoratedBox)).first)
+                .decoration
+            as BoxDecoration;
+    expect(decoration.color, isNull);
+    expect(decoration.border, isNull);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets("${brightness.name}: actions replace the opener and collapse after selection", (tester) async {
       var attachmentPicks = 0;
@@ -97,7 +121,7 @@ void main() {
       await tester.pump();
       expect(
         tester.getSize(accordion).width,
-        ComposerOptionsAccordion.openWidth(showAttachImage: true),
+        ComposerOptionsAccordion.openWidth(showAttachImage: true, pointer: false),
         reason: "Nothing eases on.",
       );
       await tester.tap(_tooltip("Attach image"));
@@ -363,27 +387,31 @@ Future<void> _pumpAccordion({
   required List<ComposerPickSource> attachSources,
   required ValueChanged<ComposerPickSource> onAttach,
   required VoidCallback onSlashCommandsTap,
+  PregoInteractionMode mode = PregoInteractionMode.touch,
 }) async {
   await tester.pumpWidget(
-    MaterialApp(
-      theme: ThemeData(
-        brightness: brightness,
-        extensions: [brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark],
-      ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: Center(
-          child: ComposerOptionsAccordion(
-            actionsEnabled: actionsEnabled,
-            showAttachImage: showAttachImage,
-            attachTooltip: "Attach image",
-            alwaysOpen: alwaysOpen,
-            isTyping: isTyping,
-            attachSources: attachSources,
-            onAttach: onAttach,
-            onSlashCommandsTap: onSlashCommandsTap,
-            onOpenChanged: (_) {},
+    PregoInteractionScope(
+      mode: mode,
+      child: MaterialApp(
+        theme: ThemeData(
+          brightness: brightness,
+          extensions: [brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark],
+        ),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Center(
+            child: ComposerOptionsAccordion(
+              actionsEnabled: actionsEnabled,
+              showAttachImage: showAttachImage,
+              attachTooltip: "Attach image",
+              alwaysOpen: alwaysOpen,
+              isTyping: isTyping,
+              attachSources: attachSources,
+              onAttach: onAttach,
+              onSlashCommandsTap: onSlashCommandsTap,
+              onOpenChanged: (_) {},
+            ),
           ),
         ),
       ),

@@ -31,6 +31,7 @@ class const PregoActionSheet({
     final prego = context.prego;
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) {
       return PregoModalSurface(
+        anchorsTop: true,
         title: title,
         subtitle: null,
         onBack: null,

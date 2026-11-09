@@ -364,7 +364,7 @@ state.
   "Couldn’t load sessions" row with Retry shows beside the rows that did load; Retry reads every project again. A
   reconnect checks for the route again.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
-  over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
+  over the home. The sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
   divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.
   The sidebar leads with New session, then search, then the project switcher heading the list, and
   its footer holds the computer switcher, Settings and collapse. With no session open the pane is a new

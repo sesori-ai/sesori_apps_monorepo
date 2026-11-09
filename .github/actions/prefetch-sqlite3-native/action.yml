@@ -3,14 +3,18 @@ description: >-
   Put the pinned, hash-verified libsqlite3 where package:sqlite3's build hook
   reuses it, from the Actions cache or a retried download (release API first,
   then the public URL), so tests and builds never depend on the hook's single
-  unretried GitHub release download. The hook
-  only reuses a file whose SHA-256 matches its pin, so the bytes are unchanged.
+  unretried GitHub release download. The hook only reuses a file whose SHA-256
+  matches its pin, so built and shipped bytes are unchanged.
   Run it after `dart pub get` and before anything that runs build hooks.
 
 inputs:
   workspace:
     description: 'Pub workspace directory whose hooks will run (client or bridge)'
     required: true
+  platform:
+    description: 'Build target: host (the runner OS), ios (device) or android'
+    required: false
+    default: 'host'
 
 runs:
   using: 'composite'
@@ -20,32 +24,37 @@ runs:
       shell: bash
       env:
         WORKSPACE: ${{ inputs.workspace }}
+        PLATFORM: ${{ inputs.platform }}
       # python3 on Windows can resolve to the Microsoft Store stub.
       run: |
         if [ "$RUNNER_OS" = Windows ]; then py=python; else py=python3; fi
-        "$py" "$GITHUB_ACTION_PATH/prefetch.py" plan --workspace "$WORKSPACE"
+        "$py" "$GITHUB_ACTION_PATH/prefetch.py" plan --workspace "$WORKSPACE" --platform "$PLATFORM"
 
+    # An empty key means the resolved sqlite3 has no download hook to seed.
     - name: Restore sqlite3 native library cache
       id: cache
+      if: steps.plan.outputs.key != ''
       uses: actions/cache/restore@v5
       with:
         path: ${{ steps.plan.outputs.path }}
         key: ${{ steps.plan.outputs.key }}
 
     - name: Seed sqlite3 native library
+      if: steps.plan.outputs.key != ''
       shell: bash
       env:
         WORKSPACE: ${{ inputs.workspace }}
+        PLATFORM: ${{ inputs.platform }}
         # Lets the gh download use the authenticated release API.
         GH_TOKEN: ${{ github.token }}
       run: |
         if [ "$RUNNER_OS" = Windows ]; then py=python; else py=python3; fi
-        "$py" "$GITHUB_ACTION_PATH/prefetch.py" seed --workspace "$WORKSPACE"
+        "$py" "$GITHUB_ACTION_PATH/prefetch.py" seed --workspace "$WORKSPACE" --platform "$PLATFORM"
 
     # Saved right away rather than at job end, so a later test failure still
     # leaves the cache warm for the next run.
     - name: Save sqlite3 native library cache
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.plan.outputs.key != '' && steps.cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v5
       with:
         path: ${{ steps.plan.outputs.path }}

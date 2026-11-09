@@ -64,7 +64,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarExpand => 'Expand sidebar';
 
   @override
-  String get desktopSidebarResize => 'Resize sidebar; double-click to reset';
+  String get desktopSidebarResize => 'Drag to resize, click to collapse';
 
   @override
   String get desktopSearch => 'Search';
@@ -88,6 +88,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionHeading => 'What should we work on?';
+
+  @override
+  String get newSessionNoProjectsHeading => 'Add your first project';
+
+  @override
+  String get newSessionNoProjectsHint => 'Pick a folder on this computer. Your sessions will start there.';
 
   @override
   String get projectPickerTitle => 'Projects';
@@ -120,6 +126,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionChangesLabel => 'Changes';
+
+  @override
+  String get desktopSessionBreadcrumb => 'Session';
 
   @override
   String get desktopSessionParentBreadcrumb => 'Main session';
@@ -190,6 +199,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSettingsGeneral => 'General';
 
   @override
+  String get desktopSettingsStartup => 'Startup';
+
+  @override
   String get desktopSettingsLaunchAtLogin => 'Launch Sesori at login';
 
   @override
@@ -217,7 +229,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopUpdatesCheckDescription =>
-      'Sesori downloads verified updates in the background and installs them when you quit or restart to update.';
+      'Downloads verified updates in the background. Installs when you quit or restart.';
 
   @override
   String get desktopUpdatesChecking => 'Checking for updates…';
@@ -640,9 +652,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sesori approves every permission request for you, so the agent never stops to ask.';
 
   @override
-  String get settingsYoloLoading => 'Loading the bridge setting…';
-
-  @override
   String get settingsYoloUnsupported => 'Update the connected bridge to configure this setting.';
 
   @override
@@ -663,9 +672,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsPluginWarmupDescription =>
       'Starts the session\'s harness when you open it to reduce delays on your first action.';
-
-  @override
-  String get settingsPluginWarmupLoading => 'Loading the bridge setting…';
 
   @override
   String get settingsPluginWarmupUnsupported => 'Update the connected bridge to configure this setting.';
@@ -1037,7 +1043,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBasicUsageAnalyticsTitle => 'Basic usage analytics';
 
   @override
-  String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage — never your code or messages.';
+  String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage, never your code or messages.';
 
   @override
   String get settingsBasicUsageAnalyticsLoading => 'Loading preference…';
@@ -2243,6 +2249,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListAwaitingInput => 'Awaiting input';
 
   @override
+  String get sessionListNeedsYou => 'Needs you';
+
+  @override
   String get sessionListWaiting => 'Waiting';
 
   @override
@@ -2275,7 +2284,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voicePutWordsInBox => 'Put the words in the box';
 
   @override
-  String get voiceEnterToSend => 'Enter to send';
+  String get voiceListening => 'Listening';
 
   @override
   String get voiceEditBeforeSending => 'Edit before sending';
@@ -2294,6 +2303,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceDictationLimitReached => 'Dictation limit reached';
+
+  @override
+  String get voiceSavedNotice => 'Couldn\'t transcribe. Your recording is saved.';
 
   @override
   String get voiceRecordingSaved => 'Recording saved';
@@ -2448,11 +2460,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get needsYouReview => 'Review';
 
   @override
-  String get permissionBannerSingle => '1 permission request pending';
+  String get permissionBannerSingle => '1 pending permission request';
 
   @override
   String permissionBannerMultiple(int count) {
-    return '$count permission requests pending';
+    return '$count pending permission requests';
   }
 
   @override
@@ -2481,6 +2493,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionDedicatedWorkspace => 'New worktree';
+
+  @override
+  String get newSessionCurrentCheckout => 'Current checkout';
 
   @override
   String get newSessionPluginChooserLabel => 'Coding tool';
@@ -2621,6 +2636,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diffPermissionRequestTitle => 'Allow this action?';
+
+  @override
+  String get diffPermissionAlwaysAllowEllipsis => 'Always approve…';
+
+  @override
+  String get diffPermissionAlwaysBack => 'Back';
+
+  @override
+  String get desktopBridgeStoppedTitle => 'Bridge stopped';
+
+  @override
+  String get desktopUpdatesCheckNow => 'Check now';
+
+  @override
+  String get desktopSidebarOfflineHint => 'Sessions will return when the bridge is back.';
+
+  @override
+  String get desktopSidebarNoProjects => 'No projects yet';
+
+  @override
+  String get diffPermissionAlwaysTitle => 'Always approve this kind of request?';
+
+  @override
+  String get diffPermissionAlwaysConsequence => 'Future matching requests will run without asking.';
+
+  @override
+  String get diffPermissionAlwaysHint =>
+      'What counts as matching depends on the harness, and Sesori can\'t show its exact rule. You can change it in the harness\'s own settings.';
+
+  @override
+  String diffPermissionAlwaysHintNamed(String harness) {
+    return 'What counts as matching depends on $harness, and Sesori can\'t show its exact rule. You can change it in $harness\'s settings.';
+  }
 
   @override
   String get diffPermissionReject => 'Don’t allow';

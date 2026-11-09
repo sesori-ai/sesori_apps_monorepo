@@ -54,6 +54,16 @@ class const PregoVoiceWaveform({
   /// Height of the paint band; a full-amplitude bar spans it exactly.
   final double height = 24,
 
+  /// A bar's width and the grid it marches on, from the Figma waveform.
+  final double barWidth = 3,
+  final double slotPitch = 6.5,
+
+  /// How tall a resting dot or a silent bar stands.
+  final double restingHeight = 6,
+
+  /// Dissolves the strip toward its leading edge instead of cutting it off.
+  final bool fadesOlderBars = false,
+
   /// Expected spacing between [amplitudeStream] events, used to ease the
   /// slide between consecutive samples.
   final Duration sampleInterval = const Duration(milliseconds: 100),
@@ -68,6 +78,8 @@ class _PregoVoiceWaveformState()
   /// Only the trailing ~2× a composer width of history can ever be visible;
   /// older samples have scrolled off and are dropped.
   static const int _maxSamples = 256;
+
+  static const double _olderBarsFade = 48;
 
   /// Drives the between-sample slide. The value itself is unused — the painter
   /// reads [_sinceLastSample] — the controller only schedules repaints.
@@ -135,6 +147,18 @@ class _PregoVoiceWaveformState()
     return (elapsed / widget.sampleInterval.inMicroseconds).clamp(0.0, 1.0);
   }
 
+  Widget _fading({required Widget child}) {
+    if (!widget.fadesOlderBars) return child;
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => LinearGradient(
+        colors: const [Color(0x00000000), Color(0xFF000000)],
+        stops: [0, bounds.width <= 0 ? 1 : (_olderBarsFade / bounds.width).clamp(0.0, 1.0)],
+      ).createShader(bounds),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ExcludeSemantics(
@@ -144,21 +168,26 @@ class _PregoVoiceWaveformState()
         child: SizedBox(
           height: widget.height,
           width: double.infinity,
-          child: CustomPaint(
-            painter: _VoiceWaveformPainter(
-              repaint: Listenable.merge([
-                _slide,
-                _sampleTick,
-                ?widget.flattenProgress,
-              ]),
-              samples: _samples,
-              slidePhase: _sinceLastSample,
-              // Under reduced motion the ticker is off and bars snap one slot
-              // per sample instead of sliding.
-              slideEnabled: () => motionAllowed,
-              flattenProgress: widget.flattenProgress,
-              barColor: widget.barColor,
-              dotColor: widget.dotColor,
+          child: _fading(
+            child: CustomPaint(
+              painter: _VoiceWaveformPainter(
+                repaint: Listenable.merge([
+                  _slide,
+                  _sampleTick,
+                  ?widget.flattenProgress,
+                ]),
+                samples: _samples,
+                slidePhase: _sinceLastSample,
+                // Under reduced motion the ticker is off and bars snap one slot
+                // per sample instead of sliding.
+                slideEnabled: () => motionAllowed,
+                flattenProgress: widget.flattenProgress,
+                barColor: widget.barColor,
+                dotColor: widget.dotColor,
+                barWidth: widget.barWidth,
+                slotPitch: widget.slotPitch,
+                restingHeight: widget.restingHeight,
+              ),
             ),
           ),
         ),
@@ -184,13 +213,10 @@ class _VoiceWaveformPainter({
   required final ValueListenable<double>? flattenProgress,
   required final Color barColor,
   required final Color dotColor,
+  required final double barWidth,
+  required final double slotPitch,
+  required final double restingHeight,
 }) extends CustomPainter {
-  /// Bar/dot geometry from the Figma waveform: 3px-wide pills on a 6.5px
-  /// grid, resting at 6px tall.
-  static const double _barWidth = 3;
-  static const double _slotPitch = 6.5;
-  static const double _restingHeight = 6;
-
   @override
   void paint(Canvas canvas, Size size) {
     // The newest bar slides in from beyond the trailing edge; without the
@@ -200,13 +226,13 @@ class _VoiceWaveformPainter({
     final paintBar = Paint()..color = lerpColorNonNull(barColor, dotColor, flatten);
     final paintDot = Paint()..color = dotColor;
 
-    final slotCount = (size.width / _slotPitch).floor();
+    final slotCount = (size.width / slotPitch).floor();
     if (slotCount <= 0) return;
 
     // While a new sample settles in, the whole strip slides the remaining
     // fraction of one slot leftward — a conveyor rather than a 10 Hz step.
     final phase = slideEnabled() ? slidePhase() : 1.0;
-    final slideOffset = (1 - phase) * _slotPitch;
+    final slideOffset = (1 - phase) * slotPitch;
 
     final centerY = size.height / 2;
 
@@ -214,8 +240,8 @@ class _VoiceWaveformPainter({
     // the history and past its start into resting dots.
     for (var slot = 0; slot < slotCount + 1; slot++) {
       final sampleIndex = samples.length - 1 - slot;
-      final x = size.width - _barWidth - slot * _slotPitch + slideOffset;
-      if (x + _barWidth < 0) break;
+      final x = size.width - barWidth - slot * slotPitch + slideOffset;
+      if (x + barWidth < 0) break;
       // The extra slot exists for the slide: at rest it would show a cut-off bar.
       if (x < 0 && slideOffset == 0) break;
 
@@ -226,18 +252,18 @@ class _VoiceWaveformPainter({
         // The newest bar grows in over its slide, so it doesn't pop to full
         // height at the trailing edge.
         if (sampleIndex == samples.length - 1) amplitude *= phase;
-        final live = _restingHeight + amplitude * (size.height - _restingHeight);
-        height = lerpDoubleNonNull(live, _restingHeight, flatten);
+        final live = restingHeight + amplitude * (size.height - restingHeight);
+        height = lerpDoubleNonNull(live, restingHeight, flatten);
         paint = paintBar;
       } else {
-        height = _restingHeight;
+        height = restingHeight;
         paint = paintDot;
       }
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, centerY - height / 2, _barWidth, height),
-          const Radius.circular(_barWidth / 2),
+          Rect.fromLTWH(x, centerY - height / 2, barWidth, height),
+          Radius.circular(barWidth / 2),
         ),
         paint,
       );
@@ -251,6 +277,9 @@ class _VoiceWaveformPainter({
     return oldDelegate.barColor != barColor ||
         oldDelegate.dotColor != dotColor ||
         oldDelegate.samples != samples ||
+        oldDelegate.barWidth != barWidth ||
+        oldDelegate.slotPitch != slotPitch ||
+        oldDelegate.restingHeight != restingHeight ||
         oldDelegate.flattenProgress != flattenProgress;
   }
 }

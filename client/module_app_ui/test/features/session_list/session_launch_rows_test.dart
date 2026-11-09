@@ -141,6 +141,7 @@ void main() {
                             createActions: ({required window}) => throw StateError("no row to act on"),
                             selectedSessionId: null,
                             showsLoadFailure: true,
+                            showsSearchField: true,
                             disconnectedBuilder: ({required context, required state}) =>
                                 const SliverToBoxAdapter(child: Text("Computer offline")),
                             emptyState: const Text("Nothing here"),

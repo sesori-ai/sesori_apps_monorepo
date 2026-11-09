@@ -504,28 +504,31 @@ class _CodePreviewState() extends State<_CodePreview> {
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: contentWidth,
-              child: ListView.builder(
-                controller: controller,
-                itemExtent: rowHeight,
-                padding: EdgeInsetsDirectional.only(
-                  top: PregoSpacing.sm,
-                  bottom: PregoSpacing.sm + MediaQuery.paddingOf(context).bottom,
-                ),
-                itemCount: lines.length,
-                itemBuilder: (context, index) => ColoredBox(
-                  color: index == targetIndex ? targetColor : Colors.transparent,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: gutterWidth,
-                          child: Text("${index + 1}", textAlign: TextAlign.end, style: numberStyle),
-                        ),
-                        const SizedBox(width: gap),
-                        Expanded(child: Text.rich(lines[index], softWrap: false, overflow: TextOverflow.clip)),
-                      ],
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: ListView.builder(
+                  controller: controller,
+                  itemExtent: rowHeight,
+                  padding: EdgeInsetsDirectional.only(
+                    top: PregoSpacing.sm,
+                    bottom: PregoSpacing.sm + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  itemCount: lines.length,
+                  itemBuilder: (context, index) => ColoredBox(
+                    color: index == targetIndex ? targetColor : Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: gutterWidth,
+                            child: Text("${index + 1}", textAlign: TextAlign.end, style: numberStyle),
+                          ),
+                          const SizedBox(width: gap),
+                          Expanded(child: Text.rich(lines[index], softWrap: false, overflow: TextOverflow.clip)),
+                        ],
+                      ),
                     ),
                   ),
                 ),

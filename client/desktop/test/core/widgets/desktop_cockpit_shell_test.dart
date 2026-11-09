@@ -56,6 +56,10 @@ void main() {
   });
   tearDown(GetIt.instance.reset);
   setUp(() {
+    // Wide enough for the sidebar's saved width; a narrower window has its own tests.
+    final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+    view.physicalSize = const Size(1200, 600) * view.devicePixelRatio;
+    addTearDown(view.resetPhysicalSize);
     // The shell asks for the window host on macOS only, where it hides the title bar.
     windowHost = _MockWindowHost();
     when(windowHost.startDragging).thenAnswer((_) async {});
@@ -410,11 +414,10 @@ void main() {
   final page = find.byKey(const Key("cockpit-content"));
   final list = find.byKey(const Key("desktop-sidebar-session-list"));
   final filterTrigger = find.byKey(const Key("desktop-sidebar-filter"));
-  const margin = FloatingSidebarPanel.margin;
-  // The page starts past the open panel and the gaps on either side of it, or
-  // at the window's edge while the sidebar is hidden.
+  // The page starts at the open sidebar's edge, or at the window's edge while
+  // the sidebar is hidden.
   double pageStart(WidgetTester tester) => tester.getTopLeft(page).dx;
-  double besideOpenPanel({required double width}) => width + 2 * margin;
+  double besideOpenPanel({required double width}) => width;
 
   testWidgets("sidebar shortcut preserves focus, ignores repeats and respects automatic collapse", (tester) async {
     tester.view.devicePixelRatio = 1;
@@ -473,7 +476,7 @@ void main() {
     await tester.sendKeyUpEvent(modifier);
     await tester.pumpAndSettle();
     expect(sidebar.state.collapsed, isFalse);
-    expect(pageStart(tester), besideOpenPanel(width: 260));
+    expect(pageStart(tester), besideOpenPanel(width: DesktopCockpitShell.narrowSidebarWidth));
     expect(focus.hasFocus, isTrue);
     verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(2);
     // Too narrow a window hides the sidebar, and neither the button nor the
@@ -492,7 +495,7 @@ void main() {
     verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
     tester.view.physicalSize = const Size(900, 600);
     await tester.pumpAndSettle();
-    expect(pageStart(tester), besideOpenPanel(width: 260));
+    expect(pageStart(tester), besideOpenPanel(width: DesktopCockpitShell.narrowSidebarWidth));
     expect(focus.hasFocus, isTrue);
   }, variant: TargetPlatformVariant.desktop());
 
@@ -573,6 +576,7 @@ void main() {
             breadcrumb: null,
             status: null,
             title: "Fixture page",
+            titleDetail: null,
             subtitle: null,
             actions: [],
           ),
@@ -581,24 +585,35 @@ void main() {
     );
     await tester.pumpAndSettle();
     final title = find.text("Fixture page");
-    final titleInset = tester.getTopLeft(title).dx - besideOpenPanel(width: 260);
+    final titleInset = tester.getTopLeft(title).dx - besideOpenPanel(width: 288);
     expect(restore, findsNothing);
     await tester.tap(toggle);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
-    // Midway, the button rides just ahead of the sliding title, never over it.
-    expect(tester.getRect(restore).right, moreOrLessEquals(tester.getTopLeft(title).dx - titleInset));
+    // Midway, the control is still under the pointer, and the title clears the name.
+    expect(tester.getTopLeft(restore).dx, DesktopSidebarRestoreInset.buttonStart);
+    expect(
+      tester.getTopLeft(title).dx,
+      greaterThanOrEqualTo(DesktopSidebarRestoreInset.clearance),
+    );
     await tester.pumpAndSettle();
     const size = DesktopSidebarRestoreInset.buttonSize;
     expect(
       tester.getRect(restore),
-      Rect.fromLTWH(DesktopSidebarRestoreInset.buttonStart, (DesktopPageToolbar.height - size) / 2, size, size),
+      Rect.fromCenter(
+        center: Offset(
+          DesktopSidebarRestoreInset.buttonStart + size / 2,
+          DesktopSidebarRestoreInset.titleLineCentre,
+        ),
+        width: size,
+        height: size,
+      ),
     );
-    expect(tester.getTopLeft(title).dx, titleInset + DesktopSidebarRestoreInset.buttonStart + size);
+    expect(tester.getTopLeft(title).dx, titleInset + DesktopSidebarRestoreInset.clearance);
     await tester.tap(restore);
     await tester.pumpAndSettle();
     expect(sidebar.state.collapsed, isFalse);
-    expect(tester.getTopLeft(title).dx, titleInset + besideOpenPanel(width: 260));
+    expect(tester.getTopLeft(title).dx, titleInset + besideOpenPanel(width: 288));
     expect(restore, findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
@@ -626,12 +641,12 @@ void main() {
     final search = find.byKey(const Key("desktop-sidebar-search"));
     final archived = find.byKey(const Key("desktop-sidebar-archived"));
     expect(find.descendant(of: archived, matching: find.text("Archived sessions")), findsOneWidget);
-    expect(find.descendant(of: archived, matching: find.byIcon(TablerRegular.archive)), findsOneWidget);
+    expect(find.descendant(of: archived, matching: find.byIcon(TablerLight.archive)), findsOneWidget);
     expect(tester.getTopLeft(archived), tester.getBottomLeft(search));
     expect(tester.getSize(archived), tester.getSize(search));
     expect(tester.getBottomLeft(archived).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
     final footer = find.byKey(const Key("desktop-sidebar-footer"));
-    expect(find.descendant(of: footer, matching: find.byIcon(TablerRegular.archive)), findsNothing);
+    expect(find.descendant(of: footer, matching: find.byIcon(TablerLight.archive)), findsNothing);
 
     await tester.tap(archived);
     expect(archivedOpens, 1);
@@ -681,7 +696,7 @@ void main() {
       ),
     );
     expect(find.byType(NavigationRail), findsNothing);
-    expect(tester.getSize(panel).width, 260);
+    expect(tester.getSize(panel).width, 288);
     await tester.tap(find.text("This computer"));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
@@ -700,11 +715,15 @@ void main() {
       tester.view.physicalSize = Size(width, 700);
       await tester.pumpWidget(app(state: running));
       await tester.pumpAndSettle();
-      // Too narrow a window hides the sidebar; otherwise the panel keeps a
-      // margin at its start and the resize gap at its end.
+      // Too narrow a window hides the sidebar; otherwise the page starts at its edge.
       expect(
         tester.getSize(page).width,
-        width < DesktopCockpitShell.autoCollapseBreakpoint ? width : width - besideOpenPanel(width: 260),
+        switch (width) {
+          < DesktopCockpitShell.autoCollapseBreakpoint => width,
+          < DesktopCockpitShell.narrowWindowWidth =>
+            width - besideOpenPanel(width: DesktopCockpitShell.narrowSidebarWidth),
+          _ => width - besideOpenPanel(width: 288),
+        },
       );
       expect(find.byType(SessionSidebarShell), findsNothing);
     }
@@ -715,17 +734,17 @@ void main() {
     await tester.pumpWidget(app(state: running));
     await tester.pump();
     final handle = tester.getSemantics(resize);
-    expect(handle.getSemanticsData().tooltip, "Resize sidebar; double-click to reset");
+    expect(handle.getSemanticsData().tooltip, "Drag to resize, click to collapse");
     expect(handle.rect.size, tester.getSize(resize));
     semantics.dispose();
   });
 
-  testWidgets("the sidebar floats as an inset panel whose gap is the resize handle", (tester) async {
+  testWidgets("the sidebar fills the window's height and its handle sits astride its edge", (tester) async {
     await tester.pumpWidget(app(state: running));
     final rect = tester.getRect(panel);
-    expect(rect, const Rect.fromLTRB(margin, margin, margin + 260, 600 - margin));
-    expect(tester.getRect(resize), Rect.fromLTRB(rect.right, 0, rect.right + margin, 600));
-    expect(pageStart(tester), rect.right + margin);
+    expect(rect, const Rect.fromLTRB(0, 0, 288, 600));
+    expect(tester.getRect(resize), Rect.fromLTRB(rect.right - 5, 0, rect.right + 4, 600));
+    expect(pageStart(tester), rect.right);
     expect(find.byType(VerticalDivider), findsNothing);
     // A row's ink highlight is clipped with the list, not painted over the section above it.
     final listMaterial = find.ancestor(of: list, matching: find.byType(Material));
@@ -744,9 +763,13 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),
     (tester) async {
       await tester.pumpWidget(app(state: running));
-      expect(tester.getRect(panel), const Rect.fromLTRB(margin, margin, margin + 260, 600 - margin));
+      expect(tester.getRect(panel), const Rect.fromLTRB(0, 0, 288, 600));
       // The first control starts below the lights, which end 33 pt from the window's top.
-      expect(tester.getTopLeft(find.byKey(const Key("desktop-sidebar-new-session"))).dy, 42);
+      expect(tester.getTopLeft(find.byKey(const Key("desktop-sidebar-new-session"))).dy, 44);
+      // The toggle and the product's name share the lights' line.
+      const lightsLine = DesktopSidebarRestoreInset.titleLineCentre;
+      expect(tester.getCenter(find.byKey(const Key("desktop-sidebar-toggle"))).dy, lightsLine);
+      expect(tester.getCenter(find.text("Sesori")).dy, lightsLine);
 
       Future<void> drag({required Offset from}) async {
         final gesture = await tester.startGesture(from, kind: PointerDeviceKind.mouse);
@@ -772,7 +795,7 @@ void main() {
       // button starts past them.
       await tester.tap(toggle);
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(restore).dx, 80);
+      expect(tester.getTopLeft(restore).dx, 84);
 
       // The window's top band belongs to the app root, not to the shell.
       await drag(from: const Offset(500, 20));
@@ -833,12 +856,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);
         expect(find.descendant(of: list, matching: find.text("Fix the build")), findsOneWidget);
-        expect(
-          find.text(
-            succeeded ? "Projects and sessions updated" : "Could not refresh projects and sessions",
-          ),
-          findsOneWidget,
-        );
+        // A refresh that worked shows in the list; only a failure speaks.
+        expect(find.text("Projects and sessions updated"), findsNothing);
+        expect(find.text("Could not refresh projects and sessions"), succeeded ? findsNothing : findsOneWidget);
       } finally {
         semantics.dispose();
       }
@@ -870,29 +890,91 @@ void main() {
     verifyNever(refreshService.refresh);
   });
 
-  testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
+  testWidgets("dragging the edge far past the minimum collapses, leaving the toggle and the name", (tester) async {
+    await tester.pumpWidget(app(state: running));
+    final gesture = await tester.startGesture(tester.getCenter(resize));
+    await gesture.moveBy(const Offset(-30, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-200, 0));
+    await tester.pump();
+    expect(tester.getSize(panel).width, DesktopSidebarCubit.minWidth);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isTrue);
+    expect(pageStart(tester), 0);
+    expect(restore, findsOneWidget);
+    expect(find.text("Sesori"), findsOneWidget);
+    await tester.tap(restore);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(panel).width, 288);
+  });
+
+  testWidgets("a drag let go just past the minimum stays open at the minimum", (tester) async {
+    await tester.pumpWidget(app(state: running));
+    final gesture = await tester.startGesture(tester.getCenter(resize));
+    await gesture.moveBy(const Offset(-30, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-80, 0));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isFalse);
+    expect(tester.getSize(panel).width, DesktopSidebarCubit.minWidth);
+  });
+
+  testWidgets("in a narrow window a drag starts from the edge shown, not the saved width", (tester) async {
+    tester.view
+      ..physicalSize = const Size(900, 800)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(state: running));
+    expect(tester.getSize(panel).width, 240);
+    final gesture = await tester.startGesture(tester.getCenter(resize));
+    await gesture.moveBy(const Offset(-30, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-10, 0));
+    await tester.pump();
+    expect(tester.getSize(panel).width, 200);
+    await gesture.up();
+    await tester.pump();
+  });
+
+  testWidgets("a stopped bridge leaves relay recovery reachable", (tester) async {
+    whenListen(
+      overlay,
+      const Stream<ConnectionOverlayState>.empty(),
+      initialState: const ConnectionOverlayState.connectionLost(),
+    );
+    await tester.pumpWidget(
+      app(state: _state(processState: const BridgeProcessCrashGiveUp(exitCode: 1, crashCount: 6))),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key("desktop-connection-pill")), findsOneWidget);
+  });
+
+  testWidgets("drag resizes immediately and persists on end, and a click collapses", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));
     await gesture.moveBy(const Offset(30, 0));
     await tester.pump();
     await gesture.moveBy(const Offset(60, 0));
     await tester.pump();
-    expect(tester.getSize(panel).width, 350);
+    expect(tester.getSize(panel).width, 378);
     verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
     await gesture.up();
     await tester.pump();
     verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(1);
     await tester.tap(resize);
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(resize);
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(tester.getSize(panel).width, 260);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isTrue);
+    expect(sidebar.state.width, 378);
+    expect(resize, findsNothing);
     verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(1);
   });
 
   for (final (bound, offsets, widths) in [
-    ("maximum", [250.0, 230.0, 150.0], [420.0, 420.0, 410.0]),
-    ("minimum", [-160.0, -140.0, -30.0], [200.0, 200.0, 230.0]),
+    ("maximum", [250.0, 230.0, 120.0], [420.0, 420.0, 408.0]),
+    ("minimum", [-160.0, -140.0, -60.0], [200.0, 200.0, 228.0]),
   ]) {
     testWidgets("drag preserves $bound overshoot until the pointer returns inside the bound", (tester) async {
       await tester.pumpWidget(app(state: running));
@@ -967,7 +1049,7 @@ void main() {
       expect(pageStart(tester), 0);
       await tester.tap(restore);
       await tester.pump();
-      expect(pageStart(tester), besideOpenPanel(width: 260));
+      expect(pageStart(tester), besideOpenPanel(width: 288));
     });
   }
 
@@ -981,7 +1063,7 @@ void main() {
     expect(sidebar.state.collapsed, isFalse);
     tester.view.physicalSize = const Size(760, 600);
     await tester.pumpAndSettle();
-    expect(pageStart(tester), besideOpenPanel(width: 260));
+    expect(pageStart(tester), besideOpenPanel(width: DesktopCockpitShell.narrowSidebarWidth));
     verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
     unawaited(sidebar.toggleCollapsed());
     tester.view.physicalSize = const Size(1200, 700);
@@ -993,7 +1075,8 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(app(state: running));
-    expect(find.text("Sesori"), findsNothing);
+    // The sidebar's top carries the product's name, beside its toggle.
+    expect(find.text("Sesori"), findsOneWidget);
     final newSession = find.byKey(const Key("desktop-sidebar-new-session"));
     expect(find.descendant(of: newSession, matching: find.text("New session")), findsOneWidget);
     expect(find.text("New project"), findsNothing);
@@ -1018,12 +1101,10 @@ void main() {
       tester.widget<Container>(footer).decoration,
       isA<BoxDecoration>().having((decoration) => decoration.border, "border", isNotNull),
     );
-    // One 44-point row under a 1-point rule: This computer, then Settings and collapse.
-    expect(tester.getSize(footer).height, 45);
+    // One 40-point row under a 1-point rule: This computer, then Settings and collapse.
+    expect(tester.getSize(footer).height, 41);
     final bridgeRow = tester.getCenter(find.text("This computer")).dy;
-    for (final key in ["desktop-sidebar-settings", "desktop-sidebar-toggle"]) {
-      expect(tester.getCenter(find.byKey(Key(key))).dy, bridgeRow);
-    }
+    expect(tester.getCenter(find.byKey(const Key("desktop-sidebar-settings"))).dy, bridgeRow);
   });
 
   group("new session", () {
@@ -1318,8 +1399,7 @@ void main() {
     // The card floats over the sidebar's list rather than scrolling in it.
     expect(find.byKey(const ValueKey("prego-deep-scan-card")), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 600));
-    final search = find.descendant(of: list, matching: find.byType(EditableText));
-    final searchTop = tester.getTopLeft(search).dy;
+    final filterTop = tester.getTopLeft(find.byKey(const Key("session-list-filter-all"))).dy;
 
     projectUpdates.add(
       const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
@@ -1328,7 +1408,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.descendant(of: list, matching: find.text("Fix the build")), findsOneWidget);
-    expect(tester.getTopLeft(search).dy, searchTop);
+    expect(tester.getTopLeft(find.byKey(const Key("session-list-filter-all"))).dy, filterTop);
   });
 
   testWidgets("Retry works and a departing pill lets content receive the click", (tester) async {
@@ -1532,7 +1612,8 @@ void main() {
       tester.getTopLeft(inPalette("Fix the build")).dy,
       lessThan(tester.getTopLeft(inPalette("Write docs")).dy),
     );
-    expect(find.descendant(of: palette, matching: find.text("Fix the build   Sesori Desktop")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text("Fix the build")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text("Sesori Desktop")), findsWidgets);
 
     await type("BUILD");
     expect(inPalette("Fix the build"), findsOneWidget);
@@ -1635,7 +1716,8 @@ void main() {
     expect(inPalette("Note 0"), findsNothing);
     final blankBuildTop = tester.getTopLeft(inPalette("Fix the build")).dy;
     await tester.pumpAndSettle();
-    expect(find.descendant(of: palette, matching: find.text("Note 0   Landing page")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text("Note 0")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text("Landing page")), findsWidgets);
     expect(tester.getTopLeft(inPalette("Fix the build")).dy, blankBuildTop);
     expect(tester.getTopLeft(inPalette("Note 0")).dy, greaterThan(blankBuildTop));
 
@@ -1647,7 +1729,8 @@ void main() {
 
     await tester.pump(SessionSearchCubit.searchDelay);
     await tester.pumpAndSettle();
-    expect(find.descendant(of: palette, matching: find.text("Write docs   Landing page")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text("Write docs")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text("Landing page")), findsWidgets);
     expect(tester.getTopLeft(inPalette("Fix the build")).dy, buildTop);
     expect(tester.getTopLeft(inPalette("Write docs")).dy, greaterThan(buildTop));
   }, variant: TargetPlatformVariant.desktop());

@@ -54,18 +54,43 @@ class const _BrandArtwork() extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const SesoriBackgroundWidget(),
+        // Two thirds saturation, a little darker: art for the first minute, not a poster.
+        const ColorFiltered(
+          colorFilter: ColorFilter.matrix([
+            0.47,
+            0.27,
+            0.03,
+            0,
+            0,
+            0.08,
+            0.66,
+            0.03,
+            0,
+            0,
+            0.08,
+            0.27,
+            0.42,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: SesoriBackgroundWidget(),
+        ),
         const Align(
           alignment: Alignment.bottomCenter,
           child: FractionallySizedBox(
-            heightFactor: 0.55,
+            heightFactor: 0.7,
             widthFactor: 1,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [Color(0x9E000000), Color(0x00000000)],
+                  colors: [Color(0xCC000000), Color(0x00000000)],
                 ),
               ),
             ),
@@ -79,13 +104,16 @@ class const _BrandArtwork() extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SesoriLogo(squareSize: 96),
-              const SizedBox(height: 12),
+              // The artwork carries its own inset; this puts its edge on the words'.
+              Transform.translate(offset: const Offset(-8, 16), child: const SesoriLogo(squareSize: 64)),
               Text(_productName, style: prego.textTheme.displayMd.bold.copyWith(color: onArtwork)),
               const SizedBox(height: 6),
-              Text(
-                context.loc.desktopLoginTagline,
-                style: prego.textTheme.textLg.regular.copyWith(color: onArtwork.withValues(alpha: 0.82)),
+              SizedBox(
+                width: 320,
+                child: Text(
+                  context.loc.desktopLoginTagline,
+                  style: prego.textTheme.textLg.regular.copyWith(color: onArtwork.withValues(alpha: 0.82)),
+                ),
               ),
             ],
           ),

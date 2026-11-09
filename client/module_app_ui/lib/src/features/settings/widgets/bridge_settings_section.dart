@@ -86,7 +86,22 @@ class const BridgeSettingsSection({
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ComputerSettingsEntry(onSwitchComputer: onSwitchComputer, onManageComputers: onManageComputers),
+          if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) ...[
+            PregoGroupedRows(
+              children: [
+                // On the card rows' icon and trailing columns.
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(18, 0, 12, 0),
+                  child: ComputerSettingsEntry(
+                    onSwitchComputer: onSwitchComputer,
+                    onManageComputers: onManageComputers,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: PregoSpacing.md),
+          ] else
+            ComputerSettingsEntry(onSwitchComputer: onSwitchComputer, onManageComputers: onManageComputers),
           if (description != null) ...[
             Text(
               description,
@@ -238,7 +253,6 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
 
 String _pluginWarmupDescription({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
-    BridgeSettingsLoading() => context.loc.settingsPluginWarmupLoading,
     BridgeSettingsUnsupported() ||
     BridgeSettingsReady(
       pluginWarmupMutation: PluginWarmupMutationUnsupported(),
@@ -248,18 +262,21 @@ String _pluginWarmupDescription({required BuildContext context, required BridgeS
       context.loc.settingsPluginWarmupUncertain,
     BridgeSettingsReady(pluginWarmupMutation: PluginWarmupMutationFailed()) =>
       context.loc.settingsPluginWarmupUpdateFailed,
-    BridgeSettingsReady() || BridgeSettingsDisconnected() => context.loc.settingsPluginWarmupDescription,
+    BridgeSettingsLoading() ||
+    BridgeSettingsReady() ||
+    BridgeSettingsDisconnected() => context.loc.settingsPluginWarmupDescription,
   };
 }
 
 String _yoloDescription({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
-    BridgeSettingsLoading() => context.loc.settingsYoloLoading,
     BridgeSettingsUnsupported() ||
     BridgeSettingsReady(yoloMutation: YoloMutationUnsupported()) => context.loc.settingsYoloUnsupported,
     BridgeSettingsFailure() => context.loc.settingsYoloLoadFailed,
     BridgeSettingsReady(yoloMutation: YoloMutationUncertain()) => context.loc.settingsYoloUncertain,
     BridgeSettingsReady(yoloMutation: YoloMutationFailed()) => context.loc.settingsYoloUpdateFailed,
-    BridgeSettingsReady() || BridgeSettingsDisconnected() => context.loc.settingsYoloDescription,
+    BridgeSettingsLoading() ||
+    BridgeSettingsReady() ||
+    BridgeSettingsDisconnected() => context.loc.settingsYoloDescription,
   };
 }

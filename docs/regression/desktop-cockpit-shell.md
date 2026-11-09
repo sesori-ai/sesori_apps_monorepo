@@ -2,54 +2,67 @@
 
 ## Capability
 
-Desktop navigation in a resizable sidebar that floats as a panel over the page and hides completely when
-collapsed, with desktop-owned layout preferences. The sidebar shows the shared all-projects session list under
+Desktop navigation in a full-height, resizable sidebar that hides completely when collapsed, with
+desktop-owned layout preferences. The sidebar shows the shared all-projects session list under
 its project filter; the home pane reads the same signed-in project inventory and the list's default project.
 The main pane hosts one full-width routed page.
 
 ## Required Behavior
 
-- The sidebar floats as a panel over the base surface the pages
-  paint: inset 8 pixels from the window's top, bottom and start edges, with
-  14-pixel corners, a hairline border and a soft shadow, and no divider. The
-  panel clips its footer. An 8-pixel gap separates it from the main pane, which
-  therefore starts 16 pixels past the panel's width. That gap is the resize handle, with a resize cursor and no
-  visible line. Width bounds measure the panel itself.
+- The sidebar runs the window's full height, flush with its top, bottom and start edges: a flat tone beside the
+  page with no card corners or shadow. A hairline separates the two, and that edge is the resize handle, with a
+  resize cursor. Near the pointer the edge lights and tapers away about 110 points either way, in both themes.
+  Width bounds measure the panel itself.
 - macOS hides the native title bar and keeps its traffic lights; Windows and Linux keep their native chrome.
   The macOS runner gives the window an empty unified toolbar, so AppKit itself sets the lights lower and
-  further in: the expanded panel keeps its 8 pixel inset and carries them above its first control, which
-  starts 42 pixels from the window's top. The room the panel leaves for the lights drags the window and zooms
-  it on a double click. With the sidebar hidden the lights sit over the page's toolbar band, and the restore
-  button starts 80 pixels in, past them. In full screen the runner hides that toolbar, which AppKit
+  further in. The sidebar toggle and the word Sesori, with no logo, sit centred on the lights' line just past them,
+  and stay exactly there when the sidebar collapses; page toolbars move their content past them while it is hidden.
+  In full screen the runner hides that toolbar, which AppKit
   would otherwise draw as a bar over the content's top, and restores it on exit. The window's top 54 pixels,
   the band a page toolbar fills, drag it on every screen, the signed-out login included: a press becomes a
   drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
   undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
   region overlap, one press still reaches the host once.
-- The sidebar's footer is one 44-point row: the computer row, then Settings and collapse, with the
-  bridge recovery card above it when one applies. Refresh sits beside the project filter at the head of the
+- The sidebar's footer is one 44-point row: the computer row, ending in an up-and-down picker glyph, then Settings,
+  with the bridge recovery card above it when one applies. Refresh sits beside the project filter at the head of the
   list. The session list clips its rows' highlights, so a highlighted row scrolled under the section above
   never shows through it.
 - The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
   while the app follows it) and again on every change, because a host can only be forced light or dark.
   Chrome and content therefore never disagree, including after the system switches appearance while the
   app follows it.
-- Expanded width defaults to 260 logical pixels and clamps to 200–420. Dragging
+- Expanded width defaults to 288 logical pixels and clamps to 200–420. Dragging
   uses the starting width plus global pointer displacement, preserving overshoot
   when reversing beyond either bound. Changes are immediate; an admitted drag
-  saves once on completion/cancellation, and double-click reset saves once.
-  Idle gesture cancellation does not write; explicit sidebar collapse toggles do.
-- Collapse hides the sidebar completely: the panel and its resize gap slide out past the window's start edge
-  in 220 ms while the page widens into their room, and the panel never squeezes its rows on the way. A restore
-  button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars move
-  their content past it while it shows, and it slides just ahead of that content, never
-  over it. The button and Cmd/Ctrl+B bring the sidebar back
+  saves once on completion/cancellation. Idle gesture cancellation does not write; explicit sidebar collapse
+  toggles do. Clicking the edge collapses the sidebar. Dragging more than 48 points past the minimum lights the
+  whole edge, and releasing there collapses the sidebar from the width it reached, without a jump; it reopens at
+  the width the drag began from.
+- Collapse hides the sidebar completely: the panel slides out past the window's start edge in 180 ms and back in
+  200 ms while the page narrows or widens to match, and the panel never squeezes its rows on the way. Only the
+  toggle and the word Sesori remain. The toggle and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
   screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
   sits on the handle's own screen reader node, not on the window behind it.
 - Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
-  restore button shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
-  restores the user's choice. The native minimum window remains 560 × 480.
+  toggle shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
+  restores the user's choice. Windows narrower than 1000 pixels open the sidebar at 240 pixels. The native minimum
+  window remains 560 × 480.
+- Pointer shells set light, small type in Satoshi at every size, with Medium the heaviest weight: 12.5 pt rows,
+  11.5 pt metadata, a 13.5 pt transcript and 12 pt code. Nested corners follow one rule, inner radius equals outer
+  minus the gap, so the composer's send button is concentric with the composer. Vertical scrollbars are macOS's overlay
+  style, 6 points thick and inset 3, showing only while scrolling. Light builds surfaces from tone with a faint
+  hairline rather than a drawn outline. The phone keeps its own type, radii and scrollbars.
+- A pointer shell's session row has no leading state column. Title and metadata sit flush left, and a long title fades
+  out, never an ellipsis or a second line. The state mark sits just before the time: a turning star for working, a
+  resting blue star for finished or unread, and an amber dot for waiting. A row with no mark gives that room to its title.
+  The harness glyph on the metadata line is a quiet grey, and the open session's row shows it in its own colours.
+- A pointer shell dictates by clicking the mic: the composer keeps its size, the X and pencil take the options' place
+  as its other small buttons, a quiet waveform fills the row, the wide Send takes the mic's, and the input's placeholder
+  says Listening; Enter sends and Esc cancels. On a running session Stop keeps its place beside Send, so the agent stays
+  stoppable through the dictation. The options clear the row before the waveform arrives, so nothing crosses it, and
+  the transcript does not move. Sending keeps the X on the row's edge, and Transcribing shimmers in the empty input.
+  A failed transcription leaves a card over the composer saying the recording is saved, with Discard and Retry.
 - New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects at
   all, "No project" included, it reads Add project and opens the shared folder dialog, and the project it adds
   opens in New session. Search under it opens the command palette, and Archived sessions under Search opens the
@@ -168,15 +181,16 @@ The main pane hosts one full-width routed page.
   `session-archiving-and-deletion.md`.
 - The new session page uses the same toolbar, titled New session, above one
   centred column no wider than the session page's composer: the shared heading and project selector (see
-  session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
-  Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
+  session-creation-and-options.md), the harness chooser, the input, then the New worktree / Current checkout chip and
+  Refresh options. Toggling the chip moves nothing, and attach and "/" stay in place while typing. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project moves the same composer there, keeping what it holds.
 - The session page uses the same toolbar anatomy above the transcript, never over it. A subtask's "Main
   session" crumb and the title share one 16 pt line and baseline, the crumb medium and secondary, a slash
-  between them, the title bold; the crumb returns to the session that started it (back to the kept parent
+  between them, the title medium; the crumb returns to the session that started it (back to the kept parent
   page when it was opened from there). A root session's title stands alone. The amber awaiting glyph leads
   the title when a question or permission waits; a running session instead leads it with the turning
-  sparkle, still under reduced motion. The title itself never shimmers. No harness or model line sits under the title. The Changes button shows
+  sparkle, still under reduced motion. The title itself never shimmers. Beside the title, the project and harness read in small quiet text, and hide when
+  under 80 points remain; no line sits under the title. The Changes button shows
   on a root unarchived session, fading in with the transcript and out when it leaves, taking no taps as it
   goes and no room from the title once gone; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
@@ -184,9 +198,9 @@ The main pane hosts one full-width routed page.
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
   directly. Mark unread always sends unread,
   whatever local state says, and returns to the home; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
-  elsewhere. The transcript and the composer sit in two separately sized centred columns, the transcript
-  about 960 pt wide and the composer, its pills and the needs-you cards about 760 pt, both centred in the
-  same pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
+  elsewhere. The transcript, the composer, its pills and the needs-you cards share one centred column about
+  620 pt wide, centred in the
+  pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
   that column's margin instead of clipping it. The transcript column stays narrow enough that a revealed
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
@@ -195,8 +209,8 @@ The main pane hosts one full-width routed page.
   else the newest session's project), so returning from a session or restarting lands on that default again, as
   `session-creation-and-options.md` details: the project holds once it lands, another filter or a header pick moves
   it there with what it holds, a still-loading list keeps the loader up until the list names the project or it
-  finishes loading, and with no default the shared "Choose a project" prompt shows instead, offering only
-  "Open folder…" when there are no projects; a bridge whose only project is "No project" still shows the composer, in
+  finishes loading, and with no default the shared "Choose a project" prompt shows instead; with no projects at
+  all that gives way to Add project as the one next step; a bridge whose only project is "No project" still shows the composer, in
   "No project". After the bridge connects, the composer appears at its final layout at once, with the parts still
   loading shimmering in place, and its heading never moves as they fill in. A session started from home opens in its
   project. Loading projects is labelled and failures retry the shared inventory. A disconnected home branches on the
@@ -233,7 +247,8 @@ The main pane hosts one full-width routed page.
   the user picked another computer in this sign-in; picking this computer, or signing out, ends that. The local bridge
   keeps running while another computer is viewed. The capability as a whole is in [multi-computer](multi-computer.md).
   Shared Prego text styles and Material themes resolve the bundled package font.
-- Connection status floats over the main pane without changing its bounds.
+- Connection status floats over the main pane without changing its bounds, in its top-end corner under the toolbar
+  band so it never covers the header's words.
   Reconnecting appears after the shared grace period; connection lost retains
   Reconnect until a reconnect starts, which clears it. Local desired Off, including cold-start/default Off before a user
   starts the bridge, suppresses bridge-offline copy—not relay recovery for
@@ -260,8 +275,8 @@ The main pane hosts one full-width routed page.
   Notification activation dismisses root popups before revealing its session:
   the same session retains its page and Back stack; another gets the typed stack.
 - The computer row opens a flat, screen-clamped menu from the sidebar's footer
-  without replacing the main pane. Below any computers, a Local bridge heading and the sidebar's
-  status dot with the process status precede the actions. Start, Retry and Take
+  without replacing the main pane. Below any computers, one quiet line with Local bridge, the
+  sidebar's status dot and the process status precedes the actions. Start, Retry and Take
   Over are one solid button; Stop is a quiet row beside logs and configuration. A crashed helper offers Retry despite retained On intent. A
   displaced running helper also offers Stop without requiring takeover. Explicit
   Stop cannot become Start if the helper exits before dispatch. Busy states
@@ -344,11 +359,13 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, footer anchoring,
   outside/Escape dismissal, preserved main pane.
-- Floating panel geometry open and hidden: window inset, main-pane offset, the resize gap and its absence while
-  hidden, no divider; the restore button's place in the toolbar band and the room a page toolbar leaves it.
-- Unified macOS title bar: the title bar style per platform, the panel's top edge and its first control
-  on macOS, drag and double-click zoom on the room above that control, the restore button past the
-  lights while the sidebar is hidden, the top band's drag that leaves a jiggling click alone and fires once under a
+- Pointer dictation: the mic starts listening with the composer's geometry stable, Enter sends, Esc cancels, the
+  pencil keeps the words, Stop stays on a running session, and a failed transcription offers Retry and Discard
+  (`prompt_input_pointer_voice_test.dart`).
+- Sidebar geometry open and hidden: flush with the window, main-pane offset, the edge handle and its absence while
+  hidden; the toggle's fixed place on the lights' line and the room a page toolbar leaves it.
+- Unified macOS title bar: the title bar style per platform, the toggle and word on the lights' line in both
+  sidebar states, drag and double-click zoom on the band beside them, the top band's drag that leaves a jiggling click alone and fires once under a
   zooming region, the signed-out window moved from the app's root, logged host failures, the list's clipped
   highlights, and the native brightness pushed once per effective change, including a system switch.
 - Pointer menus: no spotlight, the panel's corner on the pointer and its flip above it, its spring out of the
@@ -409,7 +426,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Headless explicit refresh ordering, shared-instance factory parameters, completed failed winners,
   later owning reads, partial failure and useful diagnostic causes. Presentation covers keyboard
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
-- Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
+- Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel persistence, click and drag-past-minimum collapse with the width it reopens at,
   intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
   narrow-window mode, JSON round-trip with an unknown key ignored, storage failure fallback.
 
@@ -427,13 +444,14 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
 - Archived from the sidebar: the page fades in over the open page with nothing closing first, a row opens
   read-only, Cmd/Ctrl+[ comes back, and the close returns to the opener.
-- The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
-- Collapse and restore by the footer button, the restore button and Cmd/Ctrl+B: the panel slides whole while
-  the page widens or narrows with no jump in what it shows, and the restore button fades in past the traffic
-  lights. The filter popover narrowing the list and back, and a project picked in the palette.
-- The unified macOS title bar: the traffic lights on the open panel above New session and beside the restore button
-  while it is hidden, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
-  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under the panel's
+- The full-height sidebar in light and dark: the hairline edge, and its light following the pointer and tapering off.
+  Dragging the edge in and out, clicking it, and dragging far past the minimum and releasing.
+- Collapse and restore by the toggle and Cmd/Ctrl+B: the panel slides whole while
+  the page widens or narrows with no jump in what it shows, and the toggle and word never move.
+  The filter popover narrowing the list and back, and a project picked in the palette.
+- The unified macOS title bar: the traffic lights, toggle and word sharing one line in both sidebar states,
+  dragging by the band beside them, by a page toolbar and by the top of the login screen,
+  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under the list's
   top, and the chrome's brightness under light, dark and System, including a system appearance switch after a forced
   value. Windows and Linux keep native chrome.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
@@ -451,8 +469,8 @@ Synthetic rendering does not qualify native accessibility, compositing, keyboard
 Look for overflow at minimum width, drag updates that stall or write per frame,
 width jumping on reversal beyond a bound, automatic collapse overwriting user preferences, missing/stale
 activity marks, duplicate project inventories or sessions windows, reads repeated on rebuild, a page that jumps while the
-sidebar slides, a panel that squeezes its rows, a restore button under the traffic lights or over a toolbar's
-content, a divider or square corners on the sidebar panel, lost project context, a second session-list pane,
+sidebar slides, a panel that squeezes its rows, a toggle that moves on collapse or sits over a toolbar's
+content, a card-like sidebar, a chip or composer action that shifts when toggled or typing, lost project context, a second session-list pane,
 sidebar browsing clearing unread
 state,
 stale/missing session rows, a palette whose session rows jump or lose the highlight as the bridge answers, a

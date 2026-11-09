@@ -78,25 +78,39 @@ class _NewSessionHeaderState() extends State<NewSessionHeader> with SingleTicker
     final label = onProjectSelected == null
         ? projectName ?? loc.projectListDefaultName
         : liveProjectName(context: context, projectId: projectId, projectName: projectName);
-    Widget pill({required VoidCallback? onPressed}) => PregoButtonsSolid(
-      key: const Key("new_session_project"),
-      label: label,
-      leadingIcon: TablerRegular.folder,
-      trailingIcon: onPressed == null ? null : TablerRegular.chevron_down,
-      hierarchy: PregoButtonsSolidHierarchy.secondary,
-      size: PregoButtonsSolidSize.sm,
-      onPressed: onPressed,
-    );
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    Widget pill({required VoidCallback? onPressed}) => pointer
+        ? IntrinsicWidth(
+            key: const Key("new_session_project"),
+            child: PregoPickerButton(
+              leadingIcon: TablerRegular.folder,
+              label: label,
+              showLabel: true,
+              surfaceStyle: PregoComposerSurfaceStyle.subtle,
+              onPressed: onPressed,
+            ),
+          )
+        : PregoButtonsSolid(
+            key: const Key("new_session_project"),
+            label: label,
+            leadingIcon: TablerRegular.folder,
+            trailingIcon: onPressed == null ? null : TablerRegular.chevron_down,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: onPressed,
+          );
     return Column(
-      spacing: PregoSpacing.lg,
+      spacing: pointer ? PregoSpacing.md : PregoSpacing.lg,
+      // Under a pointer the heading and setup share the composer's start edge.
+      crossAxisAlignment: pointer ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
         Text(
           loc.newSessionHeading,
-          textAlign: TextAlign.center,
+          textAlign: pointer ? TextAlign.start : TextAlign.center,
           style: prego.textTheme.displayXs.bold.copyWith(color: prego.colors.textPrimary),
         ),
         Wrap(
-          alignment: WrapAlignment.center,
+          alignment: pointer ? WrapAlignment.start : WrapAlignment.center,
           spacing: PregoSpacing.md,
           runSpacing: PregoSpacing.md,
           children: [

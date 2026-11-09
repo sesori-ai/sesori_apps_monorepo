@@ -246,6 +246,16 @@ class _PromptInputState() extends State<PromptInput> {
   final _composerFocusNode = FocusNode(debugLabel: "PromptInput composer", skipTraversal: true);
   late final Action<PasteTextIntent> _pasteAction;
   int _pasteGeneration = 0;
+
+  /// The last answer each capability gave, kept while it reads null. A
+  /// dropped connection resets both to null until the bridge answers again,
+  /// which is a blip rather than a new answer: the plus, pastes and drops
+  /// keep offering and routing by these, and only a change between two
+  /// answers discards what is in flight. Send and the stranded sweep read
+  /// the widget's values, so Send waits for the real answer and a later
+  /// `false` still clears what it strands.
+  bool? _knownAttachmentsSupported;
+  bool? _knownFileUploadsSupported;
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
@@ -355,6 +365,8 @@ class _PromptInputState() extends State<PromptInput> {
       _previousEditingValue = _controller.value;
     }
     _restoreInitialAttachments();
+    _knownAttachmentsSupported = widget.attachmentsSupported;
+    _knownFileUploadsSupported = widget.fileUploadsSupported;
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
@@ -506,7 +518,9 @@ class _PromptInputState() extends State<PromptInput> {
   /// voice interaction.
   ComposerSurfaceLayout get _restingLayout => resolveComposerSurfaceLayout(
     inputMode: _isVoiceFirst ? ChatInputMode.voiceFirst : ChatInputMode.textFirst,
-    showsTypingLayout: _showsTypingLayout,
+    // Under a pointer the composer is always its full two rows, with the pickers
+    // inside it, so it reads as one block and never resizes as typing starts.
+    showsTypingLayout: _showsTypingLayout || _pointerShell,
   );
 
   ComposerSurfaceLayout get _layout => switch (_voiceInteraction) {
@@ -567,8 +581,9 @@ class _PromptInputState() extends State<PromptInput> {
   );
 
   /// Whether the plus, a paste or a drop can stage anything: an image for a
-  /// harness that takes them, or a file for a bridge that saves uploads.
-  bool get _takesAttachments => (widget.attachmentsSupported ?? false) || (widget.fileUploadsSupported ?? false);
+  /// harness that takes them, or a file for a bridge that saves uploads. Read
+  /// from the last answers, so a reconnect doesn't switch them off.
+  bool get _takesAttachments => (_knownAttachmentsSupported ?? false) || (_knownFileUploadsSupported ?? false);
 
   /// Switches to the typing layout and raises the keyboard. Focus is
   /// requested post-frame because the field only mounts with the typing
@@ -659,6 +674,13 @@ class _PromptInputState() extends State<PromptInput> {
     _insertsSettled = Future<void>.value();
   }
 
+  /// Whether a capability gave an answer other than its last one. Losing an
+  /// answer (null) is no change, and neither is a first answer: anything
+  /// routed before it treated the capability as absent, so it never stages
+  /// more than the answer allows.
+  static bool _capabilityAnswerChanged({required bool? known, required bool? current}) =>
+      known != null && current != null && known != current;
+
   void _cancelHeldSend() {
     if (_sendHold case _SendHeld(:final cancelled) when !cancelled.isCompleted) cancelled.complete();
   }
@@ -729,9 +751,21 @@ class _PromptInputState() extends State<PromptInput> {
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
     final restorationRequested = widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
-    if (oldWidget.attachmentsSupported != widget.attachmentsSupported ||
-        oldWidget.fileUploadsSupported != widget.fileUploadsSupported) {
+    // A pick, paste or drop in flight was routed by the answers when it
+    // started, so only a different answer makes it stale. A null between two
+    // equal answers is a connection blip: a Files pick that outlives Android
+    // closing the backgrounded app's socket still lands.
+    if (_capabilityAnswerChanged(known: _knownAttachmentsSupported, current: widget.attachmentsSupported) ||
+        _capabilityAnswerChanged(known: _knownFileUploadsSupported, current: widget.fileUploadsSupported)) {
       _startPasteGeneration();
+    }
+    if (draftChanged) {
+      // Another composer's answers say nothing about this one's.
+      _knownAttachmentsSupported = widget.attachmentsSupported;
+      _knownFileUploadsSupported = widget.fileUploadsSupported;
+    } else {
+      _knownAttachmentsSupported = widget.attachmentsSupported ?? _knownAttachmentsSupported;
+      _knownFileUploadsSupported = widget.fileUploadsSupported ?? _knownFileUploadsSupported;
     }
     if (draftChanged || restorationRequested) {
       // A draft identity change means this state moved to another composer. A
@@ -1338,6 +1372,14 @@ class _PromptInputState() extends State<PromptInput> {
     _enterTypingMode();
   }
 
+  /// A pointer shell's empty input says Transcribing itself, in the placeholder's
+  /// place; with a draft in the way the caption says it instead.
+  bool get _transcribesInField =>
+      _pointerShell &&
+      _layout == ComposerSurfaceLayout.typing &&
+      _voicePresentation == _VoicePresentation.transcribing &&
+      _controller.text.isEmpty;
+
   String _hintText(BuildContext context) {
     final command = widget.stagedCommand;
     if (command != null) {
@@ -1347,6 +1389,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
       return context.loc.sessionDetailCommandArgumentsHint;
     }
+    if (_pointerShell && _voicePresentation == _VoicePresentation.recording) return context.loc.voiceListening;
     return widget.hasMessages ? context.loc.sessionDetailFollowUpHint : context.loc.sessionDetailPromptHint;
   }
 
@@ -1368,6 +1411,14 @@ class _PromptInputState() extends State<PromptInput> {
   /// [AnimatedSwitcher] entry keeps the curves of the build that made it, and one
   /// turned back mid-fade retraces its way in, so a quick tap never jumps.
   Curve get _heldOutCurve => _voicePresentation == _VoicePresentation.recording ? _heldLeaveCurve : Curves.linear;
+
+  /// Under a pointer, starting a dictation clears the row before filling it: the
+  /// options are gone by 40% of the morph and the waveform arrives from there, so
+  /// its line never runs through their labels.
+  bool get _pointerRowAtRest => _pointerShell && _voicePresentation == _VoicePresentation.idle;
+  bool get _pointerRowListening => _pointerShell && _voicePresentation == _VoicePresentation.recording;
+  static const Interval _clearsRowCurve = Interval(0.6, 1);
+  static const Interval _intoClearRowCurve = Interval(0.4, 1, curve: Curves.easeOut);
 
   /// How what rests beneath a hold or a transcribing comes back: after what
   /// covered it has mostly gone, unless that was turned back mid-fade, when waiting
@@ -1661,7 +1712,7 @@ class _PromptInputState() extends State<PromptInput> {
         key: const ValueKey("saved-recording-actions"),
         child: _buildSavedRecordingActions(context),
       );
-    } else if (_voicePresentation == _VoicePresentation.recording) {
+    } else if (_voicePresentation == _VoicePresentation.recording && !_pointerShell) {
       final hint = _buildReleaseHint(context);
       child = KeyedSubtree(
         key: const ValueKey("release-hint"),
@@ -1678,7 +1729,7 @@ class _PromptInputState() extends State<PromptInput> {
       );
     } else {
       final headerChild = switch (widget.stagedCommand) {
-        null => widget.composerHeader,
+        null => _pointerShell ? null : widget.composerHeader,
         final commandInfo => Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
           child: Align(
@@ -1699,7 +1750,11 @@ class _PromptInputState() extends State<PromptInput> {
         key: ValueKey(widget.stagedCommand == null ? "header" : "staged-command"),
         // Older bridges can provide no picker header. Reserve its footprint so
         // the recording helper does not grow the composer when it appears.
-        child: headerChild ?? const SizedBox(width: double.infinity, height: _actionButtonSize),
+        child:
+            headerChild ??
+            (_pointerShell
+                ? const SizedBox(width: double.infinity)
+                : SizedBox(width: double.infinity, height: _actionButtonSize)),
       );
     }
 
@@ -1740,6 +1795,55 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildSavedRecordingActions(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
+
+    if (_pointerShell) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.sm),
+        child: DecoratedBox(
+          decoration: pregoComposerSurfaceDecoration(
+            prego: prego,
+            style: PregoComposerSurfaceStyle.subtle,
+            borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              PregoSpacing.lg,
+              PregoSpacing.md,
+              PregoSpacing.md,
+              PregoSpacing.md,
+            ),
+            child: Row(
+              spacing: PregoSpacing.md,
+              children: [
+                Icon(TablerRegular.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgWarningPrimary),
+                Expanded(
+                  child: Text(
+                    loc.voiceSavedNotice,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                  ),
+                ),
+                PregoButtonsSolid(
+                  key: const Key("voice_saved_discard"),
+                  label: loc.voiceDiscard,
+                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: _discardSavedRecording,
+                ),
+                PregoButtonsSolid(
+                  key: const Key("voice_saved_retry"),
+                  label: loc.voiceRetry,
+                  hierarchy: PregoButtonsSolidHierarchy.secondary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: _retrySavedRecording,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 2),
@@ -1782,7 +1886,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return body;
     return ComposerLiveWords(
       cancelProgress: _cancelDragProgress,
-      hintHeight: _releaseHintHeight,
+      hintHeight: _pointerShell ? 0 : _releaseHintHeight,
       box: _wordsBox,
       boxStyle: _fieldStyle(context),
       isBusy: widget.isBusy,
@@ -1818,11 +1922,6 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildReleaseHint(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    // A pointer shell records on click, so there is no hold to release.
-    final restingHint = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer
-        ? loc.voiceEnterToSend
-        : loc.voiceReleaseToSend;
-
     return Padding(
       padding: _releaseHintPadding,
       child: Center(
@@ -1841,7 +1940,7 @@ class _PromptInputState() extends State<PromptInput> {
                   transitionBuilder: _fadeEachEntry,
                   child: Text(
                     switch (arm) {
-                      _VoiceDragArm.none => restingHint,
+                      _VoiceDragArm.none => loc.voiceReleaseToSend,
                       _VoiceDragArm.edit => loc.voiceReleaseToEdit,
                       _VoiceDragArm.cancel => loc.voiceReleaseToCancel,
                     },
@@ -1882,7 +1981,7 @@ class _PromptInputState() extends State<PromptInput> {
     required Widget? restingActions,
   }) {
     final prego = context.prego;
-    const radius = BorderRadius.all(Radius.circular(PregoRadius.full));
+    final radius = BorderRadius.circular(_pointerShell ? PregoRadius.x2l : PregoRadius.full);
     final tightenEnd = restingActions != null && _voicePresentation == _VoicePresentation.recording;
 
     return DecoratedBox(
@@ -1933,7 +2032,7 @@ class _PromptInputState() extends State<PromptInput> {
         ),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.all(Radius.circular(PregoRadius.full)),
+            borderRadius: BorderRadius.circular(_pointerShell ? PregoRadius.x2l : PregoRadius.full),
             color: context.prego.colors.bgDestructivePressedAlt,
           ),
         ),
@@ -1967,7 +2066,8 @@ class _PromptInputState() extends State<PromptInput> {
           // Open, the options reach past the room the words keep from the row's
           // actions. On both sides, so that words with room to spare stay put.
           extraSideWidth: _optionsOpen && _voicePresentation == _VoicePresentation.idle
-              ? ComposerOptionsAccordion.openWidth(showAttachImage: _offersAttachImage) - _actionButtonSize
+              ? ComposerOptionsAccordion.openWidth(showAttachImage: _offersAttachImage, pointer: _pointerShell) -
+                    _actionButtonSize
               : 0,
         ),
       ),
@@ -2015,6 +2115,9 @@ class _PromptInputState() extends State<PromptInput> {
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-caption-idle"), child: idle),
       _VoicePresentation.recording => const SizedBox.shrink(key: ValueKey("voice-caption-recording")),
+      _VoicePresentation.transcribing when _transcribesInField => const SizedBox.shrink(
+        key: ValueKey("voice-caption-transcribing-in-field"),
+      ),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("voice-caption-transcribing"),
         child: _buildTranscribingShimmer(context),
@@ -2023,7 +2126,7 @@ class _PromptInputState() extends State<PromptInput> {
 
     return IgnorePointer(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
+        padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
         child: AnimatedPadding(
           duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
           curve: _morphCurve,
@@ -2107,7 +2210,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// The insets narrow the caption to that slot as it rests, so the words sit and
   /// clip as they would inside it. The tap target in the slot speaks for them.
   Widget _buildPointerCaptionHint(BuildContext context, {required Widget hint}) {
-    final optionsWidth = ComposerOptionsAccordion.openWidth(showAttachImage: _offersAttachImage);
+    final optionsWidth = ComposerOptionsAccordion.openWidth(
+      showAttachImage: _offersAttachImage,
+      pointer: _pointerShell,
+    );
     return ExcludeSemantics(
       child: SizedBox(
         height: _actionButtonSize,
@@ -2266,7 +2372,14 @@ class _PromptInputState() extends State<PromptInput> {
             Padding(
               // Clear the expand button on the trailing edge so text never
               // runs underneath it.
-              padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, growsInPlace ? PregoSpacing.xs : 36, 0),
+              // Under a pointer the words start on the + glyph's edge below them.
+              padding: EdgeInsetsDirectional.fromSTEB(
+                // Optically on the + glyph's edge.
+                _pointerShell ? PregoSpacing.md + 2 : PregoSpacing.xs,
+                0,
+                growsInPlace ? PregoSpacing.xs : 36,
+                0,
+              ),
               child: Actions(
                 // Browser paste must remain synchronous with its DOM event;
                 // deferring Flutter's text action behind an async Clipboard
@@ -2323,7 +2436,8 @@ class _PromptInputState() extends State<PromptInput> {
                         contentPadding: ComposerWordsBox.contentPadding,
                         // Command-aware placeholder: the staged command's hint,
                         // else the follow-up/default prompt hint.
-                        hintText: _hintText(context),
+                        hint: _transcribesInField ? _buildTranscribingShimmer(context) : null,
+                        hintText: _transcribesInField ? null : _hintText(context),
                         hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                       ),
                     ),
@@ -2471,7 +2585,16 @@ class _PromptInputState() extends State<PromptInput> {
           children: [
             _buildLeadingSlot(context),
             Expanded(
-              child: _buildVoiceAwareSlot(height: _actionButtonSize, idle: const SizedBox()),
+              child: _buildVoiceAwareSlot(
+                height: _actionButtonSize,
+                idle: switch (widget.composerHeader) {
+                  final pickers? when _pointerShell => Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: pickers,
+                  ),
+                  _ => const SizedBox(),
+                },
+              ),
             ),
             _buildMicAndPrimaryActions(context),
           ],
@@ -2524,40 +2647,49 @@ class _PromptInputState() extends State<PromptInput> {
         _renderedVoiceState is VoiceInputTranscribing ||
         _renderedVoiceState is VoiceInputLiveFinishing;
     final loc = context.loc;
+    final keepsStop = _showsStop;
+    final sendEnd = keepsStop ? _stopRoom : 0.0;
+    final groupWidth = merged && keepsStop ? _pointerVoiceGroupWidth + _stopRoom : _pointerVoiceGroupWidth;
+    final motion = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
 
-    return SizedBox(
-      width: _pointerVoiceGroupWidth,
+    return AnimatedContainer(
+      duration: motion,
+      curve: _morphCurve,
+      width: groupWidth,
       height: _actionButtonSize,
       child: Stack(
         // The buttons' focus rings paint past this box.
         clipBehavior: Clip.none,
         children: [
-          ExcludeFocus(
-            excluding: merged,
-            child: IgnorePointer(
-              ignoring: merged,
-              child: AnimatedOpacity(
-                opacity: merged ? 0 : 1,
-                duration: _morphDuration,
-                child: Row(
-                  spacing: PregoSpacing.sm,
-                  children: [_buildMicButton(context), _buildPrimaryActionButton(context)],
-                ),
-              ),
-            ),
-          ),
-          AnimatedPositionedDirectional(
-            start: merged ? 0 : _actionButtonSize + PregoSpacing.sm,
+          PositionedDirectional(
             end: 0,
             top: 0,
             bottom: 0,
-            duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: PregoSpacing.sm,
+              children: [
+                _fadesWithMerge(merged: merged, child: _buildMicButton(context)),
+                if (merged && keepsStop)
+                  _buildPrimaryActionButton(context)
+                else
+                  _fadesWithMerge(merged: merged, child: _buildPrimaryActionButton(context)),
+              ],
+            ),
+          ),
+          AnimatedPositionedDirectional(
+            start: merged ? 0 : groupWidth - sendEnd - _actionButtonSize,
+            end: sendEnd,
+            top: 0,
+            bottom: 0,
+            duration: motion,
             curve: _morphCurve,
             child: IgnorePointer(
               ignoring: !merged,
               child: AnimatedOpacity(
                 opacity: merged ? 1 : 0,
                 duration: _morphDuration,
+                curve: merged ? _intoClearRowCurve : Curves.linear,
                 child: Tooltip(
                   message: loc.sessionDetailSend,
                   excludeFromSemantics: true,
@@ -2575,9 +2707,22 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// A pointer shell's pencil and X. They keep their places into transcribing:
+  Widget _fadesWithMerge({required bool merged, required Widget child}) => ExcludeFocus(
+    excluding: merged,
+    child: IgnorePointer(
+      ignoring: merged,
+      child: AnimatedOpacity(
+        opacity: merged ? 0 : 1,
+        duration: _morphDuration,
+        curve: merged ? const Interval(0, 0.4) : Curves.linear,
+        child: child,
+      ),
+    ),
+  );
+
+  /// A pointer shell's X and pencil. They keep their places into transcribing:
   /// the pencil fades out, leaving nothing under a cursor that just clicked it,
-  /// and the X stays where it was, still stopping the work.
+  /// and the X stays on the row's edge, still stopping the work.
   Widget _buildPointerVoiceTargets(BuildContext context) {
     final loc = context.loc;
     final listening = _voicePresentation == _VoicePresentation.recording;
@@ -2588,33 +2733,23 @@ class _PromptInputState() extends State<PromptInput> {
       child: Row(
         spacing: PregoSpacing.sm,
         children: [
+          _buildLabelledIconButton(
+            label: cancelLabel,
+            icon: TablerRegular.x,
+            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+            onPressed: _cancelVoiceInteractionWithFeedback,
+          ),
           IgnorePointer(
             ignoring: !listening,
             child: AnimatedOpacity(
               opacity: listening ? 1 : 0,
               duration: _morphDuration,
-              child: Tooltip(
-                message: loc.voiceEditBeforeSending,
-                excludeFromSemantics: true,
-                child: PregoVoiceTarget(
-                  icon: TablerRegular.pencil,
-                  tone: PregoVoiceTargetTone.primary,
-                  semanticLabel: loc.voiceEditBeforeSending,
-                  progress: _editDragProgress,
-                  onTap: _handleEditTargetTap,
-                ),
+              child: _buildLabelledIconButton(
+                label: loc.voiceEditBeforeSending,
+                icon: TablerRegular.pencil,
+                hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                onPressed: _handleEditTargetTap,
               ),
-            ),
-          ),
-          Tooltip(
-            message: cancelLabel,
-            excludeFromSemantics: true,
-            child: PregoVoiceTarget(
-              icon: TablerRegular.x,
-              tone: PregoVoiceTargetTone.destructive,
-              semanticLabel: cancelLabel,
-              progress: _cancelDragProgress,
-              onTap: _cancelVoiceInteractionWithFeedback,
             ),
           ),
         ],
@@ -2627,19 +2762,26 @@ class _PromptInputState() extends State<PromptInput> {
   // ---------------------------------------------------------------------------
 
   /// The mic / send buttons and the accordion's closed pill are all 44pt.
-  static const double _actionButtonSize = 44;
+  // Read without depending: this can be asked before the first build, and a shell's
+  // mode never changes.
+  bool get _pointerShell =>
+      context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
+
+  double get _actionButtonSize => _pointerShell ? 32 : 44;
+
+  PregoButtonsSolidSize get _actionSize => _pointerShell ? PregoButtonsSolidSize.md : PregoButtonsSolidSize.lg;
 
   /// What the stop button adds to voice-first's resting actions.
-  static const double _stopRoom = _actionButtonSize + PregoSpacing.sm;
+  double get _stopRoom => _actionButtonSize + PregoSpacing.sm;
 
   /// A pointer shell's two 44pt controls and the gap between them, as the mic
   /// and send sit at rest.
-  static const double _pointerVoiceGroupWidth = _actionButtonSize * 2 + PregoSpacing.sm;
+  double get _pointerVoiceGroupWidth => _actionButtonSize * 2 + PregoSpacing.sm;
 
   /// Nearly every harness takes images, and new bridges save files, so the
   /// action holds its place while support is unknown instead of growing in
   /// once it is known. It leaves only when neither can take anything.
-  bool get _offersAttachImage => (widget.attachmentsSupported ?? true) || (widget.fileUploadsSupported ?? true);
+  bool get _offersAttachImage => (_knownAttachmentsSupported ?? true) || (_knownFileUploadsSupported ?? true);
 
   /// Where the plus picks from. Desktop's file dialog covers everything. On
   /// mobile, Photos applies whenever an image can be staged, inline or saved
@@ -2650,7 +2792,7 @@ class _PromptInputState() extends State<PromptInput> {
       ComposerAttachKind.files => const [ComposerPickSource.files],
       ComposerAttachKind.photosAndFiles => [
         ComposerPickSource.photos,
-        if (widget.fileUploadsSupported ?? false) ComposerPickSource.files,
+        if (_knownFileUploadsSupported ?? false) ComposerPickSource.files,
       ],
     };
   }
@@ -2666,7 +2808,8 @@ class _PromptInputState() extends State<PromptInput> {
       triggerBuilder: (context, toggle) => ComposerOptionsAccordion(
         actionsEnabled: _voicePresentation == _VoicePresentation.idle,
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
-        isTyping: _hasText,
+        // A pointer shell has the room, so typing never folds the actions away.
+        isTyping: _hasText && ComposerPresentationScope.of(context).presentation != ComposerPresentation.pointer,
         showAttachImage: _offersAttachImage,
         attachTooltip: switch (attachKind) {
           ComposerAttachKind.files => context.loc.sessionDetailAttachFiles,
@@ -2704,8 +2847,8 @@ class _PromptInputState() extends State<PromptInput> {
   Future<void> _handleAttach({required ComposerPickSource source}) => _attach(
     outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
       source: source,
-      attachmentsSupported: widget.attachmentsSupported,
-      fileUploadsSupported: widget.fileUploadsSupported,
+      attachmentsSupported: _knownAttachmentsSupported,
+      fileUploadsSupported: _knownFileUploadsSupported,
       stagedAttachmentBytes: stagedAttachmentBytes,
     ),
   );
@@ -2737,8 +2880,8 @@ class _PromptInputState() extends State<PromptInput> {
         outcome: (stagedAttachmentBytes) => _attachmentDispatcher.routeHostPaths(
           paths: paths,
           source: ComposerAttachmentSource.drop,
-          attachmentsSupported: widget.attachmentsSupported,
-          fileUploadsSupported: widget.fileUploadsSupported,
+          attachmentsSupported: _knownAttachmentsSupported,
+          fileUploadsSupported: _knownFileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
         ),
       ),
@@ -2899,8 +3042,8 @@ class _PromptInputState() extends State<PromptInput> {
         bytes: bytes,
         filename: null,
         source: ComposerAttachmentSource.paste,
-        attachmentsSupported: widget.attachmentsSupported,
-        fileUploadsSupported: widget.fileUploadsSupported,
+        attachmentsSupported: _knownAttachmentsSupported,
+        fileUploadsSupported: _knownFileUploadsSupported,
         stagedAttachmentBytes: _stagedAttachmentBytes,
       );
       await earlierInsertsSettled;
@@ -2959,8 +3102,8 @@ class _PromptInputState() extends State<PromptInput> {
       pastedOver: initialValue,
       outcome: (stagedAttachmentBytes) => dispatcher.routeClipboardPaths(
         paths: paths,
-        attachmentsSupported: widget.attachmentsSupported,
-        fileUploadsSupported: widget.fileUploadsSupported,
+        attachmentsSupported: _knownAttachmentsSupported,
+        fileUploadsSupported: _knownFileUploadsSupported,
         stagedAttachmentBytes: stagedAttachmentBytes,
       ),
     );
@@ -3008,11 +3151,11 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
+  /// A paste only starts while the composer takes attachments, and a changed
+  /// answer starts a new paste generation, so a capability that reads null
+  /// meanwhile (a connection blip) does not discard the image.
   bool _isPasteStale({required String draftIdentity, required int pasteGeneration}) {
-    return !mounted ||
-        draftIdentity != widget.draftIdentity ||
-        pasteGeneration != _pasteGeneration ||
-        !_takesAttachments;
+    return !mounted || draftIdentity != widget.draftIdentity || pasteGeneration != _pasteGeneration;
   }
 
   /// Stages an attachment and reports whether it fit the aggregate budget.
@@ -3084,6 +3227,8 @@ class _PromptInputState() extends State<PromptInput> {
       clipBehavior: Clip.none,
       child: AnimatedSwitcher(
         duration: _morphDuration,
+        switchInCurve: _pointerRowListening ? _intoClearRowCurve : Curves.linear,
+        switchOutCurve: _pointerRowAtRest ? _clearsRowCurve : Curves.linear,
         transitionBuilder: (transitionChild, animation) {
           final fade = _fadeEachEntry(transitionChild, animation);
           return transitionChild.key == const ValueKey("edit-target") ? _holdOnlyForScreenReaders(child: fade) : fade;
@@ -3145,8 +3290,8 @@ class _PromptInputState() extends State<PromptInput> {
       height: height,
       child: AnimatedSwitcher(
         duration: _morphDuration,
-        switchInCurve: _restingInCurve,
-        switchOutCurve: _heldOutCurve,
+        switchInCurve: _pointerRowListening ? _intoClearRowCurve : _restingInCurve,
+        switchOutCurve: _pointerRowAtRest ? _clearsRowCurve : _heldOutCurve,
         transitionBuilder: _fadeEachEntry,
         child: child,
       ),
@@ -3156,6 +3301,18 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildWaveform(BuildContext context) {
     final prego = context.prego;
 
+    if (_pointerShell) {
+      return PregoVoiceWaveform(
+        amplitudeStream: _voiceCubit.amplitudeStream,
+        barColor: prego.colors.textSecondary,
+        dotColor: prego.colors.fgQuaternary,
+        height: 20,
+        barWidth: 2,
+        slotPitch: 4,
+        restingHeight: 2,
+        fadesOlderBars: true,
+      );
+    }
     return PregoVoiceWaveform(
       amplitudeStream: _voiceCubit.amplitudeStream,
       // White-on-dark in the dark theme per the design; the light theme flips
@@ -3177,13 +3334,15 @@ class _PromptInputState() extends State<PromptInput> {
 
     return PregoShimmer(
       appearDelay: Duration.zero,
-      highlightColor: prego.colors.textPlaceholderSubtle,
+      highlightColor: _pointerShell ? prego.colors.textPrimary : prego.colors.textPlaceholderSubtle,
       semanticLabel: label,
       child: Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+        style: _pointerShell
+            ? prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)
+            : prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
       ),
     );
   }
@@ -3199,7 +3358,7 @@ class _PromptInputState() extends State<PromptInput> {
       return _buildLabelledIconButton(
         label: loc.voiceRecord,
         icon: TablerRegular.microphone,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        hierarchy: PregoButtonsSolidHierarchy.tertiary,
         onPressed: _handleMicClick,
       );
     }
@@ -3368,7 +3527,8 @@ class _PromptInputState() extends State<PromptInput> {
       leadingIcon: TablerRegular.arrow_up,
       semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-      size: PregoButtonsSolidSize.lg,
+      size: _actionSize,
+      pointerRadius: composerActionRadius,
       // A send held for an image still being prepared.
       isLoading: _sendHold is _SendHeld,
       onPressed: onPressed,
@@ -3379,7 +3539,8 @@ class _PromptInputState() extends State<PromptInput> {
     return _buildLabelledIconButton(
       label: context.loc.sessionDetailAbort,
       icon: TablerSolid.player_stop,
-      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+      // Quieter than Send under a pointer: work in progress is not a call to act.
+      hierarchy: _pointerShell ? PregoButtonsSolidHierarchy.secondary : PregoButtonsSolidHierarchy.primaryAlt,
       onPressed: onPressed,
     );
   }
@@ -3396,8 +3557,9 @@ class _PromptInputState() extends State<PromptInput> {
       leadingIcon: icon,
       semanticLabel: label,
       showsTooltip: true,
+      pointerRadius: composerActionRadius,
       hierarchy: hierarchy,
-      size: PregoButtonsSolidSize.lg,
+      size: _actionSize,
       onPressed: onPressed,
     );
   }

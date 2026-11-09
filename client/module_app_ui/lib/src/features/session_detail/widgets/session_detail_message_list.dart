@@ -355,6 +355,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   @override
   void initState() {
     super.initState();
+    // The pin is in place on the first frame anyone reads, not on whichever later
+    // layout happens to come along, which would pop it in over the text.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _layOutSticky();
+    });
     _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
     _follow.addListener(_onFollowChanged);
     widget.jumpNotifier.addListener(_onJumpRequested);

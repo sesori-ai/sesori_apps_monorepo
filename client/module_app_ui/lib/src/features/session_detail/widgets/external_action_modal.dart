@@ -63,6 +63,7 @@ class const ExternalActionModal({
           PregoBottomSheet.contentTopInset -
           MediaQuery.paddingOf(context).bottom;
       return PregoModalSurface(
+        anchorsTop: false,
         title: loc.mcpNativeRequestTitle,
         subtitle: null,
         onBack: null,

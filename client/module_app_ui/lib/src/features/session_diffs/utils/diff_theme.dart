@@ -38,7 +38,7 @@ class const DiffTheme._({required final PregoColors colors}) {
 
   // ── Text ──────────────────────────────────────────────────────────────
 
-  Color get lineNumberText => colors.textQuaternary;
+  Color get lineNumberText => colors.textTertiary;
 
   Color get prefixText => colors.textTertiary;
 

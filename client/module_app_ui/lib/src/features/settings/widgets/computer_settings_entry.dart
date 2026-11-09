@@ -31,7 +31,10 @@ class const ComputerSettingsEntry({
     final entry = computer == null
         ? const SizedBox(width: double.infinity)
         : Padding(
-            padding: const EdgeInsetsDirectional.only(bottom: _entryGap),
+            // A pointer shell's card makes its own room around the row.
+            padding: EdgeInsetsDirectional.only(
+              bottom: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 0 : _entryGap,
+            ),
             child: ComputerMenu(
               onSelect: ({required bridgeId}) =>
                   onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
@@ -76,7 +79,13 @@ class const ComputerSettingsEntry({
                               ],
                             ),
                           ),
-                          Icon(TablerRegular.selector, size: PregoIconSize.lg, color: prego.colors.textTertiary),
+                          Icon(
+                            TablerRegular.selector,
+                            size: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                                ? PregoIconSize.sm
+                                : PregoIconSize.lg,
+                            color: prego.colors.textTertiary,
+                          ),
                         ],
                       ),
                     ),

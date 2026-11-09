@@ -71,6 +71,7 @@ on:
       - '.github/scripts/qualify_desktop_linux_authenticated_upgrade.py'
       - '.github/scripts/test_qualify_desktop_linux_authenticated_upgrade.py'
       - '.github/actions/setup-xcode/**'
+      - '.github/actions/prefetch-sqlite3-native/**'
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
       - '.github/scripts/qualify_desktop_linux_session.py'
@@ -270,6 +271,14 @@ jobs:
           architecture: arm64
       - name: Set up ARM Xcode
         uses: ./.ci-workflow/.github/actions/setup-xcode
+      # SwiftPM reuses binary artifacts from its shared cache, so a hit skips
+      # the GitHub release downloads (Sparkle) that intermittently return 504.
+      # SwiftPM still verifies each artifact against its pinned checksum.
+      - name: Cache SwiftPM GitHub release artifacts
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
+          key: swiftpm-github-artifacts-${{ hashFiles('client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
       - name: Bootstrap pinned ARM SDK
         env:
           SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
@@ -283,6 +292,10 @@ jobs:
           set -euo pipefail
           printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+      - name: Prefetch sqlite3 native library (client)
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
       - name: Compile target GUI on ARM
         run: |
           set -euo pipefail
@@ -405,6 +418,18 @@ jobs:
           set -euo pipefail
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+
+      - name: Prefetch sqlite3 native library (bridge)
+        if: inputs.mode == 'macos-packaging'
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+
+      - name: Prefetch sqlite3 native library (client)
+        if: inputs.mode == 'macos-packaging'
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
 
       - uses: actions/download-artifact@v4
         if: inputs.mode == 'macos-packaging'
@@ -821,14 +846,25 @@ jobs:
           mkdir -p build/desktop-qualification
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
+      - name: Resolve locked workspaces
+        run: |
+          set -euo pipefail
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+      - name: Prefetch sqlite3 native library (bridge)
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+      - name: Prefetch sqlite3 native library (client)
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
       - name: Build exact native GUI and helper bundle
         env:
           BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
           CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
-          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
-          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
           VERSION="$(awk '/^version:/{print $2; exit}' client/desktop/pubspec.yaml)"
           echo "SESORI_WINDOWS_VERSION=${VERSION%%+*}" >> "$GITHUB_ENV"
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
@@ -1023,14 +1059,25 @@ jobs:
           mkdir -p build/desktop-qualification build/desktop-linux-packaging
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
+      - name: Resolve locked workspaces
+        run: |
+          set -euo pipefail
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+      - name: Prefetch sqlite3 native library (bridge)
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+      - name: Prefetch sqlite3 native library (client)
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
       - name: Build and stage complete native bundle
         env:
           BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
           CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
-          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
-          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
             --build-number "$BUILD_NUMBER" --channel "$CHANNEL" \
             --output '${{ github.workspace }}/build/desktop-bundle') \
@@ -1242,6 +1289,14 @@ jobs:
           printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+      - name: Prefetch sqlite3 native library (bridge)
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+      - name: Prefetch sqlite3 native library (client)
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
       - uses: actions/download-artifact@v4
         with:
           name: desktop-macos-gui-${{ matrix.arch }}
@@ -1353,6 +1408,16 @@ jobs:
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           # Fresh source SDKs need Flutter to populate sky_engine before resolving SDK dependencies.
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+
+      - name: Prefetch sqlite3 native library (bridge)
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+
+      - name: Prefetch sqlite3 native library (client)
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
 
       - name: Build and stage the identity-bound native desktop bundle
         run: |
