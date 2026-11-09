@@ -90,13 +90,14 @@ class _ChatLinkState() extends State<ChatLink> {
   /// [maxWidth]. A label that fits costs one measure, and a rebuild at the
   /// same width, such as a press, costs none.
   String _fitLabel({required BuildContext context, required TextStyle style, required double maxWidth}) {
-    // The same resolution [Text] applies to its spans, bold text included.
+    // The same resolution [Text] applies to its spans: bold text, then the
+    // span's own style, then the accessibility spacing overrides.
     var base = DefaultTextStyle.of(context).style;
     if (MediaQuery.boldTextOf(context)) base = base.merge(const TextStyle(fontWeight: FontWeight.bold));
     final key = (
       label: widget.presentation.label,
       maxWidth: maxWidth,
-      style: base.merge(style),
+      style: withTextSpacingOverrides(context: context, style: base.merge(style)),
       textScaler: MediaQuery.textScalerOf(context),
       textDirection: Directionality.of(context),
     );

@@ -101,7 +101,11 @@ void main() {
     const width = 360.0;
     const fileName = "image_picker_A3883905-28EE-472D-BAFC-82C4A8501772-41735-00000058381D0921.jpg";
 
-    Future<void> pumpNarrow({required WidgetTester tester, required String markdown}) async {
+    Future<void> pumpNarrow({
+      required WidgetTester tester,
+      required String markdown,
+      required double? letterSpacingOverride,
+    }) async {
       tapped = [];
       void onTapLink(String text, String? href, String title) => tapped.add(href ?? "");
       await tester.pumpWidget(
@@ -112,16 +116,24 @@ void main() {
               alignment: Alignment.topLeft,
               child: SizedBox(
                 width: width,
-                child: MarkdownBody(
-                  data: markdown,
-                  selectable: false,
-                  onTapLink: onTapLink,
-                  styleSheet: buildChatMessageMarkdownStyleSheet(prego: PregoDesignSystem.light),
-                  inlineSyntaxes: sessionMarkdownInlineSyntaxes,
-                  builders: buildSessionMarkdownBuilders(
-                    highlightEnabled: false,
-                    copyTooltip: null,
-                    onTapLink: onTapLink,
+                child: Builder(
+                  builder: (context) => MediaQuery(
+                    data: MediaQueryData(
+                      textScaler: MediaQuery.textScalerOf(context),
+                      letterSpacingOverride: letterSpacingOverride,
+                    ),
+                    child: MarkdownBody(
+                      data: markdown,
+                      selectable: false,
+                      onTapLink: onTapLink,
+                      styleSheet: buildChatMessageMarkdownStyleSheet(prego: PregoDesignSystem.light),
+                      inlineSyntaxes: sessionMarkdownInlineSyntaxes,
+                      builders: buildSessionMarkdownBuilders(
+                        highlightEnabled: false,
+                        copyTooltip: null,
+                        onTapLink: onTapLink,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -144,7 +156,7 @@ void main() {
         paragraph.text.toPlainText(includeSemanticsLabels: false, includePlaceholders: false);
 
     testWidgets("a short label is drawn whole", (tester) async {
-      await pumpNarrow(tester: tester, markdown: "See `lib/src/path.dart:12`.");
+      await pumpNarrow(tester: tester, markdown: "See `lib/src/path.dart:12`.", letterSpacingOverride: null);
 
       final paragraph = drawnLink(tester: tester, label: "path.dart (line 12)");
       expect(drawnLabel(paragraph), "path.dart (line 12)");
@@ -153,7 +165,11 @@ void main() {
 
     testWidgets("a long label loses its middle, keeps its extension and fits the line", (tester) async {
       final semantics = tester.ensureSemantics();
-      await pumpNarrow(tester: tester, markdown: "Attached file: `/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName`");
+      await pumpNarrow(
+        tester: tester,
+        markdown: "Attached file: `/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName`",
+        letterSpacingOverride: null,
+      );
 
       final paragraph = drawnLink(tester: tester, label: fileName);
       final drawn = drawnLabel(paragraph);
@@ -178,6 +194,18 @@ void main() {
         "/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName",
       );
       semantics.dispose();
+    });
+
+    testWidgets("the cut measures the system letter spacing, as the drawn label does", (tester) async {
+      await pumpNarrow(
+        tester: tester,
+        markdown: "Attached file: `/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$fileName`",
+        letterSpacingOverride: 4,
+      );
+
+      final paragraph = drawnLink(tester: tester, label: fileName);
+      expect(drawnLabel(paragraph), endsWith(".jpg"));
+      expect(paragraph.didExceedMaxLines, isFalse);
     });
   });
 
