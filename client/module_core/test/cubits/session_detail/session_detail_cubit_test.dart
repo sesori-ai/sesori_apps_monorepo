@@ -852,7 +852,9 @@ void main() {
             description: "live block",
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
-          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy(since: null));
+          // The buffered busy status still lands, but a harness that lost its
+          // login runs no turn, so the session reads idle under the block.
+          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.idle());
           cubit.removeFailedSend();
           expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
@@ -1179,6 +1181,17 @@ void main() {
       final state = cubit.state as SessionDetailLoaded;
       expect(state.sessionStatus, const SessionStatus.idle());
       expect(state.retryErrorMessage, isNull);
+
+      // A retry the harness had in flight lands after the block.
+      sessionEvents.add(
+        const SesoriSessionStatus(
+          sessionID: sessionId,
+          status: SessionStatus.retry(attempt: 2, message: "authentication_failed", next: 0, since: null),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.idle());
     });
 
     test("Check setup joining a refresh in flight also waits for the one queued behind it", () async {
