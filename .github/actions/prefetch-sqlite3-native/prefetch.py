@@ -8,6 +8,11 @@ the hook. This script puts the same pinned, hash-verified file in place first,
 from the CI cache or a retried download, so the hook takes its reuse path.
 Run by .github/actions/prefetch-sqlite3-native in CI and release workflows;
 the hook accepts only the pinned hash, so the built bytes never change.
+
+Locally, after `pub get`, it seeds a worktree whose hook download failed. The
+default seeds this host's libraries; add `--platform ios` or `--platform
+android` for those targets. On Windows, run `python` instead of `python3`:
+    python3 .github/actions/prefetch-sqlite3-native/prefetch.py seed --workspace client
 """
 
 # Runners may ship a python3 older than 3.10.
@@ -23,6 +28,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from platform import machine, system
 from urllib.parse import urljoin, urlparse
 from urllib.request import url2pathname
 
@@ -30,6 +36,9 @@ REPO = "simolus3/sqlite3.dart"
 URL = f"https://github.com/{REPO}/releases/download/{{tag}}/{{name}}"
 SHARED_BUILD_DIR = Path(".dart_tool/hooks_runner/shared/sqlite3/build")
 ARCHITECTURES = {"X64": "x64", "ARM64": "arm64"}
+# platform.system() and platform.machine() values, as RUNNER_OS and RUNNER_ARCH names.
+HOST_SYSTEMS = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}
+HOST_MACHINES = {"x86_64": "X64", "amd64": "X64", "arm64": "ARM64", "aarch64": "ARM64"}
 # Bounds each gh or curl run so a stalled download falls through to a retry.
 COMMAND_TIMEOUT_SECONDS = 120
 
@@ -75,10 +84,12 @@ def platform_assets(*, platform: str) -> list[tuple[str, str]]:
     if platform == "android":
         # The ABIs `flutter build appbundle --release` targets by default.
         return [(f"libsqlite3.{a}.android.so", "libsqlite3.so") for a in ("arm", "arm64", "x64")]
-    runner_os = os.environ["RUNNER_OS"]
-    arch = ARCHITECTURES.get(os.environ["RUNNER_ARCH"])
+    # Outside Actions, detect this machine.
+    runner_os = os.environ.get("RUNNER_OS") or HOST_SYSTEMS.get(system(), system())
+    runner_arch = os.environ.get("RUNNER_ARCH") or HOST_MACHINES.get(machine().lower(), machine())
+    arch = ARCHITECTURES.get(runner_arch)
     if arch is None:
-        fail(f"Unsupported runner architecture {os.environ['RUNNER_ARCH']}")
+        fail(f"Unsupported architecture {runner_arch}")
     if runner_os == "Linux":
         return [(f"libsqlite3.{arch}.linux.so", "libsqlite3.so")]
     if runner_os == "macOS":
@@ -161,9 +172,12 @@ def seed(*, workspace: Path, platform: str) -> None:
     for name, stored_name, expected in targets(hashes=hashes, platform=platform):
         # The hook's PrebuiltSqliteLibrary.dirname.
         destination = workspace / SHARED_BUILD_DIR / f"download-{expected[:8]}" / stored_name
-        if destination.is_file() and sha256(path=destination) == expected:
-            print(f"Reusing cached sqlite3 native library {destination} ({name})")
-            continue
+        if destination.is_file():
+            if sha256(path=destination) == expected:
+                print(f"Reusing cached sqlite3 native library {destination} ({name})")
+                continue
+            # download() swaps in the verified file over it.
+            print(f"::warning::Replacing {destination}, whose SHA-256 does not match {name}")
         destination.parent.mkdir(parents=True, exist_ok=True)
         download(tag=tag, name=name, destination=destination, expected=expected)
 
