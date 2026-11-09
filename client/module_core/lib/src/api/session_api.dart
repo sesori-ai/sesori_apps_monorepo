@@ -438,6 +438,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         toolOutputDelivery: ToolOutputDelivery.onExpand,
       ),
       sensitiveResponse: false,
+      timeout: RelayHttpApiClient.defaultRequestTimeout,
     );
   }
 
@@ -450,6 +451,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       fromJson: SessionPageResponse.fromJson,
       body: request,
       sensitiveResponse: false,
+      timeout: RelayHttpApiClient.defaultRequestTimeout,
     );
   }
 
@@ -471,6 +473,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       fromJson: SessionPromptSearchResponse.fromJson,
       body: SessionPromptSearchRequest(sessionId: sessionId, query: query),
       sensitiveResponse: false,
+      timeout: RelayHttpApiClient.defaultRequestTimeout,
     );
   }
 

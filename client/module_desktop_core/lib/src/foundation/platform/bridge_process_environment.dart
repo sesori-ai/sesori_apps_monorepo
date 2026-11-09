@@ -3,8 +3,8 @@
 ///
 /// Desktop launchers such as macOS LaunchAgents do not inherit the interactive
 /// terminal environment. Implementations may enrich the inherited environment
-/// (for example, its executable search path), but must not make lifecycle or
-/// plugin decisions. This capability does not grant filesystem permissions;
+/// (for example, with the user's login-shell environment), but must not make
+/// lifecycle or plugin decisions. This capability does not grant filesystem permissions;
 /// the child still runs with the desktop user's normal OS credentials.
 abstract interface class BridgeProcessEnvironment() {
   /// Returns environment overrides. The process boundary continues to inherit

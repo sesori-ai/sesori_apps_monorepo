@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -70,6 +71,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
           sensitiveResponse: false,
+          timeout: RelayHttpApiClient.defaultRequestTimeout,
         ),
       ).thenAnswer((_) async => ApiResponse.success(sessions));
 
@@ -82,6 +84,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
           sensitiveResponse: false,
+          timeout: RelayHttpApiClient.defaultRequestTimeout,
         ),
       ).called(1);
     });

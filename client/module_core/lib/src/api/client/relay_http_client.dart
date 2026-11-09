@@ -13,7 +13,8 @@ import "../../logging/logging.dart";
 
 @lazySingleton
 class RelayHttpApiClient(final ConnectionService _connectionService) {
-  static const Duration _defaultRequestTimeout = Duration(seconds: 30);
+  /// How long a request waits for its response unless its caller sets longer.
+  static const Duration defaultRequestTimeout = Duration(seconds: 30);
   static const String _sensitiveParsingErrorMarker = "Sensitive response omitted";
 
   final RelayRequestIdGenerator _requestIdGenerator = RelayRequestIdGenerator();
@@ -31,7 +32,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     queryParameters: queryParameters,
     body: null,
     extraHeaders: headers,
-    timeout: _defaultRequestTimeout,
+    timeout: defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
     decodesInBackground: false,
@@ -49,7 +50,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     queryParameters: null,
     body: null,
     extraHeaders: null,
-    timeout: _defaultRequestTimeout,
+    timeout: defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
     decodesInBackground: true,
@@ -63,7 +64,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-    Duration timeout = _defaultRequestTimeout,
+    Duration timeout = defaultRequestTimeout,
   }) => _request(
     method: HttpMethod.post,
     path: path,
@@ -106,6 +107,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     // ignore: no_slop_linter/prefer_specific_type, any JSON-serializable request body, as for post
     required Object body,
     required bool sensitiveResponse,
+    required Duration timeout,
   }) => _request(
     method: HttpMethod.post,
     path: path,
@@ -113,7 +115,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     queryParameters: null,
     body: body,
     extraHeaders: null,
-    timeout: _defaultRequestTimeout,
+    timeout: timeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: sensitiveResponse,
     decodesInBackground: true,
@@ -134,7 +136,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     queryParameters: queryParameters,
     body: body,
     extraHeaders: headers,
-    timeout: _defaultRequestTimeout,
+    timeout: defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
     decodesInBackground: false,
@@ -155,7 +157,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     queryParameters: queryParameters,
     body: body,
     extraHeaders: headers,
-    timeout: _defaultRequestTimeout,
+    timeout: defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
     decodesInBackground: false,

@@ -5,12 +5,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart"
-    show
-        FilePreviewResponse,
-        FilesystemSuggestion,
-        FilesystemSuggestions,
-        maxFilePreviewTextBytes,
-        maxTranscriptImageBytes;
+    show FilePreviewResponse, FilesystemSuggestion, FilesystemSuggestions, maxFilePreviewBytes, maxTranscriptImageBytes;
 
 import "../api/drive_roots_api.dart";
 import "../api/filesystem_api.dart";
@@ -190,7 +185,7 @@ class FilesystemRepository({
   }
 
   /// A read-only preview of the file at [absolutePath], following links: its
-  /// text up to [maxFilePreviewTextBytes], or a known image up to
+  /// text up to [maxFilePreviewBytes], or a known image up to
   /// [maxTranscriptImageBytes].
   ///
   /// Rethrows a [FileSystemException] that is neither a permission denial nor
@@ -218,8 +213,8 @@ class FilesystemRepository({
       }
       if (_binaryExtensions.contains(extension)) return const FilePreviewResponse.unsupported();
 
-      final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewTextBytes);
-      if (bytes.length > maxFilePreviewTextBytes) return const FilePreviewResponse.tooLarge();
+      final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewBytes);
+      if (bytes.length > maxFilePreviewBytes) return const FilePreviewResponse.tooLarge();
       if (bytes.contains(0)) return const FilePreviewResponse.unsupported();
       try {
         return FilePreviewResponse.text(content: utf8.decode(bytes));
