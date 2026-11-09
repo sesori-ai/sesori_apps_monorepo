@@ -296,6 +296,9 @@ final class PregoPopupAlertPresenter._({
 }) {
   static final Expando<_PregoPopupAlertPresentation> _presentations = Expando<_PregoPopupAlertPresentation>();
 
+  /// How long an alert stays up when the caller doesn't say.
+  static const Duration defaultDuration = Duration(seconds: 3);
+
   /// Captures the nearest overlay so an alert can still be shown after the
   /// source widget is removed or a modal route is dismissed.
   static PregoPopupAlertPresenter of(BuildContext context) {
@@ -338,7 +341,7 @@ final class PregoPopupAlertPresenter._({
     required String title,
     PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.info,
     PregoPopupAlertContent content = const PregoPopupAlertContent(),
-    Duration? duration = const Duration(seconds: 3),
+    Duration? duration = defaultDuration,
     bool showCloseButton = true,
   }) {
     if (!_overlay.mounted) return;

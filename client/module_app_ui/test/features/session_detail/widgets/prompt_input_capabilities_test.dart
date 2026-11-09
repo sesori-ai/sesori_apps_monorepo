@@ -57,6 +57,19 @@ class _FilesComposerFilePicker({required final List<String> _paths}) implements 
   }
 }
 
+/// A Files pick whose only file the platform picker held back as over 50 MB,
+/// as Android's does.
+class const _OversizedComposerFilePicker() implements ComposerFilePicker {
+  @override
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async =>
+      const ComposerPickedHostPaths(paths: [], oversizedCount: 1);
+}
+
+class const _FailingComposerFilePicker() implements ComposerFilePicker {
+  @override
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async => throw StateError("picker failed");
+}
+
 class _FixedImageClipboard({required final Uint8List _bytes}) implements ImageClipboard {
   @override
   Future<Uint8List?> readImage() async => _bytes;
@@ -359,7 +372,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("a drop turned away for several reasons gets one notice naming each", (tester) async {
+  testWidgets("a drop turned away for several reasons gets one notice naming each, and it stays up longer", (
+    tester,
+  ) async {
     final drops = StreamController<List<String>>();
     addTearDown(drops.close);
     final root = Directory.systemTemp.createTempSync("composer_drop_reasons_test");
@@ -396,7 +411,11 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.pumpAndSettle(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 3500));
+    expect(find.textContaining("A folder wasn't added."), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("A folder wasn't added."), findsNothing);
   });
 
   group("on a bridge on another computer that saves uploads", () {
@@ -510,6 +529,62 @@ void main() {
       if (staged is! ComposerFileAttachment) fail("expected a staged file, got $staged");
       expect(staged.filename, "notes.dart");
       expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
+    });
+
+    testWidgets("a Files pick the picker held back for its size shows the size notice for longer", (tester) async {
+      final notice = find.text("An attachment wasn't added. Attachments are limited to 50 MB per message.");
+      await pumpRemote(
+        tester: tester,
+        attachKind: ComposerAttachKind.photosAndFiles,
+        dispatcher: remoteDispatcher(filePicker: const _OversizedComposerFilePicker()),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: true,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: (_) {},
+      );
+      await tester.tap(_tooltip("More actions"));
+      await tester.pumpAndSettle();
+      await tester.tap(_tooltip("Attach photos or files"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Files"));
+      await tester.pump();
+      await tester.pump();
+      expect(notice, findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 3500));
+      expect(notice, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pumpAndSettle();
+      expect(notice, findsNothing);
+    });
+
+    testWidgets("a Files pick that fails shows its notice for longer", (tester) async {
+      final notice = find.text("Couldn't add the attachment.");
+      await pumpRemote(
+        tester: tester,
+        attachKind: ComposerAttachKind.photosAndFiles,
+        dispatcher: remoteDispatcher(filePicker: const _FailingComposerFilePicker()),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: true,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: (_) {},
+      );
+      await tester.tap(_tooltip("More actions"));
+      await tester.pumpAndSettle();
+      await tester.tap(_tooltip("Attach photos or files"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Files"));
+      await tester.pump();
+      await tester.pump();
+      expect(notice, findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 3500));
+      expect(notice, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pumpAndSettle();
+      expect(notice, findsNothing);
     });
 
     testWidgets("on mobile the plus opens the gallery straight away until the bridge says it saves uploads", (
@@ -1191,7 +1266,13 @@ void main() {
     expect(find.byKey(ObjectKey(images.last)), findsNothing);
     expect(find.text("Attachments are limited to 50 MB per message."), findsOneWidget);
     expect(consumed, isTrue);
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+
+    // The size notice stays up past the usual three seconds, then leaves.
+    await tester.pump(const Duration(milliseconds: 3500));
+    expect(find.text("Attachments are limited to 50 MB per message."), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
+    expect(find.text("Attachments are limited to 50 MB per message."), findsNothing);
   });
 
   testWidgets("only the staged chip materializes; clear, voice, and retry preserve the draft", (tester) async {
