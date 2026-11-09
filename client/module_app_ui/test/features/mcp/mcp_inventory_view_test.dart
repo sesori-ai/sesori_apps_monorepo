@@ -79,8 +79,8 @@ void main() {
     await actionStates.close();
   });
 
-  Widget app({required double scale}) => MaterialApp(
-    theme: buildPregoThemeData(brightness: Brightness.light),
+  Widget app({required double scale, Brightness brightness = Brightness.light}) => MaterialApp(
+    theme: buildPregoThemeData(brightness: brightness),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, child) => MediaQuery(
@@ -401,6 +401,18 @@ void main() {
     expect(find.text("Fixture server"), findsOneWidget);
     expect(find.text("Some inventory information requires a newer app."), findsOneWidget);
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets("the refresh icon takes its label's colour in $brightness", (tester) async {
+      await tester.pumpWidget(app(scale: 1, brightness: brightness));
+      await tester.pumpAndSettle();
+      final refresh = find.byType(PregoButtonsSolid);
+      final label = tester.widget<Text>(find.descendant(of: refresh, matching: find.text("Refresh")));
+      final icon = tester.widget<Icon>(find.descendant(of: refresh, matching: find.byIcon(TablerRegular.refresh)));
+      expect(label.style?.color, isNotNull);
+      expect(icon.color, label.style?.color);
+    });
+  }
 
   testWidgets("phone width with larger text keeps refresh and server details reachable", (tester) async {
     tester.view.physicalSize = const Size(393, 852);
