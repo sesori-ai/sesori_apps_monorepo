@@ -257,6 +257,10 @@ The main pane hosts one full-width routed page.
   supervisor leaves starting and running. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
+- Popup alerts, such as Archived with its Undo, appear centred at the top of the window as on the phone, sized to
+  their words up to the window's width less its 16-pixel insets, never in a corner. Under a pointer the card keeps its
+  desktop surface without the accent glow, turns solid within its first 40 ms, and keeps actions that wrap below a
+  long title at its trailing edge.
 - On this computer, the computer row exposes its supervised status through a dot and an
   accessible description; while another computer is viewed, that status stays in the row's menu. Takeover (another copy of this computer's own bridge, here or on a cloned machine;
   another computer never causes it), login, start failure and crash-give-up
@@ -477,7 +481,7 @@ state,
 stale/missing session rows, a palette whose session rows jump or lose the highlight as the bridge answers, a
 refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,
-notification opens stranded behind a popup,
+notification opens stranded behind a popup, a popup alert in the window's corner,
 wrong session-action targets, or lost navigation after switching projects. Vary project-name lengths and
 Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.

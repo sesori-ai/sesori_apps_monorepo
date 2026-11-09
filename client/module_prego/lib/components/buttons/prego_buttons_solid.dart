@@ -380,7 +380,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   Widget _buildLabelContent({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
     final textStyle = _resolveTextStyle(prego: prego, state: state);
-    final iconColor = _resolveIconColor(colors: colors, state: state, isTrailing: false);
+    final iconColor = _resolveIconColor(colors: colors, state: state);
     final padding = _resolvePadding();
     final gap = _resolveGap();
 
@@ -419,7 +419,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
           Icon(
             widget.trailingIcon,
             size: _resolveIconSize(),
-            color: _resolveIconColor(colors: colors, state: state, isTrailing: true),
+            color: iconColor,
           ),
         );
       }
@@ -441,7 +441,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 
   Widget _buildIconOnlyContent({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
-    final iconColor = _resolveIconColor(colors: colors, state: state, isTrailing: false);
+    final iconColor = _resolveIconColor(colors: colors, state: state);
     final padding = _resolveIconOnlyPadding();
 
     final Widget iconWidget;
@@ -808,7 +808,6 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   Color _resolveIconColor({
     required PregoColors colors,
     required Set<WidgetState> state,
-    required bool isTrailing,
   }) {
     final isDisabled = state.contains(WidgetState.disabled);
     final isHovered = state.contains(WidgetState.hovered);
@@ -838,8 +837,11 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       PregoButtonsSolidHierarchy.primary => _primaryForeground(colors: colors),
       // Primary Alt: icon matches the dark text colour (text-primary_on-white).
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
-      // Canonical secondary: leading/icon-only uses primary text; trailing matches the label.
-      PregoButtonsSolidHierarchy.secondary => isTrailing || _pointer ? colors.textSecondary : colors.textPrimary,
+      // Secondary on touch: an icon beside a label takes the label's colour,
+      // and an icon-only button, having no label, uses primary text. Pointer
+      // (desktop) secondary buttons keep their icons secondary on purpose,
+      // under a primary-text label, as #2429 set.
+      PregoButtonsSolidHierarchy.secondary => widget.iconOnly && !_pointer ? colors.textPrimary : colors.textSecondary,
       PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       // Link uses text-brand-secondary tokens on default/hover; text-secondary when focused.
       PregoButtonsSolidHierarchy.link =>
