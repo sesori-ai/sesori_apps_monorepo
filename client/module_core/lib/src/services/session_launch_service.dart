@@ -101,6 +101,23 @@ class SessionLaunchService({
     if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
   }
 
+  /// Keeps [sessionId]'s launch follow-ups from starting to send while a stop
+  /// of that session is decided.
+  void holdFollowUps({required String sessionId}) => _launchRepository.holdFollowUps(sessionId: sessionId);
+
+  /// Sends [sessionId]'s held follow-ups after all, as a refused stop left
+  /// the turn running.
+  void resumeFollowUps({required String sessionId}) {
+    final launchId = _launchRepository.resumeFollowUps(sessionId: sessionId);
+    if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
+  }
+
+  /// Takes back every follow-up of [sessionId]'s launch the bridge has not
+  /// accepted, oldest first, so a stop can return them to the composer and
+  /// none sends after it.
+  List<QueuedSessionSubmission> withdrawFollowUps({required String sessionId}) =>
+      _launchRepository.withdrawFollowUps(sessionId: sessionId);
+
   /// Creates the session and publishes its outcome on [outcomes].
   ///
   /// Success clears the composer selection captured here at Send, whether or

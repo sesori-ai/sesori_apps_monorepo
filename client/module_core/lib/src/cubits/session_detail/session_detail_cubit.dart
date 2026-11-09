@@ -3357,8 +3357,9 @@ class SessionDetailCubit(
 
   /// Stops the session with the given sub-agent scope.
   ///
-  /// Queue draining pauses for the request lifetime. Only exact non-mutating
-  /// rejection/refusal outcomes retain local queue and stale-option state;
+  /// Queue draining, the launch's follow-ups included, pauses for the request
+  /// lifetime. Only exact non-mutating rejection/refusal outcomes retain local
+  /// queue and stale-option state;
   /// accepted or ambiguous outcomes clear them and move every queued message
   /// not yet sent back into the composer, so a stop never loses typed words.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
@@ -3367,6 +3368,8 @@ class SessionDetailCubit(
       return const SessionAbortOutcome.failed();
     }
     _abortRequestInFlight = true;
+    // Like this screen's own queue, the launch's follow-ups wait for the stop.
+    _sessionLaunchService.holdFollowUps(sessionId: _sessionId);
     _feedbackPromptService.recordUserStop(sessionId: _sessionId);
     // The bridge drops its queue as the stop lands, and the queue event saying
     // so can outrun the response, so what it holds is taken now.
@@ -3377,9 +3380,11 @@ class SessionDetailCubit(
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
     } on SessionAbortRejectedException catch (error) {
+      _sessionLaunchService.resumeFollowUps(sessionId: _sessionId);
       _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.rejected(rejection: error.rejection);
     } on SessionAbortNotAcceptedException catch (error) {
+      _sessionLaunchService.resumeFollowUps(sessionId: _sessionId);
       _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.notAccepted(refusal: error.refusal);
     } on SessionAbortDescendantFailureException catch (error) {
@@ -3412,9 +3417,18 @@ class SessionDetailCubit(
         for (final message in messages)
           if (message.info case MessageUser(promptId: final promptId?)) promptId,
     };
+    final queuedNow = _unsentQueuedPrompts();
+    // The launch's follow-ups never reached the bridge, whatever the stop's
+    // outcome, so none may send after it.
+    final launchFollowUps = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
+    _unsentLaunchFollowUps = const [];
     final returned = <String>{};
     final unsent = [
-      for (final prompt in [...queuedAtStop, ..._unsentQueuedPrompts()])
+      for (final prompt in [
+        ...queuedAtStop,
+        ...queuedNow,
+        for (final submission in launchFollowUps) _unsentSubmission(submission: submission),
+      ])
         if (!delivered.contains(prompt.promptId) && returned.add(prompt.promptId)) prompt,
     ];
     _promptQueue.clear();
@@ -3434,6 +3448,7 @@ class SessionDetailCubit(
       current.copyWith(
         // A stop ends the first message's send too.
         launchHandoff: null,
+        launchFollowUps: const [],
         bridgeQueuedPrompts: bridgeDropped
             ? [
                 for (final prompt in current.bridgeQueuedPrompts)
@@ -3447,8 +3462,9 @@ class SessionDetailCubit(
   }
 
   /// What is queued and not yet in the transcript, oldest first: the prompts
-  /// the bridge holds, then this screen's sends it has not listed yet, the one
-  /// sending, the failed one and those still staged. A dispatched prompt counts
+  /// the bridge holds, then this screen's sends it has not listed yet, the
+  /// launch's follow-ups it has not accepted, the one sending, the failed one
+  /// and those still staged. A dispatched prompt counts
   /// too: until the harness echoes it, as Claude steering the stop interrupts
   /// before the CLI reads it, nothing says it will ever reach the transcript.
   List<_UnsentPrompt> _unsentQueuedPrompts() {
@@ -3468,17 +3484,21 @@ class SessionDetailCubit(
         ),
       for (final submission in [
         for (final entry in _promptQueue.awaitingBridge) entry.submission,
+        // Typed before the session existed, so ahead of all sent from here.
+        for (final followUp in _unsentLaunchFollowUps) followUp.submission,
         if (!_promptQueue.isActiveSettledElsewhere) ?_promptQueue.active,
         ?_promptQueue.failed?.submission,
         ..._promptQueue.items,
       ])
-        (
-          promptId: submission.promptId,
-          draft: _submissionDraft(submission: submission),
-          attachments: submission.attachments,
-        ),
+        _unsentSubmission(submission: submission),
     ];
   }
+
+  static _UnsentPrompt _unsentSubmission({required QueuedSessionSubmission submission}) => (
+    promptId: submission.promptId,
+    draft: _submissionDraft(submission: submission),
+    attachments: submission.attachments,
+  );
 
   /// Puts [unsent] into the composer ahead of what it holds, each after a
   /// blank line, with their images before its own. A [stagedCommand] becomes
