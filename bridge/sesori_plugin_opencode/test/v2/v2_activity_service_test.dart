@@ -679,7 +679,7 @@ class FakeRepository() implements OpenCodeV2Repository {
   }
 
   @override
-  Future<shared.Session> getSessionDetails({required String sessionId}) async {
+  Future<shared.Session?> getSessionDetails({required String sessionId}) async {
     calls.add("session:$sessionId");
     if (metadataFailure case final failure?) throw failure;
     return [...sessions, ...unlisted].firstWhere((session) => session.id == sessionId);

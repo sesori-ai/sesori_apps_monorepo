@@ -509,7 +509,8 @@ class OpenCodeV2Service({
   /// Reads and keeps the session's metadata; returns whether it changed.
   Future<bool> _rememberSession({required String sessionId}) async {
     try {
-      return _tracker.rememberSession(session: await _repository.getSessionDetails(sessionId: sessionId));
+      final session = await _repository.getSessionDetails(sessionId: sessionId);
+      return session != null && _tracker.rememberSession(session: session);
     } catch (error, stack) {
       // A metadata lookup must not suppress a native status or input request.
       Log.w("OpenCode v2 session metadata failed for $sessionId", error, stack);
