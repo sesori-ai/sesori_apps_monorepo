@@ -188,7 +188,9 @@ reaches the backend so the turn continues.
 - Per-session pending lists are empty while a plugin is stopped or terminally
   failed and never start it. After restart, pending state is read from the newly
   active backend.
-- An archived session refuses replies with the archived read-only rejection.
+- An archived session refuses replies with the archived read-only rejection, and
+  pending lists drop every request whose own session is archived. A request
+  from an active sub-agent stays listed under an archived display root.
 - Question rejection carries the owning session ID. Missing or null ownership is
   a malformed request rather than triggering a cross-session owner search.
 - Question choices preserve their distinct selected styling, per-question
@@ -308,7 +310,8 @@ the prompt write is held, proving cancellation does not remove the later request
 - A manually routed reply/rejection fails to advance the existing activity
   marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.
-- An archived session accepts a reply.
+- An archived session accepts a reply, or its own pending question or permission
+  is still listed.
 - Antigravity displays or dispatches a persistent choice, displays any warning-bearing choice, escalates Once, changes
   an opaque option ID, guesses an ambiguous label, or leaves malformed input pending after cancellation/cleanup.
 - Copilot offers a question surface or waits for a Sesori answer to an upstream

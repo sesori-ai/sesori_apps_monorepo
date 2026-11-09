@@ -929,7 +929,7 @@ class SessionRepository({
         sessionId: binding.sessionId,
         childSessionIds: [
           for (final backendChildId in active.childSessionIds)
-            if (bindings[backendChildId] case final child?) child.sessionId,
+            if (bindings[backendChildId] case final child? when child.archivedAt == null) child.sessionId,
         ],
         lastUserActivityAt: binding.lastUserMessageAt,
         updatedAt: binding.updatedAt,

@@ -238,6 +238,7 @@ class SessionLifecycleService({
     if (session == null) {
       throw SessionNotFoundException();
     }
+    _mutations.sessionArchived(session: session);
     return session;
   }
 

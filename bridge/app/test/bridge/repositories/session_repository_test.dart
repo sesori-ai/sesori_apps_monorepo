@@ -2027,7 +2027,7 @@ void main() {
       expect(await repository.getProjectActivitySummaries(), isEmpty);
     });
 
-    test("getProjectActivitySummaries excludes archived sessions", () async {
+    test("getProjectActivitySummaries excludes archived sessions and children", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -2049,7 +2049,7 @@ void main() {
                 mainAgentRunning: false,
                 awaitingInput: true,
                 isRetrying: false,
-                childSessionIds: [],
+                childSessionIds: ["archived"],
               ),
             ],
           ),
@@ -2068,6 +2068,7 @@ void main() {
 
       expect(summaries.single.id, project);
       expect(summaries.single.activeSessions.map((session) => session.id), ["live"]);
+      expect(summaries.single.activeSessions.single.childSessionIds, isEmpty);
     });
 
     test("setSessionTitleIfStored makes a derived title win over enumeration", () async {

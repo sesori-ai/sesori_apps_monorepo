@@ -19,11 +19,13 @@ entirely along with its transcript and its dedicated worktree.
   renamed, replied to, or otherwise mutated in place; those attempts receive the
   same archived read-only rejection evaluated on the session the caller named.
   Permanent deletion remains allowed.
-- An archived session never counts as running or awaiting input. The bridge drops it from the live activity
-  summary whatever its backend still reports, so it lights no project badge or needs-you mark, never lists as
-  Running, and auto-approval skips it. Archiving also cancels the session's own pending requests in every
-  harness where nothing else could answer them (see `docs/HARNESS_CAPABILITIES.md`), which refreshes the
-  summary at once.
+- An archived session never counts as running or awaiting input. The bridge drops it, and any archived
+  sub-agent, from the live activity summary whatever its backend still reports, so it lights no project badge
+  or needs-you mark, never lists as Running, and auto-approval skips it. Every archive publishes a fresh
+  summary at once, in every harness. The bridge also lists no pending question, permission, form or external
+  action whose own session is archived, since none can be answered. Archiving also cancels the session's own
+  pending requests in every harness where nothing else could answer them (see
+  `docs/HARNESS_CAPABILITIES.md`).
 - Archiving exports a versioned transcript audit record before the session flips
   to archived, then purges live history for it. When backend history is
   unavailable the export may proceed from stored content only and must record
@@ -235,7 +237,8 @@ restart before explicit re-import.
 
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
-- An archived session counts as running or awaiting input in the activity summary, or keeps a pending
+- An archived session counts as running or awaiting input in the activity summary, or until the next
+  unrelated summary rebuild; its pending question or permission is still listed; or it keeps a pending
   request open in a harness whose archive cancels it.
 - An audit record is missing or unreadable, history is purged without a durable
   record, a partial export is recorded as complete, or an archived snapshot
@@ -333,8 +336,10 @@ delete and read state from a row, detail and unwinding, the offline page), share
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice;
 `session_cleanup_service_test`, the one owner of the shared-worktree retry;
-bridge `session_repository_test` for archived activity, and the archive cases in Codex
-`codex_plugin_write_path_test`, ACP `acp_plugin_activity_test` and Pi `pi_plugin_impl_test`;
+bridge `session_repository_test` for archived activity, `orchestrator_emit_bridge_event_test` for the
+summary after archive, `pending_interaction_support_test` for archived questions and permissions, and the
+archive cases in Codex `codex_plugin_write_path_test`, ACP `acp_plugin_activity_test` and
+`acp_step5_policy_test`, and Pi `pi_plugin_impl_test`;
 bridge `git_cli_api_test`, whose real-repository cases cover commits on no
 branch; and bridge `scratch_repository_test` plus the scratch-folder cases in
 `delete_session_handler_test` and `update_session_archive_status_handler_test`.

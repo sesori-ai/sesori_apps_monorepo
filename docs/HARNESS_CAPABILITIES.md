@@ -412,7 +412,8 @@ retains its existing monotonic timestamp merge and local title overrides.
 ## Pending requests on archive
 
 Whatever the harness reports, an archived session never counts as running or
-awaiting input in the bridge's activity summary.
+awaiting input in the bridge's activity summary, which every archive refreshes
+at once, and the bridge lists none of its pending requests.
 
 | Harness | Archiving cancels the session's own pending requests |
 |---|---|
