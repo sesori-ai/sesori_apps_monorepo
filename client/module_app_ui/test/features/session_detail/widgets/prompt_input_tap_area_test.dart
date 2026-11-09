@@ -1,3 +1,5 @@
+import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -45,6 +47,18 @@ void main() {
     await tester.tapAt(Offset(field.left - 4, field.center.dy));
     await tester.pump();
     expect(_fieldHasFocus(tester), isTrue);
+  });
+
+  testWidgets("a mouse over the padding around the words shows a text cursor", (tester) async {
+    await _pumpComposer(tester: tester, initialAttachments: images, onAttachmentsChanged: null);
+    final field = tester.getRect(find.byType(TextField));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+
+    await mouse.addPointer(location: Offset(field.left - 4, field.center.dy));
+    await tester.pump();
+
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
   });
 
   testWidgets("a tile's remove badge removes the tile without focusing the field", (tester) async {

@@ -2213,10 +2213,13 @@ class _PromptInputState() extends State<PromptInput> {
           // that land on nothing there: the tiles keep their open and remove taps,
           // and the strip keeps the space between them as its own.
           Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              excludeFromSemantics: true,
-              onTap: _focusNode.requestFocus,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.text,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                excludeFromSemantics: true,
+                onTap: _focusNode.requestFocus,
+              ),
             ),
           ),
           Padding(
