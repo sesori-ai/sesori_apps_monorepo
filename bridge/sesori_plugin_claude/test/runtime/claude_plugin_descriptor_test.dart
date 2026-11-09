@@ -169,126 +169,29 @@ void main() {
       expect(status.actionHint, isNot(contains("private@example.com")));
     });
 
-    group("when logged out behind a base URL", () {
-      late Directory configDirectory;
+    test("requires authentication when logged out even behind a gateway base URL", () async {
+      final configDirectory = await Directory.systemTemp.createTemp("claude-config");
+      addTearDown(() => configDirectory.delete(recursive: true));
+      File("${configDirectory.path}${Platform.pathSeparator}settings.json").writeAsStringSync(
+        jsonEncode({
+          "env": {"ANTHROPIC_BASE_URL": "https://gateway.example.com/anthropic"},
+        }),
+      );
 
-      setUp(() async {
-        configDirectory = await Directory.systemTemp.createTemp("claude-config");
-        addTearDown(() => configDirectory.delete(recursive: true));
-      });
+      final status = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "2.1.319 (Claude Code)\n", exitCode: Future.value(0)),
+          _ProbeProcess(
+            stdoutText: jsonEncode({"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}),
+            exitCode: Future.value(1),
+          ),
+        ]),
+        environment: {"CLAUDE_CONFIG_DIR": configDirectory.path, "ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
+        stateDirectory: "/state",
+      );
 
-      Future<PluginSetupStatus> inspectLoggedOut({
-        required Map<String, String> environment,
-        required Object? settings,
-      }) {
-        if (settings != null) {
-          File("${configDirectory.path}${Platform.pathSeparator}settings.json").writeAsStringSync(
-            settings is String ? settings : jsonEncode(settings),
-          );
-        }
-        return const ClaudePluginDescriptor().inspectSetup(
-          config: config,
-          processes: _ProcessService([
-            _ProbeProcess(stdoutText: "2.1.319 (Claude Code)\n", exitCode: Future.value(0)),
-            _ProbeProcess(
-              stdoutText: jsonEncode({"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}),
-              exitCode: Future.value(1),
-            ),
-          ]),
-          environment: {"CLAUDE_CONFIG_DIR": configDirectory.path, ...environment},
-          stateDirectory: "/state",
-        );
-      }
-
-      test("requires authentication without a base URL", () async {
-        final status = await inspectLoggedOut(
-          environment: const {},
-          settings: {
-            "env": {"ANTHROPIC_MODEL": "glm-5"},
-          },
-        );
-
-        _expectNonReady<PluginSetupAuthenticationRequired>(status);
-      });
-
-      test("reports ready for a gateway base URL in the environment", () async {
-        final status = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
-          settings: null,
-        );
-
-        expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));
-      });
-
-      test("reports ready for a gateway base URL in user settings", () async {
-        final status = await inspectLoggedOut(
-          environment: const {},
-          settings: {
-            "env": {"ANTHROPIC_BASE_URL": "https://gateway.example.com/anthropic"},
-          },
-        );
-
-        expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));
-      });
-
-      test("requires authentication for Anthropic's own base URL", () async {
-        final fromEnvironment = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "https://api.anthropic.com/"},
-          settings: null,
-        );
-        final fromSettings = await inspectLoggedOut(
-          environment: const {},
-          settings: {
-            "env": {"ANTHROPIC_BASE_URL": " https://api.anthropic.com "},
-          },
-        );
-        final caseVariant = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "HTTPS://API.Anthropic.COM"},
-          settings: null,
-        );
-
-        _expectNonReady<PluginSetupAuthenticationRequired>(fromEnvironment);
-        _expectNonReady<PluginSetupAuthenticationRequired>(fromSettings);
-        _expectNonReady<PluginSetupAuthenticationRequired>(caseVariant);
-      });
-
-      test("lets user settings override the environment like the CLI does", () async {
-        final cleared = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
-          settings: {
-            "env": {"ANTHROPIC_BASE_URL": ""},
-          },
-        );
-        final replaced = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "https://api.anthropic.com"},
-          settings: {
-            "env": {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
-          },
-        );
-
-        _expectNonReady<PluginSetupAuthenticationRequired>(cleared);
-        expect(replaced, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));
-      });
-
-      test("falls back to the environment when user settings are malformed", () async {
-        final status = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
-          settings: '{"env": {"ANTHROPIC_AUTH_TOKEN": "private-token"',
-        );
-
-        expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));
-      });
-
-      test("falls back to the environment when user settings cannot be read", () async {
-        Directory("${configDirectory.path}${Platform.pathSeparator}settings.json").createSync();
-
-        final status = await inspectLoggedOut(
-          environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
-          settings: null,
-        );
-
-        expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));
-      });
+      _expectNonReady<PluginSetupAuthenticationRequired>(status);
     });
 
     test("reports unknown for malformed auth without exposing its payload", () async {

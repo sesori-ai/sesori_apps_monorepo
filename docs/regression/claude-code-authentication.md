@@ -12,9 +12,10 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
 - Claude advertises authentication for the PATH binary and an explicit `bin` override alike. The app offers
   `Log in` only while setup reports authentication required. The setup hint reads "Log in from Sesori, or run
   `claude auth login` on this machine.", so older apps keep a working instruction.
-- Setup reports authentication required only when `claude auth status` says logged out and Claude Code uses
-  Anthropic's own base URL. A custom `ANTHROPIC_BASE_URL` (a gateway that owns authentication) reports ready even
-  while logged out. It is read from `env` in `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`),
+- Setup reports authentication required whenever `claude auth status` says logged out, even with a custom
+  `ANTHROPIC_BASE_URL`: without credentials the CLI sends no request, gateway or not, and gateway credentials
+  (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `apiKeyHelper`) already report logged in. The base URL only shapes
+  turn-time failures. It is read from `env` in `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`),
   which overrides the bridge environment as it does for the CLI; `https://api.anthropic.com` and empty values do not
   count. A gateway auth failure still surfaces at turn time as authentication required, with a hint to check the
   gateway's credentials and configuration instead of logging in to Claude; the hint never includes the URL, which
