@@ -327,43 +327,17 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           loc: loc,
         ),
       );
-      // Only a still-unarchived session hides, as on every list.
-      final sessionItems = [
-        for (final (index, row) in state.rows.indexed)
-          if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
-            _SessionItem(row: row, heading: headings[index]),
-      ];
-      // A pointer list leads with what is blocked on the reader, whatever its date.
-      final needsYou = pointer
-          ? [
-              for (final item in sessionItems)
-                if (item.row.isAwaitingInput && item.row.session.time?.archived == null)
-                  _SessionItem(row: item.row, heading: loc.sessionListNeedsYou),
-            ]
-          : const <_SessionItem>[];
-      final blockedIds = {for (final item in needsYou) item.row.session.id};
-      // Then what is working now, with any session still being created.
-      final running = pointer
-          ? [
-              for (final item in sessionItems)
-                if (item.row.isRunning &&
-                    item.row.session.time?.archived == null &&
-                    !blockedIds.contains(item.row.session.id))
-                  _SessionItem(row: item.row, heading: loc.sessionListRunning),
-            ]
-          : const <_SessionItem>[];
-      final groupedIds = {...blockedIds, for (final item in running) item.row.session.id};
       return groupUnderHeadings<_HeadedItem>(
         items: [
-          ...needsYou,
           for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
-          ...running,
-          for (final item in sessionItems)
-            if (!groupedIds.contains(item.row.session.id)) item,
+          // Only a still-unarchived session hides, as on every list.
+          for (final (index, row) in state.rows.indexed)
+            if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
+              _SessionItem(row: row, heading: headings[index]),
         ],
         headingOf: (item) => switch (item) {
           // A launch is the newest running thing, so it leads Today.
-          _LaunchItem() => pointer ? loc.sessionListRunning : sessionDateLabel(date: now, now: now, loc: loc),
+          _LaunchItem() => sessionDateLabel(date: now, now: now, loc: loc),
           _SessionItem(:final heading) => heading,
         },
       );
@@ -770,11 +744,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 }
                 final bottomPadding = index == shownEntries.length - 1 ? endPadding : 0.0;
                 return switch (entry) {
-                  SessionListHeadingEntry(:final heading) => SessionListHeading(
-                    emphasized: heading == loc.sessionListNeedsYou,
-                    heading: heading,
-                    isFirst: index == 0,
-                  ),
+                  SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
                   SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
                     ignoring: _replacing,
                     child: _launchRowSettling(

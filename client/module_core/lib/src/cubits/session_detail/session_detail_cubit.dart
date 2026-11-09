@@ -431,7 +431,8 @@ class SessionDetailCubit(
 
   /// A harness that loses its login or setup mid-turn is shut down before the
   /// turn reports its end, so the turn ends here and its Working or Retrying
-  /// row stops.
+  /// row stops. A status the harness sends after that, such as a retry still in
+  /// flight, keeps it stopped while the block lasts.
   SessionDetailLoaded _endTurnInHarnessBlock({required SessionDetailLoaded current}) {
     if (current.interaction case SessionInteractionBlocked(
       reason: SessionInteractionBlockedReason.authenticationRequired || SessionInteractionBlockedReason.unavailable,
@@ -1861,8 +1862,8 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(
-      current.copyWith(
-        childStatuses: {...current.childStatuses, sessionId: status},
+      _endTurnInHarnessBlock(
+        current: current.copyWith(childStatuses: {...current.childStatuses, sessionId: status}),
       ),
     );
   }
@@ -2058,7 +2059,7 @@ class SessionDetailCubit(
   void _onSessionStatus({required SessionStatus status}) {
     final current = state;
     if (current is! SessionDetailLoaded || isClosed) return;
-    emit(current.copyWith(sessionStatus: status));
+    emit(_endTurnInHarnessBlock(current: current.copyWith(sessionStatus: status)));
   }
 
   // ---------------------------------------------------------------------------

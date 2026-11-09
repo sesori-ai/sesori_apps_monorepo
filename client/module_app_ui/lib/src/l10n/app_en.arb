@@ -1663,8 +1663,6 @@
   "@sessionListAwaitingInput": {
     "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
   },
-  "sessionListNeedsYou": "Needs you",
-  "@sessionListNeedsYou": {"description": "Heading above the sessions blocked on the reader's answer, at the top of a desktop session list."},
   "sessionListWaiting": "Waiting",
   "@sessionListWaiting": {
     "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"

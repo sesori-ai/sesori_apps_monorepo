@@ -94,6 +94,14 @@ default app; otherwise it shows a read-only preview.
     copy show the file's own text, without the rule. Windows and Linux show
     only the source, with no toggle.
   - An image opens in the image viewer once the page has slid in.
+  - A PDF shows its pages in one scrolling column (pdfrx, PDFium), zoomed by
+    pinching or a double tap; repeated double taps step through the zoom
+    stops and back to fit. The pages fill to the bottom edge, under the home
+    indicator, and the last page scrolls clear of it. The app always sets
+    `acceptsPdf`; a bridge that
+    predates PDF previews answers `unsupported`, which shows "This file can’t
+    be previewed". A PDF that PDFium cannot open, such as a broken or
+    password-protected one, shows "Couldn’t load this file".
   - Every other outcome is a one-line message. A `404` from an older bridge
     shows "Update the bridge to preview files".
 
@@ -103,8 +111,8 @@ default app; otherwise it shows a read-only preview.
 |---|---|
 | L1 Smoke | Automated: repository outcomes for text, image, PDF with and without `acceptsPdf`, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, FIFO and device left unopened, followed link, denied read, and denied lookup; handler `400` and passthrough, including `acceptsPdf`; wire tags and a request without `acceptsPdf`. Client: path recognition, the open-locally or preview decision, repository `404` mapping, cubit states, and the preview page for each state. Bridge: the Sesori note in Claude launch arguments and Codex `thread/start`/`thread/resume`, after the user's developer instructions, and absent from mapped Codex history. |
 | L2 Routine | Headless bridge: request a text file, an image, and a missing path, and confirm each outcome. |
-| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, a page with its own background fills to the bottom edge with no app-coloured strip above the home indicator, and scrolled to its end a page that ends flush with no bottom margin, and one that sets `html,body{height:100%}`, keeps its last line clear of the indicator, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. A self-contained HTML page of 10+ MiB with inline images renders, and its source opens within about half a second and scrolls sideways smoothly; Markdown of several MiB opens on its source with no toggle. Desktop on the same computer: confirm the file opens in its default app. A Claude Code session repeats the Sesori note when asked, a Codex session's rollout records it as a developer message, and neither transcript shows it, new or resumed. |
-| L4 Extended | A client against a bridge older than this route shows "Update the bridge to preview files". Headless bridge: on macOS, request a file under a Full Disk Access-protected folder without access and confirm `denied`. |
+| L3 Release | Phone on a remote bridge: tap a `path:line` in a reply and confirm the preview slides up scrolled to that line; tap a Markdown file and toggle its source; tap an image path; tap a sent PDF's path from its `Attached file` note and confirm its pages render, zoom by pinching and by double tap, scroll, and that the last page clears the home indicator. HTML on iOS, Android and macOS (desktop on a remote bridge): the page renders with its scripts run, a page with its own background fills to the bottom edge with no app-coloured strip above the home indicator, and scrolled to its end a page that ends flush with no bottom margin, and one that sets `html,body{height:100%}`, keeps its last line clear of the indicator, scrolls, keeps its place across the source toggle, and a web link opens outside the app while the page stays. A self-contained HTML page of 10+ MiB with inline images renders, and its source opens within about half a second and scrolls sideways smoothly; Markdown of several MiB opens on its source with no toggle. Desktop on the same computer: confirm the file opens in its default app. A Claude Code session repeats the Sesori note when asked, a Codex session's rollout records it as a developer message, and neither transcript shows it, new or resumed. |
+| L4 Extended | A client against a bridge older than this route shows "Update the bridge to preview files", and a PDF against a bridge that predates PDF previews shows "This file can’t be previewed". Headless bridge: on macOS, request a file under a Full Disk Access-protected folder without access and confirm `denied`. |
 | L5 Full | No additional coverage. |
 
 ## Failure Signals
@@ -119,6 +127,8 @@ default app; otherwise it shows a read-only preview.
   ASCII file's source that scrolls sideways far past its longest line.
 - A directory listing, a write, or binary bytes returned as text.
 - A `pdf` outcome sent to a request without `acceptsPdf`.
+- A PDF preview that stays blank, stays loading, or crashes the app instead
+  of showing its pages or "Couldn’t load this file".
 - A `500` without a bridge log line naming the path.
 - Ordinary inline code such as `foo()` or `v1.2` becomes tappable, or a web
   link inside inline code stops opening in the browser.

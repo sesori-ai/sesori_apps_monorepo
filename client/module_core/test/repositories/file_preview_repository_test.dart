@@ -55,6 +55,24 @@ void main() {
     );
   });
 
+  test("decodes a PDF", () async {
+    answer(ApiResponse.success(FilePreviewResponse.pdf(base64: base64Encode([37, 80, 68, 70]))));
+
+    expect(
+      await repository.load(path: "/a/b.txt"),
+      isA<FilePreviewPdfContent>().having((r) => r.bytes, "bytes", [37, 80, 68, 70]),
+    );
+  });
+
+  test("fails a PDF that does not decode", () async {
+    answer(ApiResponse.success(const FilePreviewResponse.pdf(base64: "not base64!")));
+
+    expect(
+      await repository.load(path: "/a/b.txt"),
+      isA<FilePreviewFailed>().having((r) => r.innerError, "innerError", isA<FormatException>()),
+    );
+  });
+
   final unavailable = <FilePreviewResponse, FilePreviewUnavailableReason>{
     const FilePreviewResponse.missing(): FilePreviewUnavailableReason.missing,
     const FilePreviewResponse.tooLarge(): FilePreviewUnavailableReason.tooLarge,

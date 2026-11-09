@@ -48,9 +48,6 @@ class const DesktopNewSessionView({
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
 }) extends StatelessWidget {
-  /// The session page's composer width: its column less the rows' side insets.
-  static const double maxContentWidth = desktopTranscriptWidth - 32;
-
   @override
   Widget build(BuildContext context) {
     return DesktopPaneDropTarget(
@@ -72,7 +69,7 @@ class const DesktopNewSessionView({
         // The desktop root owns its single connection banner.
         banner: null,
         pageChrome: NewSessionPageChrome(
-          maxContentWidth: maxContentWidth,
+          maxContentWidth: desktopComposerWidth,
           transcriptWidth: desktopTranscriptWidth,
           // The header's project picker names the project.
           topBar: DesktopPageToolbar(

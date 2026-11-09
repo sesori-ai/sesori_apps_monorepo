@@ -37,7 +37,8 @@ typedef NewSessionCreatedCallback = void Function({required Session session, req
 /// the header, the options and the composer form one centred column no wider
 /// than [maxContentWidth], instead of anchoring the composer to the bottom.
 /// While the first message is sending it rests in a column [transcriptWidth]
-/// wide, the one the session's own transcript uses.
+/// wide, the one the session's own transcript uses, and the composer under it
+/// keeps [maxContentWidth], which must be the session page's composer column.
 class const NewSessionPageChrome({
   required final Widget topBar,
   required final double maxContentWidth,
@@ -489,7 +490,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                 if (isSending)
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: math.max(0, (constraints.maxWidth - chrome.transcriptWidth) / 2) + 16,
+                      horizontal: math.max(0, (constraints.maxWidth - chrome.maxContentWidth) / 2) + 16,
                     ),
                     child: composer,
                   ),

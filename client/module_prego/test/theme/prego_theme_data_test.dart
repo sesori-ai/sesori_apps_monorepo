@@ -39,6 +39,13 @@ void main() {
     expect(theme.appBarTheme.systemOverlayStyle, SystemUiOverlayStyle.light);
   });
 
+  test("a rebuilt theme equals the last, so the app does not animate between them", () {
+    for (final brightness in Brightness.values) {
+      expect(buildPregoThemeData(brightness: brightness), buildPregoThemeData(brightness: brightness));
+      expect(buildPregoDesktopThemeData(brightness: brightness), buildPregoDesktopThemeData(brightness: brightness));
+    }
+  });
+
   testWidgets("buttons show the hand cursor on desktop, and a disabled one does not", (tester) async {
     await tester.pumpWidget(
       MaterialApp(
