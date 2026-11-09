@@ -88,13 +88,21 @@ Future<({List<String> taps, List<String> closes})> _pump(
   bool isIndexed = false,
   Future<LoadThroughOutcome> Function({required String messageId, required int seq})? onLoadThrough,
   SessionRepository? repository,
+  Brightness brightness = Brightness.light,
 }) async {
   final sessionRepository = repository ?? _searchFindingNothing();
   final taps = <String>[];
   final closes = <String>[];
   await tester.pumpWidget(
     MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      theme: ThemeData(
+        extensions: [
+          switch (brightness) {
+            Brightness.light => PregoDesignSystem.light,
+            Brightness.dark => PregoDesignSystem.dark,
+          },
+        ],
+      ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailPresentationScope(
@@ -227,6 +235,16 @@ void main() {
     for (final row in tester.widgetList<PromptSpineRow>(find.byType(PromptSpineRow))) {
       expect(row.highlighted, isFalse);
     }
+  });
+
+  testWidgets("a pinned day header follows a live switch to dark mode", (tester) async {
+    final entries = _parityPrompts(from: 0, to: 3);
+    await _pump(tester, entries: entries, anchor: null);
+    await tester.pumpAndSettle();
+    await _pump(tester, entries: entries, anchor: null, brightness: Brightness.dark);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.text("Today")).style?.color, PregoDesignSystem.dark.colors.textSecondary);
   });
 
   testWidgets("an empty list says so", (tester) async {
