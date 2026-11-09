@@ -27,6 +27,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
@@ -99,6 +100,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
         scratchRoot: "/scratch",
         pathContext: p.context,
       ),
+      filesystemApi: const FilesystemApi(),
     );
     var activityEntries = 0;
     final activitySubscription = importer.backendActivity.listen((batch) => activityEntries += batch.length);

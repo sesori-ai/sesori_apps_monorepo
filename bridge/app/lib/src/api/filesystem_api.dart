@@ -145,6 +145,11 @@ class const FilesystemApi() {
     return Directory(path).resolveSymbolicLinksSync();
   }
 
+  /// [resolveDirectoryPath] off the isolate, so a stalled drive cannot block it.
+  Future<String> resolveDirectoryPathAsync({required String path}) {
+    return Directory(path).resolveSymbolicLinks();
+  }
+
   List<int> readFilePrefix({required String path, required int maxBytes}) {
     final file = File(path).openSync();
     try {

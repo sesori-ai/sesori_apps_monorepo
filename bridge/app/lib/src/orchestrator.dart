@@ -524,6 +524,7 @@ class Orchestrator({
       sessionDao: _database.sessionDao,
       catalogHydrationsDao: _database.catalogHydrationsDao,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+      filesystemApi: const FilesystemApi(),
     );
     final catalogImportService = CatalogImportService(
       orderedPluginIds: pluginComposition.orderedPluginIds,

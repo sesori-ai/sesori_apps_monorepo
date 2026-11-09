@@ -19,6 +19,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_filesystem_api.dart";
 import "../helpers/fake_git_cli_api.dart";
 import "../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../helpers/plugin_runtime_test_support.dart";
@@ -192,6 +193,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
 
       final statuses = await repository
@@ -345,7 +347,16 @@ void main() {
             "root-/tmp/qa": [_pluginSession(id: "temporary-child", directory: "/tmp/qa/child")],
           },
         );
-        final statuses = await _repository(database: database, plugin: plugin)
+        // These folders exist on the test host, and /tmp is a link on macOS;
+        // the rule under test reads paths as reported.
+        final repository = singlePluginCatalogImportRepository(
+          plugin: plugin,
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          catalogHydrationsDao: database.catalogHydrationsDao,
+          filesystemApi: FakeFilesystemApi(),
+        );
+        final statuses = await repository
             .importCatalog(
               pluginId: plugin.id,
               control: CatalogImportControl(
@@ -508,6 +519,226 @@ void main() {
           ))?.projectId,
           opened.id,
         );
+      });
+
+      // Some harnesses (OMP over ACP) report a working directory as spelled
+      // rather than resolved: `/tmp/x/demo-app` for `/private/tmp/x/demo-app`.
+      test("a derived session reported through the link joins the opened project", () async {
+        final opened = await openThroughLink();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "linked-root", directory: link)],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals([opened.id, "/tmp/launch"]),
+        );
+        expect((await database.projectsDao.getProject(projectId: opened.id))?.path, folder);
+        final row = await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "linked-root");
+        expect(row?.projectId, opened.id);
+        // The session keeps the working directory its harness reported.
+        expect(row?.directory, link);
+      });
+
+      test("a native project reported through the link joins the opened project", () async {
+        final opened = await openThroughLink();
+        final plugin = _NativeImportPlugin(
+          projects: [PluginProject(id: "backend-project", directory: link)],
+          rootsByProject: {
+            link: [_pluginSession(id: "root", directory: link)],
+          },
+          childrenByParent: const {},
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect((await database.projectsDao.getAllProjects()).map((project) => project.projectId), [opened.id]);
+        expect((await database.projectsDao.getProject(projectId: opened.id))?.path, folder);
+        expect(
+          (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "root"))?.projectId,
+          opened.id,
+        );
+      });
+
+      test("a project stored under the link spelling still receives new sessions", () async {
+        await database.projectsDao.upsertProjectRows(
+          rows: [_projectRow(id: link, path: link)],
+        );
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "arrived", directory: link)],
+        );
+
+        final completed = await _importCompletion(database: database, plugin: plugin);
+
+        expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals([link, "/tmp/launch"]),
+        );
+        // Resolving links alone never moves a stored row.
+        expect((await database.projectsDao.getProject(projectId: link))?.path, link);
+        expect(
+          (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "arrived"))?.projectId,
+          link,
+        );
+      });
+
+      test("with both spellings stored, new sessions join the resolved one and neither row changes", () async {
+        final opened = await openThroughLink();
+        final legacy = _projectRow(id: link, path: link);
+        await database.projectsDao.upsertProjectRows(rows: [legacy]);
+        final legacyBefore = await database.projectsDao.getProject(projectId: link);
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "arrived", directory: link, updatedAt: 1)],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals([opened.id, link, "/tmp/launch"]),
+        );
+        expect(await database.projectsDao.getProject(projectId: link), legacyBefore);
+        expect(
+          (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "arrived"))?.projectId,
+          opened.id,
+        );
+      });
+
+      test("a reported folder that no longer exists imports under the spelling reported", () async {
+        final gone = p.join(link, "gone");
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [
+            _pluginSession(id: "gone-root", directory: gone),
+            _pluginSession(id: "gone-child", parentId: "gone-root", directory: gone),
+            _pluginSession(id: "linked-root", directory: link),
+          ],
+        );
+
+        final completed = await _importCompletion(database: database, plugin: plugin);
+
+        expect(completed.newItems, const CatalogImportNewItems(projects: 3, sessions: 3));
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.path),
+          unorderedEquals([gone, folder, "/tmp/launch"]),
+        );
+        for (final id in ["gone-root", "gone-child"]) {
+          expect(
+            (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: id))?.projectId,
+            gone,
+            reason: id,
+          );
+        }
+      });
+
+      test("each distinct reported folder is resolved once per import", () async {
+        final filesystemApi = _CountingFilesystemApi();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: link,
+          sessions: [
+            for (var index = 0; index < 3; index++) _pluginSession(id: "linked-$index", directory: link),
+            _pluginSession(id: "linked-child", parentId: "linked-0", directory: link),
+            for (var index = 0; index < 2; index++) _pluginSession(id: "resolved-$index", directory: "$folder/"),
+          ],
+        );
+        final repository = CatalogImportRepository(
+          runtime: createTestPluginRuntime(plugins: [plugin]),
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          catalogHydrationsDao: database.catalogHydrationsDao,
+          projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+            scratchRoot: "/scratch",
+            pathContext: p.context,
+          ),
+          filesystemApi: filesystemApi,
+        );
+        Future<void> import() => repository
+            .importCatalog(
+              pluginId: plugin.id,
+              control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+            )
+            .drain<void>();
+
+        await import();
+        expect(filesystemApi.directoryResolutions, {link: 1, folder: 1});
+        expect((await database.projectsDao.getAllProjects()).map((project) => project.path), [folder]);
+
+        // The cache lasts one import, so a link retargeted later is followed.
+        await import();
+        expect(filesystemApi.directoryResolutions, {link: 2, folder: 2});
+      });
+
+      test("a scratch root spelled through a link still collects its session folders", () async {
+        final scratchFolder = p.join(link, "2026-11-09-a");
+        Directory(p.join(folder, "2026-11-09-a")).createSync();
+        await database.projectsDao.insertProjectIfMissing(
+          projectId: link,
+          path: link,
+          hidden: false,
+          displayName: "No project",
+        );
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "scratch-root", directory: scratchFolder)],
+        );
+        final repository = CatalogImportRepository(
+          runtime: createTestPluginRuntime(plugins: [plugin]),
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          catalogHydrationsDao: database.catalogHydrationsDao,
+          projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: link, pathContext: p.context),
+          filesystemApi: const FilesystemApi(),
+        );
+
+        await repository
+            .importCatalog(
+              pluginId: plugin.id,
+              control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+            )
+            .drain<void>();
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals([link, "/tmp/launch"]),
+        );
+        expect(
+          (await database.sessionDao.getSessionByBinding(
+            pluginId: plugin.id,
+            backendSessionId: "scratch-root",
+          ))?.projectId,
+          link,
+        );
+      });
+
+      test("a new project in the system temporary folder imports hidden under either spelling", () async {
+        // [folder] lies in the system temporary folder with its links
+        // resolved (/private/var/folders on macOS), the spelling `getcwd`
+        // gives a harness.
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [
+            _pluginSession(id: "resolved-root", directory: folder),
+            _pluginSession(id: "linked-root", directory: link),
+          ],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        final project = (await database.projectsDao.getProjectsByPath(path: folder)).single;
+        expect(project.hidden, isTrue);
+        for (final id in ["resolved-root", "linked-root"]) {
+          expect(
+            (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: id))?.projectId,
+            project.projectId,
+            reason: id,
+          );
+        }
       });
     });
 
@@ -748,6 +979,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: calculator,
+        filesystemApi: const FilesystemApi(),
       );
 
       await repository
@@ -786,6 +1018,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
       final published = <SessionBackendActivity>[];
       final subscription = repository.backendActivity.listen(published.addAll);
@@ -851,6 +1084,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
 
       await repository
@@ -1099,6 +1333,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
       final activity = <List<SessionBackendActivity>>[];
       final activitySubscription = repository.backendActivity.listen(activity.add);
@@ -1489,6 +1724,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
       final control = CatalogImportControl(
         rescanRequested: true,
@@ -1529,6 +1765,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
 
       final statuses = await repository
@@ -1594,6 +1831,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
       final finished = Completer<void>();
       Object? streamError;
@@ -1645,6 +1883,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
       final publication = repository
           .importCatalog(
@@ -1695,6 +1934,7 @@ void main() {
           scratchRoot: "/scratch",
           pathContext: p.context,
         ),
+        filesystemApi: const FilesystemApi(),
       );
 
       await expectLater(
@@ -1716,6 +1956,17 @@ void main() {
       expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
     });
   });
+}
+
+/// The real filesystem, counting how often each directory's links are resolved.
+class _CountingFilesystemApi() extends FilesystemApi {
+  final Map<String, int> directoryResolutions = {};
+
+  @override
+  Future<String> resolveDirectoryPathAsync({required String path}) {
+    directoryResolutions.update(path, (count) => count + 1, ifAbsent: () => 1);
+    return super.resolveDirectoryPathAsync(path: path);
+  }
 }
 
 class _RuntimeCancelledBeforeEnumeration() extends TestPluginRuntime {
@@ -1916,6 +2167,7 @@ CatalogImportRepository _repository({required AppDatabase database, required Bri
     projectsDao: database.projectsDao,
     sessionDao: database.sessionDao,
     catalogHydrationsDao: database.catalogHydrationsDao,
+    filesystemApi: const FilesystemApi(),
   );
 }
 

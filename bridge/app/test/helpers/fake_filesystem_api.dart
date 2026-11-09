@@ -30,5 +30,8 @@ class FakeFilesystemApi({
   String resolveDirectoryPath({required String path}) => path;
 
   @override
+  Future<String> resolveDirectoryPathAsync({required String path}) async => path;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
