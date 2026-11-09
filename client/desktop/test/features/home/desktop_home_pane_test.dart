@@ -564,7 +564,8 @@ void main() {
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
         )
-        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore())
+        ..registerSingleton<PluginManagementService>(stubbedPluginManagementService());
       whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: project.id));
       updates = StreamController<ProjectListState>();
       addTearDown(updates.close);
@@ -1302,6 +1303,7 @@ AllSessionsState _list({String? projectId, required String? defaultProjectId, bo
       counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
       loadMore: null,
       awaitingAnswer: false,
+      anySessionAwaitingInput: false,
       failure: null,
       isLoading: isLoading,
       scratchProjectId: null,

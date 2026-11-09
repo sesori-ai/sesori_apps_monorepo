@@ -137,6 +137,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// available; see [SessionDetailLoadedX.runsFastMode].
     required bool fastMode,
     required CommandInfo? stagedCommand,
+
+    /// How many stops on this screen have moved unsent queued messages back
+    /// into the composer. The composer takes up its restored draft and images
+    /// once each time this grows.
+    @Default(0) int composerRestorations,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
 

@@ -21,7 +21,8 @@ entirely along with its transcript and its dedicated worktree.
   Permanent deletion remains allowed.
 - An archived session never counts as running or awaiting input. The bridge drops it, and any archived
   sub-agent, from the live activity summary whatever its backend still reports, so it lights no project badge
-  or needs-you mark, never lists as Running, and auto-approval skips it. Every archive publishes a fresh
+  or needs-you mark, never lists as Running, and auto-approval skips its own requests (an active sub-agent's
+  request still gets auto-approved under an archived root). Every archive publishes a fresh
   summary at once, in every harness. The bridge also lists no pending question, permission, form or external
   action whose own session is archived, since none can be answered. Archiving also cancels the session's own
   pending requests in every harness where nothing else could answer them (see
@@ -237,9 +238,10 @@ restart before explicit re-import.
 
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
-- An archived session counts as running or awaiting input in the activity summary, or until the next
-  unrelated summary rebuild; its pending question or permission is still listed; or it keeps a pending
-  request open in a harness whose archive cancels it.
+- An archived session counts as running or awaiting input in the activity summary, or stays listed there
+  until the next unrelated summary rebuild; its pending question or permission is still listed; or it keeps a
+  pending request open in a harness whose archive cancels it. Archiving a root stops auto-approval of an
+  active sub-agent's request.
 - An audit record is missing or unreadable, history is purged without a durable
   record, a partial export is recorded as complete, or an archived snapshot
   retains live prompt defaults.

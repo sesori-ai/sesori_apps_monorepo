@@ -66,98 +66,95 @@ class const PregoPopupAlertsNotifications({
   Widget _buildCard(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    // The gutter beside a 1440 pt window's reading column, less its inset.
-    final maxWidth = PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 264.0 : double.infinity;
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final radius = BorderRadius.circular(pointer ? PregoRadius.xl : PregoRadius.x2l);
 
     return Material(
       type: MaterialType.transparency,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: maxWidth.isFinite && colors.brightness == .dark ? colors.bgSurface3 : _surfaceColor,
-            borderRadius: BorderRadius.circular(maxWidth.isFinite ? PregoRadius.xl : PregoRadius.x2l),
-            border: Border.all(color: colors.borderPrimary),
-            boxShadow: const [
-              BoxShadow(color: Color(0x1A000000), blurRadius: 2),
-              BoxShadow(color: Color(0x59000000), spreadRadius: 1),
-              BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 4),
-              BoxShadow(color: Color(0x17000000), offset: Offset(0, 8), blurRadius: 8),
-              BoxShadow(color: Color(0x0D000000), offset: Offset(0, 13), blurRadius: 10),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(PregoRadius.x2l),
-            child: Stack(
-              children: [
-                // Under a pointer the icon alone carries the variant.
-                if (PregoInteractionScope.of(context) != PregoInteractionMode.pointer)
-                  Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
-                // A lone title keeps its actions and close button on its own
-                // line, centred, instead of stacking a button under one word.
-                // When large text leaves no room, the actions wrap below.
-                if (message == null && _hasActions)
-                  Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      PregoSpacing.xl,
-                      PregoSpacing.lg,
-                      onClose == null ? PregoSpacing.lg : PregoSpacing.sm,
-                      PregoSpacing.lg,
-                    ),
-                    child: Wrap(
-                      alignment: maxWidth.isFinite ? WrapAlignment.end : WrapAlignment.start,
-                      spacing: PregoSpacing.x2l,
-                      runSpacing: PregoSpacing.md,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildLeading(colors),
-                            const SizedBox(width: PregoSpacing.lg),
-                            Flexible(child: _buildTitle(prego)),
-                          ],
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildActions(),
-                            if (onClose case final onClose?) ...[
-                              const SizedBox(width: PregoSpacing.xs),
-                              _CloseButton(onPressed: onClose),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  )
-                else ...[
-                  Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      PregoSpacing.xl,
-                      PregoSpacing.xl,
-                      onClose == null ? PregoSpacing.xl : PregoSpacing.xl * 2 + _closeIconSize,
-                      PregoSpacing.xl,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLeading(colors),
-                        const SizedBox(width: PregoSpacing.lg),
-                        Flexible(child: _buildContent(prego)),
-                      ],
-                    ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: pointer && colors.brightness == .dark ? colors.bgSurface3 : _surfaceColor,
+          borderRadius: radius,
+          border: Border.all(color: colors.borderPrimary),
+          boxShadow: const [
+            BoxShadow(color: Color(0x1A000000), blurRadius: 2),
+            BoxShadow(color: Color(0x59000000), spreadRadius: 1),
+            BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 4),
+            BoxShadow(color: Color(0x17000000), offset: Offset(0, 8), blurRadius: 8),
+            BoxShadow(color: Color(0x0D000000), offset: Offset(0, 13), blurRadius: 10),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Stack(
+            children: [
+              // Under a pointer the icon alone carries the variant.
+              if (!pointer) Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
+              // A lone title keeps its actions and close button on its own
+              // line, centred, instead of stacking a button under one word.
+              // When large text leaves no room, the actions wrap below.
+              if (message == null && _hasActions)
+                Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    PregoSpacing.xl,
+                    PregoSpacing.lg,
+                    onClose == null ? PregoSpacing.lg : PregoSpacing.sm,
+                    PregoSpacing.lg,
                   ),
-                  if (onClose case final onClose?)
-                    PositionedDirectional(
-                      top: PregoSpacing.md,
-                      end: PregoSpacing.md,
-                      child: _CloseButton(onPressed: onClose),
-                    ),
-                ],
+                  child: Wrap(
+                    // Under a pointer, actions that wrap onto their own line keep to the trailing edge.
+                    alignment: pointer ? WrapAlignment.end : WrapAlignment.start,
+                    spacing: PregoSpacing.x2l,
+                    runSpacing: PregoSpacing.md,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildLeading(colors),
+                          const SizedBox(width: PregoSpacing.lg),
+                          Flexible(child: _buildTitle(prego)),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildActions(),
+                          if (onClose case final onClose?) ...[
+                            const SizedBox(width: PregoSpacing.xs),
+                            _CloseButton(onPressed: onClose),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    PregoSpacing.xl,
+                    PregoSpacing.xl,
+                    onClose == null ? PregoSpacing.xl : PregoSpacing.xl * 2 + _closeIconSize,
+                    PregoSpacing.xl,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLeading(colors),
+                      const SizedBox(width: PregoSpacing.lg),
+                      Flexible(child: _buildContent(prego)),
+                    ],
+                  ),
+                ),
+                if (onClose case final onClose?)
+                  PositionedDirectional(
+                    top: PregoSpacing.md,
+                    end: PregoSpacing.md,
+                    child: _CloseButton(onPressed: onClose),
+                  ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -510,11 +507,7 @@ class _PregoPopupAlertOverlayState()
     final alert = SafeArea(
       top: false,
       bottom: false,
-      // Under a pointer it sits at the window's end, off the column being read.
-      child: Align(
-        alignment: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-            ? AlignmentDirectional.topEnd
-            : Alignment.center,
+      child: Center(
         child: FadeTransition(
           opacity: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? _opacity : _controller,
           child: SlideTransition(

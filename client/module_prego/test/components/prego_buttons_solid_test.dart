@@ -46,17 +46,17 @@ void main() {
         (
           background: prego.colors.fgPrimary,
           foreground: prego.colors.textPrimaryOnWhite,
-          leadingIcon: prego.colors.textPrimaryOnWhite,
+          iconOnly: prego.colors.textPrimaryOnWhite,
         ),
         (
           background: prego.colors.bgSurface4,
           foreground: prego.colors.textSecondary,
-          leadingIcon: prego.colors.textPrimary,
+          iconOnly: prego.colors.textPrimary,
         ),
         (
           background: Colors.transparent,
           foreground: prego.colors.textTertiary,
-          leadingIcon: prego.colors.textTertiary,
+          iconOnly: prego.colors.textTertiary,
         ),
       ];
       for (var index = 0; index < expectedTokens.length; index++) {
@@ -68,13 +68,13 @@ void main() {
         final icons = tester.widgetList<Icon>(find.descendant(of: button, matching: find.byType(Icon))).toList();
         expect((decoration.decoration as BoxDecoration).color, expectedTokens[index].background);
         expect(text.style?.color, expectedTokens[index].foreground);
-        expect(icons[0].color, expectedTokens[index].leadingIcon);
-        expect(icons[1].color, expectedTokens[index].foreground);
+        // An icon beside a label takes the label's colour.
+        expect(icons.map((icon) => icon.color), everyElement(expectedTokens[index].foreground));
         expect(tester.getSize(button).height, 44);
 
         final iconOnlyButton = find.byType(PregoButtonsSolid).at(index + hierarchies.length);
         final icon = tester.widget<Icon>(find.descendant(of: iconOnlyButton, matching: find.byType(Icon)));
-        expect(icon.color, expectedTokens[index].leadingIcon);
+        expect(icon.color, expectedTokens[index].iconOnly);
         expect(tester.getSize(iconOnlyButton), const Size(44, 44));
       }
     });

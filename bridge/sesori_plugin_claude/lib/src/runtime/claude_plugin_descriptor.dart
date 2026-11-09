@@ -100,6 +100,12 @@ final class const ClaudePluginDescriptor({
   bool get supportsPromptAttachments => true;
 
   @override
+  Set<PluginMcpCapability> get mcpCapabilities => const {
+    PluginMcpCapability.management,
+    PluginMcpCapability.authentication,
+  };
+
+  @override
   PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.conditional;
 
   /// Claude owns idle reclamation per session: the service reaps individual

@@ -89,6 +89,7 @@ NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessi
     productAnalyticsService: locator<ProductAnalyticsService>(),
     sessionLaunchService: locator<SessionLaunchService>(),
     dedicatedWorktreePreferenceStore: locator<DedicatedWorktreePreferenceStore>(),
+    pluginManagementService: locator<PluginManagementService>(),
     project: project,
   );
 }

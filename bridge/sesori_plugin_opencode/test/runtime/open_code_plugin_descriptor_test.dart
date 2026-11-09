@@ -101,6 +101,7 @@ void main() {
       expect(descriptor.stateStorage, PluginStateStorage.legacySharedRuntime);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
+      expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
       expect(
         descriptor.options.map((o) => o.name).toList(),
         equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin", "no-shared-service"]),

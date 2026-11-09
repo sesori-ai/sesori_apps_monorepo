@@ -62,6 +62,7 @@ class AllSessionsCubit({
     counts: SessionListChipCounts(all: 0, running: 0, unread: 0),
     loadMore: null,
     awaitingAnswer: false,
+    anySessionAwaitingInput: false,
     failure: null,
     isLoading: true,
     scratchProjectId: null,
@@ -177,6 +178,15 @@ class AllSessionsCubit({
         SessionWindowLoaded() || SessionWindowLoading() || SessionWindowFailed() => null,
       },
       awaitingAnswer: window is SessionWindowLoaded && window.awaitingAnswer,
+      // From the live activity rather than the rows, so a session the filter,
+      // the query, the chip or an unloaded page leaves out still counts.
+      anySessionAwaitingInput: activity.entries.any(
+        (project) =>
+            projects.containsKey(project.key) &&
+            project.value.entries.any(
+              (session) => session.value.awaitingInput && !_hiddenSessionIds.contains(session.key),
+            ),
+      ),
       failure: switch (window) {
         SessionWindowFailed(:final reason) when !_retrying => reason,
         // Its row offers Retry beside the rows that did load, and shows no reason.

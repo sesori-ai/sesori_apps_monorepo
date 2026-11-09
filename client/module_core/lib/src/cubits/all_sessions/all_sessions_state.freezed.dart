@@ -355,7 +355,11 @@ mixin _$AllSessionsState {
  SessionListChipCounts get counts;/// The page after [rows], or null when every matching session is listed.
  SessionWindowLoadMore? get loadMore;/// Whether [rows] are the previous search, filter or chip narrowed to
 /// this one until the bridge answers: rows it lacks may still come.
- bool get awaitingAnswer;/// Why the sessions could not be loaded, with none to show.
+ bool get awaitingAnswer;/// Whether any session of a listed project waits for the user's answer,
+/// whether or not the filter, the query, the chip or the loaded pages list
+/// it. A hidden session, such as one inside its archive's Undo window,
+/// does not count.
+ bool get anySessionAwaitingInput;/// Why the sessions could not be loaded, with none to show.
  RemoteFailureReason? get failure;/// Whether the project list or the sessions are still loading for the
 /// first time, or a retry after a failure has not answered yet.
  bool get isLoading;/// The bridge's "No project" project, or null on a bridge without one.
@@ -378,20 +382,20 @@ $AllSessionsStateCopyWith<AllSessionsState> get copyWith => _$AllSessionsStateCo
 @override
 bool operator ==(Object other) {
   final _this = this as AllSessionsState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsState&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.query, _this.query) || other.query == _this.query)&&(identical(other.quickFilter, _this.quickFilter) || other.quickFilter == _this.quickFilter)&&const DeepCollectionEquality().equals(other.rows, _this.rows)&&(identical(other.counts, _this.counts) || other.counts == _this.counts)&&(identical(other.loadMore, _this.loadMore) || other.loadMore == _this.loadMore)&&(identical(other.awaitingAnswer, _this.awaitingAnswer) || other.awaitingAnswer == _this.awaitingAnswer)&&(identical(other.failure, _this.failure) || other.failure == _this.failure)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.scratchProjectId, _this.scratchProjectId) || other.scratchProjectId == _this.scratchProjectId)&&(identical(other.defaultProjectId, _this.defaultProjectId) || other.defaultProjectId == _this.defaultProjectId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsState&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.query, _this.query) || other.query == _this.query)&&(identical(other.quickFilter, _this.quickFilter) || other.quickFilter == _this.quickFilter)&&const DeepCollectionEquality().equals(other.rows, _this.rows)&&(identical(other.counts, _this.counts) || other.counts == _this.counts)&&(identical(other.loadMore, _this.loadMore) || other.loadMore == _this.loadMore)&&(identical(other.awaitingAnswer, _this.awaitingAnswer) || other.awaitingAnswer == _this.awaitingAnswer)&&(identical(other.anySessionAwaitingInput, _this.anySessionAwaitingInput) || other.anySessionAwaitingInput == _this.anySessionAwaitingInput)&&(identical(other.failure, _this.failure) || other.failure == _this.failure)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.scratchProjectId, _this.scratchProjectId) || other.scratchProjectId == _this.scratchProjectId)&&(identical(other.defaultProjectId, _this.defaultProjectId) || other.defaultProjectId == _this.defaultProjectId));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AllSessionsState;
-  return Object.hash(runtimeType,_this.projectId,_this.query,_this.quickFilter,const DeepCollectionEquality().hash(_this.rows),_this.counts,_this.loadMore,_this.awaitingAnswer,_this.failure,_this.isLoading,_this.scratchProjectId,_this.defaultProjectId);
+  return Object.hash(runtimeType,_this.projectId,_this.query,_this.quickFilter,const DeepCollectionEquality().hash(_this.rows),_this.counts,_this.loadMore,_this.awaitingAnswer,_this.anySessionAwaitingInput,_this.failure,_this.isLoading,_this.scratchProjectId,_this.defaultProjectId);
 }
 
 @override
 String toString() {
   final _this = this as AllSessionsState;
-  return 'AllSessionsState(projectId: ${_this.projectId}, query: ${_this.query}, quickFilter: ${_this.quickFilter}, rows: ${_this.rows}, counts: ${_this.counts}, loadMore: ${_this.loadMore}, awaitingAnswer: ${_this.awaitingAnswer}, failure: ${_this.failure}, isLoading: ${_this.isLoading}, scratchProjectId: ${_this.scratchProjectId}, defaultProjectId: ${_this.defaultProjectId})';
+  return 'AllSessionsState(projectId: ${_this.projectId}, query: ${_this.query}, quickFilter: ${_this.quickFilter}, rows: ${_this.rows}, counts: ${_this.counts}, loadMore: ${_this.loadMore}, awaitingAnswer: ${_this.awaitingAnswer}, anySessionAwaitingInput: ${_this.anySessionAwaitingInput}, failure: ${_this.failure}, isLoading: ${_this.isLoading}, scratchProjectId: ${_this.scratchProjectId}, defaultProjectId: ${_this.defaultProjectId})';
 }
 
 
@@ -402,7 +406,7 @@ abstract mixin class $AllSessionsStateCopyWith<$Res>  {
   factory $AllSessionsStateCopyWith(AllSessionsState value, $Res Function(AllSessionsState) _then) = _$AllSessionsStateCopyWithImpl;
 @useResult
 $Res call({
- String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, SessionWindowLoadMore? loadMore, bool awaitingAnswer, RemoteFailureReason? failure, bool isLoading, String? scratchProjectId, String? defaultProjectId
+ String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, SessionWindowLoadMore? loadMore, bool awaitingAnswer, bool anySessionAwaitingInput, RemoteFailureReason? failure, bool isLoading, String? scratchProjectId, String? defaultProjectId
 });
 
 
@@ -419,7 +423,7 @@ class _$AllSessionsStateCopyWithImpl<$Res>
 
 /// Create a copy of AllSessionsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? loadMore = freezed,Object? awaitingAnswer = null,Object? failure = freezed,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? loadMore = freezed,Object? awaitingAnswer = null,Object? anySessionAwaitingInput = null,Object? failure = freezed,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
   return _then(AllSessionsState(
 projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
@@ -428,6 +432,7 @@ as SessionListQuickFilter,rows: null == rows ? _self.rows : rows // ignore: cast
 as List<AllSessionsRow>,counts: null == counts ? _self.counts : counts // ignore: cast_nullable_to_non_nullable
 as SessionListChipCounts,loadMore: freezed == loadMore ? _self.loadMore : loadMore // ignore: cast_nullable_to_non_nullable
 as SessionWindowLoadMore?,awaitingAnswer: null == awaitingAnswer ? _self.awaitingAnswer : awaitingAnswer // ignore: cast_nullable_to_non_nullable
+as bool,anySessionAwaitingInput: null == anySessionAwaitingInput ? _self.anySessionAwaitingInput : anySessionAwaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason?,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,scratchProjectId: freezed == scratchProjectId ? _self.scratchProjectId : scratchProjectId // ignore: cast_nullable_to_non_nullable
@@ -453,7 +458,7 @@ $SessionListChipCountsCopyWith<$Res> get counts {
 
 
 class _AllSessionsState implements AllSessionsState {
-  const _AllSessionsState({required this.projectId, required this.query, required this.quickFilter, required this.rows, required this.counts, required this.loadMore, required this.awaitingAnswer, required this.failure, required this.isLoading, required this.scratchProjectId, required this.defaultProjectId});
+  const _AllSessionsState({required this.projectId, required this.query, required this.quickFilter, required this.rows, required this.counts, required this.loadMore, required this.awaitingAnswer, required this.anySessionAwaitingInput, required this.failure, required this.isLoading, required this.scratchProjectId, required this.defaultProjectId});
   
 
 /// The project the list is filtered to, or null for every project.
@@ -473,6 +478,11 @@ class _AllSessionsState implements AllSessionsState {
 /// Whether [rows] are the previous search, filter or chip narrowed to
 /// this one until the bridge answers: rows it lacks may still come.
 @override final  bool awaitingAnswer;
+/// Whether any session of a listed project waits for the user's answer,
+/// whether or not the filter, the query, the chip or the loaded pages list
+/// it. A hidden session, such as one inside its archive's Undo window,
+/// does not count.
+@override final  bool anySessionAwaitingInput;
 /// Why the sessions could not be loaded, with none to show.
 @override final  RemoteFailureReason? failure;
 /// Whether the project list or the sessions are still loading for the
@@ -499,18 +509,18 @@ _$AllSessionsStateCopyWith<_AllSessionsState> get copyWith => __$AllSessionsStat
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsState&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.query, query) || other.query == query)&&(identical(other.quickFilter, quickFilter) || other.quickFilter == quickFilter)&&const DeepCollectionEquality().equals(other.rows, rows)&&(identical(other.counts, counts) || other.counts == counts)&&(identical(other.loadMore, loadMore) || other.loadMore == loadMore)&&(identical(other.awaitingAnswer, awaitingAnswer) || other.awaitingAnswer == awaitingAnswer)&&(identical(other.failure, failure) || other.failure == failure)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.scratchProjectId, scratchProjectId) || other.scratchProjectId == scratchProjectId)&&(identical(other.defaultProjectId, defaultProjectId) || other.defaultProjectId == defaultProjectId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsState&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.query, query) || other.query == query)&&(identical(other.quickFilter, quickFilter) || other.quickFilter == quickFilter)&&const DeepCollectionEquality().equals(other.rows, rows)&&(identical(other.counts, counts) || other.counts == counts)&&(identical(other.loadMore, loadMore) || other.loadMore == loadMore)&&(identical(other.awaitingAnswer, awaitingAnswer) || other.awaitingAnswer == awaitingAnswer)&&(identical(other.anySessionAwaitingInput, anySessionAwaitingInput) || other.anySessionAwaitingInput == anySessionAwaitingInput)&&(identical(other.failure, failure) || other.failure == failure)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.scratchProjectId, scratchProjectId) || other.scratchProjectId == scratchProjectId)&&(identical(other.defaultProjectId, defaultProjectId) || other.defaultProjectId == defaultProjectId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,projectId,query,quickFilter,const DeepCollectionEquality().hash(rows),counts,loadMore,awaitingAnswer,failure,isLoading,scratchProjectId,defaultProjectId);
+    return Object.hash(runtimeType,projectId,query,quickFilter,const DeepCollectionEquality().hash(rows),counts,loadMore,awaitingAnswer,anySessionAwaitingInput,failure,isLoading,scratchProjectId,defaultProjectId);
 }
 
 @override
 String toString() {
-    return 'AllSessionsState(projectId: $projectId, query: $query, quickFilter: $quickFilter, rows: $rows, counts: $counts, loadMore: $loadMore, awaitingAnswer: $awaitingAnswer, failure: $failure, isLoading: $isLoading, scratchProjectId: $scratchProjectId, defaultProjectId: $defaultProjectId)';
+    return 'AllSessionsState(projectId: $projectId, query: $query, quickFilter: $quickFilter, rows: $rows, counts: $counts, loadMore: $loadMore, awaitingAnswer: $awaitingAnswer, anySessionAwaitingInput: $anySessionAwaitingInput, failure: $failure, isLoading: $isLoading, scratchProjectId: $scratchProjectId, defaultProjectId: $defaultProjectId)';
 }
 
 
@@ -521,7 +531,7 @@ abstract mixin class _$AllSessionsStateCopyWith<$Res> implements $AllSessionsSta
   factory _$AllSessionsStateCopyWith(_AllSessionsState value, $Res Function(_AllSessionsState) _then) = __$AllSessionsStateCopyWithImpl;
 @override @useResult
 $Res call({
- String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, SessionWindowLoadMore? loadMore, bool awaitingAnswer, RemoteFailureReason? failure, bool isLoading, String? scratchProjectId, String? defaultProjectId
+ String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, SessionWindowLoadMore? loadMore, bool awaitingAnswer, bool anySessionAwaitingInput, RemoteFailureReason? failure, bool isLoading, String? scratchProjectId, String? defaultProjectId
 });
 
 
@@ -538,7 +548,7 @@ class __$AllSessionsStateCopyWithImpl<$Res>
 
 /// Create a copy of AllSessionsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? loadMore = freezed,Object? awaitingAnswer = null,Object? failure = freezed,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? loadMore = freezed,Object? awaitingAnswer = null,Object? anySessionAwaitingInput = null,Object? failure = freezed,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
   return _then(_AllSessionsState(
 projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
@@ -547,6 +557,7 @@ as SessionListQuickFilter,rows: null == rows ? _self.rows : rows // ignore: cast
 as List<AllSessionsRow>,counts: null == counts ? _self.counts : counts // ignore: cast_nullable_to_non_nullable
 as SessionListChipCounts,loadMore: freezed == loadMore ? _self.loadMore : loadMore // ignore: cast_nullable_to_non_nullable
 as SessionWindowLoadMore?,awaitingAnswer: null == awaitingAnswer ? _self.awaitingAnswer : awaitingAnswer // ignore: cast_nullable_to_non_nullable
+as bool,anySessionAwaitingInput: null == anySessionAwaitingInput ? _self.anySessionAwaitingInput : anySessionAwaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason?,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,scratchProjectId: freezed == scratchProjectId ? _self.scratchProjectId : scratchProjectId // ignore: cast_nullable_to_non_nullable

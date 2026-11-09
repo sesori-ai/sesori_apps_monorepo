@@ -340,7 +340,7 @@ void main() {
         mode: any(named: "mode"),
       ),
     ).thenReturn(null);
-    when(cubit.recheckHarnessAvailability).thenAnswer((_) async {});
+    when(cubit.checkHarnessSetup).thenAnswer((_) async {});
 
     maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
@@ -2292,20 +2292,20 @@ void main() {
     );
     final settingsAction = tester.getRect(find.byKey(const Key("session_harness_settings")));
     final recheckAction = tester.getRect(find.byKey(const Key("session_harness_recheck")));
-    expect(find.text("Recheck"), findsOneWidget);
+    expect(find.text("Check setup"), findsOneWidget);
     expect(recheckAction.center.dy, settingsAction.center.dy);
     await tester.tap(find.widgetWithText(TextButton, "Cancel"));
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
     await tester.tap(find.byKey(const Key("session_harness_recheck")));
-    verify(cubit.recheckHarnessAvailability).called(1);
+    verify(cubit.checkHarnessSetup).called(1);
     await tester.tap(find.byKey(const Key("session_harness_settings")));
     expect(settingsOpened, 1);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("Recheck shows that it is checking until the harness answers", (tester) async {
+  testWidgets("Check setup shows that it is checking until the harness answers", (tester) async {
     final answer = Completer<void>();
-    when(cubit.recheckHarnessAvailability).thenAnswer((_) => answer.future);
+    when(cubit.checkHarnessSetup).thenAnswer((_) => answer.future);
     when(() => cubit.state).thenReturn(
       _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(interaction: authRequired),
     );
@@ -2328,18 +2328,18 @@ void main() {
         await tester.tap(recheck, warnIfMissed: false);
       }
     }
-    verify(cubit.recheckHarnessAvailability).called(1);
-    // Screen readers hear a Recheck that takes no press while it checks.
+    verify(cubit.checkHarnessSetup).called(1);
+    // Screen readers hear a Check setup that takes no press while it checks.
     Matcher recheckSemantics({required bool enabled}) =>
         isSemantics(isButton: true, hasEnabledState: true, isEnabled: enabled, hasTapAction: enabled);
-    expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: false));
+    expect(find.semantics.byLabel("Check setup").evaluate().single, recheckSemantics(enabled: false));
 
     answer.complete();
     for (var elapsed = Duration.zero; elapsed < const Duration(milliseconds: 400); elapsed += frame) {
       await tester.pump(frame);
     }
     expect(spinner, findsNothing);
-    expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: true));
+    expect(find.semantics.byLabel("Check setup").evaluate().single, recheckSemantics(enabled: true));
     expect(tester.getRect(notice), noticeRect);
     expect(tester.getRect(recheck), recheckRect);
   });
@@ -2424,7 +2424,120 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  group("Recheck from the unavailable notice", () {
+  group("Check setup on an unavailable harness", () {
+    const frame = Duration(milliseconds: 16);
+    const gatewayHint =
+        "The Anthropic-compatible gateway configured for Claude Code rejected the request. "
+        "Check the gateway's credentials and configuration, then refresh setup.";
+    SessionInteractionState unavailable({required String hint}) => SessionInteractionState.blocked(
+      reason: SessionInteractionBlockedReason.unavailable,
+      displayName: "Claude Code",
+      actionHint: hint,
+      refreshError: null,
+    );
+    SessionDetailLoaded loaded({required SessionInteractionState interaction}) => _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      messages: [testMessageWithParts()],
+    ).copyWith(interaction: interaction);
+    final notice = find.byType(SessionHarnessUnavailableNotice);
+    final checkSetup = find.byKey(const Key("session_harness_recheck"));
+    double opacityOf({required WidgetTester tester, required Finder finder}) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    testWidgets("offers Check setup beside the way to harness settings", (tester) async {
+      when(() => cubit.state).thenReturn(loaded(interaction: unavailable(hint: gatewayHint)));
+      var settingsOpened = 0;
+      await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Claude Code is unavailable."), findsOneWidget);
+      expect(find.text(gatewayHint), findsOneWidget);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(find.descendant(of: checkSetup, matching: find.text("Check setup")), findsOneWidget);
+      await tester.tap(checkSetup);
+      verify(cubit.checkHarnessSetup).called(1);
+      await tester.tap(find.byKey(const Key("session_harness_settings")));
+      expect(settingsOpened, 1);
+    });
+
+    testWidgets("cross-fades the notice into the composer when the check finds the harness ready", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final blocked = loaded(interaction: unavailable(hint: gatewayHint));
+      whenListen(cubit, states.stream, initialState: blocked);
+      final answer = Completer<void>();
+      when(cubit.checkHarnessSetup).thenAnswer((_) => answer.future);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final noticeBottom = tester.getRect(notice).bottom;
+
+      await tester.tap(checkSetup);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsOneWidget);
+
+      states.add(
+        blocked.copyWith(
+          interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
+        ),
+      );
+      answer.complete();
+      final fades = <({double notice, double composer})>[];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (notice.evaluate().isEmpty) break;
+        // The notice fades out where it stood, held to the bottom edge.
+        expect(tester.getRect(notice).bottom, moreOrLessEquals(noticeBottom));
+        fades.add((
+          notice: opacityOf(tester: tester, finder: notice),
+          composer: opacityOf(tester: tester, finder: find.byType(PromptInput)),
+        ));
+      }
+      expect(notice, findsNothing);
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(opacityOf(tester: tester, finder: find.byType(PromptInput)), 1);
+      expect(
+        fades.where((fade) => fade.notice > 0 && fade.notice < 1 && fade.composer > 0 && fade.composer < 1),
+        hasLength(greaterThanOrEqualTo(5)),
+      );
+      for (var i = 1; i < fades.length; i++) {
+        expect(fades[i].notice, lessThanOrEqualTo(fades[i - 1].notice));
+        expect(fades[i].composer, greaterThanOrEqualTo(fades[i - 1].composer));
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("shows the new hint in place when the check finds the harness still blocked", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final blocked = loaded(interaction: unavailable(hint: gatewayHint));
+      whenListen(cubit, states.stream, initialState: blocked);
+      final answer = Completer<void>();
+      when(cubit.checkHarnessSetup).thenAnswer((_) => answer.future);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+
+      await tester.tap(checkSetup);
+      await tester.pump(const Duration(milliseconds: 400));
+      const configHint = "Claude Code's settings could not be read. Fix them, then check setup again.";
+      states.add(blocked.copyWith(interaction: unavailable(hint: configHint)));
+      answer.complete();
+      await tester.pump();
+
+      // Still blocked: the same notice stays up, never fading, and says what
+      // the check found.
+      expect(find.text(gatewayHint), findsNothing);
+      expect(find.text(configHint), findsOneWidget);
+      expect(opacityOf(tester: tester, finder: notice), 1);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsNothing);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group("Check setup from the unavailable notice", () {
     const frame = Duration(milliseconds: 16);
     final notice = find.byType(SessionHarnessUnavailableNotice);
     final transcript = find.text("Hello, world!");
@@ -2434,15 +2547,15 @@ void main() {
         .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
         .fold(1, (opacity, fade) => opacity * fade.opacity.value);
 
-    /// Presses Recheck and holds the check open past its spinner's delay,
+    /// Presses Check setup and holds the check open past its spinner's delay,
     /// with the notice up and unmoved throughout. Returns where it sits.
-    Future<Rect> pressRecheck({
+    Future<Rect> pressCheckSetup({
       required WidgetTester tester,
       required Stream<SessionDetailState> states,
       required Completer<void> answer,
     }) async {
       whenListen(cubit, states, initialState: shell());
-      when(cubit.recheckHarnessAvailability).thenAnswer((_) => answer.future);
+      when(cubit.checkHarnessSetup).thenAnswer((_) => answer.future);
       await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const Key("session_harness_recheck")));
@@ -2486,7 +2599,7 @@ void main() {
       final states = StreamController<SessionDetailState>();
       addTearDown(states.close);
       final answer = Completer<void>();
-      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      final noticeRect = await pressCheckSetup(tester: tester, states: states.stream, answer: answer);
 
       states.add(
         _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
@@ -2497,10 +2610,10 @@ void main() {
         await tester.pump(frame);
         if (notice.evaluate().isEmpty) break;
         // The notice fades where it was, never moving or giving way at once,
-        // and its Recheck keeps the spinner rather than turning back.
+        // and its Check setup keeps the spinner rather than turning back.
         expect(tester.getRect(notice), noticeRect);
         expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsOneWidget);
-        expect(opacityOf(tester: tester, finder: find.text("Recheck")), 0);
+        expect(opacityOf(tester: tester, finder: find.text("Check setup")), 0);
         fades.add((
           notice: opacityOf(tester: tester, finder: notice),
           transcript: opacityOf(tester: tester, finder: transcript),
@@ -2525,7 +2638,7 @@ void main() {
       final states = StreamController<SessionDetailState>();
       addTearDown(states.close);
       final answer = Completer<void>();
-      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      final noticeRect = await pressCheckSetup(tester: tester, states: states.stream, answer: answer);
 
       states.add(shell());
       answer.complete();
@@ -2544,7 +2657,7 @@ void main() {
       final states = StreamController<SessionDetailState>();
       addTearDown(states.close);
       final answer = Completer<void>();
-      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      final noticeRect = await pressCheckSetup(tester: tester, states: states.stream, answer: answer);
 
       states.add(
         _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
@@ -2607,7 +2720,7 @@ void main() {
         final states = StreamController<SessionDetailState>();
         addTearDown(states.close);
         final answer = Completer<void>();
-        final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+        final noticeRect = await pressCheckSetup(tester: tester, states: states.stream, answer: answer);
         final error = find.text("Retry");
 
         states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
@@ -2720,7 +2833,7 @@ void main() {
       final states = StreamController<SessionDetailState>();
       addTearDown(states.close);
       final answer = Completer<void>();
-      await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      await pressCheckSetup(tester: tester, states: states.stream, answer: answer);
       final menu = find.byKey(const Key("session-detail-more"));
       expect(menu, findsOneWidget);
 
@@ -2838,7 +2951,7 @@ void main() {
     verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
     await tester.ensureVisible(find.byKey(const Key("session_harness_recheck")));
     await tester.tap(find.byKey(const Key("session_harness_recheck")));
-    verify(cubit.recheckHarnessAvailability).called(1);
+    verify(cubit.checkHarnessSetup).called(1);
   });
 
   testWidgets("unservable blocked history falls back to the full-screen notice", (tester) async {
@@ -2855,7 +2968,7 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key("session_harness_recheck")));
-    verify(cubit.recheckHarnessAvailability).called(1);
+    verify(cubit.checkHarnessSetup).called(1);
     await tester.tap(find.byKey(const Key("session_harness_settings")));
     expect(settingsOpened, 1);
     expect(tester.takeException(), isNull);
@@ -2886,10 +2999,11 @@ void main() {
 
   for (final reason in SessionInteractionBlockedReason.values) {
     if (reason == SessionInteractionBlockedReason.authenticationRequired ||
+        reason == SessionInteractionBlockedReason.unavailable ||
         reason == SessionInteractionBlockedReason.contentLoadFailed) {
       continue;
     }
-    testWidgets("$reason omits Recheck", (tester) async {
+    testWidgets("$reason omits Check setup", (tester) async {
       when(() => cubit.state).thenReturn(
         _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
           interaction: SessionInteractionState.blocked(

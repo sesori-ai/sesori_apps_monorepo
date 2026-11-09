@@ -1,15 +1,20 @@
+import "dart:math";
+
+import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// A session row is the harness logo, the title with its status mark after it
 /// and when it last changed, over a tertiary meta line: any state that needs
-/// words, then the project.
+/// words, then the project and a count of background tasks. Under a pointer the
+/// logo ends the meta line instead of leading the title.
 ///
 /// A working row twinkles on an infinite repeating animation, so these tests
 /// pump fixed durations and never `pumpAndSettle` — it would pump to its
@@ -49,7 +54,7 @@ void main() {
     );
   }
 
-  Future<void> pumpTile(WidgetTester tester, SessionTile row, {Widget Function(Widget child)? wrap}) async {
+  Future<void> pumpTile(WidgetTester tester, Widget row, {Widget Function(Widget child)? wrap}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [if (wrap == null) PregoDesignSystem.light else PregoDesignSystem.desktopLight]),
@@ -62,7 +67,7 @@ void main() {
     await tester.pump();
   }
 
-  Future<void> pumpPointerTile(WidgetTester tester, SessionTile row) => pumpTile(
+  Future<void> pumpPointerTile(WidgetTester tester, Widget row) => pumpTile(
     tester,
     row,
     wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
@@ -75,6 +80,25 @@ void main() {
   /// contract is read off the widget, and that the flag really does start and
   /// stop the loop is PregoAiLoader's own test.
   bool sparkleTwinkles(WidgetTester tester) => tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate;
+
+  /// Whether the harness logo is lit, in its own colours and breathing, rather
+  /// than resting as a grey glyph. It is always exactly one of the two.
+  bool logoLit(WidgetTester tester) {
+    final logo = find.byType(PregoBrandLogo);
+    final breathing = find.ancestor(of: logo, matching: find.byType(PregoBreathing)).evaluate().isNotEmpty;
+    final grey = find.ancestor(of: logo, matching: find.byType(ColorFiltered)).evaluate().isNotEmpty;
+    expect(breathing, !grey, reason: "a logo is either lit or grey");
+    return breathing;
+  }
+
+  double logoOpacity(WidgetTester tester) => tester
+      .widget<FadeTransition>(find.descendant(of: find.byType(PregoBreathing), matching: find.byType(FadeTransition)))
+      .opacity
+      .value;
+
+  /// The background task count's paragraph: the glyph's placeholder, then the
+  /// number.
+  Finder backgroundCount(int count) => find.text("\u{FFFC}$count");
 
   final colors = PregoDesignSystem.light.colors;
   final now = DateTime.now().millisecondsSinceEpoch;
@@ -97,8 +121,9 @@ void main() {
         expect(sparkleTwinkles(tester), isTrue);
         final sparkle = find.byType(PregoAiLoader);
         expect(tester.getSize(sparkle), const Size.square(16));
-        // On touch a plain live turn carries no words, the twinkle being the signal.
-        expect(find.text("Running"), pointer ? findsOneWidget : findsNothing);
+        // A plain live turn carries no words, the twinkle and the lit logo
+        // being the signal.
+        expect(find.text("Running"), findsNothing);
         if (pointer) {
           // Just before the time, and the title starts at the row's edge.
           expect(find.text("now"), findsOneWidget);
@@ -128,6 +153,7 @@ void main() {
       });
 
       testWidgets("a waiting session says Waiting in amber, with an amber dot under a finger", (tester) async {
+        final semantics = tester.ensureSemantics();
         await pump(
           tester,
           tile(
@@ -146,14 +172,17 @@ void main() {
             },
           ),
         );
+        // Heard once, from the mark; the word stays silent.
+        expect(find.bySemanticsLabel(RegExp("Awaiting input")), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
+        expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.smallWarningText);
         if (pointer) {
           expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.pointerWarningFill);
-          expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.pointerWarningText);
         } else {
           expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.fgWarningPrimary);
-          expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
         }
         expect(find.text("now"), findsOneWidget);
+        semantics.dispose();
       });
 
       testWidgets("waiting wins over a turn still counted as running", (tester) async {
@@ -187,7 +216,9 @@ void main() {
         expect(titleWeight(tester, "Busy"), FontWeight.w400);
       });
 
-      testWidgets("the logo leads 12 px in, with the tertiary meta line under it and no branch", (tester) async {
+      testWidgets("the logo leads 12 px in under a finger and ends the meta line under a pointer, with no branch", (
+        tester,
+      ) async {
         await pump(
           tester,
           tile(
@@ -197,11 +228,13 @@ void main() {
         );
 
         if (pointer) {
-          // The row's text shares one edge, past the 16 px state column; the mark
-          // leads the meta line there.
-          final textEdge = tester.getTopLeft(find.text("My Session")).dx;
-          expect(tester.getTopLeft(find.byType(PregoBrandLogo)).dx, textEdge);
-          expect(tester.getTopLeft(find.text("demo-app")).dx, greaterThan(textEdge));
+          // The row's text shares one edge, and the logo is the meta line's
+          // last item, ending under the time.
+          final logo = find.byType(PregoBrandLogo);
+          expect(tester.getTopLeft(find.text("demo-app")).dx, tester.getTopLeft(find.text("My Session")).dx);
+          expect(tester.getSize(logo), const Size.square(14));
+          expect(tester.getTopRight(logo).dx, tester.getTopRight(find.text("now")).dx);
+          expect(tester.getCenter(logo).dy, closeTo(tester.getCenter(find.text("demo-app")).dy, 0.5));
         } else {
           expect(tester.getTopLeft(find.byType(PregoBrandLogo)).dx, 12);
           expect(tester.getTopLeft(find.text("demo-app")).dx, 12);
@@ -213,6 +246,118 @@ void main() {
         // The time keeps its inset from the trailing edge.
         expect(tester.getTopRight(find.text("now")).dx, 800 - (pointer ? 14 : 16));
         expect(find.text("sesori/add-search"), findsNothing);
+
+        if (pointer) {
+          // Without a project the logo still ends the line.
+          await pump(
+            tester,
+            tile(
+              session: testSession(title: "My Session", updatedAt: now),
+            ),
+          );
+          expect(tester.getTopRight(find.byType(PregoBrandLogo)).dx, 800 - 14);
+        }
+      });
+
+      testWidgets("the logo is lit only while an agent works: not while waiting, nor for being open", (tester) async {
+        final session = testSession(title: "My Session", updatedAt: now);
+        for (final (name, row, lit) in [
+          ("quiet", tile(session: session), false),
+          ("unread", tile(session: session, unseen: true), false),
+          ("open", tile(session: session, selected: true), false),
+          ("waiting", tile(session: session, awaitingInput: true), false),
+          ("waiting while counted as running", tile(session: session, isRunning: true, awaitingInput: true), false),
+          ("running", tile(session: session, isRunning: true), true),
+          ("running and open", tile(session: session, isRunning: true, selected: true), true),
+          ("retrying", tile(session: session, isRunning: true, isRetrying: true), true),
+        ]) {
+          await pump(tester, row);
+          expect(logoLit(tester), lit, reason: name);
+        }
+      });
+
+      testWidgets("a lit logo breathes, and holds still at full strength under reduced motion", (tester) async {
+        await withClock(Clock(() => tester.binding.clock.now()), () async {
+          await pump(tester, tile(session: testSession(title: "My Session"), isRunning: true));
+          final breath = <double>[];
+          for (var step = 0; step < 8; step++) {
+            await tester.pump(const Duration(milliseconds: 200));
+            breath.add(logoOpacity(tester));
+          }
+          expect(breath.reduce(min), lessThan(0.5));
+          expect(breath.reduce(max), greaterThan(0.9));
+
+          tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+            reduceMotion: true,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          await tester.pump();
+          for (var step = 0; step < 4; step++) {
+            await tester.pump(const Duration(milliseconds: 200));
+            expect(logoOpacity(tester), 1);
+          }
+          expect(logoLit(tester), isTrue);
+        });
+      });
+
+      testWidgets("a plain running row says Running only to assistive technology", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await pump(
+          tester,
+          tile(
+            session: testSession(title: "My Session", updatedAt: now),
+            isRunning: true,
+          ),
+        );
+
+        expect(find.text("Running"), findsNothing);
+        expect(find.bySemanticsLabel(RegExp("My Session\nRunning\n")), findsOneWidget);
+        semantics.dispose();
+      });
+
+      testWidgets("background tasks are a quiet count after the project, which waiting and retrying outrank", (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        final session = testSession(title: "My Session", updatedAt: now);
+        await pump(tester, tile(session: session, projectLabel: "demo-app", isRunning: true, backgroundTaskCount: 2));
+
+        // A stack glyph and the number, in the meta line's own type.
+        final glyph = find.byIcon(TablerRegular.stack_2);
+        final metaColor = pointer ? colors.textSecondary : colors.textTertiary;
+        expect(tester.getSize(glyph), const Size.square(12));
+        expect(tester.widget<Icon>(glyph).color, metaColor);
+        final count = tester.widget<Text>(backgroundCount(2));
+        expect((count.style?.color, count.style?.fontWeight), (metaColor, FontWeight.w400));
+        expect(tester.getTopLeft(glyph).dx, greaterThan(tester.getTopRight(find.text("demo-app")).dx));
+        expect(find.textContaining("background task"), findsNothing);
+        // Assistive technology hears the words, and a pointer finds them in a tooltip.
+        expect(find.bySemanticsLabel(RegExp("2 background tasks")), findsOneWidget);
+        expect(
+          find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "2 background tasks"),
+          pointer ? findsOneWidget : findsNothing,
+        );
+        if (pointer) {
+          expect(
+            tester.getTopRight(backgroundCount(2)).dx,
+            lessThan(tester.getTopLeft(find.byType(PregoBrandLogo)).dx),
+          );
+        }
+
+        for (final row in [
+          tile(
+            session: session,
+            projectLabel: "demo-app",
+            isRunning: true,
+            awaitingInput: true,
+            backgroundTaskCount: 2,
+          ),
+          tile(session: session, projectLabel: "demo-app", isRunning: true, isRetrying: true, backgroundTaskCount: 2),
+        ]) {
+          await pump(tester, row);
+          expect(glyph, findsNothing);
+        }
+        semantics.dispose();
       });
     });
   }
@@ -285,12 +430,9 @@ void main() {
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
-  testWidgets("retrying and background tasks lead the meta line in their colours", (tester) async {
+  testWidgets("retrying leads the meta line in its colour", (tester) async {
     await pumpTile(tester, tile(session: testSession(title: "My Session"), isRunning: true, isRetrying: true));
     expect(tester.widget<Text>(find.text("Running (retrying)")).style?.color, colors.fgErrorPrimary);
-
-    await pumpTile(tester, tile(session: testSession(title: "My Session"), isRunning: true, backgroundTaskCount: 2));
-    expect(find.text("2 background tasks"), findsOneWidget);
   });
 
   testWidgets("assistive technology hears the harness, the title, then the state and the time", (tester) async {
@@ -322,8 +464,6 @@ void main() {
       ),
     );
     expect(find.bySemanticsLabel(RegExp("^plugin-1\nMy Session\nAwaiting input")), findsOneWidget);
-    // The mark speaks the state, so the meta line's "Waiting" stays silent.
-    expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
 
     semantics.dispose();
   });
@@ -364,9 +504,15 @@ void main() {
 
     final session = testSession(title: "My Session", updatedAt: now);
 
-    await pumpTile(tester, tile(session: session, projectLabel: "demo-app", awaitingInput: true));
-
-    expect(tester.takeException(), isNull);
+    for (final row in [
+      tile(session: session, projectLabel: "demo-app", awaitingInput: true),
+      tile(session: session, projectLabel: "a-very-long-project-name", isRunning: true, backgroundTaskCount: 12),
+    ]) {
+      await pumpTile(tester, row);
+      expect(tester.takeException(), isNull);
+      await pumpPointerTile(tester, row);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets("a title too long for its line fades out before its mark, which stays ahead of the time", (
@@ -453,7 +599,7 @@ void main() {
 
   group("in pointer mode", () {
     testWidgets(
-      "a row tightens to a 12.5 pt title over its meta line in 2 px padding, inset 1 px from its neighbours",
+      "a row tightens to a 13.5 pt title over a 12 pt meta line in 6 px padding, inset 1 px from its neighbours",
       (
         tester,
       ) async {
@@ -461,11 +607,14 @@ void main() {
           session: testSession(title: "My Session", updatedAt: now),
           projectLabel: "demo-app",
         );
-        ({double height, double? titleSize, double titleTop, double metaTop}) metrics() {
+        ({double height, double? titleSize, double? metaSize, double? timeSize, double titleTop, double metaTop})
+        metrics() {
           final top = tester.getTopLeft(find.byType(SessionTile)).dy;
           return (
             height: tester.getSize(find.byType(SessionTile)).height,
             titleSize: tester.widget<Text>(find.text("My Session")).style?.fontSize,
+            metaSize: tester.widget<Text>(find.text("demo-app")).style?.fontSize,
+            timeSize: tester.widget<Text>(find.text("now")).style?.fontSize,
             titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
             metaTop: tester.getTopLeft(find.text("demo-app")).dy - top,
           );
@@ -478,11 +627,84 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
 
         // The 18 px meta text sits centred in its 20 px line, 1 px down.
-        expect(touch, (height: rowHeight, titleSize: 16.0, titleTop: 12.0, metaTop: 12.0 + 24 + 2 + 1));
-        expect(metrics(), (height: 40.0, titleSize: 12.5, titleTop: 3.0, metaTop: 3.0 + 18));
+        expect(touch, (
+          height: rowHeight,
+          titleSize: 16.0,
+          metaSize: 12.0,
+          timeSize: 12.0,
+          titleTop: 12.0,
+          metaTop: 12.0 + 24 + 2 + 1,
+        ));
+        // A 19 px title, 2 px apart from a 16 px meta line; the time in the meta line's type.
+        expect(metrics(), (
+          height: 51.0,
+          titleSize: 13.5,
+          metaSize: 12.0,
+          timeSize: 12.0,
+          titleTop: 7.0,
+          metaTop: 7.0 + 19 + 2,
+        ));
+        expect(SessionTileSkeleton.heightOf(pointer: true), 51);
         expect(find.text("now"), findsOneWidget);
       },
     );
+
+    testWidgets("every row is as tall, with its lines and logo in the same place, whatever its meta line holds", (
+      tester,
+    ) async {
+      final session = testSession(title: "My Session", updatedAt: now);
+      final continueAt = DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch;
+      final scheduled = session.copyWith(
+        autoContinuation: SessionAutoContinuationView(
+          enabled: true,
+          availability: .conditional,
+          status: SessionAutoContinuationStatus.resetKnown(resetAt: continueAt, continueAt: continueAt),
+        ),
+      );
+      final variants = {
+        "nothing on the meta line": tile(session: session),
+        "a project": tile(session: session, projectLabel: "demo-app"),
+        "running": tile(session: session, isRunning: true),
+        "a project and background tasks": tile(
+          session: session,
+          projectLabel: "demo-app",
+          isRunning: true,
+          backgroundTaskCount: 3,
+        ),
+        "background tasks alone": tile(session: session, isRunning: true, backgroundTaskCount: 3),
+        "waiting": tile(session: session, projectLabel: "demo-app", awaitingInput: true),
+        "waiting alone": tile(session: session, awaitingInput: true),
+        "retrying": tile(session: session, projectLabel: "demo-app", isRunning: true, isRetrying: true),
+        "unread": tile(session: session, projectLabel: "demo-app", unseen: true),
+        "open": tile(session: session, projectLabel: "demo-app", selected: true),
+        "a scheduled resume": tile(session: scheduled, projectLabel: "demo-app"),
+        "a launching session": PendingSessionLaunchTile(
+          launch: LaunchingSession(
+            launchId: "launch",
+            projectId: "project",
+            pluginId: "claude",
+            startedAt: DateTime.now(),
+            title: "My Session",
+          ),
+        ),
+      };
+      final layouts = <String, ({double height, double titleTop, double logoCentre})>{};
+      for (final MapEntry(key: name, value: row) in variants.entries) {
+        await pumpPointerTile(tester, row);
+        final rowBox = find.byType(row.runtimeType);
+        final top = tester.getTopLeft(rowBox).dy;
+        layouts[name] = (
+          height: tester.getSize(rowBox).height,
+          titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
+          logoCentre: tester.getCenter(find.byType(PregoBrandLogo)).dy - top,
+        );
+      }
+
+      // The launching row, pumped last, counts as running.
+      expect(logoLit(tester), isTrue);
+      // The meta line's 16 px box centres at 7 + 19 + 2 + 8.
+      expect(layouts, {for (final name in variants.keys) name: (height: 51.0, titleTop: 7.0, logoCentre: 36.0)});
+    });
 
     testWidgets("hovering swaps the time for the read toggle and Archive, which call the row's handlers", (
       tester,
@@ -505,6 +727,8 @@ void main() {
       await mouse.moveTo(tester.getCenter(find.text("My Session")));
       await tester.pump();
       expect(tester.getSize(find.byType(SessionTile)).height, restingHeight);
+      // Over the meta line's end, centred on it.
+      expect(tester.getCenter(find.byKey(archive)).dy, tester.getCenter(find.byType(PregoBrandLogo)).dy);
 
       await tester.tap(find.byKey(archive));
       await tester.tap(find.byKey(toggle));

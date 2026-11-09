@@ -66,6 +66,12 @@ sealed class AllSessionsState with _$AllSessionsState {
     /// this one until the bridge answers: rows it lacks may still come.
     required bool awaitingAnswer,
 
+    /// Whether any session of a listed project waits for the user's answer,
+    /// whether or not the filter, the query, the chip or the loaded pages list
+    /// it. A hidden session, such as one inside its archive's Undo window,
+    /// does not count.
+    required bool anySessionAwaitingInput,
+
     /// Why the sessions could not be loaded, with none to show.
     required RemoteFailureReason? failure,
 

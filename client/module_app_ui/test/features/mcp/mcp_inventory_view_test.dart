@@ -79,8 +79,8 @@ void main() {
     await actionStates.close();
   });
 
-  Widget app({required double scale}) => MaterialApp(
-    theme: buildPregoThemeData(brightness: Brightness.light),
+  Widget app({required double scale, Brightness brightness = Brightness.light}) => MaterialApp(
+    theme: buildPregoThemeData(brightness: brightness),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, child) => MediaQuery(
@@ -317,6 +317,39 @@ void main() {
     await tester.tap(find.byType(PregoButtonsSolid));
     verify(() => cubit.refresh()).called(1);
   });
+  testWidgets("a dormant integration asks for a session, then a refresh", (tester) async {
+    states.add(
+      const McpInventoryReady(
+        inventory: McpInventoryUnavailable(
+          scope: McpHarnessScope(),
+          reason: McpInventoryUnavailableReason.pluginInactive,
+          message: "Unavailable",
+        ),
+        refresh: McpInventoryRefreshIdle(),
+      ),
+    );
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("This integration isn't running. Start a session with it, then refresh."), findsOneWidget);
+    expect(find.textContaining("harness settings"), findsNothing);
+    await tester.tap(find.byType(PregoButtonsSolid));
+    verify(() => cubit.refresh()).called(1);
+  });
+  testWidgets("connector setup on a dormant integration asks for a session, then another try", (tester) async {
+    states.add(_ready(entries: [_offer], refresh: const McpInventoryRefreshIdle()));
+    actionStates.add(
+      const McpActionReceivedState(
+        request: McpEntryActionRequest(
+          pluginId: "fixture",
+          action: McpConnectorSetupEntryAction(offerTarget: _offerTarget),
+        ),
+        result: McpActionUnavailable(reason: McpActionUnavailableReason.pluginInactive),
+      ),
+    );
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("This integration isn't running. Start a session with it, then try again."), findsOneWidget);
+  });
   testWidgets("offline inventory disables refresh and keeps its servers readable", (tester) async {
     states.add(_ready(entries: [_server], refresh: const McpInventoryRefreshOffline()));
     await tester.pumpWidget(app(scale: 1));
@@ -401,6 +434,18 @@ void main() {
     expect(find.text("Fixture server"), findsOneWidget);
     expect(find.text("Some inventory information requires a newer app."), findsOneWidget);
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets("the refresh icon takes its label's colour in $brightness", (tester) async {
+      await tester.pumpWidget(app(scale: 1, brightness: brightness));
+      await tester.pumpAndSettle();
+      final refresh = find.byType(PregoButtonsSolid);
+      final label = tester.widget<Text>(find.descendant(of: refresh, matching: find.text("Refresh")));
+      final icon = tester.widget<Icon>(find.descendant(of: refresh, matching: find.byIcon(TablerRegular.refresh)));
+      expect(label.style?.color, isNotNull);
+      expect(icon.color, label.style?.color);
+    });
+  }
 
   testWidgets("phone width with larger text keeps refresh and server details reachable", (tester) async {
     tester.view.physicalSize = const Size(393, 852);

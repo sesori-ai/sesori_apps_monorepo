@@ -11,6 +11,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
+import "package:sesori_app_ui/src/widgets/composer_or_notice.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -1462,6 +1463,35 @@ void main() {
       expect(shimmer, findsNothing);
     });
   }
+
+  testWidgets("a notice taking the composer's place cancels the recording under it", (tester) async {
+    final notice = ValueNotifier<Widget?>(null);
+    addTearDown(notice.dispose);
+    final composer = await _pumpComposer(
+      tester: tester,
+      voiceCubit: voiceCubit,
+      mode: ChatInputMode.voiceFirst,
+      notice: notice,
+    );
+
+    final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+    expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
+
+    notice.value = const Text("Claude Code needs a login", key: Key("blocked_notice"));
+    await tester.pump();
+    await tester.pump();
+    verify(voiceCubit.cancel).called(1);
+
+    // The finger lifting behind the notice sends nothing.
+    await gesture.up();
+    await tester.pumpAndSettle();
+    verifyNever(() => voiceCubit.stopAndTranscribe(limitReached: false));
+
+    notice.value = null;
+    await tester.pumpAndSettle();
+    expect(_holdTarget(mode: ChatInputMode.voiceFirst), findsOneWidget);
+    expect(composer.sent, isEmpty);
+  });
 
   testWidgets("a field that had the keyboard keeps it across a dictated send", (tester) async {
     final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
@@ -3408,6 +3438,9 @@ Future<_Composer> _pumpComposer({
   bool isBusy = false,
   ComposerPresentation presentation = ComposerPresentation.touch,
   bool attachmentsSupported = false,
+
+  /// When given, the composer stands in a [ComposerOrNotice] showing this.
+  ValueNotifier<Widget?>? notice,
 }) async {
   final composer = _Composer()..busy.value = isBusy;
   addTearDown(composer.busy.dispose);
@@ -3419,6 +3452,13 @@ Future<_Composer> _pumpComposer({
     bridgeIsLocal: false,
   );
   final imageClipboard = _NoOpImageClipboard();
+  Widget placed({required Widget composer}) => switch (notice) {
+    null => composer,
+    final notice => ValueListenableBuilder<Widget?>(
+      valueListenable: notice,
+      builder: (_, shown, _) => ComposerOrNotice(notice: shown, composer: composer, alignment: Alignment.bottomCenter),
+    ),
+  };
 
   await tester.pumpWidget(
     MaterialApp(
@@ -3442,41 +3482,43 @@ Future<_Composer> _pumpComposer({
           child: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: composer.busy,
-                builder: (_, busy, _) => PromptInput(
-                  initialSelection: null,
-                  onBusyChanged: null,
-                  onSelectionChanged: null,
-                  isBusy: busy,
-                  hasMessages: true,
-                  canSend: canSend,
-                  onSend: ({required draft, required command, required attachments}) {
-                    composer.sent.add((text: draft.text, command: command));
-                  },
-                  onVoiceTranscriptionFinished: ({required finish, required mode}) {
-                    composer.finishes.add(finish);
-                    composer.modes.add(mode);
-                  },
-                  onDraftChanged: (_) {},
-                  onDraftCleared: () {},
-                  onAbort: () => composer.aborts++,
-                  surfaceStyleController: surfaceStyle,
-                  composerHeader: composerHeader,
-                  composerTrailing: composerTrailing,
-                  availableCommands: const [],
-                  stagedCommand: stagedCommand,
-                  onCommandSelected: (_) {},
-                  onCommandCleared: () => composer.commandsCleared++,
-                  attachmentsSupported: attachmentsSupported,
-                  fileUploadsSupported: false,
-                  draftIdentity: "touch-voice-test",
-                  restorationKey: null,
-                  initialDraft: ComposerDraft.typed(text: initialText),
-                  initialAttachments: const [],
-                  onAttachmentsChanged: null,
-                  autofocus: false,
-                  onInitialAttachmentsConsumed: () {},
+              child: placed(
+                composer: ValueListenableBuilder<bool>(
+                  valueListenable: composer.busy,
+                  builder: (_, busy, _) => PromptInput(
+                    initialSelection: null,
+                    onBusyChanged: null,
+                    onSelectionChanged: null,
+                    isBusy: busy,
+                    hasMessages: true,
+                    canSend: canSend,
+                    onSend: ({required draft, required command, required attachments}) {
+                      composer.sent.add((text: draft.text, command: command));
+                    },
+                    onVoiceTranscriptionFinished: ({required finish, required mode}) {
+                      composer.finishes.add(finish);
+                      composer.modes.add(mode);
+                    },
+                    onDraftChanged: (_) {},
+                    onDraftCleared: () {},
+                    onAbort: () => composer.aborts++,
+                    surfaceStyleController: surfaceStyle,
+                    composerHeader: composerHeader,
+                    composerTrailing: composerTrailing,
+                    availableCommands: const [],
+                    stagedCommand: stagedCommand,
+                    onCommandSelected: (_) {},
+                    onCommandCleared: () => composer.commandsCleared++,
+                    attachmentsSupported: attachmentsSupported,
+                    fileUploadsSupported: false,
+                    draftIdentity: "touch-voice-test",
+                    restorationKey: null,
+                    initialDraft: ComposerDraft.typed(text: initialText),
+                    initialAttachments: const [],
+                    onAttachmentsChanged: null,
+                    autofocus: false,
+                    onInitialAttachmentsConsumed: () {},
+                  ),
                 ),
               ),
             ),

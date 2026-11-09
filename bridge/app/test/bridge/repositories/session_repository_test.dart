@@ -2069,6 +2069,11 @@ void main() {
       expect(summaries.single.id, project);
       expect(summaries.single.activeSessions.map((session) => session.id), ["live"]);
       expect(summaries.single.activeSessions.single.childSessionIds, isEmpty);
+
+      // Auto-approval still reaches an archived root, whose row can carry an
+      // active sub-agent's request.
+      final withArchived = await repository.getProjectActivitySummaries(includeArchived: true);
+      expect(withArchived.single.activeSessions.map((session) => session.id), ["archived", "live"]);
     });
 
     test("setSessionTitleIfStored makes a derived title win over enumeration", () async {
