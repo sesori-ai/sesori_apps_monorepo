@@ -40,7 +40,8 @@ The main pane hosts one full-width routed page.
   the width the drag began from.
 - Collapse hides the sidebar completely: the panel slides out past the window's start edge in 180 ms and back in
   200 ms while the page narrows or widens to match, and the panel never squeezes its rows on the way. Only the
-  toggle and the word Sesori remain. The toggle and Cmd/Ctrl+B bring the sidebar back
+  toggle and the word Sesori remain, with an amber dot on the toggle's corner while a listed session waits for the
+  user's answer. The toggle and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
   screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
   sits on the handle's own screen reader node, not on the window behind it.
@@ -198,9 +199,9 @@ The main pane hosts one full-width routed page.
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
   directly. Mark unread always sends unread,
   whatever local state says, and returns to the home; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
-  elsewhere. The transcript, the composer, its pills and the needs-you cards share one centred column about
-  620 pt wide, centred in the
-  pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
+  elsewhere. The transcript and the composer sit in two separately sized centred columns, the transcript
+  about 960 pt wide and the composer, its pills and the needs-you cards about 760 pt, both centred in the
+  same pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
   that column's margin instead of clipping it. The transcript column stays narrow enough that a revealed
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
