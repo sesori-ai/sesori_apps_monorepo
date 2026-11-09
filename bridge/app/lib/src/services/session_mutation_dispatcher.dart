@@ -22,6 +22,8 @@ final class const SessionContinuationUpdated({required super.session}) extends L
 
 final class const SessionApprovalOverrideUpdated({required super.session}) extends LocalSessionMutation;
 
+final class const SessionArchived({required super.session}) extends LocalSessionMutation;
+
 /// Owns bridge-persisted session mutations and their backend propagation.
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
@@ -38,6 +40,8 @@ class SessionMutationDispatcher({
 
   void continuationUpdated({required Session session}) =>
       _mutationsController.add(SessionContinuationUpdated(session: session));
+
+  void sessionArchived({required Session session}) => _mutationsController.add(SessionArchived(session: session));
 
   bool shouldSuppressEventsForSession({required String sessionId}) {
     return _sessionIdsSuppressedFromEvents.contains(sessionId);

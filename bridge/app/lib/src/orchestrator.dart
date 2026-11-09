@@ -841,7 +841,7 @@ class Orchestrator({
     required LocalSessionMutation mutation,
     required SessionViewService sessionViews,
   }) async {
-    final session = mutation is SessionDeleted || mutation is SessionContinuationUpdated
+    final session = mutation is SessionDeleted || mutation is SessionContinuationUpdated || mutation is SessionArchived
         ? mutation.session
         : await sessionViews.enrich(session: mutation.session);
     return (
@@ -851,6 +851,9 @@ class Orchestrator({
         SessionContinuationUpdated() ||
         SessionApprovalOverrideUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
+        // A backend may keep reporting an archived session running or waiting,
+        // so rebuild the summary, which drops archived sessions, at once.
+        SessionArchived() => const BridgeSseProjectUpdated(),
       },
     );
   }

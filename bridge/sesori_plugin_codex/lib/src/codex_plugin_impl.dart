@@ -1735,6 +1735,9 @@ class CodexPlugin._({
 
   @override
   Future<void> archiveSession({required String sessionId}) async {
+    // An archived session refuses replies, so nothing could ever answer its
+    // pending input.
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     // Codex moves archived rollouts out of the readable session catalog, while
     // the bridge contract intentionally keeps archive state local-only.
     // Explicitly retained as commented code rather than deleted at reviewer

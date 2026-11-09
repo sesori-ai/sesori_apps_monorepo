@@ -409,6 +409,17 @@ terminal and desktop work whose session-index timestamp is stale or absent,
 without resuming threads or reading full transcripts for activity. The bridge
 retains its existing monotonic timestamp merge and local title overrides.
 
+## Pending requests on archive
+
+Whatever the harness reports, an archived session never counts as running or
+awaiting input in the bridge's activity summary, which every archive refreshes
+at once, and the bridge lists none of its pending requests.
+
+| Harness | Archiving cancels the session's own pending requests |
+|---|---|
+| Claude Code, Codex, Pi, every ACP harness | ✅ Nothing else could answer them once the session is read-only. |
+| OpenCode | ⬜ Not implemented: they stay pending in OpenCode's server, which OpenCode's own clients can share, until something answers them there. |
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |
