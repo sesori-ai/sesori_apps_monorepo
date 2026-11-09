@@ -24,9 +24,9 @@ extension PregoColorsX on PregoColors {
   /// A pointer shell's sidebar: neutral, as the pages beside it are, in both themes.
   Color get pointerPanelFill => brightness == .light ? bgSurface1 : bgSurface2;
 
-  /// Small warning text that clears 4.5:1 on a pointer shell's panel in both
-  /// themes.
-  Color get pointerWarningText => brightness == .light ? const Color(0xFFA15C00) : textWarningPrimary;
+  /// Small warning text that clears 4.5:1 on a pointer shell's panel and selected
+  /// row in both themes.
+  Color get pointerWarningText => brightness == .light ? const Color(0xFF854B00) : textWarningPrimary;
 
   /// The warning fill for a pointer shell's dots and buttons: a clear amber in both
   /// themes, with dark text on it.

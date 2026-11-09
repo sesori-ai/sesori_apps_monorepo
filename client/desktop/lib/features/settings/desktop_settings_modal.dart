@@ -84,7 +84,8 @@ Future<void> _showDesktopSettings({
   // A shortcut is answered at once; only a click gets the entrance.
   final instant =
       prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion || pregoActivatedByKeyboard;
-  // ignore: no_slop_linter/avoid_navigator_of, a desktop-only full-window surface above the router's own pages
+  // A desktop-only full-window surface above the router's own pages.
+  // ignore: no_slop_linter/avoid_navigator_of, no_slop_linter/avoid_raw_go_router
   await Navigator.of(context, rootNavigator: true).push<void>(
     _DesktopSettingsRoute(
       barrierDismissible: true,
@@ -553,7 +554,12 @@ class const _DesktopBridgeSettingsPage({
       slivers: [
         SliverPadding(
           // A section heading leads this page, so its top matches the cards' on others.
-          padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, PregoSpacing.md, PregoSpacing.xl, PregoSpacing.xl),
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            PregoSpacing.xl,
+            PregoSpacing.md,
+            PregoSpacing.xl,
+            PregoSpacing.xl,
+          ),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

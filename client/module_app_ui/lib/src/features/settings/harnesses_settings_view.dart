@@ -243,22 +243,29 @@ class const _HarnessOverviewRow({
   @override
   Widget build(BuildContext context) {
     final install = state.installs[plugin.setup.id];
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return PregoGroupedRow(
       key: Key("harnesses_card_${plugin.setup.id}"),
-      minHeight: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? null : 68,
-      // In the 24 pt slot a row's 20 pt icon takes, so titles share one edge.
-      leading: SizedBox(
-        width: 24,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4),
-          child: SizedBox.square(
-            dimension: 20,
-            child: Center(
-              child: PregoBrandLogo(pluginId: plugin.setup.id, size: 16, color: context.prego.colors.textTertiary),
+      minHeight: pointer ? null : 68,
+      leading: !pointer
+          ? PregoBrandLogo(pluginId: plugin.setup.id, color: context.prego.colors.textTertiary)
+          // In the 24 pt slot a row's 20 pt icon takes, so titles share one edge.
+          : SizedBox(
+              width: 24,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 4),
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: Center(
+                    child: PregoBrandLogo(
+                      pluginId: plugin.setup.id,
+                      size: 16,
+                      color: context.prego.colors.textTertiary,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
       title: Text(plugin.setup.displayName),
       subtitle: _showOverviewStatus(plugin: plugin, install: install)
           ? _HarnessStatus(plugin: plugin, install: install, overview: true)

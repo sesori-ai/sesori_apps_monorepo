@@ -51,8 +51,14 @@ class const PregoPopupAlertsNotifications({
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final desktop = theme.extension<PregoDesignSystem>()?.isDesktopScale ?? false;
     return Theme(
-      data: theme.copyWith(extensions: [...theme.extensions.values, PregoDesignSystem.dark]),
+      data: theme.copyWith(
+        extensions: [
+          ...theme.extensions.values,
+          if (desktop) PregoDesignSystem.desktopDark else PregoDesignSystem.dark,
+        ],
+      ),
       child: Builder(builder: _buildCard),
     );
   }
@@ -99,6 +105,7 @@ class const PregoPopupAlertsNotifications({
                       PregoSpacing.lg,
                     ),
                     child: Wrap(
+                      alignment: maxWidth.isFinite ? WrapAlignment.end : WrapAlignment.start,
                       spacing: PregoSpacing.x2l,
                       runSpacing: PregoSpacing.md,
                       crossAxisAlignment: WrapCrossAlignment.center,

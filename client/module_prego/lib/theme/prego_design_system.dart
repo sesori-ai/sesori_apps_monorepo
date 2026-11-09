@@ -85,7 +85,7 @@ final class PregoDesignSystem._({
     return PregoDesignSystem._(
       colors: PregoColors.lerpColors(a: colors, b: other.colors, t: t),
       textTheme: PregoTextTheme.lerpTextThemes(a: textTheme, b: other.textTheme, t: t),
-      isDesktopScale: other.isDesktopScale,
+      isDesktopScale: t < 0.5 ? isDesktopScale : other.isDesktopScale,
     );
   }
 }

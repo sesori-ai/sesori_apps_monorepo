@@ -54,7 +54,7 @@ class const DesktopPageToolbar({
       // A floor, not a fixed slot: scaled-up text grows the bar instead of spilling out of it.
       constraints: const BoxConstraints(minHeight: height),
       // Its content's middle is the title line, one point above the bar's.
-      padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, 0, PregoSpacing.xl, 2),
+      padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, 2),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(bottom: BorderSide(color: prego.colors.borderSecondary)),
@@ -119,12 +119,20 @@ class const DesktopPageToolbar({
                         Expanded(
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              final titleWidth = (TextPainter(
-                                text: TextSpan(text: title, style: titleText.style),
+                              final painter = TextPainter(
+                                text: TextSpan(
+                                  text: title,
+                                  style: withTextSpacingOverrides(
+                                    context: context,
+                                    style: titleText.style ?? const TextStyle(),
+                                  ),
+                                ),
                                 maxLines: 1,
                                 textDirection: Directionality.of(context),
                                 textScaler: MediaQuery.textScalerOf(context),
-                              )..layout()).width.ceilToDouble();
+                              )..layout();
+                              final titleWidth = painter.width.ceilToDouble();
+                              painter.dispose();
                               final room = constraints.maxWidth - titleWidth - PregoSpacing.md;
                               return Row(
                                 crossAxisAlignment: CrossAxisAlignment.baseline,

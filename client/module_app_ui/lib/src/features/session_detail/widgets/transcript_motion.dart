@@ -139,7 +139,10 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
               ? min(1, t / 0.35)
               : t,
           child: FractionalTranslation(
-            translation: Offset(0, widget.exiting ? -TranscriptPresence.exitSlide * (1 - t) : 0),
+            translation: Offset(
+              0,
+              widget.exiting ? (widget.risesFromBottom ? 1 : -1) * TranscriptPresence.exitSlide * (1 - t) : 0,
+            ),
             child: widget.child,
           ),
         ),

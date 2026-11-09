@@ -132,12 +132,16 @@ class const _CheckForUpdatesRow({super.key}) extends StatelessWidget {
             child: PregoActivityIndicator(color: null),
           ),
           DesktopUpdateCheckStatus.upToDate => const Icon(TablerRegular.check, key: ValueKey("up-to-date")),
-          DesktopUpdateCheckStatus.idle || DesktopUpdateCheckStatus.failed => PregoButtonsSolid(
+          DesktopUpdateCheckStatus.idle || DesktopUpdateCheckStatus.failed => ExcludeFocus(
             key: const ValueKey("check-now"),
-            label: loc.desktopUpdatesCheckNow,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.xs,
-            onPressed: () => unawaited(cubit.checkForUpdates()),
+            child: ExcludeSemantics(
+              child: PregoButtonsSolid(
+                label: loc.desktopUpdatesCheckNow,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.xs,
+                onPressed: () => unawaited(cubit.checkForUpdates()),
+              ),
+            ),
           ),
         },
       ),

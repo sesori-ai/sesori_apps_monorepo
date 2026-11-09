@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:flutter/foundation.dart";
-import "package:flutter/scheduler.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -104,51 +103,49 @@ class const DesktopSidebar({
                     CustomScrollView(
                       key: const Key("desktop-sidebar-session-list"),
                       slivers: [
-                        _PausesHoverWhileScrolling(
-                          sliver: AllSessionsList(
-                            onSessionTap: ({required row}) => onOpenSession(
-                              context: context,
-                              project: row.project,
-                              displayName: desktopProjectDisplayName(context: context, project: row.project),
-                              session: row.session,
-                            ),
-                            actionDispatcher: sessionActions,
-                            createActions: ({required window}) =>
-                                createSessionActionsCubit(locator: getIt, window: window),
-                            selectedSessionId: selectedSessionId,
-                            // The footer's recovery card says so, unless this
-                            // computer's bridge is still starting: that is the
-                            // list's own load, whose one skeleton hands off to the
-                            // rows.
-                            disconnectedBuilder: ({required context, required state}) =>
-                                context.select(
-                                  (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
-                                )
-                                ? null
-                                : SliverToBoxAdapter(
-                                    child: Padding(
-                                      padding: const EdgeInsetsDirectional.fromSTEB(14, PregoSpacing.md, 14, 0),
-                                      child: Text(
-                                        loc.desktopSidebarOfflineHint,
-                                        style: context.prego.textTheme.textXs.regular.copyWith(
-                                          color: context.prego.colors.textTertiary,
-                                        ),
+                        AllSessionsList(
+                          onSessionTap: ({required row}) => onOpenSession(
+                            context: context,
+                            project: row.project,
+                            displayName: desktopProjectDisplayName(context: context, project: row.project),
+                            session: row.session,
+                          ),
+                          actionDispatcher: sessionActions,
+                          createActions: ({required window}) =>
+                              createSessionActionsCubit(locator: getIt, window: window),
+                          selectedSessionId: selectedSessionId,
+                          // The footer's recovery card says so, unless this
+                          // computer's bridge is still starting: that is the
+                          // list's own load, whose one skeleton hands off to the
+                          // rows.
+                          disconnectedBuilder: ({required context, required state}) =>
+                              context.select(
+                                (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+                              )
+                              ? null
+                              : SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsetsDirectional.fromSTEB(14, PregoSpacing.md, 14, 0),
+                                    child: Text(
+                                      loc.desktopSidebarOfflineHint,
+                                      style: context.prego.textTheme.textXs.regular.copyWith(
+                                        color: context.prego.colors.textTertiary,
                                       ),
                                     ),
                                   ),
-                            // The home pane says so, and Refresh retries it.
-                            showsLoadFailure: false,
-                            // The Search row above opens the palette, which searches sessions.
-                            showsSearchField: false,
-                            // With no project at all the page offers the one next step.
-                            emptyState: state is ProjectListLoaded && state.projects.isEmpty
-                                ? const SizedBox.shrink()
-                                : SessionEmptyState(projectName: filterName),
-                            // The filter heads the list already, beside Refresh.
-                            header: null,
-                            // The last row scrolls clear of the floating scan card.
-                            endClearance: catalogScanRowClearance(context: context),
-                          ),
+                                ),
+                          // The home pane says so, and Refresh retries it.
+                          showsLoadFailure: false,
+                          // The Search row above opens the palette, which searches sessions.
+                          showsSearchField: false,
+                          // With no project at all the page offers the one next step.
+                          emptyState: state is ProjectListLoaded && state.projects.isEmpty
+                              ? const SizedBox.shrink()
+                              : SessionEmptyState(projectName: filterName),
+                          // The filter heads the list already, beside Refresh.
+                          header: null,
+                          // The last row scrolls clear of the floating scan card.
+                          endClearance: catalogScanRowClearance(context: context),
                         ),
                       ],
                     ),
@@ -296,59 +293,6 @@ class const _SidebarFilter({
       ),
     );
   }
-}
-
-/// Rows take no hover while the list scrolls, and for a moment after each wheel
-/// tick, so the highlight doesn't hop along under a pointer that isn't moving.
-class const _PausesHoverWhileScrolling({required final Widget sliver}) extends StatefulWidget {
-  @override
-  State<_PausesHoverWhileScrolling> createState() => _PausesHoverWhileScrollingState();
-}
-
-class _PausesHoverWhileScrollingState() extends State<_PausesHoverWhileScrolling> {
-  ValueListenable<bool>? _scrolling;
-  Timer? _release;
-  bool _paused = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final scrolling = Scrollable.of(context).position.isScrollingNotifier;
-    if (identical(scrolling, _scrolling)) return;
-    _scrolling?.removeListener(_onScrollingChanged);
-    _scrolling = scrolling..addListener(_onScrollingChanged);
-  }
-
-  void _onScrollingChanged() {
-    _release?.cancel();
-    if (_scrolling?.value ?? false) {
-      _setPaused(true);
-    } else {
-      _release = Timer(const Duration(milliseconds: 100), () => _setPaused(false));
-    }
-  }
-
-  void _setPaused(bool paused) {
-    if (paused == _paused) return;
-    // An overscrolled list that shrinks settles from inside layout, too late to rebuild this frame.
-    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _paused = paused);
-      });
-    } else {
-      setState(() => _paused = paused);
-    }
-  }
-
-  @override
-  void dispose() {
-    _release?.cancel();
-    _scrolling?.removeListener(_onScrollingChanged);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => SliverIgnorePointer(ignoring: _paused, sliver: widget.sliver);
 }
 
 /// Reloads projects and their sessions and imports from every harness.

@@ -599,9 +599,9 @@ class const SessionTile({
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
-    // The status mark already speaks the waiting state. Under a pointer the word
-    // stands alone.
-    return awaitingInput && PregoInteractionScope.of(context) != PregoInteractionMode.pointer
+    // The status mark already speaks this state: running under a pointer, where the
+    // waiting word stands alone, and waiting elsewhere.
+    return (PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? plainRunning : awaitingInput)
         ? ExcludeSemantics(child: text)
         : text;
   }
@@ -644,7 +644,8 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                       spacing: PregoSpacing.xs,
                       children: [
                         // Silent, unlike the real row's: the meta line names the harness here.
-                        _HarnessLogo(pluginId: launch.pluginId, selected: false),
+                        // A pointer row keeps its logo on the meta line, so its title starts at the edge.
+                        if (!pointer) _HarnessLogo(pluginId: launch.pluginId, selected: false),
                         Expanded(
                           child: _TitleLine(
                             title: Text(
@@ -717,7 +718,7 @@ class const SessionTileSkeleton({
               child: Row(
                 spacing: PregoSpacing.xs,
                 children: [
-                  const PregoSkeletonBar(height: _brandLogoSize, width: _brandLogoSize),
+                  if (!pointer) const PregoSkeletonBar(height: _brandLogoSize, width: _brandLogoSize),
                   Expanded(
                     child: FractionallySizedBox(
                       alignment: AlignmentDirectional.centerStart,
@@ -915,6 +916,8 @@ class const _FadingTitle({required final Text title}) extends StatelessWidget {
       return ShaderMask(
         blendMode: BlendMode.dstIn,
         shaderCallback: (bounds) => LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
           colors: const [Colors.white, Colors.white, Color(0x66FFFFFF), Colors.transparent],
           stops: [
             0,
@@ -922,7 +925,7 @@ class const _FadingTitle({required final Text title}) extends StatelessWidget {
             1 - min(1, _titleFadeWidth * 0.45 / bounds.width),
             1 - min(1, 2 / bounds.width),
           ],
-        ).createShader(bounds),
+        ).createShader(bounds, textDirection: Directionality.of(context)),
         child: SizedBox(width: double.infinity, child: title),
       );
     },

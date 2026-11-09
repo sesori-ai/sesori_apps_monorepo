@@ -198,6 +198,7 @@ class const _BridgeAction({
       alignment: AlignmentDirectional.centerStart,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       minimumSize: const Size(0, 30),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       // The compact row's height is already this row's; density would shrink it again.
       visualDensity: VisualDensity.standard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.sm)),
@@ -205,7 +206,11 @@ class const _BridgeAction({
     // The compact menu rows' icon and gap, so the labels line up with theirs.
     child: Row(
       children: [
-        Icon(icon, size: 16, color: context.prego.colors.textSecondary),
+        Icon(
+          icon,
+          size: 16,
+          color: onPressed == null ? context.prego.colors.textDisabled : context.prego.colors.textSecondary,
+        ),
         const SizedBox(width: PregoSpacing.md),
         Expanded(child: Text(label, style: context.prego.textTheme.textSm.regular)),
       ],

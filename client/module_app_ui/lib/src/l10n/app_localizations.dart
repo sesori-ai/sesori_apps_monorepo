@@ -241,13 +241,13 @@ abstract class AppLocalizations {
   /// **'What should we work on?'**
   String get newSessionHeading;
 
-  /// No description provided for @newSessionNoProjectsHeading.
+  /// Heading of the desktop home's first-run step, when no project exists yet
   ///
   /// In en, this message translates to:
   /// **'Add your first project'**
   String get newSessionNoProjectsHeading;
 
-  /// No description provided for @newSessionNoProjectsHint.
+  /// Line under the first-run heading, before the Add project button
   ///
   /// In en, this message translates to:
   /// **'Pick a folder on this computer. Your sessions will start there.'**
@@ -4663,31 +4663,31 @@ abstract class AppLocalizations {
   /// **'Allow this action?'**
   String get diffPermissionRequestTitle;
 
-  /// No description provided for @diffPermissionAlwaysAllowEllipsis.
+  /// Quiet action in the permission dialog that opens the Always approve confirmation
   ///
   /// In en, this message translates to:
   /// **'Always approve…'**
   String get diffPermissionAlwaysAllowEllipsis;
 
-  /// No description provided for @diffPermissionAlwaysBack.
+  /// Returns from the Always approve confirmation to the permission dialog
   ///
   /// In en, this message translates to:
   /// **'Back'**
   String get diffPermissionAlwaysBack;
 
-  /// No description provided for @desktopBridgeStoppedTitle.
+  /// Title of the desktop home when this computer's bridge is not running
   ///
   /// In en, this message translates to:
   /// **'Bridge stopped'**
   String get desktopBridgeStoppedTitle;
 
-  /// No description provided for @desktopUpdatesCheckNow.
+  /// Small button in the desktop settings' update row
   ///
   /// In en, this message translates to:
   /// **'Check now'**
   String get desktopUpdatesCheckNow;
 
-  /// No description provided for @desktopSidebarOfflineHint.
+  /// Sidebar line while the bridge is offline, in place of the session list
   ///
   /// In en, this message translates to:
   /// **'Sessions will return when the bridge is back.'**
@@ -4699,13 +4699,13 @@ abstract class AppLocalizations {
   /// **'No projects yet'**
   String get desktopSidebarNoProjects;
 
-  /// No description provided for @diffPermissionAlwaysTitle.
+  /// Title of the Always approve confirmation step
   ///
   /// In en, this message translates to:
   /// **'Always approve this kind of request?'**
   String get diffPermissionAlwaysTitle;
 
-  /// No description provided for @diffPermissionAlwaysConsequence.
+  /// Explains what confirming Always approve does
   ///
   /// In en, this message translates to:
   /// **'Future matching requests will run without asking.'**

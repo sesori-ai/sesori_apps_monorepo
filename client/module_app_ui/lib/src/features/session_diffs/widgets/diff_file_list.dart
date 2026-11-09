@@ -46,7 +46,9 @@ class const DiffFileList({
                   verticalPadding: PregoSpacing.sm,
                   leading: Padding(
                     // The folder's line, under a pointer, so the letter sits on the name's.
-                    padding: EdgeInsets.only(bottom: pointer && p.posix.dirname(vm.fileDiff.file) != "." ? 16 : 0),
+                    padding: EdgeInsetsDirectional.only(
+                      bottom: pointer && p.posix.dirname(vm.fileDiff.file) != "." ? 16 : 0,
+                    ),
                     child: DiffStatusLetter(status: vm.status),
                   ),
                   // The extension is what tells two similar names apart.
@@ -60,7 +62,9 @@ class const DiffFileList({
                     final folder => Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis),
                   },
                   trailing: Padding(
-                    padding: EdgeInsets.only(bottom: pointer && p.posix.dirname(vm.fileDiff.file) != "." ? 16 : 0),
+                    padding: EdgeInsetsDirectional.only(
+                      bottom: pointer && p.posix.dirname(vm.fileDiff.file) != "." ? 16 : 0,
+                    ),
                     child: DiffCounts(additions: vm.additions, deletions: vm.deletions, style: prego.textTheme.code),
                   ),
                   onTap: () => onSelect(index),

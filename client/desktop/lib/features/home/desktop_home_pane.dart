@@ -329,7 +329,13 @@ class const DesktopBridgeRecoveryView({
         actionLabel: loc.projectListRetry,
         isFailure: true,
       ),
-      _ => (
+      BridgeProcessStopped() ||
+      BridgeProcessLoginRequired() ||
+      BridgeProcessStarting() ||
+      BridgeProcessRunning() ||
+      BridgeProcessStopping() ||
+      BridgeProcessContention() ||
+      BridgeProcessCrashRetryScheduled() => (
         reason: loc.projectsDesktopStartBridgeInfo,
         actionLabel: loc.projectsDesktopStartBridge,
         isFailure: false,

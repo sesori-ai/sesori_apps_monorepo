@@ -514,7 +514,9 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       style: buildChatMessageMarkdownStyleSheet(prego: prego).p ?? prego.textTheme.textSm.regular,
       padding: const EdgeInsets.all(UserMessageBubble.padding),
       decoration: BoxDecoration(
-        color: prego.colors.bgSurface2,
+        color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer && prego.colors.brightness == .light
+            ? prego.colors.bgSurface1
+            : prego.colors.bgSurface2,
         borderRadius: BorderRadius.circular(UserMessageBubble.radius),
       ),
     );

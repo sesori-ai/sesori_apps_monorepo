@@ -34,7 +34,12 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
       slivers: [
         SliverPadding(
           // A section heading leads this page, so its top matches the cards' on others.
-          padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, PregoSpacing.md, PregoSpacing.xl, PregoSpacing.xl),
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            PregoSpacing.xl,
+            PregoSpacing.md,
+            PregoSpacing.xl,
+            PregoSpacing.xl,
+          ),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

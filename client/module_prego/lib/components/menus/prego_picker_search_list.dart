@@ -308,7 +308,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
                         prefixIconConstraints: pointer ? const BoxConstraints(minWidth: 34, minHeight: 30) : null,
                         isDense: true,
                         contentPadding: pointer
-                            ? const EdgeInsets.fromLTRB(0, 8, 12, 8)
+                            ? const EdgeInsetsDirectional.fromSTEB(0, 8, 12, 8)
                             : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(pointer ? PregoRadius.sm : PregoRadius.x4l),

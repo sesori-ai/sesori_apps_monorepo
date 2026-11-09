@@ -922,6 +922,36 @@ void main() {
     expect(tester.getSize(panel).width, DesktopSidebarCubit.minWidth);
   });
 
+  testWidgets("in a narrow window a drag starts from the edge shown, not the saved width", (tester) async {
+    tester.view
+      ..physicalSize = const Size(900, 800)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(state: running));
+    expect(tester.getSize(panel).width, 240);
+    final gesture = await tester.startGesture(tester.getCenter(resize));
+    await gesture.moveBy(const Offset(-30, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-10, 0));
+    await tester.pump();
+    expect(tester.getSize(panel).width, 200);
+    await gesture.up();
+    await tester.pump();
+  });
+
+  testWidgets("a stopped bridge leaves relay recovery reachable", (tester) async {
+    whenListen(
+      overlay,
+      const Stream<ConnectionOverlayState>.empty(),
+      initialState: const ConnectionOverlayState.connectionLost(),
+    );
+    await tester.pumpWidget(
+      app(state: _state(processState: const BridgeProcessCrashGiveUp(exitCode: 1, crashCount: 6))),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key("desktop-connection-pill")), findsOneWidget);
+  });
+
   testWidgets("drag resizes immediately and persists on end, and a click collapses", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));

@@ -29,12 +29,10 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
     final colors = context.prego.colors;
     // A stopped bridge is explained by the page and the sidebar; a pill would be
     // a third voice, in another colour.
-    final stopped = context.select(
-      (BridgeControlCubit cubit) => switch (cubit.state.processState) {
-        BridgeProcessCrashGiveUp() || BridgeProcessStartFailed() => true,
-        _ => false,
-      },
-    );
+    final stopped = context.select((BridgeControlCubit cubit) {
+      final process = cubit.state.processState;
+      return process is BridgeProcessCrashGiveUp || process is BridgeProcessStartFailed;
+    });
     final failed = state is ConnectionOverlayConnectionLost;
     final foreground = failed ? colors.textErrorPrimary : colors.textWarningPrimary;
     return AnimatedSwitcher(
@@ -62,7 +60,7 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
           ?current,
         ],
       ),
-      child: title == null || stopped
+      child: title == null || (stopped && state is ConnectionOverlayBridgeOffline)
           ? const SizedBox.shrink()
           : Semantics(
               key: ValueKey(state.runtimeType),

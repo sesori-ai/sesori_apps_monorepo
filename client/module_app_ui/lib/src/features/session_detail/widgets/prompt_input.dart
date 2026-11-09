@@ -1378,7 +1378,7 @@ class _PromptInputState() extends State<PromptInput> {
       _pointerShell &&
       _layout == ComposerSurfaceLayout.typing &&
       _voicePresentation == _VoicePresentation.transcribing &&
-      !_hasText;
+      _controller.text.isEmpty;
 
   String _hintText(BuildContext context) {
     final command = widget.stagedCommand;

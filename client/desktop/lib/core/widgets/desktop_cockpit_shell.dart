@@ -236,8 +236,9 @@ class const DesktopCockpitShell({
               panel: _SidebarPanel(
                 width: width,
                 resizeHandle: Builder(
-                  builder: (context) =>
-                      collapsed(context) ? const SizedBox.shrink() : _SidebarResizeHandle(sidebar: sidebar),
+                  builder: (context) => collapsed(context)
+                      ? const SizedBox.shrink()
+                      : _SidebarResizeHandle(sidebar: sidebar, width: width),
                 ),
                 child: DesktopSidebar(
                   windowHost: windowHost,
@@ -518,7 +519,12 @@ class const _SidebarTitleBar({
   }
 }
 
-class const _SidebarResizeHandle({required final DesktopSidebarCubit sidebar}) extends StatefulWidget {
+class const _SidebarResizeHandle({
+  required final DesktopSidebarCubit sidebar,
+
+  /// The width the sidebar shows, which a narrow window holds under the saved one.
+  required final double width,
+}) extends StatefulWidget {
   @override
   State<_SidebarResizeHandle> createState() => _SidebarResizeHandleState();
 }
@@ -541,7 +547,7 @@ class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> with Ticke
   /// How far past the sidebar's minimum width a released drag collapses it.
   static const double _collapseReach = 48;
 
-  ({double width, double pointerX})? _dragOrigin;
+  ({double width, double savedWidth, double pointerX})? _dragOrigin;
   double _draggedTo = 0;
 
   void _updateLit() {
@@ -560,7 +566,7 @@ class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> with Ticke
     _armed.value = 0;
     _updateLit();
     if (released && _draggedTo < DesktopSidebarCubit.minWidth - _collapseReach) {
-      unawaited(widget.sidebar.collapseFromDrag(reopenWidth: origin.width));
+      unawaited(widget.sidebar.collapseFromDrag(reopenWidth: origin.savedWidth));
     } else {
       unawaited(widget.sidebar.saveLayout());
     }
@@ -597,8 +603,12 @@ class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> with Ticke
         dragStartBehavior: DragStartBehavior.down,
         onTap: () => unawaited(widget.sidebar.toggleCollapsed()),
         onHorizontalDragStart: (details) {
-          _dragOrigin = (width: widget.sidebar.state.width, pointerX: details.globalPosition.dx);
-          _draggedTo = widget.sidebar.state.width;
+          _dragOrigin = (
+            width: widget.width,
+            savedWidth: widget.sidebar.state.width,
+            pointerX: details.globalPosition.dx,
+          );
+          _draggedTo = widget.width;
           _updateLit();
         },
         onHorizontalDragUpdate: (details) {

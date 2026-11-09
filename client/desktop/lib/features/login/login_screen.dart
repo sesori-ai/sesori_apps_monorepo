@@ -297,7 +297,9 @@ class _ProviderSignInState() extends State<_ProviderSignIn> {
             PregoButtonsSolid(
               label: loc.signInWithEmail,
               leadingIcon: TablerRegular.mail,
-              hierarchy: PregoButtonsSolidHierarchy.tertiary,
+              hierarchy: lastUsed == AuthProvider.email
+                  ? PregoButtonsSolidHierarchy.primaryAlt
+                  : PregoButtonsSolidHierarchy.tertiary,
               size: PregoButtonsSolidSize.xl,
               contentAtStart: true,
               labelTrailing: lastUsed == AuthProvider.email ? PregoTag(label: loc.desktopLoginLastUsed) : null,

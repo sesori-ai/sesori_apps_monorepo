@@ -79,7 +79,13 @@ class const ComputerSettingsEntry({
                               ],
                             ),
                           ),
-                          Icon(TablerRegular.selector, size: PregoIconSize.sm, color: prego.colors.textTertiary),
+                          Icon(
+                            TablerRegular.selector,
+                            size: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                                ? PregoIconSize.sm
+                                : PregoIconSize.lg,
+                            color: prego.colors.textTertiary,
+                          ),
                         ],
                       ),
                     ),

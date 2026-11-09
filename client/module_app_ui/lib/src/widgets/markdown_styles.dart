@@ -98,16 +98,9 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
 
   final desktop = prego.isDesktopScale;
   // Tight list items carry no paragraph, so they take only the block gap.
-  const heading = EdgeInsets.only(top: PregoSpacing.lg);
-  return base.copyWith(
+  final sheet = base.copyWith(
     blockSpacing: desktop ? PregoSpacing.xs : null,
     pPadding: desktop ? const EdgeInsets.symmetric(vertical: PregoSpacing.xxs) : null,
-    h1Padding: desktop ? heading : null,
-    h2Padding: desktop ? heading : null,
-    h3Padding: desktop ? heading : null,
-    h4Padding: desktop ? heading : null,
-    h5Padding: desktop ? heading : null,
-    h6Padding: desktop ? heading : null,
     // [ChatLinkMarkdownBuilder] keeps the surrounding text's size and weight
     // and takes only this colour.
     a: body.copyWith(color: prego.colors.textBrandSecondary),
@@ -134,6 +127,15 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     listBullet: body,
     tableHead: body.copyWith(fontWeight: prego.textTheme.chat.bold.fontWeight),
     tableBody: body,
+  );
+  if (!desktop) return sheet;
+  return sheet.copyWith(
+    h1Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h2Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h3Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h4Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h5Padding: const EdgeInsets.only(top: PregoSpacing.lg),
+    h6Padding: const EdgeInsets.only(top: PregoSpacing.lg),
   );
 }
 

@@ -58,7 +58,7 @@ class const PregoVoiceSendButton({
               ),
               child: ClipRRect(
                 borderRadius: radius,
-                child: Center(child: child),
+                child: child,
               ),
             ),
             childBuilder: ({required Set<WidgetState> state}) => UnconstrainedBox(

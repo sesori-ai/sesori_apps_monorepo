@@ -234,9 +234,6 @@ class _TranscriptStickyPromptOverlayState()
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
       ),
       haloColor: Theme.of(context).scaffoldBackgroundColor,
-      ellipsisStyle: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-          ? null
-          : buildChatMessageMarkdownStyleSheet(prego: prego).p,
       paintsBand: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
       fade: _curvedFade,
       fadingOpenerId: _fadingId,
@@ -318,7 +315,6 @@ class const _StickyPrompts({
   required final double horizontalInset,
   required final Color bubbleColor,
   required final Color haloColor,
-  required final TextStyle? ellipsisStyle,
   required final bool paintsBand,
   required final Animation<double> fade,
   required final String? fadingOpenerId,
@@ -338,7 +334,6 @@ class const _StickyPrompts({
     horizontalInset: horizontalInset,
     bubbleColor: bubbleColor,
     haloColor: haloColor,
-    ellipsisStyle: ellipsisStyle,
     paintsBand: paintsBand,
     fade: fade,
     fadingOpenerId: fadingOpenerId,
@@ -356,7 +351,6 @@ class const _StickyPrompts({
       ..horizontalInset = horizontalInset
       ..bubbleColor = bubbleColor
       ..haloColor = haloColor
-      ..ellipsisStyle = ellipsisStyle
       ..paintsBand = paintsBand
       ..fade = fade
       ..fadingOpenerId = fadingOpenerId
@@ -399,9 +393,6 @@ class RenderTranscriptStickyPrompts({
   required double horizontalInset,
   required Color bubbleColor,
   required Color haloColor,
-
-  /// How the ellipsis ending a pin cut to one line is set.
-  required var TextStyle? ellipsisStyle,
 
   /// Whether the pins sit on a full-width band of the page's background, so
   /// text beside a bubble that is narrower than the column is never cut.
@@ -652,11 +643,13 @@ class RenderTranscriptStickyPrompts({
     const solidBelow = 24.0;
     var bottom = 0.0;
     var elevation = 0.0;
+    var cover = 0.0;
     for (final pin in _layout.pinned) {
       bottom = max(bottom, pin.top + pin.height);
       elevation = max(elevation, pin.elevation);
+      cover = max(cover, pin.cover);
     }
-    if (elevation <= 0 || bottom <= 0) {
+    if (cover <= 0 || bottom <= 0) {
       // No pin: text still fades out under the header instead of being cut by it.
       final edge = offset & Size(size.width, fade);
       canvas.drawRect(
@@ -670,10 +663,13 @@ class RenderTranscriptStickyPrompts({
       );
       return;
     }
-    final solid = bottom + solidBelow;
-    final rect = offset & Size(size.width, solid + fade);
+    // The next prompt's push pulls the band's foot up to the pin's edge, clear of it.
+    final push = elevation / cover;
+    final solid = bottom + solidBelow * push;
+    final foot = max(1.0, fade * push);
+    final rect = offset & Size(size.width, solid + foot);
     // Quickly solid, so the first line to pass under the pin is never cut beside it.
-    final color = _haloColor.withValues(alpha: _haloColor.a * min(1, elevation * 8));
+    final color = _haloColor.withValues(alpha: _haloColor.a * min(1, cover * 8));
     canvas.drawRect(
       rect,
       Paint()
@@ -689,9 +685,9 @@ class RenderTranscriptStickyPrompts({
           ],
           stops: [
             0,
-            solid / (solid + fade),
-            (solid + fade * 0.35) / (solid + fade),
-            (solid + fade * 0.7) / (solid + fade),
+            solid / (solid + foot),
+            (solid + foot * 0.35) / (solid + foot),
+            (solid + foot * 0.7) / (solid + foot),
             1,
           ],
         ).createShader(rect),
@@ -717,6 +713,7 @@ class RenderTranscriptStickyPrompts({
           height: min(child.size.height + UserMessageBubble.padding * 2, compactHeight),
           fullHeight: child.size.height + UserMessageBubble.padding * 2,
           elevation: pin.elevation,
+          cover: pin.cover,
           view: const TranscriptPinStart(),
         ),
       ),
@@ -811,18 +808,6 @@ class RenderTranscriptStickyPrompts({
           Rect.fromLTRB(bubble.left, contentBottom, bubble.right, bubble.bottom),
           Paint()..color = _bubbleColor,
         );
-      final ellipsisStyle = this.ellipsisStyle;
-      if (cut >= 16 && ellipsisStyle != null) {
-        final ellipsis = TextPainter(
-          text: TextSpan(text: "…", style: ellipsisStyle),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        ellipsis.paint(
-          canvas,
-          Offset(bubble.right - UserMessageBubble.padding - ellipsis.width, bubble.top + UserMessageBubble.padding),
-        );
-        ellipsis.dispose();
-      }
       return;
     }
     final fade = Rect.fromLTRB(bubble.left, contentBottom - min(16, cut), bubble.right, contentBottom);

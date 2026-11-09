@@ -9,6 +9,7 @@ import "package:material_ui/material_ui.dart";
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_interaction_scope.dart";
 import "../../motion/prego_pointer_motion.dart";
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 import "../navigation/prego_nav_subtitle.dart";
@@ -22,7 +23,8 @@ import "anchored_spotlight_backdrop.dart";
 /// Material rows (Android) without the caller knowing which path is active.
 sealed class const PregoMenuEntry();
 
-/// A non-interactive section header. Rendered in uppercase on both paths.
+/// A non-interactive section header: uppercase on the touch paths, sentence case
+/// under a pointer.
 class const PregoMenuLabel({required final String text}) extends PregoMenuEntry;
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
@@ -397,12 +399,12 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
       builder: (context, instant, open) => MaterialUiCompatibilityBridge(
         child: CueModalTransition(
           barrierColor: Colors.transparent,
-          motion: switch ((pointer, instant)) {
+          motion: switch ((pointer, instant || prefersReducedMotion(context))) {
             (true, true) => CueMotion.none,
             (true, false) => const CueMotion.curved(pregoPointerEnterDuration, curve: pregoPointerEnterCurve),
             (false, _) => const Spring.smooth(),
           },
-          reverseMotion: switch ((pointer, instant)) {
+          reverseMotion: switch ((pointer, instant || prefersReducedMotion(context))) {
             (true, true) => CueMotion.none,
             (true, false) => const CueMotion.easeOut(Duration(milliseconds: 90)),
             (false, _) => const Spring.snappy(),

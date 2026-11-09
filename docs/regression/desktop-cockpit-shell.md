@@ -26,7 +26,7 @@ The main pane hosts one full-width routed page.
 - The sidebar's footer is one 44-point row: the computer row, ending in an up-and-down picker glyph, then Settings,
   with the bridge recovery card above it when one applies. Refresh sits beside the project filter at the head of the
   list. The session list clips its rows' highlights, so a highlighted row scrolled under the section above
-  never shows through it, and rows ignore hover while the list scrolls.
+  never shows through it.
 - The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
   while the app follows it) and again on every change, because a host can only be forced light or dark.
   Chrome and content therefore never disagree, including after the system switches appearance while the
@@ -198,9 +198,9 @@ The main pane hosts one full-width routed page.
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
   directly. Mark unread always sends unread,
   whatever local state says, and returns to the home; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
-  elsewhere. The transcript and the composer sit in two separately sized centred columns, the transcript
-  about 960 pt wide and the composer, its pills and the needs-you cards about 760 pt, both centred in the
-  same pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
+  elsewhere. The transcript, the composer, its pills and the needs-you cards share one centred column about
+  620 pt wide, centred in the
+  pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
   that column's margin instead of clipping it. The transcript column stays narrow enough that a revealed
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
@@ -359,6 +359,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, footer anchoring,
   outside/Escape dismissal, preserved main pane.
+- Pointer dictation: the mic starts listening with the composer's geometry stable, Enter sends, Esc cancels, the
+  pencil keeps the words, Stop stays on a running session, and a failed transcription offers Retry and Discard
+  (`prompt_input_pointer_voice_test.dart`).
 - Sidebar geometry open and hidden: flush with the window, main-pane offset, the edge handle and its absence while
   hidden; the toggle's fixed place on the lights' line and the room a page toolbar leaves it.
 - Unified macOS title bar: the title bar style per platform, the toggle and word on the lights' line in both

@@ -186,12 +186,7 @@ class const _PregoDialogFrame({
       shadowColor: Colors.black.withValues(alpha: prego.colors.brightness == .dark ? 1 : 0.4),
       alignment: anchorsTop ? Alignment.topCenter : null,
       insetPadding: anchorsTop
-          ? EdgeInsets.fromLTRB(
-              PregoSpacing.x4l,
-              MediaQuery.sizeOf(context).height * 0.2,
-              PregoSpacing.x4l,
-              PregoSpacing.x4l,
-            )
+          ? const EdgeInsets.all(PregoSpacing.x4l).copyWith(top: MediaQuery.sizeOf(context).height * 0.2)
           : const EdgeInsets.all(PregoSpacing.x4l),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(

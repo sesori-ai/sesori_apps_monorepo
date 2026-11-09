@@ -84,12 +84,12 @@ class const PregoGroupedRowPosition({super.key, required final bool isLast, requ
   bool updateShouldNotify(PregoGroupedRowPosition oldWidget) => isLast != oldWidget.isLast;
 }
 
-/// A settings row (Figma "Row"): optional 20px leading glyph, `text-md` title,
+/// A settings row (Figma "Row"): optional 20px leading glyph (16px under a pointer), `text-md` title,
 /// optional `text-xs` subtitle, and a trailing slot (chevron, switch, …).
 class const PregoGroupedRow({
   super.key,
 
-  /// Leading glyph rendered at 20px in the tertiary text colour. Ignored when
+  /// Leading glyph rendered at 20px, 16px under a pointer, in the tertiary text colour. Ignored when
   /// [leading] is provided.
   final IconData? icon,
 
