@@ -26,8 +26,10 @@ content the transcript renders live and after reload.
   that answer is still unknown. Files picks are routed like a drop: on iOS
   through the system document picker's copies, and on Android through the
   app's own document picker, which copies only files of at most 50 MB into the
-  app's cache (cleared at each pick) and counts the rest in the over-budget
-  notice without reading them. A gallery photo keeps its own name; one that
+  app's cache (cleared at each pick or dismissal) and counts the rest in the
+  over-budget notice. A file whose reported size is over 50 MB is never opened;
+  one of unknown size is read only until it passes 50 MB, then dropped. A
+  gallery photo keeps its own name; one that
   image_picker hands over under its own copy name (always on iOS, and on
   Android when the photo has no display name) is named `photo.<ext>`.
   Shared core validates picked or clipboard bytes by raster signature and the
@@ -308,8 +310,9 @@ account-level rejection without changing the descriptor's capability claim.
 - A copied web link pastes as a path, or a Finder copy pastes as the file's
   icon or name instead of the file.
 - The mobile plus offers Files where the bridge doesn't save uploads, or opens
-  the menu when only Photos applies; an Android Files pick of a file over
-  50 MB is copied, read, or crashes the app instead of getting the notice; a
+  the menu when only Photos applies; an Android Files pick of a file reported
+  over 50 MB is copied, opened, or crashes the app instead of getting the
+  notice, or one of unknown size is read past 50 MB or kept; a
   staged photo is labelled with image_picker's `image_picker_<id>` name.
 - An image above the downscale threshold is staged unshrunk although it could
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a

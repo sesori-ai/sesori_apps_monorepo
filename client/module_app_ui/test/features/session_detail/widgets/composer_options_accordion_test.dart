@@ -307,6 +307,31 @@ void main() {
     expect(picked, [ComposerPickSource.files, ComposerPickSource.photos]);
   });
 
+  testWidgets("an open Photos / Files menu stops picking once actions are disabled", (tester) async {
+    final picked = <ComposerPickSource>[];
+    Future<void> pump({required bool actionsEnabled}) => _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: true,
+      actionsEnabled: actionsEnabled,
+      showAttachImage: true,
+      attachSources: const [ComposerPickSource.photos, ComposerPickSource.files],
+      onAttach: picked.add,
+      onSlashCommandsTap: () {},
+    );
+    await pump(actionsEnabled: true);
+    await tester.tap(_tooltip("Attach image"));
+    await tester.pumpAndSettle();
+    expect(find.text("Files"), findsOneWidget);
+
+    // Recording starts while the menu is open.
+    await pump(actionsEnabled: false);
+    await tester.tap(find.text("Files"), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(picked, isEmpty);
+  });
+
   testWidgets("an attach action whose support is unknown holds its place inert", (tester) async {
     var commandPicks = 0;
     await _pumpAccordion(
