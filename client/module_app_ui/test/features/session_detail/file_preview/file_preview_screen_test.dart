@@ -264,7 +264,7 @@ void main() {
       expect(_spanWithText(tester, "beta"), isNotNull);
     });
 
-    testWidgets("its close chevron is as bright as the app's other back buttons", (tester) async {
+    testWidgets("colours its header buttons like the app's other screens", (tester) async {
       await _pumpScreen(
         tester,
         reference: const FileReference(absolutePath: "/repo/README.md", line: null),
@@ -274,9 +274,10 @@ void main() {
       final colors = PregoDesignSystem.light.colors;
       Color? iconColor(Key key) =>
           IconTheme.of(tester.element(find.descendant(of: find.byKey(key), matching: find.byType(Icon)))).color;
-      // Like every back button and the image viewer's close button. The source
-      // toggle takes the theme's quiet icon-button colour, like the Copy button.
+      // Like every back button and the image viewer's close button.
       expect(iconColor(const Key("file-preview-close")), colors.textPrimary);
+      // Like the Copy button beside it.
+      expect(iconColor(const Key("file-preview-source-toggle")), colors.textSecondary);
     });
 
     testWidgets("renders Markdown and toggles to its source", (tester) async {

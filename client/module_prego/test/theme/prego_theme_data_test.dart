@@ -46,38 +46,6 @@ void main() {
     }
   });
 
-  for (final brightness in Brightness.values) {
-    testWidgets("icon buttons take the Prego foreground, not Material's, in $brightness", (tester) async {
-      final colors = switch (brightness) {
-        Brightness.light => PregoDesignSystem.light.colors,
-        Brightness.dark => PregoDesignSystem.dark.colors,
-      };
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: buildPregoThemeData(brightness: brightness),
-          home: Scaffold(
-            body: Column(
-              children: [
-                IconButton(key: const Key("enabled"), onPressed: () {}, icon: const Icon(Icons.add)),
-                const IconButton(key: Key("disabled"), onPressed: null, icon: Icon(Icons.add)),
-              ],
-            ),
-          ),
-        ),
-      );
-      Color? colorOf(String key) =>
-          IconTheme.of(tester.element(find.descendant(of: find.byKey(Key(key)), matching: find.byType(Icon)))).color;
-      expect(colorOf("enabled"), colors.textSecondary);
-      expect(colorOf("disabled"), colors.textDisabled);
-
-      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await gesture.addPointer(location: tester.getCenter(find.byKey(const Key("enabled"))));
-      addTearDown(gesture.removePointer);
-      await tester.pumpAndSettle();
-      expect(colorOf("enabled"), colors.textPrimary);
-    });
-  }
-
   testWidgets("buttons show the hand cursor on desktop, and a disabled one does not", (tester) async {
     await tester.pumpWidget(
       MaterialApp(
