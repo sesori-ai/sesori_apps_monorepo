@@ -242,9 +242,14 @@ void main() {
             "env": {"ANTHROPIC_BASE_URL": " https://api.anthropic.com "},
           },
         );
+        final caseVariant = await inspectLoggedOut(
+          environment: const {"ANTHROPIC_BASE_URL": "HTTPS://API.Anthropic.COM"},
+          settings: null,
+        );
 
         _expectNonReady<PluginSetupAuthenticationRequired>(fromEnvironment);
         _expectNonReady<PluginSetupAuthenticationRequired>(fromSettings);
+        _expectNonReady<PluginSetupAuthenticationRequired>(caseVariant);
       });
 
       test("lets user settings override the environment like the CLI does", () async {
@@ -269,6 +274,17 @@ void main() {
         final status = await inspectLoggedOut(
           environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
           settings: '{"env": {"ANTHROPIC_AUTH_TOKEN": "private-token"',
+        );
+
+        expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));
+      });
+
+      test("falls back to the environment when user settings cannot be read", () async {
+        Directory("${configDirectory.path}${Platform.pathSeparator}settings.json").createSync();
+
+        final status = await inspectLoggedOut(
+          environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
+          settings: null,
         );
 
         expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.319"));

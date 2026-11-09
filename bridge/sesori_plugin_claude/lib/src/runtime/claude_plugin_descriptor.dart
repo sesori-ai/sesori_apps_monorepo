@@ -17,6 +17,7 @@ import "../claude_plugin_impl.dart";
 import "../foundation/claude_login_environment.dart";
 import "../repositories/claude_authentication_repository.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
+import "../repositories/claude_base_url_repository.dart";
 import "../repositories/claude_mcp_authentication_repository.dart";
 import "../repositories/claude_mcp_login_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
@@ -222,7 +223,7 @@ final class const ClaudePluginDescriptor({
         // A gateway behind a custom base URL owns authentication, so the CLI
         // reports "not logged in" while working through it. A real gateway
         // auth failure still surfaces at turn time as authentication required.
-        false when ClaudeSettingsApi(environment: environment).usesCustomBaseUrl() => PluginSetupReady.versioned(
+        false when _baseUrls(environment: environment).usesCustomBaseUrl() => PluginSetupReady.versioned(
           runtimeVersion: runtimeVersion,
         ),
         false => PluginSetupAuthenticationRequired.versioned(
@@ -326,7 +327,7 @@ final class const ClaudePluginDescriptor({
         ),
       ),
       // Read at failure time, so a gateway configured after start still counts.
-      usesCustomBaseUrl: ClaudeSettingsApi(environment: host.environment).usesCustomBaseUrl,
+      usesCustomBaseUrl: _baseUrls(environment: host.environment).usesCustomBaseUrl,
       transcripts: ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: host.environment),
       ),
@@ -367,6 +368,11 @@ final class const ClaudePluginDescriptor({
     final configured = config.value(binOption)?.trim();
     return configured == null || configured.isEmpty ? defaultBinary : configured;
   }
+
+  static ClaudeBaseUrlRepository _baseUrls({required Map<String, String> environment}) => ClaudeBaseUrlRepository(
+    settings: ClaudeSettingsApi(environment: environment),
+    environment: environment,
+  );
 
   static SemanticVersion? _parseVersion(String output) {
     final match = RegExp(r"(?:^|\s)(\d+\.\d+\.\d+)(?:\s|$)").firstMatch(output);
