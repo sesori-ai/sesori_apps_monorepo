@@ -4,12 +4,14 @@
 
 Images move in both directions of a session: staged in the composer and sent with
 a prompt, and produced by a backend as generated images, tool output, or message
-content the transcript renders live and after reload.
+content the transcript renders live and after reload. Other files go one way:
+staged in the composer for a bridge on another computer, which saves them and
+gives the agent their path.
 
 ## Required Behavior
 
 - The shared composer actions pill opens from its chevron to show the supported
-  image-attachment action as a plus and the slash-command picker. Open actions
+  attach action as a plus and the slash-command picker. Open actions
   replace the chevron, without a manual collapse control, and choosing either
   action automatically collapses the pill. Both themes use the flat bordered
   44pt surface; command-only harnesses retain a single centred action. Recording
@@ -19,9 +21,9 @@ content the transcript renders live and after reload.
   Under reduced motion the pill opens and folds at once.
 - The shared composer offers staging only while the backend declares prompt
   attachment support (images) or the bridge saves uploads (files), and only
-  when its product shell supplies a real picker.
-  Desktop opens a native file dialog for any files, routed like a drop
-  (below). On mobile the plus opens a Photos / Files menu where the bridge
+  when its product shell supplies a real picker. While neither answer is known
+  yet, the plus holds its place, disabled. Desktop opens a native file dialog
+  for any files, routed like a drop (below). On mobile the plus opens a Photos / Files menu where the bridge
   saves uploads, and the gallery straight away anywhere else, including while
   that answer is still unknown. Files picks are routed like a drop: on iOS
   through the system document picker's copies, and on Android through the
@@ -29,11 +31,12 @@ content the transcript renders live and after reload.
   app's cache (cleared at each pick or dismissal) and counts the rest in the
   over-budget notice. A file whose reported size is over 50 MB is never opened;
   one of unknown size is read only until it passes 50 MB, then dropped. A
-  gallery photo keeps its own name; one that
-  image_picker hands over under its own copy name (always on iOS, and on
-  Android when the photo has no display name) is named `photo.<ext>`.
-  Shared core validates picked or clipboard bytes by raster signature and the
-  outbound size bound rather than trusting an extension or platform MIME.
+  gallery photo keeps its own name; one that image_picker hands over under its
+  own copy name (always on iOS, and on Android when the photo has no display
+  name) is named `photo.<ext>`.
+  Shared core validates clipboard bytes, and picked photos it stages as images,
+  by raster signature and the outbound size bound rather than trusting an
+  extension or platform MIME.
   Before the size bound applies, shared core shrinks any staged image above
   1 MiB except a GIF, which shared core leaves untouched so it keeps its
   animation: off the UI isolate, it bakes the EXIF orientation, resizes the
@@ -56,7 +59,8 @@ content the transcript renders live and after reload.
   when it reads the format, and otherwise gives the unsupported-format notice.
   Staged images and files are memory-only. Staged images are cleared when the
   backend stops supporting attachments and staged files when the bridge stops
-  saving uploads, and both when the session changes, or submission succeeds or
+  saving uploads; an unknown answer clears nothing but holds Send until it
+  resolves. Both go when the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot
   snapshot into restoration. They never persist in a draft and travel inline
   within the staged-attachment size bound so the request fits the relay's message
@@ -69,14 +73,16 @@ content the transcript renders live and after reload.
   corners, a subtle border, and a 14px close badge whose 24px target stays in
   the tile's corner in both themes. Tapping the rest of the tile opens the
   staged image in the full-screen viewer, view-only, on the new session page
-  too. New-session and existing-session composers keep one 52px-high
+  too. A staged file uses the same tile with a file glyph over its extension,
+  its name as tooltip and accessible label, and the close badge; it doesn't
+  open. New-session and existing-session composers keep one 52px-high
   horizontal row with 8px gaps. Overflow scrolls, with edge fades indicating
-  hidden images in either direction. The leading fade appears after scrolling
+  hidden tiles in either direction. The leading fade appears after scrolling
   and clears on returning to the start; the trailing fade clears at the end.
-  Each endpoint image and remove action is then fully visible, and both fades
-  disappear when the remaining images fit.
-  Removing one image preserves the remaining image identities and send bytes;
-  removing all images removes the strip.
+  Each endpoint tile and remove action is then fully visible, and both fades
+  disappear when the remaining tiles fit.
+  Removing one attachment preserves the remaining identities and send bytes;
+  removing all of them removes the strip.
 - On desktop, files dragged anywhere over the session-detail pane, the
   new-session pane or the home pane show a full-pane "Drop files to add
   them to your prompt" hint and go to that pane's composer, and to exactly one
@@ -85,29 +91,35 @@ content the transcript renders live and after reload.
   recording mid-drag. A drop on a pane with no composer gets a "Files can't be
   added here" notice; while the composer records or transcribes there is no
   hint, and a drop gets "Finish recording before adding files". A pane under a
-  pushed page or a dialog takes no drops. Picked and dropped paths share one
-  rule in shared core: a supported raster image (by its header bytes) is staged
-  while the backend accepts attachments and, once downscaled, it fits the rest
-  of the prompt's 50 MB budget. A file above 50 MB is never read in full.
-  Anything else, including folders and images that are unsupported or over
-  budget, is typed into the prompt at the caret as its absolute path when the
-  active bridge runs on this computer; paths with whitespace are quoted and
-  separated by spaces. On a bridge on another computer that saves uploads, any
-  other file that fits the rest of the budget stages as a file tile with its
-  original bytes and name (a file glyph over its extension, the name as its
-  tooltip and label); a folder is not added. On an older bridge on another
-  computer nothing but a stageable image is added. Either way one notice has a
-  line per reason (file, folder, a path that couldn't be read, images the
-  agent doesn't take, the 50 MB budget), each counting the files turned away for it. This works regardless of
-  backend attachment support. The plus action is offered while the backend
-  takes images or the bridge saves uploads. A pasted or picked image for a
-  backend without images (Grok) stages as a file, named after the picked file
-  or `pasted-image.<ext>`, when the bridge saves uploads. A staged file is sent
-  as `application/octet-stream`, so the bridge saves it. When the backend stops
-  taking images, staged images are cleared, and when the bridge stops saving
-  uploads, staged files are; an unknown answer clears nothing. Images and files
-  from several picks, pastes and drops stage in the order they were added, even when an earlier one takes longer to downscale. A late
-  result never lands in a composer that moved to another draft.
+  pushed page or a dialog takes no drops.
+- Picked and dropped paths share one rule in shared core, whatever the
+  backend's attachment support. Images and files share one 50 MB budget per
+  message, and each path takes the first of these that applies:
+  1. A supported raster image (by its header bytes) is staged as an image
+     while the backend accepts attachments and, once downscaled, it fits the
+     rest of the budget. A file above 50 MB is never read for this.
+  2. Anything else, including folders and images that are unsupported or over
+     budget, is typed into the prompt at the caret as its absolute path when
+     the active bridge runs on this computer; paths with whitespace are quoted
+     and separated by spaces.
+  3. On a bridge on another computer that saves uploads, any other regular
+     file stages as a file, with its original bytes and name and no
+     downscaling, when it fits the rest of the budget. Its size is checked
+     before it is read.
+  4. Anything else is not added: a folder, a file over the budget, a path that
+     can't be read, and, on an older bridge on another computer, anything but
+     a stageable image.
+
+  One notice has a line per reason (file, folder, a path that couldn't be
+  read, images the agent doesn't take, the 50 MB budget), each counting the
+  files turned away for it. A pasted or picked image for a backend without
+  images (Grok) stages as a file with its original bytes, named after the
+  picked file or `pasted-image.<ext>`, when the bridge saves uploads. A staged
+  image is sent with its sniffed image type, and a staged file as
+  `application/octet-stream`, so the bridge saves it. Images and files from
+  several picks, pastes and drops stage in the order they were added, even
+  when an earlier one takes longer to downscale. A late result never lands in
+  a composer that moved to another draft.
 - On desktop, a paste takes files copied in Finder or Explorer first, then an
   image, then text. Copied files go through the drop rule above, whatever the
   backend's attachment support, so a Finder copy of files that still exist
@@ -118,10 +130,10 @@ content the transcript renders live and after reload.
   no longer exists, and when the clipboard's text is a link to anything other
   than a file: macOS reports a copied `https://example.com/` as the path `/`,
   and that paste stays text. Mobile paste takes only image bytes and text.
-- Send pressed while a pick, paste or drop is still preparing an image waits
-  for it: the Send button shows a spinner and further presses do nothing, then
-  the prompt goes out once, with every image that staged. An image that fails
-  to stage gets its usual notice and the prompt goes without it. Moving to
+- Send pressed while a pick, paste or drop is still preparing an attachment
+  waits for it: the Send button shows a spinner and further presses do
+  nothing, then the prompt goes out once, with every attachment that staged.
+  One that fails to stage gets its usual notice and the prompt goes without it. Moving to
   another session or draft while Send waits abandons that send.
 - Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
   Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
@@ -136,8 +148,8 @@ content the transcript renders live and after reload.
   settlement. A failed current-route launch restores those attachments together
   with text/voice/command intent before the composer remounts; failure after route
   exit never restores them. Reconnect and options refresh cannot erase a pending
-  one-shot restoration. The submitting surface keeps its staged-image previews
-  through local sending, acceptance, bridge queuing, and dispatch,
+  one-shot restoration. The submitting surface keeps its staged previews, with
+  file tiles for files, through local sending, acceptance, bridge queuing, and dispatch,
   including fast handoffs that skip intermediate UI frames and scrolling away
   and back. The prompt queue owns these memory-only references with a 50 MB
   aggregate budget per session, evicting the oldest previews for newer ones.
@@ -233,21 +245,25 @@ content the transcript renders live and after reload.
   only when its mime starts with `image/` and the plugin takes attachments.
   Every other one (any file, or an image for Grok) is saved as
   `~/.sesori/uploads/<sessionId>/<YYYY-MM-DD>-<random>/<sanitized name>`,
-  owner-only, and replaced in the same position by a visible
+  owner-only on POSIX, and replaced in the same position by a visible
   ``Attached file "<name>": `<path>` `` note, which a new session's live user
-  message shows too. A repeated accepted prompt saves nothing again, and a
+  message shows too, and whose path opens the file preview
+  ([file previews](file-previews.md)) when it reads as one. A save that fails removes its folder and
+  fails the send visibly. A repeated accepted prompt saves nothing again, and a
   command or a create with a command saves nothing. Deleting a session from
   Sesori removes its uploads folder, and each save starts a best-effort sweep
-  of file folders dated more than 30 days before it.
+  of file folders dated more than 30 days before it. An accepted prompt with
+  staged files is reported as `prompt_files_sent` ([analytics](analytics.md)).
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; an oversized PNG is staged as a JPEG at most 2048 px on its long side with transparency on white and orientation applied, while a small image and a GIF stay untouched; Send pressed while an image is still being prepared waits with a spinner, sends once with it, goes without an image that fails to stage, and is abandoned when the draft changes; an Android pick hands a GIF over untouched, re-encodes any other photo above 2048 px on its long side, or in a format shared core can't read, through the platform decoder to a JPEG at most 2048 px on its long side, and hands one the platform can't decode to shared core, which turns it away only when it can't read the format either; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
-| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget and local versus remote bridges; dropped paths reach the composer as staged images and caret text; copied files route only when every path exists and paste ahead of the clipboard's image and text, whatever the backend's attachment support, and the desktop clipboard adapter reads a copied web link as no files; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). Automated bridge, no plugin: the bridge advertises file uploads; an image goes inline to a plugin that takes images, and every other `file_data` part is saved owner-only (700 folders, 600 files) under the session's folder and replaced in place by its note; a repeated accepted prompt and a command save nothing; a create saves under the id it commits, and joins the notes into its live user message; saved names are sanitized and never escape their folder; deleting a session family removes every member's uploads whatever `deleteSessionFolder` says; the sweep removes only folders dated more than 30 days back and skips unparseable ones. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; an oversized PNG is staged as a JPEG at most 2048 px on its long side with transparency on white and orientation applied, while a small image and a GIF stay untouched; Send pressed while an image is still being prepared waits with a spinner, sends once with it, goes without an image that fails to stage, and is abandoned when the draft changes; an Android pick hands a GIF over untouched, re-encodes any other photo above 2048 px on its long side, or in a format shared core can't read, through the platform decoder to a JPEG at most 2048 px on its long side, and hands one the platform can't decode to shared core, which turns it away only when it can't read the format either; the mobile picker opens Photos or Files by source and passes on the Android document picker's oversized count, and that picker copies only files of at most 50 MB, never opening one reported larger and dropping one of unknown size once it passes 50 MB; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
+| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. Shared routing of picked and dropped paths covers images, files, folders, quoted paths, budget, local versus remote bridges and older bridges, and image bytes for a backend without images stage as a file; staged images and files can each be delivered only while their capability is known to be supported, and only a known `false` clears them; staged, queued and launch surfaces show file tiles; the plus is offered and the mobile Photos / Files menu opens only where a source applies; dropped paths reach the composer as staged images and caret text; copied files route only when every path exists and paste ahead of the clipboard's image and text, whatever the backend's attachment support, and the desktop clipboard adapter reads a copied web link as no files; the desktop pane hint and delivery appear only while a composer listens, to the last one only; desktop adapter coverage verifies file-pick and file-save success and cancellation, and the shared `module_app_ui` adapter coverage verifies pasteboard reads and writes and the forwarded share payload (bytes, MIME type, file name, and popover origin). Automated bridge, no plugin: the bridge advertises file uploads; an image goes inline to a plugin that takes images, and every other `file_data` part is saved owner-only (700 folders, 600 files) under the session's folder and replaced in place by its note; a repeated accepted prompt and a command save nothing; a create saves under the id it commits, and joins the notes into its live user message; saved names are sanitized and never escape their folder; deleting a session family removes every member's uploads whatever `deleteSessionFolder` says; the sweep removes only folders dated more than 30 days back and skips unparseable ones. |
+| L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. Client end to end on the iOS simulator against a bridge on another computer: a Photos image to a harness that takes images still goes inline; a Files PDF and a `.txt` reach the agent, which quotes them, and the noted path opens the preview; a 49 MB file sends while a 51 MB file gets the notice; deleting that session from the app removes its folder under `~/.sesori/uploads`. On macOS desktop against a bridge it doesn't supervise, so it counts as remote: a dropped PDF stages as a file tile, sends, and the agent reads it; a Finder copy of two files pastes as two staged files, and as paths with the supervised local bridge active; a copied `https://example.com/` pastes as text. On Android: a small PDF stages, multi-select works, and a video over 50 MB gets the notice without a crash. Every supporting production plugin, from the iOS simulator: a saved `.txt` holding a known sentence is quoted back, and any read prompt is recorded in `docs/HARNESS_CAPABILITIES.md`.
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
-| L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
+| L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment or file upload support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
 ## Exploration Guidance
 
@@ -260,6 +276,11 @@ redundant raw image aliases, path-only metadata, mixed text/image output and
 live versus replay. For Copilot,
 vary a vision-capable selected model, a model that rejects images, and an
 account-level rejection without changing the descriptor's capability claim.
+For files, vary the source (picker, drop, copied files), the type (PDF, text,
+a name without an extension, an image for Grok), names with spaces, quotes or
+non-Latin script, sizes either side of the 50 MB budget alone and together
+with staged images, and the bridge (on this computer, on another computer, or
+older than file uploads).
 
 ## Failure Signals
 
@@ -272,9 +293,11 @@ account-level rejection without changing the descriptor's capability claim.
   the bridge queue; retained preview bytes exceed the session's aggregate budget.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
-- A non-image `file_data` part reaches a plugin; a saved name escapes its
-  folder or a saved file isn't owner-only; a new session's files land under an
-  id other than its own; a deleted session's uploads folder stays.
+- A `file_data` part other than an image for a harness that takes images
+  reaches a plugin; a saved name escapes its folder or a saved file isn't
+  owner-only; the note is missing from a new session's live user message; a
+  new session's files land under an id other than its own; a deleted
+  session's uploads folder stays.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload
   crosses the plugin/client boundary; a raw parser error reaches a client payload
   or user-facing error, or local diagnostics discard useful parser error and
@@ -297,16 +320,16 @@ account-level rejection without changing the descriptor's capability claim.
   crop beyond the full image's fitted bounds during the Hero flight, jumps when
   the original appears, resets zoom or drag, enables actions before original
   decode succeeds, or retains original bytes/provider cache entries after closing.
-- Staged previews wrap, grow the composer with the image count, hide the final
-  remove action behind the fade, remove a different image after scrolling, or
-  change the staged bytes sent to the backend.
+- Staged previews wrap, grow the composer with the attachment count, hide the
+  final remove action behind the fade, remove a different attachment after
+  scrolling, or change the staged bytes sent to the backend.
 - A dropped or picked file is lost without a notice, inserted twice, read in
-  full when it is not a stageable image, typed as a path for a bridge on
-  another computer, or staged into a composer other than the pane's; a drop
-  over a pane without a ready composer shows the hint or passes without a
-  notice; a notice for mixed reasons names only one of them; images stage out
-  of the order they were added; or a pane under another page or a dialog takes
-  the drop.
+  full when it can't fit the budget or will only be typed as a path, typed as
+  a path for a bridge on another computer, staged as a file for an older
+  bridge, or staged into a composer other than the pane's; a drop over a pane
+  without a ready composer shows the hint or passes without a notice; a notice
+  for mixed reasons names only one of them; attachments stage out of the order
+  they were added; or a pane under another page or a dialog takes the drop.
 - A copied web link pastes as a path, or a Finder copy pastes as the file's
   icon or name instead of the file.
 - The mobile plus offers Files where the bridge doesn't save uploads, or opens
@@ -318,13 +341,14 @@ account-level rejection without changing the descriptor's capability claim.
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a
   transparent image gets a black background, a downscale blocks the UI, or a
   paste that settles after its composer changed stages into the new one.
-- Send pressed while an image is still being prepared goes out without it,
+- Send pressed while an attachment is still being prepared goes out without it,
   goes out twice, shows no spinner while it waits, or sends into a session the
   user has since left.
 - The composer offers or sends images to a backend without attachment support,
   or files to a bridge that doesn't save uploads, retains staged images or
-  files after switching to such a target, clears them while a capability is
-  still unknown, or the viewer acts on the wrong image.
+  files after switching to such a target, clears staged files when a Grok
+  session rebuilds, clears either while a capability is still unknown, or the
+  viewer acts on the wrong image.
 - Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
   image, diverges between live and replay, or bypasses existing count/byte/type limits.
 - Copilot advertises images but drops the ACP image part, accepts it with the
@@ -348,17 +372,30 @@ account-level rejection without changing the descriptor's capability claim.
   covered by the remote-attachment guarantee.
 - Antigravity native prompt-image acceptance and Google-generated image behavior remain unverified; account or
   model rejection must stay visible and does not justify reading path-only provider output.
-- Only images reach an older bridge on another computer: a non-image file
-  dropped or picked there is turned away with a notice. Folders never reach a
-  bridge on another computer.
+- Attachments are limited to 50 MB per message, images and files together, so
+  a larger file can't be sent. Folders never reach a bridge on another
+  computer.
+- An image the harness takes is always sent inline, shrunk under the
+  downscale rule above when that applies; its untouched original can't be
+  sent as a file instead.
+- An older bridge doesn't save uploads. On another computer only images reach
+  it, and any other file dropped or picked there is turned away with a notice.
+  On any older bridge the plus follows backend attachment support, so a
+  backend without it offers no picker even on a local bridge, where drop still
+  inserts paths.
 - Saved prompt files are removed with their session when it is deleted from
   Sesori; that removal is best-effort. Age cleanup is a best-effort sweep that
   runs only after a later save on the same bridge, so a file can stay well past
-  30 days when nothing else is uploaded. Files of a create that bound to an
-  existing session, of a failed create, of a failed send that was retried, or
-  of a session removed outside Sesori go only by age. Some harnesses ask before
-  reading outside the session's working directory (see
-  `docs/HARNESS_CAPABILITIES.md`).
+  30 days when nothing else is uploaded, and a session that runs past 30 days
+  loses its older files. Files of a create that bound to an existing session,
+  of a failed create, of a failed send that was retried, or of a session
+  removed outside Sesori go only by age.
+- Saved files live outside the session's working directory, so some harnesses
+  ask before reading them (see `docs/HARNESS_CAPABILITIES.md`).
+- The noted path opens the file preview only when it reads as a file path: a
+  saved name without an extension holding a letter (`Makefile`, `LICENSE`, the
+  `attachment` fallback) or a bridge home folder with whitespace in its path
+  leaves it plain inline code.
 - Pasting files copied in a file manager works on desktop only. On Windows and
   Linux it is covered only by adapter tests.
 - Mobile has no drop. On iOS a gallery photo is always named `photo.<ext>`,
@@ -367,9 +404,6 @@ account-level rejection without changing the descriptor's capability claim.
 - An Android GIF above the 50 MB budget is turned away as too large, since
   it is never shrunk. HEIF photos need Android 9 (API 28) or later; on Android
   7 and 8 they get the unsupported-format notice.
-- On an older bridge, the plus action follows backend attachment support, so a
-  backend without it offers no picker even on a local bridge, where drop still
-  inserts paths.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and
   account entitlement; a visible upstream rejection is expected coverage, not a
@@ -383,10 +417,12 @@ account-level rejection without changing the descriptor's capability claim.
 
 ## Sources
 
-Shared attachment variants, budgets, safe-URI rules, and prompt part shapes;
+Shared attachment variants, budgets, safe-URI rules, prompt part shapes and the
+file upload flag; the bridge's prompt part delivery service, prompt upload
+repository and session deletion hook under `bridge/app`;
 per-plugin image mappers, including Cursor generated-image reading, Antigravity raw-alias normalization, the shared
 ACP image mapping used by Antigravity and Copilot, and descriptor capability declarations;
-shared client composer validation, attachment cache, loader, viewer, and
+shared client composer validation and attachment routing, attachment cache, loader, viewer, and
 surface tests under `client/module_core` and `client/module_app_ui`; mobile
 picker (including the Android `DocumentPickerService.kt` and its JVM tests), voice, and keyboard composition under `client/app`; desktop picker,
 file, copied-file clipboard and session-detail adapters under `client/desktop`; and the shared
