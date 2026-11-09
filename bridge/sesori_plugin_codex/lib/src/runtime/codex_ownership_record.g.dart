@@ -6,19 +6,22 @@ part of 'codex_ownership_record.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexOwnershipRecord _$CodexOwnershipRecordFromJson(Map json) => _CodexOwnershipRecord(
-  ownerSessionId: json['ownerSessionId'] as String,
-  codexPid: (json['codexPid'] as num).toInt(),
-  codexStartMarker: json['codexStartMarker'] as String?,
-  codexExecutablePath: json['codexExecutablePath'] as String,
-  codexCommand: json['codexCommand'] as String,
-  codexArgs: (json['codexArgs'] as List<dynamic>).map((e) => e as String).toList(),
-  port: (json['port'] as num).toInt(),
-  bridgePid: (json['bridgePid'] as num).toInt(),
-  bridgeStartMarker: json['bridgeStartMarker'] as String?,
-  startedAt: DateTime.parse(json['startedAt'] as String),
-  status: $enumDecode(_$CodexOwnershipStatusEnumMap, json['status']),
-);
+_CodexOwnershipRecord _$CodexOwnershipRecordFromJson(Map json) =>
+    _CodexOwnershipRecord(
+      ownerSessionId: json['ownerSessionId'] as String,
+      codexPid: (json['codexPid'] as num).toInt(),
+      codexStartMarker: json['codexStartMarker'] as String?,
+      codexExecutablePath: json['codexExecutablePath'] as String,
+      codexCommand: json['codexCommand'] as String,
+      codexArgs: (json['codexArgs'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+      port: (json['port'] as num).toInt(),
+      bridgePid: (json['bridgePid'] as num).toInt(),
+      bridgeStartMarker: json['bridgeStartMarker'] as String?,
+      startedAt: DateTime.parse(json['startedAt'] as String),
+      status: $enumDecode(_$CodexOwnershipStatusEnumMap, json['status']),
+    );
 
 Map<String, dynamic> _$CodexOwnershipRecordToJson(
   _CodexOwnershipRecord instance,

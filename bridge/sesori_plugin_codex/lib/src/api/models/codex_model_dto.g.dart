@@ -6,10 +6,11 @@ part of 'codex_model_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexModelListResponseDto _$CodexModelListResponseDtoFromJson(Map json) => _CodexModelListResponseDto(
-  data: const CodexModelListConverter().fromJson(json['data']),
-  nextCursor: json['nextCursor'] as String?,
-);
+_CodexModelListResponseDto _$CodexModelListResponseDtoFromJson(Map json) =>
+    _CodexModelListResponseDto(
+      data: const CodexModelListConverter().fromJson(json['data']),
+      nextCursor: json['nextCursor'] as String?,
+    );
 
 _CodexModelDto _$CodexModelDtoFromJson(Map json) => _CodexModelDto(
   id: json['id'] as String?,
@@ -36,8 +37,9 @@ _CodexReasoningEffortOptionDto _$CodexReasoningEffortOptionDtoFromJson(
   description: json['description'] as String?,
 );
 
-_CodexModelServiceTierDto _$CodexModelServiceTierDtoFromJson(Map json) => _CodexModelServiceTierDto(
-  id: json['id'] as String?,
-  name: json['name'] as String?,
-  description: json['description'] as String?,
-);
+_CodexModelServiceTierDto _$CodexModelServiceTierDtoFromJson(Map json) =>
+    _CodexModelServiceTierDto(
+      id: json['id'] as String?,
+      name: json['name'] as String?,
+      description: json['description'] as String?,
+    );
