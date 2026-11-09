@@ -581,6 +581,60 @@ void main() {
         expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
         expect(cubit.canCreateSession, isTrue);
       });
+
+      test("Check setup that leaves the harness held back keeps its notice in place", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+        final pluginManagementService = stubbedPluginManagementService();
+        stubSetupCheck(service: pluginManagementService, onCheck: () {});
+
+        final cubit = buildCubit(pluginManagementService: pluginManagementService);
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+
+        await cubit.checkHarnessSetup();
+
+        expect(cubit.state.agentModelData?.plugin, blockedB);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
+      test("a saved choice held back preselects the default and keeps the saved choice", () async {
+        var cleared = false;
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            _pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, cleared ? pluginB : blockedB]),
+          ),
+        );
+        when(
+          () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
+        ).thenAnswer((_) async => "plugin-b");
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+
+        expect(cubit.state.agentModelData?.plugins, [pluginA, blockedB]);
+        expect(cubit.state.agentModelData?.plugin, pluginA);
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        verifyNever(
+          () => pluginPreferenceRepository.writePluginId(
+            bridgeId: any(named: "bridgeId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        );
+
+        // Once it runs again, the next new session preselects it.
+        cleared = true;
+        when(
+          () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-b")])));
+        final reopened = buildCubit();
+        addTearDown(reopened.close);
+        await _waitForComposer(reopened);
+        expect(reopened.state.agentModelData?.plugin, pluginB);
+      });
     });
 
     test("a harness the bridge leaves out of the list, as it does one never set up, is not offered", () async {

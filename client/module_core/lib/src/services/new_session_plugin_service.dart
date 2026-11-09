@@ -75,7 +75,7 @@ class NewSessionPluginService({
     if (bridgeId == null || currentSelectionBridgeId != bridgeId || currentSelectedPluginId == null) {
       return null;
     }
-    return plugins.firstWhereOrNull((plugin) => plugin.id == currentSelectedPluginId && plugin.isPickable);
+    return plugins.firstWhereOrNull((plugin) => plugin.id == currentSelectedPluginId && plugin.isRoutable);
   }
 
   Future<PluginMetadata?> _savedSelection({required String? bridgeId, required List<PluginMetadata> plugins}) async {
@@ -88,7 +88,7 @@ class NewSessionPluginService({
       return null;
     }
     if (savedPluginId == null) return null;
-    return plugins.firstWhereOrNull((plugin) => plugin.id == savedPluginId && plugin.isPickable);
+    return plugins.firstWhereOrNull((plugin) => plugin.id == savedPluginId && plugin.isRoutable);
   }
 }
 
@@ -97,6 +97,8 @@ extension PluginMetadataSelection on PluginMetadata {
 
   /// Whether the picker offers this harness: it can start a session, or the
   /// bridge held it back after a refused request, which picking it explains
-  /// in the composer's place with a way to check setup again.
+  /// in the composer's place with a way to check setup again. Discovery never
+  /// preselects a held-back harness; it falls back to the default instead, and
+  /// the saved preference stays so the harness comes back once it runs.
   bool get isPickable => isRoutable || failureBlock != null;
 }

@@ -154,7 +154,11 @@ class NewSessionCubit({
     unawaited(_loadProjectCapability());
   }
 
-  Future<void> _discoverPlugins() async {
+  /// Discovery preselects only a harness that runs. With
+  /// [keepsHeldBackSelection], a harness on screen that the bridge holds back
+  /// stays selected so its notice shows in place; opening or reloading the
+  /// screen falls back to another harness instead.
+  Future<void> _discoverPlugins({bool keepsHeldBackSelection = false}) async {
     final generation = ++_loadGeneration;
     ++_pluginListGeneration;
     final beforeDiscovery = state.agentModelData;
@@ -182,7 +186,12 @@ class NewSessionCubit({
               (beforeDiscovery?.backendScope ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null))
                   .transitionToDiscovered(bridgeId: data.bridgeId);
           _selectionTracker.applyBackendScopeTransition(transition: scopeTransition);
-          final selectedPlugin = data.selected;
+          final onScreenId = beforeDiscovery?.plugin?.id;
+          final heldBackOnScreen =
+              keepsHeldBackSelection && data.bridgeId == beforeDiscovery?.backendScope.lastIdentifiedBridgeId
+              ? data.plugins.firstWhereOrNull((plugin) => plugin.id == onScreenId && plugin.failureBlock != null)
+              : null;
+          final selectedPlugin = heldBackOnScreen ?? data.selected;
           final source = data.optionsSource;
           final retained =
               _canRetainOptions(
@@ -273,7 +282,7 @@ class NewSessionCubit({
           (plugin) => plugin.id == selectedId && plugin.isPickable && plugin.isRoutable == current.plugin?.isRoutable,
         );
         if (stillSelected == null || discovery.bridgeId != current.backendScope.lastIdentifiedBridgeId) {
-          await _discoverPlugins();
+          await _discoverPlugins(keepsHeldBackSelection: true);
           return;
         }
         if (const ListEquality<PluginMetadata>().equals(discovery.plugins, current.plugins)) return;
@@ -600,7 +609,7 @@ class NewSessionCubit({
     // A harness held back after a refused request becomes usable only through
     // the bridge's list, which a setup check that cleared it has updated.
     if (!plugin.isRoutable) {
-      await _discoverPlugins();
+      await _discoverPlugins(keepsHeldBackSelection: true);
       return;
     }
 
