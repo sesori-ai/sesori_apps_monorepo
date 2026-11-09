@@ -48,8 +48,7 @@ class const DesktopNewSessionView({
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
 }) extends StatelessWidget {
-  /// The session page's composer width: its column less the rows' side insets.
-  static const double maxContentWidth = desktopTranscriptWidth - 32;
+  static const double maxContentWidth = 760;
 
   @override
   Widget build(BuildContext context) {

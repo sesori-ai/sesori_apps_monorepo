@@ -473,7 +473,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                 if (isSending)
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: math.max(0, (constraints.maxWidth - chrome.transcriptWidth) / 2) + 16,
+                      horizontal: math.max(0, (constraints.maxWidth - chrome.maxContentWidth) / 2) + 16,
                     ),
                     child: composer,
                   ),

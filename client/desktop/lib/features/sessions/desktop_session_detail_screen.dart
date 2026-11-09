@@ -200,8 +200,9 @@ class const DesktopSessionDetailView({
   }
 
   /// Caps the composer, its pointer-picker pills and the needs-you cards above
-  /// them, at the transcript's own measure, so the page reads as one column.
-  static const double maxComposerWidth = desktopTranscriptWidth;
+  /// them. A text field and a pill row read as stretched long before body text
+  /// does, so they stay at the narrower measure.
+  static const double maxComposerWidth = 760;
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(

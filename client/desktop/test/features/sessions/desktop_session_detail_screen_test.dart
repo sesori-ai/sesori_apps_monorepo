@@ -537,7 +537,7 @@ void main() {
       expect(find.descendant(of: find.byType(ReadOnlyAgentModelPills), matching: find.byType(InkWell)), findsNothing);
     });
 
-    testWidgets("sits above a transcript column of the same measure", (tester) async {
+    testWidgets("sits above a transcript column centred wider than its own", (tester) async {
       await pumpPage(tester, session: _session);
 
       final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
@@ -548,8 +548,8 @@ void main() {
       final clip = find.ancestor(of: find.byType(SessionDetailLoadedView), matching: find.byType(ClipRect)).first;
       expect(tester.getRect(clip).top, toolbar.bottom);
       expect(list.topInset, 0);
-      // The transcript and the composer share one column, so the page reads as
-      // one measure, centred in the pane.
+      // The transcript reads in its own, wider column; the composer keeps the
+      // narrower one, both centred in the same pane.
       expect(list.horizontalInset, (1400 - desktopTranscriptWidth) / 2);
       expect(
         tester.getSize(find.byType(SessionDetailComposerControls)).width,
@@ -557,7 +557,7 @@ void main() {
       );
       expect(
         desktopTranscriptWidth,
-        DesktopSessionDetailView.maxComposerWidth,
+        greaterThan(DesktopSessionDetailView.maxComposerWidth),
       );
     });
 
