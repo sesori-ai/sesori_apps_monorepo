@@ -53,9 +53,22 @@ class const ChatLink({
   State<ChatLink> createState() => _ChatLinkState();
 }
 
+typedef _LabelFitKey = ({
+  String label,
+  double maxWidth,
+  TextStyle style,
+  TextScaler textScaler,
+  TextDirection textDirection,
+});
+
 class _ChatLinkState() extends State<ChatLink> {
+  static const double _iconGap = 4;
+
   late final _selection = _CopiesHrefSelectionDelegate(href: widget.href);
   bool _isPressed = false;
+
+  /// The label last fitted, and the inputs it was fitted for.
+  ({_LabelFitKey key, String shown})? _lastFit;
 
   @override
   void didUpdateWidget(covariant ChatLink oldWidget) {
@@ -71,6 +84,38 @@ class _ChatLinkState() extends State<ChatLink> {
 
   void _setPressed({required bool isPressed}) {
     if (_isPressed != isPressed) setState(() => _isPressed = isPressed);
+  }
+
+  /// The label as the link draws it: whole, or cut in the middle to fit
+  /// [maxWidth]. A label that fits costs one measure, and a rebuild at the
+  /// same width, such as a press, costs none.
+  String _fitLabel({required BuildContext context, required TextStyle style, required double maxWidth}) {
+    // The same resolution [Text] applies to its spans: bold text, then the
+    // span's own style, then the accessibility spacing overrides.
+    var base = DefaultTextStyle.of(context).style;
+    if (MediaQuery.boldTextOf(context)) base = base.merge(const TextStyle(fontWeight: FontWeight.bold));
+    final key = (
+      label: widget.presentation.label,
+      maxWidth: maxWidth,
+      style: withTextSpacingOverrides(context: context, style: base.merge(style)),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+    );
+    if (_lastFit case (key: final lastKey, :final shown) when lastKey == key) return shown;
+    final painter = TextPainter(textDirection: key.textDirection, textScaler: key.textScaler, maxLines: 1);
+    final shown = PregoEllipsis.middle.fit(
+      text: key.label,
+      maxWidth: maxWidth,
+      measure: (candidate) {
+        painter
+          ..text = TextSpan(text: candidate, style: key.style)
+          ..layout();
+        return painter.width;
+      },
+    );
+    painter.dispose();
+    _lastFit = (key: key, shown: shown);
+    return shown;
   }
 
   @override
@@ -105,17 +150,35 @@ class _ChatLinkState() extends State<ChatLink> {
               duration: const Duration(milliseconds: 100),
               child: SelectionContainer(
                 delegate: _selection,
-                child: Text.rich(
-                  TextSpan(
-                    style: style,
-                    children: [
-                      if (icon != null)
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Padding(padding: const EdgeInsetsDirectional.only(end: 4), child: icon),
+                // One line: Markdown forces every line of a paragraph to the
+                // strut's height, so a link that wrapped would spill below its
+                // paragraph. A long label loses its middle instead, keeping
+                // the end of a file name and its extension.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Text.rich(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    TextSpan(
+                      style: style,
+                      children: [
+                        if (icon != null)
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.only(end: _iconGap),
+                              child: icon,
+                            ),
+                          ),
+                        TextSpan(
+                          text: _fitLabel(
+                            context: context,
+                            style: style,
+                            maxWidth: constraints.maxWidth - (icon == null ? 0 : iconSize + _iconGap),
+                          ),
+                          semanticsLabel: widget.presentation.label,
                         ),
-                      TextSpan(text: widget.presentation.label),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
