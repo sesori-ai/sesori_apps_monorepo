@@ -263,8 +263,8 @@ gives the agent their path.
   messages when recorded by a Codex CLI older than 0.165. A save that fails removes
   its folder and fails the send visibly. A repeated accepted prompt saves nothing again, and a
   command or a create with a command saves nothing. Deleting a session from
-  Sesori removes its uploads folder, and each save starts a best-effort sweep
-  of file folders dated more than 30 days before it. An accepted prompt with
+  Sesori removes its uploads folder, and bridge startup and each save start a
+  best-effort sweep of file folders dated more than 30 days back. An accepted prompt with
   staged files is reported as `prompt_files_sent` ([analytics](analytics.md)).
 
 ## Regression Levels
@@ -398,10 +398,10 @@ older than file uploads).
   backend without it offers no picker even on a local bridge, where drop still
   inserts paths.
 - Saved prompt files are removed with their session when it is deleted from
-  Sesori; that removal is best-effort. Age cleanup is a best-effort sweep that
-  runs only after a later save on the same bridge, so a file can stay well past
-  30 days when nothing else is uploaded, and a session that runs past 30 days
-  loses its older files. Files of a create that bound to an existing session,
+  Sesori; that removal is best-effort. Age cleanup is a best-effort sweep of
+  the shared uploads folder that runs when any bridge on the computer starts or
+  saves a file, so a file can stay past 30 days until one of those next
+  happens, and a session that runs past 30 days loses its older files. Files of a create that bound to an existing session,
   of a failed create, of a failed send that was retried, or of a session
   removed outside Sesori go only by age.
 - Saved files live outside the session's working directory, so some harnesses
