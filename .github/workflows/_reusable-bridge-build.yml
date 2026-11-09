@@ -113,6 +113,11 @@ jobs:
         run: dart pub get
         working-directory: bridge
 
+      - name: Prefetch sqlite3 native library
+        uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
+
       - name: Apply build version
         shell: bash
         working-directory: bridge/app
