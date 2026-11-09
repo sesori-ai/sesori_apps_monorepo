@@ -70,8 +70,9 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   `session_message_sent` or `session_created_with_message`, from the session screen's send, a new session's create, and
   a new session's follow-ups. It carries only a pinned `file_count` (`1`, `2_4`, `5_plus`) and `source` (`picker`,
   `drop`, `paste`, or `mixed` when the files came more than one way), never a file name, type, size, path or exact
-  count. Inline images don't count, so an image-only prompt reports nothing; nor does a failed, queued or not yet
-  accepted send. The desktop sends it to the auth server like the other product events.
+  count. Inline images don't count, so an image-only prompt reports nothing; nor does a failed send or one still in
+  the screen's local queue. Once the bridge accepts it, it reports even if the prompt waits on the bridge. The
+  desktop sends it to the auth server like the other product events.
 - A successful Android production submission publishes its exact build number to Firebase Remote Config as the
   analytics release cutoff before stable tagging can proceed. The publisher is callable only from the production
   submission workflow, verifies the immutable build tag, preserves unrelated Remote Config parameters, validates with
@@ -157,7 +158,7 @@ account against a real property.
   carries a route path instead of a pinned screen, or the home reports a screen other than `sessions`.
 - A "No project" creation reports `workspace_kind` `project` or `dedicated_worktree`, or a folder project's reports
   `no_project`.
-- `prompt_files_sent` fires for a failed, queued or image-only prompt, fires twice for one accepted prompt, or carries
+- `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or carries
   anything beyond its two pinned parameters.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is
   observed; an analytics failure blocks a product outcome; or copy overclaims.
