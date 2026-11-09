@@ -102,6 +102,8 @@ class const PregoPopupAlertsNotifications({
                     PregoSpacing.lg,
                   ),
                   child: Wrap(
+                    // Under a pointer, actions that wrap onto their own line keep to the trailing edge.
+                    alignment: pointer ? WrapAlignment.end : WrapAlignment.start,
                     spacing: PregoSpacing.x2l,
                     runSpacing: PregoSpacing.md,
                     crossAxisAlignment: WrapCrossAlignment.center,

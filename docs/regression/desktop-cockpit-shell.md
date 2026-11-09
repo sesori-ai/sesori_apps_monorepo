@@ -259,7 +259,8 @@ The main pane hosts one full-width routed page.
   input nor remains in accessibility announcements.
 - Popup alerts, such as Archived with its Undo, appear centred at the top of the window as on the phone, sized to
   their words up to the window's width less its 16-pixel insets, never in a corner. Under a pointer the card keeps its
-  desktop surface without the accent glow and turns solid within its first 40 ms.
+  desktop surface without the accent glow, turns solid within its first 40 ms, and keeps actions that wrap below a
+  long title at its trailing edge.
 - On this computer, the computer row exposes its supervised status through a dot and an
   accessible description; while another computer is viewed, that status stays in the row's menu. Takeover (another copy of this computer's own bridge, here or on a cloned machine;
   another computer never causes it), login, start failure and crash-give-up

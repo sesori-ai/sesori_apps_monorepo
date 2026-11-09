@@ -262,7 +262,9 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   - compacted to three lines at a narrow width and at a large text scale, while
     a short prompt pins whole;
   - under a pointer in 620 and 960 px columns, a prompt with an image compacted
-    to three lines and the halo painted, over the top edge's fade;
+    to three lines;
+  - under a pointer in 620 and 960 px columns, the pin's halo painted over the
+    top edge's 10-pixel fade;
   - hidden before the first prompt;
   - held through far moves and runs of them, painted every frame, with one
     bubble per message and none hidden on screen without its pin;

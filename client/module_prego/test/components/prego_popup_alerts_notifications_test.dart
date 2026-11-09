@@ -184,9 +184,20 @@ void main() {
 
     const longTitle =
         "This popup has enough text to reach the available width and then continue naturally onto another line";
-    presenter.show(title: longTitle, duration: null);
+    presenter.show(
+      title: longTitle,
+      content: PregoPopupAlertContent(
+        primaryAction: PregoPopupAlertsNotificationsAction(label: "Undo", onPressed: () {}),
+      ),
+      duration: null,
+    );
     await tester.pumpAndSettle();
     expect(tester.getSize(find.byType(PregoPopupAlertsNotifications)).width, 800 - 2 * PregoSpacing.xl);
+    expect(
+      tester.getCenter(find.text("Undo")).dx,
+      greaterThan(400),
+      reason: "actions that wrap onto their own line keep to the trailing edge",
+    );
   });
 
   testWidgets("swiping up dismisses the alert before its duration elapses", (tester) async {
