@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../api/claude_process_factory.dart";
+import "../api/claude_settings_api.dart";
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_auth_status_dto.dart";
 import "../claude_approval_registry.dart";
@@ -16,6 +17,7 @@ import "../claude_plugin_impl.dart";
 import "../foundation/claude_login_environment.dart";
 import "../repositories/claude_authentication_repository.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
+import "../repositories/claude_base_url_repository.dart";
 import "../repositories/claude_mcp_authentication_repository.dart";
 import "../repositories/claude_mcp_login_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
@@ -218,6 +220,12 @@ final class const ClaudePluginDescriptor({
       final status = ClaudeAuthStatusDto.fromJson(jsonDecodeMap(authResult.stdout));
       return switch (status.loggedIn) {
         true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
+        // A gateway behind a custom base URL owns authentication, so the CLI
+        // reports "not logged in" while working through it. A real gateway
+        // auth failure still surfaces at turn time as authentication required.
+        false when _baseUrls(environment: environment).usesCustomBaseUrl() => PluginSetupReady.versioned(
+          runtimeVersion: runtimeVersion,
+        ),
         false => PluginSetupAuthenticationRequired.versioned(
           actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
           runtimeVersion: runtimeVersion,
@@ -318,6 +326,8 @@ final class const ClaudePluginDescriptor({
           commandBudget: const Duration(seconds: 30),
         ),
       ),
+      // Read at failure time, so a gateway configured after start still counts.
+      usesCustomBaseUrl: _baseUrls(environment: host.environment).usesCustomBaseUrl,
       transcripts: ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: host.environment),
       ),
@@ -358,6 +368,11 @@ final class const ClaudePluginDescriptor({
     final configured = config.value(binOption)?.trim();
     return configured == null || configured.isEmpty ? defaultBinary : configured;
   }
+
+  static ClaudeBaseUrlRepository _baseUrls({required Map<String, String> environment}) => ClaudeBaseUrlRepository(
+    settings: ClaudeSettingsApi(environment: environment),
+    environment: environment,
+  );
 
   static SemanticVersion? _parseVersion(String output) {
     final match = RegExp(r"(?:^|\s)(\d+\.\d+\.\d+)(?:\s|$)").firstMatch(output);

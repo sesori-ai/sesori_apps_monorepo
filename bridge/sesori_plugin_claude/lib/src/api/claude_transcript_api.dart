@@ -6,6 +6,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../foundation/claude_config_directory.dart";
 import "models/claude_subagent_meta_dto.dart";
 import "models/claude_transcript_record_dto.dart";
 
@@ -49,13 +50,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   static const int tailByteBudget = 64 * 1024;
 
   /// `$CLAUDE_CONFIG_DIR`, else `<home>/.claude`. Null when no home resolves.
-  String? get claudeHome {
-    final explicit = _environment["CLAUDE_CONFIG_DIR"];
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = resolveUserHomeDirectory(environment: _environment);
-    if (home == null) return null;
-    return p.join(home, ".claude");
-  }
+  String? get claudeHome => claudeConfigDirectory(environment: _environment);
 
   String? get projectsDirectory {
     final home = claudeHome;

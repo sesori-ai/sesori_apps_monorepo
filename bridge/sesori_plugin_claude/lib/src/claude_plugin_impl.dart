@@ -25,6 +25,7 @@ typedef ClaudeSessionIdGenerator = String Function();
 final class ClaudePlugin({
   required final ClaudeSessionProcessRepository _processes,
   required final ClaudeMcpAuthenticationService _mcpAuthentication,
+  required final bool Function() _usesCustomBaseUrl,
   required final ClaudeTranscriptCatalogRepository _transcripts,
   required final ClaudeSessionService _sessions,
   required final ClaudeCatalogService _catalogService,
@@ -797,11 +798,22 @@ final class ClaudePlugin({
       // session can no longer refresh; only the turn reveals it.
       if (message case ClaudeAssistantMessage(error: ClaudeAssistantError.authenticationFailed)) {
         _eventBuffer.addError(
-          const PluginAuthenticationRequiredException(
-            "claude session",
-            actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
-            message: "Claude Code authentication failed",
-          ),
+          // A gateway behind a custom base URL owns authentication, so a
+          // Claude login would not help. The URL stays out of the hint because
+          // it can carry credentials.
+          _usesCustomBaseUrl()
+              ? const PluginAuthenticationRequiredException(
+                  "claude session",
+                  actionHint:
+                      "The Anthropic-compatible gateway configured for Claude Code rejected the request. "
+                      "Check the gateway's credentials and configuration, then refresh setup.",
+                  message: "Claude Code gateway authentication failed",
+                )
+              : const PluginAuthenticationRequiredException(
+                  "claude session",
+                  actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
+                  message: "Claude Code authentication failed",
+                ),
         );
       }
     }

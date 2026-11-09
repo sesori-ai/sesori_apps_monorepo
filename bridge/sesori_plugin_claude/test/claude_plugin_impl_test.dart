@@ -941,7 +941,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("signals authentication required when a turn fails to authenticate", () async {
+    Future<List<Object>> failTurnAuthentication() async {
       await harness.createSession();
       final errors = <Object>[];
       final subscription = harness.plugin.events.listen((_) {}, onError: errors.add);
@@ -960,9 +960,38 @@ void main() {
         },
       });
       await pump();
-
-      expect(errors.single, isA<PluginAuthenticationRequiredException>());
       await subscription.cancel();
+      return errors;
+    }
+
+    test("signals authentication required when a turn fails to authenticate", () async {
+      final errors = await failTurnAuthentication();
+
+      expect(errors, [
+        isA<PluginAuthenticationRequiredException>()
+            .having(
+              (e) => e.actionHint,
+              "actionHint",
+              "Log in from Sesori, or run `claude auth login` on this machine.",
+            )
+            .having((e) => e.message, "message", "Claude Code authentication failed"),
+      ]);
+    });
+
+    test("points a gateway auth failure at the gateway instead of a Claude login", () async {
+      harness.usesCustomBaseUrl = true;
+
+      final errors = await failTurnAuthentication();
+
+      expect(errors, [
+        isA<PluginAuthenticationRequiredException>()
+            .having(
+              (e) => e.actionHint,
+              "actionHint",
+              allOf(contains("gateway"), isNot(matches(RegExp("log ?in", caseSensitive: false)))),
+            )
+            .having((e) => e.message, "message", "Claude Code gateway authentication failed"),
+      ]);
     });
 
     test("a hook-denied tool fails its step and leaves a successful turn without an error", () async {
@@ -1584,6 +1613,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
         urlBudget: const Duration(seconds: 90),
         overallBudget: const Duration(minutes: 10),
       ),
+      usesCustomBaseUrl: () => usesCustomBaseUrl,
       transcripts: transcripts,
       sessions: sessionService,
       catalogService: ClaudeCatalogService(
@@ -1611,6 +1641,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
   late final ClaudeApprovalRegistry approvals;
   late final ClaudeSessionService sessionService;
   late final ClaudePlugin plugin;
+  bool usesCustomBaseUrl = false;
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   var _idIndex = 0;
