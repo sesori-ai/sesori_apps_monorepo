@@ -2545,12 +2545,6 @@ abstract class AppLocalizations {
   /// **'Attached image'**
   String get sessionDetailAttachedImage;
 
-  /// Fallback name of a staged file tile when the file has no name.
-  ///
-  /// In en, this message translates to:
-  /// **'Attached file'**
-  String get sessionDetailAttachedFile;
-
   /// Byte size shown in a transcript attachment metadata overlay.
   ///
   /// In en, this message translates to:

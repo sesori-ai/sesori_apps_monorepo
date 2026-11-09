@@ -2363,24 +2363,23 @@ class _PromptInputState() extends State<PromptInput> {
     return PregoImageAttachmentStrip(
       children: [
         for (var index = 0; index < _attachments.length; index++)
-          if (_attachments[index].kind == ComposerAttachmentKind.file)
-            PregoFileAttachmentPreview(
-              key: ObjectKey(_attachments[index]),
-              fileName: _attachments[index].filename ?? loc.sessionDetailAttachedFile,
+          switch (_attachments[index]) {
+            final ComposerFileAttachment file => PregoFileAttachmentPreview(
+              key: ObjectKey(file),
+              fileName: file.filename,
               removeLabel: loc.sessionDetailRemoveAttachment,
               onRemove: () => _removeAttachment(index: index),
-            )
-          else
-            PregoImageAttachmentPreview(
-              key: ObjectKey(_attachments[index]),
-              imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
-              onOpen: () => _openAttachment(attachment: _attachments[index]),
+            ),
+            final ComposerImageAttachment image => PregoImageAttachmentPreview(
+              key: ObjectKey(image),
+              imageLabel: image.filename ?? loc.sessionDetailAttachedImage,
+              onOpen: () => _openAttachment(attachment: image),
               removeLabel: loc.sessionDetailRemoveAttachment,
               onRemove: () => _removeAttachment(index: index),
               image: Hero(
-                tag: ObjectKey(_attachments[index]),
+                tag: ObjectKey(image),
                 child: Image.memory(
-                  _attachments[index].bytes,
+                  image.bytes,
                   // Decode at thumbnail scale rather than retaining full-resolution
                   // rasters for every staged image. Original bytes still get sent.
                   cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
@@ -2389,6 +2388,7 @@ class _PromptInputState() extends State<PromptInput> {
                 ),
               ),
             ),
+          },
       ],
     );
   }
@@ -2398,7 +2398,7 @@ class _PromptInputState() extends State<PromptInput> {
     _reportAttachments();
   }
 
-  void _openAttachment({required ComposerAttachment attachment}) {
+  void _openAttachment({required ComposerImageAttachment attachment}) {
     unawaited(
       showImageAttachmentViewer(
         context: context,

@@ -126,7 +126,7 @@ void main() {
           stagedAttachmentBytes: 0,
         );
         expect(outcome.attachments.single.mime, mime);
-        expect(outcome.attachments.single.kind, ComposerAttachmentKind.image);
+        expect(outcome.attachments.single, isA<ComposerImageAttachment>());
       }
     });
 
@@ -488,7 +488,7 @@ void main() {
 
         expect(outcome.rejections, isEmpty);
         expect(outcome.insertedText, isNull);
-        expect([for (final file in outcome.attachments) file.kind], everyElement(ComposerAttachmentKind.file));
+        expect(outcome.attachments, everyElement(isA<ComposerFileAttachment>()));
         expect([for (final file in outcome.attachments) file.mime], everyElement("application/octet-stream"));
         expect([for (final file in outcome.attachments) file.filename], ["notes.dart", "my report.pdf"]);
         expect(outcome.attachments.first.bytes, File(notesPath).readAsBytesSync());
@@ -502,7 +502,7 @@ void main() {
           stagedAttachmentBytes: 0,
         );
 
-        expect(outcome.attachments.single.kind, ComposerAttachmentKind.image);
+        expect(outcome.attachments.single, isA<ComposerImageAttachment>());
         expect(outcome.attachments.single.mime, "image/png");
       });
 
@@ -515,7 +515,7 @@ void main() {
         );
 
         final file = outcome.attachments.single;
-        expect(file.kind, ComposerAttachmentKind.file);
+        expect(file, isA<ComposerFileAttachment>());
         expect(file.filename, "shot.png");
         expect(file.bytes, File(imagePath).readAsBytesSync());
       });
@@ -580,7 +580,7 @@ void main() {
           stagedAttachmentBytes: 0,
         );
 
-        expect(outcome?.attachments.single.kind, ComposerAttachmentKind.file);
+        expect(outcome?.attachments.single, isA<ComposerFileAttachment>());
       });
 
       test("names a path that is gone as unreadable", () async {
@@ -622,7 +622,7 @@ void main() {
       ).pick(source: ComposerPickSource.photos, attachmentsSupported: false, fileUploadsSupported: true, stagedAttachmentBytes: 0);
 
       final file = outcome?.attachments.single;
-      expect(file?.kind, ComposerAttachmentKind.file);
+      expect(file, isA<ComposerFileAttachment>());
       expect(file?.mime, "application/octet-stream");
       expect(file?.filename, "IMG_0001.HEIC");
       expect(file?.bytes, same(bytes));
@@ -637,7 +637,7 @@ void main() {
         stagedAttachmentBytes: 0,
       );
 
-      expect(outcome.attachments.single.kind, ComposerAttachmentKind.file);
+      expect(outcome.attachments.single, isA<ComposerFileAttachment>());
       expect(outcome.attachments.single.filename, "pasted-image.png");
     });
 
@@ -663,7 +663,7 @@ void main() {
         stagedAttachmentBytes: 0,
       );
 
-      expect(outcome.attachments.single.kind, ComposerAttachmentKind.image);
+      expect(outcome.attachments.single, isA<ComposerImageAttachment>());
       expect(outcome.attachments.single.filename, isNull);
     });
 

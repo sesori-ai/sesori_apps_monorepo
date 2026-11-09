@@ -215,8 +215,7 @@ void main() {
         expect(priorEventLoopTurnRan, isTrue);
         return ApiResponse.success(session);
       });
-      final attachment = ComposerAttachment(
-        kind: ComposerAttachmentKind.image,
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList(List<int>.generate(19, (index) => index)),
         filename: 'screen"shot.png',
@@ -287,8 +286,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(session));
-      final attachment = ComposerAttachment(
-        kind: ComposerAttachmentKind.image,
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList(const [1, 2, 3]),
         filename: null,
@@ -378,8 +376,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      final attachment = ComposerAttachment(
-        kind: ComposerAttachmentKind.image,
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList(const [1, 2, 3]),
         filename: "screenshot.png",
@@ -428,8 +425,7 @@ void main() {
         sessionId: "session-1",
         text: "",
         attachments: [
-          ComposerAttachment(
-            kind: ComposerAttachmentKind.image,
+          ComposerImageAttachment(
             mime: "image/jpeg",
             bytes: Uint8List.fromList(const [7]),
             filename: null,
@@ -470,9 +466,7 @@ void main() {
         text: "read this",
         attachments: [
           // An image staged as a file for a harness that takes no images.
-          ComposerAttachment(
-            kind: ComposerAttachmentKind.file,
-            mime: "image/png",
+          ComposerFileAttachment(
             bytes: Uint8List.fromList(const [1, 2]),
             filename: "shot.png",
           ),
@@ -534,9 +528,7 @@ void main() {
         pluginId: "plugin-1",
         text: "",
         attachments: [
-          ComposerAttachment(
-            kind: ComposerAttachmentKind.file,
-            mime: "image/png",
+          ComposerFileAttachment(
             bytes: Uint8List.fromList(const [4, 5, 6]),
             filename: "report.pdf",
           ),

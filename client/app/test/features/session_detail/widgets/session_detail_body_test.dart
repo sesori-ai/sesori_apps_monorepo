@@ -507,14 +507,12 @@ void main() {
   });
 
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
-    final first = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final first = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "first.png",
     );
-    final second = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final second = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "second.png",
@@ -829,8 +827,7 @@ void main() {
     );
     when(() => cubit.launchStartedAt).thenReturn(handoff.startedAt);
     when(() => cubit.launchAttachments).thenReturn([
-      ComposerAttachment(
-        kind: ComposerAttachmentKind.image,
+      ComposerImageAttachment(
         mime: "image/png",
         bytes: _tinyPng,
         filename: "staged.png",
@@ -4787,8 +4784,7 @@ void main() {
   });
 
   testWidgets("expanded editor keyboard paste stages an image attachment", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: null,
@@ -5245,8 +5241,7 @@ void main() {
   });
 
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "screenshot.png",
@@ -5287,8 +5282,7 @@ void main() {
   });
 
   testWidgets("image-only context-menu paste stages an attachment", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: null,
@@ -5335,8 +5329,7 @@ void main() {
   });
 
   testWidgets("keyboard image paste stages an attachment without inserting text", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: null,
@@ -5513,8 +5506,7 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => _stagedOutcome(
-        attachment: ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        attachment: ComposerImageAttachment(
           mime: "image/png",
           bytes: _tinyPng,
           filename: null,
@@ -5586,8 +5578,7 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => _stagedOutcome(
-        attachment: ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        attachment: ComposerImageAttachment(
           mime: "image/png",
           bytes: _tinyPng,
           filename: null,
@@ -5644,8 +5635,7 @@ void main() {
   });
 
   testWidgets("staged attachment survives unresolved support but cannot send", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "screenshot.png",
@@ -5696,8 +5686,7 @@ void main() {
   });
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "screenshot.png",
@@ -5738,8 +5727,7 @@ void main() {
   });
 
   testWidgets("an attachment alone is sendable", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: null,
@@ -5783,8 +5771,8 @@ void main() {
     final huge = Uint8List(maxComposerPromptAttachmentBytes - 32);
     huge.setAll(0, const [0xFF, 0xD8, 0xFF]);
     final answers = <ComposerAttachment>[
-      ComposerAttachment(kind: ComposerAttachmentKind.image, mime: "image/png", bytes: _tinyPng, filename: "small.png"),
-      ComposerAttachment(kind: ComposerAttachmentKind.image, mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
+      ComposerImageAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
+      ComposerImageAttachment(mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
     ];
     _stubImagePick(attachmentDispatcher, () => answers.removeAt(0));
 
@@ -5837,8 +5825,7 @@ void main() {
   });
 
   testWidgets("send is refused while both a command and attachments are staged", (tester) async {
-    final attachment = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: _tinyPng,
       filename: "screenshot.png",
@@ -6070,7 +6057,7 @@ void main() {
           text: "",
           inputMode: ComposerInputMode.typed,
           attachments: [
-            ComposerAttachment(kind: ComposerAttachmentKind.image, mime: "image/png", bytes: _tinyPng, filename: null),
+            ComposerImageAttachment(mime: "image/png", bytes: _tinyPng, filename: null),
           ],
           agent: "coder",
           agentModel: null,
@@ -6094,8 +6081,7 @@ void main() {
       text: "Please **review** `main.dart`",
       inputMode: ComposerInputMode.typed,
       attachments: [
-        ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        ComposerImageAttachment(
           mime: "image/png",
           bytes: _tinyPng,
           filename: "reference.png",

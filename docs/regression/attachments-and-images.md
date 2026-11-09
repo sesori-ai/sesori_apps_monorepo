@@ -17,8 +17,9 @@ content the transcript renders live and after reload.
   actions show without the chevron. On both surfaces they fold back behind the
   chevron once the composer holds text, and the chevron still reopens them.
   Under reduced motion the pill opens and folds at once.
-- The shared composer offers image staging only for a backend declaring prompt
-  attachment support and only when its product shell supplies a real picker.
+- The shared composer offers staging only while the backend declares prompt
+  attachment support (images) or the bridge saves uploads (files), and only
+  when its product shell supplies a real picker.
   Mobile opens its gallery adapter; desktop opens a native file dialog for any
   files, routed like a drop (below).
   Shared core validates picked or clipboard bytes by raster signature and the
@@ -43,8 +44,9 @@ content the transcript renders live and after reload.
   within that size in a format shared core reads is handed over as it is, and
   so is a photo the platform can't decode: shared core then shrinks it as above
   when it reads the format, and otherwise gives the unsupported-format notice.
-  Staged images are memory-only. They are cleared when the target stops
-  supporting attachments, the session changes, or submission succeeds or
+  Staged images and files are memory-only. Staged images are cleared when the
+  backend stops supporting attachments and staged files when the bridge stops
+  saving uploads, and both when the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot
   snapshot into restoration. They never persist in a draft and travel inline
   within the staged-attachment size bound so the request fits the relay's message
@@ -304,8 +306,10 @@ account-level rejection without changing the descriptor's capability claim.
 - Send pressed while an image is still being prepared goes out without it,
   goes out twice, shows no spinner while it waits, or sends into a session the
   user has since left.
-- The composer offers or sends attachments to an unsupporting backend, retains
-  staged images after switching to one, or the viewer acts on the wrong image.
+- The composer offers or sends images to a backend without attachment support,
+  or files to a bridge that doesn't save uploads, retains staged images or
+  files after switching to such a target, clears them while a capability is
+  still unknown, or the viewer acts on the wrong image.
 - Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
   image, diverges between live and replay, or bypasses existing count/byte/type limits.
 - Copilot advertises images but drops the ACP image part, accepts it with the
@@ -316,8 +320,9 @@ account-level rejection without changing the descriptor's capability claim.
 
 ## Known Limitations
 
-- Prompt attachment support is read from declared capabilities, so an
-  unsupporting backend hides staging rather than failing at send time.
+- Prompt attachment support and upload saving are read from declared
+  capabilities, so a target that takes neither hides staging rather than
+  failing at send time.
 - Several images that each stay just under the downscale threshold can still
   exceed a backend's own aggregate inline-image limit; that send fails visibly
   at the bridge.

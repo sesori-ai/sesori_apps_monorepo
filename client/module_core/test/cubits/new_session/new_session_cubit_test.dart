@@ -379,8 +379,7 @@ void main() {
         await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
           attachments: [
-            ComposerAttachment(
-              kind: ComposerAttachmentKind.image,
+            ComposerImageAttachment(
               mime: "image/png",
               bytes: Uint8List(4),
               filename: "shot.png",
@@ -455,8 +454,7 @@ void main() {
         await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
           attachments: [
-            ComposerAttachment(
-              kind: ComposerAttachmentKind.image,
+            ComposerImageAttachment(
               mime: "image/png",
               bytes: Uint8List(4),
               filename: "shot.png",
@@ -535,9 +533,7 @@ void main() {
           await cubit.submit(
             draft: ComposerDraft.typed(text: "read this"),
             attachments: [
-              ComposerAttachment(
-                kind: ComposerAttachmentKind.file,
-                mime: composerFileAttachmentMime,
+              ComposerFileAttachment(
                 bytes: Uint8List(4),
                 filename: "report.pdf",
               ),
@@ -565,8 +561,7 @@ void main() {
         await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
           attachments: [
-            ComposerAttachment(
-              kind: ComposerAttachmentKind.image,
+            ComposerImageAttachment(
               mime: "image/png",
               bytes: Uint8List(4),
               filename: "shot.png",
@@ -828,8 +823,7 @@ void main() {
     test("failed text submission restores exact voice draft and attachment identities until acknowledged", () async {
       final response = Completer<ApiResponse<Session>>();
       final repository = inMemoryComposerDraftRepository();
-      final attachment = ComposerAttachment(
-        kind: ComposerAttachmentKind.image,
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList([1, 2, 3]),
         filename: "shot.png",
@@ -910,8 +904,7 @@ void main() {
       final response = Completer<ApiResponse<Session>>();
       final draftRepository = inMemoryComposerDraftRepository();
       final launchRepository = inMemorySessionLaunchRepository();
-      ComposerAttachment image(String name) => ComposerAttachment(
-        kind: ComposerAttachmentKind.image,
+      ComposerAttachment image(String name) => ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList([1]),
         filename: name,
@@ -2552,8 +2545,7 @@ void main() {
       });
 
       group("the live composer", () {
-        final image = ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        final image = ComposerImageAttachment(
           mime: "image/png",
           bytes: Uint8List.fromList([1]),
           filename: "a.png",

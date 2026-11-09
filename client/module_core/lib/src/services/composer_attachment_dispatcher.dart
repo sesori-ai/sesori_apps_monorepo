@@ -273,17 +273,16 @@ class ComposerAttachmentDispatcher({
 
   /// A file the bridge saves for the agent: its original bytes, sent as
   /// [composerFileAttachmentMime] under its own name.
-  static ComposerAttachment _fileFromBytes({required Uint8List bytes, required String filename}) => ComposerAttachment(
-    kind: ComposerAttachmentKind.file,
-    mime: composerFileAttachmentMime,
-    bytes: bytes,
-    filename: filename,
-  );
+  static ComposerFileAttachment _fileFromBytes({required Uint8List bytes, required String filename}) =>
+      ComposerFileAttachment(
+        bytes: bytes,
+        filename: filename,
+      );
 
   /// Validates [bytes] as a supported image and shrinks an oversized one
   /// before the transport limit is checked, so a large screenshot can still
   /// fit once downscaled.
-  Future<ComposerAttachment> _imageFromBytes({
+  Future<ComposerImageAttachment> _imageFromBytes({
     required Uint8List bytes,
     required String? filename,
   }) async {
@@ -291,18 +290,16 @@ class ComposerAttachmentDispatcher({
     if (format == null) throw const UnsupportedAttachmentImageError();
 
     final name = _nameOf(filename: filename);
-    final original = ComposerAttachment(
-      kind: ComposerAttachmentKind.image,
+    final original = ComposerImageAttachment(
       mime: format.mime,
       bytes: bytes,
       filename: name,
     );
-    final ComposerAttachment attachment;
+    final ComposerImageAttachment attachment;
     switch (await _downscaleBuilder.downscale(bytes: bytes, format: format)) {
       case ComposerImageDownscaled(bytes: final downscaled):
         const jpeg = SupportedRasterImageFormat.jpeg;
-        attachment = ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        attachment = ComposerImageAttachment(
           mime: jpeg.mime,
           bytes: downscaled,
           filename: name == null ? null : path.setExtension(name, jpeg.filenameExtension),

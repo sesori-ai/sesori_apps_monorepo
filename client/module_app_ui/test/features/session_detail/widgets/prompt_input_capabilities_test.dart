@@ -559,7 +559,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final staged = reportedAttachments.last.single;
-      expect(staged.kind, ComposerAttachmentKind.file);
+      expect(staged, isA<ComposerFileAttachment>());
       expect(staged.filename, "notes.dart");
       expect(staged.mime, composerFileAttachmentMime);
       expect(utf8.decode(staged.bytes), "void main() {}");
@@ -603,7 +603,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final staged = reportedAttachments.last.single;
-      expect(staged.kind, ComposerAttachmentKind.file);
+      expect(staged, isA<ComposerFileAttachment>());
       expect(staged.filename, "pasted-image.png");
       expect(staged.mime, composerFileAttachmentMime);
       expect(staged.bytes, png);
@@ -625,24 +625,24 @@ void main() {
         fileUploadsSupported: fileUploadsSupported,
         onAttachmentsChanged: reportedAttachments.add,
       );
-      List<ComposerAttachmentKind> stagedKinds() => [
-        for (final attachment in reportedAttachments.last) attachment.kind,
+      List<Type> stagedKinds() => [
+        for (final attachment in reportedAttachments.last) attachment.runtimeType,
       ];
 
       await pumpWith(attachmentsSupported: true, fileUploadsSupported: true);
       drops.add([notesPath, imagePath]);
       await _settleFileReads(tester);
       await tester.pumpAndSettle();
-      expect(stagedKinds(), [ComposerAttachmentKind.file, ComposerAttachmentKind.image]);
+      expect(stagedKinds(), [ComposerFileAttachment, ComposerImageAttachment]);
 
       await pumpWith(attachmentsSupported: true, fileUploadsSupported: null);
       await tester.pumpAndSettle();
-      expect(stagedKinds(), [ComposerAttachmentKind.file, ComposerAttachmentKind.image]);
+      expect(stagedKinds(), [ComposerFileAttachment, ComposerImageAttachment]);
       expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
 
       await pumpWith(attachmentsSupported: true, fileUploadsSupported: false);
       await tester.pumpAndSettle();
-      expect(stagedKinds(), [ComposerAttachmentKind.image]);
+      expect(stagedKinds(), [ComposerImageAttachment]);
       expect(find.byType(PregoFileAttachmentPreview), findsNothing);
 
       await pumpWith(attachmentsSupported: false, fileUploadsSupported: false);
@@ -1010,8 +1010,7 @@ void main() {
     final clipboard = _NoOpImageClipboard();
     final images = [
       for (var i = 0; i < 8; i++)
-        ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        ComposerImageAttachment(
           mime: "image/png",
           bytes: base64Decode(
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -1122,8 +1121,7 @@ void main() {
     // Each fits alone; the three together exceed the 50 MB aggregate budget.
     final images = [
       for (var i = 0; i < 3; i++)
-        ComposerAttachment(
-          kind: ComposerAttachmentKind.image,
+        ComposerImageAttachment(
           mime: "image/png",
           bytes: Uint8List(maxComposerPromptAttachmentBytes * 2 ~/ 5),
           filename: "Photo $i.png",

@@ -101,18 +101,22 @@ class const PregoFileAttachmentFace({super.key, required final String fileName})
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(TablerRegular.file, size: PregoIconSize.md, color: prego.colors.textSecondary),
-            if (extension != null)
-              Text(
-                extension,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
-              ),
-          ],
+        // The square doesn't grow with the text size, so a large text size or a
+        // long extension shrinks the glyph and label together to fit.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(TablerRegular.file, size: PregoIconSize.md, color: prego.colors.textSecondary),
+              if (extension != null)
+                Text(
+                  extension,
+                  maxLines: 1,
+                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -5,8 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  final image = ComposerAttachment(
-    kind: ComposerAttachmentKind.image,
+  final image = ComposerImageAttachment(
     mime: "image/png",
     bytes: Uint8List.fromList([1]),
     filename: "a.png",
