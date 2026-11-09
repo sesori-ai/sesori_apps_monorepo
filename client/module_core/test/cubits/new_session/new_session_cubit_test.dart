@@ -83,6 +83,7 @@ void main() {
 
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+      when(() => mockConnectionService.events).thenAnswer((_) => const Stream.empty());
 
       when(mockPluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(
