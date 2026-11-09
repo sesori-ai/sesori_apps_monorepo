@@ -53,11 +53,13 @@ def sqlite3_root(*, workspace: Path) -> Path | None:
 def pinned_assets(*, workspace: Path) -> tuple[str, dict[str, str]] | None:
     """The pinned release tag and hashes, or None when nothing downloads them."""
     root = sqlite3_root(workspace=workspace)
-    hashes_file = None if root is None else root / "lib/src/hook/asset_hashes.dart"
-    if hashes_file is None or not hashes_file.is_file():
-        # Release workflows may rebuild an older source whose sqlite3 has no download hook.
-        print(f"::notice::{workspace} resolves no sqlite3 download hook; nothing to prefetch")
+    if root is None or not (root / "hook/build.dart").is_file():
+        # Release workflows may rebuild an older source whose sqlite3 has no build hook.
+        print(f"::notice::{workspace} resolves no sqlite3 build hook; nothing to prefetch")
         return None
+    hashes_file = root / "lib/src/hook/asset_hashes.dart"
+    if not hashes_file.is_file():
+        fail(f"{hashes_file} is missing; update this script for the new sqlite3 hook")
     text = hashes_file.read_text()
     tag = re.search(r"releaseTag = '([^']+)'", text)
     hashes = dict(re.findall(r"'([^']+)': '([0-9a-f]{64})'", text))
