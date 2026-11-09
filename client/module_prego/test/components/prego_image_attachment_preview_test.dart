@@ -128,6 +128,36 @@ void main() {
     expect(find.byType(Text), findsNothing);
   });
 
+  testWidgets("file tile fits its glyph and extension inside the square at large text sizes", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(3)),
+              child: Center(
+                child: PregoFileAttachmentPreview(
+                  fileName: "Quarterly report.numbers",
+                  removeLabel: "Remove attachment",
+                  onRemove: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final tile = tester.getRect(find.byType(PregoFileAttachmentPreview));
+    expect(tile.size, const Size(52, 52));
+    expect(tile.contains(tester.getRect(find.byIcon(TablerRegular.file)).center), isTrue);
+    final label = tester.getRect(find.text("NUMBERS"));
+    expect(tile.left <= label.left && label.right <= tile.right, isTrue);
+    expect(tile.top <= label.top && label.bottom <= tile.bottom, isTrue);
+  });
+
   for (final direction in TextDirection.values) {
     testWidgets("edge fades track both scroll directions and clear after removal in $direction", (tester) async {
       Future<void> pump({required int count}) => tester.pumpWidget(
