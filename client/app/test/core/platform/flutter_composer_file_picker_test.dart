@@ -70,13 +70,12 @@ void main() {
     ).thenAnswer((_) async => file);
   }
 
-  Future<ComposerAttachOutcome?> pickOutcome() =>
-      attachmentDispatcher.pick(
-        source: ComposerPickSource.photos,
-        attachmentsSupported: true,
-        fileUploadsSupported: false,
-        stagedAttachmentBytes: 0,
-      );
+  Future<ComposerAttachOutcome?> pickOutcome() => attachmentDispatcher.pick(
+    source: ComposerPickSource.photos,
+    attachmentsSupported: true,
+    fileUploadsSupported: false,
+    stagedAttachmentBytes: 0,
+  );
 
   Future<ComposerAttachment?> pickAttachment() async => (await pickOutcome())?.attachments.single;
 
@@ -273,25 +272,30 @@ void main() {
       expect(await picker.pick(source: ComposerPickSource.files), isNull);
     });
 
-    test("on Android asks the native picker to leave out files over the budget, and passes on how many it did", () async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      final calls = <MethodCall>[];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
-        calls.add(call);
-        return {
-          "paths": ["/cache/composer-picks/0/Report.pdf"],
-          "oversizedCount": 2,
-        };
-      });
+    test(
+      "on Android asks the native picker to leave out files over the budget, and passes on how many it did",
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        final calls = <MethodCall>[];
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+          call,
+        ) async {
+          calls.add(call);
+          return {
+            "paths": ["/cache/composer-picks/0/Report.pdf"],
+            "oversizedCount": 2,
+          };
+        });
 
-      final picked = await picker.pick(source: ComposerPickSource.files);
+        final picked = await picker.pick(source: ComposerPickSource.files);
 
-      expect(calls.single.method, "pick");
-      expect(calls.single.arguments, {"maxBytes": maxComposerPromptAttachmentBytes});
-      if (picked is! ComposerPickedHostPaths) fail("expected host paths, got $picked");
-      expect(picked.paths, ["/cache/composer-picks/0/Report.pdf"]);
-      expect(picked.oversizedCount, 2);
-    });
+        expect(calls.single.method, "pick");
+        expect(calls.single.arguments, {"maxBytes": maxComposerPromptAttachmentBytes});
+        if (picked is! ComposerPickedHostPaths) fail("expected host paths, got $picked");
+        expect(picked.paths, ["/cache/composer-picks/0/Report.pdf"]);
+        expect(picked.oversizedCount, 2);
+      },
+    );
 
     test("on Android a dismissed picker hands over nothing", () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;

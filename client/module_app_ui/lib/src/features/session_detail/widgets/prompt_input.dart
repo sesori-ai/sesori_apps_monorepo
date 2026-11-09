@@ -2638,7 +2638,8 @@ class _PromptInputState() extends State<PromptInput> {
         showAttachImage: _offersAttachImage,
         attachTooltip: switch (attachKind) {
           ComposerAttachKind.files => context.loc.sessionDetailAttachFiles,
-          ComposerAttachKind.photosAndFiles when attachSources.length > 1 => context.loc.sessionDetailAttachPhotosOrFiles,
+          ComposerAttachKind.photosAndFiles when attachSources.length > 1 =>
+            context.loc.sessionDetailAttachPhotosOrFiles,
           ComposerAttachKind.photosAndFiles => context.loc.sessionDetailAttachImage,
         },
         onSlashCommandsTap: () {

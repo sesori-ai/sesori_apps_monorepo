@@ -20,8 +20,16 @@ content the transcript renders live and after reload.
 - The shared composer offers staging only while the backend declares prompt
   attachment support (images) or the bridge saves uploads (files), and only
   when its product shell supplies a real picker.
-  Mobile opens its gallery adapter; desktop opens a native file dialog for any
-  files, routed like a drop (below).
+  Desktop opens a native file dialog for any files, routed like a drop
+  (below). On mobile the plus opens a Photos / Files menu where the bridge
+  saves uploads, and the gallery straight away anywhere else, including while
+  that answer is still unknown. Files picks are routed like a drop: on iOS
+  through the system document picker's copies, and on Android through the
+  app's own document picker, which copies only files of at most 50 MB into the
+  app's cache (cleared at each pick) and counts the rest in the over-budget
+  notice without reading them. A gallery photo keeps its own name; one that
+  image_picker hands over under its own copy name (always on iOS, and on
+  Android when the photo has no display name) is named `photo.<ext>`.
   Shared core validates picked or clipboard bytes by raster signature and the
   outbound size bound rather than trusting an extension or platform MIME.
   Before the size bound applies, shared core shrinks any staged image above
@@ -299,6 +307,10 @@ account-level rejection without changing the descriptor's capability claim.
   the drop.
 - A copied web link pastes as a path, or a Finder copy pastes as the file's
   icon or name instead of the file.
+- The mobile plus offers Files where the bridge doesn't save uploads, or opens
+  the menu when only Photos applies; an Android Files pick of a file over
+  50 MB is copied, read, or crashes the app instead of getting the notice; a
+  staged photo is labelled with image_picker's `image_picker_<id>` name.
 - An image above the downscale threshold is staged unshrunk although it could
   shrink, a GIF loses its animation, a rotated photo is staged sideways, a
   transparent image gets a black background, a downscale blocks the UI, or a
@@ -346,7 +358,9 @@ account-level rejection without changing the descriptor's capability claim.
   `docs/HARNESS_CAPABILITIES.md`).
 - Pasting files copied in a file manager works on desktop only. On Windows and
   Linux it is covered only by adapter tests.
-- Mobile is unchanged: its picker stays a gallery image picker with no drop.
+- Mobile has no drop. On iOS a gallery photo is always named `photo.<ext>`,
+  since image_picker doesn't pass on the library's file name, and Files copies
+  stay in the app's tmp folder until iOS clears it.
 - An Android GIF above the 50 MB budget is turned away as too large, since
   it is never shrunk. HEIF photos need Android 9 (API 28) or later; on Android
   7 and 8 they get the unsupported-format notice.
@@ -371,6 +385,6 @@ per-plugin image mappers, including Cursor generated-image reading, Antigravity 
 ACP image mapping used by Antigravity and Copilot, and descriptor capability declarations;
 shared client composer validation, attachment cache, loader, viewer, and
 surface tests under `client/module_core` and `client/module_app_ui`; mobile
-picker, voice, and keyboard composition under `client/app`; desktop picker,
+picker (including the Android `DocumentPickerService.kt` and its JVM tests), voice, and keyboard composition under `client/app`; desktop picker,
 file, copied-file clipboard and session-detail adapters under `client/desktop`; and the shared
 pasteboard and share adapters under `client/module_app_ui/lib/src/platform/`.

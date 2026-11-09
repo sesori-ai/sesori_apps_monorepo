@@ -25,7 +25,7 @@ class DocumentPickerClient.forTesting({required final OpenDocuments openFiles}) 
 
   /// Returns `null` when the user dismisses the picker.
   Future<ComposerPickedHostPaths?> pick() async {
-    if (defaultTargetPlatform == TargetPlatform.android) return _pickOnAndroid();
+    if (defaultTargetPlatform == TargetPlatform.android) return await _pickOnAndroid();
     final files = await _openFiles();
     if (files.isEmpty) return null;
     return ComposerPickedHostPaths(paths: [for (final file in files) file.path], oversizedCount: 0);

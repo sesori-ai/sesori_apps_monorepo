@@ -507,7 +507,7 @@ void main() {
 
       expect(picker.sources, [ComposerPickSource.files]);
       final staged = reportedAttachments.last.single;
-      expect(staged.kind, ComposerAttachmentKind.file);
+      if (staged is! ComposerFileAttachment) fail("expected a staged file, got $staged");
       expect(staged.filename, "notes.dart");
       expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
     });
