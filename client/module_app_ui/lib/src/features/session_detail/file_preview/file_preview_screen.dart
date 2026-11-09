@@ -402,6 +402,10 @@ WebViewController _loadHtmlPage({
   return controller;
 }
 
+/// A file's lines for [_CodePreview]: [highlighted] spans for a small file,
+/// otherwise plain [texts]; and the width of the widest line.
+typedef _Lines = ({List<String> texts, List<TextSpan>? highlighted, double widest});
+
 /// Text with line numbers, one row per line, opened on [line] with that row
 /// tinted. Rows have one fixed height, so the list starts at [line] without
 /// measuring anything and nothing moves once it shows.
@@ -417,10 +421,18 @@ class const _CodePreview({
 class _CodePreviewState() extends State<_CodePreview> {
   ScrollController? _controller;
   (Brightness, TextStyle, TextScaler)? _linesKey;
-  ({List<TextSpan> lines, double widest}) _laidOut = (lines: const [], widest: 0);
+  _Lines _laidOut = (texts: const [], highlighted: null, widest: 0);
 
-  /// The highlighted lines and the width of the widest one.
-  ({List<TextSpan> lines, double widest}) _layOut({
+  /// The file's lines, cut to [_maxShownLineLength], and the width of the
+  /// widest one.
+  ///
+  /// A file small enough to highlight keeps its highlighted spans and is
+  /// measured exactly. A larger one, up to millions of lines, keeps only its
+  /// text: each row builds its span as it scrolls into view, and a line with
+  /// non-ASCII characters is estimated at two digit widths per character
+  /// rather than laid out, since laying out every such line at once froze the
+  /// app for seconds.
+  _Lines _layOut({
     required Brightness brightness,
     required TextStyle style,
     required TextScaler textScaler,
@@ -430,9 +442,25 @@ class _CodePreviewState() extends State<_CodePreview> {
     if (key == _linesKey) return _laidOut;
     _linesKey = key;
     final code = widget.content.replaceAll("\t", "    ");
-    final highlighted = code.length > _maxHighlightedLength
-        ? null
-        : CodeHighlighter.highlight(code: code, language: widget.language, brightness: brightness, baseStyle: style);
+    if (code.length > _maxHighlightedLength) {
+      final texts = [
+        for (final text in code.split("\n"))
+          text.length > _maxShownLineLength ? _clipText(text: text, length: _maxShownLineLength) : text,
+      ];
+      var widest = 0.0;
+      for (final text in texts) {
+        final perChar = _nonAscii.hasMatch(text) ? charWidth * 2 : charWidth;
+        widest = math.max(widest, text.length * perChar);
+      }
+      return _laidOut = (texts: texts, highlighted: null, widest: widest);
+    }
+
+    final highlighted = CodeHighlighter.highlight(
+      code: code,
+      language: widget.language,
+      brightness: brightness,
+      baseStyle: style,
+    );
     final lines = highlighted == null
         ? [
             for (final text in code.split("\n"))
@@ -463,7 +491,7 @@ class _CodePreviewState() extends State<_CodePreview> {
       widest = math.max(widest, painter.width.ceilToDouble());
       painter.dispose();
     }
-    return _laidOut = (lines: lines, widest: widest);
+    return _laidOut = (texts: const [], highlighted: lines, widest: widest);
   }
 
   @override
@@ -485,17 +513,18 @@ class _CodePreviewState() extends State<_CodePreview> {
     final rowHeight = glyph.height;
     final charWidth = glyph.width;
     glyph.dispose();
-    final (:lines, :widest) = _layOut(
+    final (:texts, :highlighted, :widest) = _layOut(
       brightness: Theme.of(context).brightness,
       style: style,
       textScaler: textScaler,
       charWidth: charWidth,
     );
-    final gutterWidth = "${lines.length}".length * charWidth;
+    final lineCount = highlighted?.length ?? texts.length;
+    final gutterWidth = "$lineCount".length * charWidth;
     const gap = PregoSpacing.md;
     const horizontalPadding = PregoSpacing.md;
     final targetIndex = switch (widget.line) {
-      final line? when line <= lines.length => line - 1,
+      final line? when line <= lineCount => line - 1,
       _ => null,
     };
     final targetColor = prego.colors.bgBrandPrimary;
@@ -532,7 +561,7 @@ class _CodePreviewState() extends State<_CodePreview> {
                     top: PregoSpacing.sm,
                     bottom: PregoSpacing.sm + MediaQuery.paddingOf(context).bottom,
                   ),
-                  itemCount: lines.length,
+                  itemCount: lineCount,
                   itemBuilder: (context, index) => ColoredBox(
                     color: index == targetIndex ? targetColor : Colors.transparent,
                     child: Padding(
@@ -545,7 +574,13 @@ class _CodePreviewState() extends State<_CodePreview> {
                             child: Text("${index + 1}", textAlign: TextAlign.end, style: numberStyle),
                           ),
                           const SizedBox(width: gap),
-                          Expanded(child: Text.rich(lines[index], softWrap: false, overflow: TextOverflow.clip)),
+                          Expanded(
+                            child: Text.rich(
+                              highlighted?[index] ?? TextSpan(text: texts[index], style: style),
+                              softWrap: false,
+                              overflow: TextOverflow.clip,
+                            ),
+                          ),
                         ],
                       ),
                     ),
