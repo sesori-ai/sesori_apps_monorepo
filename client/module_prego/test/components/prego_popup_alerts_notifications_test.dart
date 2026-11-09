@@ -153,6 +153,42 @@ void main() {
     expect(find.text("Copied"), findsNothing);
   });
 
+  testWidgets("under a pointer, centres the alert below navigation as a touch shell does", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: _harness(
+          Builder(
+            builder: (context) {
+              presenter = PregoPopupAlertPresenter.of(context);
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      ),
+    );
+
+    presenter.show(
+      title: "Session archived",
+      content: PregoPopupAlertContent(
+        primaryAction: PregoPopupAlertsNotificationsAction(label: "Undo", onPressed: () {}),
+      ),
+      duration: null,
+    );
+    await tester.pumpAndSettle();
+
+    final card = tester.getRect(find.byType(PregoPopupAlertsNotifications));
+    expect(card.center.dx, moreOrLessEquals(400, epsilon: 0.01), reason: "not in a corner of the 800 px window");
+    expect(card.top, PregoTopNavigation.barHeight + PregoSpacing.xl);
+
+    const longTitle =
+        "This popup has enough text to reach the available width and then continue naturally onto another line";
+    presenter.show(title: longTitle, duration: null);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(PregoPopupAlertsNotifications)).width, 800 - 2 * PregoSpacing.xl);
+  });
+
   testWidgets("swiping up dismisses the alert before its duration elapses", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(

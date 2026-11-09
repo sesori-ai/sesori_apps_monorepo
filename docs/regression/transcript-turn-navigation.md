@@ -49,7 +49,10 @@ stored or sent to the bridge.
   in as the scroll continues, while the rest of its bubble scrolls on above the
   pin line. A reversed scroll retraces every step. A
   soft page-coloured halo shows only while rows slide under the compacted
-  bubble, and the pin line never clips it. The next user message, never an
+  bubble, and the pin line never clips it. Under a pointer the pin compacts
+  to the same three lines, an attached image included, and keeps the same
+  halo; the rows also fade out over the top edge's first 10 pixels, where the
+  desktop header cuts them. The next user message, never an
   answer or automation, pushes the pinned one up and out, step for step with
   the scroll. A move too far for the next pin to be ready holds the last pin
   until that pin's copy is built, showing the previous prompt's words rather
@@ -258,6 +261,8 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
     pin line;
   - compacted to three lines at a narrow width and at a large text scale, while
     a short prompt pins whole;
+  - under a pointer in 620 and 960 px columns, a prompt with an image compacted
+    to three lines and the halo painted, over the top edge's fade;
   - hidden before the first prompt;
   - held through far moves and runs of them, painted every frame, with one
     bubble per message and none hidden on screen without its pin;
@@ -442,7 +447,10 @@ answer, and on a trackpad while text streams.
 - The pinned bubble shows Markdown source, differs from its bubble where it
   takes over, compacts a prompt of three lines or fewer, grows taller than its
   bubble or shorter than three lines, shows its halo while nothing slides under
-  it or has it clipped at the pin line, or a tap beside the bubble jumps.
+  it or has it clipped at the pin line, or a tap beside the bubble jumps. Under
+  a pointer the pin shrinks to one line, so an attached image shows as a strip,
+  or a full-width band with a hard edge replaces the halo and cuts a line of
+  text below the bubble.
 - A tap on the pinned bubble jumps instead of gliding, or glides under reduced
   motion; the pinned bubble fetches a remote image, or a press on a control
   in it acts instead of gliding; a scroll that pins a long pasted prompt
