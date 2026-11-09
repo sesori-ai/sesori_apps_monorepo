@@ -181,8 +181,14 @@ void main() {
 
     expect(sent.single.text, "see attached");
     expect(sent.single.attachments, isEmpty);
-    expect(find.text("That image format isn't supported."), findsOneWidget);
-    await tester.pumpAndSettle(const Duration(seconds: 4));
+    final notice = find.text("That image format isn't supported.");
+    expect(notice, findsOneWidget);
+    // Like any notice that something wasn't added, it stays up longer.
+    await tester.pump(const Duration(milliseconds: 3500));
+    expect(notice, findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
+    expect(notice, findsNothing);
   });
 
   testWidgets("moving to another draft while Send waits abandons that send", (tester) async {

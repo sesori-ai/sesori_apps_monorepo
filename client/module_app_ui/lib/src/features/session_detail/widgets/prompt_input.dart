@@ -231,6 +231,11 @@ class _PromptInputState() extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
+
+  /// A notice that something wasn't added often comes as a picker closes or a
+  /// drop lands, while the eyes are still on their way back, and it names the
+  /// reason as well as what was left out, so it stays up longer.
+  static const _rejectedAttachmentNoticeDuration = Duration(seconds: 5);
   final _controller = TextEditingController();
   late final _wordsBox = ComposerWordsBox(controller: _controller);
   final _textScrollController = ScrollController();
@@ -414,7 +419,12 @@ class _PromptInputState() extends State<PromptInput> {
     final onConsumed = widget.onInitialAttachmentsConsumed;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (exceededBudget) _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
+      if (exceededBudget) {
+        _showComposerNotice(
+          context.loc.sessionDetailAttachmentBudgetExceeded,
+          duration: _rejectedAttachmentNoticeDuration,
+        );
+      }
       onConsumed();
     });
   }
@@ -1305,10 +1315,12 @@ class _PromptInputState() extends State<PromptInput> {
   void _showComposerNotice(
     String message, {
     PregoPopupAlertsNotificationsVariant variant = PregoPopupAlertsNotificationsVariant.warning,
+    Duration duration = PregoPopupAlertPresenter.defaultDuration,
   }) {
     PregoPopupAlertPresenter.of(context).show(
       title: message,
       variant: variant,
+      duration: duration,
     );
   }
 
@@ -2192,24 +2204,44 @@ class _PromptInputState() extends State<PromptInput> {
     // layouts cross-fade. Only the words keep clear of the border.
     return DecoratedBox(
       decoration: decoration,
-      child: Padding(
-        padding: const EdgeInsets.all(PregoSpacing.sm),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: PregoSpacing.md,
-          children: [
-            Padding(padding: decoration.padding, child: _buildTypingField(context)),
-            if (voiceFirst)
-              _buildVoicePill(
-                context,
-                hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
-                extraTrailingWidth: 0,
-                trailing: _buildPrimaryActionButton(context),
-              )
-            else
-              _buildTypingActionRow(context),
-          ],
-        ),
+      child: Stack(
+        fit: StackFit.passthrough,
+        clipBehavior: Clip.none,
+        children: [
+          // A tap on the padding around the words focuses them, as a tap on the
+          // words does. This layer lies beneath the content, so it only gets taps
+          // that land on nothing there: the tiles keep their open and remove taps,
+          // and the strip keeps the space between them as its own.
+          Positioned.fill(
+            child: MouseRegion(
+              cursor: SystemMouseCursors.text,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                excludeFromSemantics: true,
+                onTap: _focusNode.requestFocus,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(PregoSpacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: PregoSpacing.md,
+              children: [
+                Padding(padding: decoration.padding, child: _buildTypingField(context)),
+                if (voiceFirst)
+                  _buildVoicePill(
+                    context,
+                    hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
+                    extraTrailingWidth: 0,
+                    trailing: _buildPrimaryActionButton(context),
+                  )
+                else
+                  _buildTypingActionRow(context),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2757,16 +2789,21 @@ class _PromptInputState() extends State<PromptInput> {
         if (pastedOver != null) _restorePasteSelection(initialValue: pastedOver);
         _insertAtCaret(text: text);
       }
-      if (result.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: result.rejections));
+      if (result.rejections.isNotEmpty) _showRejectionNotice(rejections: result.rejections);
     } on UnsupportedAttachmentImageError {
       if (!mounted || isStale()) return _PasteResult.stale;
-      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported, duration: _rejectedAttachmentNoticeDuration);
     } catch (error) {
       loge("Failed to attach", error);
       if (!mounted || isStale()) return _PasteResult.stale;
-      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed, duration: _rejectedAttachmentNoticeDuration);
     }
     return _PasteResult.handled;
+  }
+
+  /// One notice for whatever could not be added.
+  void _showRejectionNotice({required Map<ComposerAttachRejectionReason, int> rejections}) {
+    _showComposerNotice(_rejectionNotice(rejections: rejections), duration: _rejectedAttachmentNoticeDuration);
   }
 
   /// One line per reason, each with its own count, so a drop turned away for
@@ -2875,20 +2912,20 @@ class _PromptInputState() extends State<PromptInput> {
       }
       // Nothing was staged, so fall back and keep the clipboard's text from
       // being swallowed.
-      if (outcome.rejections.isNotEmpty) _showComposerNotice(_rejectionNotice(rejections: outcome.rejections));
+      if (outcome.rejections.isNotEmpty) _showRejectionNotice(rejections: outcome.rejections);
       return _PasteResult.unhandled;
     } on UnsupportedAttachmentImageError {
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
         return _PasteResult.stale;
       }
-      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported, duration: _rejectedAttachmentNoticeDuration);
       return _PasteResult.unhandled;
     } catch (error, stackTrace) {
       loge("Failed to attach a pasted image", error, stackTrace);
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
         return _PasteResult.stale;
       }
-      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed, duration: _rejectedAttachmentNoticeDuration);
       return _PasteResult.unhandled;
     }
   }
@@ -2981,7 +3018,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// Stages an attachment and reports whether it fit the aggregate budget.
   bool _stageAttachment({required ComposerAttachment attachment}) {
     if (_attachmentsDecodedSizeWith(attachment: attachment) > maxComposerPromptAttachmentBytes) {
-      _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
+      _showComposerNotice(
+        context.loc.sessionDetailAttachmentBudgetExceeded,
+        duration: _rejectedAttachmentNoticeDuration,
+      );
       return false;
     }
     setState(() => _attachments.add(attachment));
