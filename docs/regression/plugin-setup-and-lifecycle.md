@@ -489,7 +489,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   setup guidance stays visible before the explicit detail installation button. Switches send
   actual enable/disable intent and retain the bridge's
   known enabled preference while blocked by setup or another operation; unknown runtime
-  has no inferred switch. A pending toggle replaces only that harness's switch with an
+  has no inferred switch. A harness whose runtime is not installed shows its switch off and
+  unavailable, with a Not installed status in whichever section it sits, and sends nothing;
+  its stored preference is untouched and reappears once the runtime is installed. A pending toggle replaces only that harness's switch with an
   in-place indicator in the same 64×44 slot; the list and unrelated harness toggles stay
   usable. Each harness retains its own pending action, failure or safe-conflict confirmation
   across refresh and overview/detail navigation. Same-harness commands, overrides, installs
@@ -509,7 +511,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   reset and close fence old completions and sheet callbacks.
 - Running means reported busy session work, not merely an active runtime. Idle or stopped
   overview entries have no subtitle section, even when the process is alive; disabled
-  entries also omit it. Installation/setup problems remain visible on eligible entries,
+  entries also omit it unless their runtime is not installed. A dormant harness's detail
+  status reads Not running, never Idle. Installation/setup problems remain visible on eligible entries,
   and unknown activity is not labelled Running. Global timeout is last; its value remains
   visible but not editable during per-harness commands, and only its own all-harness update
   shows progress.
