@@ -830,12 +830,12 @@ later.
   existing sweep plus its startup run from #2431:
   - Every bridge saves under `sesoriUploadsDirectory()`, `<home>/.sesori/uploads`,
     whatever its `--data-dir` (`bridge/sesori_bridge_foundation/lib/src/sesori_data_directory.dart:66`,
-    wired in `bridge/app/lib/src/orchestrator.dart:353`).
+    wired in `bridge/app/lib/src/orchestrator.dart:354`).
   - After every save, any bridge sweeps the whole root:
-    `PromptPartDeliveryService._sweepExpiredUploads`
-    (`bridge/app/lib/src/services/prompt_part_delivery_service.dart:67`, 30
+    `PromptPartDeliveryService.sweepExpiredUploads`
+    (`bridge/app/lib/src/services/prompt_part_delivery_service.dart:70`, 30
     days) calls `PromptUploadRepository.deleteFileFoldersDatedBefore`
-    (`bridge/app/lib/src/repositories/prompt_upload_repository.dart:70`). That
+    (`bridge/app/lib/src/repositories/prompt_upload_repository.dart:71`). That
     walks every session folder in the root and never asks whether its session
     still exists, so a test session that was never deleted from the app ages
     out like any other. `prompt_upload_repository_test.dart`
