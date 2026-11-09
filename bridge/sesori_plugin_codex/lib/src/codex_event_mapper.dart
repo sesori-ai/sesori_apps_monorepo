@@ -510,7 +510,7 @@ class CodexEventMapper({
             // Codex CLI carries none.
             promptId: _optionalString(map: item, key: "clientId"),
           ),
-          text: _userContentMapper.mapContentText(
+          text: _userContentMapper.mapSubmittedTextParts(
             textParts: _contentTexts(content: item["content"]),
           ),
           attachments: _extractUserContentAttachments(content: item["content"]),

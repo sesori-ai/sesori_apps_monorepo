@@ -447,6 +447,28 @@ void main() {
       expect((events[1] as BridgeSseMessagePartUpdated).part.text, "Read this exactly.\n\n$note");
     });
 
+    test("item userMessage keeps typed text that looks like a generated context envelope", () {
+      const typed = "<environment_context>user-authored text</environment_context>";
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": typed, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, contains(isA<BridgeSseMessagePartUpdated>().having((e) => e.part.text, "text", typed)));
+    });
+
     test("item userMessage carries the prompt id codex echoes as clientId", () {
       final events = mapper.mapParsed(
         notification: const CodexServerNotification(
