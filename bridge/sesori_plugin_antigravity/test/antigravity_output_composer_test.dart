@@ -82,11 +82,35 @@ void main() {
             .toList(),
         throwsA(
           isA<AcpOutputInterceptionException>()
-              .having((e) => e.cause, "typed failure", isA<PluginAuthenticationRequiredException>())
+              .having(
+                (e) => e.cause,
+                "typed failure",
+                isA<PluginAuthenticationRequiredException>().having(
+                  (e) => e.recovery,
+                  "recovery",
+                  PluginAuthenticationRecovery.login,
+                ),
+              )
               .having((e) => e.toString(), "presentation", isNot(contains("synthetic-secret"))),
         ),
       );
     }
+    expect(
+      composer.mapInitializationFailure(
+        error: const AcpOutputInterceptionException(
+          cause: PluginAuthenticationRequiredException(
+            "authenticate",
+            actionHint: null,
+            recovery: PluginAuthenticationRecovery.login,
+          ),
+        ),
+      ),
+      isA<PluginAuthenticationRequiredException>().having(
+        (e) => e.recovery,
+        "recovery",
+        PluginAuthenticationRecovery.login,
+      ),
+    );
     const cause = FormatException("ordinary");
     const wrapper = AcpOutputInterceptionException(cause: cause);
     expect(composer.mapInitializationFailure(error: wrapper), same(wrapper));

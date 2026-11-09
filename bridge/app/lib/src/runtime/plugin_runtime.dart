@@ -499,7 +499,11 @@ class PluginRuntime({
       if (slot.accessGate == PluginRuntimeAccessGate.draining) continue;
       slot
         ..accessGate = entry?.gate ?? PluginRuntimeAccessGate.disabled
-        ..startAllowed = (entry?.startAllowed ?? false) && slot.setup is! PluginSetupAuthenticationRequired;
+        // Authentication loss sets one of these until setup is re-inspected.
+        ..startAllowed =
+            (entry?.startAllowed ?? false) &&
+            slot.setup is! PluginSetupAuthenticationRequired &&
+            slot.setup is! PluginSetupUnavailable;
     }
     _publishSnapshots();
   }
@@ -2115,7 +2119,11 @@ class PluginRuntime({
     if (slot.generation != generation || !identical(slot.plugin?.api, api)) return;
     slot.setupInspectionRevision++;
     slot
-      ..setup = PluginSetupAuthenticationRequired(actionHint: failure.actionHint)
+      ..setup = switch (failure.recovery) {
+        PluginAuthenticationRecovery.login => PluginSetupAuthenticationRequired(actionHint: failure.actionHint),
+        // A login cannot fix credentials owned elsewhere, so no login is offered.
+        PluginAuthenticationRecovery.externalConfiguration => PluginSetupUnavailable(actionHint: failure.actionHint),
+      }
       ..startAllowed = false
       ..workState = PluginWorkState.unknown;
     final plugin = slot.plugin;

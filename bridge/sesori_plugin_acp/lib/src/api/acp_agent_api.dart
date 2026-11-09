@@ -1,6 +1,7 @@
 import "dart:async";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginAuthenticationRequiredException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show PluginAuthenticationRecovery, PluginAuthenticationRequiredException;
 
 import "../acp_protocol.dart";
 import "../acp_stdio_client.dart";
@@ -110,6 +111,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       throw PluginAuthenticationRequiredException(
         AcpMethods.authenticate,
         actionHint: "Authenticate the configured agent locally, then retry.",
+        recovery: PluginAuthenticationRecovery.login,
         message: "${client.logTag} requires an authentication method the bridge cannot complete",
       );
     }
@@ -127,6 +129,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       throw PluginAuthenticationRequiredException(
         AcpMethods.authenticate,
         actionHint: "Authenticate the configured agent locally, then retry.",
+        recovery: PluginAuthenticationRecovery.login,
         message: "${client.logTag} authentication failed",
         cause: error,
       );

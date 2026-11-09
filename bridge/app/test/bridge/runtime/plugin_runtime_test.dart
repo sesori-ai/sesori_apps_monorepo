@@ -518,6 +518,7 @@ void main() {
         body: (_) => throw const PluginAuthenticationRequiredException(
           "test",
           actionHint: "Authenticate locally.",
+          recovery: PluginAuthenticationRecovery.login,
         ),
       ),
       throwsA(isA<PluginAuthenticationRequiredException>()),
@@ -556,6 +557,7 @@ void main() {
         body: (_) => throw const PluginAuthenticationRequiredException(
           "test",
           actionHint: "Authenticate locally.",
+          recovery: PluginAuthenticationRecovery.login,
         ),
       ),
       throwsA(isA<PluginAuthenticationRequiredException>()),
@@ -571,6 +573,44 @@ void main() {
     );
 
     expect(runtime.snapshot.single.startAllowed, isFalse);
+  });
+
+  test("externally configured authentication loss blocks start without asking for a login", () async {
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(inspect: () async => const PluginSetupReady()),
+    );
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    const enabled = [
+      PluginRuntimeAccess(pluginId: "one", gate: PluginRuntimeAccessGate.enabled, startAllowed: true),
+    ];
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.use,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "test",
+          actionHint: "Check the gateway, then refresh setup.",
+          recovery: PluginAuthenticationRecovery.externalConfiguration,
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    runtime.applyAccess(entries: enabled);
+
+    expect(
+      runtime.snapshot.single.setup,
+      const PluginSetupUnavailable(actionHint: "Check the gateway, then refresh setup."),
+    );
+    expect(runtime.snapshot.single.startAllowed, isFalse);
+
+    await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+    runtime.applyAccess(entries: enabled);
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
+    expect(runtime.snapshot.single.startAllowed, isTrue);
   });
 
   test("unknown plugin acquisitions preserve the typed unavailable contract", () async {
@@ -668,6 +708,7 @@ void main() {
         body: (_) => throw const PluginAuthenticationRequiredException(
           "test",
           actionHint: "Authenticate locally.",
+          recovery: PluginAuthenticationRecovery.login,
         ),
       ),
       throwsA(isA<PluginAuthenticationRequiredException>()),
@@ -1546,6 +1587,7 @@ void main() {
         body: (_) => throw const PluginAuthenticationRequiredException(
           "test",
           actionHint: "Authenticate locally.",
+          recovery: PluginAuthenticationRecovery.login,
         ),
       ),
       throwsA(isA<PluginAuthenticationRequiredException>()),
@@ -1599,6 +1641,7 @@ void main() {
       const PluginAuthenticationRequiredException(
         "stream",
         actionHint: "Authenticate locally.",
+        recovery: PluginAuthenticationRecovery.login,
       ),
     );
 
@@ -1823,7 +1866,11 @@ void main() {
     final preparing = runtime.prepareDisable(pluginId: "one", intent: PluginStopIntent.force);
     await _waitUntil(() => runtime.snapshot.single.accessGate == PluginRuntimeAccessGate.draining);
     factory.api.eventsController.addError(
-      const PluginAuthenticationRequiredException("test", actionHint: "Authenticate locally."),
+      const PluginAuthenticationRequiredException(
+        "test",
+        actionHint: "Authenticate locally.",
+        recovery: PluginAuthenticationRecovery.login,
+      ),
     );
     await _waitUntil(() => runtime.snapshot.single.setup is PluginSetupAuthenticationRequired);
     commitGate.complete();
