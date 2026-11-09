@@ -228,6 +228,7 @@ void main() {
                 authSession: FakeAuthSession(initialState: const AuthState.initial()),
               ),
               dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
+              pluginManagementService: stubbedPluginManagementService(),
               project: project,
             ),
             onOpenSession: ({required context, required project, required displayName, required session}) {},

@@ -61,16 +61,15 @@ ThemeData buildPregoDesktopThemeData({required Brightness brightness}) {
     ),
     iconButtonTheme: IconButtonThemeData(
       style: _clickableStyle.copyWith(
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return colors.textDisabled;
-          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)) return colors.textPrimary;
-          return colors.textSecondary;
+        // Maps rather than callbacks, so a rebuilt theme equals the last one and
+        // the app does not animate from one to the other.
+        foregroundColor: WidgetStateProperty<Color?>.fromMap({
+          WidgetState.disabled: colors.textDisabled,
+          WidgetState.hovered | WidgetState.focused: colors.textPrimary,
+          WidgetState.any: colors.textSecondary,
         }),
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.pressed) || states.contains(WidgetState.hovered)) {
-            return colors.bgSecondaryHover;
-          }
-          return null;
+        overlayColor: WidgetStateProperty<Color?>.fromMap({
+          WidgetState.pressed | WidgetState.hovered: colors.bgSecondaryHover,
         }),
         shape: const WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(PregoRadius.sm))),

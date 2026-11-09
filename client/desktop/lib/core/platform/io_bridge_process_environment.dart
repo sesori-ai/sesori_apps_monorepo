@@ -164,25 +164,47 @@ class IoBridgeProcessEnvironment.forTesting({
   /// Flags that run [command] in an interactive login [shell], following VS
   /// Code's shell-environment probe. csh and tcsh accept `-l` only as their
   /// sole flag, so they run as an interactive non-login shell (reading
-  /// `.cshrc`/`.tcshrc`, not `.login`); nushell needs separate flags.
+  /// `.cshrc`/`.tcshrc`, not `.login`); nushell and xonsh take separate flags.
+  /// PowerShell's `-Login` must come first and sources the POSIX login
+  /// profiles through `/bin/sh`; `-Command` still loads `$PROFILE`, and
+  /// `-NonInteractive` makes a prompting profile fail instead of hanging.
   @visibleForTesting
   static List<String> loginShellArguments({required String shell, required String command}) =>
-      switch (shell.substring(shell.lastIndexOf("/") + 1)) {
+      switch (_shellName(shell: shell)) {
         "csh" || "tcsh" => <String>["-ic", command],
-        "nu" => <String>["-l", "-i", "-c", command],
+        "nu" || "xonsh" => <String>["-l", "-i", "-c", command],
+        "pwsh" || "pwsh-preview" => <String>[
+          "-Login",
+          "-NonInteractive",
+          "-Command",
+          command,
+        ],
         _ => <String>["-ilc", command],
       };
 
+  /// The command that prints a NUL marker, then the NUL-separated environment.
+  ///
+  /// It works unchanged in zsh, bash, dash, fish, csh/tcsh, nushell and
+  /// PowerShell. xonsh decodes escapes inside quoted arguments, so it gets a
+  /// raw string that passes `\000` through to printf. The marker is printed by
+  /// a printf executable rather than a shell builtin or function; macOS always
+  /// ships /usr/bin/printf, while some Linux distributions (such as NixOS) only
+  /// guarantee /usr/bin/env.
+  @visibleForTesting
+  static String probeCommand({required String shell, required LoginShellPlatform platform}) {
+    final String printf = switch (platform) {
+      LoginShellPlatform.macOS => "/usr/bin/printf",
+      LoginShellPlatform.linux => "/usr/bin/env printf",
+    };
+    final String marker = _shellName(shell: shell) == "xonsh" ? r"r'\000'" : r"'\000'";
+    return "$printf $marker; /usr/bin/env -0";
+  }
+
+  static String _shellName({required String shell}) => shell.substring(shell.lastIndexOf("/") + 1);
+
   Future<Map<String, String>?> _readLoginShellEnvironment({required LoginShellPlatform platform}) async {
     final String shell = _shellExecutable(platform: platform);
-    // The command works unchanged in zsh, bash, dash, fish, csh/tcsh and
-    // nushell. The marker is printed by a printf executable rather than a
-    // shell builtin or function; macOS always ships /usr/bin/printf, while some
-    // Linux distributions (such as NixOS) only guarantee /usr/bin/env.
-    final String command = switch (platform) {
-      LoginShellPlatform.macOS => r"/usr/bin/printf '\000'; /usr/bin/env -0",
-      LoginShellPlatform.linux => r"/usr/bin/env printf '\000'; /usr/bin/env -0",
-    };
+    final String command = probeCommand(shell: shell, platform: platform);
     final LaunchEnvironmentProcessResult result;
     try {
       result = await _runProcess(
@@ -220,7 +242,7 @@ class IoBridgeProcessEnvironment.forTesting({
     }
   }
 
-  /// Parses the `printf '\0'; env -0` output. Bytes before the first NUL are
+  /// Parses the [probeCommand] (`printf '\0'; env -0`) output. Bytes before the first NUL are
   /// output from interactive startup files and an unterminated trailing
   /// fragment is logout-file output; neither is parsed. At most
   /// [_maxCapturedShellEnvironmentBytes] of variables are retained. Beyond that

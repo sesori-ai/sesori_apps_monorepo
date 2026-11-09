@@ -15,6 +15,7 @@ import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/composer_or_notice.dart";
 import "../composer_presentation_scope.dart";
 import "command_picker.dart";
 import "composer_live_words.dart";
@@ -397,6 +398,14 @@ class _PromptInputState() extends State<PromptInput> {
     }
     _syncSurfaceStyle();
     _releaseHintHeight = _measureReleaseHintHeight();
+    // A notice in the composer's place hides the mic and every way to release
+    // or cancel it, so a recording would run on unseen. Dropping it leaves the
+    // draft and attachments as they were.
+    if (ComposerSetAside.of(context) && _isListening) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _isListening) unawaited(_cancelVoiceInteraction());
+      });
+    }
   }
 
   @override

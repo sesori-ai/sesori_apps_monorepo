@@ -29,6 +29,7 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/session_launch_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -155,6 +156,7 @@ void main() {
       ComposerDraftRepository? composerDraftRepository,
       SessionLaunchRepository? launchRepository,
       DedicatedWorktreePreferenceStore? dedicatedWorktreePreferenceStore,
+      PluginManagementService? pluginManagementService,
     }) => NewSessionCubit(
       connectionService: mockConnectionService,
       newSessionPluginService: NewSessionPluginService(
@@ -177,6 +179,7 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: dedicatedWorktreePreferenceStore ?? FakeDedicatedWorktreePreferenceStore(),
+      pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
       project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
     );
 
@@ -695,6 +698,7 @@ void main() {
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
           dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
+          pluginManagementService: stubbedPluginManagementService(),
           project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
         );
       },
@@ -3936,6 +3940,33 @@ void main() {
         await waitForComposer(cubit);
 
         expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+      });
+
+      test("Check setup inspects the harness setup before loading the options again", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        final pluginManagementService = stubbedPluginManagementService();
+        // The login made in a terminal shows only once the setup is inspected.
+        stubSetupCheck(
+          service: pluginManagementService,
+          onCheck: () => delegateSessionOptionsRepository(repository: mockSessionRepository, source: mockSessionApi),
+        );
+        final cubit = buildCubit(pluginManagementService: pluginManagementService);
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+
+        await cubit.checkHarnessSetup();
+
+        verify(() => pluginManagementService.checkSetup(pluginId: "plugin-1")).called(1);
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
       });
 
       test("is ProjectUnavailable when the project's worktree capability cannot be checked", () async {

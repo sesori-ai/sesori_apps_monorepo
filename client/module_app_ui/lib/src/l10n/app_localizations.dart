@@ -3967,12 +3967,6 @@ abstract class AppLocalizations {
   /// **'Awaiting input'**
   String get sessionListAwaitingInput;
 
-  /// Heading above the sessions blocked on the reader's answer, at the top of a desktop session list.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs you'**
-  String get sessionListNeedsYou;
-
   /// Amber word leading a session row's meta line while the session waits for the user's answer or permission
   ///
   /// In en, this message translates to:

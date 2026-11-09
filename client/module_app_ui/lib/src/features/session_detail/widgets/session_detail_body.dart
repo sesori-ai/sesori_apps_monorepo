@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/composer_or_notice.dart";
 import "../../session_diffs/widgets/session_changes_counts.dart";
 import "../../session_prompts/session_prompts_view.dart";
 import "../session_auto_continuation_menu.dart";
@@ -1014,12 +1015,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
                 isReviewingPermission: _isReviewingPermission,
-                bottomControls: !loaded.interaction.canInteract
-                    ? _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false)
-                    : _buildComposer(
-                        context: context,
-                        source: LoadedSessionComposerSource(state: loaded),
-                      ),
+                bottomControls: _buildComposerOrNotice(context: context, loaded: loaded),
                 columnWidths: columnWidths,
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
@@ -1427,8 +1423,14 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!loaded.isArchived && !loaded.interaction.canInteract)
-          _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false),
+        if (!loaded.isArchived)
+          ComposerOrNotice(
+            notice: loaded.interaction.canInteract
+                ? null
+                : _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false),
+            composer: const SizedBox.shrink(),
+            alignment: Alignment.bottomCenter,
+          ),
         ReadOnlyAgentModelPills(
           agents: loaded.availableAgents,
           agent: agent,
@@ -1441,12 +1443,27 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     );
   }
 
+  /// The composer, or the harness notice in its place while the harness
+  /// blocks sending. They cross-fade as they trade places, so a Check setup
+  /// that finds the harness ready hands over to the composer without a jump.
+  Widget? _buildComposerOrNotice({required BuildContext context, required SessionDetailLoaded loaded}) {
+    final notice = loaded.interaction.canInteract
+        ? null
+        : _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false);
+    final composer = _buildComposer(
+      context: context,
+      source: LoadedSessionComposerSource(state: loaded),
+    );
+    if (composer == null) return notice;
+    return ComposerOrNotice(notice: notice, composer: composer, alignment: Alignment.bottomCenter);
+  }
+
   Widget _buildHarnessNotice({required SessionInteractionState interaction, required bool historyUnavailable}) {
     return SessionHarnessUnavailableNotice(
       interaction: interaction,
       historyUnavailable: historyUnavailable,
       onOpenHarnessSettings: SessionDetailPresentationScope.read(context).openHarnessSettings,
-      onRecheck: context.read<SessionDetailCubit>().recheckHarnessAvailability,
+      onCheckSetup: context.read<SessionDetailCubit>().checkHarnessSetup,
     );
   }
 

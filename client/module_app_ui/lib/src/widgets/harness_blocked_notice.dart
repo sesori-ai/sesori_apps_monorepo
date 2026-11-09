@@ -18,9 +18,9 @@ class const HarnessBlockedNotice({
   required final VoidCallback? onOpenHarnessSettings,
   required final VoidCallback? onShowBridgeUpdate,
 
-  /// Asks again; Recheck shows that it is checking until the returned future
-  /// completes.
-  required final Future<void> Function()? onRecheck,
+  /// Asks again under [HarnessBlockedRecheck.label], showing that it is
+  /// checking until the returned future completes.
+  required final HarnessBlockedRecheck? recheck,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class const HarnessBlockedNotice({
     final details = this.details;
     final onOpenHarnessSettings = this.onOpenHarnessSettings;
     final onShowBridgeUpdate = this.onShowBridgeUpdate;
-    final onRecheck = this.onRecheck;
+    final recheck = this.recheck;
 
     return Semantics(
       container: true,
@@ -51,7 +51,7 @@ class const HarnessBlockedNotice({
                 const SizedBox(height: 8),
                 Text(details, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
               ],
-              if (onOpenHarnessSettings != null || onShowBridgeUpdate != null || onRecheck != null) ...[
+              if (onOpenHarnessSettings != null || onShowBridgeUpdate != null || recheck != null) ...[
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -73,7 +73,7 @@ class const HarnessBlockedNotice({
                         size: PregoButtonsSolidSize.sm,
                         onPressed: onShowBridgeUpdate,
                       ),
-                    if (onRecheck != null) _RecheckButton(onRecheck: onRecheck),
+                    if (recheck != null) _RecheckButton(recheck: recheck),
                   ],
                 ),
               ],
@@ -84,6 +84,10 @@ class const HarnessBlockedNotice({
     );
   }
 }
+
+/// What the notice's recheck says and asks: Recheck where it only asks again,
+/// Check setup where it has the bridge inspect the harness setup again.
+typedef HarnessBlockedRecheck = ({String label, Future<void> Function() onPressed});
 
 /// Where a press of Recheck stands: none pending, pending for less than
 /// [_RecheckButton.checkingDelay], or pending past it and showing so.
@@ -97,7 +101,7 @@ enum _RecheckPhase() {
 /// [checkingDelay]: the label cross-fades into a spinner in its room, so the
 /// button keeps its size, and it takes no press until the answer. A faster
 /// answer never shows the spinner.
-class const _RecheckButton({required final Future<void> Function() onRecheck}) extends StatefulWidget {
+class const _RecheckButton({required final HarnessBlockedRecheck recheck}) extends StatefulWidget {
   static const checkingDelay = Duration(milliseconds: 300);
 
   @override
@@ -113,7 +117,7 @@ class _RecheckButtonState() extends State<_RecheckButton> {
     setState(() => _phase = _RecheckPhase.waiting);
     _checkingDelay = Timer(_RecheckButton.checkingDelay, () => setState(() => _phase = _RecheckPhase.checking));
     try {
-      await widget.onRecheck();
+      await widget.recheck.onPressed();
     } finally {
       _checkingDelay?.cancel();
       if (mounted) setState(() => _phase = _RecheckPhase.idle);
@@ -129,6 +133,7 @@ class _RecheckButtonState() extends State<_RecheckButton> {
   @override
   Widget build(BuildContext context) {
     final checking = _phase == _RecheckPhase.checking;
+    final label = widget.recheck.label;
     // While checking, screen readers hear a disabled Recheck in the button's
     // place. Disabling the button itself would also drop its hover highlight
     // and keyboard focus at once.
@@ -137,7 +142,7 @@ class _RecheckButtonState() extends State<_RecheckButton> {
       excludeSemantics: checking,
       button: checking ? true : null,
       enabled: checking ? false : null,
-      label: checking ? context.loc.sessionDetailRecheck : null,
+      label: checking ? label : null,
       child: IgnorePointer(
         ignoring: checking,
         child: TextButton(
@@ -152,7 +157,7 @@ class _RecheckButtonState() extends State<_RecheckButton> {
                 duration: transcriptMotionDuration,
                 curve: transcriptMotionCurve,
                 alwaysIncludeSemantics: true,
-                child: Text(context.loc.sessionDetailRecheck),
+                child: Text(label),
               ),
               Positioned.fill(
                 child: AnimatedSwitcher(

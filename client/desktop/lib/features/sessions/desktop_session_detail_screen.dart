@@ -189,7 +189,7 @@ class const DesktopSessionDetailView({
           pageChrome: SessionDetailPageChrome(
             columnWidths: const SessionDetailColumnWidths(
               transcript: desktopTranscriptWidth,
-              composer: maxComposerWidth,
+              composer: desktopComposerWidth,
             ),
             headerBuilder: _buildToolbar,
           ),
@@ -198,10 +198,6 @@ class const DesktopSessionDetailView({
       ),
     );
   }
-
-  /// Caps the composer, its pointer-picker pills and the needs-you cards above
-  /// them, at the transcript's own measure, so the page reads as one column.
-  static const double maxComposerWidth = desktopTranscriptWidth;
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(

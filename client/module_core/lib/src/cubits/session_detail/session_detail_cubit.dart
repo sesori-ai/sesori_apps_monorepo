@@ -80,7 +80,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   waitingForConnection("waiting_for_connection"),
   harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
-  recheck("recheck"),
+  checkSetup("check_setup"),
 }
 
 enum _SessionRefreshAction() {
@@ -199,7 +199,7 @@ class SessionDetailCubit(
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
 
-  /// The reload behind the unavailable shell. Recheck and the harness turning
+  /// The reload behind the unavailable shell. Check setup and the harness turning
   /// available usually ask for one together, so they share it.
   Future<void>? _shellReload;
 
@@ -426,7 +426,7 @@ class SessionDetailCubit(
     switch (current) {
       case SessionDetailLoaded(:final interaction):
         if (!next.canInteract) {
-          emit(current.copyWith(interaction: next));
+          emit(_endTurnInHarnessBlock(current: current.copyWith(interaction: next)));
         } else if (!interaction.canInteract) {
           _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
         } else {
@@ -443,21 +443,48 @@ class SessionDetailCubit(
     }
   }
 
-  Future<void> recheckHarnessAvailability() async {
-    await _pluginManagementService.refresh();
+  /// A harness that loses its login or setup mid-turn is shut down before the
+  /// turn reports its end, so the turn ends here and its Working or Retrying
+  /// row stops. A status the harness sends after that, such as a retry still in
+  /// flight, keeps it stopped while the block lasts.
+  SessionDetailLoaded _endTurnInHarnessBlock({required SessionDetailLoaded current}) {
+    if (current.interaction case SessionInteractionBlocked(
+      reason: SessionInteractionBlockedReason.authenticationRequired || SessionInteractionBlockedReason.unavailable,
+    )) {
+      return current.copyWith(
+        sessionStatus: const SessionStatus.idle(),
+        childStatuses: {
+          for (final MapEntry(:key, :value) in current.childStatuses.entries)
+            key: isChildRunning(status: value) ? const SessionStatus.idle() : value,
+        },
+      );
+    }
+    return current;
+  }
+
+  /// Check setup: has the bridge inspect the session's harness setup again, as
+  /// harness settings does, then lets the session continue when that finds it
+  /// usable. See [PluginManagementService.checkSetup].
+  Future<void> checkHarnessSetup() async {
+    switch (_sessionMetadata) {
+      case final session?:
+        await _pluginManagementService.checkSetup(pluginId: session.pluginId);
+      case null:
+        await _pluginManagementService.refresh();
+    }
     if (isClosed) return;
     // A blocked reload reads store-only, so it cannot wake the harness. From
-    // the unavailable shell that makes Recheck the user's retry as well: the
-    // read may have failed for a reason enabling the harness would not fix.
+    // the unavailable shell that makes Check setup the user's retry as well:
+    // the read may have failed for a reason enabling the harness would not fix.
     if (state is SessionDetailHarnessUnavailable) {
-      await _reloadShell(trigger: _SessionRefreshTrigger.recheck);
+      await _reloadShell(trigger: _SessionRefreshTrigger.checkSetup);
       return;
     }
     if (!_interaction.canInteract) return;
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
-      // Recheck shows it is checking until this returns, so it waits for the
-      // refresh that swaps the notice for the composer. Joining one already in
+      // Check setup shows it is checking until this returns, so it waits for
+      // the refresh that swaps the notice for the composer. Joining one already in
       // flight queued another behind it, which starts as that one completes
       // and may be the one that applies the harness, so it waits for that one
       // too, but no further. Refreshes catch their own failures.
@@ -485,7 +512,7 @@ class SessionDetailCubit(
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     final previous = state;
     // The unavailable shell already shows what this screen still owes, and it
-    // stays up until the answer: Recheck shows the check meanwhile, so a
+    // stays up until the answer: Check setup shows the check meanwhile, so a
     // harness still blocked leaves the notice where it was.
     if (previous is! SessionDetailHarnessUnavailable) {
       emit(
@@ -1849,8 +1876,8 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(
-      current.copyWith(
-        childStatuses: {...current.childStatuses, sessionId: status},
+      _endTurnInHarnessBlock(
+        current: current.copyWith(childStatuses: {...current.childStatuses, sessionId: status}),
       ),
     );
   }
@@ -2046,7 +2073,7 @@ class SessionDetailCubit(
   void _onSessionStatus({required SessionStatus status}) {
     final current = state;
     if (current is! SessionDetailLoaded || isClosed) return;
-    emit(current.copyWith(sessionStatus: status));
+    emit(_endTurnInHarnessBlock(current: current.copyWith(sessionStatus: status)));
   }
 
   // ---------------------------------------------------------------------------
@@ -3501,7 +3528,7 @@ class SessionDetailCubit(
   );
 
   /// Puts [unsent] into the composer ahead of what it holds, each after a
-  /// blank line, with their images before its own. A [stagedCommand] becomes
+  /// blank line, with their images after its own. A [stagedCommand] becomes
   /// its literal text, as the restored words would otherwise be its arguments.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
     final held = switch (stagedCommand) {
@@ -3511,7 +3538,9 @@ class SessionDetailCubit(
     saveComposerDraft(
       draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
     );
-    _restoredAttachments = [for (final prompt in unsent) ...prompt.attachments, ..._composerAttachments];
+    // The composer stages these up to its budget and stops at the first that
+    // does not fit, so its own images, which fit before the stop, go first.
+    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
     _composerRestorations++;
   }
 
