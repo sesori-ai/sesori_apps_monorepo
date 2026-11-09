@@ -843,8 +843,10 @@ later.
     ("removes only file folders dated before the cutoff day…") covers it.
   - What's left behind is an empty session folder: the sweep keeps those so it
     can't race a save into the same session. They hold no files.
-  - The sweep runs only when some bridge saves a file, so files stay on a
-    computer that never saves another one.
+  - The sweep used to run only when some bridge saved a file, so a computer
+    that stopped receiving files kept its last ones. #2431 also runs it once
+    at bridge startup, best-effort and without waiting, so any bridge start
+    ages them out.
 - **Pinned prompt covering the "1 step" row on macOS: A.** The existing
   pinned-prompt design is kept.
 - **ACP history from the internal `v1.12.0-internal.1153` build: A,
