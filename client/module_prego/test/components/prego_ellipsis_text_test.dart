@@ -82,6 +82,20 @@ void main() {
     expect(label.style.fontWeight, FontWeight.bold);
   });
 
+  testWidgets("the system letter spacing widens the label, as it does any Text", (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(letterSpacingOverride: 2),
+          child: Center(
+            child: PregoEllipsisText(text: "Claude Opus 5", style: style, ellipsis: PregoEllipsis.start),
+          ),
+        ),
+      ),
+    );
+    expect(paintedWidth(tester), 13 * (14 + 2));
+  });
+
   testWidgets("screen readers get the whole text", (tester) async {
     await pump(
       tester,
