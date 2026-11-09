@@ -5,7 +5,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  final image = ComposerAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: "a.png");
+  final image = ComposerImageAttachment(
+    mime: "image/png",
+    bytes: Uint8List.fromList([1]),
+    filename: "a.png",
+  );
   QueuedSessionSubmission text({required List<ComposerAttachment> attachments}) => QueuedSessionSubmission.text(
     promptId: "prm_a",
     text: "then this",

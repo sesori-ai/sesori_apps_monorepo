@@ -1339,7 +1339,7 @@ void main() {
             ),
           ).thenAnswer((_) => send.future);
           final cubit = await createLoadedCubit(supportsPromptAttachments: true);
-          final attachment = ComposerAttachment(
+          final attachment = ComposerImageAttachment(
             mime: "image/png",
             bytes: base64Decode(
               "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -2918,7 +2918,11 @@ void main() {
       });
 
       group("the launch's composer before the first load", () {
-        final image = ComposerAttachment(mime: "image/png", bytes: utf8.encode("png"), filename: "a.png");
+        final image = ComposerImageAttachment(
+          mime: "image/png",
+          bytes: utf8.encode("png"),
+          filename: "a.png",
+        );
         SessionLaunchComposer composer({required UnsentComposer? unsent}) => SessionLaunchComposer(
           agents: const [],
           agent: "plan",

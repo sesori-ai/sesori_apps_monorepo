@@ -1602,7 +1602,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("steer it"), findsOneWidget);
-    expect(find.text("1 image"), findsOneWidget);
+    expect(find.text("1 attachment"), findsOneWidget);
     expect(find.text("/review src"), findsOneWidget);
     expect(find.text("Cancel"), findsNWidgets(2));
 
@@ -1625,7 +1625,7 @@ void main() {
     ) async {
       final attachments = [
         for (var i = 0; i < 2; i++)
-          ComposerAttachment(
+          ComposerImageAttachment(
             mime: "image/png",
             bytes: base64Decode(
               "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -1715,7 +1715,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final attachment = ComposerAttachment(
+    final attachment = ComposerImageAttachment(
       mime: "image/png",
       bytes: base64Decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -1777,7 +1777,7 @@ void main() {
     // The bounded owner may evict an older preview while its row is pending.
     harnessKey.harness.updateBridgeQueue(prompts: [prompt], attachments: const {});
     await _pumpListUpdate(tester);
-    expect(find.text("1 image"), findsOneWidget);
+    expect(find.text("1 attachment"), findsOneWidget);
     expect(find.byType(Image), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

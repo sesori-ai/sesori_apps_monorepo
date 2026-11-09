@@ -312,14 +312,17 @@ this plan changes a wire contract and adds a bridge class.
   `pick()` gains `fileUploadsSupported` and uses it for its `ComposerPickedImage`
   branch, so a Photos pick on a Grok session becomes a file instead of an image
   that can't be sent.
-- **Composer model.** `ComposerAttachment` gains
-  `required ComposerAttachmentKind kind`, with values `image` and `file`. Both
-  kinds carry the same data, so the kind is an enum rather than a sealed class.
+- **Composer model.** `ComposerAttachment` becomes sealed, with
+  `ComposerImageAttachment` (sniffed mime, bytes, optional name) and
+  `ComposerFileAttachment` (bytes and a required name, mime fixed to
+  octet-stream). A file has different valid data from an image, so per the root
+  `AGENTS.md` it is a sealed variant rather than an enum kind (changed in the
+  step 5 review).
   One module_core function, `canDeliverComposerAttachments({attachments,
   inlineImages, fileUploads})`, replaces the cubit and `PromptInput` gates: an
   image needs `inlineImages == true`, and a file needs `fileUploads`.
 - **Where new client types live** (all in `client/module_core/lib/src/`):
-  - `ComposerAttachmentKind` and `ComposerAttachmentSource`: beside
+  - The sealed attachment variants and `ComposerAttachmentSource`: beside
     `ComposerAttachment` in `foundation/models/composer/composer_attachment.dart`.
   - `canDeliverComposerAttachments`:
     `foundation/models/composer/composer_attachment_delivery.dart`. Foundation,
@@ -360,7 +363,7 @@ this plan changes a wire contract and adds a bridge class.
   - *Meaning and authority:* a confirmed outcome. It fires at the three existing
     accepted-prompt seams above, right after their `session_message_sent` or
     `session_created_with_message`, and only when the accepted prompt holds at
-    least one `kind == file` attachment. Those are exactly the files the bridge
+    least one `ComposerFileAttachment`. Those are exactly the files the bridge
     saves; inline images are not counted. Never on queueing, failure or retry.
   - *Unit:* an action (one accepted prompt).
   - *Parameters,* both closed enums:
@@ -492,7 +495,7 @@ then adds the attachment source to both.
 
 ### Step 5 (⚙️: composer model, routing, gates, file tiles)
 - module_core:
-  - `ComposerAttachment.kind`, and `canDeliverComposerAttachments` used in both
+  - The sealed `ComposerAttachment` variants, and `canDeliverComposerAttachments` used in both
     cubits.
   - Dispatcher rule 3, the new rejection reason, and `routeImageBytes` used by
     both the paste path and `pick()`'s `ComposerPickedImage` branch.
@@ -605,7 +608,7 @@ then adds the attachment source to both.
     session id is a local in `createSession`, and the deletion hook is one more
     call in an existing callback.
   - Client: none in `PromptInput`. The attachment list already exists, and
-    `kind` and `source` are immutable. There are new immutable
+    the variant and `source` are immutable. There are new immutable
     `supportsFileUploads` fields on the snapshot, state, launch composer and
     discovery.
   - Android: one pending-result field in `DocumentPickerService`.

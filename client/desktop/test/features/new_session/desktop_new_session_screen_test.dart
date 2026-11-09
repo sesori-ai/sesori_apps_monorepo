@@ -122,6 +122,7 @@ void main() {
       () => dispatcher.routeHostPaths(
         paths: any(named: "paths"),
         attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
         stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
       ),
     ).thenAnswer(
@@ -175,6 +176,7 @@ void main() {
       () => dispatcher.routeHostPaths(
         paths: ["/work/notes.dart"],
         attachmentsSupported: any(named: "attachmentsSupported"),
+        fileUploadsSupported: any(named: "fileUploadsSupported"),
         stagedAttachmentBytes: 0,
       ),
     ).called(1);
