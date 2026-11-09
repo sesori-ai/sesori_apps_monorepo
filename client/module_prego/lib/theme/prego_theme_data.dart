@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 
 import "font/prego_text_theme.dart";
 import "prego_design_system.dart";
+import "primitives/prego_colors.g.dart";
 import "primitives/prego_colors_x.dart";
 import "primitives/prego_radius.g.dart";
 
@@ -61,16 +62,9 @@ ThemeData buildPregoDesktopThemeData({required Brightness brightness}) {
     ),
     iconButtonTheme: IconButtonThemeData(
       style: _clickableStyle.copyWith(
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return colors.textDisabled;
-          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)) return colors.textPrimary;
-          return colors.textSecondary;
-        }),
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.pressed) || states.contains(WidgetState.hovered)) {
-            return colors.bgSecondaryHover;
-          }
-          return null;
+        foregroundColor: _iconButtonForeground(colors: colors),
+        overlayColor: WidgetStateProperty<Color?>.fromMap({
+          WidgetState.pressed | WidgetState.hovered: colors.bgSecondaryHover,
         }),
         shape: const WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(PregoRadius.sm))),
@@ -93,7 +87,10 @@ ThemeData _buildThemeData({required Brightness brightness, required PregoDesignS
     ),
     // Material defaults to the arrow over controls on desktop; Sesori shows the hand wherever a click acts.
     textButtonTheme: const TextButtonThemeData(style: _clickableStyle),
-    iconButtonTheme: const IconButtonThemeData(style: _clickableStyle),
+    // Without a foreground, an icon button is Material's black, or blue in dark mode.
+    iconButtonTheme: IconButtonThemeData(
+      style: _clickableStyle.copyWith(foregroundColor: _iconButtonForeground(colors: designSystem.colors)),
+    ),
     filledButtonTheme: const FilledButtonThemeData(style: _clickableStyle),
     elevatedButtonTheme: const ElevatedButtonThemeData(style: _clickableStyle),
     outlinedButtonTheme: const OutlinedButtonThemeData(style: _clickableStyle),
@@ -108,3 +105,13 @@ ThemeData _buildThemeData({required Brightness brightness, required PregoDesignS
 }
 
 const ButtonStyle _clickableStyle = ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable);
+
+/// Quiet at rest, like the Copy button, and bright under a pointer or focus.
+/// A map rather than a callback, so a rebuilt theme equals the last one and
+/// the app does not animate from one to the other.
+WidgetStateProperty<Color?> _iconButtonForeground({required PregoColors colors}) =>
+    WidgetStateProperty<Color?>.fromMap({
+      WidgetState.disabled: colors.textDisabled,
+      WidgetState.hovered | WidgetState.focused: colors.textPrimary,
+      WidgetState.any: colors.textSecondary,
+    });
