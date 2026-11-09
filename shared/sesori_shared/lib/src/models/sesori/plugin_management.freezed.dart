@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginManagementMetadata {
 
- PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState;@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState get authenticationState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities; String? get actionHint;
+ PluginSetupMetadata get setup;@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState get runtimeState;@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState get workState;@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState get authenticationState; int get idleTimeoutMins; bool get hasIdleTimeoutOverride;@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> get managementCapabilities;/// Where this harness answers MCP inventory; empty when it has no MCP
+/// support.
+@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? get mcpScopes; String? get actionHint;
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +32,20 @@ $PluginManagementMetadataCopyWith<PluginManagementMetadata> get copyWith => _$Pl
 @override
 bool operator ==(Object other) {
   final _this = this as PluginManagementMetadata;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, _this.setup) || other.setup == _this.setup)&&(identical(other.runtimeState, _this.runtimeState) || other.runtimeState == _this.runtimeState)&&(identical(other.workState, _this.workState) || other.workState == _this.workState)&&(identical(other.authenticationState, _this.authenticationState) || other.authenticationState == _this.authenticationState)&&(identical(other.idleTimeoutMins, _this.idleTimeoutMins) || other.idleTimeoutMins == _this.idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, _this.hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == _this.hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, _this.managementCapabilities)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, _this.setup) || other.setup == _this.setup)&&(identical(other.runtimeState, _this.runtimeState) || other.runtimeState == _this.runtimeState)&&(identical(other.workState, _this.workState) || other.workState == _this.workState)&&(identical(other.authenticationState, _this.authenticationState) || other.authenticationState == _this.authenticationState)&&(identical(other.idleTimeoutMins, _this.idleTimeoutMins) || other.idleTimeoutMins == _this.idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, _this.hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == _this.hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, _this.managementCapabilities)&&const DeepCollectionEquality().equals(other.mcpScopes, _this.mcpScopes)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginManagementMetadata;
-  return Object.hash(runtimeType,_this.setup,_this.runtimeState,_this.workState,_this.authenticationState,_this.idleTimeoutMins,_this.hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_this.managementCapabilities),_this.actionHint);
+  return Object.hash(runtimeType,_this.setup,_this.runtimeState,_this.workState,_this.authenticationState,_this.idleTimeoutMins,_this.hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_this.managementCapabilities),const DeepCollectionEquality().hash(_this.mcpScopes),_this.actionHint);
 }
 
 @override
 String toString() {
   final _this = this as PluginManagementMetadata;
-  return 'PluginManagementMetadata(setup: ${_this.setup}, runtimeState: ${_this.runtimeState}, workState: ${_this.workState}, authenticationState: ${_this.authenticationState}, idleTimeoutMins: ${_this.idleTimeoutMins}, hasIdleTimeoutOverride: ${_this.hasIdleTimeoutOverride}, managementCapabilities: ${_this.managementCapabilities}, actionHint: ${_this.actionHint})';
+  return 'PluginManagementMetadata(setup: ${_this.setup}, runtimeState: ${_this.runtimeState}, workState: ${_this.workState}, authenticationState: ${_this.authenticationState}, idleTimeoutMins: ${_this.idleTimeoutMins}, hasIdleTimeoutOverride: ${_this.hasIdleTimeoutOverride}, managementCapabilities: ${_this.managementCapabilities}, mcpScopes: ${_this.mcpScopes}, actionHint: ${_this.actionHint})';
 }
 
 
@@ -54,7 +56,7 @@ abstract mixin class $PluginManagementMetadataCopyWith<$Res>  {
   factory $PluginManagementMetadataCopyWith(PluginManagementMetadata value, $Res Function(PluginManagementMetadata) _then) = _$PluginManagementMetadataCopyWithImpl;
 @useResult
 $Res call({
- PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState,@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState authenticationState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
+ PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState,@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState authenticationState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? actionHint
 });
 
 
@@ -71,7 +73,7 @@ class _$PluginManagementMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? mcpScopes = freezed,Object? actionHint = freezed,}) {
   return _then(PluginManagementMetadata(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
@@ -80,7 +82,8 @@ as PluginManagementWorkState,authenticationState: null == authenticationState ? 
 as PluginAuthenticationState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,hasIdleTimeoutOverride: null == hasIdleTimeoutOverride ? _self.hasIdleTimeoutOverride : hasIdleTimeoutOverride // ignore: cast_nullable_to_non_nullable
 as bool,managementCapabilities: null == managementCapabilities ? _self.managementCapabilities : managementCapabilities // ignore: cast_nullable_to_non_nullable
-as Set<PluginManagementCapability>,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as Set<PluginManagementCapability>,mcpScopes: freezed == mcpScopes ? _self.mcpScopes : mcpScopes // ignore: cast_nullable_to_non_nullable
+as Set<McpScopeKind>?,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -102,7 +105,7 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 @JsonSerializable()
 
 class _PluginManagementMetadata implements PluginManagementMetadata {
-  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) this.authenticationState = PluginAuthenticationState.idle, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required  Set<PluginManagementCapability> managementCapabilities, required this.actionHint}): _managementCapabilities = managementCapabilities;
+  const _PluginManagementMetadata({required this.setup, @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required this.runtimeState, @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required this.workState, @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) this.authenticationState = PluginAuthenticationState.idle, required this.idleTimeoutMins, required this.hasIdleTimeoutOverride, @JsonKey(unknownEnumValue: PluginManagementCapability.unknown) required  Set<PluginManagementCapability> managementCapabilities, @JsonKey(unknownEnumValue: McpScopeKind.unknown) required  Set<McpScopeKind>? mcpScopes, required this.actionHint}): _managementCapabilities = managementCapabilities,_mcpScopes = mcpScopes;
   factory _PluginManagementMetadata.fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 
 @override final  PluginSetupMetadata setup;
@@ -116,6 +119,19 @@ class _PluginManagementMetadata implements PluginManagementMetadata {
   if (_managementCapabilities is EqualUnmodifiableSetView) return _managementCapabilities;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableSetView(_managementCapabilities);
+}
+
+/// Where this harness answers MCP inventory; empty when it has no MCP
+/// support.
+ final  Set<McpScopeKind>? _mcpScopes;
+/// Where this harness answers MCP inventory; empty when it has no MCP
+/// support.
+@override@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? get mcpScopes {
+  final value = _mcpScopes;
+  if (value == null) return null;
+  if (_mcpScopes is EqualUnmodifiableSetView) return _mcpScopes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(value);
 }
 
 @override final  String? actionHint;
@@ -133,18 +149,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, _managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, _managementCapabilities)&&const DeepCollectionEquality().equals(other.mcpScopes, _mcpScopes)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),actionHint);
+    return Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),const DeepCollectionEquality().hash(_mcpScopes),actionHint);
 }
 
 @override
 String toString() {
-    return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
+    return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, mcpScopes: $mcpScopes, actionHint: $actionHint)';
 }
 
 
@@ -155,7 +171,7 @@ abstract mixin class _$PluginManagementMetadataCopyWith<$Res> implements $Plugin
   factory _$PluginManagementMetadataCopyWith(_PluginManagementMetadata value, $Res Function(_PluginManagementMetadata) _then) = __$PluginManagementMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState,@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState authenticationState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities, String? actionHint
+ PluginSetupMetadata setup,@JsonKey(unknownEnumValue: PluginRuntimeState.unknown) PluginRuntimeState runtimeState,@JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) PluginManagementWorkState workState,@JsonKey(unknownEnumValue: PluginAuthenticationState.unknown) PluginAuthenticationState authenticationState, int idleTimeoutMins, bool hasIdleTimeoutOverride,@JsonKey(unknownEnumValue: PluginManagementCapability.unknown) Set<PluginManagementCapability> managementCapabilities,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? actionHint
 });
 
 
@@ -172,7 +188,7 @@ class __$PluginManagementMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? actionHint = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? setup = null,Object? runtimeState = null,Object? workState = null,Object? authenticationState = null,Object? idleTimeoutMins = null,Object? hasIdleTimeoutOverride = null,Object? managementCapabilities = null,Object? mcpScopes = freezed,Object? actionHint = freezed,}) {
   return _then(_PluginManagementMetadata(
 setup: null == setup ? _self.setup : setup // ignore: cast_nullable_to_non_nullable
 as PluginSetupMetadata,runtimeState: null == runtimeState ? _self.runtimeState : runtimeState // ignore: cast_nullable_to_non_nullable
@@ -181,7 +197,8 @@ as PluginManagementWorkState,authenticationState: null == authenticationState ? 
 as PluginAuthenticationState,idleTimeoutMins: null == idleTimeoutMins ? _self.idleTimeoutMins : idleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,hasIdleTimeoutOverride: null == hasIdleTimeoutOverride ? _self.hasIdleTimeoutOverride : hasIdleTimeoutOverride // ignore: cast_nullable_to_non_nullable
 as bool,managementCapabilities: null == managementCapabilities ? _self._managementCapabilities : managementCapabilities // ignore: cast_nullable_to_non_nullable
-as Set<PluginManagementCapability>,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as Set<PluginManagementCapability>,mcpScopes: freezed == mcpScopes ? _self._mcpScopes : mcpScopes // ignore: cast_nullable_to_non_nullable
+as Set<McpScopeKind>?,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

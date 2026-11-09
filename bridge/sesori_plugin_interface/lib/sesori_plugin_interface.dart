@@ -17,6 +17,7 @@ export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_control_capability.dart";
 export "src/lifecycle/plugin_diagnostics.dart";
 export "src/lifecycle/plugin_mcp_capability.dart";
+export "src/lifecycle/plugin_mcp_scope_kind.dart";
 export "src/lifecycle/plugin_option.dart";
 export "src/lifecycle/plugin_project_ownership.dart";
 export "src/lifecycle/plugin_residency_policy.dart";

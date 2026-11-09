@@ -20,6 +20,7 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
+      expect(descriptor.mcpScopes, {PluginMcpScopeKind.session}, reason: "Claude answers MCP only for a live session");
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
       expect(ClaudePluginDescriptor.targetVersion, "2.1.310");

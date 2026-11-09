@@ -33,6 +33,7 @@ typedef RegisteredPluginMetadata = ({
   PluginSessionOptionsScope sessionOptionsScope,
   Set<PluginControlCapability> managementCapabilities,
   bool supportsPromptAttachments,
+  Set<PluginMcpScopeKind> mcpScopes,
 });
 
 typedef PluginStartupPolicy = ({
@@ -1242,6 +1243,7 @@ class PluginLifecycleService({
           if (_isManagementCapabilityAvailable(pluginId: plugin.id, capability: capability))
             _mapManagementCapability(capability: capability),
       },
+      mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
   }
@@ -1254,6 +1256,12 @@ class PluginLifecycleService({
         PluginControlCapability.install => PluginManagementCapability.install,
         PluginControlCapability.authentication => PluginManagementCapability.authentication,
       };
+
+  McpScopeKind _mapMcpScope({required PluginMcpScopeKind scope}) => switch (scope) {
+    PluginMcpScopeKind.harness => McpScopeKind.harness,
+    PluginMcpScopeKind.project => McpScopeKind.project,
+    PluginMcpScopeKind.session => McpScopeKind.session,
+  };
 
   Set<String> _pluginIdsSupporting({required PluginControlCapability capability}) {
     return {

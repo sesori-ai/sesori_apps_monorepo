@@ -11,6 +11,7 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isFalse);
       expect(descriptor.mcpCapabilities, isEmpty);
+      expect(descriptor.mcpScopes, isEmpty);
     });
 
     test('validateConfig accepts everything by default', () {

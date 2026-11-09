@@ -9,6 +9,7 @@ import "plugin_activation_policy.dart";
 import "plugin_config.dart";
 import "plugin_control_capability.dart";
 import "plugin_mcp_capability.dart";
+import "plugin_mcp_scope_kind.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
 import "plugin_residency_policy.dart";
@@ -103,6 +104,14 @@ abstract class const BridgePluginDescriptor() {
   /// MCP support reports itself unsupported rather than inactive. The default
   /// declares none.
   Set<PluginMcpCapability> get mcpCapabilities => const {};
+
+  /// The MCP scopes the started plugin's inventory answers; empty unless
+  /// [mcpCapabilities] includes management.
+  ///
+  /// Clients offer MCP only where the harness answers, so a harness that
+  /// manages MCP per session shows no harness-wide entry. The default
+  /// declares none.
+  Set<PluginMcpScopeKind> get mcpScopes => const {};
 
   /// Inspects whether this plugin's runtime and authentication are already set
   /// up without installing, starting, or initiating a login flow.

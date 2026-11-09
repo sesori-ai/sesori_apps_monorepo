@@ -44,7 +44,14 @@ class const HarnessSettingsDetailView({
                 authentication: state.authentication,
                 install: state.installs[pluginId],
               ),
-            if (plugin != null)
+            if (plugin == null)
+              switch (state) {
+                PluginManagementLoading() => const _LoadingView(),
+                PluginManagementUnsupported() => const _UnsupportedView(),
+                PluginManagementFailure() => const _FailureView(),
+                PluginManagementReady() => Text(context.loc.harnessManagementNotFound),
+              }
+            else if (_offersHarnessMcp(plugin: plugin))
               Padding(
                 padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xl),
                 child: PregoGroupedRows(
@@ -58,14 +65,7 @@ class const HarnessSettingsDetailView({
                     ),
                   ],
                 ),
-              )
-            else
-              switch (state) {
-                PluginManagementLoading() => const _LoadingView(),
-                PluginManagementUnsupported() => const _UnsupportedView(),
-                PluginManagementFailure() => const _FailureView(),
-                PluginManagementReady() => Text(context.loc.harnessManagementNotFound),
-              },
+              ),
           ],
         ),
       ),
@@ -429,3 +429,13 @@ bool _supportsOperationalTimeout(PluginManagementMetadata plugin) {
       plugin.runtimeState.isEnabled &&
       plugin.managementCapabilities.contains(PluginManagementCapability.idleTimeout);
 }
+
+/// Whether harness-wide MCP answers for [plugin]. A harness without MCP, or
+/// one that reads MCP only per session or project, would open a dead end, and
+/// its sessions already offer MCP from their own menu.
+bool _offersHarnessMcp({required PluginManagementMetadata plugin}) => switch (plugin.mcpScopes) {
+  // COMPATIBILITY 2026-11-09 (v1.12.0): an older bridge reports no scopes, so
+  // keep the entry it has always had. Remove this branch with the nullable field.
+  null => true,
+  final scopes => scopes.contains(McpScopeKind.harness),
+};

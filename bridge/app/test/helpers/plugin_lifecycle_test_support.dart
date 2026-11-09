@@ -19,6 +19,8 @@ const defaultManagementCapabilities = <PluginControlCapability>{
   PluginControlCapability.idleTimeout,
 };
 
+const noMcpScopes = <PluginMcpScopeKind>{};
+
 Future<PluginLifecycleService> createSinglePluginLifecycleService({
   required BridgePluginApi plugin,
 }) {
@@ -47,6 +49,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
     ],
     disabledPluginIds: const {},

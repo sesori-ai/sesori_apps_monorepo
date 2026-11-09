@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../converters/strict_int_json_converter.dart";
+import "mcp.dart";
 import "plugin_setup_metadata.dart";
 
 part "plugin_management.freezed.dart";
@@ -115,6 +116,14 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
     required bool hasIdleTimeoutOverride,
     @JsonKey(unknownEnumValue: PluginManagementCapability.unknown)
     required Set<PluginManagementCapability> managementCapabilities,
+
+    /// Where this harness answers MCP inventory; empty when it has no MCP
+    /// support.
+    // COMPATIBILITY 2026-11-09 (v1.12.0): Older bridge payloads omit mcpScopes;
+    // null means the bridge did not report them, so clients keep offering
+    // harness-wide MCP as before. Make it non-nullable once the minimum
+    // supported bridge sends it.
+    @JsonKey(unknownEnumValue: McpScopeKind.unknown) required Set<McpScopeKind>? mcpScopes,
     required String? actionHint,
   }) = _PluginManagementMetadata;
 

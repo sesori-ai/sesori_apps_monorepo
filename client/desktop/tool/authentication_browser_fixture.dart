@@ -138,6 +138,7 @@ class _FixtureService() implements PluginManagementService {
             idleTimeoutMins: 10,
             hasIdleTimeoutOverride: false,
             managementCapabilities: {PluginManagementCapability.authentication},
+            mcpScopes: null,
             actionHint: null,
           ),
         ],

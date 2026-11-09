@@ -39,6 +39,15 @@ _PluginManagementMetadata _$PluginManagementMetadataFromJson(Map json) =>
             ),
           )
           .toSet(),
+      mcpScopes: (json['mcpScopes'] as List<dynamic>?)
+          ?.map(
+            (e) => $enumDecode(
+              _$McpScopeKindEnumMap,
+              e,
+              unknownValue: McpScopeKind.unknown,
+            ),
+          )
+          .toSet(),
       actionHint: json['actionHint'] as String?,
     );
 
@@ -54,6 +63,9 @@ Map<String, dynamic> _$PluginManagementMetadataToJson(
   'hasIdleTimeoutOverride': instance.hasIdleTimeoutOverride,
   'managementCapabilities': instance.managementCapabilities
       .map((e) => _$PluginManagementCapabilityEnumMap[e]!)
+      .toList(),
+  'mcpScopes': ?instance.mcpScopes
+      ?.map((e) => _$McpScopeKindEnumMap[e]!)
       .toList(),
   'actionHint': ?instance.actionHint,
 };
@@ -89,6 +101,13 @@ const _$PluginManagementCapabilityEnumMap = {
   PluginManagementCapability.install: 'install',
   PluginManagementCapability.authentication: 'authentication',
   PluginManagementCapability.unknown: 'unknown',
+};
+
+const _$McpScopeKindEnumMap = {
+  McpScopeKind.harness: 'harness',
+  McpScopeKind.project: 'project',
+  McpScopeKind.session: 'session',
+  McpScopeKind.unknown: 'unknown',
 };
 
 PluginAuthenticationDeviceCodeChallengeResponse
