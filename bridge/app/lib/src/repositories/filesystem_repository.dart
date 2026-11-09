@@ -5,12 +5,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart"
-    show
-        FilePreviewResponse,
-        FilesystemSuggestion,
-        FilesystemSuggestions,
-        maxFilePreviewBytes,
-        maxTranscriptImageBytes;
+    show FilePreviewResponse, FilesystemSuggestion, FilesystemSuggestions, maxFilePreviewBytes, maxTranscriptImageBytes;
 
 import "../api/drive_roots_api.dart";
 import "../api/filesystem_api.dart";
