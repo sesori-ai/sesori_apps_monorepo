@@ -65,6 +65,11 @@ class const _OversizedComposerFilePicker() implements ComposerFilePicker {
       const ComposerPickedHostPaths(paths: [], oversizedCount: 1);
 }
 
+class const _FailingComposerFilePicker() implements ComposerFilePicker {
+  @override
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async => throw StateError("picker failed");
+}
+
 class _FixedImageClipboard({required final Uint8List _bytes}) implements ImageClipboard {
   @override
   Future<Uint8List?> readImage() async => _bytes;
@@ -532,6 +537,34 @@ void main() {
         tester: tester,
         attachKind: ComposerAttachKind.photosAndFiles,
         dispatcher: remoteDispatcher(filePicker: const _OversizedComposerFilePicker()),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: true,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: (_) {},
+      );
+      await tester.tap(_tooltip("More actions"));
+      await tester.pumpAndSettle();
+      await tester.tap(_tooltip("Attach photos or files"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Files"));
+      await tester.pump();
+      await tester.pump();
+      expect(notice, findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 3500));
+      expect(notice, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pumpAndSettle();
+      expect(notice, findsNothing);
+    });
+
+    testWidgets("a Files pick that fails shows its notice for longer", (tester) async {
+      final notice = find.text("Couldn't add the attachment.");
+      await pumpRemote(
+        tester: tester,
+        attachKind: ComposerAttachKind.photosAndFiles,
+        dispatcher: remoteDispatcher(filePicker: const _FailingComposerFilePicker()),
         clipboard: _NoOpImageClipboard(),
         droppedPaths: null,
         attachmentsSupported: true,

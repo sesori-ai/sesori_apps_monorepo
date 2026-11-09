@@ -2792,11 +2792,11 @@ class _PromptInputState() extends State<PromptInput> {
       if (result.rejections.isNotEmpty) _showRejectionNotice(rejections: result.rejections);
     } on UnsupportedAttachmentImageError {
       if (!mounted || isStale()) return _PasteResult.stale;
-      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported, duration: _rejectedAttachmentNoticeDuration);
     } catch (error) {
       loge("Failed to attach", error);
       if (!mounted || isStale()) return _PasteResult.stale;
-      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed, duration: _rejectedAttachmentNoticeDuration);
     }
     return _PasteResult.handled;
   }
@@ -2918,14 +2918,14 @@ class _PromptInputState() extends State<PromptInput> {
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
         return _PasteResult.stale;
       }
-      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported, duration: _rejectedAttachmentNoticeDuration);
       return _PasteResult.unhandled;
     } catch (error, stackTrace) {
       loge("Failed to attach a pasted image", error, stackTrace);
       if (!mounted || _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
         return _PasteResult.stale;
       }
-      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed, duration: _rejectedAttachmentNoticeDuration);
       return _PasteResult.unhandled;
     }
   }
