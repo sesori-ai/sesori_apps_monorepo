@@ -1139,6 +1139,48 @@ void main() {
       expect(fake.sentParamsFor("turn/start")["clientUserMessageId"], equals("prm_1"));
     });
 
+    test("sendPrompt joins adjacent text parts a blank line apart, in order", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-joined"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-joined"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prm_joined",
+        sessionId: "t-joined",
+        parts: const [
+          PluginPromptPart.text(text: "Compare these."),
+          PluginPromptPart.text(text: " "),
+          PluginPromptPart.text(text: 'Attached file "a.txt": `/u/a.txt`'),
+          PluginPromptPart.fileData(mime: "image/png", base64: "AQID", filename: "shot.png"),
+          PluginPromptPart.text(text: 'Attached file "b.txt": `/u/b.txt`'),
+        ],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["input"], [
+        {
+          "type": "text",
+          "text": 'Compare these.\n\nAttached file "a.txt": `/u/a.txt`',
+          "text_elements": <Object?>[],
+        },
+        {"type": "image", "url": "data:image/png;base64,AQID"},
+        {"type": "text", "text": 'Attached file "b.txt": `/u/b.txt`', "text_elements": <Object?>[]},
+      ]);
+    });
+
     test("collaboration mode stamps live messages with its resolved rollout model", () async {
       const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
       File(p.join(codexHome.path, "config.toml")).writeAsStringSync(

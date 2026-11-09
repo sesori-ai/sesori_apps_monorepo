@@ -249,7 +249,7 @@ void main() {
       ],
     );
     final body = api.promptBody ?? fail("expected a prompt body");
-    expect(body.text, "First\nSecond");
+    expect(body.text, "First\n\nSecond");
     final files = body.files ?? fail("expected prompt files");
     expect(files.map((file) => file.uri), [
       Uri.file("/fixture/file name.txt").toString(),

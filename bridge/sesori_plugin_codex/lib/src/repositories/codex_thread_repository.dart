@@ -123,7 +123,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   }) async {
     final input = <CodexTurnInputDto>[];
     var remainingInlineBytes = maxInlineMessageAttachmentBytes;
-    for (final part in parts) {
+    for (final part in joinAdjacentPromptTextParts(parts: parts)) {
       final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
       input.add(mapped.input);
       remainingInlineBytes -= mapped.inlineBytes;

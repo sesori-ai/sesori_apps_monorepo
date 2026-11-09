@@ -419,7 +419,7 @@ class OpenCodeV2Repository({
       sessionId: sessionId,
       body: V2PromptBody(
         id: _promptMessageId(promptId: promptId),
-        text: parts.whereType<PluginPromptPartText>().map((part) => part.text).join("\n"),
+        text: parts.whereType<PluginPromptPartText>().map((part) => part.text).join("\n\n"),
         files: _files(parts: parts),
         agents: null,
         skills: null,
