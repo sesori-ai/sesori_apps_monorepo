@@ -58,7 +58,7 @@ variant, and worktree mode, and creating the session with its first input.
   and fast-mode picks stay, and nothing on screen blanks, jumps or crossfades. Only the option pills refresh in
   place, keeping what they show until the new project answers. A pick the new project doesn't offer gives way
   to its default and comes back on switching to a project that offers it; a staged command it lacks is
-  dropped. Answers still on their way for the project left are dropped; a login card's Recheck or a Retry
+  dropped. Answers still on their way for the project left are dropped; a login card's Check setup or a Retry
   still on its way is asked again of the new project, so it resolves without a second press. The session starts
   in the project shown at Send, and a composer opened before the project list named its project takes that
   name once the list does, for the failure alert and the session's route title. Choosing the current project only closes the picker. The new-session composer keeps one
@@ -280,14 +280,17 @@ variant, and worktree mode, and creating the session with its first input.
   does, and a failed rediscovery shows its error and Retry. A login card holds still the same way through a
   disconnect, the rediscovery and the options load after it, with no popup saying the harness logged out; it gives
   way only to the answer, the options once the harness has logged in or a failed rediscovery's error and Retry.
-  "Recheck" pressed before the bridge is verified again rediscovers instead of loading options from it; pressed
-  while the reconnect still rechecks the project, it loads the options at once. Pills still loading when the
+  The login card's "Check setup" has the bridge inspect the harness setup again, as a chat's Check setup and
+  harness settings' do, so a login made in a terminal is noticed, then loads the options. Pressed before the
+  bridge is verified again it rediscovers instead of loading options from it; pressed while the reconnect still
+  rechecks the project, it loads the options at once. Pills still loading when the
   connection drops keep their shimmer, with no Retry, until the reconnect's answer, and the "project cannot be
-  checked" card holds still, with creation blocked, until the bridge answers its recheck. On either card, when
-  the bridge has not answered the check a Recheck starts within about 300 ms, "Recheck" cross-fades into a spinner
-  in its own room (reduced motion keeps the fades), so nothing moves, and takes no press, reading to screen readers
-  as disabled, until the answer, whichever it is, and a card the answer clears fades out with the spinner still
-  standing, never saying "Recheck" again; a faster answer never shows the spinner. When options cannot
+  checked" card holds still, with creation blocked, until the bridge answers its "Recheck". On either card a
+  press starts one check; if that check has not finished about 300 ms after the press, the same button's label
+  cross-fades into a spinner in its own room (reduced motion keeps the fades), so nothing moves, and the button
+  takes no press, reading to screen readers as disabled, until the answer, whichever it is, and a card the answer
+  clears fades out with the spinner still standing, never showing its label again; a faster answer never shows
+  the spinner. When options cannot
   be loaded, one "Retry loading models" button stands in the pills' place; a bridge that can load options only by
   starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
@@ -496,7 +499,7 @@ variant, and worktree mode, and creating the session with its first input.
   reporting them as a successful refresh. `/session/options` carries the condition as a
   typed response. New Session replaces the composer with a login card
   titled from the selected plugin's display name, carrying the plugin's guidance, "Open
-  harness settings", and "Recheck", and creation is blocked. The login card or the "project cannot be
+  harness settings", and "Check setup", and creation is blocked. The login card or the "project cannot be
   checked" card and the composer trade places in a 200 ms cross-fade, either way, while their shared room
   eases between their heights, so the phone's options and the desktop's centred heading glide; reduced
   motion swaps them at once, and the composer keeps its draft behind a card. A warning popup adds the same
@@ -603,7 +606,7 @@ startup-extension file failure, retry once the filesystem is usable.
   questions cannot be answered until initial history finishes.
 - Options are empty or reported successfully where authentication-required
   discovery should be explicit, a partial observation overwrites a complete
-  cache, Create remains enabled, Recheck becomes unavailable, the plugin runtime
+  cache, Create remains enabled, Check setup becomes unavailable, the plugin runtime
   becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - Options are stale where a discovery failure should be an explicit error.
 - When discovery fails or finds no harness, the project pill snaps sideways, slides under reduced motion, drifts
@@ -618,16 +621,17 @@ startup-extension file failure, retry once the filesystem is usable.
   out", although the harness still needs a login; or a harness logged in meanwhile, or a failed rediscovery, leaves
   the card standing.
 - A connection blip during an options load shows Retry before the reconnect answers; the "project cannot be
-  checked" card gives way to the composer while its recheck runs; or "Recheck" pressed on the login card while
-  the reconnect rechecks the project does nothing.
-- "Recheck" on the login or "project cannot be checked" card shows nothing while the bridge takes its time, takes
+  checked" card gives way to the composer while its recheck runs; or "Check setup" pressed on the login card while
+  the reconnect rechecks the project does nothing; or "Check setup" on the login card only reloads the options,
+  so a login made in a terminal keeps the card up.
+- "Check setup" on the login card, or "Recheck" on the "project cannot be checked" card, shows nothing while the bridge takes its time, takes
   a second press, or reads to screen readers as enabled; its spinner flashes on a fast answer, outlives the
   answer (logged in, still blocked, or failed), or moves the button or the card.
 - The error above the composer appears or clears in one frame, so the desktop heading and pills jump or the
   phone's pills shift; one error replacing another flashes; or under reduced motion the error cuts instead of fading,
   or the page moves more than once for one change.
 - A card and the composer trade places in one frame, so the phone's options or the desktop heading jump; the
-  pills loading, typing, or pressing Recheck fades them again; the composer loses its draft or staged images
+  pills loading, typing, or pressing Check setup or Recheck fades them again; the composer loses its draft or staged images
   behind a card; or under reduced motion the swap cuts instead of fading, or its room eases.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
   session cannot be deleted, deletes before the scratch process exits, or hides

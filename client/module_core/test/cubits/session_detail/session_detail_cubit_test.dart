@@ -795,6 +795,7 @@ void main() {
         final service = MockPluginManagementService();
         when(() => service.snapshots).thenAnswer((_) => snapshots);
         when(service.refresh).thenAnswer((_) async {});
+        stubSetupCheck(service: service, onCheck: () {});
         final cubit = buildCubit(pluginManagementService: service);
         addTearDown(cubit.close);
         await awaitState(
@@ -851,7 +852,9 @@ void main() {
             description: "live block",
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
-          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy(since: null));
+          // The buffered busy status still lands, but a harness that lost its
+          // login runs no turn, so the session reads idle under the block.
+          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.idle());
           cubit.removeFailedSend();
           expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
@@ -951,7 +954,7 @@ void main() {
               storedOnly: false,
             ),
           ).thenAnswer((_) async => saved);
-          await cubit.recheckHarnessAvailability();
+          await cubit.checkHarnessSetup();
         } else {
           snapshots.add(management(blocked: false));
         }
@@ -1010,8 +1013,8 @@ void main() {
       expect(recovered.selectedAgent, testAgentInfo().name);
     });
 
-    test("Recheck completes only once the session it finds usable again can interact", () async {
-      // Recheck shows that it is checking until this future completes, so it
+    test("Check setup completes only once the session it finds usable again can interact", () async {
+      // Check setup shows that it is checking until this future completes, so it
       // must not complete while the notice still stands in the composer's place.
       final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
         managementFixture(
@@ -1023,15 +1026,20 @@ void main() {
       addTearDown(snapshots.close);
       final service = MockPluginManagementService();
       when(() => service.snapshots).thenAnswer((_) => snapshots);
-      // The page asks for a refresh as it opens; only the one after the login
-      // finds the harness ready.
+      // The page asks for a refresh as it opens, which reads the block the
+      // bridge recorded; only the setup check after the login finds the
+      // harness ready.
       var loggedIn = false;
-      when(service.refresh).thenAnswer((_) async {
-        if (!loggedIn) return;
-        snapshots.add(
-          managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
-        );
-      });
+      when(service.refresh).thenAnswer((_) async {});
+      stubSetupCheck(
+        service: service,
+        onCheck: () {
+          if (!loggedIn) return;
+          snapshots.add(
+            managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+          );
+        },
+      );
 
       final cubit = buildCubit(pluginManagementService: service);
       addTearDown(cubit.close);
@@ -1042,9 +1050,9 @@ void main() {
       );
 
       loggedIn = true;
-      await cubit.recheckHarnessAvailability();
+      await cubit.checkHarnessSetup();
 
-      // Recheck joined the refresh the snapshot started and queued another
+      // Check setup joined the refresh the snapshot started and queued another
       // behind it, which may already be running; the composer does not wait
       // for that one.
       expect(
@@ -1057,7 +1065,136 @@ void main() {
       );
     });
 
-    test("Recheck joining a refresh in flight also waits for the one queued behind it", () async {
+    group("Check setup on an unavailable harness", () {
+      // A gateway that rejected the harness' credentials leaves setup
+      // unavailable until it is inspected again; a status read alone keeps
+      // reporting the block.
+      PluginManagementLoadResult unavailable({required String hint}) => managementFixture(
+        pluginId: "plugin-1",
+        setup: PluginSetupState.unavailable,
+        runtime: PluginRuntimeState.blocked,
+        actionHint: hint,
+      );
+      const gatewayHint = "Check the gateway's credentials and configuration, then refresh setup.";
+
+      Future<(SessionDetailCubit, MockPluginManagementService, BehaviorSubject<PluginManagementLoadResult>)>
+      blockedSession() async {
+        final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(unavailable(hint: gatewayHint));
+        addTearDown(snapshots.close);
+        final service = MockPluginManagementService();
+        when(() => service.snapshots).thenAnswer((_) => snapshots);
+        when(service.refresh).thenAnswer((_) async {});
+        final cubit = buildCubit(pluginManagementService: service);
+        addTearDown(cubit.close);
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+          description: "blocked transcript",
+        );
+        return (cubit, service, snapshots);
+      }
+
+      test("inspects the session's harness again and lets the session continue once it is ready", () async {
+        final (cubit, service, snapshots) = await blockedSession();
+        stubSetupCheck(
+          service: service,
+          onCheck: () => snapshots.add(
+            managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+          ),
+        );
+
+        await cubit.checkHarnessSetup();
+
+        verify(() => service.checkSetup(pluginId: "plugin-1")).called(1);
+        expect(
+          cubit.state,
+          isA<SessionDetailLoaded>().having(
+            (state) => state.interaction,
+            "interaction",
+            isA<SessionInteractionAvailable>(),
+          ),
+        );
+      });
+
+      test("shows the new hint when the harness is still blocked", () async {
+        final (cubit, service, snapshots) = await blockedSession();
+        const loginHint = "Log in from Sesori, or run `claude auth login` on this machine.";
+        stubSetupCheck(
+          service: service,
+          onCheck: () => snapshots.add(unavailable(hint: loginHint)),
+        );
+
+        await cubit.checkHarnessSetup();
+
+        expect(
+          cubit.state,
+          isA<SessionDetailLoaded>().having(
+            (state) => state.interaction,
+            "interaction",
+            isA<SessionInteractionBlocked>()
+                .having((blocked) => blocked.reason, "reason", SessionInteractionBlockedReason.unavailable)
+                .having((blocked) => blocked.actionHint, "actionHint", loginHint),
+          ),
+        );
+      });
+    });
+
+    // The bridge shuts the harness down on a gateway or login failure before
+    // the turn reports idle, so only the block says the turn is over.
+    test("a turn cut off by a harness block stops its Retrying row", () async {
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.active),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      sessionEvents.add(
+        const SesoriSessionStatus(
+          sessionID: sessionId,
+          status: SessionStatus.retry(attempt: 1, message: "authentication_failed", next: 0, since: null),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.sessionStatus is SessionStatusRetry,
+        description: "retrying turn",
+      );
+
+      snapshots.add(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.unavailable,
+          runtime: PluginRuntimeState.stopping,
+          actionHint: "Check the gateway's credentials and configuration, then refresh setup.",
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "blocked",
+      );
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.sessionStatus, const SessionStatus.idle());
+      expect(state.retryErrorMessage, isNull);
+
+      // A retry the harness had in flight lands after the block.
+      sessionEvents.add(
+        const SesoriSessionStatus(
+          sessionID: sessionId,
+          status: SessionStatus.retry(attempt: 2, message: "authentication_failed", next: 0, since: null),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.idle());
+    });
+
+    test("Check setup joining a refresh in flight also waits for the one queued behind it", () async {
       final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
         managementFixture(
           pluginId: "plugin-1",
@@ -1069,6 +1206,7 @@ void main() {
       final service = MockPluginManagementService();
       when(() => service.snapshots).thenAnswer((_) => snapshots);
       when(service.refresh).thenAnswer((_) async {});
+      stubSetupCheck(service: service, onCheck: () {});
       final cubit = buildCubit(pluginManagementService: service);
       addTearDown(cubit.close);
       await awaitState(
@@ -1104,7 +1242,7 @@ void main() {
       await pumpEventQueue();
       expect(loads, 1);
       var rechecked = false;
-      final recheck = cubit.recheckHarnessAvailability().then((_) => rechecked = true);
+      final recheck = cubit.checkHarnessSetup().then((_) => rechecked = true);
       await pumpEventQueue();
       expect(rechecked, isFalse);
 
@@ -1122,10 +1260,10 @@ void main() {
       );
     });
 
-    for (final outcome in _ShellRecheck.values) {
-      test("Recheck keeps the unavailable shell up until its reload answers (${outcome.name})", () async {
-        // The notice stays where it is while Recheck reloads, rather than giving
-        // way to the loading screen, and Recheck shows that it is checking until
+    for (final outcome in _ShellCheckSetup.values) {
+      test("Check setup keeps the unavailable shell up until its reload answers (${outcome.name})", () async {
+        // The notice stays where it is while Check setup reloads, rather than giving
+        // way to the loading screen, and Check setup shows that it is checking until
         // the answer, whatever it is.
         final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
           managementFixture(
@@ -1138,12 +1276,20 @@ void main() {
         final service = MockPluginManagementService();
         when(() => service.snapshots).thenAnswer((_) => snapshots);
         var loggedIn = false;
-        when(service.refresh).thenAnswer((_) async {
-          if (!loggedIn) return;
-          snapshots.add(
-            managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
-          );
-        });
+        when(service.refresh).thenAnswer((_) async {});
+        stubSetupCheck(
+          service: service,
+          onCheck: () {
+            if (!loggedIn) return;
+            snapshots.add(
+              managementFixture(
+                pluginId: "plugin-1",
+                setup: PluginSetupState.ready,
+                runtime: PluginRuntimeState.dormant,
+              ),
+            );
+          },
+        );
         const nothingStored = MessageWithPartsResponse(
           messages: [],
           nextCursor: null,
@@ -1152,7 +1298,7 @@ void main() {
           awaitingHarnessSync: true,
           cannotContinueMessage: null,
         );
-        // The first load finds nothing stored; the read Recheck starts answers
+        // The first load finds nothing stored; the read Check setup starts answers
         // only when the test says so.
         final answer = Completer<ApiResponse<MessageWithPartsResponse>>();
         var reads = 0;
@@ -1175,16 +1321,16 @@ void main() {
         final subscription = cubit.stream.listen(states.add);
         addTearDown(subscription.cancel);
 
-        loggedIn = outcome == _ShellRecheck.loads;
+        loggedIn = outcome == _ShellCheckSetup.loads;
         var rechecked = false;
-        final recheck = cubit.recheckHarnessAvailability().then((_) => rechecked = true);
+        final recheck = cubit.checkHarnessSetup().then((_) => rechecked = true);
         await pumpEventQueue();
         // One read, which the harness turning available joins.
         expect(reads, 2);
         expect(rechecked, isFalse);
         expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
 
-        if (outcome == _ShellRecheck.losesConnection) {
+        if (outcome == _ShellCheckSetup.losesConnection) {
           const lost = ConnectionStatus.connectionLost(
             config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           );
@@ -1194,31 +1340,31 @@ void main() {
         }
         answer.complete(
           ApiResponse.success(switch (outcome) {
-            _ShellRecheck.loads => MessageWithPartsResponse(
+            _ShellCheckSetup.loads => MessageWithPartsResponse(
               messages: [testMessageWithParts()],
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
               cannotContinueMessage: null,
             ),
-            _ShellRecheck.staysBlocked || _ShellRecheck.losesConnection => nothingStored,
+            _ShellCheckSetup.staysBlocked || _ShellCheckSetup.losesConnection => nothingStored,
           }),
         );
         await recheck;
 
         expect(states.whereType<SessionDetailLoading>(), isEmpty);
         expect(cubit.state, switch (outcome) {
-          _ShellRecheck.loads => isA<SessionDetailLoaded>().having(
+          _ShellCheckSetup.loads => isA<SessionDetailLoaded>().having(
             (state) => state.interaction.canInteract,
             "interaction.canInteract",
             isTrue,
           ),
-          _ShellRecheck.staysBlocked || _ShellRecheck.losesConnection => isA<SessionDetailHarnessUnavailable>(),
+          _ShellCheckSetup.staysBlocked || _ShellCheckSetup.losesConnection => isA<SessionDetailHarnessUnavailable>(),
         });
       });
     }
 
-    test("a Recheck whose metadata read fails drops the events buffered meanwhile", () async {
+    test("a Check setup whose metadata read fails drops the events buffered meanwhile", () async {
       // The failure replaces the shell, so what arrived during its reload is not
       // replayed onto the next successful load.
       final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
@@ -1232,6 +1378,7 @@ void main() {
       final service = MockPluginManagementService();
       when(() => service.snapshots).thenAnswer((_) => snapshots);
       when(service.refresh).thenAnswer((_) async {});
+      stubSetupCheck(service: service, onCheck: () {});
       var reads = 0;
       when(
         () => mockSourceRepository.getMessages(
@@ -1263,7 +1410,7 @@ void main() {
       final metadata = Completer<ApiResponse<Session>>();
       when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
 
-      final recheck = cubit.recheckHarnessAvailability();
+      final recheck = cubit.checkHarnessSetup();
       await pumpEventQueue();
       sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy(since: null)));
       metadata.complete(ApiResponse.error(ApiError.generic()));
@@ -4167,8 +4314,8 @@ Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
   );
 }
 
-/// How the reload a Recheck starts from the unavailable shell resolves.
-enum _ShellRecheck() {
+/// How the reload a Check setup starts from the unavailable shell resolves.
+enum _ShellCheckSetup() {
   loads,
   staysBlocked,
   losesConnection,
