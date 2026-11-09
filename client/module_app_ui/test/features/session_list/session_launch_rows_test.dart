@@ -50,6 +50,7 @@ void main() {
       counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
       loadMore: null,
       awaitingAnswer: false,
+      anySessionAwaitingInput: false,
       failure: null,
       isLoading: false,
       scratchProjectId: null,

@@ -178,6 +178,7 @@ void main() {
         counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
         loadMore: null,
         awaitingAnswer: false,
+        anySessionAwaitingInput: false,
         failure: null,
         isLoading: false,
         scratchProjectId: null,

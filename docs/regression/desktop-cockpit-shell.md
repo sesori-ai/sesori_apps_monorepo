@@ -40,8 +40,8 @@ The main pane hosts one full-width routed page.
   the width the drag began from.
 - Collapse hides the sidebar completely: the panel slides out past the window's start edge in 180 ms and back in
   200 ms while the page narrows or widens to match, and the panel never squeezes its rows on the way. Only the
-  toggle and the word Sesori remain, with an amber dot on the toggle's corner while a listed session waits for the
-  user's answer. The toggle and Cmd/Ctrl+B bring the sidebar back
+  toggle and the word Sesori remain, with an amber dot on the toggle's corner while any unarchived session waits for the
+  user's answer, whether or not the list's filter, search, chip or loaded pages show it. The toggle and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
   screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
   sits on the handle's own screen reader node, not on the window behind it.
@@ -477,7 +477,7 @@ width jumping on reversal beyond a bound, automatic collapse overwriting user pr
 activity marks, a session row whose height changes with its metadata line, a harness glyph lit for a session that is
 not working, duplicate project inventories or sessions windows, reads repeated on rebuild, a page that jumps while the
 sidebar slides, a panel that squeezes its rows, a toggle that moves on collapse or sits over a toolbar's
-content, a card-like sidebar, a chip or composer action that shifts when toggled or typing, lost project context, a second session-list pane,
+content, a hidden sidebar's toggle without its amber dot while a session the list leaves out waits, a card-like sidebar, a chip or composer action that shifts when toggled or typing, lost project context, a second session-list pane,
 sidebar browsing clearing unread
 state,
 stale/missing session rows, a palette whose session rows jump or lose the highlight as the bridge answers, a

@@ -1302,6 +1302,7 @@ AllSessionsState _list({String? projectId, required String? defaultProjectId, bo
       counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
       loadMore: null,
       awaitingAnswer: false,
+      anySessionAwaitingInput: false,
       failure: null,
       isLoading: isLoading,
       scratchProjectId: null,

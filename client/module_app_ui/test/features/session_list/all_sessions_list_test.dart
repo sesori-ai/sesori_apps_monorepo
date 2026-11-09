@@ -40,6 +40,7 @@ void main() {
     counts: counts,
     loadMore: loadMore,
     awaitingAnswer: awaitingAnswer,
+    anySessionAwaitingInput: false,
     failure: failure,
     isLoading: isLoading,
     scratchProjectId: scratchProjectId,
