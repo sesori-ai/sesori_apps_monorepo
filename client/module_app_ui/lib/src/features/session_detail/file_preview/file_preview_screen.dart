@@ -162,8 +162,15 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
                             (true, _Rendering.html) => TablerRegular.browser,
                           },
                           size: PregoIconSize.md,
-                          // Like the Copy button beside it.
-                          color: prego.colors.textSecondary,
+                        ),
+                        // Like the Copy button beside it. Set here because the
+                        // phone theme leaves icon buttons Material's colour.
+                        style: ButtonStyle(
+                          foregroundColor: WidgetStateProperty.resolveWith(
+                            (states) => states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)
+                                ? prego.colors.textPrimary
+                                : prego.colors.textSecondary,
+                          ),
                         ),
                         onPressed: () => setState(() => _showsSource = !_showsSource),
                       ),
@@ -278,8 +285,10 @@ class const _Header({
           IconButton(
             key: const Key("file-preview-close"),
             tooltip: context.loc.filePreviewClose,
-            // Like the back button on the app's other screens.
-            icon: Icon(TablerRegular.chevron_down, size: PregoIconSize.md, color: prego.colors.textPrimary),
+            icon: const Icon(TablerRegular.chevron_down, size: PregoIconSize.md),
+            // Like the back button on the app's other screens. Set here because
+            // the phone theme leaves icon buttons Material's colour.
+            style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(prego.colors.textPrimary)),
             onPressed: onClose,
           ),
           Expanded(

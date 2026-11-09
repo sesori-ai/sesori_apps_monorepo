@@ -268,7 +268,7 @@ void main() {
       );
       final colors = PregoDesignSystem.light.colors;
       Color? iconColor(Key key) =>
-          tester.widget<Icon>(find.descendant(of: find.byKey(key), matching: find.byType(Icon))).color;
+          IconTheme.of(tester.element(find.descendant(of: find.byKey(key), matching: find.byType(Icon)))).color;
       // Like every back button and the image viewer's close button.
       expect(iconColor(const Key("file-preview-close")), colors.textPrimary);
       // Like the Copy button beside it.
