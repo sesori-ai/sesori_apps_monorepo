@@ -427,6 +427,9 @@ class FakeSessionRepository({
   ];
 
   @override
+  Future<bool> isSessionRunning({required String sessionId}) async => false;
+
+  @override
   Future<Session> createSession({
     required String reservedSessionId,
     required String pluginId,

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -10,6 +11,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
@@ -42,6 +44,14 @@ void main() {
         continuations: const EmptySessionContinuations(),
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
+        abortService: SessionAbortService(
+          sessionRepository: sessionRepository,
+          dispatcher: operationDispatcher,
+          continuations: const EmptySessionContinuations(),
+          views: const PassThroughSessionViews(),
+          mutations: const UnusedContinuationMutations(),
+        ),
+        stopDeadline: Duration.zero,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         filesystemRepository: FilesystemRepository(
@@ -351,6 +361,7 @@ void main() {
     late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
     late RecordingSessionContinuations continuations;
+    late SessionAbortService abortService;
 
     setUp(() async {
       db = createTestDatabase();
@@ -363,10 +374,20 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      continuations = RecordingSessionContinuations();
+      abortService = SessionAbortService(
+        sessionRepository: repository,
+        dispatcher: operationDispatcher,
+        continuations: continuations,
+        views: const PassThroughSessionViews(),
+        mutations: const UnusedContinuationMutations(),
+      );
       service = SessionLifecycleService(
-        continuations: continuations = RecordingSessionContinuations(),
+        continuations: continuations,
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
+        abortService: abortService,
+        stopDeadline: const Duration(milliseconds: 50),
         worktreeService: DeletionWorktreeServiceFake(),
         sessionRepository: repository,
         filesystemRepository: FilesystemRepository(
@@ -399,6 +420,7 @@ void main() {
     });
 
     tearDown(() async {
+      await abortService.dispose();
       await operationDispatcher.dispose();
       await db.close();
     });
@@ -482,6 +504,82 @@ void main() {
       expect(update.session.id, "root-session");
       expect(update.changed, isFalse);
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
+    });
+
+    Future<int?> storedArchivedAt() async => (await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt;
+
+    Future<ArchiveStatusUpdate> archive() => service.updateArchiveStatus(
+      sessionId: "root-session",
+      archived: true,
+      deleteWorktree: false,
+      force: false,
+    );
+
+    test("an idle session archives without a stop", () async {
+      await archive();
+
+      expect(plugin.abortCalls, isEmpty);
+      expect(await storedArchivedAt(), isNotNull);
+    });
+
+    group("a running session", () {
+      setUp(() {
+        plugin.activeSummaries = const [
+          PluginProjectActivitySummary(
+            id: "/repo",
+            activeSessions: [PluginActiveSession(id: "backend-session", mainAgentRunning: true)],
+          ),
+        ];
+      });
+
+      test("is stopped, sub-agents included, before it is archived", () async {
+        final stateWhenStopped = <({int? archivedAt, String? archiveNotified})>[];
+        plugin.onAbort = () async {
+          stateWhenStopped.add((archivedAt: await storedArchivedAt(), archiveNotified: plugin.lastArchivedSessionId));
+        };
+        // Stop's own push suppression applies too.
+        final started = <String>[];
+        final aborted = <String>[];
+        abortService.abortStartedSessions.listen(started.add);
+        abortService.abortedSessions.listen(aborted.add);
+
+        final update = await archive();
+
+        expect(started, ["root-session"]);
+        expect(aborted, ["root-session"]);
+        expect(plugin.abortCalls, [
+          (sessionId: "backend-session", subAgents: PluginAbortSubAgentPolicy.stop, useAtomicStop: true),
+        ]);
+        expect(stateWhenStopped, [(archivedAt: null, archiveNotified: null)]);
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+        expect(plugin.lastArchivedSessionId, "backend-session");
+      });
+
+      test("is archived when its stop fails", () async {
+        plugin.abortError = const PluginOperationException("abortSession", message: "fixture stop failure");
+
+        final update = await archive();
+
+        expect(plugin.abortCalls, hasLength(1));
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+        expect(plugin.lastArchivedSessionId, "backend-session");
+      });
+
+      test("is archived when its stop does not finish within the deadline", () async {
+        final stopHeld = Completer<void>();
+        addTearDown(stopHeld.complete);
+        plugin.onAbort = () => stopHeld.future;
+
+        final update = await archive();
+
+        expect(plugin.abortCalls, hasLength(1));
+        expect(stopHeld.isCompleted, isFalse);
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+        expect(plugin.lastArchivedSessionId, "backend-session");
+      });
     });
   });
 }
@@ -599,6 +697,27 @@ class _FakeSessionRepository() implements SessionRepository {
 
 class _FakeBridgePlugin() extends FakeBridgePlugin {
   String? get lastArchivedSessionId => lastArchiveSessionId;
+
+  List<PluginProjectActivitySummary> activeSummaries = const [];
+  final List<({String sessionId, PluginAbortSubAgentPolicy subAgents, bool useAtomicStop})> abortCalls = [];
+  Future<void> Function()? onAbort;
+  Object? abortError;
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => activeSummaries;
+
+  @override
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  }) async {
+    abortCalls.add((sessionId: sessionId, subAgents: subAgents, useAtomicStop: useAtomicStop));
+    await onAbort?.call();
+    if (abortError case final error?) throw error;
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+  }
 
   @override
   Future<PluginSession> createSession({

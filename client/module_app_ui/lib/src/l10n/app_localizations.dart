@@ -3559,10 +3559,10 @@ abstract class AppLocalizations {
   /// **'Archive a running session?'**
   String get sessionListArchiveRunningTitle;
 
-  /// Body of the desktop alert shown before archiving a running session.
+  /// Body of the desktop alert shown before archiving a running session. Archiving stops the session's turn and its sub-agents first.
   ///
   /// In en, this message translates to:
-  /// **'“{title}” is still running. Archiving makes it permanently read-only.'**
+  /// **'“{title}” is still running. Archiving stops it and makes it permanently read-only.'**
   String sessionListArchiveRunningMessage(String title);
 
   /// Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving.

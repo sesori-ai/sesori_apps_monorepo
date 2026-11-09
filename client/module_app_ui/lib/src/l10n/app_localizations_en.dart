@@ -2029,7 +2029,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sessionListArchiveRunningMessage(String title) {
-    return '“$title” is still running. Archiving makes it permanently read-only.';
+    return '“$title” is still running. Archiving stops it and makes it permanently read-only.';
   }
 
   @override

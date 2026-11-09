@@ -420,6 +420,23 @@ at once, and the bridge lists none of its pending requests.
 | Claude Code, Codex, Pi, every ACP harness | ✅ Nothing else could answer them once the session is read-only. |
 | OpenCode | ⬜ Not implemented: they stay pending in OpenCode's server, which OpenCode's own clients can share, until something answers them there. |
 
+## Stop on archive
+
+Archiving a running root session first runs the bridge's Stop with `stop` (the turn and its running sub-agents),
+waits up to five seconds, then archives whatever the outcome; a failed, refused or slow stop is logged and the
+backend may finish cancelling after the archive. The app's own follow-up stop of busy descendants is not
+repeated, so the reach is each harness's own Stop, per [Sub-agents](#sub-agents).
+
+| Harness | Archiving a running session stops it |
+|---|---|
+| Claude Code | ✅ `interrupt` stops background sub-agents with the turn. |
+| OpenCode (v1 and v2) | ✅ The root and its running direct children. A background grandchild keeps running. |
+| Codex | ✅ The root and its known running descendants, one `turn/interrupt` each. |
+| Cursor | ✅ One root `session/cancel`, which cascades; its 20-second settle wait outlasts the archive's 5. |
+| Grok | ✅ The root and a snapshot of its running children. |
+| DeepSeek | ✅ Native subtree stop. |
+| Pi, and Antigravity, Copilot, Hermes, OMP (no sub-agents exposed) | ✅ The turn. |
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |

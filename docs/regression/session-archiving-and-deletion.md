@@ -27,6 +27,13 @@ entirely along with its transcript and its dedicated worktree.
   action whose own session is archived, since none can be answered. Archiving also cancels the session's own
   pending requests in every harness where nothing else could answer them (see
   `docs/HARNESS_CAPABILITIES.md`).
+- Archiving a running session stops it first, the way Stop does, in every harness: the bridge stops its turn
+  and the sub-agents that turn runs, waits up to five seconds, then exports and archives, so no turn keeps
+  working unseen or waits on input nobody can give. Running is the Running filter's rule (the main agent
+  works, the session waits to retry, or a sub-agent runs); an idle or already archived session is not stopped,
+  and a sub-agent session is never stopped on its own archive. A stop that fails, is refused or takes longer is
+  logged and the archive still completes and never hangs; the backend may then finish its cancel unseen, while
+  the archived session stays out of activity and its own pending requests are cancelled as above.
 - Archiving exports a versioned transcript audit record before the session flips
   to archived, then purges live history for it. When backend history is
   unavailable the export may proceed from stored content only and must record
@@ -37,8 +44,8 @@ entirely along with its transcript and its dedicated worktree.
   the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
   the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
   app shell, not to a page, so leaving the page it started on neither cancels nor loses the
-  archive. Only a running session is confirmed first. The phone's swipe pill, full swipe and row menu all
-  archive this way.
+  archive. Only a running session is confirmed first, and that confirmation says archiving stops it. The
+  phone's swipe pill, full swipe and row menu, both detail menus and the desktop list all archive this way.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
@@ -197,7 +204,7 @@ entirely along with its transcript and its dedicated worktree.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
-| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a running session stopped before the flip, and still archived when its stop fails or never answers; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
@@ -242,6 +249,9 @@ restart before explicit re-import.
   until the next unrelated summary rebuild; its pending question or permission is still listed; or it keeps a
   pending request open in a harness whose archive cancels it. Archiving a root stops auto-approval of an
   active sub-agent's request.
+- Archiving a running session archives it before its stop is attempted, leaves its turn or a sub-agent that
+  turn runs working with no stop attempted, stops an idle session, or fails or hangs because the stop failed
+  or never answered.
 - An audit record is missing or unreadable, history is purged without a durable
   record, a partial export is recorded as complete, or an archived snapshot
   retains live prompt defaults.
@@ -276,6 +286,15 @@ restart before explicit re-import.
 - On both shells the Undo offer lives in the single popup alert slot. Another alert shown inside the
   five-second window, such as a background session creation failing, replaces it (an archive failure waits
   instead), and the archive still commits when the window ends, as it would had the user closed the alert.
+- The archive-time stop is the bridge's half of Stop. The app's own follow-up stop of busy descendants, which
+  Stop adds where the harness does not confirm it handled them, has no archive equivalent, so a sub-agent the
+  harness's own stop misses keeps running; on OpenCode that is a background grandchild, since its stop
+  aborts the root and its running direct children (see `docs/HARNESS_CAPABILITIES.md`).
+- A stop is not undone when the archive then fails, for example on a worktree cleanup refusal: the session
+  stays listed, stopped and not archived.
+- Apps before this change confirm a running archive without saying it stops the session; the bridge stops it
+  anyway. Bridges before it archive a running session without stopping it, whatever the app's confirmation
+  says.
 - Archiving is intentionally irreversible; deletion additionally destroys the
   audit record. The read-only rule covers the named session only, not ancestors,
   descendants, or related sessions.
@@ -338,7 +357,8 @@ delete and read state from a row, detail and unwinding, the offline page), share
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice;
 `session_cleanup_service_test`, the one owner of the shared-worktree retry;
-bridge `session_repository_test` for archived activity, `orchestrator_emit_bridge_event_test` for the
+bridge `session_lifecycle_service_test` for the stop before archive, `session_repository_test` for archived
+activity, `orchestrator_emit_bridge_event_test` for the
 summary after archive, `pending_interaction_support_test` for archived questions and permissions, and the
 archive cases in Codex `codex_plugin_write_path_test`, ACP `acp_plugin_activity_test` and
 `acp_step5_policy_test`, and Pi `pi_plugin_impl_test`;

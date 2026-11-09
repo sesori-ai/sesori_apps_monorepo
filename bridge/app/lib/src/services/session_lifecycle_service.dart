@@ -2,12 +2,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
+import "../repositories/models/session_abort_result.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "chat_history_service.dart";
+import "session_abort_service.dart";
 import "session_cleanup_result.dart";
 import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
@@ -49,6 +51,11 @@ class SessionLifecycleService({
   required final SessionContinuationRepository _continuations,
   required final SessionViewService _views,
   required final SessionMutationDispatcher _mutations,
+  required final SessionAbortService _abortService,
+
+  /// How long an archive waits for a running session's stop before it
+  /// archives anyway.
+  required final Duration _stopDeadline,
 }) {
   /// Runs cleanup inside a session-family operation already reserved by the
   /// archive or deletion workflow.
@@ -193,7 +200,6 @@ class SessionLifecycleService({
     required bool deleteWorktree,
     required bool force,
   }) async {
-    final archivedAt = DateTime.now().millisecondsSinceEpoch;
     if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: storedSession.id)) {
       try {
         _mutations.continuationUpdated(session: await _views.get(sessionId: storedSession.id));
@@ -201,6 +207,8 @@ class SessionLifecycleService({
         Log.w("Could not publish quota cancellation before archive for session ${storedSession.id}", error, stackTrace);
       }
     }
+    await _stopIfRunning(sessionId: storedSession.id);
+    final archivedAt = DateTime.now().millisecondsSinceEpoch;
     // Export first, before worktree cleanup: bringing the store current may
     // need the session's worktree, since directory-scoped backends replay from
     // it. Exporting afterwards could silently archive a truncated transcript.
@@ -240,6 +248,30 @@ class SessionLifecycleService({
     }
     _mutations.sessionArchived(session: session);
     return session;
+  }
+
+  /// Stops a running session the way Stop does, sub-agents included, so no
+  /// turn keeps working unseen, or waits on input nobody can give, once it is
+  /// archived. The user asked to archive, so a failed, refused or slow stop
+  /// is logged and the archive goes on.
+  Future<void> _stopIfRunning({required String sessionId}) async {
+    if (!await _sessionRepository.isSessionRunning(sessionId: sessionId)) {
+      return;
+    }
+    try {
+      final result = await _abortService
+          .abortSessionAlreadyReserved(
+            sessionId: sessionId,
+            subAgents: SessionAbortSubAgentPolicy.stop,
+            useAtomicStop: true,
+          )
+          .timeout(_stopDeadline);
+      if (result is! SessionAborted) {
+        Log.w("[archive] session $sessionId refused the stop; archiving it anyway");
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("[archive] could not stop session $sessionId; archiving it anyway", error, stackTrace);
+    }
   }
 
   /// Only a storage-level write failure fails the archive: the session stays

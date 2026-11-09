@@ -39,30 +39,57 @@ class SessionAbortService({
     final operation = _dispatcher.dispatch<SessionAbortResult>(
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
-      body: () async {
-        if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: sessionId)) {
-          try {
-            _mutations.continuationUpdated(session: await _views.get(sessionId: sessionId));
-          } on Object catch (error, stackTrace) {
-            Log.w("Could not publish quota cancellation before Stop for session $sessionId", error, stackTrace);
-          }
-        }
-        final result = await _sessionRepository.abortSession(
-          sessionId: sessionId,
-          subAgents: subAgents,
-          useAtomicStop: useAtomicStop,
-        );
-        // Decided by what the plugin actually did, not by the requested policy:
-        // a `keep` with nothing to keep is a full stop.
-        if (result case SessionAborted(workKept: false)) {
-          _abortedSessionsController.add(sessionId);
-        } else {
-          _abortFailedSessionsController.add(sessionId);
-        }
-        return result;
-      },
+      body: () => _abort(sessionId: sessionId, subAgents: subAgents, useAtomicStop: useAtomicStop),
     );
     _abortStartedSessionsController.add(sessionId);
+    return _reportFailure(sessionId: sessionId, operation: operation);
+  }
+
+  /// The same stop, inside a session-family operation the caller (archive)
+  /// already reserved.
+  Future<SessionAbortResult> abortSessionAlreadyReserved({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+  }) {
+    _abortStartedSessionsController.add(sessionId);
+    return _reportFailure(
+      sessionId: sessionId,
+      operation: _abort(sessionId: sessionId, subAgents: subAgents, useAtomicStop: useAtomicStop),
+    );
+  }
+
+  Future<SessionAbortResult> _abort({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+  }) async {
+    if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: sessionId)) {
+      try {
+        _mutations.continuationUpdated(session: await _views.get(sessionId: sessionId));
+      } on Object catch (error, stackTrace) {
+        Log.w("Could not publish quota cancellation before Stop for session $sessionId", error, stackTrace);
+      }
+    }
+    final result = await _sessionRepository.abortSession(
+      sessionId: sessionId,
+      subAgents: subAgents,
+      useAtomicStop: useAtomicStop,
+    );
+    // Decided by what the plugin actually did, not by the requested policy:
+    // a `keep` with nothing to keep is a full stop.
+    if (result case SessionAborted(workKept: false)) {
+      _abortedSessionsController.add(sessionId);
+    } else {
+      _abortFailedSessionsController.add(sessionId);
+    }
+    return result;
+  }
+
+  Future<SessionAbortResult> _reportFailure({
+    required String sessionId,
+    required Future<SessionAbortResult> operation,
+  }) {
     return operation.then<SessionAbortResult>(
       (result) => result,
       onError: (Object error, StackTrace stackTrace) {
