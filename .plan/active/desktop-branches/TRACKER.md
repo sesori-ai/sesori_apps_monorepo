@@ -4,7 +4,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 
 | Step | Status | PR | Notes |
 | --- | --- | --- | --- |
-| 1 Raise the plan | PR open | | |
+| 1 Raise the plan | PR open | #2463 | |
 | 2 Fold the subtle desktop differences | Pending | | Waits for #2460. Record each item's measured before and after; list dropped items here for the metrics phase. |
 | 3 Fold the transcript and needs-you card looks | Pending | | Waits for step 2 (bash label colour follows item 2.6). |
 | 4 Fold the settings, alert, diff and picker looks | Pending | | Waits for step 2. Can run in parallel with step 3. |
