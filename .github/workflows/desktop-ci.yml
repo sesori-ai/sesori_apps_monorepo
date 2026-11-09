@@ -78,6 +78,7 @@ jobs:
               - '.github/workflows/desktop-ci.yml'
               - '.github/actions/setup-xcode/**'
               - '.github/actions/resolve-flutter-dart-version/**'
+              - '.github/actions/prefetch-sqlite3-native/**'
               - '.tool-versions'
             supervised_e2e:
               # The helper is a native workspace build; keep this gate broad so
@@ -89,6 +90,7 @@ jobs:
               - '.github/workflows/desktop-ci.yml'
               - '.github/actions/setup-xcode/**'
               - '.github/actions/resolve-flutter-dart-version/**'
+              - '.github/actions/prefetch-sqlite3-native/**'
               - '.tool-versions'
             # Inputs that can break a macOS or Windows build while the Linux
             # build stays green: native runner projects, in-repo plugin sources
@@ -103,6 +105,7 @@ jobs:
               - '.github/workflows/desktop-ci.yml'
               - '.github/actions/setup-xcode/**'
               - '.github/actions/resolve-flutter-dart-version/**'
+              - '.github/actions/prefetch-sqlite3-native/**'
               - '.tool-versions'
 
       # PRs build Linux only unless a native input changed. Pushes to main
@@ -166,6 +169,12 @@ jobs:
         run: dart pub get
         working-directory: client
 
+      - name: Prefetch sqlite3 native library
+        if: matrix.command != 'dart analyze --fatal-infos'
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
+
       - name: ${{ matrix.command }}
         run: ${{ matrix.command }}
         working-directory: client/${{ matrix.package }}
@@ -205,6 +214,11 @@ jobs:
       - name: Get dependencies (bridge workspace)
         run: dart pub get
         working-directory: bridge
+
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: bridge
 
       - name: Build bundled bridge helper
         run: dart build cli -o build/cli
@@ -260,6 +274,11 @@ jobs:
       - name: Get dependencies (workspace)
         run: dart pub get
         working-directory: client
+
+      - name: Prefetch sqlite3 native library
+        uses: ./.github/actions/prefetch-sqlite3-native
+        with:
+          workspace: client
 
       - name: Build ${{ matrix.target }}
         run: flutter build ${{ matrix.target }}

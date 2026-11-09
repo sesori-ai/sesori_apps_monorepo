@@ -1,0 +1,52 @@
+name: 'Prefetch sqlite3 native library'
+description: >-
+  Put the pinned, hash-verified libsqlite3 where package:sqlite3's build hook
+  reuses it, from the Actions cache or a retried download (release API first,
+  then the public URL), so tests and builds never depend on the hook's single
+  unretried GitHub release download. The hook
+  only reuses a file whose SHA-256 matches its pin, so the bytes are unchanged.
+  Run it after `dart pub get` and before anything that runs build hooks.
+
+inputs:
+  workspace:
+    description: 'Pub workspace directory whose hooks will run (client or bridge)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve pinned sqlite3 native library
+      id: plan
+      shell: bash
+      env:
+        WORKSPACE: ${{ inputs.workspace }}
+      # python3 on Windows can resolve to the Microsoft Store stub.
+      run: |
+        if [ "$RUNNER_OS" = Windows ]; then py=python; else py=python3; fi
+        "$py" "$GITHUB_ACTION_PATH/prefetch.py" plan --workspace "$WORKSPACE"
+
+    - name: Restore sqlite3 native library cache
+      id: cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.plan.outputs.path }}
+        key: ${{ steps.plan.outputs.key }}
+
+    - name: Seed sqlite3 native library
+      shell: bash
+      env:
+        WORKSPACE: ${{ inputs.workspace }}
+        # Lets the gh download use the authenticated release API.
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if [ "$RUNNER_OS" = Windows ]; then py=python; else py=python3; fi
+        "$py" "$GITHUB_ACTION_PATH/prefetch.py" seed --workspace "$WORKSPACE"
+
+    # Saved right away rather than at job end, so a later test failure still
+    # leaves the cache warm for the next run.
+    - name: Save sqlite3 native library cache
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ steps.plan.outputs.path }}
+        key: ${{ steps.plan.outputs.key }}
