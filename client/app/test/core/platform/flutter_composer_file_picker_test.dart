@@ -307,5 +307,31 @@ void main() {
 
       expect(await picker.pick(source: ComposerPickSource.files), isNull);
     });
+
+    for (final (description, result) in [
+      (
+        "a path that isn't text",
+        {
+          "paths": ["/cache/composer-picks/0/Report.pdf", 7],
+          "oversizedCount": 0,
+        },
+      ),
+      (
+        "no oversized count",
+        {
+          "paths": ["/cache/composer-picks/0/Report.pdf"],
+        },
+      ),
+    ]) {
+      test("on Android a native result with $description is rejected instead of half-read", () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          (call) async => result,
+        );
+
+        await expectLater(picker.pick(source: ComposerPickSource.files), throwsFormatException);
+      });
+    }
   });
 }

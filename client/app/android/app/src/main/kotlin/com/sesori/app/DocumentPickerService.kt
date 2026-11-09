@@ -69,11 +69,14 @@ internal class DocumentPickerService(private val activity: Activity, private val
         val pick = pending ?: return true
         pending = null
         val uris = if (resultCode == Activity.RESULT_OK && data != null) pickedUris(data) else emptyList()
+        val root = File(activity.cacheDir, "composer-picks")
         if (uris.isEmpty()) {
+            // The composer read the last pick's copies when it staged them, so
+            // a dismissal clears them too instead of leaving them in the cache.
+            thread(name = "composer-document-clear") { root.deleteRecursively() }
             pick.result.success(null)
             return true
         }
-        val root = File(activity.cacheDir, "composer-picks")
         thread(name = "composer-document-copy") {
             val copied = try {
                 Result.success(copyPickedDocuments(documents = uris.map(::describe), root = root, maxBytes = pick.maxBytes))

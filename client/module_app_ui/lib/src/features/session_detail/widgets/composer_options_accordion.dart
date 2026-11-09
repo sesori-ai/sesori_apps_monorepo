@@ -141,6 +141,8 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                 subtitle: null,
                 isSelected: false,
                 shortcutLabel: null,
+                // A menu left open when recording starts stops picking.
+                isEnabled: widget.actionsEnabled,
                 onTap: () => attach(source),
               ),
           ],

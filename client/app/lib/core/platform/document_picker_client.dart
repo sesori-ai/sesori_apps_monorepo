@@ -32,16 +32,18 @@ class DocumentPickerClient.forTesting({required final OpenDocuments openFiles}) 
   }
 
   Future<ComposerPickedHostPaths?> _pickOnAndroid() async {
-    final picked = await _androidChannel.invokeMapMethod<String, Object?>("pick", {
+    // The channel decodes to untyped maps and lists, so the shape is checked
+    // here: `{paths: [String...], oversizedCount: int}`, or null on dismissal.
+    final Map<String, Object?>? picked = await _androidChannel.invokeMapMethod("pick", {
       "maxBytes": maxComposerPromptAttachmentBytes,
     });
     if (picked == null) return null;
-    return switch (picked) {
-      {"paths": final List<Object?> paths, "oversizedCount": final int oversizedCount} => ComposerPickedHostPaths(
-        paths: paths.whereType<String>().toList(),
-        oversizedCount: oversizedCount,
-      ),
-      _ => throw FormatException("Unexpected document picker result", picked),
-    };
+    if (picked case {"paths": [...final paths], "oversizedCount": final int oversizedCount}) {
+      final stringPaths = paths.whereType<String>().toList();
+      if (stringPaths.length == paths.length) {
+        return ComposerPickedHostPaths(paths: stringPaths, oversizedCount: oversizedCount);
+      }
+    }
+    throw FormatException("Unexpected document picker result", picked);
   }
 }
