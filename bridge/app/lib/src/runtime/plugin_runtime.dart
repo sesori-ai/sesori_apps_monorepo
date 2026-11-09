@@ -247,6 +247,10 @@ class PluginRuntime({
   bool supportsPromptAttachments({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.supportsPromptAttachments ?? false;
 
+  /// Declared MCP support, readable whether or not the plugin is running.
+  Set<PluginMcpCapability> mcpCapabilities({required String pluginId, required Enum operation}) =>
+      _requireOperationSlot(pluginId: pluginId, operation: operation).registration.descriptor.mcpCapabilities;
+
   Future<Map<String, PluginSetupStatus>> inspectSetup({
     required Set<String> pluginIds,
     required bool markUnselectedNotInspected,

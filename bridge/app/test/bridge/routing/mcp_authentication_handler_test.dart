@@ -484,6 +484,27 @@ void main() {
     expect(plugin.targets, isEmpty);
   });
 
+  test("a dormant integration without MCP authentication reports unsupported, not inactive", () async {
+    final unsupportedRuntime = createTestPluginRuntime(
+      plugins: [
+        FakeDerivedBridgePlugin(id: "unsupported", launchDirectory: "/fixture", allSessions: const []),
+      ],
+    )..stoppedPluginIds.add("unsupported");
+    addTearDown(unsupportedRuntime.dispose);
+    final unsupportedService = McpAuthenticationService(
+      repository: McpRepository(runtime: unsupportedRuntime, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
+    );
+    addTearDown(unsupportedService.dispose);
+
+    final result = await unsupportedService.start(
+      request: const McpAuthenticationStartRequest(
+        pluginId: "unsupported",
+        target: McpServerTarget(scope: McpHarnessScope(), serverKey: "opaque-server"),
+      ),
+    );
+    expect((result as McpAuthenticationUnavailable).reason, McpAuthenticationUnavailableReason.unsupportedHarness);
+  });
+
   for (final destination in [
     "http://provider.test/auth",
     "file:///private/auth",

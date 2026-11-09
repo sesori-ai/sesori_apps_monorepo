@@ -69,6 +69,11 @@ void main() {
     test("declares project-scoped session options", () {
       expect(CodexPluginDescriptor.production().sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(CodexPluginDescriptor.production().supportsPromptAttachments, isTrue);
+      expect(CodexPluginDescriptor.production().mcpCapabilities, {
+        PluginMcpCapability.management,
+        PluginMcpCapability.authentication,
+        PluginMcpCapability.connectorSetup,
+      });
       expect(
         CodexPluginDescriptor.production(),
         isA<InteractivePluginAuthenticationDescriptor>(),
