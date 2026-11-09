@@ -83,14 +83,20 @@ and keep native close/quit behavior safe.
   logs the refusal without replacing repair guidance with crash backoff; ordinary
   startup errors keep their existing handling. The identity check is not signature
   verification.
-  The supervised helper receives a login-shell-derived executable
-  search path, so harnesses installed outside launchd's default PATH remain
-  discoverable after autostart. Only PATH is derived for the helper; shell
-  variables are not imported or persisted. If the login-shell probe fails, the
-  desktop emits no PATH override and preserves the inherited environment
-  unchanged while retaining a bounded diagnostic warning. Each supervised
-  start resolves PATH again so a bridge restart can discover newly installed
-  harnesses; concurrent resolution callers still share one in-flight probe.
+  On macOS the supervised helper receives the user's full login-shell
+  environment, so harnesses installed outside launchd's default PATH and
+  harness configuration exported from a shell profile (gateway base URLs, auth
+  tokens, proxies) work after autostart as they do for a terminal-started
+  bridge. Shell values override inherited ones except `PWD`, `OLDPWD`,
+  `SHLVL`, `_` and `AUTH_BACKEND_URL`; PATH puts the shell entries ahead of the
+  inherited ones. The imported values stay in memory and are never persisted
+  or logged; only variable names appear at debug level. If the login-shell
+  probe fails, times out, returns no usable PATH or exceeds 64 KiB of
+  environment, the desktop imports nothing and preserves the inherited
+  environment unchanged while retaining a bounded diagnostic warning. Each
+  supervised start resolves the environment again so a bridge restart picks up
+  profile changes and newly installed harnesses; concurrent resolution callers
+  still share one in-flight probe.
 - A `--hidden` launch stays tray-only when the tray is proven available. The
   macOS runner suppresses the native first ordering and the Flutter window
   adapter applies the hidden state as a fallback. If the tray is unavailable

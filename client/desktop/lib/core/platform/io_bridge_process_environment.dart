@@ -8,10 +8,13 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 /// Result of the bounded process used to inspect the login-shell environment.
+///
+/// [environment] is null when the shell's environment exceeded the capture
+/// limit and was discarded.
 @visibleForTesting
 class const LaunchEnvironmentProcessResult({
   required final int exitCode,
-  required final String? path,
+  required final Map<String, String>? environment,
   required final String stderr,
 });
 
@@ -27,12 +30,20 @@ typedef LaunchEnvironmentProcessRunner = Future<LaunchEnvironmentProcessResult> 
 /// helper.
 ///
 /// A macOS LaunchAgent receives a small launchd environment rather than the
-/// user's interactive shell environment. In particular, user-installed
-/// harnesses commonly live outside launchd's default PATH. We resolve only the
-/// executable search path from a login shell and return it as the only
-/// environment override; the process boundary inherits the rest of the app's
-/// environment unchanged. Variables from the shell output (including any that
-/// may contain credentials) are never imported or persisted.
+/// user's interactive shell environment, so harness configuration exported
+/// from a shell profile (user-installed harnesses on PATH, gateway base URLs,
+/// auth tokens, proxies) would otherwise be missing. Like VS Code, we run the
+/// user's login shell once per bridge start and import its full environment,
+/// so the supervised bridge sees what a terminal-started bridge sees. This
+/// deliberately includes credential-bearing variables: the bridge and its
+/// harnesses need them, and they come from the user's own shell profile.
+///
+/// The imported values stay in memory and reach only the bridge process
+/// boundary; they are never persisted or logged (variable names may be logged
+/// at debug level). Shell values override inherited ones, except
+/// [_excludedShellVariables]. PATH merges the shell entries ahead of the
+/// inherited ones. Any probe failure, timeout or oversized output imports
+/// nothing, so the bridge inherits the app's environment unchanged.
 @LazySingleton(as: BridgeProcessEnvironment)
 class IoBridgeProcessEnvironment.forTesting({
   required final bool _isMacOS,
@@ -70,23 +81,45 @@ class IoBridgeProcessEnvironment.forTesting({
     if (!_isMacOS) {
       return const <String, String>{};
     }
-    final String? shellPath = await _readLoginShellPath();
-    if (shellPath == null) {
+    final Map<String, String>? shellEnvironment = await _readLoginShellEnvironment();
+    if (shellEnvironment == null) {
       // A failed probe must not rewrite the inherited environment based on guesses.
       return null;
     }
-    final Iterable<String> shellEntries = _absolutePathEntries(value: shellPath);
+    final String? shellPath = shellEnvironment["PATH"];
+    final Iterable<String> shellEntries = shellPath == null ? const <String>[] : _absolutePathEntries(value: shellPath);
     if (shellEntries.isEmpty) {
       logw("The macOS login shell returned no usable absolute PATH entries; preserving the inherited environment");
       return null;
     }
-    final String mergedPath = _mergePath(shellEntries: shellEntries, basePath: _baseEnvironment["PATH"]);
-    return Map<String, String>.unmodifiable(
-      mergedPath.isEmpty ? const <String, String>{} : <String, String>{"PATH": mergedPath},
+    final Map<String, String> imported = <String, String>{
+      for (final MapEntry<String, String>(:String key, :String value) in shellEnvironment.entries)
+        if (!_excludedShellVariables.contains(key)) key: value,
+      "PATH": _mergePath(shellEntries: shellEntries, basePath: _baseEnvironment["PATH"]),
+    };
+    // Names only: values can hold credentials.
+    logd(
+      "Imported ${imported.length} variables from the macOS login shell: "
+      "${(imported.keys.toList()..sort()).join(", ")}",
     );
+    return Map<String, String>.unmodifiable(imported);
   }
 
-  Future<String?> _readLoginShellPath() async {
+  /// Shell variables never imported, so the inherited value (if any) is kept.
+  ///
+  /// `PWD`, `OLDPWD`, `SHLVL` and `_` describe the probe shell itself rather
+  /// than the user's configuration. `AUTH_BACKEND_URL` redirects the bridge's
+  /// auth backend; the app hands its own session to its bridge, so the app,
+  /// not a shell export meant for a terminal bridge, decides that backend.
+  static const Set<String> _excludedShellVariables = <String>{
+    "PWD",
+    "OLDPWD",
+    "SHLVL",
+    "_",
+    "AUTH_BACKEND_URL",
+  };
+
+  Future<Map<String, String>?> _readLoginShellEnvironment() async {
     final String shell = _shellExecutable(environment: _baseEnvironment);
     final LaunchEnvironmentProcessResult result;
     try {
@@ -97,7 +130,11 @@ class IoBridgeProcessEnvironment.forTesting({
         timeout: _shellTimeout,
       );
     } on Object catch (error, stackTrace) {
-      logw("Failed to resolve the macOS login-shell PATH; preserving the inherited environment", error, stackTrace);
+      logw(
+        "Failed to resolve the macOS login-shell environment; preserving the inherited environment",
+        error,
+        stackTrace,
+      );
       return null;
     }
     if (result.exitCode != 0) {
@@ -108,57 +145,62 @@ class IoBridgeProcessEnvironment.forTesting({
       return null;
     }
 
-    final String? shellPath = result.path;
-    if (shellPath == null) {
+    final Map<String, String>? shellEnvironment = result.environment;
+    if (shellEnvironment == null) {
       logw(
-        "The macOS login shell did not return a usable PATH; preserving the inherited environment"
-        "${_stderrDetails(stderr: result.stderr)}",
+        "The macOS login-shell environment exceeded $_maxCapturedShellEnvironmentBytes bytes; "
+        "preserving the inherited environment",
       );
       return null;
     }
-    return shellPath;
+    return shellEnvironment;
   }
 
-  /// Parses a NUL-delimited environment stream without retaining its full
-  /// output. The PATH record is kept independently from bounded diagnostics,
-  /// so startup noise cannot evict it from a fixed-size tail.
+  /// Parses the `printf '\0'; env -0` output without retaining more than
+  /// [_maxCapturedShellEnvironmentBytes] of records. Bytes before the first
+  /// NUL are output from interactive startup files and an unterminated
+  /// trailing fragment is logout-file output; both are drained, not buffered
+  /// or parsed. Returns null when the environment exceeds the cap.
   @visibleForTesting
-  static Future<String?> parsePathStream({required Stream<List<int>> stream}) => _readPathStream(stream: stream);
+  static Future<Map<String, String>?> parseEnvironmentStream({required Stream<List<int>> stream}) =>
+      _readEnvironmentStream(stream: stream);
 
-  static Future<String?> _readPathStream({required Stream<List<int>> stream}) async {
+  static Future<Map<String, String>?> _readEnvironmentStream({required Stream<List<int>> stream}) async {
+    final Map<String, String> environment = <String, String>{};
     final List<int> recordBytes = <int>[];
-    String? shellPath;
-    bool recordTruncated = false;
+    bool markerSeen = false;
+    bool oversized = false;
+    int capturedBytes = 0;
 
-    void inspectRecord() {
-      if (!recordTruncated && shellPath == null) {
-        final String record = utf8.decode(recordBytes, allowMalformed: true);
-        final int separator = record.indexOf("=");
-        if (separator > 0 && record.substring(0, separator) == "PATH") {
-          shellPath = record.substring(separator + 1);
-        }
-      }
+    void addRecord() {
+      final String record = utf8.decode(recordBytes, allowMalformed: true);
       recordBytes.clear();
-      recordTruncated = false;
+      final int separator = record.indexOf("=");
+      if (separator > 0) {
+        environment[record.substring(0, separator)] = record.substring(separator + 1);
+      }
     }
 
     await for (final List<int> chunk in stream) {
+      // Keep draining after an overflow so the shell is not blocked on a full pipe.
+      if (oversized) continue;
       for (final int byte in chunk) {
-        if (byte == 0) {
-          inspectRecord();
-        } else if (!recordTruncated) {
-          if (recordBytes.length >= _maxCapturedShellRecordBytes) {
-            recordTruncated = true;
-          } else {
-            recordBytes.add(byte);
-          }
+        if (!markerSeen) {
+          markerSeen = byte == 0;
+        } else if (byte == 0) {
+          addRecord();
+        } else if (++capturedBytes > _maxCapturedShellEnvironmentBytes) {
+          oversized = true;
+          break;
+        } else {
+          recordBytes.add(byte);
         }
       }
     }
-    if (recordBytes.isNotEmpty || recordTruncated) {
-      inspectRecord();
+    if (oversized) {
+      return null;
     }
-    return shellPath;
+    return environment;
   }
 
   static String _stderrDetails({required String stderr}) {
@@ -197,7 +239,7 @@ class IoBridgeProcessEnvironment.forTesting({
   }
 
   static const int _maxCapturedShellOutputBytes = 64 * 1024;
-  static const int _maxCapturedShellRecordBytes = 64 * 1024;
+  static const int _maxCapturedShellEnvironmentBytes = 64 * 1024;
 
   static Future<LaunchEnvironmentProcessResult> _runLoginShell({
     required String executable,
@@ -213,12 +255,12 @@ class IoBridgeProcessEnvironment.forTesting({
       mode: ProcessStartMode.normal,
     );
     try {
-      final (int exitCode, String? path, String stderr) = await (
+      final (int exitCode, Map<String, String>? environment, String stderr) = await (
         process.exitCode,
-        _readPathStream(stream: process.stdout),
+        _readEnvironmentStream(stream: process.stdout),
         _readOutputTail(stream: process.stderr),
       ).wait.timeout(timeout);
-      return LaunchEnvironmentProcessResult(exitCode: exitCode, path: path, stderr: stderr);
+      return LaunchEnvironmentProcessResult(exitCode: exitCode, environment: environment, stderr: stderr);
     } on Object {
       process.kill(ProcessSignal.sigkill);
       rethrow;
