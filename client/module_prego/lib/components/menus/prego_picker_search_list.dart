@@ -494,10 +494,10 @@ class const _Heading({required final String text, required final bool pointer}) 
       child: Semantics(
         header: true,
         child: Text(
-          PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? text : text.toUpperCase(),
+          pointer ? text : text.toUpperCase(),
           style: prego.textTheme.textXs.medium.copyWith(
             color: prego.colors.textSecondary,
-            letterSpacing: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 0 : 0.8,
+            letterSpacing: pointer ? 0 : 0.8,
           ),
         ),
       ),
