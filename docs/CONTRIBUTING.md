@@ -90,7 +90,7 @@ cd ../client && make analyze && make test
 
 `make analyze` and Bridge CI both use `dart analyze --fatal-infos`, so a clean local run matches CI.
 
-If tests or builds fail in `Running build hooks` because the sqlite3 library download failed its hash check, run `python3 .github/actions/prefetch-sqlite3-native/prefetch.py seed --workspace client` (or `--workspace bridge`) from the repo root after `pub get`. It fetches the pinned library with `gh`, falling back to `curl`, and checks its hash.
+If tests or builds fail in `Running build hooks` because the sqlite3 library download failed its hash check, run `python3 .github/actions/prefetch-sqlite3-native/prefetch.py seed --workspace client` (or `--workspace bridge`) from the repo root after `pub get`. On Windows, use `python` instead of `python3`. It seeds this host's library by default; add `--platform ios` or `--platform android` for mobile builds. It fetches the pinned library with `gh`, falling back to `curl`, and checks its hash.
 
 ## Opening issues and pull requests
 

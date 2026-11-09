@@ -9,7 +9,9 @@ from the CI cache or a retried download, so the hook takes its reuse path.
 Run by .github/actions/prefetch-sqlite3-native in CI and release workflows;
 the hook accepts only the pinned hash, so the built bytes never change.
 
-Locally, after `pub get`, it fixes a worktree whose hook download failed:
+Locally, after `pub get`, it seeds a worktree whose hook download failed. The
+default seeds this host's libraries; add `--platform ios` or `--platform
+android` for those targets. On Windows, run `python` instead of `python3`:
     python3 .github/actions/prefetch-sqlite3-native/prefetch.py seed --workspace client
 """
 
