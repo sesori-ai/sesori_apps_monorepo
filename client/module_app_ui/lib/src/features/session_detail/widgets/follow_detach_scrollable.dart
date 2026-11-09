@@ -14,6 +14,9 @@ import "scroll_follow_tracker.dart";
 /// - `NotificationListener<ScrollNotification>` — drag, momentum,
 ///   programmatic events. Forwards to
 ///   [ScrollFollowTracker.handleScrollNotification].
+/// - `NotificationListener<ScrollMetricsNotification>` — extent changes
+///   without a scroll, such as the keyboard closing. Forwards to
+///   [ScrollFollowTracker.handleScrollMetricsNotification].
 ///
 /// Rebuilds when [tracker] notifies so [detachedOverlayBuilder]
 /// toggles with `tracker.following`. The overlay is stacked on top
@@ -71,7 +74,11 @@ class _FollowDetachScrollableState() extends State<FollowDetachScrollable> {
           onPointerPanZoomEnd: (_) => widget.tracker.handlePointerPanZoomEnd(),
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) => widget.tracker.handleScrollNotification(notification: notification),
-            child: widget.child,
+            child: NotificationListener<ScrollMetricsNotification>(
+              onNotification: (notification) =>
+                  widget.tracker.handleScrollMetricsNotification(notification: notification),
+              child: widget.child,
+            ),
           ),
         ),
         if (!widget.tracker.following && overlayBuilder != null) overlayBuilder(context),

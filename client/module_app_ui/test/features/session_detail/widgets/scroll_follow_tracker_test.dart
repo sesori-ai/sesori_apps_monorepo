@@ -83,6 +83,50 @@ void main() {
       expect(tracker.following, isTrue);
     });
 
+    testWidgets("a scroll-end on a list that lost its scrollable range reattaches", (tester) async {
+      // The keyboard closing mid-swipe grows the viewport until the transcript
+      // fits: the drag detached while there was range, and the list it ends on
+      // can no longer be away from the edge.
+      final context = await pumpContext(tester);
+      tracker.handleScrollNotification(
+        notification: ScrollStartNotification(
+          metrics: _metrics(min: 0, max: 180, pixels: 0),
+          context: context,
+          dragDetails: DragStartDetails(),
+        ),
+      );
+      expect(tracker.following, isFalse);
+
+      tracker.handleScrollNotification(
+        notification: ScrollEndNotification(
+          metrics: _metrics(min: 0, max: 0, pixels: 0),
+          context: context,
+        ),
+      );
+      expect(tracker.following, isTrue);
+    });
+
+    testWidgets("a layout that takes away a detached list's scrollable range reattaches", (tester) async {
+      final context = await pumpContext(tester);
+      tracker.detach();
+
+      tracker.handleScrollMetricsNotification(
+        notification: ScrollMetricsNotification(metrics: _metrics(min: 0, max: 0, pixels: 0), context: context),
+      );
+      expect(tracker.following, isTrue);
+    });
+
+    testWidgets("a layout that leaves a detached list scrollable keeps it detached, even at the edge", (tester) async {
+      // A held turn near the latest edge is detached on purpose.
+      final context = await pumpContext(tester);
+      tracker.detach();
+
+      tracker.handleScrollMetricsNotification(
+        notification: ScrollMetricsNotification(metrics: _metrics(min: 0, max: 180, pixels: 0), context: context),
+      );
+      expect(tracker.following, isFalse);
+    });
+
     testWidgets("reattaches when a scroll settles back at the follow edge", (tester) async {
       final context = await pumpContext(tester);
       tracker.handleScrollNotification(

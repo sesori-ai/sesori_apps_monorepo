@@ -57,3 +57,4 @@ export 'motion/prego_slide_from_last_position.dart';
 export 'theme/prego_glass.dart';
 export 'theme/prego_theme.dart';
 export 'utils/prego_system_date_patterns.dart';
+export 'utils/prego_text_spacing_overrides.dart';
