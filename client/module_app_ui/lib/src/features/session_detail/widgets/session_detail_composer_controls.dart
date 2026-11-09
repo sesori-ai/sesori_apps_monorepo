@@ -71,6 +71,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         attachmentsSupported: composer.supportsPromptAttachments,
         fileUploadsSupported: composer.supportsFileUploads,
         isBusy: false,
+        restorationKey: null,
         initialAttachments: cubit.launchAttachments,
         onInitialAttachmentsConsumed: cubit.acknowledgeLaunchAttachments,
         autofocus: composer.hadFocus,
@@ -93,6 +94,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
 
   Widget _buildLoaded({required BuildContext context, required SessionDetailLoaded state}) => _buildComposer(
     context: context,
+    // A stop moved queued messages back into the draft: the composer takes
+    // them up, with their images and its own.
+    restorationKey: state.composerRestorations == 0 ? null : ValueKey(state.composerRestorations),
     // Queued messages count: the user has already "sent" something, so the
     // composer should rest as a follow-up field even before the first message
     // lands in the list.
@@ -106,8 +110,11 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     attachmentsSupported: state.supportsPromptAttachments,
     fileUploadsSupported: state.supportsFileUploads,
     isBusy: hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses),
-    initialAttachments: const [],
-    onInitialAttachmentsConsumed: () {},
+    // Only a restored composer holds images of its own to take up.
+    initialAttachments: state.composerRestorations == 0
+        ? const []
+        : context.read<SessionDetailCubit>().restoredAttachments,
+    onInitialAttachmentsConsumed: context.read<SessionDetailCubit>().acknowledgeRestoredAttachments,
     autofocus: false,
     initialSelection: null,
     optionsReadOnly: false,
@@ -136,6 +143,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
 
   Widget _buildComposer({
     required BuildContext context,
+    required Key? restorationKey,
     required bool hasMessages,
     required bool? attachmentsSupported,
     required bool? fileUploadsSupported,
@@ -166,12 +174,13 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: PromptInput(
             draftIdentity: widget.sessionId,
-            restorationKey: null,
+            restorationKey: restorationKey,
             initialDraft: context.read<SessionDetailCubit>().composerDraft,
             initialSelection: initialSelection,
             initialAttachments: initialAttachments,
             onInitialAttachmentsConsumed: onInitialAttachmentsConsumed,
-            onAttachmentsChanged: null,
+            onAttachmentsChanged: (attachments) =>
+                context.read<SessionDetailCubit>().trackComposerAttachments(attachments: attachments),
             onSelectionChanged: null,
             onBusyChanged: null,
             autofocus: autofocus,

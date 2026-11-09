@@ -288,6 +288,7 @@ Widget sessionRowApp({
       counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
       loadMore: null,
       awaitingAnswer: false,
+      anySessionAwaitingInput: false,
       failure: null,
       isLoading: false,
       scratchProjectId: null,

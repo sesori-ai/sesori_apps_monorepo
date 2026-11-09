@@ -40,6 +40,7 @@ import "../../repositories/models/tool_output_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
+import "../../services/composer_draft_calculator.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/feedback_prompt_service.dart";
 import "../../services/file_reference_open_service.dart";
@@ -105,6 +106,10 @@ enum _OptionsReloadResult() {
   failed,
 }
 
+/// A queued message a stop may hand back to the composer: its words, null
+/// when it carries only images, and the images this screen still holds.
+typedef _UnsentPrompt = ({String promptId, ComposerDraft? draft, List<ComposerAttachment> attachments});
+
 class SessionDetailCubit(
   final ConnectionService _connectionService, {
   required final SessionDetailLoadService _loadService,
@@ -145,6 +150,7 @@ class SessionDetailCubit(
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
   static const SessionApprovalCalculator _approval = SessionApprovalCalculator();
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
+  static const ComposerDraftCalculator _draftCalculator = ComposerDraftCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
   /// something. Backends that advertise agents always replace it.
@@ -174,6 +180,14 @@ class SessionDetailCubit(
   /// Images the launch's composer held unsent, until this screen's composer
   /// stages them.
   List<ComposerAttachment> _launchAttachments = const [];
+
+  /// The images this screen's composer has staged, as it last reported them.
+  List<ComposerAttachment> _composerAttachments = const [];
+
+  /// The composer's images after a stop restored queued messages into it,
+  /// until the composer stages them; see [restoredAttachments].
+  List<ComposerAttachment> _restoredAttachments = const [];
+  int _composerRestorations = 0;
 
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
@@ -2932,6 +2946,15 @@ class SessionDetailCubit(
 
   void acknowledgeLaunchAttachments() => _launchAttachments = const [];
 
+  /// The images a restoring composer stages in place of its own: the ones it
+  /// already held, then those of the queued messages a stop moved back. Empty
+  /// once staged; see [acknowledgeRestoredAttachments].
+  List<ComposerAttachment> get restoredAttachments => _restoredAttachments;
+
+  void acknowledgeRestoredAttachments() => _restoredAttachments = const [];
+
+  void trackComposerAttachments({required List<ComposerAttachment> attachments}) => _composerAttachments = attachments;
+
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;
     _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
@@ -3363,7 +3386,8 @@ class SessionDetailCubit(
   ///
   /// Queue draining pauses for the request lifetime. Only exact non-mutating
   /// rejection/refusal outcomes retain local queue and stale-option state;
-  /// accepted or ambiguous outcomes clear them.
+  /// accepted or ambiguous outcomes clear them and move every queued message
+  /// not yet sent back into the composer, so a stop never loses typed words.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     // A scope dialog can outlive an archive event from another surface.
     if (_refuseWhenArchived(action: "stop the session") || _refuseWhenInteractionBlocked(action: "stop the session")) {
@@ -3371,9 +3395,12 @@ class SessionDetailCubit(
     }
     _abortRequestInFlight = true;
     _feedbackPromptService.recordUserStop(sessionId: _sessionId);
+    // The bridge drops its queue as the stop lands, and the queue event saying
+    // so can outrun the response, so what it holds is taken now.
+    final queuedAtStop = _unsentQueuedPrompts();
     try {
       await _sessionAbortService.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      _clearLocalPromptQueue();
+      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeDropped: true);
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
     } on SessionAbortRejectedException catch (error) {
@@ -3383,12 +3410,15 @@ class SessionDetailCubit(
       _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.notAccepted(refusal: error.refusal);
     } on SessionAbortDescendantFailureException catch (error) {
-      _clearLocalPromptQueue();
+      // The session itself stopped; only a sub-agent did not.
+      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeDropped: true);
       loge("Failed to abort session descendants", error.cause, error.causeStackTrace);
       return const SessionAbortOutcome.failed();
     } on Object catch (error, stackTrace) {
       // Response loss and partial bridge failures may follow a mutating stop.
-      _clearLocalPromptQueue();
+      // The bridge may still hold its queue, whose events keep showing it; a
+      // message both queued there and restored beats one lost.
+      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeDropped: false);
       loge("Failed to abort session(s)", error, stackTrace);
       return const SessionAbortOutcome.failed();
     } finally {
@@ -3397,22 +3427,101 @@ class SessionDetailCubit(
     }
   }
 
-  void _clearLocalPromptQueue() {
-    // A stop ends the first message's send too.
-    if (state case final SessionDetailLoaded current when current.launchHandoff != null) {
-      emit(current.copyWith(launchHandoff: null));
-    }
-    if (_promptQueue.isEmpty &&
-        !_promptQueue.isSending &&
-        _promptQueue.failed == null &&
-        _promptQueue.awaitingBridge.isEmpty &&
-        _promptQueue.bridgePromptAttachments.isEmpty) {
-      return;
-    }
+  /// Ends every local send after a stop, and puts back into the composer each
+  /// queued message the stop kept from being sent: those queued at [queuedAtStop]
+  /// and those staged while it ran, minus any the transcript shows delivered.
+  /// When [bridgeDropped], the bridge's listing of those messages goes too,
+  /// rather than showing beside the composer until its queue event lands.
+  void _returnQueuedToComposer({required List<_UnsentPrompt> queuedAtStop, required bool bridgeDropped}) {
+    final current = state;
+    final delivered = <String>{
+      if (current case SessionDetailLoaded(:final messages))
+        for (final message in messages)
+          if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
+    };
+    final returned = <String>{};
+    final unsent = [
+      for (final prompt in [...queuedAtStop, ..._unsentQueuedPrompts()])
+        if (!delivered.contains(prompt.promptId) && returned.add(prompt.promptId)) prompt,
+    ];
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
-    final current = state;
-    _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+    final restored = unsent.any((prompt) => prompt.draft != null || prompt.attachments.isNotEmpty);
+    if (restored) {
+      _restoreToComposer(
+        unsent: unsent,
+        stagedCommand: current is SessionDetailLoaded ? current.stagedCommand : null,
+      );
+    }
+    if (current is! SessionDetailLoaded) {
+      _emitQueueUpdate();
+      return;
+    }
+    _emitQueueUpdate(
+      current.copyWith(
+        // A stop ends the first message's send too.
+        launchHandoff: null,
+        bridgeQueuedPrompts: bridgeDropped
+            ? [
+                for (final prompt in current.bridgeQueuedPrompts)
+                  if (!returned.contains(prompt.id)) prompt,
+              ]
+            : current.bridgeQueuedPrompts,
+        stagedCommand: restored ? null : current.stagedCommand,
+        composerRestorations: _composerRestorations,
+      ),
+    );
+  }
+
+  /// What is queued and not yet in the transcript, oldest first: the prompts
+  /// the bridge holds, then this screen's sends it has not listed yet, the one
+  /// sending, the failed one and those still staged. A dispatched prompt counts
+  /// too: until the harness echoes it, as Claude steering the stop interrupts
+  /// before the CLI reads it, nothing says it will ever reach the transcript.
+  List<_UnsentPrompt> _unsentQueuedPrompts() {
+    final bridgePrompts = switch (state) {
+      SessionDetailLoaded(:final bridgeQueuedPrompts) => bridgeQueuedPrompts,
+      SessionDetailLoading() ||
+      SessionDetailHarnessUnavailable() ||
+      SessionDetailFailed() => const <QueuedSessionPrompt>[],
+    };
+    final bridgeAttachments = _promptQueue.bridgePromptAttachments;
+    return [
+      for (final prompt in bridgePrompts)
+        (
+          promptId: prompt.id,
+          draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
+          attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
+        ),
+      for (final submission in [
+        for (final entry in _promptQueue.awaitingBridge) entry.submission,
+        if (!_promptQueue.isActiveSettledElsewhere) ?_promptQueue.active,
+        ?_promptQueue.failed?.submission,
+        ..._promptQueue.items,
+      ])
+        (
+          promptId: submission.promptId,
+          draft: _draftCalculator.submissionDraft(submission: submission),
+          attachments: submission.attachments,
+        ),
+    ];
+  }
+
+  /// Puts [unsent] into the composer ahead of what it holds, each after a
+  /// blank line, with their images after its own. A [stagedCommand] becomes
+  /// its literal text, as the restored words would otherwise be its arguments.
+  void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
+    final held = switch (stagedCommand) {
+      null => _composerDraft,
+      CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
+    };
+    saveComposerDraft(
+      draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
+    );
+    // The composer stages these up to its budget and stops at the first that
+    // does not fit, so its own images, which fit before the stop, go first.
+    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
+    _composerRestorations++;
   }
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {
@@ -3505,6 +3614,7 @@ class SessionDetailCubit(
       promptDefaults: snapshot.promptDefaults,
       fastMode: snapshot.promptDefaults?.fastMode ?? false,
       stagedCommand: loading is SessionDetailLoading ? loading.seededComposer?.stagedCommand : null,
+      composerRestorations: _composerRestorations,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,
