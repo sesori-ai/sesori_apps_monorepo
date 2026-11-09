@@ -27,6 +27,15 @@ const _headerHeight = 52.0;
 /// as plain text so opening them stays quick.
 const _maxHighlightedLength = 200 * 1024;
 
+/// Each line shows at most this many characters, then an ellipsis, so one
+/// huge line, such as an inline image's data, lays out quickly. Copy still
+/// takes the whole file.
+const _maxShownLineLength = 10000;
+
+/// Markdown up to this many characters renders; larger files, which would
+/// build a widget for every block at once, show only their source.
+const _maxRenderedMarkdownLength = 1024 * 1024;
+
 const _maxDecodedImageDimension = 2048;
 
 /// Matches lines with non-ASCII characters, which are measured with a
@@ -102,11 +111,13 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     null => false,
   };
 
-  /// How the file renders besides its source, or null when it has only source.
-  /// HTML needs a web view, which Windows and Linux lack.
-  _Rendering? get _rendering {
+  /// How [content] renders besides its source, or null when it has only
+  /// source. HTML needs a web view, which Windows and Linux lack.
+  _Rendering? _renderingOf({required String content}) {
     final name = widget.reference.fileName.toLowerCase();
-    if (name.endsWith(".md") || name.endsWith(".markdown")) return _Rendering.markdown;
+    if (name.endsWith(".md") || name.endsWith(".markdown")) {
+      return content.length > _maxRenderedMarkdownLength ? null : _Rendering.markdown;
+    }
     if (!name.endsWith(".html") && !name.endsWith(".htm")) return null;
     return switch (defaultTargetPlatform) {
       TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.macOS => _Rendering.html,
@@ -118,7 +129,10 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final state = context.watch<FilePreviewCubit>().state;
-    final rendering = _rendering;
+    final rendering = switch (state) {
+      FilePreviewShowsText(:final content) => _renderingOf(content: content),
+      FilePreviewLoading() || FilePreviewShowsImage() || FilePreviewUnavailable() => null,
+    };
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.escape): widget.onClose,
@@ -388,6 +402,10 @@ WebViewController _loadHtmlPage({
   return controller;
 }
 
+/// A file's lines for [_CodePreview]: [highlighted] spans for a small file,
+/// otherwise plain [texts]; and the width of the widest line.
+typedef _Lines = ({List<String> texts, List<TextSpan>? highlighted, double widest});
+
 /// Text with line numbers, one row per line, opened on [line] with that row
 /// tinted. Rows have one fixed height, so the list starts at [line] without
 /// measuring anything and nothing moves once it shows.
@@ -403,10 +421,18 @@ class const _CodePreview({
 class _CodePreviewState() extends State<_CodePreview> {
   ScrollController? _controller;
   (Brightness, TextStyle, TextScaler)? _linesKey;
-  ({List<TextSpan> lines, double widest}) _laidOut = (lines: const [], widest: 0);
+  _Lines _laidOut = (texts: const [], highlighted: null, widest: 0);
 
-  /// The highlighted lines and the width of the widest one.
-  ({List<TextSpan> lines, double widest}) _layOut({
+  /// The file's lines, cut to [_maxShownLineLength], and the width of the
+  /// widest one.
+  ///
+  /// A file small enough to highlight keeps its highlighted spans and is
+  /// measured exactly. A larger one, up to millions of lines, keeps only its
+  /// text: each row builds its span as it scrolls into view, and a line with
+  /// non-ASCII characters is estimated at two digit widths per character
+  /// rather than laid out, since laying out every such line at once froze the
+  /// app for seconds.
+  _Lines _layOut({
     required Brightness brightness,
     required TextStyle style,
     required TextScaler textScaler,
@@ -416,18 +442,45 @@ class _CodePreviewState() extends State<_CodePreview> {
     if (key == _linesKey) return _laidOut;
     _linesKey = key;
     final code = widget.content.replaceAll("\t", "    ");
-    final highlighted = code.length > _maxHighlightedLength
-        ? null
-        : CodeHighlighter.highlight(code: code, language: widget.language, brightness: brightness, baseStyle: style);
+    final wordSpacing = style.wordSpacing ?? 0;
+    double estimate({required String text, required double perChar}) =>
+        text.length * perChar + (wordSpacing == 0 ? 0 : " ".allMatches(text).length * wordSpacing);
+    if (code.length > _maxHighlightedLength) {
+      final texts = <String>[];
+      var widest = 0.0;
+      for (final line in code.split("\n")) {
+        final cut = line.length > _maxShownLineLength;
+        final text = cut ? _clipText(text: line, length: _maxShownLineLength) : line;
+        texts.add(text);
+        // A cut line is classified without its ellipsis, which is not ASCII,
+        // and the ellipsis is estimated at two digit widths.
+        final body = cut ? text.substring(0, text.length - 1) : text;
+        final perChar = _nonAscii.hasMatch(body) ? charWidth * 2 : charWidth;
+        widest = math.max(widest, estimate(text: text, perChar: perChar) + (cut ? charWidth : 0));
+      }
+      return _laidOut = (texts: texts, highlighted: null, widest: widest);
+    }
+
+    final highlighted = CodeHighlighter.highlight(
+      code: code,
+      language: widget.language,
+      brightness: brightness,
+      baseStyle: style,
+    );
     final lines = highlighted == null
-        ? [for (final text in code.split("\n")) TextSpan(text: text, style: style)]
-        : splitSpanIntoLines(span: highlighted);
+        ? [
+            for (final text in code.split("\n"))
+              _clipLine(
+                line: TextSpan(text: text, style: style),
+              ),
+          ]
+        : [for (final line in splitSpanIntoLines(span: highlighted)) _clipLine(line: line)];
     var widest = 0.0;
     final measured = <InlineSpan>[];
     for (final line in lines) {
       final text = line.toPlainText();
       if (!_nonAscii.hasMatch(text)) {
-        widest = math.max(widest, text.length * charWidth);
+        widest = math.max(widest, estimate(text: text, perChar: charWidth));
         continue;
       }
       if (measured.isNotEmpty) measured.add(const TextSpan(text: "\n"));
@@ -444,7 +497,7 @@ class _CodePreviewState() extends State<_CodePreview> {
       widest = math.max(widest, painter.width.ceilToDouble());
       painter.dispose();
     }
-    return _laidOut = (lines: lines, widest: widest);
+    return _laidOut = (texts: const [], highlighted: lines, widest: widest);
   }
 
   @override
@@ -456,7 +509,17 @@ class _CodePreviewState() extends State<_CodePreview> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final style = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
+    // Resolved the way [Text] resolves each row, over the ambient text style
+    // and with the platform's spacing overrides, so rows are measured as they
+    // show.
+    final style = DefaultTextStyle.of(context).style.merge(
+      prego.textTheme.code.copyWith(
+        color: prego.colors.textPrimary,
+        height: MediaQuery.maybeLineHeightScaleFactorOverrideOf(context),
+        letterSpacing: MediaQuery.maybeLetterSpacingOverrideOf(context),
+        wordSpacing: MediaQuery.maybeWordSpacingOverrideOf(context),
+      ),
+    );
     final textScaler = MediaQuery.textScalerOf(context);
     final glyph = TextPainter(
       text: TextSpan(text: "0", style: style),
@@ -466,17 +529,18 @@ class _CodePreviewState() extends State<_CodePreview> {
     final rowHeight = glyph.height;
     final charWidth = glyph.width;
     glyph.dispose();
-    final (:lines, :widest) = _layOut(
+    final (:texts, :highlighted, :widest) = _layOut(
       brightness: Theme.of(context).brightness,
       style: style,
       textScaler: textScaler,
       charWidth: charWidth,
     );
-    final gutterWidth = "${lines.length}".length * charWidth;
+    final lineCount = highlighted?.length ?? texts.length;
+    final gutterWidth = "$lineCount".length * charWidth;
     const gap = PregoSpacing.md;
     const horizontalPadding = PregoSpacing.md;
     final targetIndex = switch (widget.line) {
-      final line? when line <= lines.length => line - 1,
+      final line? when line <= lineCount => line - 1,
       _ => null,
     };
     final targetColor = prego.colors.bgBrandPrimary;
@@ -513,7 +577,7 @@ class _CodePreviewState() extends State<_CodePreview> {
                     top: PregoSpacing.sm,
                     bottom: PregoSpacing.sm + MediaQuery.paddingOf(context).bottom,
                   ),
-                  itemCount: lines.length,
+                  itemCount: lineCount,
                   itemBuilder: (context, index) => ColoredBox(
                     color: index == targetIndex ? targetColor : Colors.transparent,
                     child: Padding(
@@ -526,7 +590,13 @@ class _CodePreviewState() extends State<_CodePreview> {
                             child: Text("${index + 1}", textAlign: TextAlign.end, style: numberStyle),
                           ),
                           const SizedBox(width: gap),
-                          Expanded(child: Text.rich(lines[index], softWrap: false, overflow: TextOverflow.clip)),
+                          Expanded(
+                            child: Text.rich(
+                              highlighted?[index] ?? TextSpan(text: texts[index], style: style),
+                              softWrap: false,
+                              overflow: TextOverflow.clip,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -539,6 +609,44 @@ class _CodePreviewState() extends State<_CodePreview> {
       },
     );
   }
+}
+
+/// [line], a plain line or one from [splitSpanIntoLines], cut after
+/// [_maxShownLineLength] characters with an ellipsis.
+TextSpan _clipLine({required TextSpan line}) {
+  if (line case TextSpan(:final text?, :final style)) {
+    return text.length <= _maxShownLineLength
+        ? line
+        : TextSpan(
+            text: _clipText(text: text, length: _maxShownLineLength),
+            style: style,
+          );
+  }
+  var room = _maxShownLineLength;
+  final kept = <InlineSpan>[];
+  for (final piece in line.children ?? const <InlineSpan>[]) {
+    switch (piece) {
+      case TextSpan(:final text?, :final style) when text.length > room:
+        kept.add(
+          TextSpan(
+            text: _clipText(text: text, length: room),
+            style: style,
+          ),
+        );
+        return TextSpan(style: line.style, children: kept);
+      case TextSpan(:final text?):
+        room -= text.length;
+    }
+    kept.add(piece);
+  }
+  return line;
+}
+
+/// The first [length] characters of [text], never ending between the halves
+/// of a surrogate pair, and an ellipsis.
+String _clipText({required String text, required int length}) {
+  final end = length > 0 && (text.codeUnitAt(length - 1) & 0xFC00) == 0xD800 ? length - 1 : length;
+  return "${text.substring(0, end)}…";
 }
 
 /// Splits a highlighted span into one span per line, each carrying the

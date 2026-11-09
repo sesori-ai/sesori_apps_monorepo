@@ -49,6 +49,7 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
         limit: null,
       ),
       sensitiveResponse: false,
+      timeout: RelayHttpApiClient.defaultRequestTimeout,
     );
   }
 
