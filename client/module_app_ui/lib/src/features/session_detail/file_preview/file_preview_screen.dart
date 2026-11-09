@@ -162,6 +162,8 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
                             (true, _Rendering.html) => TablerRegular.browser,
                           },
                           size: PregoIconSize.md,
+                          // Like the Copy button beside it.
+                          color: prego.colors.textSecondary,
                         ),
                         onPressed: () => setState(() => _showsSource = !_showsSource),
                       ),
@@ -276,7 +278,8 @@ class const _Header({
           IconButton(
             key: const Key("file-preview-close"),
             tooltip: context.loc.filePreviewClose,
-            icon: const Icon(TablerRegular.chevron_down, size: PregoIconSize.md),
+            // Like the back button on the app's other screens.
+            icon: Icon(TablerRegular.chevron_down, size: PregoIconSize.md, color: prego.colors.textPrimary),
             onPressed: onClose,
           ),
           Expanded(

@@ -259,6 +259,22 @@ void main() {
       expect(_spanWithText(tester, "beta"), isNotNull);
     });
 
+    testWidgets("colours its header buttons like the app's other screens", (tester) async {
+      await _pumpScreen(
+        tester,
+        reference: const FileReference(absolutePath: "/repo/README.md", line: null),
+        state: const FilePreviewShowsText(content: "# Title"),
+        openExternalLink: _ignoreLink,
+      );
+      final colors = PregoDesignSystem.light.colors;
+      Color? iconColor(Key key) =>
+          tester.widget<Icon>(find.descendant(of: find.byKey(key), matching: find.byType(Icon))).color;
+      // Like every back button and the image viewer's close button.
+      expect(iconColor(const Key("file-preview-close")), colors.textPrimary);
+      // Like the Copy button beside it.
+      expect(iconColor(const Key("file-preview-source-toggle")), colors.textSecondary);
+    });
+
     testWidgets("renders Markdown and toggles to its source", (tester) async {
       await _pumpScreen(
         tester,
