@@ -33,7 +33,7 @@ class ReadFilePreviewHandler({required final FilesystemRepository _filesystemRep
     }
 
     try {
-      return _filesystemRepository.readPreviewFile(absolutePath: path);
+      return _filesystemRepository.readPreviewFile(absolutePath: path, acceptsPdf: body.acceptsPdf);
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ReadFilePreviewHandler: failed to read $path", error, stackTrace);
       throw buildErrorResponse(request: request, status: 500, message: "failed to read file");

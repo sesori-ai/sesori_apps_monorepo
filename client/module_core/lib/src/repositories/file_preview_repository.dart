@@ -36,6 +36,9 @@ class FilePreviewRepository({required final FilesystemApi _api}) {
         } on FormatException catch (error, stackTrace) {
           return FilePreviewFailed(innerError: error, stackTrace: stackTrace);
         }
+      // This app does not ask for PDFs yet, so a bridge never sends one.
+      case FilePreviewPdf():
+        return const FilePreviewContentUnavailable(reason: FilePreviewUnavailableReason.unsupported);
       case FilePreviewMissing():
         return const FilePreviewContentUnavailable(reason: FilePreviewUnavailableReason.missing);
       case FilePreviewTooLarge():
