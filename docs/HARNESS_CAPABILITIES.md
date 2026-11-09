@@ -853,9 +853,9 @@ on a bridge on the same computer:
 Every "Expected" cell is unverified: it was read on 2026-11-08 from the launch
 configuration Sesori passes each harness (sandbox, permission and directory
 flags), against no particular harness version, and no live run backs it yet.
-The per-harness live check (send a `.txt` holding a known sentence and record
-any prompt) runs once clients send files, and replaces each cell with what it
-finds and the harness version it ran on.
+Clients send files now, but the per-harness live check (send a `.txt` holding
+a known sentence and record any prompt) has not run yet. It replaces each cell
+with what it finds and the harness version it ran on.
 
 ## Sub-agents
 
