@@ -274,17 +274,16 @@ class OpenCodeV2Repository({
     );
   }
 
-  Future<shared.Session> getSessionDetails({required String sessionId}) async {
+  /// Null for a session of an archived project, which list reads skip too.
+  Future<shared.Session?> getSessionDetails({required String sessionId}) async {
     final session = await _api.getSession(sessionId: sessionId);
     final (projects, names) = await shared.wait2(
       _api.listProjects(),
       getAgentNames(directory: session.location.directory),
     );
-    return _modelMapper.mapSessionDetails(
-      session: session,
-      projectId: _projectId(session: session, projects: projects),
-      agentNames: names,
-    );
+    final projectId = _listedProjectIds(projects: projects)[session.projectID];
+    if (projectId == null) return null;
+    return _modelMapper.mapSessionDetails(session: session, projectId: projectId, agentNames: names);
   }
 
   Future<List<PluginMessageWithParts>> getMessages({required String sessionId}) async {
