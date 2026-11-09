@@ -375,8 +375,9 @@ older than file uploads).
 - Attachments are limited to 50 MB per message, images and files together, so
   a larger file can't be sent. Folders never reach a bridge on another
   computer.
-- An image the harness takes is always sent inline and downscaled; its
-  original can't be sent as a file.
+- An image the harness takes is always sent inline, shrunk under the
+  downscale rule above when that applies; its untouched original can't be
+  sent as a file instead.
 - An older bridge doesn't save uploads. On another computer only images reach
   it, and any other file dropped or picked there is turned away with a notice.
   On any older bridge the plus follows backend attachment support, so a
