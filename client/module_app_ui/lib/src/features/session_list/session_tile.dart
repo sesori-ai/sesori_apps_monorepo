@@ -389,10 +389,10 @@ class const SessionTile({
         context.formatTimestampCompact(ms: updatedAt),
         // "2d" is a glance mark; assistive technology hears the phrase.
         semanticsLabel: context.formatTimestamp(updatedAt),
-        style: prego.textTheme.textXs.regular.copyWith(
-          color: prego.colors.textSecondary,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
+        style: _metaStyleOf(
+          context: context,
+          pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
+        ).copyWith(color: prego.colors.textSecondary, fontFeatures: const [FontFeature.tabularFigures()]),
         // Past the relative window this is a date, and some locales write
         // those with spaces; it holds the line rather than wrapping the row
         // open on the title's behalf.
@@ -611,8 +611,8 @@ class const SessionTile({
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
-      // Under a finger the status mark already speaks the waiting state.
-      return awaitingInput && !pointer ? ExcludeSemantics(child: text) : text;
+      // The status mark already speaks the waiting state.
+      return awaitingInput ? ExcludeSemantics(child: text) : text;
     }
     return null;
   }
@@ -692,7 +692,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                       spacing: PregoSpacing.xs,
                       children: [
                         // Silent, unlike the real row's: the meta line names the harness here.
-                        // A pointer row keeps its logo on the meta line, so its title starts at the edge.
+                        // A pointer row ends its meta line with it instead, so its title starts at the edge.
                         // Lit, as a session being created is already at work.
                         if (!pointer) _HarnessLogo(pluginId: launch.pluginId, lit: true),
                         Expanded(
@@ -712,13 +712,21 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                     ),
                     ConstrainedBox(
                       constraints: BoxConstraints(minHeight: _metaLineHeightOf(pointer: pointer)),
-                      child: Text(
-                        "${loc.sessionListCreating}$_separator${PregoBrandLogo.displayNameFor(launch.pluginId)}",
-                        style: _metaStyleOf(context: context, pointer: pointer).copyWith(
-                          color: prego.colors.textTertiary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        spacing: PregoSpacing.xs,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "${loc.sessionListCreating}$_separator${PregoBrandLogo.displayNameFor(launch.pluginId)}",
+                              style: _metaStyleOf(context: context, pointer: pointer).copyWith(
+                                color: prego.colors.textTertiary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (pointer) _HarnessLogo(pluginId: launch.pluginId, lit: true),
+                        ],
                       ),
                     ),
                   ],
@@ -957,7 +965,10 @@ const List<double> _grayscale = [
 
 const double _markSize = 16;
 const double _titleFadeWidth = 18;
-const double _pointerTimeWidth = 30;
+
+/// Fits the widest relative time, "59m" at 12 pt (26 px), past its 4 px start
+/// padding. A date is wider and widens its own row's column.
+const double _pointerTimeWidth = 31;
 const double _waitingDotSize = 8;
 
 /// As large as the status marks, so the logo and the mark read as glyphs of

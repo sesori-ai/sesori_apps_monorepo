@@ -6,6 +6,7 @@ import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -53,7 +54,7 @@ void main() {
     );
   }
 
-  Future<void> pumpTile(WidgetTester tester, SessionTile row, {Widget Function(Widget child)? wrap}) async {
+  Future<void> pumpTile(WidgetTester tester, Widget row, {Widget Function(Widget child)? wrap}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [if (wrap == null) PregoDesignSystem.light else PregoDesignSystem.desktopLight]),
@@ -66,7 +67,7 @@ void main() {
     await tester.pump();
   }
 
-  Future<void> pumpPointerTile(WidgetTester tester, SessionTile row) => pumpTile(
+  Future<void> pumpPointerTile(WidgetTester tester, Widget row) => pumpTile(
     tester,
     row,
     wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
@@ -152,6 +153,7 @@ void main() {
       });
 
       testWidgets("a waiting session says Waiting in amber, with an amber dot under a finger", (tester) async {
+        final semantics = tester.ensureSemantics();
         await pump(
           tester,
           tile(
@@ -170,6 +172,9 @@ void main() {
             },
           ),
         );
+        // Heard once, from the mark; the word stays silent.
+        expect(find.bySemanticsLabel(RegExp("Awaiting input")), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
         if (pointer) {
           expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.pointerWarningFill);
           expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.pointerWarningText);
@@ -178,6 +183,7 @@ void main() {
           expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
         }
         expect(find.text("now"), findsOneWidget);
+        semantics.dispose();
       });
 
       testWidgets("waiting wins over a turn still counted as running", (tester) async {
@@ -459,8 +465,6 @@ void main() {
       ),
     );
     expect(find.bySemanticsLabel(RegExp("^plugin-1\nMy Session\nAwaiting input")), findsOneWidget);
-    // The mark speaks the state, so the meta line's "Waiting" stays silent.
-    expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
 
     semantics.dispose();
   });
@@ -604,12 +608,14 @@ void main() {
           session: testSession(title: "My Session", updatedAt: now),
           projectLabel: "demo-app",
         );
-        ({double height, double? titleSize, double? metaSize, double titleTop, double metaTop}) metrics() {
+        ({double height, double? titleSize, double? metaSize, double? timeSize, double titleTop, double metaTop})
+        metrics() {
           final top = tester.getTopLeft(find.byType(SessionTile)).dy;
           return (
             height: tester.getSize(find.byType(SessionTile)).height,
             titleSize: tester.widget<Text>(find.text("My Session")).style?.fontSize,
             metaSize: tester.widget<Text>(find.text("demo-app")).style?.fontSize,
+            timeSize: tester.widget<Text>(find.text("now")).style?.fontSize,
             titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
             metaTop: tester.getTopLeft(find.text("demo-app")).dy - top,
           );
@@ -622,9 +628,23 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
 
         // The 18 px meta text sits centred in its 20 px line, 1 px down.
-        expect(touch, (height: rowHeight, titleSize: 16.0, metaSize: 12.0, titleTop: 12.0, metaTop: 12.0 + 24 + 2 + 1));
-        // A 19 px title, 2 px apart from a 16 px meta line.
-        expect(metrics(), (height: 51.0, titleSize: 13.5, metaSize: 12.0, titleTop: 7.0, metaTop: 7.0 + 19 + 2));
+        expect(touch, (
+          height: rowHeight,
+          titleSize: 16.0,
+          metaSize: 12.0,
+          timeSize: 12.0,
+          titleTop: 12.0,
+          metaTop: 12.0 + 24 + 2 + 1,
+        ));
+        // A 19 px title, 2 px apart from a 16 px meta line; the time in the meta line's type.
+        expect(metrics(), (
+          height: 51.0,
+          titleSize: 13.5,
+          metaSize: 12.0,
+          timeSize: 12.0,
+          titleTop: 7.0,
+          metaTop: 7.0 + 19 + 2,
+        ));
         expect(SessionTileSkeleton.heightOf(pointer: true), 51);
         expect(find.text("now"), findsOneWidget);
       },
@@ -659,18 +679,30 @@ void main() {
         "unread": tile(session: session, projectLabel: "demo-app", unseen: true),
         "open": tile(session: session, projectLabel: "demo-app", selected: true),
         "a scheduled resume": tile(session: scheduled, projectLabel: "demo-app"),
+        "a launching session": PendingSessionLaunchTile(
+          launch: LaunchingSession(
+            launchId: "launch",
+            projectId: "project",
+            pluginId: "claude",
+            startedAt: DateTime.now(),
+            title: "My Session",
+          ),
+        ),
       };
       final layouts = <String, ({double height, double titleTop, double logoCentre})>{};
       for (final MapEntry(key: name, value: row) in variants.entries) {
         await pumpPointerTile(tester, row);
-        final top = tester.getTopLeft(find.byType(SessionTile)).dy;
+        final rowBox = find.byType(row.runtimeType);
+        final top = tester.getTopLeft(rowBox).dy;
         layouts[name] = (
-          height: tester.getSize(find.byType(SessionTile)).height,
+          height: tester.getSize(rowBox).height,
           titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
           logoCentre: tester.getCenter(find.byType(PregoBrandLogo)).dy - top,
         );
       }
 
+      // The launching row, pumped last, counts as running.
+      expect(logoLit(tester), isTrue);
       // The meta line's 16 px box centres at 7 + 19 + 2 + 8.
       expect(layouts, {for (final name in variants.keys) name: (height: 51.0, titleTop: 7.0, logoCentre: 36.0)});
     });

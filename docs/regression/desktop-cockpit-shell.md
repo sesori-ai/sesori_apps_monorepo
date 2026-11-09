@@ -50,7 +50,7 @@ The main pane hosts one full-width routed page.
   restores the user's choice. Windows narrower than 1000 pixels open the sidebar at 240 pixels. The native minimum
   window remains 560 × 480.
 - Pointer shells set light, small type in Satoshi at every size, with Medium the heaviest weight: 12.5 pt rows,
-  11.5 pt metadata, a 13.5 pt transcript and 12 pt code. The sidebar's session rows are roomier: a 13.5 pt title over a
+  11.5 pt metadata, a 13.5 pt transcript and 12 pt code. The sidebar's session rows are roomier: a 13.5 pt title and 12 pt time over a
   12 pt metadata line, 2 points apart in 6 points of padding, 51 points a row whatever the metadata line holds. Nested corners follow one rule, inner radius equals outer
   minus the gap, so the composer's send button is concentric with the composer. Vertical scrollbars are macOS's overlay
   style, 6 points thick and inset 3, showing only while scrolling. Light builds surfaces from tone with a faint
@@ -60,7 +60,9 @@ The main pane hosts one full-width routed page.
   resting blue star for finished or unread, and an amber dot for waiting. A row with no mark gives that room to its title.
   The metadata line reads "Waiting" or "Running (retrying)" when either applies, the project, then background tasks as a
   stack glyph and their number (the words in its tooltip), and ends with the harness glyph under the time, which hover
-  actions cover. A plain running row has no "Running" word; screen readers still hear it from the mark. The harness
+  actions cover. A plain running row has no "Running" word; screen readers still hear it from the mark, and hear a
+  waiting row's state once, from the mark, not the "Waiting" word. A launching row ends its metadata line with the
+  harness glyph too, lit. The harness
   glyph is a quiet grey, and only while an agent works does it show its own colours, breathing; being the open session
   does not colour it.
 - A pointer shell dictates by clicking the mic: the composer keeps its size, the X and pencil take the options' place

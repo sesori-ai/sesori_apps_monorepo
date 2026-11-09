@@ -530,7 +530,7 @@ state.
   readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
   text size under touch. Under a pointer (the desktop app) the title is
-  13.5/19 and the meta line 12/16, 2px apart, in 6px vertical padding and a
+  13.5/19 and the meta line and the time 12/16, 2px apart, in 6px vertical padding and a
   1px margin, so rows are 51px whatever the meta line holds; the harness logo
   (14px) ends the meta line under the time instead of leading the title, and
   the count's tooltip gives its words. The launching row and the loading
@@ -566,8 +566,8 @@ state.
   list has neither sessions nor a launching row.
 - A session being created leads Today on the phone home and in the desktop
   sidebar, as a launching row of the same height as a session
-  row: the harness logo (on the phone only, lit and breathing as the session
-  is already at work), the first line of its first message (or "Untitled
+  row: the harness logo, lit and breathing as the session is already at work
+  (under a pointer it ends the meta line, as on a session row), the first line of its first message (or "Untitled
   session") with the AI sparkle right after it, and
   "Creating… · `<harness>`" with no time.
   Tapping it explains that the session is still being created and opens
