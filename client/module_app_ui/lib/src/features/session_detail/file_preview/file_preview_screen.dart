@@ -270,16 +270,16 @@ class const _Header({
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // A long name loses its middle, so its extension stays in view.
+                // A long name or path loses its middle, so the file name and
+                // its extension stay in view.
                 PregoEllipsisText(
                   text: reference.fileName,
                   ellipsis: PregoEllipsis.middle,
                   style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
                 ),
-                Text(
-                  reference.absolutePath,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                PregoEllipsisText(
+                  text: reference.absolutePath,
+                  ellipsis: PregoEllipsis.middle,
                   style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
                 ),
               ],
