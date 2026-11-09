@@ -185,8 +185,13 @@ void main() {
         ("/bin/csh", <String>["-ic", command]),
         ("/usr/local/bin/tcsh", <String>["-ic", command]),
         ("/opt/homebrew/bin/nu", <String>["-l", "-i", "-c", command]),
+        ("/home/me/.local/bin/xonsh", <String>["-l", "-i", "-c", command]),
+        ("/usr/local/bin/pwsh", <String>["-Login", "-NonInteractive", "-Command", command]),
+        ("/snap/bin/pwsh-preview", <String>["-Login", "-NonInteractive", "-Command", command]),
         ("/opt/nu/bin/zsh", <String>["-ilc", command]),
+        ("/opt/xonsh/bin/bash", <String>["-ilc", command]),
         ("/home/me/bin/nush", <String>["-ilc", command]),
+        ("/home/me/bin/pwsh7", <String>["-ilc", command]),
       ]) {
         expect(
           IoBridgeProcessEnvironment.loginShellArguments(shell: shell, command: command),
@@ -194,6 +199,59 @@ void main() {
           reason: shell,
         );
       }
+    });
+
+    test("gives xonsh a raw-string marker and every other shell the plain one", () {
+      for (final (String shell, LoginShellPlatform platform, String expected) in <(String, LoginShellPlatform, String)>[
+        ("/bin/zsh", LoginShellPlatform.macOS, r"/usr/bin/printf '\000'; /usr/bin/env -0"),
+        ("/usr/local/bin/pwsh", LoginShellPlatform.macOS, r"/usr/bin/printf '\000'; /usr/bin/env -0"),
+        ("/usr/bin/pwsh", LoginShellPlatform.linux, r"/usr/bin/env printf '\000'; /usr/bin/env -0"),
+        ("/opt/homebrew/bin/xonsh", LoginShellPlatform.macOS, r"/usr/bin/printf r'\000'; /usr/bin/env -0"),
+        ("/usr/bin/xonsh", LoginShellPlatform.linux, r"/usr/bin/env printf r'\000'; /usr/bin/env -0"),
+        ("/opt/xonsh/bin/bash", LoginShellPlatform.linux, r"/usr/bin/env printf '\000'; /usr/bin/env -0"),
+      ]) {
+        expect(
+          IoBridgeProcessEnvironment.probeCommand(shell: shell, platform: platform),
+          expected,
+          reason: "$shell on ${platform.name}",
+        );
+      }
+    });
+
+    test("probes a configured xonsh login shell with its own flags and marker", () async {
+      if (Platform.isWindows) return;
+      final Directory directory = await Directory.systemTemp.createTemp("sesori_xonsh_probe_");
+      addTearDown(() => directory.delete(recursive: true));
+      final File xonsh = File("${directory.path}/xonsh");
+      await xonsh.writeAsString("#!/bin/sh\n");
+      await Process.run("chmod", <String>["+x", xonsh.path]);
+      List<String>? capturedArguments;
+      final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
+        platform: LoginShellPlatform.linux,
+        baseEnvironment: <String, String>{"PATH": "/base/bin", "SHELL": xonsh.path},
+        runProcess:
+            ({
+              required String executable,
+              required List<String> arguments,
+              required Map<String, String>? environment,
+              required Duration timeout,
+            }) async {
+              expect(executable, xonsh.path);
+              capturedArguments = List<String>.of(arguments);
+              return const LaunchEnvironmentProcessResult(
+                exitCode: 0,
+                environment: CompleteLaunchShellEnvironment(variables: <String, String>{"PATH": "/xonsh/bin"}),
+                stderr: "",
+              );
+            },
+        shellTimeout: const Duration(seconds: 5),
+        readPasswdFile: () => null,
+      );
+
+      final Map<String, String> resolved = await environment.resolve();
+
+      expect(capturedArguments, <String>["-l", "-i", "-c", r"/usr/bin/env printf r'\000'; /usr/bin/env -0"]);
+      expect(resolved["PATH"], "/xonsh/bin:/base/bin");
     });
 
     test("falls back to the Linux passwd shell, then /bin/sh, without a usable SHELL", () async {

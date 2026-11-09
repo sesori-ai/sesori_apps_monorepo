@@ -416,6 +416,77 @@ void main() {
     expect(find.text("Project One"), findsOneWidget);
   });
 
+  testWidgets("under a pointer a launching, a running and a waiting session sit under their date headings, as on "
+      "the phone", (tester) async {
+    final today = DateTime.now();
+    final yesterday = today.subtract(const Duration(days: 1));
+    final launches = inMemorySessionLaunchRepository();
+    await pumpList(
+      tester,
+      mode: AllSessionsMode.active,
+      interaction: PregoInteractionMode.pointer,
+      launches: launches,
+      initial: state(
+        query: "",
+        failure: null,
+        rows: [
+          row(title: "Fix the parser", updatedAt: today, archivedAt: null, isRunning: true),
+          row(title: "Tidy the docs", updatedAt: today, archivedAt: null, isRunning: false),
+          AllSessionsRow(
+            session: testSession(
+              id: "answer",
+              title: "Answer the question",
+              updatedAt: yesterday.millisecondsSinceEpoch,
+            ),
+            project: project,
+            isRunning: false,
+            isUnseen: false,
+            isAwaitingInput: true,
+            isRetrying: false,
+            backgroundTaskCount: 0,
+          ),
+          row(title: "Rename the module", updatedAt: yesterday, archivedAt: null, isRunning: false),
+        ],
+        scratchProjectId: null,
+        counts: const SessionListChipCounts(all: 4, running: 1, unread: 0),
+      ),
+    );
+    launches.start(
+      launchId: "launch-1",
+      projectId: project.id,
+      pluginId: "claude",
+      startedAt: today,
+      projectName: project.name,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Add a test"),
+        attachments: const [],
+      ),
+    );
+    // The launch's row opens; a running row's loader never settles.
+    for (var elapsed = 0; elapsed < 700; elapsed += 50) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    // No section leads the dates: neither "Needs you" nor "Running".
+    expect(
+      [for (final heading in tester.widgetList<SessionListHeading>(find.byType(SessionListHeading))) heading.heading],
+      ["Today", "Yesterday"],
+    );
+    final order = [
+      find.text("Today"),
+      find.byType(PendingSessionLaunchTile),
+      find.text("Fix the parser"),
+      find.text("Tidy the docs"),
+      find.text("Yesterday"),
+      find.text("Answer the question"),
+      find.text("Rename the module"),
+    ];
+    final tops = [for (final finder in order) tester.getTopLeft(finder).dy];
+    for (var index = 1; index < tops.length; index++) {
+      expect(tops[index], greaterThan(tops[index - 1]), reason: "${order[index]} below ${order[index - 1]}");
+    }
+  });
+
   testWidgets("unfiltered, a No project row names no project", (tester) async {
     const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
     final now = DateTime.now();

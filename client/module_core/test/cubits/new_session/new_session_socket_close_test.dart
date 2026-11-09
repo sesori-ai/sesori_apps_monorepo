@@ -83,6 +83,7 @@ void main() {
         authSession: authSession,
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
+      pluginManagementService: stubbedPluginManagementService(),
       project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
     );
     addTearDown(cubit.close);

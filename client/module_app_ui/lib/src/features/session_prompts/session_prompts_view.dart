@@ -541,6 +541,10 @@ class _PromptsListState() extends State<_PromptsList> with SingleTickerProviderS
                         key: const Key("session-prompts-close"),
                         tooltip: loc.transcriptPromptsClose,
                         icon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+                        // As bright as the file preview's and image viewer's close
+                        // buttons. Without a colour it takes the app's ambient icon
+                        // colour, the colour scheme's primary: blue in dark mode.
+                        style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(prego.colors.textPrimary)),
                         onPressed: _view.onClose,
                       ),
                     ],

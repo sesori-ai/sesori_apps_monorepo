@@ -74,9 +74,11 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   degradation (restarting, ready, failed, stopping) and on a degradation that does
   not need the user. A failed runtime keeps the generic failed hint, because a
   plugin's failure reason is a diagnostic for the log, not an instruction.
-- Only an authentication-required block offers Recheck. It requests fresh management
-  evidence when authentication may have been restored elsewhere; it does not authenticate.
-  Disabled and every other blocked reason omit that action. A first check failure
+- Only an authentication-required or unavailable block offers Check setup in a chat. It
+  runs the same setup refresh command as harness settings' Check setup for the chat's
+  harness, so a fix made elsewhere (a terminal login, a corrected gateway) clears the
+  block; it does not authenticate. When the bridge refuses the command it falls back to a
+  status read. Disabled and every other blocked reason omit that action. A first check failure
   remains blocked and keeps its original error for local diagnosis. Retained refresh
   errors show a warning without changing the last established decision. An older public
   bridge without management support keeps interaction available with an upgrade

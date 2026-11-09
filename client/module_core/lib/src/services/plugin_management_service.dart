@@ -155,6 +155,30 @@ class PluginManagementService({
     return _refreshTail ?? Future<void>.value();
   }
 
+  /// Check setup: has the bridge inspect [pluginId]'s setup again, as harness
+  /// settings' Check setup does, and returns once the snapshot that inspection
+  /// finds is published. Only a fresh inspection notices a fix made outside
+  /// Sesori, such as a login in a terminal or a corrected gateway; a plain
+  /// status read keeps reporting the block the bridge last recorded. When the
+  /// bridge cannot run one, a status read still shows whatever changed meanwhile.
+  Future<void> checkSetup({required String pluginId}) async {
+    final result = await command(pluginId: pluginId, request: const PluginLifecycleCommandRequest.refresh());
+    switch (result) {
+      // An uncertain outcome has already been reconciled with a status read.
+      case PluginManagementMutationResultSuccess() || PluginManagementMutationResultUncertain():
+        return;
+      case PluginManagementMutationResultNotFound():
+        logw("Harness setup check found no harness $pluginId");
+      case PluginManagementMutationResultConflict(:final conflict):
+        logw(
+          "Harness setup check for $pluginId conflicted: ${conflict.reasons.map((reason) => reason.name).join(", ")}",
+        );
+      case PluginManagementMutationResultFailure(:final error):
+        logw("Harness setup check for $pluginId failed", error);
+    }
+    await refresh();
+  }
+
   Future<PluginManagementMutationResult> command({
     required String pluginId,
     required PluginLifecycleCommandRequest request,

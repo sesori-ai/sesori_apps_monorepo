@@ -478,7 +478,8 @@ class const _SidebarTitleBar({
                       size: 16,
                       color: autoCollapsed ? prego.colors.textDisabled : null,
                     ),
-                    // The sidebar's Needs you, while it is out of sight.
+                    // While the sidebar is out of sight, an amber dot says a session
+                    // in it waits on the reader's answer.
                     if (collapsed &&
                         context.select(
                           (AllSessionsCubit cubit) => cubit.state.rows.any((row) => row.isAwaitingInput),

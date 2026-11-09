@@ -153,7 +153,7 @@ void main() {
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.isRouteVisible).thenReturn(true);
-    when(cubit.recheckHarnessAvailability).thenAnswer((_) async {});
+    when(cubit.checkHarnessSetup).thenAnswer((_) async {});
   });
 
   group("the Prompts screen", () {

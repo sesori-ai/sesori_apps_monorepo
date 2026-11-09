@@ -1834,6 +1834,36 @@ void main() {
       expect(_supportedResponse(service).snapshotToken, "authoritative");
     });
 
+    for (final failed in [false, true]) {
+      test("Check setup ${failed ? "falls back to a status read" : "publishes the inspection"}", () async {
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueMutation(
+            failed
+                ? PluginManagementMutationResult.failure(error: ApiError.generic())
+                : _success(_response(token: "inspected")),
+          )
+          ..queueLoad(_supported(_response(token: "status read")));
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = _pluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+
+        await service.checkSetup(pluginId: "one");
+
+        expect(repository.mutationCalls, 1);
+        expect(repository.loadCalls, failed ? 2 : 1);
+        expect(_supportedResponse(service).snapshotToken, failed ? "status read" : "inspected");
+      });
+    }
+
     for (final completionOrder in [false, true]) {
       test("overlapping command acknowledgments survive publication order reversed=$completionOrder", () async {
         final firstResponse = Completer<PluginManagementMutationResult>();

@@ -20,12 +20,29 @@ class PromptDayHeaderDelegate({
   @override
   double get minExtent => maxExtent;
 
+  // The heading is its own widget so it rebuilds when the theme or text scale
+  // changes: a dependency read here is lost whenever the list rebuilds in the
+  // same frame, which a live switch to dark mode does.
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
+      _PromptDayHeader(label: label, extent: extent, shown: shown);
+
+  @override
+  bool shouldRebuild(PromptDayHeaderDelegate oldDelegate) =>
+      label != oldDelegate.label || extent != oldDelegate.extent || shown != oldDelegate.shown;
+}
+
+class const _PromptDayHeader({
+  required final String label,
+  required final double extent,
+  required final double shown,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     final prego = context.prego;
     // A header drawn shorter than its extent is invalid sliver geometry.
     return SizedBox(
-      height: maxExtent,
+      height: extent * shown,
       child: ColoredBox(
         color: Theme.of(context).scaffoldBackgroundColor,
         child: ClipRect(
@@ -54,8 +71,4 @@ class PromptDayHeaderDelegate({
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(PromptDayHeaderDelegate oldDelegate) =>
-      label != oldDelegate.label || extent != oldDelegate.extent || shown != oldDelegate.shown;
 }

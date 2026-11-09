@@ -88,13 +88,21 @@ Future<({List<String> taps, List<String> closes})> _pump(
   bool isIndexed = false,
   Future<LoadThroughOutcome> Function({required String messageId, required int seq})? onLoadThrough,
   SessionRepository? repository,
+  Brightness brightness = Brightness.light,
 }) async {
   final sessionRepository = repository ?? _searchFindingNothing();
   final taps = <String>[];
   final closes = <String>[];
   await tester.pumpWidget(
     MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      theme: ThemeData(
+        extensions: [
+          switch (brightness) {
+            Brightness.light => PregoDesignSystem.light,
+            Brightness.dark => PregoDesignSystem.dark,
+          },
+        ],
+      ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailPresentationScope(
@@ -229,10 +237,27 @@ void main() {
     }
   });
 
+  testWidgets("a pinned day header follows a live switch to dark mode", (tester) async {
+    final entries = _parityPrompts(from: 0, to: 3);
+    await _pump(tester, entries: entries, anchor: null);
+    await tester.pumpAndSettle();
+    await _pump(tester, entries: entries, anchor: null, brightness: Brightness.dark);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.text("Today")).style?.color, PregoDesignSystem.dark.colors.textSecondary);
+  });
+
   testWidgets("an empty list says so", (tester) async {
     await _pump(tester, entries: const [], anchor: null);
 
     expect(find.text("No prompts in this session yet"), findsOneWidget);
+  });
+
+  testWidgets("its close button is as bright as the app's other close and back buttons", (tester) async {
+    await _pump(tester, entries: const [], anchor: null);
+
+    final icon = find.descendant(of: find.byKey(const Key("session-prompts-close")), matching: find.byType(Icon));
+    expect(IconTheme.of(tester.element(icon)).color, PregoDesignSystem.light.colors.textPrimary);
   });
 
   testWidgets("a row is one labelled button that returns to its prompt; close closes", (tester) async {
