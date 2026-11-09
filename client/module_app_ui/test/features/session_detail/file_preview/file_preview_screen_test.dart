@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter/services.dart" show MethodCall, SystemChannels;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -181,6 +182,10 @@ TextSpan? _spanWithText(WidgetTester tester, String text) {
   return found;
 }
 
+RenderParagraph _paragraphStartingWith(WidgetTester tester, String text) => tester
+    .renderObjectList<RenderParagraph>(find.byType(RichText))
+    .singleWhere((paragraph) => paragraph.text.toPlainText().startsWith(text));
+
 void main() {
   group("FileReferenceCodeSyntax", () {
     List<md.Node> parse(String text) =>
@@ -289,6 +294,40 @@ void main() {
       await tester.tap(find.byTooltip("Copy"));
       await tester.pump();
       expect(copied, content);
+    });
+
+    testWidgets("fits a large file's rows to the platform's text spacing", (tester) async {
+      final dispatcher = tester.platformDispatcher
+        ..letterSpacingOverrideTestValue = 2
+        ..wordSpacingOverrideTestValue = 6
+        ..lineHeightScaleFactorOverrideTestValue = 2;
+      addTearDown(dispatcher.clearLetterSpacingOverrideTestValue);
+      addTearDown(dispatcher.clearWordSpacingOverrideTestValue);
+      addTearDown(dispatcher.clearLineHeightScaleFactorOverrideTestValue);
+      // Under the line limit, in a file over the highlighting limit.
+      final line = List.filled(1999, "word").join(" ");
+      await _pumpScreen(
+        tester,
+        reference: const FileReference(absolutePath: "/repo/page.txt", line: null),
+        state: FilePreviewShowsText(content: "$line\n${List.filled(40000, "filler").join("\n")}"),
+        openExternalLink: _ignoreLink,
+      );
+      final row = _paragraphStartingWith(tester, "word word");
+      expect(row.size.width, greaterThanOrEqualTo(row.getMaxIntrinsicWidth(double.infinity)));
+      expect(row.size.height, greaterThanOrEqualTo(row.getMaxIntrinsicHeight(row.size.width)));
+    });
+
+    testWidgets("keeps a large file's cut ASCII row at its own width", (tester) async {
+      await _pumpScreen(
+        tester,
+        reference: const FileReference(absolutePath: "/repo/page.txt", line: null),
+        state: FilePreviewShowsText(content: "${"a" * 250000}\nshort"),
+        openExternalLink: _ignoreLink,
+      );
+      final row = _paragraphStartingWith(tester, "aaaa");
+      final textWidth = row.getMaxIntrinsicWidth(double.infinity);
+      expect(row.size.width, greaterThanOrEqualTo(textWidth));
+      expect(row.size.width, lessThan(textWidth * 1.5));
     });
 
     testWidgets("cuts a very long highlighted line short", (tester) async {

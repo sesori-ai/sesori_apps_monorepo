@@ -111,6 +111,9 @@ default app; otherwise it shows a read-only preview.
 - A preview under the cap that times out on a slow link before two minutes.
 - A large file's source or Markdown view freezes the app for seconds or
   balloons its memory, for example a line of megabytes laid out whole.
+- A source row whose end is hidden or whose lines overlap under larger
+  letter, word or line spacing in the system's accessibility settings, or an
+  ASCII file's source that scrolls sideways far past its longest line.
 - A directory listing, a write, or binary bytes returned as text.
 - A `500` without a bridge log line naming the path.
 - Ordinary inline code such as `foo()` or `v1.2` becomes tappable, or a web
