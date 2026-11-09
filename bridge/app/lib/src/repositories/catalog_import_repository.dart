@@ -49,6 +49,9 @@ class CatalogImportRepository({
   static const int _responsivenessBatchSize = 512;
   static const Duration _walkProgressInterval = Duration(milliseconds: 250);
   static const Duration _pathResolutionTimeout = Duration(seconds: 2);
+
+  /// `ENOENT` on macOS and Linux, the only hosts that resolve links here.
+  static const int _noSuchFileOrDirectory = 2;
   static final Random _secureRandom = Random.secure();
 
   final String? _normalizedUserHomeDirectory = _resolveNormalizedUserHomeDirectory();
@@ -1005,9 +1008,14 @@ class CatalogImportRepository({
     try {
       final resolved = await _filesystemApi.resolveDirectoryPathAsync(path: path).timeout(_pathResolutionTimeout);
       return normalizeProjectDirectory(directory: resolved);
-    } on FileSystemException catch (error) {
-      // Common for old history, so not worth a warning per folder.
-      Log.d("CatalogImportRepository: could not resolve links in $path; importing it as reported: $error");
+    } on FileSystemException catch (error, stackTrace) {
+      // A folder deleted since is common in old history and expected, so it is
+      // not worth a warning per folder; any other failure is.
+      if (error.osError?.errorCode == _noSuchFileOrDirectory) {
+        Log.d("CatalogImportRepository: $path no longer exists; importing it as reported");
+      } else {
+        Log.w("CatalogImportRepository: could not resolve links in $path; importing it as reported", error, stackTrace);
+      }
       return path;
     } on TimeoutException {
       Log.w("CatalogImportRepository: resolving links in $path timed out; importing it as reported");

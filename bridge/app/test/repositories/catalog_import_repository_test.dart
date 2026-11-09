@@ -22,6 +22,7 @@ import "package:test/test.dart";
 import "../helpers/fake_filesystem_api.dart";
 import "../helpers/fake_git_cli_api.dart";
 import "../helpers/fakes/fake_derived_bridge_plugin.dart";
+import "../helpers/log_capture.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_database.dart";
 
@@ -635,6 +636,56 @@ void main() {
             reason: id,
           );
         }
+      });
+
+      test("a folder whose links cannot be read still imports and logs the error with its trace", () async {
+        final logs = captureLogOutput();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "denied-root", directory: link)],
+        );
+        final repository = CatalogImportRepository(
+          runtime: createTestPluginRuntime(plugins: [plugin]),
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          catalogHydrationsDao: database.catalogHydrationsDao,
+          projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+            scratchRoot: "/scratch",
+            pathContext: p.context,
+          ),
+          filesystemApi: _DeniedFilesystemApi(deniedPath: link),
+        );
+
+        await repository
+            .importCatalog(
+              pluginId: plugin.id,
+              control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+            )
+            .drain<void>();
+
+        expect(
+          (await database.sessionDao.getSessionByBinding(
+            pluginId: plugin.id,
+            backendSessionId: "denied-root",
+          ))?.projectId,
+          link,
+        );
+        expect(logs.text, contains("could not resolve links in $link"));
+        expect(logs.text, contains("-- Error on next line(s)"));
+        expect(logs.text, contains("Permission denied"));
+        expect(logs.text, contains("_DeniedFilesystemApi.resolveDirectoryPathAsync"));
+      });
+
+      test("a folder deleted since its sessions ran imports without a warning", () async {
+        final logs = captureLogOutput();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "gone-root", directory: p.join(link, "gone"))],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(logs.text, isNot(contains("gone")));
       });
 
       test("each distinct reported folder is resolved once per import", () async {
@@ -1966,6 +2017,17 @@ class _CountingFilesystemApi() extends FilesystemApi {
   Future<String> resolveDirectoryPathAsync({required String path}) {
     directoryResolutions.update(path, (count) => count + 1, ifAbsent: () => 1);
     return super.resolveDirectoryPathAsync(path: path);
+  }
+}
+
+/// The real filesystem, except that reading [deniedPath]'s links is refused.
+class _DeniedFilesystemApi({required final String deniedPath}) extends FilesystemApi {
+  @override
+  Future<String> resolveDirectoryPathAsync({required String path}) async {
+    if (path == deniedPath) {
+      throw FileSystemException("Cannot resolve symbolic links", path, const OSError("Permission denied", 13));
+    }
+    return await super.resolveDirectoryPathAsync(path: path);
   }
 }
 
