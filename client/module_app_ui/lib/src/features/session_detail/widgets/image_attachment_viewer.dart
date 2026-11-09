@@ -698,11 +698,11 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
               Expanded(
                 child: displayFilename == null
                     ? const SizedBox.shrink()
-                    : Text(
-                        displayFilename,
+                    // A long name loses its middle, so its extension stays in view.
+                    : PregoEllipsisText(
+                        text: displayFilename,
+                        ellipsis: PregoEllipsis.middle,
                         style: prego.textTheme.textSm.bold,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
               ),
               if (isRunningAction)
