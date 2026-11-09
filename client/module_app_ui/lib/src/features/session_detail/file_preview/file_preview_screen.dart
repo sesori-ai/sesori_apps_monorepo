@@ -131,7 +131,7 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     final state = context.watch<FilePreviewCubit>().state;
     final rendering = switch (state) {
       FilePreviewShowsText(:final content) => _renderingOf(content: content),
-      _ => null,
+      FilePreviewLoading() || FilePreviewShowsImage() || FilePreviewUnavailable() => null,
     };
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
