@@ -156,6 +156,7 @@ void main() {
     addTearDown(statuses.close);
     when(() => connection.status).thenAnswer((_) => statuses.stream);
     when(() => connection.currentStatus).thenAnswer((_) => statuses.value);
+    when(() => connection.events).thenAnswer((_) => const Stream.empty());
     final analytics = MockProductAnalyticsService();
     final tracker = NewSessionSelectionTracker();
 

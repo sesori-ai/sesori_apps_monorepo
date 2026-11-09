@@ -600,6 +600,23 @@ void main() {
         expect(find.bySemanticsLabel(RegExp(RegExp.escape(longName))), findsOneWidget);
       });
 
+      testWidgets("cuts the middle of a long path so its file name shows", (tester) async {
+        useNarrowScreen(tester);
+        const path = "/Users/someone/projects/sesori_apps_monorepo/client/tmp/$longName";
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: path, line: null),
+          state: const FilePreviewShowsText(content: "alpha"),
+          openExternalLink: _ignoreLink,
+        );
+        final shownPath = shownName(tester, name: path, within: find.byType(FilePreviewScreen));
+        expect(shownPath.shownText, startsWith("/Users/"));
+        expect(shownPath.shownText, contains(PregoEllipsis.glyph));
+        expect(shownPath.shownText, endsWith(".jpg"));
+        expect(shownPath.localToGlobal(Offset(shownPath.size.width, 0)).dx, lessThanOrEqualTo(360));
+        expect(find.bySemanticsLabel(RegExp(RegExp.escape(path))), findsOneWidget);
+      });
+
       testWidgets("shows a short name whole", (tester) async {
         useNarrowScreen(tester);
         await _pumpScreen(

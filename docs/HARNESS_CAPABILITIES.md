@@ -842,20 +842,26 @@ on a bridge on the same computer:
 
 | Harness | Reads a saved file | Asks first |
 |---|---|---|
-| Codex | Expected: the default sandbox restricts writes, not reads. | Not expected. |
-| OpenCode | Expected. | Expected: the default agent sets `external_directory: * → ask`, relayed as a permission prompt. |
-| Claude Code | Expected. | Expected: Sesori passes no `--add-dir`. |
-| Copilot (ACP) | Expected, through its own tools. | Expected outside trusted directories. |
-| Cursor, Hermes, OMP, Antigravity, DeepSeek (ACP) | Expected, through their own tools; Sesori's ACP client advertises `fs.readTextFile: false`. | Unverified. |
-| Grok | Expected. | Unverified. |
-| Pi | Expected: no sandbox. | Not expected. |
+| Claude Code 2.1.319 | ✅ Quoted it. | Yes: one permission request per read outside the working directory, since Sesori passes no `--add-dir`. |
+| Codex 0.167.0 | ✅ Quoted it. | No. |
+| OpenCode 2.2.6 | ✅ Quoted it. | No, on a config whose `permission.read` is `"*": "allow"`. The default agent's `external_directory: * → ask` may still ask on other configs; that is unverified. |
+| Pi 1.5.0 | ✅ Quoted it. | No. |
+| OMP 18.18.2 (ACP) | ✅ Quoted it. | No. |
+| DeepSeek runtime 0.2.1 (ACP) | ✅ Quoted it. | No. |
+| Grok Build 1.0.30 | ✅ Quoted it. | No. |
+| Hermes 0.21.5 (ACP) | Unverified: the file was saved and the note delivered, but the turn never reached a model. | Unverified. |
+| Cursor (ACP) | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. |
+| Copilot (ACP) | Unverified: runtime not installed. | Unverified. |
+| Antigravity (ACP) | Unverified: runtime not installed. | Unverified. |
 
-Every "Expected" cell is unverified: it was read on 2026-11-08 from the launch
-configuration Sesori passes each harness (sandbox, permission and directory
-flags), against no particular harness version, and no live run backs it yet.
-Clients send files now, but the per-harness live check (send a `.txt` holding
-a known sentence and record any prompt) has not run yet. It replaces each cell
-with what it finds and the harness version it ran on.
+Checked live on 2026-11-08 from the iOS simulator against a bridge on the same
+Mac, reached through the relay, so it counted as remote. Each check sent a
+`.txt` holding a known sentence to a new session and asked the agent to quote
+it. A permission request is counted from the bridge log. That bridge had YOLO
+on, so each request was approved automatically, and in Ask mode it would have
+been a prompt. Pi read it on DeepSeek V4.1 Flash, because the machine's OpenAI
+login for Pi had expired. Sesori's ACP client advertises
+`fs.readTextFile: false`, so ACP harnesses read through their own tools.
 
 ## Sub-agents
 

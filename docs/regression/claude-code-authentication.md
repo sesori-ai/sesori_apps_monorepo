@@ -12,6 +12,15 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
 - Claude advertises authentication for the PATH binary and an explicit `bin` override alike. The app offers
   `Log in` only while setup reports authentication required. The setup hint reads "Log in from Sesori, or run
   `claude auth login` on this machine.", so older apps keep a working instruction.
+- Setup reports authentication required whenever `claude auth status` says logged out, even with a custom
+  `ANTHROPIC_BASE_URL`: without credentials the CLI sends no request, gateway or not, and gateway credentials
+  (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `apiKeyHelper`) already report logged in. The base URL only shapes
+  turn-time failures. It is read from `env` in `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`),
+  which overrides the bridge environment as it does for the CLI; `https://api.anthropic.com` and empty values do not
+  count. A gateway auth failure still surfaces at turn time as authentication required, with a hint to check the
+  gateway's credentials and configuration instead of logging in to Claude; the hint never includes the URL, which
+  can carry credentials. Nothing re-inspects setup on its own afterwards: it stays blocked until the user refreshes
+  setup, logs in, or restarts the harness or bridge. Setup never reads or logs any other settings value.
 - A login spawns `claude auth login --claudeai` through the host process service in the plugin state directory. The
   bridge environment is inherited unchanged except `BROWSER=true`, which the CLI treats as "no browser". `HOME` is
   never overridden, so the credential lands where sessions already read it. The login spawn uses its own process
@@ -38,7 +47,7 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the Claude descriptor advertises authentication, and the shared contract and client mapper round-trip the pasted-code challenge and code request. |
+| L1 Smoke | Automated: the Claude descriptor advertises authentication and maps logged-out setup with and without a custom base URL (environment, user settings, settings override, Anthropic's own URL), and the shared contract and client mapper round-trip the pasted-code challenge and code request. |
 | L2 Routine | Automated: scripted CLI output through the Claude service (fragmented OSC 8 URL, exit before and after the challenge, stderr arriving after the reported exit, both budgets, abort while waiting and while submitting, rejected shape failing even when the stopped CLI exits 0, pipes released and no signal sent when the CLI exited while a descendant holds its pipes open, exact stdin bytes, forced stop, spawn failure, logs free of URLs and codes) and spawn wiring (binary, arguments, state directory, `BROWSER`, `HOME`); a fake pasted-code plugin through the bridge runtime gate, lifecycle service, and code route; sheet widget tests on phone and desktop. The [CLI probe](#cli-probe) when the plugin's minimum or target version changes. Live plugin for the probe. |
 | L3 Release | A real login from the iOS app and from the macOS desktop app against a macOS arm64 bridge running the real CLI with a real claude.ai account: no host browser opens, the pasted code completes, `claude auth status` reports logged in, the harness becomes ready, and a Claude session starts from Sesori. An explicit cancel mid-flow leaves no `claude auth login` process. Client end to end. |
 | L4 Extended | A Linux headless bridge (credentials file), a well-formed wrong code, a budget expiry on the real CLI, an older app against the new bridge (update required), a bridge restart mid-login, an explicit `bin` override, and a supervised desktop bridge whose Keychain write may fall back to the credentials file. Client end to end. |

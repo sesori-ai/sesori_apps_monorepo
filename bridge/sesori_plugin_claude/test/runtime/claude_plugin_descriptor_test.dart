@@ -169,6 +169,31 @@ void main() {
       expect(status.actionHint, isNot(contains("private@example.com")));
     });
 
+    test("requires authentication when logged out even behind a gateway base URL", () async {
+      final configDirectory = await Directory.systemTemp.createTemp("claude-config");
+      addTearDown(() => configDirectory.delete(recursive: true));
+      File("${configDirectory.path}${Platform.pathSeparator}settings.json").writeAsStringSync(
+        jsonEncode({
+          "env": {"ANTHROPIC_BASE_URL": "https://gateway.example.com/anthropic"},
+        }),
+      );
+
+      final status = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "2.1.319 (Claude Code)\n", exitCode: Future.value(0)),
+          _ProbeProcess(
+            stdoutText: jsonEncode({"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}),
+            exitCode: Future.value(1),
+          ),
+        ]),
+        environment: {"CLAUDE_CONFIG_DIR": configDirectory.path, "ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupAuthenticationRequired>(status);
+    });
+
     test("reports unknown for malformed auth without exposing its payload", () async {
       final processes = _ProcessService([
         _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),

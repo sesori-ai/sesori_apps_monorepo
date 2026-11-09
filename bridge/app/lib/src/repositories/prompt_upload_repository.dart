@@ -66,10 +66,17 @@ class PromptUploadRepository({
   ///
   /// Folders whose name holds no date are kept. Session folders are kept even
   /// when empty: removing one could race a save into the same session. A
-  /// folder that something else removed meanwhile is skipped.
+  /// folder that something else removed meanwhile is skipped, and so is a
+  /// root that doesn't exist yet because no file was ever saved.
   Future<void> deleteFileFoldersDatedBefore({required DateTime cutoff}) async {
     final cutoffDay = DateTime(cutoff.year, cutoff.month, cutoff.day);
-    for (final sessionFolder in await _filesystemApi.listDirectoriesAsync(path: _uploadsRoot)) {
+    final List<Directory> sessionFolders;
+    try {
+      sessionFolders = await _filesystemApi.listDirectoriesAsync(path: _uploadsRoot);
+    } on PathNotFoundException {
+      return;
+    }
+    for (final sessionFolder in sessionFolders) {
       await _deleteFileFoldersDatedBefore(sessionFolder: sessionFolder.path, cutoffDay: cutoffDay);
     }
   }

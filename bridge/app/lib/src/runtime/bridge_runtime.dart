@@ -36,6 +36,12 @@ class BridgeRuntime({
     return _composition.deletedSessionStorageCleanupService.reconcile();
   }
 
+  /// Starts the uploads age sweep without waiting for it; a failure is only
+  /// logged.
+  void sweepExpiredUploads() {
+    unawaited(_composition.promptPartDeliveryService.sweepExpiredUploads());
+  }
+
   Future<void> reconcileChatHistory() {
     return _composition.chatHistoryReconcileService.reconcile();
   }

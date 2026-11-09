@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/identity/prompt_id.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
@@ -70,6 +71,9 @@ class NewSessionCubit({
       ) {
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
+    _pluginManagementSubscription = _connectionService.events
+        .where((event) => event.data is SesoriPluginManagementChanged)
+        .listen((_) => unawaited(_refreshPluginList()));
     _launchOutcomeSubscription = _sessionLaunchService.outcomes.listen(_onLaunchOutcome);
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
@@ -80,6 +84,7 @@ class NewSessionCubit({
 
   ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession();
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+  late final StreamSubscription<SseEvent> _pluginManagementSubscription;
   late final StreamSubscription<SessionLaunchOutcome> _launchOutcomeSubscription;
   StreamSubscription<List<LaunchFollowUp>>? _followUpsSubscription;
   List<ComposerAttachment> _composerAttachments = const [];
@@ -93,6 +98,7 @@ class NewSessionCubit({
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
+  int _pluginListGeneration = 0;
   ({int generation, NewSessionOptionsData? startedFrom, Future<void> refresh})? _silentRefresh;
 
   /// The options load the bridge is still answering, so a project switch that
@@ -148,6 +154,7 @@ class NewSessionCubit({
 
   Future<void> _discoverPlugins() async {
     final generation = ++_loadGeneration;
+    ++_pluginListGeneration;
     final beforeDiscovery = state.agentModelData;
     _emitStateUpdate(
       options: _loadingState(
@@ -217,6 +224,65 @@ class NewSessionCubit({
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
       loge("New session: failed to discover plugins", error, stackTrace);
       _emitDiscoveryError(reason: RemoteFailureReason.unknown);
+    }
+  }
+
+  /// Takes in a harness set up, enabled or turned off since discovery, in
+  /// Settings or anywhere else, so the picker never offers a stale list. While
+  /// the selected harness is still offered only the list changes, and the
+  /// selection and its options stay on screen; otherwise this rediscovers.
+  /// The answer is matched against the selection on screen when it lands, so
+  /// a harness or project picked meanwhile neither discards it nor is undone.
+  Future<void> _refreshPluginList() async {
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return;
+    final data = state.agentModelData;
+    if (data == null || data.isPluginDiscoveryInFlight) return;
+    final selected = data.plugin;
+    final backendScope = data.backendScope;
+    if (selected == null || !selected.isRoutable || backendScope is! NewSessionBackendScopeVerified) {
+      await _discoverPlugins();
+      return;
+    }
+
+    final listGeneration = ++_pluginListGeneration;
+    final ApiResponse<NewSessionPluginDiscovery> response;
+    try {
+      response = await _newSessionPluginService.discover(
+        currentSelectedPluginId: selected.id,
+        currentSelectionBridgeId: backendScope.bridgeId,
+      );
+    } on Object catch (error, stackTrace) {
+      logw("New session: failed to refresh the harness list", error, stackTrace);
+      return;
+    }
+    // A newer list refresh or a rediscovery started since asks the bridge
+    // later, so its answer is the one to keep.
+    if (isClosed || listGeneration != _pluginListGeneration) return;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return;
+    switch (response) {
+      case ErrorResponse(:final error):
+        logw("New session: failed to refresh the harness list", error);
+      case SuccessResponse(data: final discovery):
+        final current = state.agentModelData;
+        // A connection lost meanwhile rediscovers once it is back.
+        if (current == null || current.backendScope is! NewSessionBackendScopeVerified) return;
+        final selectedId = current.plugin?.id;
+        final stillSelected = discovery.plugins.firstWhereOrNull(
+          (plugin) => plugin.id == selectedId && plugin.isRoutable,
+        );
+        if (stillSelected == null || discovery.bridgeId != current.backendScope.lastIdentifiedBridgeId) {
+          await _discoverPlugins();
+          return;
+        }
+        if (const ListEquality<PluginMetadata>().equals(discovery.plugins, current.plugins)) return;
+        _emitConfigurationUpdate(
+          availablePlugins: discovery.plugins,
+          selectedPlugin: stillSelected,
+          options: current.optionsState,
+          backendScope: current.backendScope,
+          isPluginDiscoveryInFlight: current.isPluginDiscoveryInFlight,
+          projectWorktreeCapability: current.projectWorktreeCapability,
+        );
     }
   }
 
@@ -1467,6 +1533,7 @@ class NewSessionCubit({
     if (launchId != null) _sessionLaunchService.releaseHandoff(launchId: launchId);
     await _followUpsSubscription?.cancel();
     await _launchOutcomeSubscription.cancel();
+    await _pluginManagementSubscription.cancel();
     await _connectionStatusSubscription.cancel();
     await super.close();
   }

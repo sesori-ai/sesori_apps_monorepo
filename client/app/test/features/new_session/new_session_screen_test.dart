@@ -325,6 +325,7 @@ void main() {
 
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+    when(() => connectionService.events).thenAnswer((_) => const Stream.empty());
 
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(

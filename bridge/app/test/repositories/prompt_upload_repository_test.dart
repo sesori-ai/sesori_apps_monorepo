@@ -157,6 +157,11 @@ void main() {
         expect(childNames(path: p.join(uploadsRoot, "ses_2")), isEmpty);
       });
 
+      test("does nothing when no file was ever saved, so the uploads root is missing", () async {
+        await expectLater(repository.deleteFileFoldersDatedBefore(cutoff: DateTime(2026, 11)), completes);
+        expect(Directory(uploadsRoot).existsSync(), isFalse);
+      });
+
       test("skips folders that something else removed meanwhile", () async {
         createFolder(sessionId: "ses_1", name: "2026-10-01-raced");
         createFolder(sessionId: "ses_1", name: "2026-10-02-old");

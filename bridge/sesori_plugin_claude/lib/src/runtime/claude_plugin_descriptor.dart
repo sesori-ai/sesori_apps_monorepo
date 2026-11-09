@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../api/claude_process_factory.dart";
+import "../api/claude_settings_api.dart";
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_auth_status_dto.dart";
 import "../claude_approval_registry.dart";
@@ -16,6 +17,7 @@ import "../claude_plugin_impl.dart";
 import "../foundation/claude_login_environment.dart";
 import "../repositories/claude_authentication_repository.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
+import "../repositories/claude_base_url_repository.dart";
 import "../repositories/claude_mcp_authentication_repository.dart";
 import "../repositories/claude_mcp_login_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
@@ -218,6 +220,10 @@ final class const ClaudePluginDescriptor({
       final status = ClaudeAuthStatusDto.fromJson(jsonDecodeMap(authResult.stdout));
       return switch (status.loggedIn) {
         true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
+        // Trusted even behind a custom base URL: without credentials the CLI
+        // refuses to send any request, gateway or not. Gateway credentials
+        // (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `apiKeyHelper`) already
+        // report logged in.
         false => PluginSetupAuthenticationRequired.versioned(
           actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
           runtimeVersion: runtimeVersion,
@@ -318,6 +324,11 @@ final class const ClaudePluginDescriptor({
           commandBudget: const Duration(seconds: 30),
         ),
       ),
+      // Read at failure time, so a gateway configured after start still counts.
+      usesCustomBaseUrl: ClaudeBaseUrlRepository(
+        settings: ClaudeSettingsApi(environment: host.environment),
+        environment: host.environment,
+      ).usesCustomBaseUrl,
       transcripts: ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: host.environment),
       ),

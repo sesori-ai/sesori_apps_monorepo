@@ -717,12 +717,141 @@ then adds the attachment source to both.
 | Automated: module_app_ui | L2 | File tile in the strip, queued bubble and launch view. Clear rules. Plus gating. Source menu. Paste order with a fake `FileClipboard`. |
 | Automated: client/app | L1 | The picker dispatches by source and handles `oversizedCount` (with fake channels) |
 | iOS simulator → `sesori-local-testing` bridge slot (remote from the phone) | L3 | A Photos image to Claude goes inline (regression). A Files PDF and a `.txt` reach the agent, which quotes them, and the noted path opens the preview. A 49 MB file sends, and a 51 MB file gets the notice. Deleting that session from the app removes its folder under `~/.sesori/uploads`. The menu shows Photos only on a Grok-less old-bridge path, which is automated only. |
-| macOS cell (pasteboard, desktop locality) | L3 | Desktop connected to a CLI bridge slot it doesn't supervise, so the bridge counts as remote: a dropped PDF shows a tile, sends, and the agent reads it. Pasting a Finder copy of two files stages them. With the supervised local bridge active, the same paste inserts paths. A copied `https://example.com/` from Safari pastes as text. |
+| macOS cell (pasteboard, desktop locality) | L3 | Desktop connected to a CLI bridge slot it doesn't supervise, so the bridge counts as remote: a dropped PDF shows a tile, sends, and the agent reads it. Pasting a Finder copy of two files stages them. With the supervised local bridge active, the same paste inserts paths. A copied `https://example.com/` from Safari pastes as text. The remote and local halves run one after the other: on one computer and account, a CLI bridge and the supervised bridge share a bridge id and push each other off the relay. |
 | Android cell (Kotlin picker) | L3 | A small PDF stages. A video over 50 MB gets the notice and doesn't crash. Multi-select works. |
 | Per harness, live, from the iOS simulator | L3 | Send a `.txt` holding a known sentence; the agent quotes it; record any prompt. Run this for Claude, Codex, OpenCode, Pi, Cursor, Copilot, Grok, Hermes, OMP, Antigravity and DeepSeek. Any harness that isn't installed is recorded as unverified, and the user must accept that in PLAN.md before retirement. |
 
 An older bridge is covered only by the automated decode and routing tests. Running
 a released v1.11.0 bridge live is optional.
+
+### Results (step 10, 2026-11-08)
+
+**Status: retired (2026-11-09).** The run below found three failures, and all
+three are fixed and merged. The user accepted the four unverified harnesses and
+every other remaining limitation; see "Round 9 decisions" below.
+
+The automated cells ran in CI on the merged step PRs: #2412 (2), #2413 (3),
+#2414 (4), #2415 (5), #2417 (6), #2411 (7) and #2419 (8), plus the auth server
+and analytics platform PRs for `prompt_files_sent`. The L3 cells ran on the code of `2d1349fdf8` (step 9's
+head). It matches main after step 9, apart from #2422 and #2423, which landed
+later.
+
+- **iOS simulator: pass.** Slot 2, headless `sesori-dev-2`, with a bridge on
+  the same Mac reached through the relay, so it was remote.
+  - A Photos image to Claude stayed inline: Claude quoted its text without
+    tools, and nothing was saved.
+  - A Files PDF and `.txt` were picked together. Claude quoted both. Both were
+    saved owner-only under the session's folder.
+  - Both noted paths are tappable. The `.txt` opens a text preview. The PDF
+    opens the preview's documented `unsupported` state ("This file can't be
+    previewed").
+  - A 49,000,000-byte file arrived intact in about 18 s. A 51,000,000-byte
+    file showed the 50 MB notice and staged nothing.
+  - Deleting the session from the app removed its `~/.sesori/uploads` folder.
+- **macOS: pass.** Slot 4 CLI bridge and a debug desktop build, with the
+  remote and local halves run in turn (see the cell).
+  - A real drag of a PDF staged a tile, and Claude quoted it.
+  - A pasted Finder-shaped copy of two files staged two tiles, and Claude read
+    both.
+  - With the supervised local bridge, the same paste inserted both paths.
+  - A Safari-shaped `https://example.com/` pasted as text on both bridges.
+  - The clipboard was written through `NSPasteboard`, the same way Finder and
+    Safari write it, and pasted with an AppleScript Cmd+V.
+- **Android: fail.** Slot 3, headless `sesori-dev-3-android` on API 36.
+  - A small PDF staged and Grok read it.
+  - A 59.95 MB video showed the notice without a crash, and so did an
+    oversize file picked together with a small one.
+  - Multi-select of three files worked when the picker was open for about
+    2 s.
+  - Any Files pick that keeps the picker open for more than about 5 s is
+    dropped, with no tile and no notice. This failed 2 of 2 cold-start runs at
+    6–7 s and passed 7 of 7 at 1–2 s; already-running apps fail the same way.
+  - Cause: Android drops the app's sockets in the background, so the relay
+    reconnects. The session screen then resets the attachment capabilities to
+    unknown (`session_detail_cubit.dart` l.2281-2287), and the composer
+    discards the pick in flight on any capability change (`prompt_input.dart`
+    l.722-725, l.2742/2751).
+- **Per harness, live from the iOS simulator:** Claude, Codex, OpenCode, Pi,
+  OMP, DeepSeek and Grok quoted the file. Only Claude asked first. Per-harness
+  cells and versions are in `docs/HARNESS_CAPABILITIES.md` "Saved prompt
+  files".
+- **Unverified, needs the user's acceptance here before retirement:**
+  - Hermes 0.21.5: installed, but its model router's credentials are expired
+    (Anthropic OAuth expired, xAI 403), so no turn reached a model.
+  - Cursor: CLI 2026.07.23 is older than the required 2026.09.23.
+  - Copilot: not installed.
+  - Antigravity: not installed.
+- **Other failures found:**
+  - Codex shows the note glued to the user's text ("…exactly.Attached
+    file…"), because `CodexUserContentMapper.mapContentText` joins text items
+    with `""`.
+  - A Grok prompt with a file loses the typed text from the bubble and the
+    stored history, because the note overwrites it (`acp_event_mapper.dart`
+    near l.476).
+  - Both are the separator problem that step 3 fixed for Pi.
+
+#### Fixes after the run (2026-11-09)
+
+- **Android pick dropped after about 5 s: fixed in #2425.** A pick that started
+  while the capabilities were known stages with them when it lands, even if a
+  relay reconnect reset them to unknown meanwhile. A known `false` still
+  removes the tiles. Verified on the headless Android emulator: a cold-start
+  pick held open for 6.5 s across a relay drop staged its tile. Also verified on
+  the headless iOS simulator.
+- **Codex and Grok note gluing: fixed in #2426.** Codex and the ACP plugins
+  send adjacent text parts as one, a blank line apart, through the shared
+  `joinAdjacentPromptTextParts`. OpenCode v2 joins a prompt's text the same
+  way, and the Claude and ACP queued previews do too. Verified live from the
+  headless iOS simulator: Grok create, follow-up and reload, and Codex create
+  all show the typed text, a blank line, then the note, and the agent quoted
+  the file.
+
+#### Round 9 decisions (settled by the user, 2026-11-09)
+
+- **Untappable saved paths: A, a documented limitation.** A noted path isn't
+  tappable when the saved name has no extension or the home path has
+  whitespace (`recognizeFilePath` rules). The attachments regression doc
+  records it: the noted path opens the preview "when it reads as one", per
+  [file previews](../../../docs/regression/file-previews.md).
+- **Path line in the file preview header: B.** It's middle-cut like the title
+  (#2422), so the file name stays in view. Done in #2433.
+- **File tile names: A.** Left as they are.
+- **Tap on the empty middle of the text-first action row: A.** It keeps
+  focusing the field.
+- **Unverified harnesses: A, accepted.** Hermes, Cursor, Copilot and
+  Antigravity stay unverified for saved prompt files, for the reasons above.
+- **PDF preview: B, moved to a follow-up plan.** A PDF preview kind for file
+  previews, with a larger preview size limit, is planned on its own. Until
+  then, a PDF's note opens the documented `unsupported` state.
+- **Shared bridge id for a CLI and the supervised bridge on one computer: A.**
+  Kept for now. The macOS cell runs its halves in turn.
+- **Test bridges' uploads: A, kept in the shared `~/.sesori/uploads`.** The user
+  asked that they still get cleaned at some point, and they do, by the
+  existing sweep plus its startup run from #2431:
+  - Every bridge saves under `sesoriUploadsDirectory()`, `<home>/.sesori/uploads`,
+    whatever its `--data-dir` (`bridge/sesori_bridge_foundation/lib/src/sesori_data_directory.dart:66`,
+    wired in `bridge/app/lib/src/orchestrator.dart:354`).
+  - After every save, any bridge sweeps the whole root:
+    `PromptPartDeliveryService.sweepExpiredUploads`
+    (`bridge/app/lib/src/services/prompt_part_delivery_service.dart:70`, 30
+    days) calls `PromptUploadRepository.deleteFileFoldersDatedBefore`
+    (`bridge/app/lib/src/repositories/prompt_upload_repository.dart:71`). That
+    walks every session folder in the root and never asks whether its session
+    still exists, so a test session that was never deleted from the app ages
+    out like any other. `prompt_upload_repository_test.dart`
+    ("removes only file folders dated before the cutoff day…") covers it.
+  - What's left behind is an empty session folder: the sweep keeps those so it
+    can't race a save into the same session. They hold no files.
+  - The sweep used to run only when some bridge saved a file, so a computer
+    that stopped receiving files kept its last ones. #2431 also runs it once
+    at bridge startup, best-effort and without waiting, so any bridge start
+    ages them out.
+- **Pinned prompt covering the "1 step" row on macOS: A.** The existing
+  pinned-prompt design is kept.
+- **ACP history from the internal `v1.12.0-internal.1153` build: A,
+  accepted.** Follow-ups sent from that build show the note glued to the text
+  after reload. No repair; the attachments regression doc records the
+  exception.
 
 ## Risks
 
