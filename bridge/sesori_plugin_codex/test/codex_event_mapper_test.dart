@@ -469,6 +469,29 @@ void main() {
       expect(events, contains(isA<BridgeSseMessagePartUpdated>().having((e) => e.part.text, "text", typed)));
     });
 
+    test("item userMessage drops blank text items between others, as the prompt join does", () {
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "hi", "text_elements": <Object?>[]},
+                {"type": "text", "text": "  ", "text_elements": <Object?>[]},
+                {"type": "text", "text": "note", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, contains(isA<BridgeSseMessagePartUpdated>().having((e) => e.part.text, "text", "hi\n\nnote")));
+    });
+
     test("item userMessage carries the prompt id codex echoes as clientId", () {
       final events = mapper.mapParsed(
         notification: const CodexServerNotification(

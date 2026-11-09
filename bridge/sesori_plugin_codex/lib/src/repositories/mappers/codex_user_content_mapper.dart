@@ -8,11 +8,14 @@ final class const CodexUserContentMapper() {
 
   String? mapSubmittedText({required String? text}) => text == null || text.isEmpty ? null : text;
 
-  /// Joins the text items the user submitted a blank line apart, like
-  /// [mapContentText], but keeps every one: a live message holds only what the
-  /// user sent, so text shaped like a generated context envelope is theirs.
-  String? mapSubmittedTextParts({required Iterable<String> textParts}) =>
-      mapSubmittedText(text: textParts.where((text) => text.isNotEmpty).join("\n\n"));
+  /// Joins the text items the user submitted a blank line apart, as
+  /// `joinAdjacentPromptTextParts` does: a lone item is kept as it is, and a
+  /// run of several drops its blank items. Unlike [mapContentText] it filters
+  /// no generated context: a live message holds only what the user sent, so
+  /// text shaped like a generated context envelope is theirs.
+  String? mapSubmittedTextParts({required List<String> textParts}) => mapSubmittedText(
+    text: textParts.length == 1 ? textParts.single : textParts.where((text) => text.trim().isNotEmpty).join("\n\n"),
+  );
 
   bool _isGeneratedCodexContext({required String text}) {
     final normalized = text.trim();
