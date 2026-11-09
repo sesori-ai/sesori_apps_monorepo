@@ -165,6 +165,7 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
+      pluginManagementService: stubbedPluginManagementService(),
       project: NewSessionProject(id: projectId ?? "project-1", name: null, kind: ProjectKind.folder),
     );
 

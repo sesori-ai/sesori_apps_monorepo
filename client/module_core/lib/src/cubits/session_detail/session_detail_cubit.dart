@@ -431,11 +431,14 @@ class SessionDetailCubit(
 
   /// Check setup: has the bridge inspect the session's harness setup again, as
   /// harness settings does, then lets the session continue when that finds it
-  /// usable. Only a fresh inspection notices a fix made outside Sesori, such as
-  /// a login in a terminal or a corrected gateway; a plain status read keeps
-  /// reporting the block the bridge last recorded.
+  /// usable. See [PluginManagementService.checkSetup].
   Future<void> checkHarnessSetup() async {
-    await _inspectHarnessSetup();
+    switch (_sessionMetadata) {
+      case final session?:
+        await _pluginManagementService.checkSetup(pluginId: session.pluginId);
+      case null:
+        await _pluginManagementService.refresh();
+    }
     if (isClosed) return;
     // A blocked reload reads store-only, so it cannot wake the harness. From
     // the unavailable shell that makes Check setup the user's retry as well:
@@ -458,37 +461,6 @@ class SessionDetailCubit(
       }
     } else if (state is SessionDetailFailed) {
       await reload();
-    }
-  }
-
-  /// Runs the setup inspection and returns once its snapshot is published, so
-  /// the block it clears or updates is already applied. When the bridge cannot
-  /// run one, a status read still shows whatever changed meanwhile.
-  Future<void> _inspectHarnessSetup() async {
-    final session = _sessionMetadata;
-    if (session == null) {
-      await _pluginManagementService.refresh();
-      return;
-    }
-    final result = await _pluginManagementService.command(
-      pluginId: session.pluginId,
-      request: const PluginLifecycleCommandRequest.refresh(),
-    );
-    switch (result) {
-      // An uncertain outcome has already been reconciled with a status read.
-      case PluginManagementMutationResultSuccess() || PluginManagementMutationResultUncertain():
-        return;
-      case PluginManagementMutationResultNotFound():
-        logw("Harness setup check for session $_sessionId found no harness ${session.pluginId}");
-        await _pluginManagementService.refresh();
-      case PluginManagementMutationResultConflict(:final conflict):
-        logw(
-          "Harness setup check for session $_sessionId conflicted: ${conflict.reasons.map((reason) => reason.name).join(", ")}",
-        );
-        await _pluginManagementService.refresh();
-      case PluginManagementMutationResultFailure(:final error):
-        logw("Harness setup check for session $_sessionId failed", error);
-        await _pluginManagementService.refresh();
     }
   }
 

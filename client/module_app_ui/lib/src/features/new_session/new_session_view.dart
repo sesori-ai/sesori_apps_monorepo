@@ -364,7 +364,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         details: actionHint,
         onOpenHarnessSettings: widget.onOpenHarnessSettings,
         onShowBridgeUpdate: null,
-        recheck: (label: loc.sessionDetailRecheck, onPressed: cubit.refreshOptions),
+        recheck: (label: loc.harnessManagementRefreshSetup, onPressed: cubit.checkHarnessSetup),
       ),
       NewSessionComposerProjectUnavailable() => HarnessBlockedNotice(
         key: const Key("new_session_project_unavailable"),

@@ -33,6 +33,7 @@ import "../../services/models/new_session_selection_intent.dart";
 import "../../services/new_session_options_service.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
+import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
@@ -49,6 +50,7 @@ class NewSessionCubit({
   required final ProductAnalyticsService _productAnalyticsService,
   required final SessionLaunchService _sessionLaunchService,
   required final DedicatedWorktreePreferenceStore _dedicatedWorktreePreferenceStore,
+  required final PluginManagementService _pluginManagementService,
 
   /// The project the composer opens in; [selectProject] moves it.
   required NewSessionProject project,
@@ -550,6 +552,18 @@ class NewSessionCubit({
         source: source,
       ),
     );
+  }
+
+  /// Check setup, from the login card in the composer's place: has the bridge
+  /// inspect the harness setup again, as a chat's Check setup does, then loads
+  /// the options again. Only a fresh inspection notices a login made outside
+  /// Sesori, such as one in a terminal.
+  Future<void> checkHarnessSetup() async {
+    if (state.agentModelData?.plugin case final plugin?) {
+      await _pluginManagementService.checkSetup(pluginId: plugin.id);
+      if (isClosed) return;
+    }
+    await refreshOptions();
   }
 
   Future<void> refreshOptions() async {

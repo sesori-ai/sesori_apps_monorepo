@@ -294,6 +294,7 @@ void main() {
   late MockImageClipboard imageClipboard;
   late ComposerDraftRepository composerDraftRepository;
   late MockProductAnalyticsService productAnalyticsService;
+  late MockPluginManagementService pluginManagementService;
 
   setUpAll(registerAllFallbackValues);
 
@@ -306,6 +307,7 @@ void main() {
     sessionApi = MockSessionApi();
     sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
+    pluginManagementService = stubbedPluginManagementService();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
     connectionService = MockConnectionService();
     connectionStatus = BehaviorSubject.seeded(
@@ -508,6 +510,7 @@ void main() {
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
     GetIt.instance.registerSingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository());
     GetIt.instance.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+    GetIt.instance.registerSingleton<PluginManagementService>(pluginManagementService);
     GetIt.instance.registerSingleton<SessionLaunchService>(
       SessionLaunchService(
         sessionRepository: launchSessionRepository,
@@ -1109,7 +1112,9 @@ void main() {
       when(() => service.authenticationBrowserStates).thenAnswer((_) => browserStates.stream);
       when(() => service.authenticationTerminal)
           .thenAnswer((_) => const Stream<PluginAuthenticationTerminalUpdate>.empty());
-      GetIt.instance.registerSingleton<PluginManagementService>(service);
+      GetIt.instance
+        ..unregister<PluginManagementService>()
+        ..registerSingleton<PluginManagementService>(service);
       GetIt.instance.registerSingleton<UrlLauncher>(_MockUrlLauncher());
       addTearDown(snapshots.close);
       await tester.pumpWidget(_buildApp(useHarnessFlow: true));
@@ -2244,9 +2249,9 @@ void main() {
         }
       }
       expect(requests(), asked + 1);
-      // Screen readers hear a Recheck that takes no press while it checks.
+      // Screen readers hear a button that takes no press while it checks.
       expect(
-        find.semantics.byLabel("Recheck").evaluate().single,
+        find.semantics.byLabel(identical(card, loginCard) ? "Check setup" : "Recheck").evaluate().single,
         isSemantics(isButton: true, hasEnabledState: true, isEnabled: false, hasTapAction: false),
       );
     }
@@ -2266,6 +2271,8 @@ void main() {
       login.answer.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
       await expectSpinnerGone(tester: tester);
 
+      // The card's Check setup has the bridge inspect the setup, as a chat's does.
+      verify(() => pluginManagementService.checkSetup(pluginId: "plugin-1")).called(1);
       expect(loginCard, findsNothing);
       expect(find.byType(PromptInput), findsOneWidget);
     });
@@ -3537,7 +3544,7 @@ void main() {
       }
     }
 
-    testWidgets("Recheck's answer fades the login card out as the composer fades in over it", (tester) async {
+    testWidgets("Check setup's answer fades the login card out as the composer fades in over it", (tester) async {
       final recheck = stubOptions(first: loginRequired);
       await pumpPhone(tester);
       final cardRect = tester.getRect(card);
@@ -3575,17 +3582,18 @@ void main() {
     Future<void> expectCardLeavesChecking({
       required WidgetTester tester,
       required Finder blocked,
+      required String label,
       required void Function() answer,
     }) async {
       final recheck = find.descendant(of: blocked, matching: find.byKey(const Key("session_harness_recheck")));
       final spinner = find.descendant(of: recheck, matching: find.byType(PregoActivityIndicator));
-      final label = find.descendant(of: recheck, matching: find.text("Recheck"));
+      final labelText = find.descendant(of: recheck, matching: find.text(label));
       await tester.tap(recheck);
       for (var index = 0; index < 35; index++) {
         await tester.pump(frame);
       }
       expect(opacityOf(tester, spinner), 1);
-      expect(opacityOf(tester, label), 0);
+      expect(opacityOf(tester, labelText), 0);
 
       answer();
       var fading = 0;
@@ -3595,7 +3603,7 @@ void main() {
         if (cardOpacity == null) continue;
         if (cardOpacity < 1) fading++;
         expect(opacityOf(tester, spinner), cardOpacity);
-        expect(opacityOf(tester, label), 0);
+        expect(opacityOf(tester, labelText), 0);
       }
       expect(fading, greaterThan(5));
       expect(blocked, findsNothing);
@@ -3609,6 +3617,7 @@ void main() {
       await expectCardLeavesChecking(
         tester: tester,
         blocked: card,
+        label: "Check setup",
         answer: () => recheck.complete(
           SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false),
         ),
@@ -3627,6 +3636,7 @@ void main() {
       await expectCardLeavesChecking(
         tester: tester,
         blocked: find.byKey(const Key("new_session_project_unavailable")),
+        label: "Recheck",
         answer: () => recheck.complete(
           ApiResponse.success(
             const Project(
@@ -3667,7 +3677,7 @@ void main() {
       await pumpPhone(tester);
       final recheck = find.byKey(const Key("session_harness_recheck"));
       final spinner = find.descendant(of: recheck, matching: find.byType(PregoActivityIndicator));
-      final label = find.descendant(of: recheck, matching: find.text("Recheck"));
+      final label = find.descendant(of: recheck, matching: find.text("Check setup"));
       final cardRect = tester.getRect(card);
       await tester.tap(recheck);
       for (var index = 0; index < 35; index++) {
@@ -3845,12 +3855,12 @@ void main() {
         }
       });
 
-      testWidgets("Recheck fades into its spinner", (tester) async {
+      testWidgets("Check setup fades into its spinner", (tester) async {
         stubOptions(first: loginRequired);
         await pumpPhone(tester);
         final label = find.descendant(
           of: find.byKey(const Key("session_harness_recheck")),
-          matching: find.text("Recheck"),
+          matching: find.text("Check setup"),
         );
         await tester.tap(find.byKey(const Key("session_harness_recheck")));
         await tester.pump();

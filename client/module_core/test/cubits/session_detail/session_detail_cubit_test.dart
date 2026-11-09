@@ -1103,9 +1103,7 @@ void main() {
 
         await cubit.checkHarnessSetup();
 
-        verify(
-          () => service.command(pluginId: "plugin-1", request: const PluginLifecycleCommandRequest.refresh()),
-        ).called(1);
+        verify(() => service.checkSetup(pluginId: "plugin-1")).called(1);
         expect(
           cubit.state,
           isA<SessionDetailLoaded>().having(
@@ -1136,19 +1134,6 @@ void main() {
                 .having((blocked) => blocked.actionHint, "actionHint", loginHint),
           ),
         );
-      });
-
-      test("falls back to a status read when the bridge cannot run the check", () async {
-        final (cubit, service, _) = await blockedSession();
-        clearInteractions(service);
-        when(
-          () => service.command(pluginId: "plugin-1", request: const PluginLifecycleCommandRequest.refresh()),
-        ).thenAnswer((_) async => PluginManagementMutationResult.failure(error: ApiError.generic()));
-
-        await cubit.checkHarnessSetup();
-
-        verify(service.refresh).called(1);
-        expect(cubit.state, isA<SessionDetailLoaded>());
       });
     });
 
