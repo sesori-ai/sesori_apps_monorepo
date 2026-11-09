@@ -10,7 +10,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
-import "package:pdfrx/pdfrx.dart" show PdfViewer, Pdfrx;
+import "package:pdfrx/pdfrx.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_preview_screen.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_reference_code_syntax.dart";
@@ -152,6 +152,8 @@ Widget _app({
     child: Scaffold(body: child),
   ),
 );
+
+class _MockPdfViewerController() extends Mock implements PdfViewerController;
 
 Future<void> _pumpScreen(
   WidgetTester tester, {
@@ -576,6 +578,7 @@ void main() {
     group("a PDF", () {
       // pdfrx otherwise asks path_provider, which tests lack, for its cache.
       setUp(() => Pdfrx.cacheDirectoryPath = Directory.systemTemp.path);
+      setUpAll(() => registerFallbackValue(Offset.zero));
 
       testWidgets("shows its pages in the PDF viewer", (tester) async {
         await _pumpScreen(
@@ -585,6 +588,59 @@ void main() {
           openExternalLink: _ignoreLink,
         );
         expect(find.byType(PdfViewer), findsOneWidget);
+      });
+
+      testWidgets("zooms in where a double tap lands, and leaves other taps alone", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.pdf", line: null),
+          state: FilePreviewShowsPdf(bytes: Uint8List.fromList(utf8.encode("%PDF-1.4"))),
+          openExternalLink: _ignoreLink,
+        );
+        final onGeneralTap = tester.widget<PdfViewer>(find.byType(PdfViewer)).params.onGeneralTap;
+        expect(onGeneralTap, isNotNull);
+        if (onGeneralTap == null) return;
+        final controller = _MockPdfViewerController();
+        when(
+          () => controller.zoomUpOnLocalPosition(
+            localPosition: any(named: "localPosition"),
+            loop: any(named: "loop"),
+          ),
+        ).thenAnswer((_) async {});
+        PdfViewerGeneralTapHandlerDetails tap(PdfViewerGeneralTapType type) => PdfViewerGeneralTapHandlerDetails(
+          localPosition: const Offset(120, 240),
+          documentPosition: Offset.zero,
+          type: type,
+          tapOn: PdfViewerPart.background,
+        );
+        final context = tester.element(find.byType(PdfViewer));
+
+        expect(onGeneralTap(context, controller, tap(PdfViewerGeneralTapType.tap)), isFalse);
+        verifyNever(
+          () => controller.zoomUpOnLocalPosition(
+            localPosition: any(named: "localPosition"),
+            loop: any(named: "loop"),
+          ),
+        );
+        expect(onGeneralTap(context, controller, tap(PdfViewerGeneralTapType.doubleTap)), isTrue);
+        verify(() => controller.zoomUpOnLocalPosition(localPosition: const Offset(120, 240), loop: true)).called(1);
+      });
+
+      testWidgets("lets the last page scroll clear of the home indicator", (tester) async {
+        tester.view.padding = const FakeViewPadding(bottom: 102);
+        addTearDown(tester.view.resetPadding);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.pdf", line: null),
+          state: FilePreviewShowsPdf(bytes: Uint8List.fromList(utf8.encode("%PDF-1.4"))),
+          openExternalLink: _ignoreLink,
+        );
+        final bottomInset = MediaQuery.paddingOf(tester.element(find.byType(PdfViewer))).bottom;
+        expect(bottomInset, greaterThan(0));
+        expect(
+          tester.widget<PdfViewer>(find.byType(PdfViewer)).params.boundaryMargin,
+          EdgeInsets.only(bottom: bottomInset),
+        );
       });
     });
 

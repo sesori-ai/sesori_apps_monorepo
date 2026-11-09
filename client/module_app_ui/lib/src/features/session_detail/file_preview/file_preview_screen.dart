@@ -770,9 +770,12 @@ class _ImagePreviewState() extends State<_ImagePreview> {
   }
 }
 
-/// A PDF's pages in one scrolling column, zoomed by pinching or a double tap,
-/// as pdfrx lays them out. A document PDFium cannot open, such as a broken or
-/// password-protected one, shows as a file that did not load.
+/// A PDF's pages in one scrolling column, as pdfrx lays them out, zoomed by
+/// pinching or by a double tap, which steps through pdfrx's zoom stops and back
+/// to fit. The pages fill to the bottom edge, under the home indicator, with
+/// room at the end to scroll the last page clear of it. A document PDFium
+/// cannot open, such as a broken or password-protected one, shows as a file
+/// that did not load.
 class const _PdfPreview({required final Uint8List bytes, required final String path}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PdfViewer.data(
@@ -781,6 +784,13 @@ class const _PdfPreview({required final Uint8List bytes, required final String p
     sourceName: path,
     params: PdfViewerParams(
       backgroundColor: context.prego.colors.bgSecondary,
+      boundaryMargin: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      // pdfrx leaves a double tap to the app.
+      onGeneralTap: (context, controller, details) {
+        if (details.type != PdfViewerGeneralTapType.doubleTap) return false;
+        unawaited(controller.zoomUpOnLocalPosition(localPosition: details.localPosition, loop: true));
+        return true;
+      },
       errorBannerBuilder: (context, error, stackTrace, documentRef) {
         loge("Failed to open the PDF preview of $path", error, stackTrace);
         return const _UnavailableMessage(reason: FilePreviewUnavailableReason.failed);
