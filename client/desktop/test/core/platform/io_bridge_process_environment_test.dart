@@ -22,7 +22,7 @@ void main() {
         0,
         ...utf8.encode("logout banner"),
       ];
-      final Map<String, String>? environment = await IoBridgeProcessEnvironment.parseEnvironmentStream(
+      final LaunchShellEnvironment environment = await IoBridgeProcessEnvironment.parseEnvironmentStream(
         stream: Stream<List<int>>.fromIterable(<List<int>>[
           output.sublist(0, 11),
           output.sublist(11, output.length - 5),
@@ -30,24 +30,71 @@ void main() {
         ]),
       );
 
-      expect(environment, <String, String>{
-        "BASH_FUNC_path%%": "() {\nPATH=\$PATH:/injected\n}",
-        "PATH": "/shell/bin:/base/bin:/non-é:relative",
-        "ANTHROPIC_BASE_URL": "http://127.0.0.1:9/a=b",
-      });
+      expect(
+        environment,
+        isA<CompleteLaunchShellEnvironment>().having(
+          (CompleteLaunchShellEnvironment environment) => environment.variables,
+          "variables",
+          <String, String>{
+            "BASH_FUNC_path%%": "() {\nPATH=\$PATH:/injected\n}",
+            "PATH": "/shell/bin:/base/bin:/non-é:relative",
+            "ANTHROPIC_BASE_URL": "http://127.0.0.1:9/a=b",
+          },
+        ),
+      );
     });
 
-    test("discards an environment larger than the capture limit", () async {
-      final Map<String, String>? environment = await IoBridgeProcessEnvironment.parseEnvironmentStream(
-        stream: Stream<List<int>>.fromIterable(<List<int>>[
-          <int>[...List<int>.filled(70 * 1024, 120), 0],
+    test("keeps only the PATH record of an environment larger than the capture limit", () async {
+      final List<List<int>> beforePath = <List<int>>[
+        <int>[...utf8.encode("login banner "), ...List<int>.filled(70 * 1024, 120), 0],
+        <int>[...utf8.encode("LARGE="), ...List<int>.filled(70 * 1024, 120), 0],
+        for (int index = 0; index < 40; index++)
+          <int>[...utf8.encode("FILLER_$index="), ...List<int>.filled(2048, 121), 0],
+      ];
+      for (final List<List<int>> chunks in <List<List<int>>>[
+        <List<int>>[
+          ...beforePath,
+          <int>[...utf8.encode("PATH=/shell/bin"), 0],
+        ],
+        <List<int>>[
           <int>[0, ...utf8.encode("PATH=/shell/bin"), 0],
-          <int>[...utf8.encode("LARGE="), ...List<int>.filled(70 * 1024, 120), 0],
-          <int>[...utf8.encode("TAIL=drained"), 0],
-        ]),
+          ...beforePath.skip(1),
+        ],
+      ]) {
+        final LaunchShellEnvironment environment = await IoBridgeProcessEnvironment.parseEnvironmentStream(
+          stream: Stream<List<int>>.fromIterable(chunks),
+        );
+
+        expect(
+          environment,
+          isA<OversizedLaunchShellEnvironment>().having(
+            (OversizedLaunchShellEnvironment environment) => environment.path,
+            "path",
+            "/shell/bin",
+          ),
+        );
+      }
+    });
+
+    test("imports only PATH from an oversized login-shell environment", () async {
+      final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
+        isMacOS: true,
+        baseEnvironment: const <String, String>{"PATH": "/system/bin"},
+        runProcess:
+            ({
+              required String executable,
+              required List<String> arguments,
+              required Map<String, String>? environment,
+              required Duration timeout,
+            }) async => const LaunchEnvironmentProcessResult(
+              exitCode: 0,
+              environment: OversizedLaunchShellEnvironment(path: "/shell/bin"),
+              stderr: "",
+            ),
+        shellTimeout: const Duration(seconds: 5),
       );
 
-      expect(environment, isNull);
+      expect(await environment.resolve(), <String, String>{"PATH": "/shell/bin:/system/bin"});
     });
 
     test("coalesces concurrent and refreshes login-shell PATH resolutions", () async {
@@ -72,22 +119,25 @@ void main() {
               calls++;
               shell = executable;
               capturedArguments = List<String>.of(arguments);
-              expect(environment, isNull);
+              expect(environment, <String, String>{"SESORI_RESOLVING_ENVIRONMENT": "1"});
               expect(timeout, const Duration(seconds: 5));
               return const LaunchEnvironmentProcessResult(
                 exitCode: 0,
-                environment: <String, String>{
-                  "PATH": "/shell/bin:/base/bin:/non-é:relative",
-                  "ANTHROPIC_BASE_URL": "http://127.0.0.1:9",
-                  "ANTHROPIC_AUTH_TOKEN": "secret-token",
-                  "HTTPS_PROXY": "http://proxy.test:8080",
-                  "EXISTING_VARIABLE": "from-shell",
-                  "PWD": "/probe/cwd",
-                  "OLDPWD": "/probe/old",
-                  "SHLVL": "2",
-                  "_": "/usr/bin/env",
-                  "AUTH_BACKEND_URL": "https://shell.test",
-                },
+                environment: CompleteLaunchShellEnvironment(
+                  variables: <String, String>{
+                    "PATH": "/shell/bin:/base/bin:/non-é:relative",
+                    "ANTHROPIC_BASE_URL": "http://127.0.0.1:9",
+                    "ANTHROPIC_AUTH_TOKEN": "secret-token",
+                    "HTTPS_PROXY": "http://proxy.test:8080",
+                    "EXISTING_VARIABLE": "from-shell",
+                    "PWD": "/probe/cwd",
+                    "OLDPWD": "/probe/old",
+                    "SHLVL": "2",
+                    "_": "/usr/bin/env",
+                    "AUTH_BACKEND_URL": "https://shell.test",
+                    "SESORI_RESOLVING_ENVIRONMENT": "1",
+                  },
+                ),
                 stderr: "",
               );
             },
@@ -138,7 +188,7 @@ void main() {
               invokedShell = executable;
               return const LaunchEnvironmentProcessResult(
                 exitCode: 0,
-                environment: <String, String>{"PATH": "/custom/shell/bin"},
+                environment: CompleteLaunchShellEnvironment(variables: <String, String>{"PATH": "/custom/shell/bin"}),
                 stderr: "",
               );
             },
@@ -167,13 +217,15 @@ void main() {
               if (calls == 1) {
                 return const LaunchEnvironmentProcessResult(
                   exitCode: 1,
-                  environment: <String, String>{"PATH": "/ignored/bin"},
+                  environment: CompleteLaunchShellEnvironment(variables: <String, String>{"PATH": "/ignored/bin"}),
                   stderr: "login shell unavailable",
                 );
               }
               return const LaunchEnvironmentProcessResult(
                 exitCode: 0,
-                environment: <String, String>{"PATH": "/shell/bin", "SHELL_ONLY": "value"},
+                environment: CompleteLaunchShellEnvironment(
+                  variables: <String, String>{"PATH": "/shell/bin", "SHELL_ONLY": "value"},
+                ),
                 stderr: "",
               );
             },
@@ -197,12 +249,17 @@ void main() {
         final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
           isMacOS: true,
           baseEnvironment: const <String, String>{"PATH": "/system/bin"},
-          runProcess: ({
-            required String executable,
-            required List<String> arguments,
-            required Map<String, String>? environment,
-            required Duration timeout,
-          }) async => LaunchEnvironmentProcessResult(exitCode: 0, environment: shellEnvironment, stderr: ""),
+          runProcess:
+              ({
+                required String executable,
+                required List<String> arguments,
+                required Map<String, String>? environment,
+                required Duration timeout,
+              }) async => LaunchEnvironmentProcessResult(
+                exitCode: 0,
+                environment: CompleteLaunchShellEnvironment(variables: shellEnvironment),
+                stderr: "",
+              ),
           shellTimeout: const Duration(seconds: 5),
         );
 
@@ -210,7 +267,7 @@ void main() {
       }
     });
 
-    test("preserves the inherited environment when the probe throws or output is oversized", () async {
+    test("preserves the inherited environment when the probe throws or an oversized output lacks PATH", () async {
       final List<LaunchEnvironmentProcessRunner> failingRunners = <LaunchEnvironmentProcessRunner>[
         ({
           required String executable,
@@ -223,7 +280,11 @@ void main() {
           required List<String> arguments,
           required Map<String, String>? environment,
           required Duration timeout,
-        }) async => const LaunchEnvironmentProcessResult(exitCode: 0, environment: null, stderr: ""),
+        }) async => const LaunchEnvironmentProcessResult(
+          exitCode: 0,
+          environment: OversizedLaunchShellEnvironment(path: null),
+          stderr: "",
+        ),
       ];
       for (final LaunchEnvironmentProcessRunner runProcess in failingRunners) {
         final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
@@ -255,7 +316,9 @@ void main() {
               required Duration timeout,
             }) async => const LaunchEnvironmentProcessResult(
               exitCode: 0,
-              environment: <String, String>{"PATH": "/shell/bin", "ANTHROPIC_AUTH_TOKEN": "secret-token-value"},
+              environment: CompleteLaunchShellEnvironment(
+                variables: <String, String>{"PATH": "/shell/bin", "ANTHROPIC_AUTH_TOKEN": "secret-token-value"},
+              ),
               stderr: "",
             ),
         shellTimeout: const Duration(seconds: 5),
@@ -283,7 +346,11 @@ void main() {
               required Duration timeout,
             }) async {
               calls++;
-              return const LaunchEnvironmentProcessResult(exitCode: 0, environment: null, stderr: "");
+              return const LaunchEnvironmentProcessResult(
+                exitCode: 0,
+                environment: CompleteLaunchShellEnvironment(variables: <String, String>{}),
+                stderr: "",
+              );
             },
         shellTimeout: const Duration(seconds: 5),
       );

@@ -87,13 +87,15 @@ and keep native close/quit behavior safe.
   environment, so harnesses installed outside launchd's default PATH and
   harness configuration exported from a shell profile (gateway base URLs, auth
   tokens, proxies) work after autostart as they do for a terminal-started
-  bridge. Shell values override inherited ones except `PWD`, `OLDPWD`,
-  `SHLVL`, `_` and `AUTH_BACKEND_URL`; PATH puts the shell entries ahead of the
-  inherited ones. The imported values stay in memory and are never persisted
-  or logged; only variable names appear at debug level. If the login-shell
-  probe fails, times out, returns no usable PATH or exceeds 64 KiB of
-  environment, the desktop imports nothing and preserves the inherited
-  environment unchanged while retaining a bounded diagnostic warning. Each
+  bridge. The probe shell sees `SESORI_RESOLVING_ENVIRONMENT=1` so profiles
+  can skip slow work. Shell values override inherited ones except `PWD`,
+  `OLDPWD`, `SHLVL`, `_`, `SESORI_RESOLVING_ENVIRONMENT` and
+  `AUTH_BACKEND_URL`; PATH puts the shell entries ahead of the inherited ones.
+  The imported values stay in memory and are never persisted or logged; only
+  variable names appear at debug level. An environment over 64 KiB imports
+  only its PATH. If the login-shell probe fails, times out or returns no
+  usable PATH, the desktop imports nothing and preserves the inherited
+  environment unchanged; both cases retain a bounded diagnostic warning. Each
   supervised start resolves the environment again so a bridge restart picks up
   profile changes and newly installed harnesses; concurrent resolution callers
   still share one in-flight probe.
