@@ -47,7 +47,14 @@ void main() {
 
   void emitPluginState(PluginLifecycleState state) {
     pluginMetadata.add([
-      PluginMetadata(id: "plugin", displayName: "Plugin", isDefault: true, state: state, actionHint: null),
+      PluginMetadata(
+        id: "plugin",
+        displayName: "Plugin",
+        isDefault: true,
+        state: state,
+        actionHint: null,
+        failureBlock: null,
+      ),
     ]);
   }
 
@@ -125,6 +132,7 @@ void main() {
           isDefault: true,
           state: PluginLifecycleState.ready,
           actionHint: null,
+          failureBlock: null,
         ),
         const PluginMetadata(
           id: "pi",
@@ -132,6 +140,7 @@ void main() {
           isDefault: false,
           state: PluginLifecycleState.degraded,
           actionHint: "Check the bridge console if this plugin needs attention.",
+          failureBlock: null,
         ),
         const PluginMetadata(
           id: "codex",
@@ -139,6 +148,7 @@ void main() {
           isDefault: false,
           state: PluginLifecycleState.failed,
           actionHint: null,
+          failureBlock: null,
         ),
       ]);
       await pump();

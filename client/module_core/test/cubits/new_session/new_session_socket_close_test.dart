@@ -33,6 +33,7 @@ void main() {
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     final bridge = FakeRelayBridge(
       answer: (request) => switch (request.path) {

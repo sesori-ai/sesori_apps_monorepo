@@ -302,6 +302,11 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   text are dropped, and unknown variants degrade to info.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
+  `GET /plugin` lists the selectable harnesses plus any enabled harness an operation's
+  authentication failure blocked, marked with `failureBlock`, state `unavailable` and its
+  setup hint, from the shutdown that failure starts until a setup check no longer finds
+  the login or access refused; it is never the default. A harness that setup inspection
+  alone blocked stays out.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
   theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark
   NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`

@@ -342,6 +342,7 @@ void main() {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
             ),
           ],
         ),
@@ -571,6 +572,7 @@ void main() {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
             ),
           ],
         ),
@@ -735,6 +737,7 @@ void main() {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
             ),
           ],
         ),
@@ -974,6 +977,7 @@ void main() {
               isDefault: false,
               state: PluginLifecycleState.failed,
               actionHint: "Restart the bridge to retry.",
+              failureBlock: null,
             ),
             PluginMetadata(
               id: "codex",
@@ -981,6 +985,7 @@ void main() {
               isDefault: true,
               state: PluginLifecycleState.degraded,
               actionHint: "Check the bridge console.",
+              failureBlock: null,
             ),
             PluginMetadata(
               id: "cursor",
@@ -988,6 +993,7 @@ void main() {
               isDefault: false,
               state: PluginLifecycleState.unavailable,
               actionHint: "Make this tool available on the bridge.",
+              failureBlock: null,
             ),
           ],
         ),
@@ -1041,6 +1047,7 @@ void main() {
               isDefault: false,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
             ),
             PluginMetadata(
               id: "degraded-id",
@@ -1048,6 +1055,7 @@ void main() {
               isDefault: true,
               state: PluginLifecycleState.degraded,
               actionHint: "Check the bridge console.",
+              failureBlock: null,
             ),
           ],
         ),
@@ -1071,6 +1079,66 @@ void main() {
       findsNothing,
     );
     expect(find.descendant(of: _harnessRow("degraded-id"), matching: find.text("Needs attention")), findsOneWidget);
+  });
+
+  testWidgets("a harness held back after a refused request shows its notice and Check setup brings it back", (
+    tester,
+  ) async {
+    const gatewayHint = "The gateway rejected the request. Check its credentials, then check setup.";
+    const ready = PluginMetadata(
+      id: "plugin-1",
+      displayName: "Plugin One",
+      isDefault: true,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+      failureBlock: null,
+    );
+    var cleared = false;
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: "bridge-1",
+          supportsSessionOptions: true,
+          supportsFileUploads: false,
+          plugins: [
+            ready,
+            PluginMetadata(
+              id: "claude",
+              displayName: "Claude Code",
+              isDefault: false,
+              state: cleared ? PluginLifecycleState.ready : PluginLifecycleState.unavailable,
+              actionHint: cleared ? null : gatewayHint,
+              failureBlock: cleared ? null : PluginFailureBlock.unavailable,
+            ),
+          ],
+        ),
+      ),
+    );
+    stubSetupCheck(service: pluginManagementService, onCheck: () => cleared = true);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await openHarnessMenu(tester);
+    expect(_harnessRowInk(tester, "claude").onTap, isNotNull);
+    await tester.tap(_harnessRow("claude"));
+    await tester.pumpAndSettle();
+
+    final notice = find.byKey(const Key("new_session_harness_blocked"));
+    expect(notice, findsOneWidget);
+    expect(find.descendant(of: notice, matching: find.text("Claude Code is unavailable.")), findsOneWidget);
+    expect(find.descendant(of: notice, matching: find.text(gatewayHint)), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+
+    await tester.tap(find.descendant(of: notice, matching: find.text("Check setup")));
+    await tester.pumpAndSettle();
+
+    verify(() => pluginManagementService.checkSetup(pluginId: "claude")).called(1);
+    expect(notice, findsNothing);
+    expect(find.byType(PromptInput), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const Key("new_session_plugin_trigger")), matching: find.text("Claude Code")),
+      findsOneWidget,
+    );
   });
 
   testWidgets("opens harness settings from the menu header", (tester) async {
@@ -1222,6 +1290,7 @@ void main() {
                 isDefault: index == 0,
                 state: PluginLifecycleState.ready,
                 actionHint: "Plugin $index action hint",
+                failureBlock: null,
               ),
           ],
         ),
@@ -1304,6 +1373,7 @@ void main() {
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     const toolB = PluginMetadata(
       id: "tool-b",
@@ -1311,6 +1381,7 @@ void main() {
       isDefault: false,
       state: PluginLifecycleState.degraded,
       actionHint: "Check the bridge console.",
+      failureBlock: null,
     );
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
@@ -1389,6 +1460,7 @@ void main() {
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     const toolB = PluginMetadata(
       id: "tool-b",
@@ -1396,6 +1468,7 @@ void main() {
       isDefault: false,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
     var discoveryCalls = 0;
@@ -1490,6 +1563,7 @@ void main() {
                 isDefault: true,
                 state: PluginLifecycleState.ready,
                 actionHint: null,
+                failureBlock: null,
               ),
             ],
           ),
@@ -1630,6 +1704,7 @@ void main() {
                     isDefault: true,
                     state: PluginLifecycleState.ready,
                     actionHint: null,
+                    failureBlock: null,
                   ),
                 ],
         ),
@@ -1683,6 +1758,7 @@ void main() {
                     isDefault: true,
                     state: PluginLifecycleState.ready,
                     actionHint: null,
+                    failureBlock: null,
                   ),
                 ],
         ),
@@ -1794,6 +1870,7 @@ void main() {
             isDefault: true,
             state: PluginLifecycleState.ready,
             actionHint: null,
+            failureBlock: null,
           ),
         ],
       ),
@@ -1876,6 +1953,7 @@ void main() {
             isDefault: true,
             state: PluginLifecycleState.ready,
             actionHint: null,
+            failureBlock: null,
           ),
         ],
       ),
@@ -1976,6 +2054,7 @@ void main() {
             isDefault: true,
             state: PluginLifecycleState.ready,
             actionHint: null,
+            failureBlock: null,
           ),
         ],
       ),
@@ -2166,6 +2245,7 @@ void main() {
             isDefault: true,
             state: PluginLifecycleState.ready,
             actionHint: null,
+            failureBlock: null,
           ),
         ],
       ),
@@ -3303,6 +3383,7 @@ void main() {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
               supportsPromptAttachments: true,
             ),
           ],

@@ -12,6 +12,7 @@ void main() {
           isDefault: true,
           state: PluginLifecycleState.degraded,
           actionHint: "Check the bridge console if this plugin needs attention.",
+          failureBlock: null,
           supportsPromptAttachments: true,
         ),
         PluginMetadata(
@@ -20,6 +21,7 @@ void main() {
           isDefault: false,
           state: PluginLifecycleState.ready,
           actionHint: null,
+          failureBlock: null,
         ),
       ],
     );
@@ -95,6 +97,42 @@ void main() {
 
     expect(json["supportsFileUploads"], isTrue);
     expect(PluginListResponse.fromJson(json).supportsFileUploads, isTrue);
+  });
+
+  test("plugin metadata round-trips a failure block and omits a missing one", () {
+    const blocked = PluginMetadata(
+      id: "claude",
+      displayName: "Claude Code",
+      isDefault: false,
+      state: PluginLifecycleState.unavailable,
+      actionHint: "Check the gateway's credentials, then check setup.",
+      failureBlock: PluginFailureBlock.unavailable,
+    );
+    const ready = PluginMetadata(
+      id: "opencode",
+      displayName: "OpenCode",
+      isDefault: true,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+      failureBlock: null,
+    );
+
+    expect(blocked.toJson()["failureBlock"], "unavailable");
+    expect(PluginMetadata.fromJson(blocked.toJson()), blocked);
+    expect(ready.toJson(), isNot(contains("failureBlock")));
+    expect(PluginMetadata.fromJson(ready.toJson()).failureBlock, isNull);
+  });
+
+  test("plugin metadata maps a future failure block to unknown", () {
+    final metadata = PluginMetadata.fromJson(const {
+      "id": "claude",
+      "displayName": "Claude Code",
+      "isDefault": false,
+      "state": "unavailable",
+      "failureBlock": "quotaExhausted",
+    });
+
+    expect(metadata.failureBlock, PluginFailureBlock.unknown);
   });
 
   test("plugin discovery maps a future lifecycle state to unavailable", () {
