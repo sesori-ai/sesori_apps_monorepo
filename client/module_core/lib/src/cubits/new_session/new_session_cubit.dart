@@ -154,11 +154,11 @@ class NewSessionCubit({
     unawaited(_loadProjectCapability());
   }
 
-  /// Discovery preselects only a harness that runs. With
-  /// [keepsHeldBackSelection], a harness on screen that the bridge holds back
-  /// stays selected so its notice shows in place; opening or reloading the
-  /// screen falls back to another harness instead.
-  Future<void> _discoverPlugins({bool keepsHeldBackSelection = false}) async {
+  /// Discovery preselects only a harness that runs. A harness already on
+  /// screen that the bridge holds back stays selected, through a reconnect or a
+  /// Retry, so its notice shows in place; a freshly opened screen has none and
+  /// falls back to the default.
+  Future<void> _discoverPlugins() async {
     final generation = ++_loadGeneration;
     ++_pluginListGeneration;
     final beforeDiscovery = state.agentModelData;
@@ -187,8 +187,7 @@ class NewSessionCubit({
                   .transitionToDiscovered(bridgeId: data.bridgeId);
           _selectionTracker.applyBackendScopeTransition(transition: scopeTransition);
           final onScreenId = beforeDiscovery?.plugin?.id;
-          final heldBackOnScreen =
-              keepsHeldBackSelection && data.bridgeId == beforeDiscovery?.backendScope.lastIdentifiedBridgeId
+          final heldBackOnScreen = data.bridgeId == beforeDiscovery?.backendScope.lastIdentifiedBridgeId
               ? data.plugins.firstWhereOrNull((plugin) => plugin.id == onScreenId && plugin.failureBlock != null)
               : null;
           final selectedPlugin = heldBackOnScreen ?? data.selected;
@@ -282,7 +281,7 @@ class NewSessionCubit({
           (plugin) => plugin.id == selectedId && plugin.isPickable && plugin.isRoutable == current.plugin?.isRoutable,
         );
         if (stillSelected == null || discovery.bridgeId != current.backendScope.lastIdentifiedBridgeId) {
-          await _discoverPlugins(keepsHeldBackSelection: true);
+          await _discoverPlugins();
           return;
         }
         if (const ListEquality<PluginMetadata>().equals(discovery.plugins, current.plugins)) return;
@@ -609,7 +608,7 @@ class NewSessionCubit({
     // A harness held back after a refused request becomes usable only through
     // the bridge's list, which a setup check that cleared it has updated.
     if (!plugin.isRoutable) {
-      await _discoverPlugins(keepsHeldBackSelection: true);
+      await _discoverPlugins();
       return;
     }
 

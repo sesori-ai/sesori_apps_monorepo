@@ -582,6 +582,59 @@ void main() {
         expect(cubit.canCreateSession, isTrue);
       });
 
+      test("a picked held-back harness keeps its selection and notice across a reconnect", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+        var discoveryCalls = 0;
+        when(pluginRepository.listPlugins).thenAnswer((_) async {
+          discoveryCalls++;
+          return ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB]));
+        });
+
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connectedStatus);
+        await _waitUntil(
+          () => discoveryCalls == 1 && !(cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true),
+        );
+
+        expect(cubit.state.agentModelData?.plugin, blockedB);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
+      test("Retry after a failed rediscovery keeps a held-back harness on screen selected", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
+        );
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connectedStatus);
+        await _waitUntil(() => cubit.state.phase is NewSessionPhaseDiscoveryError);
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        await cubit.refreshOptions();
+
+        expect(cubit.state.phase, isNot(isA<NewSessionPhaseDiscoveryError>()));
+        expect(cubit.state.agentModelData?.plugin, blockedB);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
       test("Check setup that leaves the harness held back keeps its notice in place", () async {
         when(pluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
