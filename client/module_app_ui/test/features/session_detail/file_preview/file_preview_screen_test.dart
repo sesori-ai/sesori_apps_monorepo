@@ -480,6 +480,61 @@ void main() {
       expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     });
 
+    group("on a narrow screen", () {
+      const longName = "image_picker_A3883905-28EE-472D-BAFC-82C4A6F3D1E2-00000058381D0921.jpg";
+
+      void useNarrowScreen(WidgetTester tester) {
+        tester.view
+          ..physicalSize = const Size(360, 800)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+      }
+
+      /// [name] as drawn inside [within].
+      RenderEllipsisText shownName(WidgetTester tester, {required String name, required Finder within}) =>
+          tester.renderObject<RenderEllipsisText>(find.descendant(of: within, matching: find.text(name)));
+
+      testWidgets("cuts the middle of a long name so its extension shows", (tester) async {
+        useNarrowScreen(tester);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/tmp/$longName", line: null),
+          state: const FilePreviewShowsText(content: "alpha"),
+          openExternalLink: _ignoreLink,
+        );
+        final name = shownName(tester, name: longName, within: find.byType(FilePreviewScreen));
+        expect(name.shownText, startsWith("image_pic"));
+        expect(name.shownText, contains(PregoEllipsis.glyph));
+        expect(name.shownText, endsWith(".jpg"));
+        expect(name.localToGlobal(Offset(name.size.width, 0)).dx, lessThanOrEqualTo(360));
+        expect(find.bySemanticsLabel(RegExp(RegExp.escape(longName))), findsOneWidget);
+      });
+
+      testWidgets("shows a short name whole", (tester) async {
+        useNarrowScreen(tester);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/lib/main.dart", line: null),
+          state: const FilePreviewShowsText(content: "alpha"),
+          openExternalLink: _ignoreLink,
+        );
+        expect(shownName(tester, name: "main.dart", within: find.byType(FilePreviewScreen)).shownText, "main.dart");
+      });
+
+      testWidgets("cuts the middle of a long image name in the image viewer", (tester) async {
+        useNarrowScreen(tester);
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/tmp/$longName", line: null),
+          state: FilePreviewShowsImage(bytes: _png, mime: "image/jpeg"),
+          openExternalLink: _ignoreLink,
+        );
+        final name = shownName(tester, name: longName, within: find.byType(ImageAttachmentViewer));
+        expect(name.shownText, contains(PregoEllipsis.glyph));
+        expect(name.shownText, endsWith(".jpg"));
+      });
+    });
+
     final messages = <FilePreviewUnavailableReason, String>{
       FilePreviewUnavailableReason.missing: "File not found",
       FilePreviewUnavailableReason.tooLarge: "File too large to preview",
