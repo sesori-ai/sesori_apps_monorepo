@@ -796,7 +796,7 @@ Future<void> _pumpPointerComposer({
             imageClipboard: () => imageClipboard,
             fileClipboard: null,
             droppedPaths: null,
-            attachKind: ComposerAttachKind.images,
+            attachKind: ComposerAttachKind.photosAndFiles,
             child: Scaffold(
               body: PromptInput(
                 initialSelection: null,

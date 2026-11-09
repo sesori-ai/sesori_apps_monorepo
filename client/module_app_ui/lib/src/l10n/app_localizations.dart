@@ -2509,6 +2509,24 @@ abstract class AppLocalizations {
   /// **'Attach image'**
   String get sessionDetailAttachImage;
 
+  /// Accessibility label of the mobile advanced-options action that opens a menu to attach a photo from the library or any file from Files, offered when the bridge on another computer saves uploads.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach photos or files'**
+  String get sessionDetailAttachPhotosOrFiles;
+
+  /// Menu item under the mobile attach action that opens the photo library picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get sessionDetailAttachFromPhotos;
+
+  /// Menu item under the mobile attach action that opens the system file picker for any files, which are sent to the bridge on another computer to save.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get sessionDetailAttachFromFiles;
+
   /// Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths when the bridge is local, attached as files when a bridge on another computer saves them, and rejected otherwise.
   ///
   /// In en, this message translates to:

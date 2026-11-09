@@ -1,4 +1,5 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -34,9 +35,11 @@ class const ComposerOptionsAccordion({
   required final bool isTyping,
   required final VoidCallback onSlashCommandsTap,
 
-  /// Null holds the attach action's place disabled, while the harness'
-  /// support is still unknown.
-  required final VoidCallback? onAttachImageTap,
+  /// Where the attach action picks from. None holds its place disabled while
+  /// support is still unknown, one opens straight away, and several open a
+  /// menu to choose from.
+  required final List<ComposerPickSource> attachSources,
+  required final ValueChanged<ComposerPickSource> onAttach,
 
   /// Says whether the actions show, once it has built and whenever that changes,
   /// for what sits beside the pill to keep clear of them.
@@ -95,12 +98,63 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
           child: child,
         );
 
+  /// The plus. With several sources it opens a menu hung off itself, and the
+  /// pill folds only once a source is chosen, so the menu keeps its anchor.
+  Widget _buildAttachAction() {
+    void attach(ComposerPickSource source) {
+      _collapse();
+      widget.onAttach(source);
+    }
+
+    switch (widget.attachSources) {
+      case []:
+        return _AccordionIconButton(icon: TablerRegular.plus, tooltip: widget.attachTooltip, onTap: null);
+      case [final source]:
+        return _AccordionIconButton(
+          icon: TablerRegular.plus,
+          tooltip: widget.attachTooltip,
+          onTap: widget.actionsEnabled ? () => attach(source) : null,
+        );
+      case final sources:
+        final loc = context.loc;
+        return PregoAnchorMenu(
+          flat: true,
+          menuMaxHeight: null,
+          menuWidth: 200,
+          triggerBuilder: (context, toggle) => _AccordionIconButton(
+            icon: TablerRegular.plus,
+            tooltip: widget.attachTooltip,
+            onTap: widget.actionsEnabled ? toggle : null,
+          ),
+          entriesBuilder: () => [
+            for (final source in sources)
+              PregoMenuItem(
+                key: Key("composer-attach-${source.name}"),
+                leadingIcon: switch (source) {
+                  ComposerPickSource.photos => TablerRegular.photo,
+                  ComposerPickSource.files => TablerRegular.file,
+                },
+                title: switch (source) {
+                  ComposerPickSource.photos => loc.sessionDetailAttachFromPhotos,
+                  ComposerPickSource.files => loc.sessionDetailAttachFromFiles,
+                },
+                subtitle: null,
+                isSelected: false,
+                shortcutLabel: null,
+                // A menu left open when recording starts stops picking.
+                isEnabled: widget.actionsEnabled,
+                onTap: () => attach(source),
+              ),
+          ],
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     final isOpen = _isOpen || _isOpenByDefault;
-    final onAttachImageTap = widget.onAttachImageTap;
     _reportOpen(isOpen: isOpen);
 
     return DecoratedBox(
@@ -127,17 +181,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                 spacing: PregoSpacing.md,
                 children: [
                   if (isOpen) ...[
-                    if (widget.showAttachImage)
-                      _AccordionIconButton(
-                        icon: TablerRegular.plus,
-                        tooltip: widget.attachTooltip,
-                        onTap: widget.actionsEnabled && onAttachImageTap != null
-                            ? () {
-                                _collapse();
-                                onAttachImageTap();
-                              }
-                            : null,
-                      ),
+                    if (widget.showAttachImage) _buildAttachAction(),
                     _AccordionIconButton(
                       icon: TablerRegular.slash,
                       tooltip: loc.sessionDetailCommandPickerTitle,

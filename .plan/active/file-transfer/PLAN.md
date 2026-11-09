@@ -548,6 +548,9 @@ then adds the attachment source to both.
     - it stream-copies only files of at most 50 MB into
       `cacheDir/composer-picks/`, which is cleared at the start of each pick;
     - it returns `{paths, oversizedCount}`.
+  - A gallery photo that image_picker names after its own copy
+    (`image_picker_<id>` on iOS, which never passes on the library name, or
+    `image_picker` on Android without a display name) is named `photo.<ext>`.
 
 ### Step 7 (⚙️: new platform seam with a macOS-specific guard)
 - The `FileClipboard` interface, the desktop adapter and the dispatcher's

@@ -24,6 +24,8 @@ enum ScrollFollowEdge() {
 /// - [handlePointerPanZoomStart] — trackpad two-finger pan. Detaches.
 /// - [handleScrollNotification] — drag / momentum events. Detaches on
 ///   user-initiated starts, reattaches on settle near the follow edge.
+/// - [handleScrollMetricsNotification] — extent changes without a scroll.
+///   Reattaches a list left with no scrollable range.
 ///
 /// Design rules (enforced by deliberately small API surface):
 ///
@@ -127,6 +129,23 @@ class ScrollFollowTracker({
     return false;
   }
 
+  /// Hook for `NotificationListener<ScrollMetricsNotification>.onNotification`.
+  /// A layout can take away a list's scrollable range without scrolling it,
+  /// as when the keyboard closes and the transcript now fits the taller
+  /// viewport. A detached list left with no range can't be away from the
+  /// follow edge, so it follows again. Only that case: a list that still has
+  /// range stays detached wherever it rests, since a held turn near the edge
+  /// is detached on purpose. A list mid-scroll settles on its scroll end
+  /// instead. Returns `false` so the notification continues to bubble.
+  bool handleScrollMetricsNotification({required ScrollMetricsNotification notification}) {
+    final metrics = notification.metrics;
+    if (notification.depth != 0 || _following || metrics.maxScrollExtent > metrics.minScrollExtent) return false;
+    if (scrollController.hasClients && scrollController.position.isScrollingNotifier.value) return false;
+    _following = true;
+    notifyListeners();
+    return false;
+  }
+
   /// Animate to [edge] and enter follow mode. Used for "Jump to latest"
   /// / "Follow output" button taps.
   Future<void> animateToEdge({
@@ -200,16 +219,17 @@ class ScrollFollowTracker({
   }
 
   void _maybeReattach({required ScrollMetrics metrics}) {
-    // No scrollable range → the list can't be away from the follow edge; a
-    // bouncing-overscroll release that settles here must not toggle follow
-    // state (it would flash the jump-to-latest pill on a short transcript).
-    // Pairs with the same guard on the detach path in [_isUserScrollStart].
-    if (metrics.maxScrollExtent <= metrics.minScrollExtent) return;
     // A glide that reached its target has arrived, however far the edge has moved
     // since, and [animateToEdge] pins next. One stopped short was stopped by a touch.
     if (_glideTarget case final target? when (metrics.pixels - target).abs() <= _edgeTolerance) return;
-    final distance = (metrics.pixels - _edgeOffset(metrics: metrics)).abs();
-    final shouldFollow = distance <= _edgeTolerance;
+    // No scrollable range → the list can't be away from the follow edge, even
+    // when a bouncing-overscroll release ends with the pixels still displaced
+    // (detaching then would flash the jump-to-latest pill on a short
+    // transcript). A list that lost its range while detached, as when the
+    // keyboard closes and the transcript now fits, follows again. Pairs with
+    // the same guard on the detach path in [_isUserScrollStart].
+    final hasRange = metrics.maxScrollExtent > metrics.minScrollExtent;
+    final shouldFollow = !hasRange || (metrics.pixels - _edgeOffset(metrics: metrics)).abs() <= _edgeTolerance;
     if (shouldFollow == _following) return;
     _following = shouldFollow;
     notifyListeners();

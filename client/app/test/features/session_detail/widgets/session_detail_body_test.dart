@@ -40,6 +40,7 @@ class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachm
 void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachment Function() image) {
   when(
     () => dispatcher.pick(
+      source: ComposerPickSource.photos,
       attachmentsSupported: any(named: "attachmentsSupported"),
       fileUploadsSupported: any(named: "fileUploadsSupported"),
       stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),
@@ -554,7 +555,7 @@ void main() {
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               fileClipboard: null,
               droppedPaths: null,
-              attachKind: ComposerAttachKind.images,
+              attachKind: ComposerAttachKind.photosAndFiles,
               child: PromptInput(
                 initialSelection: null,
                 onBusyChanged: null,
@@ -5799,6 +5800,7 @@ void main() {
   testWidgets("an oversized image is rejected with a notice", (tester) async {
     when(
       () => attachmentDispatcher.pick(
+        source: ComposerPickSource.photos,
         attachmentsSupported: any(named: "attachmentsSupported"),
         fileUploadsSupported: any(named: "fileUploadsSupported"),
         stagedAttachmentBytes: any(named: "stagedAttachmentBytes"),

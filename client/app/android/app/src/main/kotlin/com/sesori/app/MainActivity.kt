@@ -1,5 +1,6 @@
 package com.sesori.app
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +20,7 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     private var recorderPrewarmService: RecorderPrewarmService? = null
     private var onDeviceSpeechService: OnDeviceSpeechService? = null
     private var appReviewService: AppReviewService? = null
+    private var documentPickerService: DocumentPickerService? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -42,6 +44,18 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 AppReviewService.channelName,
             ),
         )
+        documentPickerService = DocumentPickerService(
+            activity = this,
+            channel = MethodChannel(
+                flutterEngine.dartExecutor.binaryMessenger,
+                DocumentPickerService.channelName,
+            ),
+        )
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (documentPickerService?.onActivityResult(requestCode, resultCode, data) == true) return
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +80,8 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
         onDeviceSpeechService = null
         appReviewService?.dispose()
         appReviewService = null
+        documentPickerService?.dispose()
+        documentPickerService = null
         flutterEngine?.renderer?.removeIsDisplayingFlutterUiListener(this)
         super.onDestroy()
     }

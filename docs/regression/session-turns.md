@@ -88,7 +88,8 @@ defaults and queued client sends coherent.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
-  leaves the list following, with no jump-to-latest pill. The list rises for every send's row rather than moving in one
+  leaves the list following, with no jump-to-latest pill. So does a transcript that fits once the keyboard closes,
+  whether a swipe on it closed the keyboard or the reader had scrolled up before. The list rises for every send's row rather than moving in one
   frame, typed or dictated, and a send from a little way up rises and glides back as one motion. A send from far up
   moves the rows only with its glide and the composer, with no step on the send's frame or on reaching its row.
   The first prompt in an

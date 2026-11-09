@@ -33,18 +33,20 @@ class ComposerAttachmentDispatcher({
 }) {
   static final _needsQuotes = RegExp(r'[\s"]');
 
-  /// Opens the shell's picker and routes what it returns, or returns `null`
-  /// when the user dismisses it.
+  /// Opens the shell's picker for [source] and routes what it returns, or
+  /// returns `null` when the user dismisses it.
   ///
   /// [stagedAttachmentBytes] is what the composer already holds, so
   /// attachments are staged only while they fit the rest of the prompt's
-  /// attachment budget.
+  /// attachment budget. Files the picker left out as too large count as over
+  /// budget.
   Future<ComposerAttachOutcome?> pick({
+    required ComposerPickSource source,
     required bool? attachmentsSupported,
     required bool? fileUploadsSupported,
     required int stagedAttachmentBytes,
   }) async {
-    switch (await _filePicker.pick()) {
+    switch (await _filePicker.pick(source: source)) {
       case null:
         return null;
       case ComposerPickedImage(:final bytes, :final filename):
@@ -55,12 +57,22 @@ class ComposerAttachmentDispatcher({
           fileUploadsSupported: fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
         );
-      case ComposerPickedHostPaths(:final paths):
-        return await routeHostPaths(
+      case ComposerPickedHostPaths(:final paths, :final oversizedCount):
+        final routed = await routeHostPaths(
           paths: paths,
           attachmentsSupported: attachmentsSupported,
           fileUploadsSupported: fileUploadsSupported,
           stagedAttachmentBytes: stagedAttachmentBytes,
+        );
+        if (oversizedCount == 0) return routed;
+        return ComposerAttachOutcome(
+          attachments: routed.attachments,
+          insertedText: routed.insertedText,
+          rejections: {
+            ...routed.rejections,
+            ComposerAttachRejectionReason.overBudget:
+                (routed.rejections[ComposerAttachRejectionReason.overBudget] ?? 0) + oversizedCount,
+          },
         );
     }
   }

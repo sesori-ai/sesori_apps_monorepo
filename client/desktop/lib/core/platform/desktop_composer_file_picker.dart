@@ -10,6 +10,7 @@ typedef DesktopOpenFiles = Future<List<file_selector.XFile>> Function();
 ///
 /// It hands over paths only. Shared core decides which become image
 /// attachments and which are inserted as paths, and reads only what it stages.
+/// The one dialog covers every source, so it ignores which one is asked for.
 @LazySingleton(as: ComposerFilePicker)
 class DesktopComposerFilePicker.forTesting({
   required final DesktopOpenFiles openFiles,
@@ -19,9 +20,9 @@ class DesktopComposerFilePicker.forTesting({
   new() : this.forTesting(openFiles: file_selector.openFiles);
 
   @override
-  Future<ComposerPickResult?> pick() async {
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async {
     final files = await _openFiles();
     if (files.isEmpty) return null;
-    return ComposerPickedHostPaths(paths: [for (final file in files) file.path]);
+    return ComposerPickedHostPaths(paths: [for (final file in files) file.path], oversizedCount: 0);
   }
 }

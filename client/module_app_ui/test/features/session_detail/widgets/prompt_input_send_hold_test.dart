@@ -64,7 +64,7 @@ void main() {
           imageClipboard: () => clipboard,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: Scaffold(
             body: ValueListenableBuilder(
               valueListenable: draftIdentity,

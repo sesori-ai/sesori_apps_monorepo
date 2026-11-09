@@ -25,7 +25,7 @@ class const MobileComposerPresentationScope({
         imageClipboard: getIt.get<ImageClipboard>,
         fileClipboard: null,
         droppedPaths: null,
-        attachKind: ComposerAttachKind.images,
+        attachKind: ComposerAttachKind.photosAndFiles,
         child: child,
       ),
     );

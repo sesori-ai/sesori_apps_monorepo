@@ -32,8 +32,9 @@ enum ComposerPresentation() {
 
 /// What the shell's attach action picks.
 enum ComposerAttachKind() {
-  /// A gallery image.
-  images,
+  /// A photo from the library, or any files where the bridge saves uploads.
+  /// When both apply, the action opens a menu to choose between them.
+  photosAndFiles,
 
   /// Any files: images are staged, the rest are routed like a drop.
   files,
