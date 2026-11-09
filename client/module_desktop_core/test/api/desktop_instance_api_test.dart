@@ -1,3 +1,5 @@
+// Run with `dart test`, as CI does: `flutter test` doesn't support the
+// Isolate.packageConfig these tests read, so they fail under it.
 import "dart:async";
 import "dart:convert";
 import "dart:io";
