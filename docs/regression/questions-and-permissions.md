@@ -181,7 +181,7 @@ reaches the backend so the turn continues.
   logged and does not break later permission or question routing.
 - Normalized question and permission replies or rejections feed the existing
   durable user-side activity marker. Lifecycle cleanup that emits those events
-  to retire pending UI on abort, thread close, process exit, or disposal can
+  to retire pending UI on abort, archive, thread close, process exit, or disposal can
   therefore advance the marker. Permission replies consumed by bridge
   auto-approval before normal event routing do not advance it.
 - Child or sub-agent requests surface under their display root.

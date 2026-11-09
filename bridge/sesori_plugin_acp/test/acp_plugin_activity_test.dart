@@ -176,5 +176,34 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
       expect(await plugin.getPendingPermissions(sessionId: sessionId), isEmpty);
     });
+
+    test("archiving a session cancels its pending approval and invalidates the summary", () async {
+      final sessionId = await connectAndCreateSession();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 101,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tc-archive", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "opt-allow-once", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(plugin.getActiveSessionsSummary().single.activeSessions.single.awaitingInput, isTrue);
+
+      await plugin.archiveSession(sessionId: sessionId);
+      await pump();
+
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(2));
+      final reply = fake.written.singleWhere((frame) => frame["id"] == 101 && frame.containsKey("result"));
+      expect(reply["result"], {
+        "outcome": {"outcome": "cancelled"},
+      });
+    });
   });
 }

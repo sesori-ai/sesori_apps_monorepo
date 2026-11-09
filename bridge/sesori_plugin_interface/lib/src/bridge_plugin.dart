@@ -85,6 +85,8 @@ sealed class BridgePluginApi() {
   ///
   /// This is best-effort — the local database archive state is authoritative.
   /// Unarchive is not propagated to the backend; it only clears the local DB.
+  /// An archived session refuses replies, so cancel any pending input of
+  /// [sessionId] that nothing but Sesori could answer.
   Future<void> archiveSession({required String sessionId});
 
   /// Delete a workspace (git worktree / sandbox) from the backend.

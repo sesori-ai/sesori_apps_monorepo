@@ -922,7 +922,9 @@ class SessionRepository({
 
     ActiveSession? mapActiveSession(PluginActiveSession active) {
       final binding = bindings[active.id];
-      if (binding == null) return null;
+      // Archive state is local: a backend can still report an archived session
+      // running, or waiting on a request it can never get an answer to.
+      if (binding == null || binding.archivedAt != null) return null;
       return active.toSharedActiveSession(
         sessionId: binding.sessionId,
         childSessionIds: [

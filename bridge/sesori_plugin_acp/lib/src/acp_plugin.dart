@@ -2304,7 +2304,9 @@ abstract class AcpPlugin({
 
   @override
   Future<void> archiveSession({required String sessionId}) async {
-    // Best-effort — mobile DB archive state is authoritative.
+    // Best-effort — mobile DB archive state is authoritative. An archived
+    // session refuses replies, so nothing could ever answer its pending input.
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
   }
 
   @override
