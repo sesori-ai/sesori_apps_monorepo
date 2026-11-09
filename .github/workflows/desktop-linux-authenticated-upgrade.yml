@@ -111,17 +111,25 @@ jobs:
           done
           python .github/scripts/qualify_desktop.py bootstrap \
             --arch '${{ matrix.architecture }}' --sdk-dir "$RUNNER_TEMP/linux-authenticated-flutter"
-      - name: Build nonshipping auth fixtures against each corresponding source
+      - name: Resolve each corresponding source
+        run: |
+          for candidate in previous current; do
+            (cd ".qa-$candidate/client" && flutter pub get --enforce-lockfile)
+          done
+      # Seed the sqlite3 build hook's download so a GitHub release 504 can't fail the build.
+      # Only this step, which runs no product or dependency code, gets the token.
+      - name: Prefetch sqlite3 native library for each source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for candidate in previous current; do
+            python .github/actions/prefetch-sqlite3-native/prefetch.py seed --workspace ".qa-$candidate/client"
+          done
+      - name: Build nonshipping auth fixtures against each corresponding source
+        run: |
+          for candidate in previous current; do
             (
-              cd ".qa-$candidate/client"
-              flutter pub get --enforce-lockfile
-              # Seed the sqlite3 build hook's download so a GitHub release 504 can't fail the build.
-              python "$GITHUB_WORKSPACE/.github/actions/prefetch-sqlite3-native/prefetch.py" seed --workspace .
-              cd desktop
+              cd ".qa-$candidate/client/desktop"
               flutter build linux --release --no-pub \
                 --target "$GITHUB_WORKSPACE/client/desktop/test/native/packaged_authenticated_probe.dart"
             )
