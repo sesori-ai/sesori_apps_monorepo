@@ -620,7 +620,9 @@ result, which leaves the slot unchanged. While a slot is blocked this way,
 `GET /plugin` keeps listing the harness with `failureBlock`
 (`authenticationRequired` or `unavailable`) and the setup's hint, so the new
 session picker can offer it with its blocked notice and Check setup; a harness
-that inspection reports blocked stays out of that list. This applies to every
+that inspection alone reports blocked stays out of that list. The listing lasts
+from the shutdown the failure starts until a setup check no longer reports the
+login or access refused. This applies to every
 harness that raises the exception.
 
 ## Managed runtime platform coverage
