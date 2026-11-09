@@ -438,7 +438,7 @@ void main() {
       required ComposerAttachmentDispatcher dispatcher,
       required ImageClipboard clipboard,
       required Stream<List<String>>? droppedPaths,
-      required bool attachmentsSupported,
+      required bool? attachmentsSupported,
       required bool? fileUploadsSupported,
       required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
     }) => _pumpAttachComposer(
@@ -725,6 +725,132 @@ void main() {
       await pumpWith(attachmentsSupported: false, fileUploadsSupported: false);
       await tester.pumpAndSettle();
       expect(reportedAttachments.last, isEmpty);
+    });
+
+    group("a Files pick still open when the capabilities change", () {
+      const sizeNotice = "An attachment wasn't added. Attachments are limited to 50 MB per message.";
+      late _PendingComposerFilePicker picker;
+      late List<List<ComposerAttachment>> reportedAttachments;
+
+      Future<void> pumpWith(
+        WidgetTester tester, {
+        required bool? attachmentsSupported,
+        required bool? fileUploadsSupported,
+      }) => pumpRemote(
+        tester: tester,
+        attachKind: ComposerAttachKind.photosAndFiles,
+        dispatcher: remoteDispatcher(filePicker: picker),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: attachmentsSupported,
+        fileUploadsSupported: fileUploadsSupported,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+
+      /// Opens Files on a composer whose bridge saves uploads and leaves the
+      /// picker open.
+      Future<void> openFilesPick(WidgetTester tester) async {
+        picker = _PendingComposerFilePicker();
+        reportedAttachments = [];
+        await pumpWith(tester, attachmentsSupported: true, fileUploadsSupported: true);
+        await tester.tap(_tooltip("More actions"));
+        await tester.pumpAndSettle();
+        await tester.tap(_tooltip("Attach photos or files"));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("Files"));
+        await tester.pump();
+      }
+
+      /// The picker hands back the notes file and one it held back as over 50 MB.
+      Future<void> finishPick(WidgetTester tester) async {
+        picker.result.complete(ComposerPickedHostPaths(paths: [notesPath], oversizedCount: 1));
+        await _settleFileReads(tester);
+        await tester.pump();
+      }
+
+      final blips = <String, List<({bool? attachmentsSupported, bool? fileUploadsSupported})>>{
+        "lands once the bridge answers the same again": [
+          (attachmentsSupported: null, fileUploadsSupported: null),
+          (attachmentsSupported: true, fileUploadsSupported: true),
+        ],
+        "lands while the connection is still coming back": [
+          (attachmentsSupported: null, fileUploadsSupported: null),
+        ],
+      };
+      for (final MapEntry(key: name, value: steps) in blips.entries) {
+        testWidgets("across a connection blip $name", (tester) async {
+          await openFilesPick(tester);
+          for (final step in steps) {
+            await pumpWith(
+              tester,
+              attachmentsSupported: step.attachmentsSupported,
+              fileUploadsSupported: step.fileUploadsSupported,
+            );
+          }
+
+          await finishPick(tester);
+
+          final staged = reportedAttachments.lastOrNull?.singleOrNull;
+          if (staged is! ComposerFileAttachment) fail("expected the picked file to stage, got $staged");
+          expect(staged.filename, "notes.dart");
+          expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
+          expect(find.text(sizeNotice), findsOneWidget);
+          await tester.pump(const Duration(seconds: 6));
+          await tester.pumpAndSettle();
+        });
+      }
+
+      testWidgets("is discarded when uploads come back as unsupported", (tester) async {
+        await openFilesPick(tester);
+        await pumpWith(tester, attachmentsSupported: null, fileUploadsSupported: null);
+        await pumpWith(tester, attachmentsSupported: true, fileUploadsSupported: false);
+
+        await finishPick(tester);
+
+        expect(reportedAttachments.where((attachments) => attachments.isNotEmpty), isEmpty);
+        expect(find.byType(PregoFileAttachmentPreview), findsNothing);
+        expect(find.text(sizeNotice), findsNothing);
+      });
+    });
+
+    testWidgets("a pasted image still preparing when the connection drops stages once ready", (tester) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        return switch (call.method) {
+          "Clipboard.getData" => <String, Object?>{"text": ""},
+          "Clipboard.hasStrings" => <String, Object?>{"value": false},
+          _ => null,
+        };
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      final downscale = _PendingDownscaleBuilder();
+      final dispatcher = composerAttachmentDispatcherForTest(
+        filePicker: const NoOpComposerFilePicker(),
+        downscaleBuilder: downscale,
+        bridgeIsLocal: false,
+      );
+      final reportedAttachments = <List<ComposerAttachment>>[];
+      Future<void> pumpWith({required bool? attachmentsSupported, required bool? fileUploadsSupported}) => pumpRemote(
+        tester: tester,
+        attachKind: ComposerAttachKind.files,
+        dispatcher: dispatcher,
+        clipboard: _FixedImageClipboard(bytes: png),
+        droppedPaths: null,
+        attachmentsSupported: attachmentsSupported,
+        fileUploadsSupported: fileUploadsSupported,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+      await pumpWith(attachmentsSupported: true, fileUploadsSupported: true);
+      await tester.showKeyboard(find.byType(EditableText));
+      final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+      Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+      await tester.pump();
+
+      await pumpWith(attachmentsSupported: null, fileUploadsSupported: null);
+      downscale.result.complete(const ComposerImageKept());
+      await tester.pumpAndSettle();
+
+      expect(reportedAttachments.lastOrNull?.singleOrNull, isA<ComposerImageAttachment>());
+      expect(find.byType(PregoImageAttachmentPreview), findsOneWidget);
     });
   });
 
@@ -1844,7 +1970,7 @@ Future<void> _pumpAttachComposer({
   required FileClipboard? fileClipboard,
   required Stream<List<String>>? droppedPaths,
   required VoiceInputCubit? voiceCubit,
-  required bool attachmentsSupported,
+  required bool? attachmentsSupported,
   required bool? fileUploadsSupported,
   required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
 }) async {
