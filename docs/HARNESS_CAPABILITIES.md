@@ -609,9 +609,12 @@ environment-supplied key is usable with an empty credential store, and blocking
 those installs is worse than the stale ready state this capability replaces.
 
 The marks above cover setup inspection only. A plugin that raises
-`PluginAuthenticationRequiredException` while running still moves the slot to
-`authenticationRequired` and blocks further starts. Copilot does: a failed ACP
-`authenticate` raises it with the `copilot login` hint. DeepSeek reports a
+`PluginAuthenticationRequiredException` while running blocks further starts and
+moves the slot to the state its `recovery` selects: `authenticationRequired` for
+`login`, `unavailable` for `externalConfiguration`. Copilot raises it with
+`login` and the `copilot login` hint after a failed ACP `authenticate`. Claude
+raises it with `externalConfiguration` when the gateway behind a custom base URL
+rejects a turn, so no login is offered. DeepSeek reports a
 provider with no models only as an `authenticationRequired` session-options
 result, which leaves the slot unchanged.
 

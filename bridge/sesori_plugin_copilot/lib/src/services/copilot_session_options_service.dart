@@ -100,6 +100,7 @@ class CopilotSessionOptionsService({
         PluginAuthenticationRequiredException(
           error.operation,
           actionHint: CopilotBinary.loginActionHint,
+          recovery: PluginAuthenticationRecovery.login,
           message: error.message,
           cause: error,
         ),

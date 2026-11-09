@@ -1021,6 +1021,7 @@ void main() {
           throw const PluginAuthenticationRequiredException(
             "authenticate",
             actionHint: "Authenticate locally.",
+            recovery: PluginAuthenticationRecovery.login,
           );
         },
       );
