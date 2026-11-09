@@ -15,6 +15,7 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
+import "package:sesori_desktop/core/widgets/desktop_transcript_width.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -234,7 +235,7 @@ void main() {
     final workspace = tester.getRect(find.text("New worktree"));
     expect(toolbar.top, 0);
     expect(heading.top, greaterThan(toolbar.bottom));
-    expect(input.width, DesktopNewSessionView.maxContentWidth);
+    expect(input.width, desktopComposerWidth);
     expect(input.center.dx, 700);
     expect(workspace.top, greaterThan(heading.bottom));
     expect(input.top, greaterThan(workspace.bottom));

@@ -37,7 +37,8 @@ typedef NewSessionCreatedCallback = void Function({required Session session, req
 /// the header, the options and the composer form one centred column no wider
 /// than [maxContentWidth], instead of anchoring the composer to the bottom.
 /// While the first message is sending it rests in a column [transcriptWidth]
-/// wide, the one the session's own transcript uses.
+/// wide, the one the session's own transcript uses, and the composer under it
+/// keeps [maxContentWidth], which must be the session page's composer column.
 class const NewSessionPageChrome({
   required final Widget topBar,
   required final double maxContentWidth,

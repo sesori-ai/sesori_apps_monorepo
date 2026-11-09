@@ -528,7 +528,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           // The desktop root owns its single connection banner.
           banner: null,
           pageChrome: const NewSessionPageChrome(
-            maxContentWidth: 760,
+            maxContentWidth: desktopComposerWidth,
             transcriptWidth: desktopTranscriptWidth,
             topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
             // The pane paints the background, beneath the bodies it cross-fades.

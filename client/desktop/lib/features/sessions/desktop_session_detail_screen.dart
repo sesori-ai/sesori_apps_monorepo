@@ -189,7 +189,7 @@ class const DesktopSessionDetailView({
           pageChrome: SessionDetailPageChrome(
             columnWidths: const SessionDetailColumnWidths(
               transcript: desktopTranscriptWidth,
-              composer: maxComposerWidth,
+              composer: desktopComposerWidth,
             ),
             headerBuilder: _buildToolbar,
           ),
@@ -198,11 +198,6 @@ class const DesktopSessionDetailView({
       ),
     );
   }
-
-  /// Caps the composer, its pointer-picker pills and the needs-you cards above
-  /// them. A text field and a pill row read as stretched long before body text
-  /// does, so they stay at the narrower measure.
-  static const double maxComposerWidth = 760;
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(

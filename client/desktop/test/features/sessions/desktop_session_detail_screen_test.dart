@@ -553,12 +553,9 @@ void main() {
       expect(list.horizontalInset, (1400 - desktopTranscriptWidth) / 2);
       expect(
         tester.getSize(find.byType(SessionDetailComposerControls)).width,
-        DesktopSessionDetailView.maxComposerWidth,
+        desktopComposerWidth,
       );
-      expect(
-        desktopTranscriptWidth,
-        greaterThan(DesktopSessionDetailView.maxComposerWidth),
-      );
+      expect(desktopTranscriptWidth, greaterThan(desktopComposerWidth));
     });
 
     testWidgets("a long draft scrolls in place so a minimum-size window keeps the selectors", (tester) async {
