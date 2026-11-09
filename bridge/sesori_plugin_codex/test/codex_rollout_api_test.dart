@@ -1854,6 +1854,55 @@ void main() {
       expect(messages.single.parts.single.text, "Read this exactly.\n\n$note");
     });
 
+    test("message projection hides the tags Codex writes around a local image", () {
+      // Codex 0.167 records a `localImage` input between these two text items;
+      // the live `userMessage` row carries only the image and the typed text.
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/11/08/rollout-local-image-tags.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccd1",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "msg-prompt",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": '<image name=[Image #1] path="/private/shot.png">'},
+                {"type": "input_image", "image_url": "data:image/png;base64,AA=="},
+                {"type": "input_text", "text": "</image>"},
+                {"type": "input_text", "text": "Describe it."},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "item_completed",
+              "thread_id": "019a0000-1111-2222-3333-ccccccccccd1",
+              "turn_id": "turn-1",
+              "item": {"type": "UserMessage", "id": "user-live-1"},
+              "started_at_ms": null,
+              "completed_at_ms": null,
+            },
+          }),
+        ],
+      );
+
+      final messages = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccd1",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      final parts = messages.single.parts;
+      expect(parts.map((part) => part.type), [PluginMessagePartType.text, PluginMessagePartType.file]);
+      expect(parts.first.text, "Describe it.");
+    });
+
     test("message projection restores image generations with stable persisted and fallback ids", () {
       final path = _writeRollout(
         codexHome,

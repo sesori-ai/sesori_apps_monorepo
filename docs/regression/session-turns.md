@@ -170,8 +170,8 @@ defaults and queued client sends coherent.
   echo, and a slash command renders one synthetic user message because its
   echo is the CLI's internal command envelope.
 - Codex user prompts use the same visible content live and after rollout replay:
-  the bridge worktree context envelope is hidden, authored text items remain a
-  blank line apart, and
+  the bridge worktree context envelope and the tags Codex writes around a local
+  image are hidden, authored text items remain a blank line apart, and
   bounded inline images render as file parts. An attachment-only initial prompt
   therefore remains visible without exposing the generated context. A plain
   follow-up is sent immediately through `turn/start`; Codex's app server starts

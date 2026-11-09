@@ -11,7 +11,8 @@ final class const CodexUserContentMapper() {
   bool _isGeneratedCodexContext({required String text}) {
     final normalized = text.trim();
     return _GeneratedContextTag.values.any((tag) => tag.wraps(text: normalized)) ||
-        _generatedRepositoryInstructions.hasMatch(normalized);
+        _generatedRepositoryInstructions.hasMatch(normalized) ||
+        _generatedLocalImageTag.hasMatch(normalized);
   }
 }
 
@@ -27,3 +28,7 @@ final _generatedRepositoryInstructions = RegExp(
   r"^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n\r?\n"
   r"<INSTRUCTIONS>(?:\r?\n)?[\s\S]*?(?:\r?\n)?</INSTRUCTIONS>$",
 );
+
+/// The text items Codex writes around a `localImage` input, as in
+/// `<image name=[Image #1] path="/x.png">`, the image, then `</image>`.
+final _generatedLocalImageTag = RegExp(r'^(?:<image name=\[Image #\d+\](?: path=".*")?>|</image>)$');
