@@ -4661,6 +4661,30 @@ void main() {
       expect(pin.view, const TranscriptPinStart(), reason: "a prompt that fits on screen pins its start");
     });
 
+    testWidgets("a pin that has just started to compact fades its cut line out rather than slicing it", (
+      tester,
+    ) async {
+      await _pumpTurns(tester, messages: mixedTurns);
+      // The bubble's top rests 6 px past the pin line, as the first prompt of a
+      // transcript barely taller than the screen does.
+      await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs - 6);
+
+      final pin = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+      expect(pin.fullHeight - pin.height, moreOrLessEquals(6, epsilon: 0.01));
+      final contentBottom = pin.top + pin.height - UserMessageBubble.padding;
+      expect(
+        pins(tester),
+        paints..something(
+          (method, arguments) => switch (arguments) {
+            [final Rect fade, final Paint paint] when method == #drawRect && paint.shader != null =>
+              (fade.bottom - contentBottom).abs() < 0.01 && (fade.height - 16).abs() < 0.01,
+            _ => false,
+          },
+        ),
+        reason: "the cut line fades out over the whole fade, not just the 6 px cut so far",
+      );
+    });
+
     group("across a far move", () {
       final openerIds = [for (var turn = 0; turn < 20; turn++) "u$turn"];
 
