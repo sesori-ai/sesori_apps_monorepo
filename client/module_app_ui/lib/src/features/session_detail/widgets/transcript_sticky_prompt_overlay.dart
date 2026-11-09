@@ -810,7 +810,11 @@ class RenderTranscriptStickyPrompts({
         );
       return;
     }
-    final fade = Rect.fromLTRB(bubble.left, contentBottom - min(16, cut), bubble.right, contentBottom);
+    // The fade grows from nothing, so the pin still takes over from its bubble
+    // pixel for pixel, but four times as fast as the cut: a line the cut has
+    // reached fades out to it rather than showing sliced through, even where a
+    // pin rests just past the pin line, as a first prompt barely above it does.
+    final fade = Rect.fromLTRB(bubble.left, contentBottom - min(16, cut * 4), bubble.right, contentBottom);
     canvas
       ..drawRect(
         fade,
