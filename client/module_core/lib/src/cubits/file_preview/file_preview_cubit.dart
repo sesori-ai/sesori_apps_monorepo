@@ -21,6 +21,7 @@ class FilePreviewCubit({
     final next = switch (await _repository.load(path: reference.absolutePath)) {
       FilePreviewTextContent(:final content) => FilePreviewShowsText(content: content),
       FilePreviewImageContent(:final bytes, :final mime) => FilePreviewShowsImage(bytes: bytes, mime: mime),
+      FilePreviewPdfContent(:final bytes) => FilePreviewShowsPdf(bytes: bytes),
       FilePreviewContentUnavailable(:final reason) => FilePreviewUnavailable(reason: reason),
       FilePreviewBridgeTooOld() => const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.bridgeTooOld),
       FilePreviewFailed(:final innerError, :final stackTrace) => _failed(error: innerError, stackTrace: stackTrace),

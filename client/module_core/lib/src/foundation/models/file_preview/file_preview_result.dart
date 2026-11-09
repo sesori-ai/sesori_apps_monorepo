@@ -12,6 +12,9 @@ final class const FilePreviewImageContent({
   required final String mime,
 }) extends FilePreviewResult;
 
+/// A PDF, decoded from the bridge's base64.
+final class const FilePreviewPdfContent({required final Uint8List bytes}) extends FilePreviewResult;
+
 /// The bridge answered but has nothing to show, for [reason].
 final class const FilePreviewContentUnavailable({required final FilePreviewUnavailableReason reason})
     extends FilePreviewResult;
@@ -19,7 +22,7 @@ final class const FilePreviewContentUnavailable({required final FilePreviewUnava
 /// The bridge predates `POST /filesystem/file`.
 final class const FilePreviewBridgeTooOld() extends FilePreviewResult;
 
-/// The request failed in transport or on the bridge, or its image did not decode.
+/// The request failed in transport or on the bridge, or its image or PDF did not decode.
 final class const FilePreviewFailed({
   required final Object innerError,
   required final StackTrace stackTrace,
