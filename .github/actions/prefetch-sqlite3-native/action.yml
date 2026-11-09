@@ -1,10 +1,12 @@
-name: 'Prefetch sqlite3 native library'
+name: 'Prefetch native libraries'
 description: >-
-  Put the pinned, hash-verified libsqlite3 where package:sqlite3's build hook
-  reuses it, from the Actions cache or a retried download (release API first,
-  then the public URL), so tests and builds never depend on the hook's single
-  unretried GitHub release download. The hook only reuses a file whose SHA-256
-  matches its pin, so built and shipped bytes are unchanged.
+  Put the pinned, hash-verified libsqlite3, and the PDFium library pdfrx loads,
+  where their build hooks (package:sqlite3, package:pdfium_dart) reuse them,
+  from the Actions cache or a retried download (release API first, then the
+  public URL), so tests and builds never depend on the hooks' own GitHub
+  release downloads. sqlite3's hook only reuses a file whose SHA-256 matches
+  its pin; PDFium archives are verified against pins in prefetch.py. Built and
+  shipped bytes are unchanged. Named for its first library.
   Run it after `dart pub get` and before anything that runs build hooks.
 
 inputs:
@@ -19,7 +21,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Resolve pinned sqlite3 native library
+    - name: Resolve pinned native libraries
       id: plan
       shell: bash
       env:
@@ -30,8 +32,8 @@ runs:
         if [ "$RUNNER_OS" = Windows ]; then py=python; else py=python3; fi
         "$py" "$GITHUB_ACTION_PATH/prefetch.py" plan --workspace "$WORKSPACE" --platform "$PLATFORM"
 
-    # An empty key means the resolved sqlite3 has no download hook to seed.
-    - name: Restore sqlite3 native library cache
+    # An empty key means no resolved package has a download hook to seed.
+    - name: Restore native library cache
       id: cache
       if: steps.plan.outputs.key != ''
       uses: actions/cache/restore@v5
@@ -39,7 +41,7 @@ runs:
         path: ${{ steps.plan.outputs.path }}
         key: ${{ steps.plan.outputs.key }}
 
-    - name: Seed sqlite3 native library
+    - name: Seed native libraries
       if: steps.plan.outputs.key != ''
       shell: bash
       env:
@@ -53,7 +55,7 @@ runs:
 
     # Saved right away rather than at job end, so a later test failure still
     # leaves the cache warm for the next run.
-    - name: Save sqlite3 native library cache
+    - name: Save native library cache
       if: steps.plan.outputs.key != '' && steps.cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v5
       with:

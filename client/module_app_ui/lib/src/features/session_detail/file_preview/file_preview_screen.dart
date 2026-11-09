@@ -1,11 +1,13 @@
 import "dart:async";
 import "dart:math" as math;
+import "dart:typed_data";
 
 import "package:flutter/foundation.dart" show defaultTargetPlatform;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
+import "package:pdfrx/pdfrx.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 import "package:webview_flutter/webview_flutter.dart";
@@ -131,7 +133,7 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     final state = context.watch<FilePreviewCubit>().state;
     final rendering = switch (state) {
       FilePreviewShowsText(:final content) => _renderingOf(content: content),
-      FilePreviewLoading() || FilePreviewShowsImage() || FilePreviewUnavailable() => null,
+      FilePreviewLoading() || FilePreviewShowsImage() || FilePreviewShowsPdf() || FilePreviewUnavailable() => null,
     };
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
@@ -249,6 +251,7 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
       ),
       fileName: widget.reference.fileName,
     ),
+    FilePreviewShowsPdf(:final bytes) => _PdfPreview(bytes: bytes, path: widget.reference.absolutePath),
     FilePreviewUnavailable(:final reason) => _UnavailableMessage(reason: reason),
   };
 
@@ -765,6 +768,25 @@ class _ImagePreviewState() extends State<_ImagePreview> {
       ),
     );
   }
+}
+
+/// A PDF's pages in one scrolling column, zoomed by pinching or a double tap,
+/// as pdfrx lays them out. A document PDFium cannot open, such as a broken or
+/// password-protected one, shows as a file that did not load.
+class const _PdfPreview({required final Uint8List bytes, required final String path}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => PdfViewer.data(
+    bytes,
+    // pdfrx shares one open document per source name while a viewer shows it.
+    sourceName: path,
+    params: PdfViewerParams(
+      backgroundColor: context.prego.colors.bgSecondary,
+      errorBannerBuilder: (context, error, stackTrace, documentRef) {
+        loge("Failed to open the PDF preview of $path", error, stackTrace);
+        return const _UnavailableMessage(reason: FilePreviewUnavailableReason.failed);
+      },
+    ),
+  );
 }
 
 class const _UnavailableMessage({required final FilePreviewUnavailableReason reason}) extends StatelessWidget {

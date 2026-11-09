@@ -1,4 +1,6 @@
 import "dart:convert";
+import "dart:io";
+import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/rendering.dart" show RenderParagraph;
@@ -8,6 +10,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:pdfrx/pdfrx.dart" show PdfViewer, Pdfrx;
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_preview_screen.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_reference_code_syntax.dart";
@@ -568,6 +571,21 @@ void main() {
         openExternalLink: _ignoreLink,
       );
       expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    });
+
+    group("a PDF", () {
+      // pdfrx otherwise asks path_provider, which tests lack, for its cache.
+      setUp(() => Pdfrx.cacheDirectoryPath = Directory.systemTemp.path);
+
+      testWidgets("shows its pages in the PDF viewer", (tester) async {
+        await _pumpScreen(
+          tester,
+          reference: const FileReference(absolutePath: "/repo/report.pdf", line: null),
+          state: FilePreviewShowsPdf(bytes: Uint8List.fromList(utf8.encode("%PDF-1.4"))),
+          openExternalLink: _ignoreLink,
+        );
+        expect(find.byType(PdfViewer), findsOneWidget);
+      });
     });
 
     group("on a narrow screen", () {

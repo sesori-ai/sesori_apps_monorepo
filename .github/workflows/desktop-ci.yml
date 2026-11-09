@@ -281,13 +281,15 @@ jobs:
           workspace: client
 
       # SwiftPM reuses binary artifacts from its shared cache, so a hit skips
-      # the GitHub release downloads (Sparkle) that intermittently return 504.
+      # the GitHub release downloads (Sparkle, and PDFium's XCFramework, which
+      # pdfium_flutter's version in pubspec.lock pins) that intermittently
+      # return 504.
       - name: Cache SwiftPM GitHub release artifacts
         if: runner.os == 'macOS'
         uses: actions/cache@v5
         with:
           path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
-          key: swiftpm-github-artifacts-${{ hashFiles('client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: swiftpm-github-artifacts-${{ hashFiles('client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'client/pubspec.lock') }}
 
       - name: Build ${{ matrix.target }}
         run: flutter build ${{ matrix.target }}

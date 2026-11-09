@@ -1340,6 +1340,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  pdfium_dart:
+    dependency: transitive
+    description:
+      name: pdfium_dart
+      sha256: "3e250021b2f462058aae216837902fdc8b2cb7f0657e4ec2bc9ac541f960ff84"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.1"
+  pdfium_flutter:
+    dependency: transitive
+    description:
+      name: pdfium_flutter
+      sha256: "4d18e6181aa87200750aa4fc607c870f957731b1de9252c2ea19627c19109388"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.1"
+  pdfrx:
+    dependency: transitive
+    description:
+      name: pdfrx
+      sha256: b3bd49fd0918ba7f807ceb0860f4110c346fc70dd96bd68b992418cf17f97650
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.12.0"
+  pdfrx_engine:
+    dependency: transitive
+    description:
+      name: pdfrx_engine
+      sha256: "4f86165b90c8ae7647747e2d2f9880727f0480caab976a712de1c95076c48762"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.9.1"
   petitparser:
     dependency: transitive
     description:
@@ -1745,6 +1777,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.1"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: a77637ebe1460f3b48cac89a790d2eb634f0a8593cab0d3f340c6db174ba9b94
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.6.1+1"
   term_glyph:
     dependency: transitive
     description:

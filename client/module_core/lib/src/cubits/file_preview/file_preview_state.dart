@@ -15,5 +15,8 @@ final class const FilePreviewShowsImage({
   required final String mime,
 }) extends FilePreviewState;
 
+/// A PDF, decoded from the bridge's base64.
+final class const FilePreviewShowsPdf({required final Uint8List bytes}) extends FilePreviewState;
+
 /// Nothing to show, for [reason].
 final class const FilePreviewUnavailable({required final FilePreviewUnavailableReason reason}) extends FilePreviewState;
