@@ -392,7 +392,11 @@ defaults and queued client sends coherent.
   whose selection the bridge just applied through Pi's setters; the setters'
   thinking-level echoes do not invalidate that selection. A model or
   thinking-level change remains bridge-queued until the
-  current run settles. Pi may run model-backed automatic compaction before it
+  current run settles. A Pi stop keeps the session Working in both the session
+  list and the chat until Pi acknowledges the abort and its process is torn
+  down, then both go idle together. A prompt sent during the stop waits for
+  that teardown, runs on a fresh process, and keeps the session busy
+  throughout. Pi may run model-backed automatic compaction before it
   acknowledges a prompt, so that preflight uses a turn-scale deadline instead
   of the shorter history/control RPC deadline. The prompt remains visibly
   queued alongside the live compaction row while compaction
@@ -1039,7 +1043,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   reply to a steered follow-up lands above it; or a steered follow-up
   dismisses a pending permission or form request.
   A Pi abort waits for the general history/control timeout, lets hidden steering
-  resume after Stop, or leaves later sends stuck in their sending state.
+  resume after Stop, or leaves later sends stuck in their sending state. A
+  stopping Pi session reads idle in the session list while its chat still
+  shows Working, or a prompt sent during the stop fails on the stopped process
+  or reads idle in the chat while it runs.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A Claude session reports idle while a background sub-agent still runs, or

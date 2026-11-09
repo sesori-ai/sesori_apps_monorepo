@@ -44,6 +44,11 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// The one turn currently connecting, selecting, or awaiting prompt acceptance.
   _PiTurn? active;
   Future<void>? idleReap;
+
+  /// Non-null while a stop aborts and tears down the resident process. The
+  /// session stays busy until it lands, and turns sent meanwhile wait here
+  /// before establishing fresh residency.
+  Completer<void>? aborting;
   PluginSessionStatus status = const PluginSessionStatus.idle();
 
   /// The current resident whose frames may outlive a bridge-admitted prompt.
@@ -62,7 +67,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   }
 
   bool get hasAdmittedWork => active != null || inFlight.isNotEmpty || queue.isNotEmpty;
-  bool get hasWork => agentRunning || hasAdmittedWork;
+  bool get hasWork => agentRunning || aborting != null || hasAdmittedWork;
 }
 
 sealed class _PiTurn({
@@ -509,6 +514,8 @@ final class PiSessionService({
     required int generation,
   }) async {
     try {
+      final aborting = state.aborting;
+      if (aborting != null) await aborting.future;
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
@@ -1032,6 +1039,12 @@ final class PiSessionService({
     if (failed) _emit(BridgeSseSessionError(sessionID: sessionId));
     unawaited(_clearPendingWhenPersisted(sessionId: sessionId, directory: state.directory));
     _startNext(sessionId: sessionId, state: state);
+    _settleStatus(sessionId: sessionId, state: state);
+  }
+
+  /// Keeps the session busy while work remains; otherwise publishes idle to the
+  /// chat and the activity summary together and arms the reap.
+  void _settleStatus({required String sessionId, required _PiSessionTurnState state}) {
     if (state.hasWork) {
       if (state.status != const PluginSessionStatus.busy()) {
         state.status = const PluginSessionStatus.busy();
@@ -1137,6 +1150,8 @@ final class PiSessionService({
     state.generation++;
     state.idleGeneration++;
     state.quotaCandidate = null;
+    final aborting = Completer<void>();
+    state.aborting = aborting;
     final cancelled = state.turns.toList(growable: false);
     final hadQueuedPresentations = cancelled.any(
       (turn) => turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible,
@@ -1149,8 +1164,7 @@ final class PiSessionService({
       ..residentGeneration = null
       ..agentRunning = false
       ..inFlight.clear()
-      ..queue.clear()
-      ..status = const PluginSessionStatus.idle();
+      ..queue.clear();
     for (final turn in cancelled) {
       _settleTurnPresentation(sessionId: sessionId, turn: turn, failed: true);
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
@@ -1189,22 +1203,19 @@ final class PiSessionService({
       forceTeardown = true;
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
     } finally {
-      if (forceTeardown) {
-        await _processes.teardown(sessionId: sessionId, gracefulTimeout: Duration.zero);
-      } else {
-        await _processes.teardown(sessionId: sessionId);
+      try {
+        if (forceTeardown) {
+          await _processes.teardown(sessionId: sessionId, gracefulTimeout: Duration.zero);
+        } else {
+          await _processes.teardown(sessionId: sessionId);
+        }
+      } finally {
+        if (identical(state.aborting, aborting)) state.aborting = null;
+        aborting.complete();
+        // A prompt sent during the stop keeps the session busy.
+        _settleStatus(sessionId: sessionId, state: state);
       }
     }
-    _emit(
-      BridgeSseSessionStatus(
-        sessionID: sessionId,
-        status: const PluginSessionStatus.idle(),
-      ),
-    );
-    _emit(BridgeSseSessionIdle(sessionID: sessionId));
-    _emit(const BridgeSseProjectUpdated());
-    _syncWorkState();
-    _scheduleIdleReap(sessionId: sessionId, state: state);
   }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) {
