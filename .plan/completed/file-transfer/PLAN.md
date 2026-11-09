@@ -814,8 +814,7 @@ later.
   records it: the noted path opens the preview "when it reads as one", per
   [file previews](../../../docs/regression/file-previews.md).
 - **Path line in the file preview header: B.** It's middle-cut like the title
-  (#2422), so the file name stays in view. Done in
-  `🌿 Middle-cut the path line in the file preview header`.
+  (#2422), so the file name stays in view. Done in #2433.
 - **File tile names: A.** Left as they are.
 - **Tap on the empty middle of the text-first action row: A.** It keeps
   focusing the field.
