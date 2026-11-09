@@ -726,8 +726,9 @@ a released v1.11.0 bridge live is optional.
 
 ### Results (step 10, 2026-11-08)
 
-**Status: not retired.** The Android cell fails. Four harnesses are unverified,
-and the user hasn't accepted that yet.
+**Status: retired (2026-11-09).** The run below found three failures, and all
+three are fixed and merged. The user accepted the four unverified harnesses and
+every other remaining limitation; see "Round 9 decisions" below.
 
 The automated cells ran in CI on the merged step PRs: #2412 (2), #2413 (3),
 #2414 (4), #2415 (5), #2417 (6), #2411 (7) and #2419 (8), plus the auth server
@@ -788,6 +789,68 @@ later.
     stored history, because the note overwrites it (`acp_event_mapper.dart`
     near l.476).
   - Both are the separator problem that step 3 fixed for Pi.
+
+#### Fixes after the run (2026-11-09)
+
+- **Android pick dropped after about 5 s: fixed in #2425.** A pick that started
+  while the capabilities were known stages with them when it lands, even if a
+  relay reconnect reset them to unknown meanwhile. A known `false` still
+  removes the tiles. Verified on the headless Android emulator: a cold-start
+  pick held open for 6.5 s across a relay drop staged its tile. Also verified on
+  the headless iOS simulator.
+- **Codex and Grok note gluing: fixed in #2426.** Codex and the ACP plugins
+  send adjacent text parts as one, a blank line apart, through the shared
+  `joinAdjacentPromptTextParts`. OpenCode v2 joins a prompt's text the same
+  way, and the Claude and ACP queued previews do too. Verified live from the
+  headless iOS simulator: Grok create, follow-up and reload, and Codex create
+  all show the typed text, a blank line, then the note, and the agent quoted
+  the file.
+
+#### Round 9 decisions (settled by the user, 2026-11-09)
+
+- **Untappable saved paths: A, a documented limitation.** A noted path isn't
+  tappable when the saved name has no extension or the home path has
+  whitespace (`recognizeFilePath` rules). The attachments regression doc
+  records it: the noted path opens the preview "when it reads as one", per
+  [file previews](../../../docs/regression/file-previews.md).
+- **Path line in the file preview header: B.** It's middle-cut like the title
+  (#2422), so the file name stays in view. Done in
+  `🌿 Middle-cut the path line in the file preview header`.
+- **File tile names: A.** Left as they are.
+- **Tap on the empty middle of the text-first action row: A.** It keeps
+  focusing the field.
+- **Unverified harnesses: A, accepted.** Hermes, Cursor, Copilot and
+  Antigravity stay unverified for saved prompt files, for the reasons above.
+- **PDF preview: B, moved to a follow-up plan.** A PDF preview kind for file
+  previews, with a larger preview size limit, is planned on its own. Until
+  then, a PDF's note opens the documented `unsupported` state.
+- **Shared bridge id for a CLI and the supervised bridge on one computer: A.**
+  Kept for now. The macOS cell runs its halves in turn.
+- **Test bridges' uploads: A, kept in the shared `~/.sesori/uploads`.** The user
+  asked that they still get cleaned at some point, and they do, by code
+  already on main:
+  - Every bridge saves under `sesoriUploadsDirectory()`, `<home>/.sesori/uploads`,
+    whatever its `--data-dir` (`bridge/sesori_bridge_foundation/lib/src/sesori_data_directory.dart:66`,
+    wired in `bridge/app/lib/src/orchestrator.dart:353`).
+  - After every save, any bridge sweeps the whole root:
+    `PromptPartDeliveryService._sweepExpiredUploads`
+    (`bridge/app/lib/src/services/prompt_part_delivery_service.dart:67`, 30
+    days) calls `PromptUploadRepository.deleteFileFoldersDatedBefore`
+    (`bridge/app/lib/src/repositories/prompt_upload_repository.dart:70`). That
+    walks every session folder in the root and never asks whether its session
+    still exists, so a test session that was never deleted from the app ages
+    out like any other. `prompt_upload_repository_test.dart`
+    ("removes only file folders dated before the cutoff day…") covers it.
+  - What's left behind is an empty session folder: the sweep keeps those so it
+    can't race a save into the same session. They hold no files.
+  - The sweep runs only when some bridge saves a file, so files stay on a
+    computer that never saves another one.
+- **Pinned prompt covering the "1 step" row on macOS: A.** The existing
+  pinned-prompt design is kept.
+- **ACP history from the internal `v1.12.0-internal.1153` build: A,
+  accepted.** Follow-ups sent from that build show the note glued to the text
+  after reload. No repair; the attachments regression doc records the
+  exception.
 
 ## Risks
 
