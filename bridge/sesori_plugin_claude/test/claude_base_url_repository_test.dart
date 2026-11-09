@@ -39,7 +39,10 @@ void main() {
   });
 
   test("reads a gateway base URL from the environment and from user settings", () {
-    expect(usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"}, settings: null), isTrue);
+    expect(
+      usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"}, settings: null),
+      isTrue,
+    );
     expect(
       usesCustomBaseUrl(
         environment: const {},
@@ -52,8 +55,14 @@ void main() {
   });
 
   test("does not count Anthropic's own base URL", () {
-    expect(usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "https://api.anthropic.com/"}, settings: null), isFalse);
-    expect(usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "HTTPS://API.Anthropic.COM"}, settings: null), isFalse);
+    expect(
+      usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "https://api.anthropic.com/"}, settings: null),
+      isFalse,
+    );
+    expect(
+      usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "HTTPS://API.Anthropic.COM"}, settings: null),
+      isFalse,
+    );
     expect(
       usesCustomBaseUrl(
         environment: const {},
@@ -96,6 +105,9 @@ void main() {
     );
     File("${configDirectory.path}${Platform.pathSeparator}settings.json").deleteSync();
     Directory("${configDirectory.path}${Platform.pathSeparator}settings.json").createSync();
-    expect(usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"}, settings: null), isTrue);
+    expect(
+      usesCustomBaseUrl(environment: const {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"}, settings: null),
+      isTrue,
+    );
   });
 }
