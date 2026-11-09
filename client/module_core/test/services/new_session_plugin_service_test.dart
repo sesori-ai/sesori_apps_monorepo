@@ -16,6 +16,7 @@ void main() {
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     const otherPlugin = PluginMetadata(
       id: "plugin-b",
@@ -23,6 +24,7 @@ void main() {
       isDefault: false,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     const failedPlugin = PluginMetadata(
       id: "plugin-c",
@@ -30,6 +32,7 @@ void main() {
       isDefault: false,
       state: PluginLifecycleState.failed,
       actionHint: "Restart the bridge.",
+      failureBlock: null,
     );
     const degradedPlugin = PluginMetadata(
       id: "plugin-d",
@@ -37,6 +40,7 @@ void main() {
       isDefault: false,
       state: PluginLifecycleState.degraded,
       actionHint: "Check the bridge console.",
+      failureBlock: null,
     );
     const plugins = [defaultPlugin, otherPlugin, failedPlugin, degradedPlugin];
 

@@ -2709,6 +2709,76 @@ void main() {
     expect(service.selectableMetadataSnapshot.map((entry) => entry.id), ["one"]);
   });
 
+  test("the harness list keeps a harness an authentication failure blocked, and only that kind of block", () async {
+    final repository = _IdleLifecycleRepository(initialState: const PluginRuntimeDormant());
+    addTearDown(repository.dispose);
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    addTearDown(service.dispose);
+    const gatewayHint = "Check the gateway's credentials, then check setup.";
+
+    repository.publish(
+      state: const PluginRuntimeBlocked(),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+      setup: const PluginSetupUnavailable(actionHint: gatewayHint),
+      setupSource: PluginSetupSource.authenticationFailure,
+    );
+    final blocked = service.selectableMetadataSnapshot.single;
+    expect(blocked.id, "one");
+    expect(blocked.state, PluginLifecycleState.unavailable);
+    expect(blocked.failureBlock, PluginFailureBlock.unavailable);
+    expect(blocked.actionHint, gatewayHint);
+    expect(blocked.isDefault, isFalse);
+
+    repository.publish(
+      state: const PluginRuntimeBlocked(),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+      setup: const PluginSetupAuthenticationRequired(actionHint: "Log in again."),
+      setupSource: PluginSetupSource.authenticationFailure,
+    );
+    expect(service.selectableMetadataSnapshot.single.failureBlock, PluginFailureBlock.authenticationRequired);
+
+    // The same setup found by inspection, as for a harness never installed or
+    // never set up, keeps the harness out of the list.
+    repository.publish(
+      state: const PluginRuntimeBlocked(),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+      setup: const PluginSetupUnavailable(actionHint: gatewayHint),
+      setupSource: PluginSetupSource.inspection,
+    );
+    expect(service.selectableMetadataSnapshot, isEmpty);
+
+    repository.publish(
+      state: const PluginRuntimeDormant(),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+    );
+    final ready = service.selectableMetadataSnapshot.single;
+    expect(ready.failureBlock, isNull);
+    expect(ready.state, PluginLifecycleState.ready);
+  });
+
   test("a stopping runtime reports ready metadata while a degraded one reports degraded", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
@@ -3102,6 +3172,8 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRu
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
     PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
+    PluginSetupStatus setup = const PluginSetupReady(),
+    PluginSetupSource setupSource = PluginSetupSource.inspection,
   }) {
     _current = [
       _snapshot(
@@ -3110,6 +3182,8 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRu
         leaseCount: leaseCount,
         transition: transition,
         generationResidency: generationResidency,
+        setup: setup,
+        setupSource: setupSource,
       ),
     ];
     _snapshots.add(snapshot);
@@ -3127,6 +3201,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRu
         pluginId: pluginId,
         projectOwnership: PluginProjectOwnership.native,
         setup: const PluginSetupReady(),
+        setupSource: PluginSetupSource.inspection,
         accessGate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
         generation: 1,
@@ -3152,11 +3227,14 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = const PluginRu
     PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.enabled,
     bool startAllowed = true,
     PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
+    PluginSetupStatus setup = const PluginSetupReady(),
+    PluginSetupSource setupSource = PluginSetupSource.inspection,
   }) {
     return PluginRuntimeSnapshot(
       pluginId: "one",
       projectOwnership: PluginProjectOwnership.native,
-      setup: const PluginSetupReady(),
+      setup: setup,
+      setupSource: setupSource,
       accessGate: accessGate,
       startAllowed: startAllowed,
       generation: 1,
@@ -3180,6 +3258,7 @@ class _ConflictingDisableLifecycleRepository() extends _IdleLifecycleRepository 
         pluginId: pluginId,
         projectOwnership: PluginProjectOwnership.native,
         setup: const PluginSetupReady(),
+        setupSource: PluginSetupSource.inspection,
         accessGate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
         generation: 1,
@@ -3207,6 +3286,7 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
         pluginId: pluginId,
         projectOwnership: PluginProjectOwnership.native,
         setup: const PluginSetupReady(),
+        setupSource: PluginSetupSource.inspection,
         accessGate: PluginRuntimeAccessGate.draining,
         startAllowed: true,
         generation: 1,
@@ -3250,6 +3330,7 @@ class _CommandLifecycleRepository({
     pluginId: "one",
     projectOwnership: PluginProjectOwnership.native,
     setup: PluginSetupNotInspected(),
+    setupSource: PluginSetupSource.inspection,
     accessGate: PluginRuntimeAccessGate.disabled,
     startAllowed: false,
     generation: null,
@@ -3452,6 +3533,7 @@ class _CommandLifecycleRepository({
       pluginId: "one",
       projectOwnership: PluginProjectOwnership.native,
       setup: setup,
+      setupSource: PluginSetupSource.inspection,
       accessGate: accessGate,
       startAllowed: startAllowed,
       generation: _current.generation,
@@ -3467,6 +3549,7 @@ class _CommandLifecycleRepository({
     pluginId: "one",
     projectOwnership: PluginProjectOwnership.native,
     setup: _current.setup,
+    setupSource: _current.setupSource,
     accessGate: _current.accessGate,
     startAllowed: _current.startAllowed,
     generation: 1,

@@ -264,7 +264,9 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         return action(key: const Key("new_session_options_retry"), label: loc.newSessionOptionsRetry);
       case NewSessionComposerLoadOnDemand():
         return action(key: const Key("new_session_options_load"), label: loc.newSessionOptionsLoad);
-      case NewSessionComposerLoginRequired() || NewSessionComposerProjectUnavailable():
+      case NewSessionComposerLoginRequired() ||
+          NewSessionComposerHarnessBlocked() ||
+          NewSessionComposerProjectUnavailable():
         return null;
       case NewSessionComposerReady():
         break;
@@ -354,13 +356,27 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   }
 
   /// What stands in the composer's place when no session can start: the
-  /// harness needs a login, or the project could not be checked.
+  /// harness needs a login or was held back after a refused request, or the
+  /// project could not be checked.
   Widget? _buildBlockedNotice({required NewSessionCubit cubit}) {
     final loc = context.loc;
     return switch (cubit.composerPresentation) {
       NewSessionComposerLoginRequired(:final harnessName, :final actionHint) => HarnessBlockedNotice(
         key: const Key("new_session_login_required"),
         title: loc.newSessionAuthenticationRequiredTitle(harnessName),
+        details: actionHint,
+        onOpenHarnessSettings: widget.onOpenHarnessSettings,
+        onShowBridgeUpdate: null,
+        recheck: (label: loc.harnessManagementRefreshSetup, onPressed: cubit.checkHarnessSetup),
+      ),
+      // The same notice a chat shows for that harness, Check setup included.
+      NewSessionComposerHarnessBlocked(:final harnessName, :final block, :final actionHint) => HarnessBlockedNotice(
+        key: const Key("new_session_harness_blocked"),
+        title: switch (block) {
+          PluginFailureBlock.authenticationRequired => loc.newSessionAuthenticationRequiredTitle(harnessName),
+          PluginFailureBlock.unavailable ||
+          PluginFailureBlock.unknown => loc.sessionDetailHarnessUnavailableReason(harnessName),
+        },
         details: actionHint,
         onOpenHarnessSettings: widget.onOpenHarnessSettings,
         onShowBridgeUpdate: null,

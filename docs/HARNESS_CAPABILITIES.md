@@ -616,7 +616,12 @@ moves the slot to the state its `recovery` selects: `authenticationRequired` for
 raises it with `externalConfiguration` when the gateway behind a custom base URL
 rejects a turn, so no login is offered. DeepSeek reports a
 provider with no models only as an `authenticationRequired` session-options
-result, which leaves the slot unchanged.
+result, which leaves the slot unchanged. While a slot is blocked this way,
+`GET /plugin` keeps listing the harness with `failureBlock`
+(`authenticationRequired` or `unavailable`) and the setup's hint, so the new
+session picker can offer it with its blocked notice and Check setup; a harness
+that inspection reports blocked stays out of that list. This applies to every
+harness that raises the exception.
 
 ## Managed runtime platform coverage
 

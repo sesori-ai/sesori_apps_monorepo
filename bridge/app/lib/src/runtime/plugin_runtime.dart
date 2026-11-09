@@ -90,6 +90,16 @@ final class const PluginRuntimeFailed() extends PluginRuntimeState {
   String get name => "failed";
 }
 
+/// Who recorded a plugin's current setup status.
+enum PluginSetupSource() {
+  /// Setup inspection, or no inspection yet.
+  inspection,
+
+  /// An operation the running plugin performed failed authentication, which
+  /// stopped it. Only a fresh inspection replaces that status.
+  authenticationFailure,
+}
+
 enum PluginRuntimeTransition() {
   none,
   starting,
@@ -114,6 +124,7 @@ class const PluginRuntimeSnapshot({
   required final String pluginId,
   required final PluginProjectOwnership projectOwnership,
   required final PluginSetupStatus setup,
+  required final PluginSetupSource setupSource,
   required final PluginRuntimeAccessGate accessGate,
   required final bool startAllowed,
   required final int? generation,
@@ -260,7 +271,9 @@ class PluginRuntime({
       for (final slot in _slots.values) {
         if (!selectedIds.contains(slot.registration.descriptor.id)) {
           slot.setupInspectionRevision++;
-          slot.setup = const PluginSetupNotInspected();
+          slot
+            ..setup = const PluginSetupNotInspected()
+            ..setupSource = PluginSetupSource.inspection;
         }
       }
     }
@@ -305,7 +318,9 @@ class PluginRuntime({
     for (final (:inspection, :setup) in results) {
       final slot = inspection.slot;
       if (slot.setupInspectionRevision == inspection.revision && slot.generation == inspection.generation) {
-        slot.setup = setup;
+        slot
+          ..setup = setup
+          ..setupSource = PluginSetupSource.inspection;
       }
     }
     _publishSnapshots();
@@ -2124,6 +2139,7 @@ class PluginRuntime({
         // A login cannot fix credentials owned elsewhere, so no login is offered.
         PluginAuthenticationRecovery.externalConfiguration => PluginSetupUnavailable(actionHint: failure.actionHint),
       }
+      ..setupSource = PluginSetupSource.authenticationFailure
       ..startAllowed = false
       ..workState = PluginWorkState.unknown;
     final plugin = slot.plugin;
@@ -2271,6 +2287,7 @@ class PluginRuntime({
       pluginId: slot.registration.descriptor.id,
       projectOwnership: slot.registration.descriptor.projectOwnership,
       setup: slot.setup,
+      setupSource: slot.setupSource,
       accessGate: slot.accessGate,
       startAllowed: slot.startAllowed,
       generation: slot.generation,
@@ -2296,6 +2313,7 @@ class _RuntimeMutation() {
 
 class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}) {
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);
+  PluginSetupSource setupSource = PluginSetupSource.inspection;
   PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.disabled;
   bool startAllowed = false;
   int setupInspectionRevision = 0;

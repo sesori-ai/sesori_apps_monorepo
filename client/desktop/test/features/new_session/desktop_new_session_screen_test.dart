@@ -352,6 +352,7 @@ void main() {
       isDefault: true,
       state: PluginLifecycleState.ready,
       actionHint: null,
+      failureBlock: null,
     );
     const discovering = NewSessionState.composing(
       project: _project,

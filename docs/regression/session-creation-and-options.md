@@ -169,7 +169,22 @@ variant, and worktree mode, and creating the session with its first input.
   usable options or turn an already-created session into a retryable failure.
 - A harness the user picks on the New Session screen carries over when the
   project changes before the session is created, on the same bridge and while
-  that harness stays routable; otherwise the saved or default harness applies.
+  that harness stays routable or held back (below); otherwise the saved or
+  default harness applies.
+- A harness the bridge stopped after a refused request (a gateway rejecting
+  Claude Code's credentials, a login that stopped working) stays in the harness
+  picker and can be picked; `GET /plugin` lists it with `failureBlock` and the
+  setup's hint. A harness on screen that gets held back stays selected, and a
+  saved pick of one is restored. In the composer's place it shows the same
+  notice a chat does: "`<harness>` is unavailable." (or the login title for a
+  lost login), the setup's hint, "Open harness settings" and "Check setup".
+  No options load and creation stays blocked. Check setup has the bridge
+  inspect setup again; once that clears the block the harness is usable in
+  place, its options load and the composer returns. A harness unavailable by
+  inspection, such as one never installed or never logged in, stays out of the
+  picker, and so does every held-back harness on a bridge without the field.
+  Like the login card, the notice holds through a disconnect and gives way to
+  a failed rediscovery's Retry.
 - Hermes Agent seeds its configured model and provider from `hermes status`,
   then discovers the available model catalog in a separate empty ACP session
   before the user creates one. The discovery process must exit before Sesori

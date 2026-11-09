@@ -348,6 +348,7 @@ class TestPluginRuntime({
           ? PluginProjectOwnership.native
           : PluginProjectOwnership.bridgeDerived,
       setup: const PluginSetupReady(),
+      setupSource: PluginSetupSource.inspection,
       accessGate: PluginRuntimeAccessGate.enabled,
       startAllowed: true,
       generation: currentGeneration,

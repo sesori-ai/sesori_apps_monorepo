@@ -201,9 +201,7 @@ class NewSessionCubit({
             supportsFileUploads: data.supportsFileUploads,
             options: canLoad
                 ? _loadingState(previous: retained, source: source)
-                : source == NewSessionOptionsSource.aggregate
-                ? const NewSessionOptionsUnavailableState()
-                : const NewSessionOptionsUnsupportedState(),
+                : _unroutableOptionsState(source: source),
             backendScope: scopeTransition.scope,
             projectWorktreeCapability:
                 state.agentModelData?.projectWorktreeCapability ??
@@ -241,7 +239,7 @@ class NewSessionCubit({
     if (data == null || data.isPluginDiscoveryInFlight) return;
     final selected = data.plugin;
     final backendScope = data.backendScope;
-    if (selected == null || !selected.isRoutable || backendScope is! NewSessionBackendScopeVerified) {
+    if (selected == null || !selected.isPickable || backendScope is! NewSessionBackendScopeVerified) {
       await _discoverPlugins();
       return;
     }
@@ -269,8 +267,10 @@ class NewSessionCubit({
         // A connection lost meanwhile rediscovers once it is back.
         if (current == null || current.backendScope is! NewSessionBackendScopeVerified) return;
         final selectedId = current.plugin?.id;
+        // A harness that was held back and now runs, or the other way round,
+        // has its options loaded or set aside by a rediscovery.
         final stillSelected = discovery.plugins.firstWhereOrNull(
-          (plugin) => plugin.id == selectedId && plugin.isRoutable,
+          (plugin) => plugin.id == selectedId && plugin.isPickable && plugin.isRoutable == current.plugin?.isRoutable,
         );
         if (stillSelected == null || discovery.bridgeId != current.backendScope.lastIdentifiedBridgeId) {
           await _discoverPlugins();
@@ -531,10 +531,23 @@ class NewSessionCubit({
 
     final selectedPlugin = data.plugins?.firstWhereOrNull((plugin) => plugin.id == pluginId);
     final source = data.optionsState.source;
-    if (selectedPlugin == null || !selectedPlugin.isRoutable || source == null) return;
+    if (selectedPlugin == null || !selectedPlugin.isPickable || source == null) return;
 
     _selectionTracker.recordPlugin(pluginId: pluginId);
     final generation = ++_loadGeneration;
+    // A harness held back after a refused request has no options to load: its
+    // notice takes the composer's place until Check setup clears it.
+    if (!selectedPlugin.isRoutable) {
+      _emitConfigurationUpdate(
+        availablePlugins: data.plugins,
+        selectedPlugin: selectedPlugin,
+        options: _unroutableOptionsState(source: source),
+        backendScope: data.backendScope,
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: data.projectWorktreeCapability,
+      );
+      return;
+    }
     _emitConfigurationUpdate(
       availablePlugins: data.plugins,
       selectedPlugin: selectedPlugin,
@@ -574,16 +587,20 @@ class NewSessionCubit({
     // A missing or unroutable harness, or a bridge not yet verified, has no
     // options to load; discovery may have recovered since it last looked.
     final plugin = state.agentModelData?.plugin;
-    if (needsHarnessDiscovery ||
-        plugin == null ||
-        !plugin.isRoutable ||
-        !(state.agentModelData?.backendScope.isVerified ?? false)) {
+    if (needsHarnessDiscovery || plugin == null || !(state.agentModelData?.backendScope.isVerified ?? false)) {
       await _discoverPlugins();
       return;
     }
 
     if (state.agentModelData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
       await _loadProjectCapability();
+      return;
+    }
+
+    // A harness held back after a refused request becomes usable only through
+    // the bridge's list, which a setup check that cleared it has updated.
+    if (!plugin.isRoutable) {
+      await _discoverPlugins();
       return;
     }
 
@@ -801,6 +818,13 @@ class NewSessionCubit({
         : NewSessionOptionsRefreshingState(options: previousOptions, source: source);
   }
 
+  /// What the options show for a harness whose options cannot load, such as
+  /// one the bridge held back after a refused request.
+  static NewSessionOptionsLoadState _unroutableOptionsState({required NewSessionOptionsSource source}) =>
+      source == NewSessionOptionsSource.aggregate
+      ? const NewSessionOptionsUnavailableState()
+      : const NewSessionOptionsUnsupportedState();
+
   bool _canApplyLoad({required int generation, required String? pluginId}) {
     if (isClosed || generation != _loadGeneration) return false;
     if (pluginId == null && (state.phase is NewSessionPhaseSending || state is NewSessionCreated)) return false;
@@ -873,15 +897,28 @@ class NewSessionCubit({
     // A failed rediscovery keeps the options on screen but cannot send. Options
     // still loading or a login card, waiting for a rediscovery after a
     // disconnect, are not a failure yet; a failed rediscovery turns each into one.
+    // A held-back harness's notice, like the login card, waits through a
+    // disconnect for the rediscovery's answer.
+    final failureBlock = plugin.failureBlock;
+    final waitsForRediscovery =
+        data.optionsState.authenticationRequired ||
+        (failureBlock != null && state.phase is! NewSessionPhaseDiscoveryError);
     if (!data.backendScope.isVerified &&
         !data.isPluginDiscoveryInFlight &&
         !data.optionsState.isLoading &&
-        !data.optionsState.authenticationRequired) {
+        !waitsForRediscovery) {
       return const NewSessionComposerRetry();
     }
     // The project check comes first because Recheck retries it first.
     if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
       return const NewSessionComposerProjectUnavailable();
+    }
+    if (failureBlock != null) {
+      return NewSessionComposerHarnessBlocked(
+        harnessName: plugin.displayName,
+        block: failureBlock,
+        actionHint: plugin.actionHint,
+      );
     }
     if (data.optionsState
         case NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||

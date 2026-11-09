@@ -34,6 +34,7 @@ const _openCode = PluginMetadata(
   isDefault: true,
   state: PluginLifecycleState.ready,
   actionHint: null,
+  failureBlock: null,
   supportsPromptAttachments: true,
 );
 
@@ -43,6 +44,7 @@ const _claudeCode = PluginMetadata(
   isDefault: true,
   state: PluginLifecycleState.ready,
   actionHint: null,
+  failureBlock: null,
   supportsPromptAttachments: true,
 );
 

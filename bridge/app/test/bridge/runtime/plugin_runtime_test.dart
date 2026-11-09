@@ -605,12 +605,29 @@ void main() {
       const PluginSetupUnavailable(actionHint: "Check the gateway, then refresh setup."),
     );
     expect(runtime.snapshot.single.startAllowed, isFalse);
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.authenticationFailure);
 
     await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
     runtime.applyAccess(entries: enabled);
 
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.inspection);
     expect(runtime.snapshot.single.startAllowed, isTrue);
+  });
+
+  test("setup recorded by inspection, even an unavailable one, keeps the inspection source", () async {
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        inspect: () async => const PluginSetupUnavailable(actionHint: "Install a supported version."),
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupUnavailable>());
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.inspection);
   });
 
   test("unknown plugin acquisitions preserve the typed unavailable contract", () async {

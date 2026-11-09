@@ -307,6 +307,7 @@ class PluginRepository({required final PluginApi _api}) {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
               supportsPromptAttachments: true,
             ),
           ],

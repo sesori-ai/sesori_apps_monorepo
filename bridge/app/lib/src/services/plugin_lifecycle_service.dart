@@ -182,10 +182,13 @@ class PluginLifecycleService({
     );
   }
 
+  /// The harnesses a new session can pick: those that can start one, and
+  /// those held back after a refused request, which carry their
+  /// [PluginMetadata.failureBlock] so the user can see why and check setup.
   List<PluginMetadata> get selectableMetadataSnapshot {
     final selectableIds = {
       for (final snapshot in _lifecycleRepository.snapshot)
-        if (_isSelectable(snapshot)) snapshot.pluginId,
+        if (_isSelectable(snapshot) || _failureBlockOf(snapshot) != null) snapshot.pluginId,
     };
     final defaultId = _selectableDefaultPluginId();
     return List<PluginMetadata>.unmodifiable([
@@ -1112,7 +1115,8 @@ class PluginLifecycleService({
       );
       _metadataById[snapshot.pluginId] = current.copyWith(
         state: state,
-        actionHint: _metadataActionHint(runtimeState: snapshot.state, state: state),
+        actionHint: _metadataActionHint(snapshot: snapshot, state: state),
+        failureBlock: _failureBlockOf(snapshot),
       );
     }
     if (!_metadataSubject.isClosed) _metadataSubject.add(_orderedMetadata());
@@ -1140,7 +1144,8 @@ class PluginLifecycleService({
               displayName: plugin.displayName,
               isDefault: false,
               state: state,
-              actionHint: _metadataActionHint(runtimeState: runtimeState, state: state),
+              actionHint: _metadataActionHint(snapshot: snapshot, state: state),
+              failureBlock: snapshot == null ? null : _failureBlockOf(snapshot),
               supportsPromptAttachments: plugin.supportsPromptAttachments,
             );
           }(),
@@ -1192,6 +1197,27 @@ class PluginLifecycleService({
     return switch (snapshot.state) {
       PluginRuntimeDormant() || PluginRuntimeStarting() || PluginRuntimeActive() || PluginRuntimeDegraded() => true,
       PluginRuntimeDisabled() || PluginRuntimeBlocked() || PluginRuntimeStopping() || PluginRuntimeFailed() => false,
+    };
+  }
+
+  /// What holds an enabled harness back after an operation it ran failed
+  /// authentication, until setup is inspected again. A harness blocked by
+  /// inspection itself, such as one never installed or logged in, has none.
+  static PluginFailureBlock? _failureBlockOf(PluginRuntimeSnapshot snapshot) {
+    if (snapshot.accessGate != PluginRuntimeAccessGate.enabled ||
+        snapshot.state is! PluginRuntimeBlocked ||
+        snapshot.setupSource != PluginSetupSource.authenticationFailure) {
+      return null;
+    }
+    return switch (snapshot.setup) {
+      PluginSetupAuthenticationRequired() => PluginFailureBlock.authenticationRequired,
+      PluginSetupUnavailable() => PluginFailureBlock.unavailable,
+      PluginSetupNotInspected() ||
+      PluginSetupReady() ||
+      PluginSetupRuntimeMissing() ||
+      PluginSetupRuntimeOutdated() ||
+      PluginSetupManagedInstallBlockedUnknown() ||
+      PluginSetupUnknown() => null,
     };
   }
 
@@ -1554,10 +1580,15 @@ class PluginLifecycleService({
   /// The plugin's own hint while it is degraded, otherwise the generic hint
   /// for [state].
   static String? _metadataActionHint({
-    required PluginRuntimeState? runtimeState,
+    required PluginRuntimeSnapshot? snapshot,
     required PluginLifecycleState state,
   }) {
-    if (runtimeState case PluginRuntimeDegraded(:final actionHint?)) return actionHint;
+    // A harness held back after a refused request says what to fix, such as
+    // the credentials of the gateway it runs through.
+    if (snapshot != null && _failureBlockOf(snapshot) != null) {
+      if (snapshot.setup.actionHint case final actionHint?) return actionHint;
+    }
+    if (snapshot?.state case PluginRuntimeDegraded(:final actionHint?)) return actionHint;
     return _actionHint(state);
   }
 
