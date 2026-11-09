@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$FilePreviewRequest {
 
- String get path;
+ String get path; bool get acceptsPdf;
 /// Create a copy of FilePreviewRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $FilePreviewRequestCopyWith<FilePreviewRequest> get copyWith => _$FilePreviewReq
 @override
 bool operator ==(Object other) {
   final _this = this as FilePreviewRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilePreviewRequest&&(identical(other.path, _this.path) || other.path == _this.path));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilePreviewRequest&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.acceptsPdf, _this.acceptsPdf) || other.acceptsPdf == _this.acceptsPdf));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as FilePreviewRequest;
-  return Object.hash(runtimeType,_this.path);
+  return Object.hash(runtimeType,_this.path,_this.acceptsPdf);
 }
 
 @override
 String toString() {
   final _this = this as FilePreviewRequest;
-  return 'FilePreviewRequest(path: ${_this.path})';
+  return 'FilePreviewRequest(path: ${_this.path}, acceptsPdf: ${_this.acceptsPdf})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $FilePreviewRequestCopyWith<$Res>  {
   factory $FilePreviewRequestCopyWith(FilePreviewRequest value, $Res Function(FilePreviewRequest) _then) = _$FilePreviewRequestCopyWithImpl;
 @useResult
 $Res call({
- String path
+ String path, bool acceptsPdf
 });
 
 
@@ -71,10 +71,11 @@ class _$FilePreviewRequestCopyWithImpl<$Res>
 
 /// Create a copy of FilePreviewRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? path = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? acceptsPdf = null,}) {
   return _then(FilePreviewRequest(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String,
+as String,acceptsPdf: null == acceptsPdf ? _self.acceptsPdf : acceptsPdf // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -86,10 +87,11 @@ as String,
 @JsonSerializable()
 
 class _FilePreviewRequest implements FilePreviewRequest {
-  const _FilePreviewRequest({required this.path});
+  const _FilePreviewRequest({required this.path, this.acceptsPdf = false});
   factory _FilePreviewRequest.fromJson(Map<String, dynamic> json) => _$FilePreviewRequestFromJson(json);
 
 @override final  String path;
+@override@JsonKey() final  bool acceptsPdf;
 
 /// Create a copy of FilePreviewRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -104,18 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilePreviewRequest&&(identical(other.path, path) || other.path == path));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilePreviewRequest&&(identical(other.path, path) || other.path == path)&&(identical(other.acceptsPdf, acceptsPdf) || other.acceptsPdf == acceptsPdf));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,path);
+    return Object.hash(runtimeType,path,acceptsPdf);
 }
 
 @override
 String toString() {
-    return 'FilePreviewRequest(path: $path)';
+    return 'FilePreviewRequest(path: $path, acceptsPdf: $acceptsPdf)';
 }
 
 
@@ -126,7 +128,7 @@ abstract mixin class _$FilePreviewRequestCopyWith<$Res> implements $FilePreviewR
   factory _$FilePreviewRequestCopyWith(_FilePreviewRequest value, $Res Function(_FilePreviewRequest) _then) = __$FilePreviewRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String path
+ String path, bool acceptsPdf
 });
 
 
@@ -143,10 +145,11 @@ class __$FilePreviewRequestCopyWithImpl<$Res>
 
 /// Create a copy of FilePreviewRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? path = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? acceptsPdf = null,}) {
   return _then(_FilePreviewRequest(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String,
+as String,acceptsPdf: null == acceptsPdf ? _self.acceptsPdf : acceptsPdf // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -163,6 +166,10 @@ FilePreviewResponse _$FilePreviewResponseFromJson(
           );
                 case 'image':
           return FilePreviewImage.fromJson(
+            json
+          );
+                case 'pdf':
+          return FilePreviewPdf.fromJson(
             json
           );
                 case 'missing':
@@ -374,6 +381,81 @@ mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
 as String,base64: null == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
 as String,byteLength: null == byteLength ? _self.byteLength : byteLength // ignore: cast_nullable_to_non_nullable
 as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class FilePreviewPdf implements FilePreviewResponse {
+  const FilePreviewPdf({required this.base64,  String? $type}): $type = $type ?? 'pdf';
+  factory FilePreviewPdf.fromJson(Map<String, dynamic> json) => _$FilePreviewPdfFromJson(json);
+
+ final  String base64;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of FilePreviewResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FilePreviewPdfCopyWith<FilePreviewPdf> get copyWith => _$FilePreviewPdfCopyWithImpl<FilePreviewPdf>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FilePreviewPdfToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FilePreviewPdf&&(identical(other.base64, base64) || other.base64 == base64));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,base64);
+}
+
+@override
+String toString() {
+    return 'FilePreviewResponse.pdf(base64: $base64)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FilePreviewPdfCopyWith<$Res> implements $FilePreviewResponseCopyWith<$Res> {
+  factory $FilePreviewPdfCopyWith(FilePreviewPdf value, $Res Function(FilePreviewPdf) _then) = _$FilePreviewPdfCopyWithImpl;
+@useResult
+$Res call({
+ String base64
+});
+
+
+
+
+}
+/// @nodoc
+class _$FilePreviewPdfCopyWithImpl<$Res>
+    implements $FilePreviewPdfCopyWith<$Res> {
+  _$FilePreviewPdfCopyWithImpl(this._self, this._then);
+
+  final FilePreviewPdf _self;
+  final $Res Function(FilePreviewPdf) _then;
+
+/// Create a copy of FilePreviewResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? base64 = null,}) {
+  return _then(FilePreviewPdf(
+base64: null == base64 ? _self.base64 : base64 // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

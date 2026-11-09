@@ -306,7 +306,8 @@ void main() {
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
     });
 
-    FilePreviewResponse preview(String name) => repository.readPreviewFile(absolutePath: "${tempDir.path}/$name");
+    FilePreviewResponse preview(String name) =>
+        repository.readPreviewFile(absolutePath: "${tempDir.path}/$name", acceptsPdf: false);
 
     test("returns UTF-8 text", () {
       File("${tempDir.path}/notes.md").writeAsStringSync("# Héllo\n");
@@ -339,7 +340,34 @@ void main() {
         driveRootsApi: windowsDriveRootsApi,
       );
 
-      expect(oversizedRepository.readPreviewFile(absolutePath: "/big.jpg"), const FilePreviewResponse.tooLarge());
+      expect(
+        oversizedRepository.readPreviewFile(absolutePath: "/big.jpg", acceptsPdf: false),
+        const FilePreviewResponse.tooLarge(),
+      );
+    });
+
+    test("returns a PDF as base64 only when the client accepts PDFs", () {
+      final bytes = utf8.encode("%PDF-1.7\n");
+      File("${tempDir.path}/report.PDF").writeAsBytesSync(bytes);
+
+      expect(
+        repository.readPreviewFile(absolutePath: "${tempDir.path}/report.PDF", acceptsPdf: true),
+        FilePreviewResponse.pdf(base64: base64Encode(bytes)),
+      );
+      expect(preview("report.PDF"), const FilePreviewResponse.unsupported());
+    });
+
+    test("refuses a PDF over the preview cap", () {
+      final oversizedRepository = FilesystemRepository(
+        filesystemApi: _PrefixFilesystemApi(bytes: List.filled(maxFilePreviewBytes + 1, 0), error: null),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(
+        oversizedRepository.readPreviewFile(absolutePath: "/big.pdf", acceptsPdf: true),
+        const FilePreviewResponse.tooLarge(),
+      );
     });
 
     test("reports a missing file", () {
@@ -360,7 +388,10 @@ void main() {
       );
 
       expect(preview("absent-folder/a.txt"), const FilePreviewResponse.missing());
-      expect(windowsRepository.readPreviewFile(absolutePath: r"C:\absent\a.txt"), const FilePreviewResponse.missing());
+      expect(
+        windowsRepository.readPreviewFile(absolutePath: r"C:\absent\a.txt", acceptsPdf: false),
+        const FilePreviewResponse.missing(),
+      );
     });
 
     test("reports a link whose target is missing as missing", () {
@@ -400,7 +431,10 @@ void main() {
         driveRootsApi: windowsDriveRootsApi,
       );
 
-      expect(deniedRepository.readPreviewFile(absolutePath: "/secret.txt"), const FilePreviewResponse.denied());
+      expect(
+        deniedRepository.readPreviewFile(absolutePath: "/secret.txt", acceptsPdf: false),
+        const FilePreviewResponse.denied(),
+      );
     });
 
     test("reports a denied lookup as denied rather than missing", () {
@@ -413,7 +447,10 @@ void main() {
         driveRootsApi: windowsDriveRootsApi,
       );
 
-      expect(deniedRepository.readPreviewFile(absolutePath: "/locked/a.txt"), const FilePreviewResponse.denied());
+      expect(
+        deniedRepository.readPreviewFile(absolutePath: "/locked/a.txt", acceptsPdf: false),
+        const FilePreviewResponse.denied(),
+      );
     });
 
     test("refuses pipes and sockets without opening them", () {
@@ -424,7 +461,10 @@ void main() {
           driveRootsApi: windowsDriveRootsApi,
         );
 
-        expect(repository.readPreviewFile(absolutePath: "/run/a.txt"), const FilePreviewResponse.unsupported());
+        expect(
+          repository.readPreviewFile(absolutePath: "/run/a.txt", acceptsPdf: false),
+          const FilePreviewResponse.unsupported(),
+        );
       }
     });
 
@@ -436,7 +476,7 @@ void main() {
 
         expect(preview("queue.txt"), const FilePreviewResponse.unsupported());
         expect(preview("queue-link.txt"), const FilePreviewResponse.unsupported());
-        expect(repository.readPreviewFile(absolutePath: "/dev/null"), isNot(isA<FilePreviewText>()));
+        expect(repository.readPreviewFile(absolutePath: "/dev/null", acceptsPdf: false), isNot(isA<FilePreviewText>()));
       },
       testOn: "!windows",
     );
@@ -452,7 +492,7 @@ void main() {
       );
 
       expect(
-        () => failingRepository.readPreviewFile(absolutePath: "/broken.txt"),
+        () => failingRepository.readPreviewFile(absolutePath: "/broken.txt", acceptsPdf: false),
         throwsA(isA<FileSystemException>()),
       );
     });

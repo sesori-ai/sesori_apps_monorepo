@@ -7,10 +7,13 @@ part of 'file_preview.dart';
 // **************************************************************************
 
 _FilePreviewRequest _$FilePreviewRequestFromJson(Map json) =>
-    _FilePreviewRequest(path: json['path'] as String);
+    _FilePreviewRequest(
+      path: json['path'] as String,
+      acceptsPdf: json['acceptsPdf'] as bool? ?? false,
+    );
 
 Map<String, dynamic> _$FilePreviewRequestToJson(_FilePreviewRequest instance) =>
-    <String, dynamic>{'path': instance.path};
+    <String, dynamic>{'path': instance.path, 'acceptsPdf': instance.acceptsPdf};
 
 FilePreviewText _$FilePreviewTextFromJson(Map json) => FilePreviewText(
   content: json['content'] as String,
@@ -34,6 +37,14 @@ Map<String, dynamic> _$FilePreviewImageToJson(FilePreviewImage instance) =>
       'byteLength': instance.byteLength,
       'type': instance.$type,
     };
+
+FilePreviewPdf _$FilePreviewPdfFromJson(Map json) => FilePreviewPdf(
+  base64: json['base64'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$FilePreviewPdfToJson(FilePreviewPdf instance) =>
+    <String, dynamic>{'base64': instance.base64, 'type': instance.$type};
 
 FilePreviewMissing _$FilePreviewMissingFromJson(Map json) =>
     FilePreviewMissing($type: json['type'] as String?);

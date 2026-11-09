@@ -49,6 +49,17 @@ void main() {
       expect(await read("${tempDir.path}/absent.dart"), const FilePreviewResponse.missing());
     });
 
+    test("passes the request's PDF opt-in to the repository", () async {
+      File("${tempDir.path}/report.pdf").writeAsStringSync("%PDF-1.7");
+      Future<FilePreviewResponse> readPdf({required bool acceptsPdf}) => handler.handle(
+        request: makeRequest("POST", "/filesystem/file"),
+        body: FilePreviewRequest(path: "${tempDir.path}/report.pdf", acceptsPdf: acceptsPdf),
+      );
+
+      expect(await readPdf(acceptsPdf: true), isA<FilePreviewPdf>());
+      expect(await readPdf(acceptsPdf: false), const FilePreviewResponse.unsupported());
+    });
+
     test("rejects a relative path or a parent segment with 400", () async {
       for (final path in ["src/main.dart", "${tempDir.path}/../main.dart"]) {
         await expectLater(

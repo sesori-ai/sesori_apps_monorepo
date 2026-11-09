@@ -3,12 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "file_preview.freezed.dart";
 part "file_preview.g.dart";
 
-/// The largest text file, in bytes, that `POST /filesystem/file` returns.
-/// Images use [maxTranscriptImageBytes] instead.
+/// The largest text or PDF file, in bytes, that `POST /filesystem/file`
+/// returns. Images use [maxTranscriptImageBytes] instead.
 ///
-/// Large enough for a self-contained HTML page with inline images. Even
-/// escaped twice as JSON, such text stays far below the relay's per-message
-/// cap (`RelayProtocol.maxMessageBytes`), and the response is deflated.
+/// Large enough for a self-contained HTML page with inline images. Such text
+/// escaped twice as JSON, or a PDF as base64, stays far below the relay's
+/// per-message cap (`RelayProtocol.maxMessageBytes`), and the response is
+/// deflated.
 const maxFilePreviewBytes = 20 * 1024 * 1024;
 
 /// Asks the bridge for a read-only preview of the file at [path], which must
@@ -17,6 +18,11 @@ const maxFilePreviewBytes = 20 * 1024 * 1024;
 sealed class FilePreviewRequest with _$FilePreviewRequest {
   const factory({
     required String path,
+    // COMPATIBILITY 2026-11-09 (v1.12.0): apps that predate PDF previews omit
+    // acceptsPdf and cannot parse a pdf response, so the bridge answers
+    // unsupported for them. Remove the field, and serve every PDF, once the
+    // minimum supported app sends it.
+    @Default(false) bool acceptsPdf,
   }) = _FilePreviewRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$FilePreviewRequestFromJson(json);
@@ -39,6 +45,13 @@ sealed class FilePreviewResponse with _$FilePreviewResponse {
     required String base64,
     required int byteLength,
   }) = FilePreviewImage;
+
+  /// A PDF of at most [maxFilePreviewBytes] bytes, sent only when the request
+  /// accepts PDFs.
+  @FreezedUnionValue("pdf")
+  const factory pdf({
+    required String base64,
+  }) = FilePreviewPdf;
 
   @FreezedUnionValue("missing")
   const factory missing() = FilePreviewMissing;
