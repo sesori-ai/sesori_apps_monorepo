@@ -810,6 +810,9 @@ class const BridgeRuntimeRunner._() {
       // Drops history whose session disappeared from the catalog while the
       // bridge was down, before any route can read or extend it.
       await activeRuntime.reconcileChatHistory();
+      // Best-effort and not awaited: without it, a computer that stops
+      // receiving files would keep its last uploads until the next save.
+      activeRuntime.sweepExpiredUploads();
 
       if (!options.isSupervised) {
         catalogImportConsoleListener = CatalogImportConsoleListener(
