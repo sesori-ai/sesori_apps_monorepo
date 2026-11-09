@@ -3,6 +3,8 @@ import "dart:math" as math;
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../utils/prego_text_spacing_overrides.dart";
+
 /// Where [PregoEllipsisText] drops characters when its text does not fit.
 enum PregoEllipsis() {
   /// "…Opus 5": for names whose distinguishing part comes last.
@@ -41,18 +43,6 @@ enum PregoEllipsis() {
     }
     return shorten(low);
   }
-}
-
-/// [style] with the accessibility line-height, letter-spacing and word-spacing
-/// overrides of the nearest [MediaQuery] on top, as [Text] applies them to
-/// every span it draws. Code that measures text for a [Text] needs them to
-/// measure what is drawn.
-TextStyle withTextSpacingOverrides({required BuildContext context, required TextStyle style}) {
-  final lineHeightScaleFactor = MediaQuery.maybeLineHeightScaleFactorOverrideOf(context);
-  final letterSpacing = MediaQuery.maybeLetterSpacingOverrideOf(context);
-  final wordSpacing = MediaQuery.maybeWordSpacingOverrideOf(context);
-  if (lineHeightScaleFactor == null && letterSpacing == null && wordSpacing == null) return style;
-  return style.merge(TextStyle(height: lineHeightScaleFactor, letterSpacing: letterSpacing, wordSpacing: wordSpacing));
 }
 
 /// One line of text that, when it does not fit, drops characters at [ellipsis]
