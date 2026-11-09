@@ -12,6 +12,7 @@ import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/identity/prompt_id.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
+import "../../foundation/models/composer/composer_attachment_delivery.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/prompt_send_failure.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
@@ -2345,26 +2346,38 @@ class SessionDetailCubit(
     }
 
     // Hold the declared capability line at the wire seam too. An unresolved
-    // capability refuses as well, so unsupported images never enter the queue.
-    // Before the first load, the launch's composer supplies what the loaded
-    // state would.
+    // capability refuses as well, so undeliverable attachments never enter the
+    // queue. Before the first load, the launch's composer supplies what the
+    // loaded state would.
     final options = switch ((current, seeded?.composer)) {
       (final SessionDetailLoaded loaded, _) => (
         supportsPromptAttachments: loaded.supportsPromptAttachments,
+        supportsFileUploads: loaded.supportsFileUploads,
         agent: loaded.selectedAgent,
         agentModel: loaded.selectedAgentModel,
         fastMode: loaded.runsFastMode,
       ),
       (_, final SessionLaunchComposer seed) => (
         supportsPromptAttachments: seed.supportsPromptAttachments,
+        supportsFileUploads: seed.supportsFileUploads,
         agent: seed.agent,
         agentModel: seed.agentModel,
         fastMode: seed.fastMode,
       ),
-      (_, null) => (supportsPromptAttachments: null, agent: null, agentModel: null, fastMode: false),
+      (_, null) => (
+        supportsPromptAttachments: null,
+        supportsFileUploads: null,
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      ),
     };
-    if (attachments.isNotEmpty && options.supportsPromptAttachments != true) {
-      logw("Refused ${attachments.length} attachment(s) because plugin support is unavailable");
+    if (!canDeliverComposerAttachments(
+      attachments: attachments,
+      inlineImages: options.supportsPromptAttachments,
+      fileUploads: options.supportsFileUploads,
+    )) {
+      logw("Refused ${attachments.length} attachment(s) because plugin or bridge support is unavailable");
       return;
     }
 
@@ -2556,8 +2569,12 @@ class SessionDetailCubit(
 
     final pendingSubmission = _promptQueue.items.firstOrNull;
     if (pendingSubmission == null) return;
-    if (pendingSubmission.attachments.isNotEmpty && current.supportsPromptAttachments != true) {
-      // Preserve authored FIFO order: the blocked image stays visible and
+    if (!canDeliverComposerAttachments(
+      attachments: pendingSubmission.attachments,
+      inlineImages: current.supportsPromptAttachments,
+      fileUploads: current.supportsFileUploads,
+    )) {
+      // Preserve authored FIFO order: the blocked attachment stays visible and
       // cancellable rather than allowing later text prompts to overtake it.
       return;
     }

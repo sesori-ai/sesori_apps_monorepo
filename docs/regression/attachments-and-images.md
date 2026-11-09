@@ -17,8 +17,9 @@ content the transcript renders live and after reload.
   actions show without the chevron. On both surfaces they fold back behind the
   chevron once the composer holds text, and the chevron still reopens them.
   Under reduced motion the pill opens and folds at once.
-- The shared composer offers image staging only for a backend declaring prompt
-  attachment support and only when its product shell supplies a real picker.
+- The shared composer offers staging only while the backend declares prompt
+  attachment support (images) or the bridge saves uploads (files), and only
+  when its product shell supplies a real picker.
   Mobile opens its gallery adapter; desktop opens a native file dialog for any
   files, routed like a drop (below).
   Shared core validates picked or clipboard bytes by raster signature and the
@@ -43,8 +44,9 @@ content the transcript renders live and after reload.
   within that size in a format shared core reads is handed over as it is, and
   so is a photo the platform can't decode: shared core then shrinks it as above
   when it reads the format, and otherwise gives the unsupported-format notice.
-  Staged images are memory-only. They are cleared when the target stops
-  supporting attachments, the session changes, or submission succeeds or
+  Staged images and files are memory-only. Staged images are cleared when the
+  backend stops supporting attachments and staged files when the bridge stops
+  saving uploads, and both when the session changes, or submission succeeds or
   settles after route exit; current-route failure instead transfers the one-shot
   snapshot into restoration. They never persist in a draft and travel inline
   within the staged-attachment size bound so the request fits the relay's message
@@ -80,11 +82,21 @@ content the transcript renders live and after reload.
   Anything else, including folders and images that are unsupported or over
   budget, is typed into the prompt at the caret as its absolute path when the
   active bridge runs on this computer; paths with whitespace are quoted and
-  separated by spaces. On a bridge on another computer it is not added, and one
-  notice has a line per reason, each counting the files turned away for it.
-  This works regardless of backend attachment support, which still gates the
-  plus action. Images from several picks, pastes and drops stage in the order
-  they were added, even when an earlier one takes longer to downscale. A late
+  separated by spaces. On a bridge on another computer that saves uploads, any
+  other file that fits the rest of the budget stages as a file tile with its
+  original bytes and name (a file glyph over its extension, the name as its
+  tooltip and label); a folder is not added. On an older bridge on another
+  computer nothing but a stageable image is added. Either way one notice has a
+  line per reason (file, folder, a path that couldn't be read, images the
+  agent doesn't take, the 50 MB budget), each counting the files turned away for it. This works regardless of
+  backend attachment support. The plus action is offered while the backend
+  takes images or the bridge saves uploads. A pasted or picked image for a
+  backend without images (Grok) stages as a file, named after the picked file
+  or `pasted-image.<ext>`, when the bridge saves uploads. A staged file is sent
+  as `application/octet-stream`, so the bridge saves it. When the backend stops
+  taking images, staged images are cleared, and when the bridge stops saving
+  uploads, staged files are; an unknown answer clears nothing. Images and files
+  from several picks, pastes and drops stage in the order they were added, even when an earlier one takes longer to downscale. A late
   result never lands in a composer that moved to another draft.
 - On desktop, a paste takes files copied in Finder or Explorer first, then an
   image, then text. Copied files go through the drop rule above, whatever the
@@ -294,8 +306,10 @@ account-level rejection without changing the descriptor's capability claim.
 - Send pressed while an image is still being prepared goes out without it,
   goes out twice, shows no spinner while it waits, or sends into a session the
   user has since left.
-- The composer offers or sends attachments to an unsupporting backend, retains
-  staged images after switching to one, or the viewer acts on the wrong image.
+- The composer offers or sends images to a backend without attachment support,
+  or files to a bridge that doesn't save uploads, retains staged images or
+  files after switching to such a target, clears them while a capability is
+  still unknown, or the viewer acts on the wrong image.
 - Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
   image, diverges between live and replay, or bypasses existing count/byte/type limits.
 - Copilot advertises images but drops the ACP image part, accepts it with the
@@ -306,8 +320,9 @@ account-level rejection without changing the descriptor's capability claim.
 
 ## Known Limitations
 
-- Prompt attachment support is read from declared capabilities, so an
-  unsupporting backend hides staging rather than failing at send time.
+- Prompt attachment support and upload saving are read from declared
+  capabilities, so a target that takes neither hides staging rather than
+  failing at send time.
 - Several images that each stay just under the downscale threshold can still
   exceed a backend's own aggregate inline-image limit; that send fails visibly
   at the bridge.
@@ -318,8 +333,9 @@ account-level rejection without changing the descriptor's capability claim.
   covered by the remote-attachment guarantee.
 - Antigravity native prompt-image acceptance and Google-generated image behavior remain unverified; account or
   model rejection must stay visible and does not justify reading path-only provider output.
-- Only images reach a bridge on another computer: a non-image file dropped or
-  picked there is turned away with a notice until remote file transfer exists.
+- Only images reach an older bridge on another computer: a non-image file
+  dropped or picked there is turned away with a notice. Folders never reach a
+  bridge on another computer.
 - Saved prompt files are removed with their session when it is deleted from
   Sesori; that removal is best-effort. Age cleanup is a best-effort sweep that
   runs only after a later save on the same bridge, so a file can stay well past
@@ -334,8 +350,9 @@ account-level rejection without changing the descriptor's capability claim.
 - An Android GIF above the 50 MB budget is turned away as too large, since
   it is never shrunk. HEIF photos need Android 9 (API 28) or later; on Android
   7 and 8 they get the unsupported-format notice.
-- The plus action follows backend attachment support, so a backend without it
-  offers no picker even on a local bridge, where drop still inserts paths.
+- On an older bridge, the plus action follows backend attachment support, so a
+  backend without it offers no picker even on a local bridge, where drop still
+  inserts paths.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and
   account entitlement; a visible upstream rejection is expected coverage, not a

@@ -1031,7 +1031,7 @@
   },
   "sessionDetailAttachFiles": "Attach files",
   "@sessionDetailAttachFiles": {
-    "description": "Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths when the bridge is local, and rejected otherwise."
+    "description": "Accessibility label of the desktop advanced-options action that opens a file picker for any files: images are attached, other files are added to the prompt as their paths when the bridge is local, attached as files when a bridge on another computer saves them, and rejected otherwise."
   },
   "sessionDetailRemoveAttachment": "Remove attachment",
   "@sessionDetailRemoveAttachment": {
@@ -1039,46 +1039,52 @@
   },
   "sessionDetailAttachedImage": "Attached image",
   "@sessionDetailAttachedImage": {
-    "description": "Fallback accessibility label of a staged attachment thumbnail when the image has no filename."
+    "description": "Fallback accessibility label of a staged image thumbnail when the image has no filename. A staged file always shows its name."
   },
   "sessionDetailAttachmentSizeBytes": "{count} bytes",
   "@sessionDetailAttachmentSizeBytes": {
     "description": "Byte size shown in a transcript attachment metadata overlay.",
     "placeholders": {"count": {"type": "int"}}
   },
-  "sessionDetailAttachmentTooLarge": "That image is too large to attach.",
-  "@sessionDetailAttachmentTooLarge": {
-    "description": "Snackbar shown when a picked image exceeds the inline attachment size limit."
-  },
-  "sessionDetailAttachmentPickFailed": "Couldn't attach the image.",
+  "sessionDetailAttachmentPickFailed": "Couldn't add the attachment.",
   "@sessionDetailAttachmentPickFailed": {
-    "description": "Snackbar shown when the gallery picker fails for a reason other than the size limit."
+    "description": "Snackbar shown when picking, dropping or pasting an image or file fails for a reason other than the size limit."
   },
   "sessionDetailAttachmentUnsupported": "That image format isn't supported.",
   "@sessionDetailAttachmentUnsupported": {
     "description": "Snackbar shown when the picked file is not a recognized image format and cannot be attached."
   },
-  "sessionDetailAttachmentBudgetExceeded": "Attached images are limited to 50 MB per message.",
+  "sessionDetailAttachmentBudgetExceeded": "Attachments are limited to 50 MB per message.",
   "@sessionDetailAttachmentBudgetExceeded": {
-    "description": "Snackbar shown when adding another image would push the message's combined attachment size past the outbound composer limit."
+    "description": "Snackbar shown when adding another image or file would push the message's combined attachment size past the outbound composer limit."
   },
-  "sessionDetailAttachmentsNotWithCommands": "Images can't be sent with slash commands.",
+  "sessionDetailAttachmentsNotWithCommands": "Attachments can't be sent with slash commands.",
   "@sessionDetailAttachmentsNotWithCommands": {
-    "description": "Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images."
+    "description": "Snackbar shown when sending while both a slash command and image or file attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the attachments."
   },
   "sessionDetailFilesNotTransferable": "{count, plural, =1{A file wasn't added. Only images can be sent to another computer for now.} other{{count} files weren't added. Only images can be sent to another computer for now.}}",
   "@sessionDetailFilesNotTransferable": {
-    "description": "Notice shown when picked or dropped files could not be added because the active bridge runs on another computer and only images can reach it. The count covers the files not added for this reason; when a drop has several reasons, each reason's notice is shown on its own line.",
+    "description": "Notice shown when picked or dropped files could not be added because the active bridge runs on another computer and, being an older version, only images can reach it. The count covers the files not added for this reason; when a drop has several reasons, each reason's notice is shown on its own line.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "sessionDetailFoldersNotTransferable": "{count, plural, =1{A folder wasn't added. Folders can't be sent to another computer.} other{{count} folders weren't added. Folders can't be sent to another computer.}}",
+  "@sessionDetailFoldersNotTransferable": {
+    "description": "Notice shown when picked, dropped or pasted folders could not be added because the active bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "sessionDetailFilesUnreadable": "{count, plural, =1{A file wasn't added. It couldn't be read.} other{{count} files weren't added. They couldn't be read.}}",
+  "@sessionDetailFilesUnreadable": {
+    "description": "Notice shown when picked, dropped or pasted paths could not be added because they are gone, are not regular files, or failed to read, on a bridge on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
     "placeholders": {"count": {"type": "int"}}
   },
   "sessionDetailImagesNotAccepted": "{count, plural, =1{An image wasn't added. This agent doesn't accept images.} other{{count} images weren't added. This agent doesn't accept images.}}",
   "@sessionDetailImagesNotAccepted": {
-    "description": "Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer, so their paths cannot be used either. Shown on its own line alongside the other reasons' notices when a drop has several.",
+    "description": "Notice shown when picked or dropped images could not be attached because the backend takes no image attachments and the bridge runs on another computer that can't save them as files, so neither their paths nor a file upload can be used. Shown on its own line alongside the other reasons' notices when a drop has several.",
     "placeholders": {"count": {"type": "int"}}
   },
-  "sessionDetailImagesOverBudget": "{count, plural, =1{An image wasn't added. Attached images are limited to 50 MB per message.} other{{count} images weren't added. Attached images are limited to 50 MB per message.}}",
-  "@sessionDetailImagesOverBudget": {
-    "description": "Notice shown when picked or dropped images could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
+  "sessionDetailAttachmentsOverBudget": "{count, plural, =1{An attachment wasn't added. Attachments are limited to 50 MB per message.} other{{count} attachments weren't added. Attachments are limited to 50 MB per message.}}",
+  "@sessionDetailAttachmentsOverBudget": {
+    "description": "Notice shown when picked, dropped or pasted images or files could not be attached because they would push the message past its combined attachment limit and the bridge runs on another computer. Shown on its own line alongside the other reasons' notices when a drop has several.",
     "placeholders": {"count": {"type": "int"}}
   },
   "sessionDetailFinishRecordingBeforeAddingFiles": "Finish recording before adding files",
@@ -1102,9 +1108,9 @@
       }
     }
   },
-  "sessionDetailQueuedAttachmentCount": "{count, plural, =1{1 image} other{{count} images}}",
+  "sessionDetailQueuedAttachmentCount": "{count, plural, =1{1 attachment} other{{count} attachments}}",
   "@sessionDetailQueuedAttachmentCount": {
-    "description": "Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.",
+    "description": "Body of a queued-message bubble whose submission has image or file attachments but no text, e.g. '1 attachment'.",
     "placeholders": {
       "count": {
         "type": "int"

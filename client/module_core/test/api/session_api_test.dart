@@ -215,7 +215,7 @@ void main() {
         expect(priorEventLoopTurnRan, isTrue);
         return ApiResponse.success(session);
       });
-      final attachment = ComposerAttachment(
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList(List<int>.generate(19, (index) => index)),
         filename: 'screen"shot.png',
@@ -286,7 +286,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(session));
-      final attachment = ComposerAttachment(
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList(const [1, 2, 3]),
         filename: null,
@@ -376,7 +376,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      final attachment = ComposerAttachment(
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList(const [1, 2, 3]),
         filename: "screenshot.png",
@@ -425,7 +425,11 @@ void main() {
         sessionId: "session-1",
         text: "",
         attachments: [
-          ComposerAttachment(mime: "image/jpeg", bytes: Uint8List.fromList(const [7]), filename: null),
+          ComposerImageAttachment(
+            mime: "image/jpeg",
+            bytes: Uint8List.fromList(const [7]),
+            filename: null,
+          ),
         ],
         agent: null,
         model: null,
@@ -444,6 +448,115 @@ void main() {
       final request = verification.captured.single as SendPromptRequest;
       expect(request.parts, [
         PromptPart.fileData(mime: "image/jpeg", base64: base64Encode(const [7]), filename: null),
+      ]);
+    });
+
+    test("sendMessage sends a staged file as application/octet-stream, whatever its bytes are", () async {
+      when(
+        () => client.post<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      await api.sendMessage(
+        promptId: "prompt-1",
+        sessionId: "session-1",
+        text: "read this",
+        attachments: [
+          // An image staged as a file for a harness that takes no images.
+          ComposerFileAttachment(
+            bytes: Uint8List.fromList(const [1, 2]),
+            filename: "shot.png",
+          ),
+        ],
+        agent: null,
+        model: null,
+        variant: null,
+        fastMode: false,
+        command: null,
+      );
+
+      final verification = verify(
+        () => client.post<void>(
+          "/session/prompt_async",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final request = verification.captured.single as SendPromptRequest;
+      expect(request.parts, [
+        const PromptPart.text(text: "read this"),
+        PromptPart.fileData(
+          mime: "application/octet-stream",
+          base64: base64Encode(const [1, 2]),
+          filename: "shot.png",
+        ),
+      ]);
+    });
+
+    test("attachment create sends a staged file as application/octet-stream", () async {
+      when(
+        () => client.post<Session>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Session(
+            approvalOverride: null,
+            autoContinuation: null,
+            branchName: null,
+            id: "session-1",
+            pluginId: "plugin-1",
+            projectID: "project-1",
+            directory: "/tmp/project-1",
+            parentID: null,
+            title: "Session",
+            time: SessionTime(created: 1, updated: 1, archived: null),
+            promptDefaults: null,
+            lastUserActivityAt: null,
+          ),
+        ),
+      );
+
+      await api.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: "",
+        attachments: [
+          ComposerFileAttachment(
+            bytes: Uint8List.fromList(const [4, 5, 6]),
+            filename: "report.pdf",
+          ),
+        ],
+        agent: null,
+        model: null,
+        variant: null,
+        fastMode: false,
+        command: null,
+        dedicatedWorktree: false,
+      );
+
+      final verification = verify(
+        () => client.post<Session>(
+          "/session/create",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+          timeout: any(named: "timeout"),
+        ),
+      )..called(1);
+      final body = jsonDecode(verification.captured.single as String) as Map<String, dynamic>;
+      expect(body["parts"], [
+        {
+          "mime": "application/octet-stream",
+          "base64": base64Encode(const [4, 5, 6]),
+          "filename": "report.pdf",
+          "type": "file_data",
+        },
       ]);
     });
 

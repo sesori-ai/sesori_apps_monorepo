@@ -97,6 +97,7 @@ void main() {
         repository: mockPluginRepository,
         pluginId: "plugin-1",
         supportsPromptAttachments: false,
+        supportsFileUploads: false,
       );
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
@@ -1770,6 +1771,7 @@ void main() {
           repository: mockPluginRepository,
           pluginId: "codex",
           supportsPromptAttachments: true,
+          supportsFileUploads: false,
         );
         stubSessionRepositoryGetSession(
           repository: mockSessionRepository,
@@ -1784,7 +1786,13 @@ void main() {
           text: "look at this",
           command: null,
           inputMode: ComposerInputMode.typed,
-          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          attachments: [
+            ComposerImageAttachment(
+              mime: "image/png",
+              bytes: Uint8List(4),
+              filename: "shot.png",
+            ),
+          ],
         );
       },
       expect: () => [
@@ -1817,6 +1825,7 @@ void main() {
           repository: mockPluginRepository,
           pluginId: "opencode",
           supportsPromptAttachments: false,
+          supportsFileUploads: false,
         );
         stubSessionRepositoryGetSession(
           repository: mockSessionRepository,
@@ -1831,7 +1840,13 @@ void main() {
           text: "look at this",
           command: null,
           inputMode: ComposerInputMode.typed,
-          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          attachments: [
+            ComposerImageAttachment(
+              mime: "image/png",
+              bytes: Uint8List(4),
+              filename: "shot.png",
+            ),
+          ],
         );
       },
       // Refused outright rather than sent with the images stripped: nothing
@@ -1856,6 +1871,72 @@ void main() {
       },
     );
 
+    for (final supportsFileUploads in [true, false]) {
+      blocTest<SessionDetailCubit, SessionDetailState>(
+        "sendMessage ${supportsFileUploads ? "forwards" : "refuses"} a file for a harness without images "
+        "when the bridge ${supportsFileUploads ? "saves" : "doesn't save"} uploads",
+        build: () {
+          _stubPromptAttachmentCapability(
+            repository: mockPluginRepository,
+            pluginId: "grok",
+            supportsPromptAttachments: false,
+            supportsFileUploads: supportsFileUploads,
+          );
+          stubSessionRepositoryGetSession(
+            repository: mockSessionRepository,
+            sessionId: sessionId,
+            session: testSession(id: sessionId, pluginId: "grok"),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await _awaitLoaded(cubit);
+          await cubit.sendMessage(
+            text: "read this",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: [
+              ComposerFileAttachment(
+                bytes: Uint8List(4),
+                filename: "report.pdf",
+              ),
+            ],
+          );
+        },
+        verify: (_) {
+          if (supportsFileUploads) {
+            verify(
+              () => mockSourceRepository.sendMessage(
+                promptId: any(named: "promptId"),
+                sessionId: any(named: "sessionId"),
+                text: any(named: "text"),
+                attachments: any(named: "attachments"),
+                agent: any(named: "agent"),
+                model: any(named: "model"),
+                variant: any(named: "variant"),
+                fastMode: any(named: "fastMode"),
+                command: any(named: "command"),
+              ),
+            ).called(1);
+          } else {
+            verifyNever(
+              () => mockSourceRepository.sendMessage(
+                promptId: any(named: "promptId"),
+                sessionId: any(named: "sessionId"),
+                text: any(named: "text"),
+                attachments: any(named: "attachments"),
+                agent: any(named: "agent"),
+                model: any(named: "model"),
+                variant: any(named: "variant"),
+                fastMode: any(named: "fastMode"),
+                command: any(named: "command"),
+              ),
+            );
+          }
+        },
+      );
+    }
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage refuses a command carrying attachments instead of dropping them",
       build: buildCubit,
@@ -1865,7 +1946,13 @@ void main() {
           text: "look at this",
           command: "review",
           inputMode: ComposerInputMode.typed,
-          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          attachments: [
+            ComposerImageAttachment(
+              mime: "image/png",
+              bytes: Uint8List(4),
+              filename: "shot.png",
+            ),
+          ],
         );
       },
       // The bridge's command paths carry only text, so the send is refused
@@ -3947,13 +4034,14 @@ void _stubPromptAttachmentCapability({
   required MockPluginRepository repository,
   required String pluginId,
   required bool supportsPromptAttachments,
+  required bool supportsFileUploads,
 }) {
   when(() => repository.listPlugins()).thenAnswer(
     (_) async => ApiResponse.success(
       PluginDiscoverySnapshot(
         bridgeId: "bridge-test",
         supportsSessionOptions: true,
-        supportsFileUploads: false,
+        supportsFileUploads: supportsFileUploads,
         plugins: [
           PluginMetadata(
             id: pluginId,

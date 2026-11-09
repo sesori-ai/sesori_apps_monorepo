@@ -168,6 +168,7 @@ export "src/foundation/io/plugin_authentication_loopback_server.dart";
 export "src/foundation/io/temporary_directory_client.dart";
 export "src/foundation/models/chat_link/chat_link_presentation.dart";
 export "src/foundation/models/composer/composer_attachment.dart";
+export "src/foundation/models/composer/composer_attachment_delivery.dart";
 export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/composer/new_session_submission_snapshot.dart";
 export "src/foundation/models/composer/prompt_send_failure.dart";

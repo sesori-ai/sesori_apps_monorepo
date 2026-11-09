@@ -378,7 +378,13 @@ void main() {
         await waitForComposer(cubit);
         await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
-          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          attachments: [
+            ComposerImageAttachment(
+              mime: "image/png",
+              bytes: Uint8List(4),
+              filename: "shot.png",
+            ),
+          ],
           dedicatedWorktree: false,
           command: "review",
         );
@@ -447,7 +453,13 @@ void main() {
         await waitForComposer(cubit);
         await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
-          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          attachments: [
+            ComposerImageAttachment(
+              mime: "image/png",
+              bytes: Uint8List(4),
+              filename: "shot.png",
+            ),
+          ],
           dedicatedWorktree: false,
           command: null,
         );
@@ -475,6 +487,71 @@ void main() {
       },
     );
 
+    for (final supportsFileUploads in [true, false]) {
+      blocTest<NewSessionCubit, NewSessionState>(
+        "createSession ${supportsFileUploads ? "sends" : "refuses"} a file for a plugin without images "
+        "when the bridge ${supportsFileUploads ? "saves" : "doesn't save"} uploads",
+        skip: 2,
+        build: () {
+          when(mockPluginRepository.listPlugins).thenAnswer(
+            (_) async => ApiResponse.success(
+              PluginDiscoverySnapshot(
+                bridgeId: "bridge-1",
+                supportsSessionOptions: true,
+                supportsFileUploads: supportsFileUploads,
+                plugins: const [
+                  PluginMetadata(
+                    id: "grok",
+                    displayName: "Grok",
+                    isDefault: true,
+                    state: PluginLifecycleState.ready,
+                    actionHint: null,
+                    supportsPromptAttachments: false,
+                  ),
+                ],
+              ),
+            ),
+          );
+          when(
+            () => mockLaunchSessionRepository.createSessionWithMessage(
+              projectId: any(named: "projectId"),
+              pluginId: any(named: "pluginId"),
+              text: any(named: "text"),
+              attachments: any(named: "attachments"),
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
+              command: any(named: "command"),
+              dedicatedWorktree: any(named: "dedicatedWorktree"),
+            ),
+          ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await waitForComposer(cubit);
+          await cubit.submit(
+            draft: ComposerDraft.typed(text: "read this"),
+            attachments: [
+              ComposerFileAttachment(
+                bytes: Uint8List(4),
+                filename: "report.pdf",
+              ),
+            ],
+            dedicatedWorktree: false,
+            command: null,
+          );
+        },
+        expect: () => supportsFileUploads
+            ? [
+                composingWith<NewSessionPhaseIdle>(),
+                composingWith<NewSessionPhaseSending>(),
+                isA<NewSessionCreated>(),
+              ]
+            : [composingWith<NewSessionPhaseIdle>()],
+      );
+    }
+
     blocTest<NewSessionCubit, NewSessionState>(
       "createSession refuses attachments when the plugin declares no support",
       skip: 2,
@@ -483,7 +560,13 @@ void main() {
         await waitForComposer(cubit);
         await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
-          attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
+          attachments: [
+            ComposerImageAttachment(
+              mime: "image/png",
+              bytes: Uint8List(4),
+              filename: "shot.png",
+            ),
+          ],
           dedicatedWorktree: false,
           command: null,
         );
@@ -740,7 +823,7 @@ void main() {
     test("failed text submission restores exact voice draft and attachment identities until acknowledged", () async {
       final response = Completer<ApiResponse<Session>>();
       final repository = inMemoryComposerDraftRepository();
-      final attachment = ComposerAttachment(
+      final attachment = ComposerImageAttachment(
         mime: "image/png",
         bytes: Uint8List.fromList([1, 2, 3]),
         filename: "shot.png",
@@ -821,8 +904,11 @@ void main() {
       final response = Completer<ApiResponse<Session>>();
       final draftRepository = inMemoryComposerDraftRepository();
       final launchRepository = inMemorySessionLaunchRepository();
-      ComposerAttachment image(String name) =>
-          ComposerAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: name);
+      ComposerAttachment image(String name) => ComposerImageAttachment(
+        mime: "image/png",
+        bytes: Uint8List.fromList([1]),
+        filename: name,
+      );
       final firstImage = image("first.png");
       final followUpImage = image("follow-up.png");
       when(mockPluginRepository.listPlugins).thenAnswer(
@@ -2459,7 +2545,11 @@ void main() {
       });
 
       group("the live composer", () {
-        final image = ComposerAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: "a.png");
+        final image = ComposerImageAttachment(
+          mime: "image/png",
+          bytes: Uint8List.fromList([1]),
+          filename: "a.png",
+        );
 
         List<LaunchFollowUp> followUpsOf(NewSessionCubit cubit) =>
             ((cubit.state as NewSessionComposing).phase as NewSessionPhaseSending).followUps;

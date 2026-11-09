@@ -76,6 +76,88 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   }
 
+  testWidgets("file tile shows a glyph and the extension, names the file and removes it", (tester) async {
+    final semantics = tester.ensureSemantics();
+    var removed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Center(
+            child: PregoFileAttachmentPreview(
+              fileName: "Quarterly report.pdf",
+              removeLabel: "Remove attachment",
+              onRemove: () => removed = true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byType(PregoFileAttachmentPreview)), const Size(52, 52));
+    expect(find.byIcon(TablerRegular.file), findsOneWidget);
+    expect(find.text("PDF"), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Quarterly report.pdf"),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSemantics(find.bySemanticsLabel("Quarterly report.pdf")),
+      matchesSemantics(label: "Quarterly report.pdf"),
+    );
+    final tile = tester.getRect(find.byType(PregoFileAttachmentPreview));
+    await tester.tapAt(tile.topRight + const Offset(-8, 8));
+    await tester.pumpAndSettle();
+    expect(removed, isTrue);
+    semantics.dispose();
+  });
+
+  testWidgets("file face shows no extension for a name without one", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: const Scaffold(
+          body: Center(
+            child: SizedBox.square(dimension: 64, child: PregoFileAttachmentFace(fileName: "Makefile")),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(TablerRegular.file), findsOneWidget);
+    expect(find.byType(Text), findsNothing);
+  });
+
+  testWidgets("file tile fits its glyph and extension inside the square at large text sizes", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(3)),
+              child: Center(
+                child: PregoFileAttachmentPreview(
+                  fileName: "Quarterly report.numbers",
+                  removeLabel: "Remove attachment",
+                  onRemove: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final tile = tester.getRect(find.byType(PregoFileAttachmentPreview));
+    expect(tile.size, const Size(52, 52));
+    expect(tile.contains(tester.getRect(find.byIcon(TablerRegular.file)).center), isTrue);
+    final label = tester.getRect(find.text("NUMBERS"));
+    expect(tile.left <= label.left && label.right <= tile.right, isTrue);
+    expect(tile.top <= label.top && label.bottom <= tile.bottom, isTrue);
+  });
+
   for (final direction in TextDirection.values) {
     testWidgets("edge fades track both scroll directions and clear after removal in $direction", (tester) async {
       Future<void> pump({required int count}) => tester.pumpWidget(

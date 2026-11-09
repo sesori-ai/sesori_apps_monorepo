@@ -31,6 +31,17 @@ class _PendingComposerFilePicker() implements ComposerFilePicker {
   Future<ComposerPickResult?> pick() => result.future;
 }
 
+/// A picker the user always dismisses, counting how often it opens.
+class _CountingComposerFilePicker() implements ComposerFilePicker {
+  int picks = 0;
+
+  @override
+  Future<ComposerPickResult?> pick() async {
+    picks++;
+    return null;
+  }
+}
+
 class _FixedImageClipboard({required final Uint8List _bytes}) implements ImageClipboard {
   @override
   Future<Uint8List?> readImage() async => _bytes;
@@ -354,6 +365,7 @@ void main() {
       droppedPaths: drops.stream,
       voiceCubit: null,
       attachmentsSupported: false,
+      fileUploadsSupported: false,
       onAttachmentsChanged: (_) {},
     );
 
@@ -362,12 +374,199 @@ void main() {
 
     expect(
       find.text(
-        "2 files weren't added. Only images can be sent to another computer for now.\n"
+        "A file wasn't added. Only images can be sent to another computer for now.\n"
+        "A folder wasn't added. Folders can't be sent to another computer.\n"
         "An image wasn't added. This agent doesn't accept images.",
       ),
       findsOneWidget,
     );
     await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  group("on a bridge on another computer that saves uploads", () {
+    final png = Uint8List.fromList(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+    late Directory root;
+    late String imagePath;
+    late String notesPath;
+
+    setUp(() {
+      root = Directory.systemTemp.createTempSync("composer_remote_files_test");
+      imagePath = (File("${root.path}/shot.png")..writeAsBytesSync(png)).path;
+      notesPath = (File("${root.path}/notes.dart")..writeAsStringSync("void main() {}")).path;
+    });
+
+    tearDown(() => root.deleteSync(recursive: true));
+
+    Future<void> pumpRemote({
+      required WidgetTester tester,
+      required ComposerAttachmentDispatcher dispatcher,
+      required ImageClipboard clipboard,
+      required Stream<List<String>>? droppedPaths,
+      required bool attachmentsSupported,
+      required bool? fileUploadsSupported,
+      required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
+    }) => _pumpAttachComposer(
+      tester: tester,
+      dispatcher: dispatcher,
+      clipboard: clipboard,
+      fileClipboard: const _FixedFileClipboard(paths: []),
+      droppedPaths: droppedPaths,
+      voiceCubit: null,
+      attachmentsSupported: attachmentsSupported,
+      fileUploadsSupported: fileUploadsSupported,
+      onAttachmentsChanged: onAttachmentsChanged,
+    );
+
+    ComposerAttachmentDispatcher remoteDispatcher({required ComposerFilePicker filePicker}) =>
+        composerAttachmentDispatcherForTest(
+          filePicker: filePicker,
+          downscaleBuilder: const ComposerImageDownscaleBuilder(),
+          bridgeIsLocal: false,
+        );
+
+    testWidgets("the plus opens the picker for a harness without images, and is gone when neither is taken", (
+      tester,
+    ) async {
+      final picker = _CountingComposerFilePicker();
+      await pumpRemote(
+        tester: tester,
+        dispatcher: remoteDispatcher(filePicker: picker),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: false,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: (_) {},
+      );
+      await tester.tap(_tooltip("More actions"));
+      await tester.pumpAndSettle();
+      await tester.tap(_tooltip("Attach files"));
+      await tester.pumpAndSettle();
+      expect(picker.picks, 1);
+
+      await pumpRemote(
+        tester: tester,
+        dispatcher: remoteDispatcher(filePicker: picker),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: null,
+        attachmentsSupported: false,
+        fileUploadsSupported: false,
+        onAttachmentsChanged: (_) {},
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(_tooltip("More actions"));
+      await tester.pumpAndSettle();
+      expect(_tooltip("Slash commands"), findsOneWidget);
+      expect(_tooltip("Attach files"), findsNothing);
+    });
+
+    testWidgets("a dropped file stages as a named tile the close button removes", (tester) async {
+      final drops = StreamController<List<String>>();
+      addTearDown(drops.close);
+      final reportedAttachments = <List<ComposerAttachment>>[];
+      final semantics = tester.ensureSemantics();
+      await pumpRemote(
+        tester: tester,
+        dispatcher: remoteDispatcher(filePicker: const NoOpComposerFilePicker()),
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: drops.stream,
+        attachmentsSupported: false,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+
+      drops.add([notesPath]);
+      await _settleFileReads(tester);
+      await tester.pumpAndSettle();
+
+      final staged = reportedAttachments.last.single;
+      expect(staged, isA<ComposerFileAttachment>());
+      expect(staged.filename, "notes.dart");
+      expect(staged.mime, composerFileAttachmentMime);
+      expect(utf8.decode(staged.bytes), "void main() {}");
+      expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
+      expect(find.bySemanticsLabel("notes.dart"), findsOneWidget);
+      expect(_tooltip("notes.dart"), findsOneWidget);
+      expect(find.text("DART"), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "see attached");
+
+      await tester.tap(_tooltip("Remove attachment"));
+      await tester.pumpAndSettle();
+      expect(reportedAttachments.last, isEmpty);
+      expect(find.byType(PregoFileAttachmentPreview), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets("a pasted image for a harness without images stages as pasted-image.png", (tester) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        return switch (call.method) {
+          "Clipboard.getData" => <String, Object?>{"text": ""},
+          "Clipboard.hasStrings" => <String, Object?>{"value": false},
+          _ => null,
+        };
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      final reportedAttachments = <List<ComposerAttachment>>[];
+      await pumpRemote(
+        tester: tester,
+        dispatcher: remoteDispatcher(filePicker: const NoOpComposerFilePicker()),
+        clipboard: _FixedImageClipboard(bytes: png),
+        droppedPaths: null,
+        attachmentsSupported: false,
+        fileUploadsSupported: true,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+      await tester.showKeyboard(find.byType(EditableText));
+      final actionContext = FocusManager.instance.primaryFocus?.context ?? fail("the composer field is not focused");
+      Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
+      await _settleFileReads(tester);
+      await tester.pumpAndSettle();
+
+      final staged = reportedAttachments.last.single;
+      expect(staged, isA<ComposerFileAttachment>());
+      expect(staged.filename, "pasted-image.png");
+      expect(staged.mime, composerFileAttachmentMime);
+      expect(staged.bytes, png);
+      expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
+    });
+
+    testWidgets("losing uploads drops staged files and keeps images; an unknown answer keeps both", (tester) async {
+      final drops = StreamController<List<String>>();
+      addTearDown(drops.close);
+      final reportedAttachments = <List<ComposerAttachment>>[];
+      final dispatcher = remoteDispatcher(filePicker: const NoOpComposerFilePicker());
+      Future<void> pumpWith({required bool attachmentsSupported, required bool? fileUploadsSupported}) => pumpRemote(
+        tester: tester,
+        dispatcher: dispatcher,
+        clipboard: _NoOpImageClipboard(),
+        droppedPaths: drops.stream,
+        attachmentsSupported: attachmentsSupported,
+        fileUploadsSupported: fileUploadsSupported,
+        onAttachmentsChanged: reportedAttachments.add,
+      );
+      List<Type> stagedKinds() => [
+        for (final attachment in reportedAttachments.last) attachment.runtimeType,
+      ];
+
+      await pumpWith(attachmentsSupported: true, fileUploadsSupported: true);
+      drops.add([notesPath, imagePath]);
+      await _settleFileReads(tester);
+      await tester.pumpAndSettle();
+      expect(stagedKinds(), [ComposerFileAttachment, ComposerImageAttachment]);
+
+      await pumpWith(attachmentsSupported: true, fileUploadsSupported: null);
+      await tester.pumpAndSettle();
+      expect(stagedKinds(), [ComposerFileAttachment, ComposerImageAttachment]);
+      expect(find.byType(PregoFileAttachmentPreview), findsOneWidget);
+
+      await pumpWith(attachmentsSupported: true, fileUploadsSupported: false);
+      await tester.pumpAndSettle();
+      expect(stagedKinds(), [ComposerImageAttachment]);
+      expect(find.byType(PregoFileAttachmentPreview), findsNothing);
+
+      await pumpWith(attachmentsSupported: false, fileUploadsSupported: false);
+      await tester.pumpAndSettle();
+      expect(reportedAttachments.last, isEmpty);
+    });
   });
 
   testWidgets("a drop that follows another is routed against the budget the first one left", (tester) async {
@@ -392,6 +591,7 @@ void main() {
       droppedPaths: drops.stream,
       voiceCubit: null,
       attachmentsSupported: true,
+      fileUploadsSupported: false,
       onAttachmentsChanged: reportedAttachments.add,
     );
 
@@ -426,6 +626,7 @@ void main() {
       droppedPaths: drops.stream,
       voiceCubit: voiceCubit,
       attachmentsSupported: true,
+      fileUploadsSupported: false,
       onAttachmentsChanged: (_) {},
     );
     expect(drops.isPaused, isFalse);
@@ -457,6 +658,7 @@ void main() {
       droppedPaths: null,
       voiceCubit: null,
       attachmentsSupported: true,
+      fileUploadsSupported: false,
       onAttachmentsChanged: reportedAttachments.add,
     );
 
@@ -494,6 +696,7 @@ void main() {
       droppedPaths: null,
       voiceCubit: null,
       attachmentsSupported: true,
+      fileUploadsSupported: false,
       onAttachmentsChanged: reportedAttachments.add,
     );
 
@@ -559,6 +762,7 @@ void main() {
         droppedPaths: null,
         voiceCubit: null,
         attachmentsSupported: attachmentsSupported,
+        fileUploadsSupported: false,
         onAttachmentsChanged: onAttachmentsChanged,
       );
       await tester.showKeyboard(find.byType(EditableText));
@@ -667,6 +871,7 @@ void main() {
           droppedPaths: null,
           voiceCubit: null,
           attachmentsSupported: true,
+          fileUploadsSupported: false,
           onAttachmentsChanged: (_) {},
         );
         await tester.showKeyboard(find.byType(EditableText));
@@ -717,7 +922,7 @@ void main() {
     final clipboard = _NoOpImageClipboard();
     final images = [
       for (var i = 0; i < 8; i++)
-        ComposerAttachment(
+        ComposerImageAttachment(
           mime: "image/png",
           bytes: base64Decode(
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
@@ -828,7 +1033,7 @@ void main() {
     // Each fits alone; the three together exceed the 50 MB aggregate budget.
     final images = [
       for (var i = 0; i < 3; i++)
-        ComposerAttachment(
+        ComposerImageAttachment(
           mime: "image/png",
           bytes: Uint8List(maxComposerPromptAttachmentBytes * 2 ~/ 5),
           filename: "Photo $i.png",
@@ -894,7 +1099,7 @@ void main() {
 
     expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(2));
     expect(find.byKey(ObjectKey(images.last)), findsNothing);
-    expect(find.text("Attached images are limited to 50 MB per message."), findsOneWidget);
+    expect(find.text("Attachments are limited to 50 MB per message."), findsOneWidget);
     expect(consumed, isTrue);
     await tester.pumpAndSettle(const Duration(seconds: 10));
   });
@@ -1468,6 +1673,7 @@ Future<void> _pumpAttachComposer({
   required Stream<List<String>>? droppedPaths,
   required VoiceInputCubit? voiceCubit,
   required bool attachmentsSupported,
+  required bool? fileUploadsSupported,
   required ValueChanged<List<ComposerAttachment>> onAttachmentsChanged,
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
@@ -1504,7 +1710,7 @@ Future<void> _pumpAttachComposer({
         onCommandSelected: (_) {},
         onCommandCleared: () {},
         attachmentsSupported: attachmentsSupported,
-        fileUploadsSupported: false,
+        fileUploadsSupported: fileUploadsSupported,
         draftIdentity: "attach-session",
         restorationKey: null,
         initialDraft: ComposerDraft.typed(text: "see attached"),
