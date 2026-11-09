@@ -83,14 +83,21 @@ and keep native close/quit behavior safe.
   logs the refusal without replacing repair guidance with crash backoff; ordinary
   startup errors keep their existing handling. The identity check is not signature
   verification.
-  On macOS the supervised helper receives the user's full login-shell
-  environment, so harnesses installed outside launchd's default PATH and
-  harness configuration exported from a shell profile (gateway base URLs, auth
-  tokens, proxies) work after autostart as they do for a terminal-started
-  bridge. The probe shell sees `SESORI_RESOLVING_ENVIRONMENT=1` so profiles
-  can skip slow work. Shell values override inherited ones except `PWD`,
-  `OLDPWD`, `SHLVL`, `_`, `SESORI_RESOLVING_ENVIRONMENT` and
-  `AUTH_BACKEND_URL`; PATH puts the shell entries ahead of the inherited ones.
+  On macOS and Linux the supervised helper receives the user's full login-shell
+  environment, so harnesses installed outside launchd's or the graphical
+  session's default PATH and harness configuration exported from a shell
+  profile (gateway base URLs, auth tokens, proxies) work after autostart or an
+  application-menu launch as they do for a terminal-started bridge. The probe
+  runs `$SHELL -ilc` (bash, zsh, dash, fish), `-ic` for csh/tcsh (which read
+  `.cshrc`, not `.login`) and `-l -i -c` for nushell; without an executable
+  `$SHELL` macOS uses `/bin/zsh`, and Linux uses the user's `/etc/passwd`
+  shell, then `/bin/sh`. Windows runs no probe. A bash login shell reads
+  `.bash_profile` or `.profile`, not `.bashrc`, so `.bashrc` exports arrive only
+  when that profile sources `.bashrc` (the Debian, Ubuntu and Fedora defaults
+  do), as for a terminal login shell or VS Code. The probe shell sees
+  `SESORI_RESOLVING_ENVIRONMENT=1` so profiles can skip slow work. Shell values
+  override inherited ones except `PWD`, `OLDPWD`, `SHLVL`, `_`,
+  `SESORI_RESOLVING_ENVIRONMENT` and `AUTH_BACKEND_URL`; PATH puts the shell entries ahead of the inherited ones.
   The imported values stay in memory and are never persisted or logged; only
   variable names appear at debug level. An environment over 64 KiB imports
   only its PATH. If the login-shell probe fails, times out or returns no
@@ -244,9 +251,9 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for unhealthy-harness status labels, grouping and hints, tray status-dot derivation and icon variant swaps, Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration; macOS login-shell environment import (full import, excluded probe-shell and `AUTH_BACKEND_URL` keys, resolving marker, PATH merge, oversized PATH-only fallback, failure fallback, name-only logging). No plugin. |
+| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for unhealthy-harness status labels, grouping and hints, tray status-dot derivation and icon variant swaps, Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration; macOS and Linux login-shell environment import (full import, excluded probe-shell and `AUTH_BACKEND_URL` keys, resolving marker, PATH merge, oversized PATH-only fallback, failure fallback, name-only logging, per-shell probe flags, `$SHELL` then `/bin/zsh` on macOS or `/etc/passwd` shell then `/bin/sh` on Linux). No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, login-required behavior, Off/close/Quit orphan checks, standalone CLI coexistence, and a GUI-started helper whose environment holds variables exported only in a shell profile while `AUTH_BACKEND_URL` stays absent. |
-| L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash diagnostics, and default folder-handler availability. |
+| L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback, and an application-menu-launched Linux helper whose environment holds a variable exported only in `.zshrc`, or in `.bashrc` with the distribution-default `.profile`/`.bash_profile` that sources it; vary helper startup/stop failures, relay takeover, crash diagnostics, and default folder-handler availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
 
 ## Exploration Guidance
