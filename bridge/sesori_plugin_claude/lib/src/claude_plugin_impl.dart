@@ -807,11 +807,13 @@ final class ClaudePlugin({
                   actionHint:
                       "The Anthropic-compatible gateway configured for Claude Code rejected the request. "
                       "Check the gateway's credentials and configuration, then refresh setup.",
+                  recovery: PluginAuthenticationRecovery.externalConfiguration,
                   message: "Claude Code gateway authentication failed",
                 )
               : const PluginAuthenticationRequiredException(
                   "claude session",
                   actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
+                  recovery: PluginAuthenticationRecovery.login,
                   message: "Claude Code authentication failed",
                 ),
         );

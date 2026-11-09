@@ -974,6 +974,7 @@ void main() {
               "actionHint",
               "Log in from Sesori, or run `claude auth login` on this machine.",
             )
+            .having((e) => e.recovery, "recovery", PluginAuthenticationRecovery.login)
             .having((e) => e.message, "message", "Claude Code authentication failed"),
       ]);
     });
@@ -990,6 +991,7 @@ void main() {
               "actionHint",
               allOf(contains("gateway"), isNot(matches(RegExp("log ?in", caseSensitive: false)))),
             )
+            .having((e) => e.recovery, "recovery", PluginAuthenticationRecovery.externalConfiguration)
             .having((e) => e.message, "message", "Claude Code gateway authentication failed"),
       ]);
     });

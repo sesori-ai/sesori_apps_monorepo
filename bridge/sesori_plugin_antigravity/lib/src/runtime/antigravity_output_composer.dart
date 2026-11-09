@@ -31,6 +31,7 @@ class const AntigravityOutputComposer({
     throw const PluginAuthenticationRequiredException(
       "authenticate",
       actionHint: authenticationHint,
+      recovery: PluginAuthenticationRecovery.login,
       message: "Antigravity requires personal Google authentication",
     );
   }
@@ -40,6 +41,7 @@ class const AntigravityOutputComposer({
       return PluginAuthenticationRequiredException(
         "authenticate",
         actionHint: authenticationHint,
+        recovery: PluginAuthenticationRecovery.login,
         message: "Antigravity requires personal Google authentication",
         cause: error,
       );
