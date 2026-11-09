@@ -30,6 +30,7 @@ class const NewSessionScreen({
         onBack: context.pop,
         banner: ConnectionBanner.maybeFor(context),
         opensPicker: true,
+        offersFirstRunStep: false,
         topBar: null,
       );
     }

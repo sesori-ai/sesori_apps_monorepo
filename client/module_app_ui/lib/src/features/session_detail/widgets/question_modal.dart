@@ -272,6 +272,7 @@ class _QuestionModalState() extends State<QuestionModal> {
     final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
     if (widget.question.interactionKind != QuestionInteractionKind.question) {
       return PregoModalSurface(
+        anchorsTop: false,
         title: loc.mcpNativeRequestTitle,
         subtitle: null,
         topInset: widget.topInset,
@@ -315,6 +316,7 @@ class _QuestionModalState() extends State<QuestionModal> {
         if (!didPop && _confirmingRequestDecline) _cancelDeclineRequest();
       },
       child: PregoModalSurface(
+        anchorsTop: false,
         title: _confirmingRequestDecline
             ? loc.questionModalDeclineAllTitle
             : (info.header.isNotEmpty ? info.header : loc.questionModalTitle),

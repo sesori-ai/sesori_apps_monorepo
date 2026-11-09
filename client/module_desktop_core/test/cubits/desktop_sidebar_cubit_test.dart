@@ -43,17 +43,28 @@ void main() {
     verify(() => repository.writeSidebarLayout(layout: const DesktopSidebarLayout(width: 320))).called(1);
   });
 
-  test("collapse and reset persist without losing the other preferences", () async {
+  test("collapse persists without losing the width", () async {
     cubit = DesktopSidebarCubit(repository: repository);
     await pumpEventQueue();
     cubit.resize(width: 340);
     await cubit.toggleCollapsed();
     expect(cubit.state, const DesktopSidebarLayout(width: 340, collapsed: true));
-    await cubit.resetWidth();
-    expect(cubit.state, const DesktopSidebarLayout(collapsed: true));
     await cubit.toggleCollapsed();
-    expect(cubit.state, const DesktopSidebarLayout());
-    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(3);
+    expect(cubit.state, const DesktopSidebarLayout(width: 340));
+    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(2);
+  });
+
+  test("a drag's collapse keeps its squeezed width until it reopens at the width the drag began from", () async {
+    cubit = DesktopSidebarCubit(repository: repository);
+    await pumpEventQueue();
+    cubit.resize(width: 340);
+    cubit.resize(width: 200);
+    await cubit.collapseFromDrag(reopenWidth: 340);
+    expect(cubit.state, const DesktopSidebarLayout(width: 200, collapsed: true));
+    verify(() => repository.writeSidebarLayout(layout: const DesktopSidebarLayout(width: 340, collapsed: true)))
+        .called(1);
+    await cubit.toggleCollapsed();
+    expect(cubit.state, const DesktopSidebarLayout(width: 340));
   });
 
   test("read failure leaves defaults and write failure keeps the live layout", () async {

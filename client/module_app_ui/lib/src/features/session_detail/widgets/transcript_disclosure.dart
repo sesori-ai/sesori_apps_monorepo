@@ -29,14 +29,28 @@ class const TranscriptDisclosure({
 }
 
 class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with TickerProviderStateMixin {
-  late final AnimationController _disclosure = AnimationController(vsync: this, duration: transcriptMotionDuration);
+  // Read once for these controllers, which can be made before the first build.
+  late final bool _pointer =
+      context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
+  late final AnimationController _disclosure = AnimationController(
+    vsync: this,
+    duration: _pointer ? pregoPointerEnterDuration : transcriptMotionDuration,
+    reverseDuration: _pointer ? pregoPointerExitDuration : null,
+  );
   late final CurvedAnimation _panelSize = CurvedAnimation(
     parent: _disclosure,
-    curve: transcriptMotionCurve,
+    // Softer than a popover's curve: this one moves the rows being read.
+    curve: _pointer ? const Cubic(0.25, 0.55, 0.2, 1) : transcriptMotionCurve,
     reverseCurve: transcriptMotionReverseCurve,
   );
-  late final AnimationController _resize = AnimationController(vsync: this, duration: transcriptMotionDuration);
-  late final CurvedAnimation _resizeCurve = CurvedAnimation(parent: _resize, curve: transcriptMotionCurve);
+  late final AnimationController _resize = AnimationController(
+    vsync: this,
+    duration: _pointer ? const Duration(milliseconds: 180) : transcriptMotionDuration,
+  );
+  late final CurvedAnimation _resizeCurve = CurvedAnimation(
+    parent: _resize,
+    curve: _pointer ? const Cubic(0.25, 0.55, 0.2, 1) : transcriptMotionCurve,
+  );
 
   /// The user's choice. The panel itself stays mounted until it has closed.
   bool get _expanded => _disclosure.isForwardOrCompleted;
@@ -80,7 +94,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
   }
 
   void _toggle() {
-    if (context.isReducedMotion) {
+    if (context.isReducedMotion || pregoActivatedByKeyboard) {
       final opening = !_expanded;
       _disclosure.value = opening ? 1 : 0;
       // The panel is not laid out yet, so its height is known only after
@@ -204,7 +218,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
             style: TextButton.styleFrom(
               foregroundColor: prego.colors.textSecondary,
               padding: EdgeInsets.zero,
-              minimumSize: const Size(44, 44),
+              minimumSize: _pointer ? Size.zero : const Size(44, 44),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               alignment: AlignmentDirectional.centerStart,
               // The default stadium hover reads as a pill across the whole row.

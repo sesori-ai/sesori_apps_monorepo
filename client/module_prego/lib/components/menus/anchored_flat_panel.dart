@@ -4,6 +4,8 @@ import "package:cue/cue.dart";
 import "package:flutter/rendering.dart" show RenderFollowerLayer;
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
+import "../../motion/prego_pointer_motion.dart";
 import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 
@@ -67,6 +69,10 @@ class const AnchoredFlatPanel({
   /// pinned above a list. It then lays itself out within the capped height
   /// instead of the panel scrolling it.
   required final bool contentScrolls,
+
+  /// Lifts the panel off page text with a halo of the page's own colour, for a
+  /// panel that hangs over what is being read.
+  final bool hasPageHalo = false,
 
   /// Builds the bubble body. The `close` callback dismisses the popup. Unless
   /// [contentScrolls], the panel scrolls this content when it exceeds the
@@ -132,6 +138,7 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
     final safe = MediaQuery.paddingOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final atCorner = placement == AnchoredPanelPlacement.atCorner;
     final gap = atCorner ? 0.0 : AnchoredFlatPanel._gap;
 
@@ -152,14 +159,30 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
     final panel = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: prego.shadows.xl,
+        boxShadow: [
+          // Below the panel only: its trigger sits right above and stays fully legible.
+          if (widget.hasPageHalo)
+            BoxShadow(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              blurRadius: 24,
+              spreadRadius: -4,
+              offset: const Offset(0, 18),
+            ),
+          ...(!pointer
+              ? prego.shadows.xl
+              : prego.colors.brightness == .dark
+              ? prego.shadows.xl + _pointerLift
+              : _pointerLiftLight),
+        ],
       ),
       child: Material(
-        color: prego.colors.bgSecondary,
+        color: pointer ? prego.colors.bgSurface3 : prego.colors.bgSecondary,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
-          side: BorderSide(color: prego.colors.borderSecondary, width: 0.5),
+          side: pointer
+              ? BorderSide(color: prego.colors.borderPrimary)
+              : BorderSide(color: prego.colors.borderSecondary, width: 0.5),
         ),
         // Unless the content scrolls itself, the panel owns overflow: content
         // taller than the available height (the delegate's maxHeight cap)
@@ -203,11 +226,24 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
       child: Actor(
         key: _bubbleKey,
         acts: [
-          const Act.fadeIn(),
+          // Solid well before the panel settles, so its text never reads over the
+          // rows behind it for long.
+          if (pointer && !reducedMotion)
+            const Act.fadeIn(
+              motion: CueMotion.curved(Duration(milliseconds: 12), curve: Curves.easeOut),
+              // A click away gets a visible close; the same 12 ms would read as a cut.
+              reverse: ReverseBehavior.mirror(
+                motion: CueMotion.curved(Duration(milliseconds: 35), curve: Curves.easeOut),
+              ),
+            )
+          else
+            const Act.fadeIn(),
           // Grows out of the trigger, toward the side the bubble sits on.
           if (!reducedMotion) ...[
-            Act.scale(from: 0.96, alignment: origin),
-            Act.slideY(from: above ? 0.06 : -0.06),
+            Act.scale(from: pointer ? 0.97 : 0.96, alignment: origin),
+            // A share of the panel's height, so a pointer's smaller one keeps a
+            // tall menu from travelling far.
+            Act.slideY(from: (above ? 1 : -1) * (pointer ? 0.02 : 0.06)),
           ],
         ],
         child: panel,
@@ -215,6 +251,12 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
     );
   }
 }
+
+/// Lifts a pointer shell's panel off a surface of nearly its own colour.
+const List<BoxShadow> _pointerLift = [BoxShadow(color: Color(0x80000000), offset: Offset(0, 12), blurRadius: 32)];
+
+/// Light surfaces separate on a hairline and much less shadow.
+const List<BoxShadow> _pointerLiftLight = [BoxShadow(color: Color(0x33000000), offset: Offset(0, 8), blurRadius: 24)];
 
 /// Positions the flat bubble within the screen: fixed [width], capped to
 /// [maxHeight], anchored above or below [triggerRect] per [placement], and
@@ -294,4 +336,31 @@ class _AnchoredPopupLayoutDelegate({
         screenPadding != oldDelegate.screenPadding ||
         safe != oldDelegate.safe;
   }
+}
+
+/// Tells a pointer shell's menu whether a key opened it: one summoned from the
+/// keyboard appears and leaves at once. [open] runs the opening after the frame
+/// that passes the new motion down.
+class const PregoMenuOpenMotion({
+  super.key,
+  required final Widget Function(BuildContext context, bool instant, void Function(VoidCallback show) open) builder,
+}) extends StatefulWidget {
+  @override
+  State<PregoMenuOpenMotion> createState() => _PregoMenuOpenMotionState();
+}
+
+class _PregoMenuOpenMotionState() extends State<PregoMenuOpenMotion> {
+  bool _instant = false;
+
+  void _open(VoidCallback show) {
+    final instant = pregoActivatedByKeyboard;
+    if (instant == _instant) return show();
+    setState(() => _instant = instant);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) show();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _instant, _open);
 }

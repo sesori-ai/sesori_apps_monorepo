@@ -1000,6 +1000,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 state: _takingOverFromLaunchView(loaded: loaded, launchView: launchView),
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
+                isReviewingPermission: _isReviewingPermission,
                 bottomControls: _buildReadOnlyControls(loaded: loaded),
                 columnWidths: columnWidths,
                 currentPromptId: _currentPromptId,
@@ -1012,6 +1013,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 state: _takingOverFromLaunchView(loaded: loaded, launchView: launchView),
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
+                isReviewingPermission: _isReviewingPermission,
                 bottomControls: !loaded.interaction.canInteract
                     ? _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false)
                     : _buildComposer(
@@ -1341,9 +1343,22 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
     if (!isPending()) return;
     cubit.clearNotifications();
-    PermissionModal.show(
+    final askingSession = cubit.state.hydratedSession;
+    setState(() => _isReviewingPermission = true);
+    final closed = PermissionModal.show(
       context,
       permission: permission,
+      requestedBy: switch (askingSession) {
+        final session? => [
+          PregoBrandLogo.displayNameFor(session.pluginId),
+          ?session.title,
+        ].join(" · "),
+        null => null,
+      },
+      harnessName: switch (askingSession) {
+        final session? => PregoBrandLogo.displayNameFor(session.pluginId),
+        null => null,
+      },
       isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
       isPending: isPending,
       openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
@@ -1363,7 +1378,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             _scheduleNextPermissionModal();
           },
     );
+    unawaited(
+      closed.whenComplete(() {
+        if (mounted) setState(() => _isReviewingPermission = false);
+      }),
+    );
   }
+
+  /// Quiets the card behind the dialog, which offers what the user is already doing.
+  bool _isReviewingPermission = false;
 
   void _scheduleNextQuestionModal() {
     final state = context.read<SessionDetailCubit>().state;

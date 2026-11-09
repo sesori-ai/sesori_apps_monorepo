@@ -150,10 +150,10 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
         ),
       ...widget.trailing,
     ];
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: _pillRow(compact: compact, reachesLayerBottom: false, pills: selectors),
-    );
+    final row = _pillRow(compact: compact, reachesLayerBottom: false, pills: selectors);
+    // Under a pointer they sit on the composer's action row, in its line.
+    if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) return row;
+    return Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: row);
   }
 }
 
@@ -179,6 +179,7 @@ class const ReadOnlyAgentModelPills({
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
       child: _pickerButton(
+        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: compact,
         leadingIcon: icon,
         label: label,
@@ -188,7 +189,13 @@ class const ReadOnlyAgentModelPills({
     );
     final pills = [
       // As in the composer, a harness with a single agent has none to name.
-      if (agents.length > 1 && agent != null) pill(icon: TablerRegular.robot, label: agent),
+      if (agents.length > 1 && agent != null)
+        pill(
+          icon: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+              ? TablerRegular.tool
+              : TablerRegular.robot,
+          label: agent,
+        ),
       if (model != null)
         pill(
           icon: TablerRegular.cpu,
@@ -244,6 +251,7 @@ Widget _pickerButton({
   required String label,
   required PregoComposerSurfaceStyle surfaceStyle,
   required VoidCallback? onPressed,
+  required bool pointer,
 }) {
   Widget pill({required bool showLabel}) => PregoPickerButton(
     leadingIcon: leadingIcon,
@@ -251,6 +259,7 @@ Widget _pickerButton({
     showLabel: showLabel,
     surfaceStyle: surfaceStyle,
     onPressed: onPressed,
+    plain: pointer,
   );
   return LayoutBuilder(
     builder: (context, constraints) {
@@ -280,8 +289,11 @@ class const _AgentMenu({
       menuWidth: 240,
       menuMaxHeight: PregoPickerPopover.maxHeight,
       triggerBuilder: (context, toggle) => _pickerButton(
+        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
-        leadingIcon: TablerRegular.robot,
+        leadingIcon: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+            ? TablerRegular.tool
+            : TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
@@ -316,6 +328,7 @@ class const _ModelMenu({
       pointerWidth: 300,
       onClosed: null,
       triggerBuilder: (context, toggle) => _pickerButton(
+        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
         leadingIcon: TablerRegular.cpu,
         label: _resolveModelName(context, providers: providers, selected: selected),
@@ -352,6 +365,7 @@ class const _VariantMenu({
       menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => _pickerButton(
+        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
         leadingIcon: TablerRegular.gauge,
         label: selectedVariant ?? availableVariants.first.id,

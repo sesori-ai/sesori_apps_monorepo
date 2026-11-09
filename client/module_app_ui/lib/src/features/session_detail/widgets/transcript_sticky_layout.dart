@@ -44,6 +44,10 @@ typedef TranscriptPinnedPrompt = ({
   double height,
   double fullHeight,
   double elevation,
+
+  /// How far over the transcript's text the bubble sits, whatever the next
+  /// prompt is doing to it.
+  double cover,
   TranscriptPinView view,
 });
 
@@ -172,6 +176,7 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
       height: height,
       fullHeight: fullHeight,
       elevation: underElevation * pushElevation,
+      cover: underElevation,
       view: end ? TranscriptPinEnd(fade: underElevation) : const TranscriptPinStart(),
     ));
   }

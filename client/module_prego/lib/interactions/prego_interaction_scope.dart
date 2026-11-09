@@ -9,11 +9,13 @@ enum PregoInteractionMode() {
   pointer,
 }
 
-/// Tells the few shared widgets with an agreed pointer presentation which one
-/// to draw. A product shell built for a mouse installs one scope at its root.
+/// Selects the presentation of shared widgets for the input a shell is built
+/// for, including their spacing and sizes. A product shell built for a mouse
+/// installs one scope at its root, and a touch shell installs none.
 ///
-/// This is not a density system: it carries no spacing and no theme values, and
-/// a widget reads it in one place.
+/// It carries only the mode, not spacing or theme values: each widget decides
+/// what the mode means for it. What a product does differently, rather than how
+/// a widget is drawn, comes through constructor parameters from the shell.
 class const PregoInteractionScope({
   super.key,
   required final PregoInteractionMode mode,

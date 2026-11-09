@@ -90,8 +90,14 @@ List<SessionListEntry<T>> groupUnderHeadings<T>({
 }
 
 /// A date heading row of a session list.
-class const SessionListHeading({super.key, required final String heading, required final bool isFirst})
-    extends StatelessWidget {
+class const SessionListHeading({
+  super.key,
+  required final String heading,
+  required final bool isFirst,
+
+  /// Whether the heading names sessions blocked on the reader.
+  final bool emphasized = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     // Filling the width keeps the text at the start inset under a parent that
@@ -99,10 +105,19 @@ class const SessionListHeading({super.key, required final String heading, requir
     // list's rows do.
     width: double.infinity,
     child: Padding(
-      padding: _headingPadding(isFirst: isFirst),
+      padding: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+          ? _pointerHeadingPadding(isFirst: isFirst)
+          : _headingPadding(isFirst: isFirst),
       child: Text(
         heading,
-        style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textTertiary),
+        style:
+            (PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                    ? context.prego.textTheme.textXs
+                    : context.prego.textTheme.textSm)
+                .medium
+                .copyWith(
+                  color: emphasized ? context.prego.colors.pointerWarningText : context.prego.colors.textTertiary,
+                ),
       ),
     ),
   );
@@ -113,19 +128,24 @@ class const SessionListHeading({super.key, required final String heading, requir
 class const SessionListHeadingSkeleton({super.key, required final bool isFirst, required final double width})
     extends StatelessWidget {
   /// As tall as a heading at the default text size.
-  static double heightOf({required bool isFirst}) => _headingPadding(isFirst: isFirst).vertical + _headingLineHeight;
+  static double heightOf({required bool isFirst, required bool pointer}) => pointer
+      ? _pointerHeadingPadding(isFirst: isFirst).vertical + _pointerHeadingLineHeight
+      : _headingPadding(isFirst: isFirst).vertical + _headingLineHeight;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: _headingPadding(isFirst: isFirst),
-    child: SizedBox(
-      height: _headingLineHeight,
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: PregoSkeletonBar(height: 12, width: width),
+  Widget build(BuildContext context) {
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    return Padding(
+      padding: pointer ? _pointerHeadingPadding(isFirst: isFirst) : _headingPadding(isFirst: isFirst),
+      child: SizedBox(
+        height: pointer ? _pointerHeadingLineHeight : _headingLineHeight,
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: PregoSkeletonBar(height: 12, width: width),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// The first heading carries the list's top breathing room, so removing the
@@ -133,5 +153,12 @@ class const SessionListHeadingSkeleton({super.key, required final bool isFirst, 
 EdgeInsetsDirectional _headingPadding({required bool isFirst}) =>
     EdgeInsetsDirectional.fromSTEB(16, 16, 16, isFirst ? 20 : 12);
 
+/// A pointer list's tighter heading, on the row titles' start edge.
+EdgeInsetsDirectional _pointerHeadingPadding({required bool isFirst}) =>
+    EdgeInsetsDirectional.fromSTEB(14, isFirst ? 8 : 14, 14, 4);
+
 /// The line box of a heading's 14/20 text.
 const double _headingLineHeight = 20;
+
+/// The line box of a pointer heading's 12/16 text.
+const double _pointerHeadingLineHeight = 16;

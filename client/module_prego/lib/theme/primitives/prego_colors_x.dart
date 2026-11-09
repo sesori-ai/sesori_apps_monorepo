@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 
+import "prego_color_primitives.g.dart";
 import "prego_colors.g.dart";
 
 /// Maps [PregoColors] semantic tokens to Flutter's [ColorScheme].
@@ -12,6 +13,25 @@ import "prego_colors.g.dart";
 /// final scheme = PregoColors.dark.toFlutterColorScheme();
 /// ```
 extension PregoColorsX on PregoColors {
+  /// The fill of a selected row or tab in a pointer shell's navigation, strong
+  /// enough to read against the panel in both themes.
+  Color get pointerSelectionFill => brightness == .light ? PregoColorPrimitives.gray300 : const Color(0xFF2C2C2D);
+
+  /// The edge of a pointer shell's card, composer or quiet button. Light builds these
+  /// from tone, so its line only just separates white from the page.
+  Color get pointerHairline => brightness == .light ? const Color(0x1C000000) : borderSecondary;
+
+  /// A pointer shell's sidebar: neutral, as the pages beside it are, in both themes.
+  Color get pointerPanelFill => brightness == .light ? bgSurface1 : bgSurface2;
+
+  /// Small warning text that clears 4.5:1 on a pointer shell's panel and selected
+  /// row in both themes.
+  Color get pointerWarningText => brightness == .light ? const Color(0xFF854B00) : textWarningPrimary;
+
+  /// The warning fill for a pointer shell's dots and buttons: a clear amber in both
+  /// themes, with dark text on it.
+  Color get pointerWarningFill => brightness == .light ? const Color(0xFFD98200) : bgWarningSolid;
+
   /// Converts this [PregoColors] instance to a Flutter [ColorScheme].
   ///
   /// Uses [brightness] from this instance — call as

@@ -3,7 +3,10 @@ import "package:material_ui/material_ui.dart";
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
-import "prego_buttons_solid.dart";
+
+/// The corners of a button set in a pointer composer's corner: the composer's
+/// 16 pt radius less the 6 pt it is inset by, so the two curves run parallel.
+const double composerActionRadius = PregoRadius.x2l - PregoSpacing.sm;
 
 /// The wide Send a pointer composer shows while a dictation runs, in the colours
 /// of the Send button it grows out of.
@@ -18,7 +21,6 @@ class const PregoVoiceSendButton({
   required final bool enabled,
   required final VoidCallback onPressed,
 }) extends StatelessWidget {
-  static const double _borderWidth = 2;
   static const double _dimmedOpacity = 0.4;
   static const Duration _dimDuration = Duration(milliseconds: 220);
 
@@ -26,7 +28,7 @@ class const PregoVoiceSendButton({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    final radius = BorderRadius.circular(PregoRadius.full);
+    final radius = BorderRadius.circular(composerActionRadius);
     final foreground = colors.textPrimaryOnWhite;
 
     return Semantics(
@@ -43,7 +45,6 @@ class const PregoVoiceSendButton({
           child: PregoTappable.stateAware(
             onTap: onPressed,
             borderRadius: radius,
-            overlayInset: _borderWidth,
             overlayColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.pressed)) return colors.alphaWhite20;
               if (states.contains(WidgetState.hovered)) return colors.alphaWhite10;
@@ -53,24 +54,11 @@ class const PregoVoiceSendButton({
               decoration: BoxDecoration(
                 color: colors.fgPrimary,
                 borderRadius: radius,
-                border: Border.all(
-                  color: state.contains(WidgetState.pressed) ? colors.borderPrimary : colors.alphaWhite10,
-                  width: _borderWidth,
-                ),
                 boxShadow: [BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2)],
               ),
               child: ClipRRect(
                 borderRadius: radius,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    child,
-                    PregoSkeuomorphicOverlay(
-                      innerBorderColor: colors.skeuomorphicInnerBorder,
-                      bottomShadowColor: colors.skeuomorphicShadow,
-                    ),
-                  ],
-                ),
+                child: child,
               ),
             ),
             childBuilder: ({required Set<WidgetState> state}) => UnconstrainedBox(

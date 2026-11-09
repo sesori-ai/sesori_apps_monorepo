@@ -53,7 +53,9 @@ class const SubtaskPartWidget({
                   leading: switch (status) {
                     TranscriptStepStatus.running => const TranscriptLiveSparkle(),
                     TranscriptStepStatus.finished => Icon(
-                      TablerRegular.robot,
+                      PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                          ? TablerRegular.check
+                          : TablerRegular.robot,
                       size: PregoIconSize.sm,
                       color: prego.colors.textTertiary,
                     ),

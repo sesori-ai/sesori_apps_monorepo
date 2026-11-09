@@ -17,32 +17,70 @@ class const DiffFileList({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return PregoGroupedRows(
-      children: [
-        for (final (index, vm) in viewModels.indexed)
-          Semantics(
-            key: ValueKey("diff-file-list-$index"),
-            selected: selectedIndex == null ? null : index == selectedIndex,
-            child: Material(
-              color: index == selectedIndex
-                  ? prego.colors.textBrandPrimary.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              child: PregoGroupedRow(
-                minHeight: 48,
-                verticalPadding: PregoSpacing.sm,
-                leading: DiffStatusLetter(status: vm.status),
-                title: Text(vm.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: switch (p.posix.dirname(vm.fileDiff.file)) {
-                  "." => null,
-                  final folder => Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis),
-                },
-                trailing: DiffCounts(additions: vm.additions, deletions: vm.deletions, style: prego.textTheme.code),
-                onTap: () => onSelect(index),
-              ),
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final rows = [
+      for (final (index, vm) in viewModels.indexed)
+        Semantics(
+          key: ValueKey("diff-file-list-$index"),
+          selected: selectedIndex == null ? null : index == selectedIndex,
+          child: Material(
+            color: index == selectedIndex && !pointer
+                ? prego.colors.textBrandPrimary.withValues(alpha: 0.14)
+                : Colors.transparent,
+            child: Stack(
+              children: [
+                if (index == selectedIndex && pointer)
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.all(PregoSpacing.xs),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: prego.colors.pointerSelectionFill,
+                          borderRadius: BorderRadius.circular(PregoRadius.md),
+                        ),
+                      ),
+                    ),
+                  ),
+                PregoGroupedRow(
+                  minHeight: 48,
+                  verticalPadding: PregoSpacing.sm,
+                  leading: Padding(
+                    // The folder's line, under a pointer, so the letter sits on the name's.
+                    padding: EdgeInsetsDirectional.only(
+                      bottom: pointer && p.posix.dirname(vm.fileDiff.file) != "." ? 16 : 0,
+                    ),
+                    child: DiffStatusLetter(status: vm.status),
+                  ),
+                  // The extension is what tells two similar names apart.
+                  title: PregoEllipsisText(
+                    text: vm.fileName,
+                    ellipsis: PregoEllipsis.middle,
+                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                  ),
+                  subtitle: switch (p.posix.dirname(vm.fileDiff.file)) {
+                    "." => null,
+                    final folder => Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  },
+                  trailing: Padding(
+                    padding: EdgeInsetsDirectional.only(
+                      bottom: pointer && p.posix.dirname(vm.fileDiff.file) != "." ? 16 : 0,
+                    ),
+                    child: DiffCounts(additions: vm.additions, deletions: vm.deletions, style: prego.textTheme.code),
+                  ),
+                  onTap: () => onSelect(index),
+                ),
+              ],
             ),
           ),
-      ],
-    );
+        ),
+    ];
+    // Under a pointer it sits flush beside the diff, with no card of its own.
+    return pointer
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final row in rows) PregoGroupedRowPosition(isLast: true, child: row)],
+          )
+        : PregoGroupedRows(children: rows);
   }
 }
 
@@ -75,11 +113,22 @@ class const DiffStatusLetter({super.key, required final FileDiffStatus? status})
     final (label, color) = switch (status) {
       FileDiffStatus.added => ("A", colors.textSuccessPrimary),
       FileDiffStatus.deleted => ("D", colors.textErrorPrimary),
-      FileDiffStatus.modified || null => ("M", colors.textWarningPrimary),
+      // Amber means "needs you" under a pointer, and a modified file does not.
+      FileDiffStatus.modified || null => (
+        "M",
+        PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+            ? colors.textSecondary
+            : colors.textWarningPrimary,
+      ),
     };
     return Text(
       label,
-      style: context.prego.textTheme.code.copyWith(color: color, fontWeight: FontWeight.w600),
+      style: context.prego.textTheme.code.copyWith(
+        color: color,
+        fontWeight: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+            ? FontWeight.w500
+            : FontWeight.w600,
+      ),
     );
   }
 }

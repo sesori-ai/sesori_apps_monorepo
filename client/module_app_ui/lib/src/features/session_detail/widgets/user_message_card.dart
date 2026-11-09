@@ -103,7 +103,10 @@ class const UserMessageBubble({
               maxWidth: maxContentWidth(rowWidth: constraints.maxWidth) + padding * 2,
             ),
             decoration: BoxDecoration(
-              color: prego.colors.bgSurface2,
+              color:
+                  PregoInteractionScope.of(context) == PregoInteractionMode.pointer && prego.colors.brightness == .light
+                  ? prego.colors.bgSurface1
+                  : prego.colors.bgSurface2,
               borderRadius: BorderRadius.circular(radius),
             ),
             foregroundDecoration: BoxDecoration(

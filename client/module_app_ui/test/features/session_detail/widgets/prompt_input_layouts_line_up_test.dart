@@ -124,6 +124,7 @@ void main() {
     );
     rects["composer"] = tester.getRect(find.byType(PromptInput));
     record("options", find.byType(ComposerOptionsAccordion));
+    record("slash", find.byIcon(TablerRegular.slash));
     record("mic", _control(TablerRegular.microphone));
     record("send", _control(TablerRegular.arrow_up));
     record("keyboard", _control(TablerRegular.keyboard));
@@ -193,6 +194,8 @@ void main() {
         final resting = await measure(tester: tester, shell: shell, screen: screen, typing: false);
         final typing = await measure(tester: tester, shell: shell, screen: screen, typing: true);
 
+        // Typing leaves attach and "/" in place under a pointer; on touch they fold away.
+        if (shell.presentation == ComposerPresentation.pointer) expect(typing.keys, contains("slash"));
         final shared = {...resting.keys}.intersection({...typing.keys})..remove("composer");
         expect(
           shared,

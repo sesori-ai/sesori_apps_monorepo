@@ -60,6 +60,8 @@ GoRouter _createRouter({
                   PermissionModal.show(
                     context,
                     permission: permission,
+                    requestedBy: null,
+                    harnessName: null,
                     onReply: capture.onReply,
                     isPendingStream: capture.pending.stream,
                     isPending: () => capture.isPending,

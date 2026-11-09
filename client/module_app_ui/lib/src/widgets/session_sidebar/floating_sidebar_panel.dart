@@ -24,7 +24,9 @@ class const FloatingSidebarPanel({super.key, required final double width, requir
         border: Border.all(color: prego.colors.borderSecondary),
       ),
       child: Material(
-        color: prego.colors.bgSecondary,
+        color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer && prego.colors.brightness == .light
+            ? prego.colors.bgSurface1
+            : prego.colors.bgSecondary,
         borderRadius: shape,
         clipBehavior: Clip.antiAlias,
         child: child,

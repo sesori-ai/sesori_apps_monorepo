@@ -135,7 +135,8 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: SessionDiffsView(
             chrome: SessionDiffsSplit(
-              headerBuilder: ({required context, required title, required summary}) => Text("$title | $summary"),
+              headerBuilder: ({required context, required title, required summary}) =>
+                  Text("$title | ${summary?.files} +${summary?.additions} -${summary?.deletions}"),
             ),
           ),
         ),
@@ -146,7 +147,7 @@ void main() {
       await tester.pump();
     }
 
-    expect(find.text("File changes | 2 files changed  +2"), findsOneWidget);
+    expect(find.text("File changes | 2 files changed +2 -0"), findsOneWidget);
     expect(find.text("alpha line"), findsOneWidget);
     expect(find.text("beta line"), findsNothing);
 

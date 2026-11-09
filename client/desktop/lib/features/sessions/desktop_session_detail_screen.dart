@@ -21,6 +21,7 @@ class const DesktopSessionDetailScreen({
   super.key,
   required final String projectId,
   required final String sessionId,
+  required final String? projectName,
   required final String? sessionTitle,
   required final bool readOnly,
 
@@ -74,6 +75,7 @@ class const DesktopSessionDetailScreen({
             child: DesktopSessionDetailView(
               projectId: projectId,
               sessionId: sessionId,
+              projectName: projectName,
               sessionTitle: sessionTitle,
               readOnly: readOnly,
               onOpenParentSession: onOpenParentSession,
@@ -118,6 +120,7 @@ class const DesktopSessionDetailView({
   super.key,
   required final String projectId,
   required final String sessionId,
+  required final String? projectName,
   required final String? sessionTitle,
   required final bool readOnly,
 
@@ -197,9 +200,8 @@ class const DesktopSessionDetailView({
   }
 
   /// Caps the composer, its pointer-picker pills and the needs-you cards above
-  /// them. A text field and a pill row read as stretched long before body text
-  /// does, so they stay at the narrower measure.
-  static const double maxComposerWidth = 760;
+  /// them, at the transcript's own measure, so the page reads as one column.
+  static const double maxComposerWidth = desktopTranscriptWidth;
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(
@@ -238,6 +240,13 @@ class const DesktopSessionDetailView({
           ? DesktopSessionSignals(isAwaitingInput: isAwaitingInput, isRunning: !isAwaitingInput, isUnseen: false)
           : null,
       title: title,
+      titleDetail: switch ([
+        ?projectName,
+        if (session case final session?) PregoBrandLogo.displayNameFor(session.pluginId),
+      ]) {
+        [] => null,
+        final parts => parts.join(" · "),
+      },
       subtitle: null,
       // One group, whose actions bring their own gaps, so the toolbar's spacing
       // never sees an empty slot.
@@ -255,9 +264,12 @@ class const DesktopSessionDetailView({
                         key: const Key("desktop-session-page-changes"),
                         label: loc.sessionChangesLabel,
                         leadingIcon: TablerRegular.git_compare,
-                        labelTrailing: sessionChangesCounts(
-                          state: summary,
-                          style: context.prego.textTheme.textSm.medium,
+                        // A slot of its own, so the button holds still as counts arrive.
+                        labelTrailing: ConstrainedBox(
+                          constraints: const BoxConstraints(minWidth: 40),
+                          child:
+                              sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium) ??
+                              const SizedBox.shrink(),
                         ),
                         hierarchy: PregoButtonsSolidHierarchy.secondary,
                         size: PregoButtonsSolidSize.sm,
@@ -273,6 +285,7 @@ class const DesktopSessionDetailView({
                   : Builder(
                       builder: (buttonContext) => IconButton(
                         key: const Key("desktop-session-page-prompts"),
+                        style: _headerIconStyle,
                         tooltip: loc.transcriptPrompts,
                         onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
                         icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
@@ -328,6 +341,7 @@ class const DesktopSessionDetailView({
                     ],
               triggerBuilder: (context, openMenu) => IconButton(
                 key: const Key("desktop-session-page-more"),
+                style: _headerIconStyle,
                 tooltip: loc.sessionDetailMoreActions,
                 onPressed: session == null ? null : openMenu,
                 icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
@@ -358,3 +372,11 @@ class const _MarkUnreadShortcut({required final VoidCallback onMarkUnread, requi
     child: child,
   );
 }
+
+/// The header's icon actions: 32 pt boxes on the page's inset and 8 pt gaps.
+final ButtonStyle _headerIconStyle = IconButton.styleFrom(
+  fixedSize: const Size.square(32),
+  minimumSize: const Size.square(32),
+  padding: EdgeInsets.zero,
+  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+);

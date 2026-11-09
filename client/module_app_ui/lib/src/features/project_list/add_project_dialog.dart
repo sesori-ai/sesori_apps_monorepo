@@ -395,6 +395,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     final rootPath = _rootPath;
 
     return PregoModalSurface(
+      anchorsTop: false,
       // Navigation lives in the browser body's breadcrumb.
       title: loc.addProject,
       subtitle: null,

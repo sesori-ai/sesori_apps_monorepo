@@ -22,9 +22,10 @@ class DiffHighlighter() {
 
   /// Call ONCE before any highlighting. Safe to call multiple times.
   static Future<void> initialize({Brightness brightness = Brightness.light}) async {
+    // Every call, so a diff opened after the theme changed uses the new colours.
+    _theme = githubThemeFor(brightness);
     if (_initialized) return;
     _highlight = buildSyntaxHighlight();
-    _theme = githubThemeFor(brightness);
     _initialized = true;
   }
 

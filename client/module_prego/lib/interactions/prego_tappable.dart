@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/foundation.dart";
+import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 
@@ -330,8 +331,7 @@ class _WebTappableState() extends State<_WebTappable> {
     setState(() => _isPressed = true);
   }
 
-  void _handleTapUp() {
-    widget.onTap();
+  void _settlePress() {
     final elapsed = DateTime.now().difference(_tapDownAt);
     final remaining = _minFeedbackDuration - elapsed;
     if (remaining > Duration.zero) {
@@ -341,11 +341,6 @@ class _WebTappableState() extends State<_WebTappable> {
     } else {
       setState(() => _isPressed = false);
     }
-  }
-
-  void _handleTapCancel() {
-    _feedbackTimer?.cancel();
-    setState(() => _isPressed = false);
   }
 
   @override
@@ -391,12 +386,19 @@ class _WebTappableState() extends State<_WebTappable> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        behavior: .opaque,
-        onTapDown: (_) => _handleTapDown(),
-        onTapUp: (_) => _handleTapUp(),
-        onTapCancel: _handleTapCancel,
-        child: widget.containerBuilder(child: effectiveContent, state: state),
+      child: Listener(
+        onPointerDown: (event) {
+          if (event.buttons == kPrimaryButton) _handleTapDown();
+        },
+        // A gesture lost to a drag never reports its tap, so the release clears
+        // the press whichever way the gesture went.
+        onPointerUp: (_) => _settlePress(),
+        onPointerCancel: (_) => _settlePress(),
+        child: GestureDetector(
+          behavior: .opaque,
+          onTapUp: (_) => widget.onTap(),
+          child: widget.containerBuilder(child: effectiveContent, state: state),
+        ),
       ),
     );
   }

@@ -26,6 +26,10 @@ class const DesktopPageToolbar({
   required final Widget? status,
   required final String title,
 
+  /// Quiet context on the title's line, such as a session's project and harness.
+  /// It takes only the room the title leaves.
+  required final String? titleDetail,
+
   /// A second, quieter line under the title; null leaves the title alone.
   required final Widget? subtitle,
   required final List<Widget> actions,
@@ -38,6 +42,7 @@ class const DesktopPageToolbar({
     final breadcrumb = this.breadcrumb;
     final status = this.status;
     final subtitle = this.subtitle;
+    final titleDetail = this.titleDetail;
     final titleText = Text(
       title,
       style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
@@ -48,9 +53,10 @@ class const DesktopPageToolbar({
     return Container(
       // A floor, not a fixed slot: scaled-up text grows the bar instead of spilling out of it.
       constraints: const BoxConstraints(minHeight: height),
-      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+      // Its content's middle is the title line, one point above the bar's.
+      padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, 2),
       decoration: BoxDecoration(
-        color: prego.colors.bgSurface1,
+        color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(bottom: BorderSide(color: prego.colors.borderSecondary)),
       ),
       child: DesktopSidebarRestoreInset(
@@ -69,17 +75,25 @@ class const DesktopPageToolbar({
                         // and shrinks with it when the actions leave the row little room.
                         Flexible(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 200),
+                            constraints: const BoxConstraints(maxWidth: 360),
                             child: InkWell(
                               mouseCursor: WidgetStateMouseCursor.clickable,
                               key: const Key("desktop-page-breadcrumb"),
                               onTap: breadcrumb.onPressed,
                               borderRadius: BorderRadius.circular(PregoRadius.sm),
-                              child: Text(
-                                breadcrumb.label,
-                                style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(TablerRegular.chevron_left, size: 16, color: prego.colors.textSecondary),
+                                  Flexible(
+                                    child: Text(
+                                      breadcrumb.label,
+                                      style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -97,9 +111,59 @@ class const DesktopPageToolbar({
                           width: DesktopSessionSignals.width,
                           child: Center(child: status),
                         ),
-                      Flexible(
-                        child: Semantics(header: true, label: title, excludeSemantics: true, child: titleText),
-                      ),
+                      if (titleDetail == null)
+                        Flexible(
+                          child: Semantics(header: true, label: title, excludeSemantics: true, child: titleText),
+                        )
+                      else
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final painter = TextPainter(
+                                text: TextSpan(
+                                  text: title,
+                                  style: withTextSpacingOverrides(
+                                    context: context,
+                                    style: titleText.style ?? const TextStyle(),
+                                  ),
+                                ),
+                                maxLines: 1,
+                                textDirection: Directionality.of(context),
+                                textScaler: MediaQuery.textScalerOf(context),
+                              )..layout();
+                              final titleWidth = painter.width.ceilToDouble();
+                              painter.dispose();
+                              final room = constraints.maxWidth - titleWidth - PregoSpacing.md;
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  SizedBox(
+                                    width: titleWidth.clamp(0, constraints.maxWidth),
+                                    child: Semantics(
+                                      header: true,
+                                      label: title,
+                                      excludeSemantics: true,
+                                      child: titleText,
+                                    ),
+                                  ),
+                                  // Under a name's worth of room, a clipped fragment would say nothing.
+                                  if (room >= 80) ...[
+                                    const SizedBox(width: PregoSpacing.md),
+                                    Flexible(
+                                      child: Text(
+                                        titleDetail,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: prego.textTheme.textXs.regular.copyWith(color: tertiary),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+                        ),
                     ],
                   ),
                   ?subtitle,

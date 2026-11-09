@@ -33,7 +33,13 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
       onRefresh: null,
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.all(PregoSpacing.xl),
+          // A section heading leads this page, so its top matches the cards' on others.
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            PregoSpacing.xl,
+            PregoSpacing.md,
+            PregoSpacing.xl,
+            PregoSpacing.xl,
+          ),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -61,22 +67,25 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                     ],
                   ),
                 ),
-                PregoGroupedRows(
-                  children: [
-                    MergeSemantics(
-                      child: PregoGroupedRow(
-                        icon: TablerRegular.power,
-                        title: Text(loc.desktopSettingsLaunchAtLogin),
-                        subtitle: Text(loc.desktopSettingsLaunchAtLoginDescription),
-                        trailing: PregoSwitch(
-                          value: state.launchAtLoginEnabled,
-                          onChanged: state.activity.locksCommands
-                              ? null
-                              : (enabled) => unawaited(control.setLaunchAtLogin(enabled: enabled)),
+                SettingsSection(
+                  title: loc.desktopSettingsStartup,
+                  child: PregoGroupedRows(
+                    children: [
+                      MergeSemantics(
+                        child: PregoGroupedRow(
+                          icon: TablerRegular.power,
+                          title: Text(loc.desktopSettingsLaunchAtLogin),
+                          subtitle: Text(loc.desktopSettingsLaunchAtLoginDescription),
+                          trailing: PregoSwitch(
+                            value: state.launchAtLoginEnabled,
+                            onChanged: state.activity.locksCommands
+                                ? null
+                                : (enabled) => unawaited(control.setLaunchAtLogin(enabled: enabled)),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const DesktopUpdateSection(),
                 SettingsAppInfo(
@@ -159,7 +168,9 @@ class const _ThemeSegment({
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
           decoration: BoxDecoration(
-            color: selected ? prego.colors.bgSurface1 : null,
+            color: selected
+                ? (prego.colors.brightness == .dark ? const Color(0xFF45474C) : prego.colors.bgSurface1)
+                : null,
             borderRadius: radius,
             border: selected ? Border.all(color: prego.colors.borderSecondary) : null,
           ),

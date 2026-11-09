@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -79,6 +81,19 @@ class const SessionTile({
 
   @override
   Widget build(BuildContext context) {
+    if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) {
+      return _PointerRowMenu(
+        menuWidth: _menuWidth,
+        entriesBuilder: menuEntries,
+        rowBuilder: (context, openMenu, revealed, menuOpen) => _buildRow(
+          context: context,
+          openMenu: openMenu,
+          pointer: true,
+          revealActions: revealed,
+          menuOpen: menuOpen,
+        ),
+      );
+    }
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
@@ -86,15 +101,8 @@ class const SessionTile({
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
       entriesBuilder: menuEntries,
-      triggerBuilder: (context, openMenu) {
-        if (PregoInteractionScope.of(context) != PregoInteractionMode.pointer) {
-          return _buildRow(context: context, openMenu: openMenu, pointer: false, revealActions: false);
-        }
-        return _PointerReveal(
-          builder: (context, revealed) =>
-              _buildRow(context: context, openMenu: openMenu, pointer: true, revealActions: revealed),
-        );
-      },
+      triggerBuilder: (context, openMenu) =>
+          _buildRow(context: context, openMenu: openMenu, pointer: false, revealActions: false, menuOpen: false),
     );
   }
 
@@ -103,11 +111,13 @@ class const SessionTile({
     required VoidCallback openMenu,
     required bool pointer,
     required bool revealActions,
+    required bool menuOpen,
   }) {
     final prego = context.prego;
 
     return PregoSwipeActions(
-      showBottomHairline: true,
+      // Pointer rows are separated by their own rounded hover and selection.
+      showBottomHairline: !pointer,
       // Archiving is permanent, so an archived row has no archive action left:
       // delete moves up into the primary slot and its full swipe still opens
       // the same confirmation sheet, never destroying anything unconfirmed.
@@ -128,21 +138,60 @@ class const SessionTile({
             button: true,
             // Ink rather than a plain colour so the tap ripple stays visible
             // over the selected tint (a widget's own colour would cover it).
-            child: Ink(
-              color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
-              child: InkWell(
-                mouseCursor: WidgetStateMouseCursor.clickable,
-                onTap: onTap,
-                onLongPress: openMenu,
-                hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
-                child: Padding(
-                  padding: _rowPadding(pointer: pointer),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: _lineGap,
+            child: Padding(
+              padding: pointer ? _pointerRowMargin : EdgeInsets.zero,
+              child: Ink(
+                color: !pointer && selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
+                decoration: pointer && selected
+                    ? BoxDecoration(
+                        color: prego.colors.pointerSelectionFill,
+                        borderRadius: BorderRadius.circular(_pointerRowRadius),
+                      )
+                    : null,
+                child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
+                  onTap: onTap,
+                  onLongPress: openMenu,
+                  hoverDuration: pointer ? Duration.zero : null,
+                  borderRadius: pointer ? BorderRadius.circular(_pointerRowRadius) : null,
+                  hoverColor: pointer ? prego.colors.bgSecondaryHover.withValues(alpha: 0.5) : null,
+                  child: Stack(
                     children: [
-                      _titleRow(context: context, revealActions: revealActions),
-                      _metaLine(context: context),
+                      Padding(
+                        padding: _rowPadding(pointer: pointer),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: _lineGapOf(pointer: pointer),
+                          children: [
+                            _titleRow(context: context, pointer: pointer),
+                            _metaLine(context: context, pointer: pointer),
+                          ],
+                        ),
+                      ),
+                      // Over the meta line's end, so revealing them moves nothing
+                      // and hides neither the title, its status mark nor the time.
+                      if (revealActions)
+                        PositionedDirectional(
+                          end: PregoSpacing.xs,
+                          bottom: 0,
+                          child: _hoverActions(context: context),
+                        ),
+                      // What the open menu's actions will hit, as Finder outlines the
+                      // item it right-clicked.
+                      if (menuOpen)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(_pointerRowRadius),
+                                border: Border.all(
+                                  color: prego.colors.fgBrandPrimary.withValues(alpha: 0.7),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -214,8 +263,9 @@ class const SessionTile({
     );
   }
 
-  Widget _titleRow({required BuildContext context, required bool revealActions}) {
+  Widget _titleRow({required BuildContext context, required bool pointer}) {
     final state = _state(context: context);
+    if (pointer) return _pointerTitleRow(context: context, state: state);
     // The row's width caps a resume time, which a narrow row with large text
     // could not otherwise fit beside the title.
     return LayoutBuilder(
@@ -226,22 +276,42 @@ class const SessionTile({
           // the meta line no longer says it.
           Semantics(
             label: PregoBrandLogo.displayNameFor(session.pluginId),
-            child: _HarnessLogo(pluginId: session.pluginId),
+            child: _HarnessLogo(pluginId: session.pluginId, selected: selected),
           ),
           Expanded(
             child: _TitleLine(
-              title: _title(context: context),
-              mark: state == null ? null : Semantics(label: state.label, child: state.mark),
+              title: _title(context: context, pointer: false),
+              mark: state != null ? Semantics(label: state.label, child: state.mark) : null,
             ),
           ),
-          if (revealActions)
-            _hoverActions(context: context)
-          else
-            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2),
+          ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: false),
         ],
       ),
     );
   }
+
+  /// A pointer row's first line: the title from the row's edge, then its state
+  /// right before the time, so a quiet row gives the title that room.
+  Widget _pointerTitleRow({required BuildContext context, required ({String label, Widget mark})? state}) =>
+      LayoutBuilder(
+        builder: (context, constraints) => Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          spacing: PregoSpacing.xs,
+          children: [
+            Expanded(child: _title(context: context, pointer: true)),
+            if (state != null)
+              SizedBox(
+                width: _markSize,
+                height: _titleLineHeightOf(pointer: true),
+                child: Center(
+                  child: Semantics(label: state.label, child: state.mark),
+                ),
+              ),
+            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: state != null),
+          ],
+        ),
+      );
 
   /// The session's title, cut off by a fade rather than an ellipsis: a long
   /// title trails away before its status mark instead of stopping on a hard
@@ -254,26 +324,36 @@ class const SessionTile({
   /// the titles that really did overflow, without a row paying to be measured
   /// twice. The ramp is an ellipsis wide rather than the design's, which is
   /// the price of that.
-  Widget _title({required BuildContext context}) {
+  Widget _title({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
-    final size = prego.textTheme.textMd;
+    final size = pointer ? prego.textTheme.textSm : prego.textTheme.textMd;
 
-    return Text(
+    final title = Text(
       session.title ?? context.loc.sessionListUntitled,
       // Unopened activity leans on weight rather than a badge.
       style: (unseen ? size.medium : size.regular).copyWith(
-        color: prego.colors.textPrimary,
+        // Medium is the heaviest weight under a pointer, so colour says what is unread.
+        color: pointer && !unseen && !awaitingInput && !isRunning && !selected
+            ? Color.lerp(prego.colors.textPrimary, prego.colors.textSecondary, 0.5)
+            : prego.colors.textPrimary,
       ),
       maxLines: 1,
       softWrap: false,
-      overflow: TextOverflow.fade,
+      overflow: pointer ? TextOverflow.clip : TextOverflow.fade,
+    );
+    if (!pointer) return title;
+    return Tooltip(
+      message: session.title ?? context.loc.sessionListUntitled,
+      waitDuration: const Duration(milliseconds: 400),
+      excludeFromSemantics: true,
+      child: _FadingTitle(title: title),
     );
   }
 
   /// When the session last changed, at the end of the title line, or when a
   /// quiet session will continue on its own. Waiting and running outrank a
   /// scheduled continuation.
-  Widget? _time({required BuildContext context, required double resumeMaxWidth}) {
+  Widget? _time({required BuildContext context, required double resumeMaxWidth, required bool holdsColumn}) {
     if (!awaitingInput && !isRunning) {
       if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
         // Half the row at most: the title keeps the other half, and both ellipsize.
@@ -290,13 +370,20 @@ class const SessionTile({
     final updatedAt = session.time?.updated;
     if (updatedAt == null) return null;
 
-    return Padding(
+    return Container(
+      // A fixed column beside a mark, so marks line up down the list; a quiet row's
+      // title has that room instead.
+      constraints: BoxConstraints(minWidth: holdsColumn ? _pointerTimeWidth : 0),
+      alignment: AlignmentDirectional.centerEnd,
       padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
       child: Text(
         context.formatTimestampCompact(ms: updatedAt),
         // "2d" is a glance mark; assistive technology hears the phrase.
         semanticsLabel: context.formatTimestamp(updatedAt),
-        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+        style: prego.textTheme.textXs.regular.copyWith(
+          color: prego.colors.textSecondary,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
         // Past the relative window this is a date, and some locales write
         // those with spaces; it holds the line rather than wrapping the row
         // open on the title's behalf.
@@ -306,44 +393,61 @@ class const SessionTile({
     );
   }
 
-  /// What a hovered or focused pointer row offers in place of its time: the
-  /// read toggle and, unless the row is already archived, Archive.
+  /// What a hovered or focused pointer row offers at its end: the read toggle
+  /// and, unless the row is already archived, Archive, on a scrim of the row's
+  /// own fill so the project name fades out beneath them.
   Widget _hoverActions({required BuildContext context}) {
     final loc = context.loc;
+    final prego = context.prego;
+    final fill = selected
+        ? prego.colors.pointerSelectionFill
+        : Color.alphaBlend(prego.colors.bgSecondaryHover.withValues(alpha: 0.5), prego.colors.bgSecondary);
     Widget action({required Key key, required String tooltip, required IconData icon, required VoidCallback onTap}) =>
         IconButton(
           key: key,
           tooltip: tooltip,
           onPressed: onTap,
-          icon: Icon(icon, size: PregoIconSize.md),
-          // Inside the title's line box, so revealing them never moves the row.
+          icon: Icon(icon, size: PregoIconSize.sm),
           style: IconButton.styleFrom(
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             padding: EdgeInsets.zero,
-            fixedSize: const Size(28, _titleLineHeight),
+            fixedSize: const Size(24, _hoverActionHeight),
             minimumSize: Size.zero,
           ),
         );
     // The row's menu stays the assistive path; merged into the row these
     // would fight its own tap action.
     return ExcludeSemantics(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          action(
-            key: const Key("session-tile-hover-toggle-unread"),
-            tooltip: unseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
-            icon: unseen ? TablerRegular.mail_opened : TablerRegular.mail,
-            onTap: onToggleUnread,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.centerStart,
+            end: AlignmentDirectional.centerEnd,
+            colors: [fill.withValues(alpha: 0), fill],
+            stops: const [0, 0.25],
           ),
-          if (!isArchived)
-            action(
-              key: const Key("session-tile-hover-archive"),
-              tooltip: loc.sessionListArchive,
-              icon: TablerRegular.archive,
-              onTap: onArchive,
-            ),
-        ],
+        ),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              action(
+                key: const Key("session-tile-hover-toggle-unread"),
+                tooltip: unseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+                icon: unseen ? TablerRegular.mail_opened : TablerRegular.mail,
+                onTap: onToggleUnread,
+              ),
+              if (!isArchived)
+                action(
+                  key: const Key("session-tile-hover-archive"),
+                  tooltip: loc.sessionListArchive,
+                  icon: TablerRegular.archive,
+                  onTap: onArchive,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -365,7 +469,12 @@ class const SessionTile({
         mark: Container(
           width: _waitingDotSize,
           height: _waitingDotSize,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: context.prego.colors.fgWarningPrimary),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                ? context.prego.colors.pointerWarningFill
+                : context.prego.colors.fgWarningPrimary,
+          ),
         ),
       );
     }
@@ -385,9 +494,40 @@ class const SessionTile({
 
   /// The row's second line, starting under the logo: any state that needs
   /// words, then the project, apart by a middle dot.
-  Widget _metaLine({required BuildContext context}) {
+  Widget _metaLine({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
-    final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
+    final style = prego.textTheme.textXs.regular.copyWith(
+      color: pointer ? prego.colors.textSecondary : prego.colors.textTertiary,
+    );
+    if (pointer) {
+      // On the title's edge, naming the harness before the project. The status
+      // keeps its words; only the project gives way.
+      final status = _statusLabel(context: context);
+      return ConstrainedBox(
+        constraints: BoxConstraints(minHeight: _metaLineHeightOf(pointer: pointer)),
+        child: Row(
+          children: [
+            ?status,
+            if (status != null)
+              ExcludeSemantics(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
+                  child: Text("·", style: style),
+                ),
+              ),
+            Semantics(
+              label: PregoBrandLogo.displayNameFor(session.pluginId),
+              child: _HarnessLogo(pluginId: session.pluginId, selected: selected),
+            ),
+            const SizedBox(width: PregoSpacing.xs),
+            if (projectLabel case final project?)
+              Flexible(
+                child: Text(project, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+        ),
+      );
+    }
     final details = <Widget>[
       ?_statusLabel(context: context),
       if (projectLabel case final project?) Text(project, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -400,7 +540,7 @@ class const SessionTile({
     // A minimum rather than a fixed height: scaled-up accessibility text grows
     // the line instead of being cropped to the 1x line box.
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: _metaLineHeight),
+      constraints: BoxConstraints(minHeight: _metaLineHeightOf(pointer: pointer)),
       child: Row(
         children: [
           for (final (index, detail) in details.indexed)
@@ -427,30 +567,43 @@ class const SessionTile({
   }
 
   /// The states that need words: waiting for the user, a retry loop, tasks
-  /// running behind the turn. A plain running session carries no label — the
-  /// rotation is the signal.
+  /// running behind the turn. A plain running session carries no label on touch,
+  /// where the rotation is the signal, and says so under a pointer.
   Widget? _statusLabel({required BuildContext context}) {
     final loc = context.loc;
     final prego = context.prego;
     final (label, color) = switch ((awaitingInput, isRetrying)) {
-      (true, _) => (loc.sessionListWaiting, prego.colors.textWarningPrimary),
+      (true, _) => (
+        loc.sessionListWaiting,
+        PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+            ? prego.colors.pointerWarningText
+            : prego.colors.textWarningPrimary,
+      ),
       (_, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
       _ when backgroundTaskCount > 0 => (
         loc.sessionListBackgroundTasks(backgroundTaskCount),
         prego.colors.bgBrandSolid,
       ),
+      _ when isRunning && PregoInteractionScope.of(context) == PregoInteractionMode.pointer => (
+        loc.sessionListRunning,
+        prego.colors.textPrimary,
+      ),
       _ => (null, null),
     };
     if (label == null || color == null) return null;
 
+    final plainRunning = !awaitingInput && !isRetrying && backgroundTaskCount == 0;
     final text = Text(
       label,
-      style: prego.textTheme.textXs.medium.copyWith(color: color),
+      style: (plainRunning ? prego.textTheme.textXs.regular : prego.textTheme.textXs.medium).copyWith(color: color),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
-    // The status mark already speaks the waiting state.
-    return awaitingInput ? ExcludeSemantics(child: text) : text;
+    // The status mark already speaks this state: running under a pointer, where the
+    // waiting word stands alone, and waiting elsewhere.
+    return (PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? plainRunning : awaitingInput)
+        ? ExcludeSemantics(child: text)
+        : text;
   }
 }
 
@@ -475,45 +628,52 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
       child: MergeSemantics(
         child: Semantics(
           button: true,
-          child: InkWell(
-            onTap: () => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert),
-            hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
-            child: Padding(
-              padding: _rowPadding(pointer: pointer),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: _lineGap,
-                children: [
-                  Row(
-                    spacing: PregoSpacing.xs,
-                    children: [
-                      // Silent, unlike the real row's: the meta line names the harness here.
-                      _HarnessLogo(pluginId: launch.pluginId),
-                      Expanded(
-                        child: _TitleLine(
-                          title: Text(
-                            launch.title ?? loc.sessionListUntitled,
-                            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-                            maxLines: 1,
-                            softWrap: false,
-                            overflow: TextOverflow.fade,
+          child: Padding(
+            padding: pointer ? _pointerRowMargin : EdgeInsets.zero,
+            child: InkWell(
+              onTap: () => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert),
+              hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
+              borderRadius: pointer ? BorderRadius.circular(_pointerRowRadius) : null,
+              child: Padding(
+                padding: _rowPadding(pointer: pointer),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: _lineGapOf(pointer: pointer),
+                  children: [
+                    Row(
+                      spacing: PregoSpacing.xs,
+                      children: [
+                        // Silent, unlike the real row's: the meta line names the harness here.
+                        // A pointer row keeps its logo on the meta line, so its title starts at the edge.
+                        if (!pointer) _HarnessLogo(pluginId: launch.pluginId, selected: false),
+                        Expanded(
+                          child: _TitleLine(
+                            title: Text(
+                              launch.title ?? loc.sessionListUntitled,
+                              style: (pointer ? prego.textTheme.textSm : prego.textTheme.textMd).regular.copyWith(
+                                color: prego.colors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.fade,
+                            ),
+                            // "Creating…" already says what the sparkle means.
+                            mark: const ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
                           ),
-                          // "Creating…" already says what the sparkle means.
-                          mark: const ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
                         ),
-                      ),
-                    ],
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: _metaLineHeight),
-                    child: Text(
-                      "${loc.sessionListCreating}$_separator${PregoBrandLogo.displayNameFor(launch.pluginId)}",
-                      style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      ],
                     ),
-                  ),
-                ],
+                    ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: _metaLineHeightOf(pointer: pointer)),
+                      child: Text(
+                        "${loc.sessionListCreating}$_separator${PregoBrandLogo.displayNameFor(launch.pluginId)}",
+                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -534,43 +694,53 @@ class const SessionTileSkeleton({
 }) extends StatelessWidget {
   /// As tall as a row at the default text size, under a pointer or touch.
   static double heightOf({required bool pointer}) =>
-      _rowVerticalPadding(pointer: pointer) * 2 + _titleLineHeight + _lineGap + _metaLineHeight;
+      _rowVerticalPadding(pointer: pointer) * 2 +
+      _titleLineHeightOf(pointer: pointer) +
+      _lineGapOf(pointer: pointer) +
+      _metaLineHeightOf(pointer: pointer) +
+      (pointer ? _pointerRowMargin.vertical : 0);
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: _rowPadding(pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: _lineGap,
-      children: [
-        SizedBox(
-          height: _titleLineHeight,
-          // A dot where the harness logo goes, so the title bar starts where
-          // the title does.
-          child: Row(
-            spacing: PregoSpacing.xs,
-            children: [
-              const PregoSkeletonBar(height: _brandLogoSize, width: _brandLogoSize),
-              Expanded(
-                child: FractionallySizedBox(
-                  alignment: AlignmentDirectional.centerStart,
-                  widthFactor: titleWidthFraction,
-                  child: const Center(child: PregoSkeletonBar(height: 16)),
-                ),
+  Widget build(BuildContext context) {
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    return Padding(
+      padding: pointer ? _pointerRowMargin : EdgeInsets.zero,
+      child: Padding(
+        padding: _rowPadding(pointer: pointer),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: _lineGapOf(pointer: pointer),
+          children: [
+            SizedBox(
+              height: _titleLineHeightOf(pointer: pointer),
+              // A dot where the harness logo goes, so the title bar starts where
+              // the title does.
+              child: Row(
+                spacing: PregoSpacing.xs,
+                children: [
+                  if (!pointer) const PregoSkeletonBar(height: _brandLogoSize, width: _brandLogoSize),
+                  Expanded(
+                    child: FractionallySizedBox(
+                      alignment: AlignmentDirectional.centerStart,
+                      widthFactor: titleWidthFraction,
+                      child: const Center(child: PregoSkeletonBar(height: 16)),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            SizedBox(
+              height: _metaLineHeightOf(pointer: pointer),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: PregoSkeletonBar(height: 12, width: detailsWidth),
+              ),
+            ),
+          ],
         ),
-        SizedBox(
-          height: _metaLineHeight,
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: PregoSkeletonBar(height: 12, width: detailsWidth),
-          ),
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 /// The row's insets, shared with the launching row and the placeholder: the
@@ -578,11 +748,20 @@ class const SessionTileSkeleton({
 /// [PregoSpacing.xl] from the trailing edge.
 EdgeInsetsDirectional _rowPadding({required bool pointer}) {
   final vertical = _rowVerticalPadding(pointer: pointer);
+  if (pointer) return EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.md, vertical: vertical);
   return EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, vertical, PregoSpacing.xl, vertical);
 }
 
+/// A pointer row is inset from the panel, so its hover and selection read as
+/// one rounded shape.
+const EdgeInsets _pointerRowMargin = EdgeInsets.symmetric(horizontal: 6, vertical: 1);
+const double _pointerRowRadius = PregoRadius.sm;
+
+/// A hover action's height: the 16 pt meta line and a little of the row's inset.
+const double _hoverActionHeight = 20;
+
 /// A finger needs a roomier row than a mouse does.
-double _rowVerticalPadding({required bool pointer}) => pointer ? PregoSpacing.md : PregoSpacing.lg;
+double _rowVerticalPadding({required bool pointer}) => pointer ? PregoSpacing.xxs : PregoSpacing.lg;
 
 /// A title with the status mark right after its text. A long title fades out
 /// before the mark, so the mark always shows; without one the title takes the
@@ -607,10 +786,48 @@ class const _TitleLine({required final Widget title, required final Widget? mark
 
 /// The harness mark leading the title, shared by the session row and the
 /// launching row so a title never moves when one becomes the other.
-class const _HarnessLogo({required final String pluginId}) extends StatelessWidget {
+class const _HarnessLogo({required final String pluginId, required final bool selected}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) =>
-      PregoBrandLogo(pluginId: pluginId, size: _brandLogoSize, color: context.prego.colors.textSecondary);
+  Widget build(BuildContext context) {
+    if (PregoInteractionScope.of(context) != PregoInteractionMode.pointer) {
+      return PregoBrandLogo(pluginId: pluginId, size: _brandLogoSize, color: context.prego.colors.textSecondary);
+    }
+    final logo = PregoBrandLogo(pluginId: pluginId, size: 14, color: context.prego.colors.textTertiary);
+    // Under a pointer it is a quiet glyph on the meta line, naming the harness
+    // without competing with a status. The open session's wears its own colours.
+    if (selected) return logo;
+    return Opacity(
+      opacity: 0.7,
+      child: ColorFiltered(colorFilter: const ColorFilter.matrix(_grayscale), child: logo),
+    );
+  }
+}
+
+/// A pointer row and its actions menu, which knows when the menu is open.
+class const _PointerRowMenu({
+  required final double menuWidth,
+  required final List<PregoMenuEntry> Function() entriesBuilder,
+  required final Widget Function(BuildContext context, VoidCallback openMenu, bool revealed, bool menuOpen) rowBuilder,
+}) extends StatefulWidget {
+  @override
+  State<_PointerRowMenu> createState() => _PointerRowMenuState();
+}
+
+class _PointerRowMenuState() extends State<_PointerRowMenu> {
+  bool _menuOpen = false;
+
+  @override
+  Widget build(BuildContext context) => PregoAnchorMenu(
+    flat: true,
+    menuWidth: widget.menuWidth,
+    entriesBuilder: widget.entriesBuilder,
+    onOpenChanged: (open) {
+      if (mounted) setState(() => _menuOpen = open);
+    },
+    triggerBuilder: (context, openMenu) => _PointerReveal(
+      builder: (context, revealed) => widget.rowBuilder(context, openMenu, revealed, _menuOpen),
+    ),
+  );
 }
 
 /// Whether the pointer is over the row or keyboard focus is inside it.
@@ -638,12 +855,39 @@ class _PointerRevealState() extends State<_PointerReveal> {
 }
 
 /// The row's line boxes, from the type scale it renders: a 16/24 title over a
-/// 12/18 meta line with 20px minimum height, [_lineGap] apart.
-const double _titleLineHeight = 24;
-const double _metaLineHeight = 20;
-const double _lineGap = PregoSpacing.xxs;
+/// 12/18 meta line with 20px minimum height under a finger, and a 13/18 title
+/// over a 12/16 meta line under a pointer.
+double _titleLineHeightOf({required bool pointer}) => pointer ? 18 : 24;
+double _metaLineHeightOf({required bool pointer}) => pointer ? 16 : 20;
+double _lineGapOf({required bool pointer}) => pointer ? 0 : PregoSpacing.xxs;
+
+/// Rec. 709 luminance, so every harness mark reads as one quiet glyph.
+const List<double> _grayscale = [
+  0.2126,
+  0.7152,
+  0.0722,
+  0,
+  0,
+  0.2126,
+  0.7152,
+  0.0722,
+  0,
+  0,
+  0.2126,
+  0.7152,
+  0.0722,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+];
 
 const double _markSize = 16;
+const double _titleFadeWidth = 18;
+const double _pointerTimeWidth = 30;
 const double _waitingDotSize = 8;
 
 /// As large as the status marks, so the logo and the mark read as glyphs of
@@ -652,3 +896,38 @@ const double _brandLogoSize = 16;
 
 /// Between the meta line's details; a glyph, not words, so it is not translated.
 const String _separator = " · ";
+
+/// [title] fading off its end, only when it does not fit: a gradient on every row
+/// would dim the last letter of a title that just fits. The paragraph's own fade is
+/// only an ellipsis wide, which reads as a clipped word.
+class const _FadingTitle({required final Text title}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final painter = TextPainter(
+        text: TextSpan(text: title.data, style: DefaultTextStyle.of(context).style.merge(title.style)),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      final overflows = painter.width > constraints.maxWidth;
+      painter.dispose();
+      if (!overflows) return title;
+      return ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: const [Colors.white, Colors.white, Color(0x66FFFFFF), Colors.transparent],
+          stops: [
+            0,
+            1 - min(1, _titleFadeWidth / bounds.width),
+            1 - min(1, _titleFadeWidth * 0.45 / bounds.width),
+            1 - min(1, 2 / bounds.width),
+          ],
+        ).createShader(bounds, textDirection: Directionality.of(context)),
+        child: SizedBox(width: double.infinity, child: title),
+      );
+    },
+  );
+}

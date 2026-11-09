@@ -64,6 +64,7 @@ class const PendingFormModal({
       final bodyHeight = math.max(0.0, math.min(620.0, available));
       final statusHeight = math.min(bodyHeight, MediaQuery.textScalerOf(context).scale(84) + PregoSpacing.lg);
       return PregoModalSurface(
+        anchorsTop: false,
         title: loc.mcpNativeRequestTitle,
         subtitle: null,
         onBack: null,

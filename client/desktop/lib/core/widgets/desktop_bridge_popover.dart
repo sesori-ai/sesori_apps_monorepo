@@ -14,7 +14,7 @@ class const DesktopBridgePopover({
   required final VoidCallback close,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
-  static const double _statusDotSize = 8;
+  static const double _statusDotSize = 6;
   static const Duration _statusDetailTransition = Duration(milliseconds: 200);
 
   @override
@@ -58,14 +58,14 @@ class const DesktopBridgePopover({
           };
     return Padding(
       key: const Key("desktop-bridge-popover"),
-      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
+      padding: const EdgeInsets.symmetric(vertical: PregoSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           // In line with the rows' icons, here and in the menu around this.
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+            padding: const EdgeInsetsDirectional.symmetric(horizontal: 10),
             // A hint arriving or leaving grows or shrinks the panel smoothly
             // instead of snapping the actions below it.
             child: AnimatedSize(
@@ -76,26 +76,37 @@ class const DesktopBridgePopover({
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(loc.desktopLocalBridgeTitle, style: context.prego.textTheme.textSm.bold),
-                  const SizedBox(height: PregoSpacing.xs),
                   Row(
+                    spacing: PregoSpacing.sm,
                     children: [
-                      // A status dot, not a glyph: no icon token applies.
-                      Icon(
-                        TablerSolid.circle,
-                        size: _statusDotSize,
-                        color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
+                      Text(
+                        loc.desktopLocalBridgeTitle,
+                        style: context.prego.textTheme.textXs.regular.copyWith(
+                          color: context.prego.colors.textTertiary,
+                        ),
                       ),
-                      const SizedBox(width: PregoSpacing.sm),
                       Expanded(
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            state.statusLabel,
-                            style: context.prego.textTheme.textSm.regular.copyWith(
-                              color: context.prego.colors.textSecondary,
+                        child: Row(
+                          spacing: PregoSpacing.xs,
+                          children: [
+                            // A status dot, not a glyph: no icon token applies.
+                            Icon(
+                              TablerSolid.circle,
+                              size: _statusDotSize,
+                              color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
                             ),
-                          ),
+                            Expanded(
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  state.statusLabel,
+                                  style: context.prego.textTheme.textXs.regular.copyWith(
+                                    color: context.prego.colors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -113,11 +124,7 @@ class const DesktopBridgePopover({
                     child: switch (state.statusDetail) {
                       final detail? => Padding(
                         key: ValueKey(detail),
-                        // Under the status text, past the dot.
-                        padding: const EdgeInsetsDirectional.only(
-                          start: _statusDotSize + PregoSpacing.sm,
-                          top: PregoSpacing.xs,
-                        ),
+                        padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
                         // Announced with the status, so the remediation is read too.
                         child: Semantics(
                           liveRegion: true,
@@ -164,7 +171,7 @@ class const DesktopBridgePopover({
           ),
           _BridgeAction(
             label: loc.desktopBridgeSettings,
-            icon: TablerRegular.settings,
+            icon: TablerRegular.adjustments_horizontal,
             onPressed: () {
               close();
               onOpenSettings();
@@ -176,6 +183,8 @@ class const DesktopBridgePopover({
   }
 }
 
+/// The menu rows' icon column, so the status text starts where their labels do.
+
 class const _BridgeAction({
   required final String label,
   required final IconData icon,
@@ -185,16 +194,25 @@ class const _BridgeAction({
   Widget build(BuildContext context) => TextButton(
     onPressed: onPressed,
     style: TextButton.styleFrom(
-      foregroundColor: context.prego.colors.textSecondary,
+      foregroundColor: context.prego.colors.textPrimary,
       alignment: AlignmentDirectional.centerStart,
-      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs, vertical: PregoSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      minimumSize: const Size(0, 30),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      // The compact row's height is already this row's; density would shrink it again.
+      visualDensity: VisualDensity.standard,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.sm)),
     ),
-    // The menu rows' icon and gap, so the labels line up with theirs.
+    // The compact menu rows' icon and gap, so the labels line up with theirs.
     child: Row(
       children: [
-        Icon(icon, size: 20),
-        const SizedBox(width: PregoSpacing.lg),
-        Expanded(child: Text(label, style: context.prego.textTheme.textSm.medium)),
+        Icon(
+          icon,
+          size: 16,
+          color: onPressed == null ? context.prego.colors.textDisabled : context.prego.colors.textSecondary,
+        ),
+        const SizedBox(width: PregoSpacing.md),
+        Expanded(child: Text(label, style: context.prego.textTheme.textSm.regular)),
       ],
     ),
   );

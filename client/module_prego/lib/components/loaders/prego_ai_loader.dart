@@ -94,6 +94,11 @@ class const PregoAiLoader({
   /// Also supports caller-owned timelines such as Deep Scan.
   final Color? color,
 }) extends StatefulWidget {
+  /// Draws the sparkle in Flutter on Darwin too, for a test or capture that has
+  /// no native view to show.
+  @visibleForTesting
+  static bool debugForceFlutterRenderer = false;
+
   @override
   State<PregoAiLoader> createState() => _PregoAiLoaderState();
 }
@@ -124,6 +129,7 @@ class _PregoAiLoaderState()
   MethodChannel? _nativeChannel;
 
   bool get _usesNativeRenderer =>
+      !PregoAiLoader.debugForceFlutterRenderer &&
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) &&
       widget.fillMode == .keyframed &&

@@ -20,10 +20,15 @@ class const DesktopSessionSignals({
       if (isAwaitingInput)
         Tooltip(
           message: context.loc.sessionListAwaitingInput,
-          child: Icon(
-            TablerRegular.message_circle,
-            size: _size,
-            color: context.prego.colors.textWarningPrimary,
+          child: SizedBox.square(
+            dimension: _size,
+            child: Center(
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: context.prego.colors.pointerWarningFill),
+              ),
+            ),
           ),
         ),
       if (isRunning || isUnseen)

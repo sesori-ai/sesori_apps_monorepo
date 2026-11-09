@@ -103,10 +103,14 @@ class const _HarnessTrigger({
   required final double height,
   required final VoidCallback onPressed,
 }) extends StatelessWidget {
+  /// The height of a small button under a pointer, as the project pill has.
+  static const double _pointerHeight = 28;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final borderRadius = BorderRadius.circular(pointer ? PregoRadius.md : PregoRadius.full);
     final pluginId = this.pluginId;
 
     // The row's own text names the harness but not what the choice is for, so
@@ -120,22 +124,29 @@ class const _HarnessTrigger({
       onTap: onPressed,
       excludeSemantics: true,
       child: Material(
-        color: prego.colors.bgSurface4,
-        shape: StadiumBorder(side: BorderSide(color: prego.colors.borderSecondary)),
+        color: pointer ? prego.colors.bgSurface2 : prego.colors.bgSurface4,
+        shape: RoundedRectangleBorder(
+          borderRadius: borderRadius,
+          side: BorderSide(color: prego.colors.borderSecondary),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: const Key("new_session_plugin_trigger"),
           onTap: onPressed,
           borderRadius: borderRadius,
           child: SizedBox(
-            height: height,
+            height: pointer ? _pointerHeight : height,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: pointer ? 10 : 12),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (pluginId != null) ...[
-                    PregoBrandLogo(pluginId: pluginId, color: prego.colors.textSecondary),
+                    PregoBrandLogo(
+                      pluginId: pluginId,
+                      size: pointer ? PregoIconSize.sm : 20,
+                      color: prego.colors.textSecondary,
+                    ),
                     SizedBox(width: prego.spacing.sm),
                   ],
                   Flexible(
@@ -143,11 +154,17 @@ class const _HarnessTrigger({
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+                      style: (pointer ? prego.textTheme.textXs : prego.textTheme.textSm).medium.copyWith(
+                        color: prego.colors.textSecondary,
+                      ),
                     ),
                   ),
                   SizedBox(width: prego.spacing.sm),
-                  Icon(TablerRegular.chevron_down, size: PregoIconSize.md, color: prego.colors.textSecondary),
+                  Icon(
+                    pointer ? TablerRegular.selector : TablerRegular.chevron_down,
+                    size: pointer ? PregoIconSize.sm : PregoIconSize.md,
+                    color: prego.colors.textSecondary,
+                  ),
                 ],
               ),
             ),

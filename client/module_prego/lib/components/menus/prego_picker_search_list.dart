@@ -79,7 +79,7 @@ class const PregoPickerPopover({
       popoverMaxHeight: maxHeight,
       contentScrolls: true,
       // The composer's menus are tight under a pointer and roomy under touch.
-      popoverBorderRadius: pointer ? PregoRadius.md : PregoRadius.x4l,
+      popoverBorderRadius: pointer ? PregoRadius.lg : PregoRadius.x4l,
       triggerBuilder: triggerBuilder,
       contentBuilder: contentBuilder,
       onClosed: onClosed,
@@ -300,14 +300,21 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
                       autocorrect: false,
                       decoration: InputDecoration(
                         hintText: widget.searchHint,
-                        prefixIcon: const Icon(TablerRegular.search, size: PregoIconSize.md),
+                        prefixIcon: Icon(
+                          TablerRegular.search,
+                          size: pointer ? PregoIconSize.sm : PregoIconSize.md,
+                          color: pointer ? prego.colors.textSecondary : null,
+                        ),
+                        prefixIconConstraints: pointer ? const BoxConstraints(minWidth: 34, minHeight: 30) : null,
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: pointer
+                            ? const EdgeInsetsDirectional.fromSTEB(0, 8, 12, 8)
+                            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(pointer ? PregoRadius.sm : PregoRadius.x4l),
                           borderSide: BorderSide.none,
                         ),
-                        filled: true,
+                        filled: !pointer,
                         fillColor: prego.colors.bgSurface1,
                       ),
                       onChanged: _setQuery,
@@ -343,6 +350,23 @@ class const _Footer({
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
+    if (pointer) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: colors.borderSecondary, width: 0.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (index, action) in actions.indexed)
+                _PointerFooterRow(action: action, isHighlighted: index == highlighted),
+            ],
+          ),
+        ),
+      );
+    }
     // Room for the focus ring inside the popover's clip and between the pills.
     final gap = pointer ? 8.0 : 12.0;
     return DecoratedBox(
@@ -389,6 +413,59 @@ class const _Footer({
   }
 }
 
+/// A footer action under a pointer: a row like the options above it, with its
+/// check at the end and its highlight the same.
+class const _PointerFooterRow({
+  required final PregoPickerSearchFooterAction action,
+  required final bool isHighlighted,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    final highlight = Theme.of(context).brightness == Brightness.dark
+        ? colors.pointerSelectionFill
+        : colors.bgGrayHover;
+    final radius = BorderRadius.circular(PregoRadius.sm);
+    return Semantics(
+      selected: action.isSelected,
+      button: true,
+      child: InkWell(
+        key: ValueKey(action.label),
+        mouseCursor: WidgetStateMouseCursor.clickable,
+        onTap: action.onPick,
+        hoverColor: highlight,
+        focusColor: highlight,
+        borderRadius: radius,
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: isHighlighted ? highlight : null, borderRadius: radius),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 30),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: Row(
+                spacing: 8,
+                children: [
+                  Icon(action.icon, size: PregoIconSize.sm, color: colors.textSecondary),
+                  Expanded(
+                    child: Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: prego.textTheme.textSm.regular.copyWith(color: colors.textPrimary),
+                    ),
+                  ),
+                  if (action.isSelected) Icon(TablerRegular.check, size: PregoIconSize.sm, color: colors.bgBrandSolid),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Quiet centred text in the list's place or among its rows.
 class const _Note({required final String text}) extends StatelessWidget {
   @override
@@ -417,8 +494,11 @@ class const _Heading({required final String text, required final bool pointer}) 
       child: Semantics(
         header: true,
         child: Text(
-          text.toUpperCase(),
-          style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8),
+          PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? text : text.toUpperCase(),
+          style: prego.textTheme.textXs.medium.copyWith(
+            color: prego.colors.textSecondary,
+            letterSpacing: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 0 : 0.8,
+          ),
         ),
       ),
     );
@@ -457,7 +537,9 @@ class const _OptionRow({
               color: !isHighlighted
                   ? null
                   : Theme.of(context).brightness == Brightness.dark
-                  ? prego.colors.textBrandPrimary.withValues(alpha: 0.14)
+                  ? (pointer
+                        ? prego.colors.pointerSelectionFill
+                        : prego.colors.textBrandPrimary.withValues(alpha: 0.14))
                   : prego.colors.bgGrayHover,
               borderRadius: radius,
             ),

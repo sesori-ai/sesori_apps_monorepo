@@ -8,11 +8,12 @@ import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 
 /// Desktop composition boundary for the shared session-diff presentation: the
-/// page toolbar over the file list and the selected file's diff. The page goes
-/// back with Cmd/Ctrl+[, so its toolbar has no Back.
+/// page toolbar over the file list and the selected file's diff. Its breadcrumb
+/// returns to the session, as Cmd/Ctrl+[ does.
 class const DesktopSessionDiffsScreen({
   super.key,
   required final String sessionId,
+  required final VoidCallback onBack,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -29,11 +30,30 @@ class const DesktopSessionDiffsScreen({
       child: SessionDiffsView(
         chrome: SessionDiffsSplit(
           headerBuilder: ({required context, required title, required summary}) => DesktopPageToolbar(
-            breadcrumb: null,
+            breadcrumb: (
+              // The session's own title, once the sidebar's list names it.
+              label:
+                  context.select(
+                    (AllSessionsCubit cubit) =>
+                        cubit.state.rows.where((row) => row.session.id == sessionId).firstOrNull?.session.title,
+                  ) ??
+                  context.loc.desktopSessionBreadcrumb,
+              onPressed: onBack,
+            ),
             status: null,
             title: title,
-            subtitle: summary == null ? null : PregoNavSubtitle(text: summary),
-            actions: const [],
+            titleDetail: null,
+            subtitle: null,
+            actions: [
+              if (summary case (:final files, :final additions, :final deletions)) ...[
+                PregoNavSubtitle(text: files),
+                DiffCounts(
+                  additions: additions,
+                  deletions: deletions,
+                  style: context.prego.textTheme.textXs.regular,
+                ),
+              ],
+            ],
           ),
         ),
       ),

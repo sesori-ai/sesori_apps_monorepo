@@ -57,7 +57,9 @@ Future<void> showDesktopCommandPalette({
   // ignore: no_slop_linter/avoid_raw_modal_presenters, a desktop-only Spotlight-style command palette overlay, not a sheet or dialog
   return showDialog<void>(
     context: context,
-    animationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,
+    // Summoned by keyboard many times a day, so it is simply there, and barely dims.
+    animationStyle: AnimationStyle.noAnimation,
+    barrierColor: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.28 : 0.08),
     builder: (dialogContext) {
       // The dialog's own route, which the router's typed pop does not own.
       void close() => ModalRoute.of(dialogContext)?.navigator?.pop();
@@ -128,11 +130,14 @@ class _CommandPaletteState() extends State<_CommandPalette> {
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(PregoRadius.lg),
-              boxShadow: prego.shadows.xl,
+              boxShadow: [
+                ...prego.shadows.xl,
+                const BoxShadow(color: Color(0x66000000), offset: Offset(0, 16), blurRadius: 48),
+              ],
             ),
             child: Material(
               key: const Key("desktop-command-palette"),
-              color: prego.colors.bgSecondary,
+              color: prego.colors.bgSurface3,
               clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(PregoRadius.lg),
@@ -228,13 +233,12 @@ class const _PaletteRow({
         ..add(
           TextSpan(
             text: title.substring(range.start, range.end),
-            style: TextStyle(fontWeight: FontWeight.w600, color: prego.colors.textBrandSecondary),
+            style: TextStyle(fontWeight: FontWeight.w500, color: prego.colors.textBrandSecondary),
           ),
         );
       at = range.end;
     }
     spans.add(TextSpan(text: title.substring(at)));
-    if (detail case final detail?) spans.add(TextSpan(text: "   $detail", style: quiet));
     final trailing = this.trailing;
     return Row(
       children: [
@@ -247,6 +251,14 @@ class const _PaletteRow({
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        if (detail case final detail?)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.lg),
+              child: Text(detail, style: quiet, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ),
         if (trailing != null) ...[const SizedBox(width: PregoSpacing.sm), Text(trailing, style: quiet)],
       ],
     );

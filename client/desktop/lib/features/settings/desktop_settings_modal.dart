@@ -81,52 +81,78 @@ Future<void> _showDesktopSettings({
   // cockpit's live list and the folder browser's service by value.
   final projectList = context.read<ProjectListCubit>();
   final connectionService = context.read<ConnectionService>();
-  final reducedMotion = prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion;
-  // ignore: no_slop_linter/avoid_raw_modal_presenters, a desktop-only full-window surface, not a modal sheet or dialog
-  await showGeneralDialog<void>(
-    context: context,
-    useRootNavigator: true,
-    barrierDismissible: true,
-    barrierLabel: context.loc.settingsClose,
-    barrierColor: Colors.transparent,
-    transitionDuration: reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
-    transitionBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
-    pageBuilder: (dialogContext, _, _) {
-      void close() {
-        // Logout can finish after the user has dismissed the dialog.
-        if (!dialogContext.mounted) return;
-        final route = ModalRoute.of(dialogContext);
-        final navigator = route?.navigator;
-        if (route?.isActive != true || navigator == null) return;
-        // Owned authentication/setting sheets leave with their dialog.
-        navigator.popUntil((candidate) => candidate == route);
-        navigator.pop();
-      }
+  // A shortcut is answered at once; only a click gets the entrance.
+  final instant =
+      prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion || pregoActivatedByKeyboard;
+  // A desktop-only full-window surface above the router's own pages.
+  // ignore: no_slop_linter/avoid_navigator_of, no_slop_linter/avoid_raw_go_router
+  await Navigator.of(context, rootNavigator: true).push<void>(
+    _DesktopSettingsRoute(
+      barrierDismissible: true,
+      barrierLabel: context.loc.settingsClose,
+      barrierColor: Colors.transparent,
+      transitionDuration: instant ? Duration.zero : pregoPointerEnterDuration,
+      reverseDuration: instant ? Duration.zero : const Duration(milliseconds: 90),
+      // The scrim and the panel fade apart: see the window's build.
+      transitionBuilder: (_, _, _, child) => child,
+      pageBuilder: (dialogContext, _, _) {
+        void close() {
+          // Logout can finish after the user has dismissed the dialog.
+          if (!dialogContext.mounted) return;
+          final route = ModalRoute.of(dialogContext);
+          final navigator = route?.navigator;
+          if (route?.isActive != true || navigator == null) return;
+          if (route is _DesktopSettingsRoute && pregoActivatedByKeyboard) route.leaveAtOnce();
+          // Owned authentication/setting sheets leave with their dialog.
+          navigator.popUntil((candidate) => candidate == route);
+          navigator.pop();
+        }
 
-      return MultiBlocProvider(
-        providers: [
-          BlocProvider<AuthGateCubit>.value(value: authGate),
-          BlocProvider<ProjectListCubit>.value(value: projectList),
-          RepositoryProvider<ConnectionService>.value(value: connectionService),
-        ],
-        child: BlocListener<AuthGateCubit, AuthGateState>(
-          // A definitive token-refresh rejection can sign out while this root
-          // overlay is above the gated cockpit; dismiss its owned UI as well.
-          listenWhen: (_, state) => state is AuthGateSignedOut,
-          listener: (_, _) => close(),
-          child: _DesktopSettingsModal(
-            initialTab: initialTab,
-            initialBridgeSubpage: bridgeSubpage,
-            onClose: close,
-            onLogoutCompleted: () {
-              close();
-              onLogoutCompleted();
-            },
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthGateCubit>.value(value: authGate),
+            BlocProvider<ProjectListCubit>.value(value: projectList),
+            RepositoryProvider<ConnectionService>.value(value: connectionService),
+          ],
+          child: BlocListener<AuthGateCubit, AuthGateState>(
+            // A definitive token-refresh rejection can sign out while this root
+            // overlay is above the gated cockpit; dismiss its owned UI as well.
+            listenWhen: (_, state) => state is AuthGateSignedOut,
+            listener: (_, _) => close(),
+            child: _DesktopSettingsModal(
+              initialTab: initialTab,
+              initialBridgeSubpage: bridgeSubpage,
+              onClose: close,
+              onLogoutCompleted: () {
+                close();
+                onLogoutCompleted();
+              },
+            ),
           ),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
+}
+
+/// A dialog route that leaves faster than it arrives, which [showGeneralDialog]
+/// cannot express.
+class _DesktopSettingsRoute({
+  required super.barrierDismissible,
+  required super.barrierLabel,
+  required super.barrierColor,
+  required super.transitionDuration,
+  required final Duration reverseDuration,
+  required super.transitionBuilder,
+  required super.pageBuilder,
+}) extends RawDialogRoute<void> {
+  this : super(settings: null);
+
+  @override
+  Duration get reverseTransitionDuration => reverseDuration;
+
+  /// For a close from the keyboard, which is answered at once however the window opened.
+  void leaveAtOnce() => controller?.reverseDuration = Duration.zero;
 }
 
 class const _DesktopSettingsModal({
@@ -157,7 +183,13 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
         defaultTargetPlatform != TargetPlatform.macOS &&
         !GlassAccessibilityData.of(context).reduceTransparency &&
         GlassAdaptiveScopeData.maybeOf(context)?.effectiveQuality != GlassQuality.minimal;
-    final scrim = ColoredBox(color: colors.bgSurface1.withValues(alpha: blur ? 0.4 : 0.6));
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scrim = ColoredBox(color: Colors.black.withValues(alpha: dark ? 0.45 : 0.14));
+    // The scrim fades; the panel also settles into place, except under reduced motion.
+    final routeAnimation = ModalRoute.of(context)?.animation;
+    final settle = routeAnimation == null || prefersReducedMotion(context)
+        ? null
+        : routeAnimation.drive(Tween<double>(begin: 0.98, end: 1).chain(CurveTween(curve: pregoPointerEnterCurve)));
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): widget.onClose},
       child: Focus(
@@ -166,86 +198,159 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
           children: [
             Positioned.fill(
               child: IgnorePointer(
-                child: blur ? BackdropFilter(filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), child: scrim) : scrim,
+                child: FadeTransition(
+                  opacity: switch (routeAnimation) {
+                    null => kAlwaysCompleteAnimation,
+                    // Dims with the panel's arrival, and lifts the moment it leaves.
+                    final route => CurvedAnimation(
+                      parent: route,
+                      curve: const Interval(0, 0.4),
+                      reverseCurve: Curves.easeOut,
+                    ),
+                  },
+                  child: blur ? BackdropFilter(filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), child: scrim) : scrim,
+                ),
               ),
             ),
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(PregoSpacing.lg),
-                child: SizedBox(
-                  width: 860,
-                  height: 640,
-                  child: Material(
-                    key: const Key("desktop-settings-modal"),
-                    color: colors.bgSurface1,
-                    clipBehavior: Clip.antiAlias,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(PregoRadius.x4l),
-                      side: BorderSide(color: colors.borderSecondary),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          width: 160,
-                          // A Material, not a ColoredBox: the tabs' selected Ink paints on it.
-                          child: Material(
-                            color: colors.bgSurface2,
-                            child: SingleChildScrollView(
-                              primary: false,
-                              padding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                // Solid in the first frames and gone in the last ones, so the page behind
+                // never reads through it.
+                child: FadeTransition(
+                  opacity: routeAnimation == null
+                      ? kAlwaysCompleteAnimation
+                      : CurvedAnimation(
+                          parent: routeAnimation,
+                          curve: const Interval(0, 0.07, curve: Curves.easeOut),
+                          reverseCurve: const Interval(0.65, 1, curve: Curves.easeIn),
+                        ),
+                  child: ScaleTransition(
+                    scale: settle ?? kAlwaysCompleteAnimation,
+                    child: SizedBox(
+                      width: 780,
+                      height: 724,
+                      child: Material(
+                        key: const Key("desktop-settings-modal"),
+                        color: colors.bgSecondary,
+                        elevation: 24,
+                        shadowColor: Colors.black.withValues(alpha: colors.brightness == .dark ? 1 : 0.3),
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(PregoRadius.xl),
+                          side: BorderSide(color: colors.borderSecondary),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              width: 188,
+                              // A Material, not a ColoredBox: the tabs' selected Ink paints on it.
+                              child: Material(
+                                color: colors.bgSurface2,
+                                shape: BorderDirectional(end: BorderSide(color: colors.borderSecondary)),
+                                child: SingleChildScrollView(
+                                  primary: false,
+                                  padding: const EdgeInsets.all(PregoSpacing.md),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    spacing: PregoSpacing.xxs,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsetsDirectional.fromSTEB(
+                                          _tabInset,
+                                          // On the line of the page's own title beside it.
+                                          PregoSpacing.sm - 1.5,
+                                          _tabInset,
+                                          PregoSpacing.lg + 1.5,
+                                        ),
+                                        child: Text(
+                                          context.loc.settingsTitle,
+                                          style: context.prego.textTheme.textMd.medium,
+                                        ),
+                                      ),
+                                      for (final tab in DesktopSettingsTab.values)
+                                        _SettingsTabRow(
+                                          key: ValueKey("desktop-settings-tab-${tab.name}"),
+                                          icon: _tabIcon(tab: tab),
+                                          label: _tabLabel(context: context, tab: tab),
+                                          selected: tab == _tab,
+                                          onPressed: () => setState(() {
+                                            _tab = tab;
+                                            _bridgeSubpage = null;
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Stack(
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: _tabInset,
-                                      vertical: PregoSpacing.xl,
+                                  KeyedSubtree(key: ValueKey(_tab), child: _page()),
+                                  // The page's name, at one height on every tab, with the page
+                                  // scrolling beneath it. A pushed page brings its own bar.
+                                  if (_bridgeSubpage == null)
+                                    PositionedDirectional(
+                                      start: 0,
+                                      end: 0,
+                                      top: 0,
+                                      height: SettingsWindowPage.topInset,
+                                      child: ColoredBox(
+                                        color: colors.bgSecondary,
+                                        child: Padding(
+                                          padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl),
+                                          child: Align(
+                                            alignment: AlignmentDirectional.centerStart,
+                                            child: Text(
+                                              _tabLabel(context: context, tab: _tab),
+                                              style: context.prego.textTheme.textMd.medium.copyWith(
+                                                color: colors.textPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    child: Text(
-                                      context.loc.settingsTitle,
-                                      style: context.prego.textTheme.textMd.bold,
+                                  // The page visibly carries on below the fold.
+                                  PositionedDirectional(
+                                    start: 0,
+                                    end: 0,
+                                    bottom: 0,
+                                    height: 32,
+                                    child: IgnorePointer(
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [colors.bgSecondary.withValues(alpha: 0), colors.bgSecondary],
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  for (final tab in DesktopSettingsTab.values)
-                                    _SettingsTabRow(
-                                      key: ValueKey("desktop-settings-tab-${tab.name}"),
-                                      icon: _tabIcon(tab: tab),
-                                      label: _tabLabel(context: context, tab: tab),
-                                      selected: tab == _tab,
-                                      onPressed: () => setState(() {
-                                        _tab = tab;
-                                        _bridgeSubpage = null;
-                                      }),
+                                  // One small plain close for every page; Esc closes too.
+                                  PositionedDirectional(
+                                    top: PregoSpacing.md,
+                                    end: PregoSpacing.md,
+                                    child: PregoButtonsSolid.iconOnly(
+                                      key: const Key("desktop-settings-close"),
+                                      leadingIcon: TablerRegular.x,
+                                      semanticLabel: context.loc.settingsClose,
+                                      showsTooltip: true,
+                                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                                      size: PregoButtonsSolidSize.sm,
+                                      onPressed: widget.onClose,
                                     ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              KeyedSubtree(key: ValueKey(_tab), child: _page()),
-                              // One small plain close for every page; Esc closes too.
-                              PositionedDirectional(
-                                top: PregoSpacing.md,
-                                end: PregoSpacing.md,
-                                child: PregoButtonsSolid.iconOnly(
-                                  key: const Key("desktop-settings-close"),
-                                  leadingIcon: TablerRegular.x,
-                                  semanticLabel: context.loc.settingsClose,
-                                  showsTooltip: true,
-                                  // Filled, so it stays legible over content scrolling beneath it.
-                                  hierarchy: PregoButtonsSolidHierarchy.secondary,
-                                  size: PregoButtonsSolidSize.sm,
-                                  onPressed: widget.onClose,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -316,11 +421,11 @@ IconData _tabIcon({required DesktopSettingsTab tab}) => switch (tab) {
   DesktopSettingsTab.account => TablerRegular.user,
 };
 
-/// Start inset of the sidebar's title and tab rows.
-const double _tabInset = PregoSpacing.xl;
+/// Start inset of the sidebar's title and tab row content.
+const double _tabInset = PregoSpacing.md;
 
-/// A settings tab in the main sidebar's row style: 14 medium, and the selected
-/// row filled across the sidebar's width.
+/// A settings tab in the main sidebar's row style: 13 medium, inset, with the
+/// selected row filled.
 class const _SettingsTabRow({
   super.key,
   required final IconData icon,
@@ -338,14 +443,18 @@ class const _SettingsTabRow({
       child: InkWell(
         mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onPressed,
-        hoverColor: prego.colors.bgSecondaryHover,
+        borderRadius: BorderRadius.circular(PregoRadius.sm),
+        hoverColor: prego.colors.bgSecondaryHover.withValues(alpha: 0.5),
         child: Ink(
-          color: selected ? desktopSidebarSelectedFill(prego.colors) : null,
-          padding: const EdgeInsets.symmetric(horizontal: _tabInset, vertical: PregoSpacing.sm),
+          decoration: BoxDecoration(
+            color: selected ? desktopSidebarSelectedFill(prego.colors) : null,
+            borderRadius: BorderRadius.circular(PregoRadius.sm),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: _tabInset, vertical: 5),
           child: Row(
             spacing: PregoSpacing.md,
             children: [
-              Icon(icon, size: PregoIconSize.md, color: color),
+              Icon(icon, size: 16, color: color),
               Expanded(
                 child: Text(label, style: prego.textTheme.textSm.medium.copyWith(color: color)),
               ),
@@ -444,7 +553,13 @@ class const _DesktopBridgeSettingsPage({
       onRefresh: null,
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.all(PregoSpacing.xl),
+          // A section heading leads this page, so its top matches the cards' on others.
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            PregoSpacing.xl,
+            PregoSpacing.md,
+            PregoSpacing.xl,
+            PregoSpacing.xl,
+          ),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -487,6 +602,7 @@ class const _DesktopBridgeSettingsPage({
                       PregoGroupedRow(
                         icon: TablerRegular.file_text,
                         title: Text(loc.desktopBridgeOpenLogs),
+                        trailing: const Icon(TablerRegular.external_link),
                         onTap: control.openLogs,
                       ),
                     ],

@@ -30,6 +30,10 @@ final class PregoDesignSystem._({
   /// Semantic color values that adapt to light/dark mode.
   required final PregoColors colors,
   required final PregoTextTheme textTheme,
+
+  /// Whether these are a desktop shell's values, for the few styles that follow
+  /// the shell but are built without a [BuildContext].
+  required final bool isDesktopScale,
 }) extends ThemeExtension<PregoDesignSystem> {
   /// Spacing constants.
   ///
@@ -56,14 +60,24 @@ final class PregoDesignSystem._({
   final PregoShadows shadows = PregoShadows(colors: colors);
 
   /// [PregoDesignSystem] for light mode.
-  static final light = PregoDesignSystem._(colors: .light, textTheme: .light);
+  static final light = PregoDesignSystem._(colors: .light, textTheme: .light, isDesktopScale: false);
 
   /// [PregoDesignSystem] for dark mode.
-  static final dark = PregoDesignSystem._(colors: .dark, textTheme: .dark);
+  static final dark = PregoDesignSystem._(colors: .dark, textTheme: .dark, isDesktopScale: false);
+
+  /// [PregoDesignSystem] for a desktop shell in light mode.
+  static final desktopLight = PregoDesignSystem._(colors: .light, textTheme: .desktopLight, isDesktopScale: true);
+
+  /// [PregoDesignSystem] for a desktop shell in dark mode.
+  static final desktopDark = PregoDesignSystem._(colors: .dark, textTheme: .desktopDark, isDesktopScale: true);
 
   @override
-  PregoDesignSystem copyWith({PregoColors? colors, PregoTextTheme? textTheme}) =>
-      PregoDesignSystem._(colors: colors ?? this.colors, textTheme: textTheme ?? this.textTheme);
+  PregoDesignSystem copyWith({PregoColors? colors, PregoTextTheme? textTheme, bool? isDesktopScale}) =>
+      PregoDesignSystem._(
+        colors: colors ?? this.colors,
+        textTheme: textTheme ?? this.textTheme,
+        isDesktopScale: isDesktopScale ?? this.isDesktopScale,
+      );
 
   @override
   ThemeExtension<PregoDesignSystem> lerp(covariant PregoDesignSystem? other, double t) {
@@ -71,6 +85,7 @@ final class PregoDesignSystem._({
     return PregoDesignSystem._(
       colors: PregoColors.lerpColors(a: colors, b: other.colors, t: t),
       textTheme: PregoTextTheme.lerpTextThemes(a: textTheme, b: other.textTheme, t: t),
+      isDesktopScale: t < 0.5 ? isDesktopScale : other.isDesktopScale,
     );
   }
 }

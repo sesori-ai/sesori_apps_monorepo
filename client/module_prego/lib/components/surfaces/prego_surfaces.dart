@@ -27,7 +27,9 @@ BoxDecoration pregoComposerSurfaceDecoration({
   required PregoComposerSurfaceStyle style,
   required BorderRadius borderRadius,
 }) {
+  final tonal = prego.isDesktopScale && prego.colors.brightness == .light;
   final borderColor = switch (style) {
+    _ when tonal => prego.colors.pointerHairline,
     PregoComposerSurfaceStyle.subtle => prego.colors.borderSecondary,
     PregoComposerSurfaceStyle.emphasized => prego.colors.borderPrimary,
   };
@@ -35,7 +37,9 @@ BoxDecoration pregoComposerSurfaceDecoration({
     color: prego.colors.bgSurface2,
     borderRadius: borderRadius,
     border: Border.all(color: borderColor),
-    boxShadow: prego.shadows.xs,
+    boxShadow: tonal
+        ? const [BoxShadow(color: Color(0x0A000000), offset: Offset(0, 1), blurRadius: 2)]
+        : prego.shadows.xs,
   );
 }
 

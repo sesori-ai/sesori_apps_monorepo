@@ -8,6 +8,8 @@ import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_interaction_scope.dart";
+import "../../motion/prego_pointer_motion.dart";
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 import "../navigation/prego_nav_subtitle.dart";
@@ -21,7 +23,8 @@ import "anchored_spotlight_backdrop.dart";
 /// Material rows (Android) without the caller knowing which path is active.
 sealed class const PregoMenuEntry();
 
-/// A non-interactive section header. Rendered in uppercase on both paths.
+/// A non-interactive section header: uppercase on the touch paths, sentence case
+/// under a pointer.
 class const PregoMenuLabel({required final String text}) extends PregoMenuEntry;
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
@@ -241,6 +244,10 @@ class const PregoAnchorMenu({
   /// a menu hung off a button, where the page behind it is not the subject.
   /// Requires [flat]; see [PregoMenuSpotlight].
   final PregoMenuSpotlight? spotlight,
+
+  /// Called as a flat menu opens and closes, for a trigger that marks what the
+  /// menu acts on.
+  final ValueChanged<bool>? onOpenChanged,
 }) extends StatefulWidget {
   this
     : assert(
@@ -387,42 +394,60 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
     // Dimming the window to lift one row is a touch idiom.
     final spotlight = pointer ? null : widget.spotlight;
     // `cue` still imports the SDK Material library and reads its localizations.
-    // ignore: deprecated_member_use
-    return MaterialUiCompatibilityBridge(
-      child: CueModalTransition(
-        barrierColor: Colors.transparent,
-        motion: const Spring.smooth(),
-        reverseMotion: const Spring.snappy(),
-        // No alignment: the panel positions itself from the trigger rect so it can
-        // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
-        triggerBuilder: (context, showModal) {
-          final trigger = widget.triggerBuilder(context, () {
-            unawaited(showModal().whenComplete(() => _secondaryPress = null));
-          });
-          if (!pointer) return trigger;
-          return Listener(
-            onPointerDown: (event) => _secondaryPress = event.buttons & kSecondaryButton != 0 ? event.position : null,
-            child: trigger,
-          );
-        },
-        builder: (context, triggerRect) {
-          final panel = _flatPanel(context, triggerRect: triggerRect, compact: pointer);
-          if (spotlight == null) return panel;
-          // The backdrop is stacked here rather than passed as CueModalTransition's
-          // `backdrop`, which is a plain widget and so cannot see the trigger rect
-          // it must cut its hole around. Both children fill the route; the panel
-          // paints last, over the blur.
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              AnchoredSpotlightBackdrop(
-                spotlightRect: spotlight.resolveRect(triggerRect: triggerRect),
-                borderRadius: spotlight.borderRadius,
-              ),
-              panel,
-            ],
-          );
-        },
+    return PregoMenuOpenMotion(
+      // ignore: deprecated_member_use
+      builder: (context, instant, open) => MaterialUiCompatibilityBridge(
+        child: CueModalTransition(
+          barrierColor: Colors.transparent,
+          motion: switch ((pointer, instant || prefersReducedMotion(context))) {
+            (true, true) => CueMotion.none,
+            (true, false) => const CueMotion.curved(pregoPointerEnterDuration, curve: pregoPointerEnterCurve),
+            (false, _) => const Spring.smooth(),
+          },
+          reverseMotion: switch ((pointer, instant || prefersReducedMotion(context))) {
+            (true, true) => CueMotion.none,
+            (true, false) => const CueMotion.easeOut(Duration(milliseconds: 90)),
+            (false, _) => const Spring.snappy(),
+          },
+          // No alignment: the panel positions itself from the trigger rect so it can
+          // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
+          triggerBuilder: (context, showModal) {
+            final trigger = widget.triggerBuilder(context, () {
+              widget.onOpenChanged?.call(true);
+              open(
+                () => unawaited(
+                  showModal().whenComplete(() {
+                    _secondaryPress = null;
+                    widget.onOpenChanged?.call(false);
+                  }),
+                ),
+              );
+            });
+            if (!pointer) return trigger;
+            return Listener(
+              onPointerDown: (event) => _secondaryPress = event.buttons & kSecondaryButton != 0 ? event.position : null,
+              child: trigger,
+            );
+          },
+          builder: (context, triggerRect) {
+            final panel = _flatPanel(context, triggerRect: triggerRect, compact: pointer);
+            if (spotlight == null) return panel;
+            // The backdrop is stacked here rather than passed as CueModalTransition's
+            // `backdrop`, which is a plain widget and so cannot see the trigger rect
+            // it must cut its hole around. Both children fill the route; the panel
+            // paints last, over the blur.
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                AnchoredSpotlightBackdrop(
+                  spotlightRect: spotlight.resolveRect(triggerRect: triggerRect),
+                  borderRadius: spotlight.borderRadius,
+                ),
+                panel,
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -482,8 +507,9 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           padding: compact
               ? const EdgeInsetsDirectional.fromSTEB(_compactRowInset, 6, _compactRowInset, 2)
               : const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
-          // Uppercased to match GlassMenuLabel on the glass path.
-          child: Text(text.toUpperCase(), style: _labelStyle(prego)),
+          // Uppercased to match GlassMenuLabel on the glass path; sentence case
+          // under a pointer, as every other label there is.
+          child: Text(compact ? text : text.toUpperCase(), style: _labelStyle(prego)),
         );
       case PregoMenuItem(
         :final key,
@@ -560,7 +586,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
 
 /// The compact pointer menu's chrome: a tight panel whose rows round their own
 /// highlight, as a desktop menu's do.
-const double _compactPanelRadius = PregoRadius.md;
+const double _compactPanelRadius = PregoRadius.lg;
 const double _compactPanelPadding = 4;
 const double _compactRowInset = 10;
 
@@ -760,7 +786,7 @@ TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
 TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive, required bool isWarning}) =>
-    prego.textTheme.textSm.medium.copyWith(
+    (prego.isDesktopScale ? prego.textTheme.textSm.regular : prego.textTheme.textSm.medium).copyWith(
       color: isDestructive
           ? prego.colors.fgErrorPrimary
           : isWarning

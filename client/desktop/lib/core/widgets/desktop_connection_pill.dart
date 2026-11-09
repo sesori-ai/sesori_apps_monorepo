@@ -27,19 +27,40 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
       ConnectionOverlayConnectionLost() => context.loc.connectionLostTitle,
     };
     final colors = context.prego.colors;
+    // A stopped bridge is explained by the page and the sidebar; a pill would be
+    // a third voice, in another colour.
+    final stopped = context.select((BridgeControlCubit cubit) {
+      final process = cubit.state.processState;
+      return process is BridgeProcessCrashGiveUp || process is BridgeProcessStartFailed;
+    });
     final failed = state is ConnectionOverlayConnectionLost;
     final foreground = failed ? colors.textErrorPrimary : colors.textWarningPrimary;
     return AnimatedSwitcher(
-      duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 180),
+      duration: prefersReducedMotion(context) ? Duration.zero : pregoPointerEnterDuration,
+      reverseDuration: prefersReducedMotion(context) ? Duration.zero : pregoPointerExitDuration,
+      switchInCurve: pregoPointerEnterCurve,
+      // Run backwards on the way out, so it starts fast.
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: animation.drive(Tween(begin: 0.98, end: 1)),
+          alignment: AlignmentDirectional.topEnd.resolve(Directionality.of(context)),
+          child: SlideTransition(
+            position: animation.drive(Tween(begin: const Offset(0, -0.12), end: Offset.zero)),
+            child: child,
+          ),
+        ),
+      ),
       // Retained fade-out content must neither intercept clicks nor re-announce.
       layoutBuilder: (current, previous) => Stack(
-        alignment: Alignment.topCenter,
+        alignment: AlignmentDirectional.topEnd,
         children: [
           for (final child in previous) IgnorePointer(child: ExcludeSemantics(child: child)),
           ?current,
         ],
       ),
-      child: title == null
+      child: title == null || (stopped && state is ConnectionOverlayBridgeOffline)
           ? const SizedBox.shrink()
           : Semantics(
               key: ValueKey(state.runtimeType),

@@ -144,10 +144,11 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
         ),
       ],
       child: MaterialApp.router(
+        scrollBehavior: const PregoDesktopScrollBehavior(),
         title: _appTitle,
         debugShowCheckedModeBanner: false,
-        theme: buildPregoThemeData(brightness: Brightness.light),
-        darkTheme: buildPregoThemeData(brightness: Brightness.dark),
+        theme: buildPregoDesktopThemeData(brightness: Brightness.light),
+        darkTheme: buildPregoDesktopThemeData(brightness: Brightness.dark),
         themeMode: themeMode,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

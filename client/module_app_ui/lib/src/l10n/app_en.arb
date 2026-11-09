@@ -28,8 +28,8 @@
   "@desktopSidebarCollapse": {"description": "Tooltip for switching desktop navigation to the compact project rail."},
   "desktopSidebarExpand": "Expand sidebar",
   "@desktopSidebarExpand": {"description": "Tooltip for restoring the expanded desktop navigation sidebar."},
-  "desktopSidebarResize": "Resize sidebar; double-click to reset",
-  "@desktopSidebarResize": {"description": "Tooltip on the expanded desktop sidebar's drag handle."},
+  "desktopSidebarResize": "Drag to resize, click to collapse",
+  "@desktopSidebarResize": {"description": "Tooltip on the expanded desktop sidebar's edge."},
   "desktopSearch": "Search",
   "@desktopSearch": {"description": "Desktop sidebar row that opens the command palette."},
   "desktopCommandPaletteHint": "Search sessions, projects and commands",
@@ -43,6 +43,10 @@
   "sessionListFilterAll": "All · {count}",
   "@sessionListFilterAll": {"description": "Session list filter chip showing every active session, with their count.", "placeholders": {"count": {"type": "int"}}},
   "newSessionHeading": "What should we work on?",
+  "newSessionNoProjectsHeading": "Add your first project",
+  "@newSessionNoProjectsHeading": {"description": "Heading of the desktop home's first-run step, when no project exists yet"},
+  "newSessionNoProjectsHint": "Pick a folder on this computer. Your sessions will start there.",
+  "@newSessionNoProjectsHint": {"description": "Line under the first-run heading, before the Add project button"},
   "@newSessionHeading": {"description": "Heading of the new session page, above the project selector and the prompt input."},
   "projectPickerTitle": "Projects",
   "@projectPickerTitle": {"description": "Title of the phone's project picker sheet, opened from the new session page's project button."},
@@ -63,6 +67,8 @@
   "@projectPickerMostSessions": {"description": "Project picker section heading above the remaining projects, sorted by how many sessions they have."},
   "sessionChangesLabel": "Changes",
   "@sessionChangesLabel": {"description": "Control that opens the session's file changes: the desktop toolbar button and the phone's menu row."},
+  "desktopSessionBreadcrumb": "Session",
+  "@desktopSessionBreadcrumb": {"description": "Desktop file changes toolbar breadcrumb that returns to the session."},
   "desktopSessionParentBreadcrumb": "Main session",
   "@desktopSessionParentBreadcrumb": {"description": "Desktop subtask toolbar breadcrumb that returns to the session that started the subtask."},
   "listSearchNoMatches": "No matches",
@@ -105,6 +111,8 @@
   "@desktopBridgeSettings": {"description": "Secondary popover action opening bridge configuration."},
   "desktopSettingsGeneral": "General",
   "@desktopSettingsGeneral": {"description": "Desktop settings tab for app-wide preferences."},
+  "desktopSettingsStartup": "Startup",
+  "@desktopSettingsStartup": {"description": "Heading over the launch-at-login row in desktop General settings."},
   "desktopSettingsLaunchAtLogin": "Launch Sesori at login",
   "@desktopSettingsLaunchAtLogin": {"description": "Native login-item switch in desktop General settings."},
   "desktopSettingsLaunchAtLoginDescription": "Start Sesori in the background when you sign in to this computer.",
@@ -121,7 +129,7 @@
   "@desktopUpdatesAutomaticDescription": {"description": "Explains the automatic updates switch."},
   "desktopUpdatesCheck": "Check for updates",
   "@desktopUpdatesCheck": {"description": "Runs one update check now."},
-  "desktopUpdatesCheckDescription": "Sesori downloads verified updates in the background and installs them when you quit or restart to update.",
+  "desktopUpdatesCheckDescription": "Downloads verified updates in the background. Installs when you quit or restart.",
   "@desktopUpdatesCheckDescription": {"description": "Windows and AppImage installs download signed updates and install them on Quit or Restart to update."},
   "desktopUpdatesChecking": "Checking for updates…",
   "@desktopUpdatesChecking": {"description": "Replaces the Check for updates description while a check runs."},
@@ -617,7 +625,6 @@
   "settingsYoloTitle": "YOLO mode",
   "settingsYoloDescription": "Sesori approves every permission request for you, so the agent never stops to ask.",
   "@settingsYoloDescription": {"description": "Plain statement of what YOLO mode does, under its Settings toggle and in the session page's YOLO explanation."},
-  "settingsYoloLoading": "Loading the bridge setting…",
   "settingsYoloUnsupported": "Update the connected bridge to configure this setting.",
   "settingsYoloLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsYoloUncertain": "The update status is unknown. Refresh before trying again.",
@@ -625,7 +632,6 @@
   "settingsYoloRetry": "Retry YOLO setting",
   "settingsPluginWarmupTitle": "Warm harness on session open",
   "settingsPluginWarmupDescription": "Starts the session's harness when you open it to reduce delays on your first action.",
-  "settingsPluginWarmupLoading": "Loading the bridge setting…",
   "settingsPluginWarmupUnsupported": "Update the connected bridge to configure this setting.",
   "settingsPluginWarmupLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
@@ -770,7 +776,7 @@
   "desktopSettingsTheme": "Theme",
   "settingsSectionAnalytics": "Analytics",
   "settingsBasicUsageAnalyticsTitle": "Basic usage analytics",
-  "settingsBasicUsageAnalyticsDescription": "Share basic feature usage — never your code or messages.",
+  "settingsBasicUsageAnalyticsDescription": "Share basic feature usage, never your code or messages.",
   "settingsBasicUsageAnalyticsLoading": "Loading preference…",
   "settingsBasicUsageAnalyticsSaving": "Saving preference…",
   "settingsBasicUsageAnalyticsLoadFailed": "Analytics preference failed to load.",
@@ -1657,6 +1663,8 @@
   "@sessionListAwaitingInput": {
     "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
   },
+  "sessionListNeedsYou": "Needs you",
+  "@sessionListNeedsYou": {"description": "Heading above the sessions blocked on the reader's answer, at the top of a desktop session list."},
   "sessionListWaiting": "Waiting",
   "@sessionListWaiting": {
     "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"
@@ -1688,9 +1696,9 @@
   "@voicePutWordsInBox": {
     "description": "Accessibility label of the pencil shown in the accordion's place while recording; releasing or tapping on it puts the words in the box instead of sending them."
   },
-  "voiceEnterToSend": "Enter to send",
-  "@voiceEnterToSend": {
-    "description": "Floating helper above the desktop composer while a click-started recording is running."
+  "voiceListening": "Listening",
+  "@voiceListening": {
+    "description": "Placeholder in the desktop composer while a click-started recording is running."
   },
   "voiceEditBeforeSending": "Edit before sending",
   "@voiceEditBeforeSending": {
@@ -1712,6 +1720,10 @@
   "voiceDictationLimitReached": "Dictation limit reached",
   "@voiceDictationLimitReached": {
     "description": "Notice when the server ended a live dictation at a time or quota limit; its words wait in the prompt field unsent."
+  },
+  "voiceSavedNotice": "Couldn't transcribe. Your recording is saved.",
+  "@voiceSavedNotice": {
+    "description": "Card above the desktop composer after a dictation could not be transcribed, beside Discard and Retry"
   },
   "voiceRecordingSaved": "Recording saved",
   "@voiceRecordingSaved": {
@@ -1797,8 +1809,8 @@
   "permissionReplyFailed": "Failed to send permission response. Please try again.",
   "needsYouAnswer": "Answer",
   "needsYouReview": "Review",
-  "permissionBannerSingle": "1 permission request pending",
-  "permissionBannerMultiple": "{count} permission requests pending",
+  "permissionBannerSingle": "1 pending permission request",
+  "permissionBannerMultiple": "{count} pending permission requests",
   "@permissionBannerMultiple": {
     "placeholders": {
       "count": {
@@ -1815,6 +1827,8 @@
   "renameSessionFailed": "Failed to rename session",
   "renameProjectFailed": "Failed to rename project",
   "newSessionDedicatedWorkspace": "New worktree",
+  "newSessionCurrentCheckout": "Current checkout",
+  "@newSessionCurrentCheckout": {"description": "The worktree chip when the session will work in the project's own checkout instead."},
   "newSessionPluginChooserLabel": "Coding tool",
   "newSessionPluginDegraded": "Needs attention",
   "newSessionPluginUnavailable": "Unavailable",
@@ -1879,6 +1893,26 @@
   "sessionListDeleteFailed": "Failed to delete session",
   "sessionListArchiveFailed": "Failed to archive session",
   "diffPermissionRequestTitle": "Allow this action?",
+  "diffPermissionAlwaysAllowEllipsis": "Always approve…",
+  "@diffPermissionAlwaysAllowEllipsis": {"description": "Quiet action in the permission dialog that opens the Always approve confirmation"},
+  "diffPermissionAlwaysBack": "Back",
+  "@diffPermissionAlwaysBack": {"description": "Returns from the Always approve confirmation to the permission dialog"},
+  "desktopBridgeStoppedTitle": "Bridge stopped",
+  "@desktopBridgeStoppedTitle": {"description": "Title of the desktop home when this computer's bridge is not running"},
+  "desktopUpdatesCheckNow": "Check now",
+  "@desktopUpdatesCheckNow": {"description": "Small button in the desktop settings' update row"},
+  "desktopSidebarOfflineHint": "Sessions will return when the bridge is back.",
+  "@desktopSidebarOfflineHint": {"description": "Sidebar line while the bridge is offline, in place of the session list"},
+  "desktopSidebarNoProjects": "No projects yet",
+  "@desktopSidebarNoProjects": {"description": "Heads the desktop sidebar's empty list, beside Refresh, when no project has been added."},
+  "diffPermissionAlwaysTitle": "Always approve this kind of request?",
+  "@diffPermissionAlwaysTitle": {"description": "Title of the Always approve confirmation step"},
+  "diffPermissionAlwaysConsequence": "Future matching requests will run without asking.",
+  "@diffPermissionAlwaysConsequence": {"description": "Explains what confirming Always approve does"},
+  "diffPermissionAlwaysHint": "What counts as matching depends on the harness, and Sesori can't show its exact rule. You can change it in the harness's own settings.",
+  "diffPermissionAlwaysHintNamed": "What counts as matching depends on {harness}, and Sesori can't show its exact rule. You can change it in {harness}'s settings.",
+  "@diffPermissionAlwaysHintNamed": {"description": "Under a desktop permission request's actions, when the harness asking is known. {harness} is its display name.", "placeholders": {"harness": {"type": "String"}}},
+  "@diffPermissionAlwaysHint": {"description": "Under a desktop permission request's actions. Scope varies by harness, so it must not name one."},
   "diffPermissionReject": "Don’t allow",
   "diffPermissionOnce": "Allow",
   "diffPermissionAlwaysAllow": "Always approve",

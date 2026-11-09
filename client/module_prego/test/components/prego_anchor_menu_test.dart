@@ -77,7 +77,13 @@ ScrollPosition _popupScroll(WidgetTester tester) => tester.state<ScrollableState
 /// which layout puts [at] the trigger from the first frame. That first frame, which measures the panel, is never
 /// painted; the first painted one already scales about [origin], without restarting the spring; and mid-spring the
 /// panel is still smaller, pinned at [origin] across and short of its spot on the trigger's side.
-Future<void> _expectSpringsOutOf(WidgetTester tester, {required Alignment origin, required Offset at}) async {
+Future<void> _expectSpringsOutOf(
+  WidgetTester tester, {
+  required Alignment origin,
+  required Offset at,
+  required double scaleFrom,
+  required double slideShare,
+}) async {
   await tester.pump();
   var spring = _flatSpring(tester);
   expect(spring.opacity, 0);
@@ -88,9 +94,10 @@ Future<void> _expectSpringsOutOf(WidgetTester tester, {required Alignment origin
   expect(spring.opacity, greaterThan(0));
   expect(origin.withinRect(spring.laidOut), at);
   expect(spring.origin, origin);
-  // The scale and the slide keep pace with the fade, which never changed.
-  expect(spring.scale, moreOrLessEquals(0.96 + 0.04 * spring.opacity));
-  expect(spring.slide, moreOrLessEquals(0.06 * origin.y * (1 - spring.opacity)));
+  // The scale and the slide share one progress, starting where the origin says.
+  final progress = (spring.scale - scaleFrom) / (1 - scaleFrom);
+  expect(progress, inExclusiveRange(0, 1));
+  expect(spring.slide, moreOrLessEquals(slideShare * origin.y * (1 - progress), epsilon: 1e-6));
 
   await tester.pump(const Duration(milliseconds: 50));
   spring = _flatSpring(tester);
@@ -235,7 +242,13 @@ void main() {
         final trigger = tester.getRect(find.byType(IconButton));
         await tester.tap(find.byType(IconButton));
 
-        await _expectSpringsOutOf(tester, origin: Alignment.topRight, at: trigger.bottomRight + const Offset(0, 8));
+        await _expectSpringsOutOf(
+          tester,
+          origin: Alignment.topRight,
+          at: trigger.bottomRight + const Offset(0, 8),
+          scaleFrom: 0.96,
+          slideShare: 0.06,
+        );
       });
 
       testWidgets("grows up out of the ⋯ when it flips above", (tester) async {
@@ -243,7 +256,13 @@ void main() {
         final trigger = tester.getRect(find.byType(IconButton));
         await tester.tap(find.byType(IconButton));
 
-        await _expectSpringsOutOf(tester, origin: Alignment.bottomRight, at: trigger.topRight - const Offset(0, 8));
+        await _expectSpringsOutOf(
+          tester,
+          origin: Alignment.bottomRight,
+          at: trigger.topRight - const Offset(0, 8),
+          scaleFrom: 0.96,
+          slideShare: 0.06,
+        );
       });
 
       testWidgets("only fades in under reduced motion, full size and in place from the start", (tester) async {
@@ -893,14 +912,26 @@ void main() {
       await tester.pumpWidget(pointer(child: row()));
       await tester.tapAt(const Offset(120, 30), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
 
-      await _expectSpringsOutOf(tester, origin: Alignment.topLeft, at: const Offset(120, 30));
+      await _expectSpringsOutOf(
+        tester,
+        origin: Alignment.topLeft,
+        at: const Offset(120, 30),
+        scaleFrom: 0.97,
+        slideShare: 0.02,
+      );
     });
 
     testWidgets("a secondary-click menu flipped above the pointer grows up out of it", (tester) async {
       await tester.pumpWidget(pointer(child: row(alignment: Alignment.bottomLeft)));
       await tester.tapAt(const Offset(120, 580), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
 
-      await _expectSpringsOutOf(tester, origin: Alignment.bottomLeft, at: const Offset(120, 580));
+      await _expectSpringsOutOf(
+        tester,
+        origin: Alignment.bottomLeft,
+        at: const Offset(120, 580),
+        scaleFrom: 0.97,
+        slideShare: 0.02,
+      );
     });
 
     for (final (rowAlignment, origin) in [
@@ -919,11 +950,11 @@ void main() {
         // start.
         final first = _flatSpring(tester);
         expect(first.origin, origin);
-        expect(first.scale, 0.96);
-        expect(first.slide, 0.06 * origin.y);
+        expect(first.scale, 0.97);
+        expect(first.slide, 0.02 * origin.y);
 
         final edge = origin.y < 0 ? trigger.bottomCenter + const Offset(0, 8) : trigger.topCenter - const Offset(0, 8);
-        await _expectSpringsOutOf(tester, origin: origin, at: edge);
+        await _expectSpringsOutOf(tester, origin: origin, at: edge, scaleFrom: 0.97, slideShare: 0.02);
       });
     }
 

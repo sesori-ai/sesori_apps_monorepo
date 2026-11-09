@@ -7,6 +7,7 @@ library;
 
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
 
 /// Minimum height of a row without a subtitle.
@@ -20,6 +21,11 @@ const double _leadingSlotWidth = 24.0;
 
 /// Size of the leading glyph inside its slot.
 const double _leadingIconSize = 20.0;
+
+/// The same rows under a pointer: denser, with a smaller glyph.
+const double _pointerRowMinHeight = 44.0;
+const double _pointerTallRowMinHeight = 56.0;
+const double _pointerLeadingIconSize = 16.0;
 
 /// A solid rounded card hosting grouped settings rows (Figma "Grouped Rows").
 class const PregoGroupedRows({
@@ -35,7 +41,17 @@ class const PregoGroupedRows({
     return Material(
       color: color ?? context.prego.colors.bgSurface3,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.x5l)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.xl : PregoRadius.x5l,
+        ),
+        // White on near-white needs an edge; dark surfaces step apart by fill.
+        side:
+            PregoInteractionScope.of(context) == PregoInteractionMode.pointer &&
+                context.prego.colors.brightness == .light
+            ? BorderSide(color: context.prego.colors.pointerHairline)
+            : BorderSide.none,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -68,12 +84,12 @@ class const PregoGroupedRowPosition({super.key, required final bool isLast, requ
   bool updateShouldNotify(PregoGroupedRowPosition oldWidget) => isLast != oldWidget.isLast;
 }
 
-/// A settings row (Figma "Row"): optional 20px leading glyph, `text-md` title,
+/// A settings row (Figma "Row"): optional 20px leading glyph (16px under a pointer), `text-md` title,
 /// optional `text-xs` subtitle, and a trailing slot (chevron, switch, …).
 class const PregoGroupedRow({
   super.key,
 
-  /// Leading glyph rendered at 20px in the tertiary text colour. Ignored when
+  /// Leading glyph rendered at 20px, 16px under a pointer, in the tertiary text colour. Ignored when
   /// [leading] is provided.
   final IconData? icon,
 
@@ -98,12 +114,14 @@ class const PregoGroupedRow({
     final prego = context.prego;
     final subtitle = this.subtitle;
     final trailing = this.trailing;
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final glyphSize = pointer ? _pointerLeadingIconSize : _leadingIconSize;
     final leading =
         this.leading ??
         switch (icon) {
           final glyph? => SizedBox(
             width: _leadingSlotWidth,
-            child: Icon(glyph, size: _leadingIconSize, color: prego.colors.textTertiary),
+            child: Icon(glyph, size: glyphSize, color: prego.colors.textTertiary),
           ),
           null => null,
         };
@@ -134,7 +152,7 @@ class const PregoGroupedRow({
         if (trailing != null) ...[
           const SizedBox(width: PregoSpacing.md),
           IconTheme(
-            data: IconThemeData(color: prego.colors.textTertiary, size: _leadingIconSize),
+            data: IconThemeData(color: prego.colors.textTertiary, size: glyphSize),
             child: trailing,
           ),
         ],
@@ -142,7 +160,16 @@ class const PregoGroupedRow({
     );
 
     Widget tile = Container(
-      constraints: BoxConstraints(minHeight: minHeight ?? (subtitle != null ? _tallRowMinHeight : _rowMinHeight)),
+      constraints: BoxConstraints(
+        minHeight:
+            minHeight ??
+            switch ((pointer, subtitle != null)) {
+              (false, false) => _rowMinHeight,
+              (false, true) => _tallRowMinHeight,
+              (true, false) => _pointerRowMinHeight,
+              (true, true) => _pointerTallRowMinHeight,
+            },
+      ),
       padding: EdgeInsets.symmetric(
         horizontal: PregoSpacing.xl,
         vertical: verticalPadding,

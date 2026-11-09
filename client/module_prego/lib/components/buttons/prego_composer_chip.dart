@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
 import "../surfaces/prego_surfaces.dart";
 
@@ -21,7 +22,9 @@ class const PregoComposerChip({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final foreground = isWarning ? prego.colors.textWarningPrimary : prego.colors.textSecondary;
-    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final height = pointer ? 28.0 : 36.0;
+    final borderRadius = BorderRadius.circular(pointer ? PregoRadius.md : PregoRadius.full);
     final glyph = Icon(
       icon,
       size: PregoIconSize.sm,
@@ -41,7 +44,7 @@ class const PregoComposerChip({
             borderRadius: borderRadius,
             child: showLabel
                 ? Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.symmetric(horizontal: pointer ? 8 : 12),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       spacing: 4,
@@ -56,14 +59,19 @@ class const PregoComposerChip({
         ),
       ),
     );
-    if (showLabel) return Semantics(button: true, child: SizedBox(height: 36, child: pill));
+    if (showLabel) {
+      return Semantics(
+        button: true,
+        child: SizedBox(height: height, child: pill),
+      );
+    }
     return Tooltip(
       message: label,
       excludeFromSemantics: true,
       child: Semantics(
         button: true,
         label: label,
-        child: SizedBox.square(dimension: 36, child: pill),
+        child: SizedBox.square(dimension: height, child: pill),
       ),
     );
   }
