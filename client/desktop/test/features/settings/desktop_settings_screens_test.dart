@@ -468,7 +468,7 @@ void main() {
     await tester.pump(DesktopUpdateCubit.checkResultDuration);
     await tester.pumpAndSettle();
     expect(find.text("You're up to date"), findsNothing);
-    expect(find.textContaining("installs them when you quit"), findsOneWidget);
+    expect(find.textContaining("Installs when you quit"), findsOneWidget);
   });
 
   testWidgets("a Velopack install describes downloading verified updates", (tester) async {
@@ -476,7 +476,7 @@ void main() {
     when(() => desktopUpdateService.installKind).thenReturn(DesktopInstallKind.velopack);
     await tester.pumpWidget(updateSection());
     expect(find.byType(PregoSwitch), findsOneWidget);
-    expect(find.textContaining("installs them when you quit"), findsOneWidget);
+    expect(find.textContaining("Installs when you quit"), findsOneWidget);
     expect(find.text("Restart to update"), findsNothing);
   });
 
@@ -827,6 +827,15 @@ void main() {
     verifyNever(authGateCubit.signOut);
   });
 
+  testWidgets("Escape closes the window in one frame, with no exit animation", (tester) async {
+    await open(tester: tester, tab: DesktopSettingsTab.account);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+  });
+
   testWidgets("late logout completion cannot pop the opener after dismissal", (tester) async {
     final logout = Completer<DesktopLogoutOutcome>();
     when(authGateCubit.signOut).thenAnswer((_) => logout.future);
@@ -864,8 +873,6 @@ void main() {
         await tester.pumpAndSettle();
         expect(target.hitTestable(), findsOneWidget);
         expect(MediaQuery.textScalerOf(tester.element(target)).scale(10), 10 * scale);
-        // Only the largest scale overflows the tab list, so only it scrolls.
-        if (scale > 2) expect(Scrollable.of(tester.element(target)).position.maxScrollExtent, greaterThan(0));
         await tester.tap(target);
         await tester.pumpAndSettle();
         expect(

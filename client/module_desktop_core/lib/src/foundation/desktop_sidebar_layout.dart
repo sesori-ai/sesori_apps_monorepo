@@ -7,7 +7,7 @@ part "desktop_sidebar_layout.g.dart";
 @Freezed()
 sealed class DesktopSidebarLayout with _$DesktopSidebarLayout {
   const factory({
-    @Default(260) double width,
+    @Default(288) double width,
     @Default(false) bool collapsed,
   }) = _DesktopSidebarLayout;
 

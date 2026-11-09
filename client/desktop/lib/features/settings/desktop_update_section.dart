@@ -4,6 +4,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Renders [DesktopUpdateCubit]. "Restart to update" exits through
@@ -104,7 +105,7 @@ class const _CheckForUpdatesRow({super.key}) extends StatelessWidget {
     };
     final Duration duration = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 180);
     return PregoGroupedRow(
-      icon: TablerRegular.search,
+      icon: TablerRegular.cloud_download,
       title: Text(loc.desktopUpdatesCheck),
       subtitle: AnimatedSize(
         duration: duration,
@@ -131,7 +132,13 @@ class const _CheckForUpdatesRow({super.key}) extends StatelessWidget {
             child: PregoActivityIndicator(color: null),
           ),
           DesktopUpdateCheckStatus.upToDate => const Icon(TablerRegular.check, key: ValueKey("up-to-date")),
-          DesktopUpdateCheckStatus.idle || DesktopUpdateCheckStatus.failed => const SizedBox.shrink(),
+          DesktopUpdateCheckStatus.idle || DesktopUpdateCheckStatus.failed => PregoButtonsSolid(
+            key: const ValueKey("check-now"),
+            label: loc.desktopUpdatesCheckNow,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.xs,
+            onPressed: () => unawaited(cubit.checkForUpdates()),
+          ),
         },
       ),
       // Stays tappable while checking so focus and hover remain; the cubit ignores repeat taps.

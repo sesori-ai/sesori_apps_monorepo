@@ -87,7 +87,7 @@ as bool,
 @JsonSerializable()
 
 class _DesktopSidebarLayout implements DesktopSidebarLayout {
-  const _DesktopSidebarLayout({this.width = 260, this.collapsed = false});
+  const _DesktopSidebarLayout({this.width = 288, this.collapsed = false});
   factory _DesktopSidebarLayout.fromJson(Map<String, dynamic> json) => _$DesktopSidebarLayoutFromJson(json);
 
 @override@JsonKey() final  double width;

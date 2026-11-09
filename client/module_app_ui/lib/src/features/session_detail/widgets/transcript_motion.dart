@@ -1,6 +1,8 @@
 import "dart:async";
+import "dart:math";
 
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
@@ -21,6 +23,10 @@ const Curve transcriptMotionReverseCurve = Curves.easeIn;
 /// motion: it passes `entering: false` and drops exiting rows at once.
 class const TranscriptPresence({
   super.key,
+
+  /// The edge a row grows from: its top, or its bottom when it is docked above
+  /// something and rises from behind it.
+  final bool risesFromBottom = false,
 
   /// Read once, when the row first builds.
   required final bool entering,
@@ -67,14 +73,20 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
   AnimationController _animation({required double from}) {
     final existing = _controller;
     if (existing != null) return existing;
+    // Under a pointer a row the app adds eases the transcript along without
+    // snatching it from under someone reading it.
+    // Read once for this controller, which can be made before the first build.
+    final pointer =
+        context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
     final controller = _controller = AnimationController(
       vsync: this,
-      duration: transcriptMotionDuration,
+      duration: pointer ? pregoContentMoveDuration : transcriptMotionDuration,
+      reverseDuration: pointer ? pregoPointerExitDuration : transcriptMotionDuration,
       value: from,
     );
     _curve = CurvedAnimation(
       parent: controller,
-      curve: transcriptMotionCurve,
+      curve: pointer ? pregoContentMoveCurve : transcriptMotionCurve,
       reverseCurve: transcriptMotionReverseCurve,
     );
     controller
@@ -117,11 +129,15 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
     return ClipRect(
       clipBehavior: moving ? Clip.hardEdge : Clip.none,
       child: Align(
-        alignment: AlignmentDirectional.topStart,
+        alignment: widget.risesFromBottom ? AlignmentDirectional.bottomStart : AlignmentDirectional.topStart,
         widthFactor: 1,
         heightFactor: t,
         child: Opacity(
-          opacity: t,
+          opacity:
+              !widget.exiting &&
+                  context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer
+              ? min(1, t / 0.35)
+              : t,
           child: FractionalTranslation(
             translation: Offset(0, widget.exiting ? -TranscriptPresence.exitSlide * (1 - t) : 0),
             child: widget.child,
@@ -136,7 +152,11 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
 /// eases in; a row that leaves stays in place, as it last looked, while it
 /// folds away. Only the rows that change animate. Reduced motion shows every
 /// change at once.
-class const TranscriptPresenceColumn({super.key, required final List<Widget> children}) extends StatefulWidget {
+class const TranscriptPresenceColumn({
+  super.key,
+  required final List<Widget> children,
+  final bool risesFromBottom = false,
+}) extends StatefulWidget {
   @override
   State<TranscriptPresenceColumn> createState() => _TranscriptPresenceColumnState();
 }
@@ -201,6 +221,7 @@ class _TranscriptPresenceColumnState() extends State<TranscriptPresenceColumn> {
         for (final row in _rows)
           TranscriptPresence(
             key: ValueKey<Key?>(row.key),
+            risesFromBottom: widget.risesFromBottom,
             entering: _entering.contains(row.key),
             exiting: _leaving.contains(row.key),
             onEntered: null,

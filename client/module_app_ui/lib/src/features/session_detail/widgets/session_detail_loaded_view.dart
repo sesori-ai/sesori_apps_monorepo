@@ -13,6 +13,7 @@ import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 import "transcript_jump_notifier.dart";
+import "transcript_motion.dart";
 
 typedef SessionDetailBottomControlsBuilder = Widget Function({
   required BuildContext context,
@@ -61,6 +62,9 @@ class SessionDetailLoadedView extends StatelessWidget {
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
+  /// The permission dialog is open over this page.
+  final bool isReviewingPermission;
+
   /// Forwarded to the transcript: see [SessionDetailMessageList.currentPromptId],
   /// [SessionDetailMessageList.jumpNotifier] and [SessionDetailMessageList.onPinchIn].
   final ValueNotifier<String?> currentPromptId;
@@ -74,6 +78,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
+    required this.isReviewingPermission,
     required this.bottomControls,
     required this.columnWidths,
     required this.currentPromptId,
@@ -88,6 +93,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
+    required this.isReviewingPermission,
     required this.bottomControls,
     required this.columnWidths,
     required this.currentPromptId,
@@ -146,6 +152,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     final needsYou = [
       if (state.pendingQuestions.firstOrNull?.questions.firstOrNull case final question? when canAnswer)
         SessionDetailNeedsYouCard(
+          key: const ValueKey("needs-you-question"),
           icon: TablerRegular.help,
           label: hasTypedRequest
               ? (state.pendingQuestions.length == 1
@@ -153,17 +160,22 @@ class SessionDetailLoadedView extends StatelessWidget {
                     : loc.pendingRequestBannerMultiple(state.pendingQuestions.length))
               : (questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount)),
           request: _firstLine(question.question),
+          requestIsCode: false,
           action: hasTypedRequest ? loc.needsYouReview : loc.needsYouAnswer,
+          leads: true,
           onPressed: onShowPendingQuestions,
         ),
       if (state.pendingPermissions.firstOrNull case final permission? when canAnswer)
         SessionDetailNeedsYouCard(
+          key: const ValueKey("needs-you-permission"),
           icon: TablerRegular.shield,
           label: state.pendingPermissions.length == 1
               ? loc.permissionBannerSingle
               : loc.permissionBannerMultiple(state.pendingPermissions.length),
           request: _firstLine(permission.description),
+          requestIsCode: true,
           action: loc.needsYouReview,
+          leads: !isReviewingPermission && state.pendingQuestions.firstOrNull?.questions.firstOrNull == null,
           onPressed: onShowPendingPermissions,
         ),
     ];
@@ -272,7 +284,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                 AnimatedSwitcher(
                   duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
                   switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
                   child: switch (state.cannotContinueMessage) {
                     final message? => SessionDetailCannotContinueNotice(message: message),
                     null => const SizedBox.shrink(),
@@ -294,7 +306,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ...needsYou,
+                    _NeedsYouCards(cards: needsYou),
                     if (!readOnly && !state.isArchived)
                       SessionAutoContinuationNotice(
                         view: state.session.autoContinuation,
@@ -321,4 +333,14 @@ bool hasActiveWork({
   required Map<String, SessionStatus> childStatuses,
 }) {
   return sessionStatus is! SessionStatusIdle || childStatuses.values.any((status) => isChildRunning(status: status));
+}
+
+/// The cards asking for the reader's attention. Under a pointer each one grows
+/// into its room and folds away as it last looked when answered, so the transcript
+/// above glides rather than snaps. Under a finger they simply appear.
+class const _NeedsYouCards({required final List<Widget> cards}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+      ? TranscriptPresenceColumn(risesFromBottom: true, children: cards)
+      : Column(mainAxisSize: MainAxisSize.min, children: cards);
 }

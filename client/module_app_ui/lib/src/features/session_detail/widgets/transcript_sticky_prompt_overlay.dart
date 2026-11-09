@@ -150,7 +150,11 @@ class const TranscriptStickyPromptOverlay({
   /// height a longer prompt compacts to.
   static double _compactHeight({required BuildContext context, required TextStyle? style}) {
     final painter = TextPainter(
-      text: TextSpan(text: "0\n0\n0", style: style),
+      // A slim one-line pin under a pointer, which covers less of what is being read.
+      text: TextSpan(
+        text: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? "0" : "0\n0\n0",
+        style: style,
+      ),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
@@ -225,8 +229,15 @@ class _TranscriptStickyPromptOverlayState()
         style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
       ),
       horizontalInset: widget.horizontalInset,
-      bubbleColor: prego.colors.bgSurface2,
+      bubbleColor: _bubbleFill(
+        prego: prego,
+        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
+      ),
       haloColor: Theme.of(context).scaffoldBackgroundColor,
+      ellipsisStyle: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+          ? null
+          : buildChatMessageMarkdownStyleSheet(prego: prego).p,
+      paintsBand: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
       fade: _curvedFade,
       fadingOpenerId: _fadingId,
       hasLeavingCopy: leaving != null,
@@ -307,6 +318,8 @@ class const _StickyPrompts({
   required final double horizontalInset,
   required final Color bubbleColor,
   required final Color haloColor,
+  required final TextStyle? ellipsisStyle,
+  required final bool paintsBand,
   required final Animation<double> fade,
   required final String? fadingOpenerId,
   required final bool hasLeavingCopy,
@@ -325,6 +338,8 @@ class const _StickyPrompts({
     horizontalInset: horizontalInset,
     bubbleColor: bubbleColor,
     haloColor: haloColor,
+    ellipsisStyle: ellipsisStyle,
+    paintsBand: paintsBand,
     fade: fade,
     fadingOpenerId: fadingOpenerId,
     hasLeavingCopy: hasLeavingCopy,
@@ -341,6 +356,8 @@ class const _StickyPrompts({
       ..horizontalInset = horizontalInset
       ..bubbleColor = bubbleColor
       ..haloColor = haloColor
+      ..ellipsisStyle = ellipsisStyle
+      ..paintsBand = paintsBand
       ..fade = fade
       ..fadingOpenerId = fadingOpenerId
       ..hasLeavingCopy = hasLeavingCopy
@@ -382,6 +399,13 @@ class RenderTranscriptStickyPrompts({
   required double horizontalInset,
   required Color bubbleColor,
   required Color haloColor,
+
+  /// How the ellipsis ending a pin cut to one line is set.
+  required var TextStyle? ellipsisStyle,
+
+  /// Whether the pins sit on a full-width band of the page's background, so
+  /// text beside a bubble that is narrower than the column is never cut.
+  required var bool paintsBand,
   required Animation<double> fade,
   required String? fadingOpenerId,
   required bool hasLeavingCopy,
@@ -580,6 +604,7 @@ class RenderTranscriptStickyPrompts({
   @override
   void paint(PaintingContext context, Offset offset) {
     final pinned = _layout.pinned;
+    if (paintsBand) _paintBand(canvas: context.canvas, offset: offset);
     while (_clipLayers.length < pinned.length) {
       _clipLayers.add(LayerHandle<ClipRRectLayer>());
     }
@@ -621,6 +646,58 @@ class RenderTranscriptStickyPrompts({
 
   /// Paints [pin]'s bubble and [child] in it, crossfading from [leaving]'s
   /// copy, shown from its start, as the bubble moves from that copy's size.
+  /// Solid down to the lowest pin, then a short fade into the transcript.
+  void _paintBand({required Canvas canvas, required Offset offset}) {
+    const fade = 10.0;
+    const solidBelow = 24.0;
+    var bottom = 0.0;
+    var elevation = 0.0;
+    for (final pin in _layout.pinned) {
+      bottom = max(bottom, pin.top + pin.height);
+      elevation = max(elevation, pin.elevation);
+    }
+    if (elevation <= 0 || bottom <= 0) {
+      // No pin: text still fades out under the header instead of being cut by it.
+      final edge = offset & Size(size.width, fade);
+      canvas.drawRect(
+        edge,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_haloColor, _haloColor.withValues(alpha: 0)],
+          ).createShader(edge),
+      );
+      return;
+    }
+    final solid = bottom + solidBelow;
+    final rect = offset & Size(size.width, solid + fade);
+    // Quickly solid, so the first line to pass under the pin is never cut beside it.
+    final color = _haloColor.withValues(alpha: _haloColor.a * min(1, elevation * 8));
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color,
+            color,
+            color.withValues(alpha: color.a * 0.8),
+            color.withValues(alpha: color.a * 0.35),
+            color.withValues(alpha: 0),
+          ],
+          stops: [
+            0,
+            solid / (solid + fade),
+            (solid + fade * 0.35) / (solid + fade),
+            (solid + fade * 0.7) / (solid + fade),
+            1,
+          ],
+        ).createShader(rect),
+    );
+  }
+
   void _paintPin({
     required PaintingContext context,
     required Offset offset,
@@ -654,7 +731,7 @@ class RenderTranscriptStickyPrompts({
       null => entering,
     };
     final shape = RRect.fromRectAndRadius(shown, const Radius.circular(UserMessageBubble.radius));
-    if (pin.elevation > 0) {
+    if (pin.elevation > 0 && !paintsBand) {
       // Unclipped, so above the pin line it melts into the bar's fade.
       final halo = pregoPageHaloShadow(color: _haloColor.withValues(alpha: _haloColor.a * pin.elevation));
       context.canvas.drawRRect(shape.shift(offset).inflate(halo.spreadRadius), halo.toPaint());
@@ -714,6 +791,40 @@ class RenderTranscriptStickyPrompts({
     final cut = pin.fullHeight - pin.height;
     if (cut <= 0) return;
     final contentBottom = bubble.bottom - UserMessageBubble.padding;
+    if (paintsBand) {
+      // A message that fits, give or take its paragraph's padding, shows whole.
+      if (cut < 8) return;
+      // One line shows: it runs out across its width, its words whole, and the
+      // line below it stays hidden.
+      final solid = _bubbleColor.withValues(alpha: _bubbleColor.a * min(1, (cut - 8) / 8));
+      final end = Rect.fromLTRB(max(bubble.left, bubble.right - 40), bubble.top, bubble.right, bubble.bottom);
+      canvas
+        ..drawRect(
+          end,
+          Paint()
+            ..shader = LinearGradient(
+              colors: [solid.withValues(alpha: 0), solid],
+              stops: const [0, 0.6],
+            ).createShader(end),
+        )
+        ..drawRect(
+          Rect.fromLTRB(bubble.left, contentBottom, bubble.right, bubble.bottom),
+          Paint()..color = _bubbleColor,
+        );
+      final ellipsisStyle = this.ellipsisStyle;
+      if (cut >= 16 && ellipsisStyle != null) {
+        final ellipsis = TextPainter(
+          text: TextSpan(text: "…", style: ellipsisStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        ellipsis.paint(
+          canvas,
+          Offset(bubble.right - UserMessageBubble.padding - ellipsis.width, bubble.top + UserMessageBubble.padding),
+        );
+        ellipsis.dispose();
+      }
+      return;
+    }
     final fade = Rect.fromLTRB(bubble.left, contentBottom - min(16, cut), bubble.right, contentBottom);
     canvas
       ..drawRect(
@@ -786,3 +897,7 @@ class RenderTranscriptStickyPrompts({
 }
 
 final class _CopyParentData() extends ContainerBoxParentData<RenderBox>;
+
+/// The bubble's own fill; the light desktop page is too near its usual one.
+Color _bubbleFill({required PregoDesignSystem prego, required bool pointer}) =>
+    pointer && prego.colors.brightness == .light ? prego.colors.bgSurface1 : prego.colors.bgSurface2;

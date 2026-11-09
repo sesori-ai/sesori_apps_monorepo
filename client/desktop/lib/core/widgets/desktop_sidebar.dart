@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/foundation.dart";
+import "package:flutter/scheduler.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -53,8 +54,10 @@ class const DesktopSidebar({
       ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => null,
     };
     final loc = context.loc;
+    final prego = context.prego;
+    final panelColor = prego.colors.pointerPanelFill;
     final newSessionShortcut = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
-    // The shell's floating panel paints the surface.
+    // The shell's panel paints the surface.
     return Material(
       type: MaterialType.transparency,
       child: SafeArea(
@@ -66,7 +69,7 @@ class const DesktopSidebar({
             _SidebarButton(
               key: const Key("desktop-sidebar-new-session"),
               label: state is ProjectListLoaded && state.projects.isEmpty ? loc.addProject : loc.sessionListNewSession,
-              icon: const Icon(TablerRegular.plus, size: PregoIconSize.md),
+              icon: const Icon(TablerLight.plus, size: _navIconSize),
               status: null,
               shortcut: newSessionShortcut,
               onPressed: state is ProjectListLoaded ? onStartNewSession : null,
@@ -74,7 +77,7 @@ class const DesktopSidebar({
             _SidebarButton(
               key: const Key("desktop-sidebar-search"),
               label: loc.desktopSearch,
-              icon: const Icon(TablerRegular.search, size: PregoIconSize.md),
+              icon: const Icon(TablerLight.search, size: _navIconSize),
               status: null,
               shortcut: defaultTargetPlatform == TargetPlatform.macOS ? "⌘K" : "Ctrl+K",
               onPressed: onOpenSearch,
@@ -84,7 +87,7 @@ class const DesktopSidebar({
             _SidebarButton(
               key: const Key("desktop-sidebar-archived"),
               label: loc.archivedSessionsTitle,
-              icon: const Icon(TablerRegular.archive, size: PregoIconSize.md),
+              icon: const Icon(TablerLight.archive, size: _navIconSize),
               status: null,
               shortcut: null,
               onPressed: onOpenArchived,
@@ -101,34 +104,51 @@ class const DesktopSidebar({
                     CustomScrollView(
                       key: const Key("desktop-sidebar-session-list"),
                       slivers: [
-                        AllSessionsList(
-                          onSessionTap: ({required row}) => onOpenSession(
-                            context: context,
-                            project: row.project,
-                            displayName: desktopProjectDisplayName(context: context, project: row.project),
-                            session: row.session,
+                        _PausesHoverWhileScrolling(
+                          sliver: AllSessionsList(
+                            onSessionTap: ({required row}) => onOpenSession(
+                              context: context,
+                              project: row.project,
+                              displayName: desktopProjectDisplayName(context: context, project: row.project),
+                              session: row.session,
+                            ),
+                            actionDispatcher: sessionActions,
+                            createActions: ({required window}) =>
+                                createSessionActionsCubit(locator: getIt, window: window),
+                            selectedSessionId: selectedSessionId,
+                            // The footer's recovery card says so, unless this
+                            // computer's bridge is still starting: that is the
+                            // list's own load, whose one skeleton hands off to the
+                            // rows.
+                            disconnectedBuilder: ({required context, required state}) =>
+                                context.select(
+                                  (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+                                )
+                                ? null
+                                : SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: const EdgeInsetsDirectional.fromSTEB(14, PregoSpacing.md, 14, 0),
+                                      child: Text(
+                                        loc.desktopSidebarOfflineHint,
+                                        style: context.prego.textTheme.textXs.regular.copyWith(
+                                          color: context.prego.colors.textTertiary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                            // The home pane says so, and Refresh retries it.
+                            showsLoadFailure: false,
+                            // The Search row above opens the palette, which searches sessions.
+                            showsSearchField: false,
+                            // With no project at all the page offers the one next step.
+                            emptyState: state is ProjectListLoaded && state.projects.isEmpty
+                                ? const SizedBox.shrink()
+                                : SessionEmptyState(projectName: filterName),
+                            // The filter heads the list already, beside Refresh.
+                            header: null,
+                            // The last row scrolls clear of the floating scan card.
+                            endClearance: catalogScanRowClearance(context: context),
                           ),
-                          actionDispatcher: sessionActions,
-                          createActions: ({required window}) =>
-                              createSessionActionsCubit(locator: getIt, window: window),
-                          selectedSessionId: selectedSessionId,
-                          // The footer's recovery card says so, unless this
-                          // computer's bridge is still starting: that is the
-                          // list's own load, whose one skeleton hands off to the
-                          // rows.
-                          disconnectedBuilder: ({required context, required state}) =>
-                              context.select(
-                                (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
-                              )
-                              ? null
-                              : const SliverToBoxAdapter(),
-                          // The home pane says so, and Refresh retries it.
-                          showsLoadFailure: false,
-                          emptyState: SessionEmptyState(projectName: filterName),
-                          // The filter heads the list already, beside Refresh.
-                          header: null,
-                          // The last row scrolls clear of the floating scan card.
-                          endClearance: catalogScanRowClearance(context: context),
                         ),
                       ],
                     ),
@@ -137,6 +157,24 @@ class const DesktopSidebar({
                     // row or a chip under the pointer. A lost connection clears
                     // the scan, so it is empty while this computer is
                     // unreachable.
+                    PositionedDirectional(
+                      start: 0,
+                      end: 0,
+                      bottom: 0,
+                      height: 20,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [panelColor.withValues(alpha: 0), panelColor, panelColor],
+                              stops: const [0, 0.8, 1],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     PositionedDirectional(
                       start: 0,
                       end: 0,
@@ -150,6 +188,8 @@ class const DesktopSidebar({
               ),
             ),
             _SidebarFooter(
+              // The home page explains a lost bridge itself, in the centre.
+              showsRecovery: state is! ProjectListBridgeDisconnected || selectedSessionId != null,
               onToggleCollapsed: onToggleCollapsed,
               onSwitchComputer: onSwitchComputer,
               onManageComputers: onManageComputers,
@@ -163,20 +203,20 @@ class const DesktopSidebar({
   }
 }
 
-/// The space above the panel's first control. On macOS the traffic lights sit
-/// on the panel, so it grows to clear them and stands in for the title bar: it
-/// drags the window and zooms it on a double click.
+/// The room above the panel's first control, under the title line. It stands in
+/// for the title bar: on macOS it drags the window and zooms it on a double click.
 class const _TopStrip({required final WindowHost? windowHost}) extends StatelessWidget {
+  static const double _height = 44;
+
   @override
   Widget build(BuildContext context) {
     final windowHost = this.windowHost;
-    if (windowHost == null) return const SizedBox(height: 12);
-    const height = 34.0;
+    if (windowHost == null) return const SizedBox(height: _height);
     return DesktopWindowDragArea(
       windowHost: windowHost,
-      height: height,
+      height: _height,
       zoomOnDoubleClick: true,
-      child: const SizedBox(height: height, width: double.infinity),
+      child: const SizedBox(height: _height, width: double.infinity),
     );
   }
 }
@@ -193,57 +233,122 @@ class const _SidebarFilter({
     final prego = context.prego;
     final sessions = context.read<AllSessionsCubit>();
     final secondary = prego.colors.textSecondary;
+    final noProjects = switch (projectState) {
+      ProjectListLoaded(:final projects) => projects.isEmpty,
+      ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
+    };
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.md, PregoSpacing.sm, PregoSpacing.md, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(6, PregoSpacing.md, 6, 0),
       child: Row(
         children: [
           Expanded(
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ProjectPicker(
-                selectedProjectId: projectId,
-                onSelected: ({required projectId, required projectName}) =>
-                    sessions.selectProject(projectId: projectId),
-                onAllProjects: () => sessions.selectProject(projectId: null),
-                triggerBuilder: (context, open) => Semantics(
-                  button: true,
-                  enabled: projectState is ProjectListLoaded,
-                  child: InkWell(
-                    key: const Key("desktop-sidebar-filter"),
-                    mouseCursor: WidgetStateMouseCursor.clickable,
-                    onTap: projectState is ProjectListLoaded ? open : null,
-                    borderRadius: BorderRadius.circular(PregoRadius.md),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              projectName ?? context.loc.projectPickerAllProjects,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: prego.textTheme.textSm.medium.copyWith(color: secondary),
+            child: noProjects
+                ? Padding(
+                    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                    child: Text(
+                      context.loc.desktopSidebarNoProjects,
+                      style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                    ),
+                  )
+                : Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: ProjectPicker(
+                      selectedProjectId: projectId,
+                      onSelected: ({required projectId, required projectName}) =>
+                          sessions.selectProject(projectId: projectId),
+                      onAllProjects: () => sessions.selectProject(projectId: null),
+                      triggerBuilder: (context, open) => Semantics(
+                        button: true,
+                        enabled: projectState is ProjectListLoaded,
+                        child: InkWell(
+                          key: const Key("desktop-sidebar-filter"),
+                          mouseCursor: WidgetStateMouseCursor.clickable,
+                          onTap: projectState is ProjectListLoaded ? open : null,
+                          borderRadius: BorderRadius.circular(PregoRadius.md),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    projectName ?? context.loc.projectPickerAllProjects,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: prego.textTheme.textXs.medium.copyWith(color: secondary),
+                                  ),
+                                ),
+                                const SizedBox(width: PregoSpacing.xs),
+                                Icon(TablerLight.chevron_down, size: PregoIconSize.sm, color: secondary),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: PregoSpacing.xs),
-                          Icon(TablerRegular.chevron_down, size: PregoIconSize.sm, color: secondary),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
           ),
           SizedBox.square(
-            dimension: 32,
-            child: _SidebarRefreshButton(projectState: projectState, iconSize: PregoIconSize.md, color: secondary),
+            dimension: 26,
+            child: _SidebarRefreshButton(projectState: projectState, iconSize: PregoIconSize.sm, color: secondary),
           ),
         ],
       ),
     );
   }
+}
+
+/// Rows take no hover while the list scrolls, and for a moment after each wheel
+/// tick, so the highlight doesn't hop along under a pointer that isn't moving.
+class const _PausesHoverWhileScrolling({required final Widget sliver}) extends StatefulWidget {
+  @override
+  State<_PausesHoverWhileScrolling> createState() => _PausesHoverWhileScrollingState();
+}
+
+class _PausesHoverWhileScrollingState() extends State<_PausesHoverWhileScrolling> {
+  ValueListenable<bool>? _scrolling;
+  Timer? _release;
+  bool _paused = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scrolling = Scrollable.of(context).position.isScrollingNotifier;
+    if (identical(scrolling, _scrolling)) return;
+    _scrolling?.removeListener(_onScrollingChanged);
+    _scrolling = scrolling..addListener(_onScrollingChanged);
+  }
+
+  void _onScrollingChanged() {
+    _release?.cancel();
+    if (_scrolling?.value ?? false) {
+      _setPaused(true);
+    } else {
+      _release = Timer(const Duration(milliseconds: 100), () => _setPaused(false));
+    }
+  }
+
+  void _setPaused(bool paused) {
+    if (paused == _paused) return;
+    // An overscrolled list that shrinks settles from inside layout, too late to rebuild this frame.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _paused = paused);
+      });
+    } else {
+      setState(() => _paused = paused);
+    }
+  }
+
+  @override
+  void dispose() {
+    _release?.cancel();
+    _scrolling?.removeListener(_onScrollingChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SliverIgnorePointer(ignoring: _paused, sliver: widget.sliver);
 }
 
 /// Reloads projects and their sessions and imports from every harness.
@@ -280,12 +385,13 @@ class const _SidebarRefreshButton({
           ? ExcludeSemantics(
               child: SizedBox.square(dimension: iconSize, child: const PregoActivityIndicator(color: null)),
             )
-          : Icon(TablerRegular.refresh, size: iconSize, color: color),
+          : Icon(TablerLight.refresh, size: iconSize, color: color),
     );
   }
 }
 
 class const _SidebarFooter({
+  required final bool showsRecovery,
   required final VoidCallback onToggleCollapsed,
   required final ComputerSwitchCallback onSwitchComputer,
   required final VoidCallback onManageComputers,
@@ -297,31 +403,25 @@ class const _SidebarFooter({
     final prego = context.prego;
     final loc = context.loc;
     final macOS = defaultTargetPlatform == TargetPlatform.macOS;
-    Widget control(Widget button) => SizedBox.square(dimension: 36, child: button);
+    Widget control(Widget button) => SizedBox.square(dimension: 28, child: button);
     return BlocListener<SessionListRefreshCubit, SessionListRefreshState>(
+      // A refresh that worked shows in the button and the list; only a failure speaks.
       listenWhen: (previous, current) =>
-          previous.status != current.status &&
-          (current.status == SessionListRefreshStatus.succeeded || current.status == SessionListRefreshStatus.failed),
-      listener: (context, state) {
-        final succeeded = state.status == SessionListRefreshStatus.succeeded;
-        PregoPopupAlertPresenter.of(context).show(
-          title: succeeded ? loc.desktopSidebarRefreshSuccess : loc.desktopSidebarRefreshFailed,
-          variant: succeeded
-              ? PregoPopupAlertsNotificationsVariant.success
-              : PregoPopupAlertsNotificationsVariant.error,
-        );
-      },
+          previous.status != current.status && current.status == SessionListRefreshStatus.failed,
+      listener: (context, state) => PregoPopupAlertPresenter.of(
+        context,
+      ).show(title: loc.desktopSidebarRefreshFailed, variant: PregoPopupAlertsNotificationsVariant.error),
       child: Container(
         key: const Key("desktop-sidebar-footer"),
         decoration: BoxDecoration(
-          color: prego.colors.bgSurface1,
-          border: Border(top: BorderSide(color: prego.colors.borderPrimary)),
+          color: prego.colors.pointerPanelFill,
+          border: Border(top: BorderSide(color: prego.colors.borderSecondary)),
         ),
         child: Column(
           children: [
-            const DesktopBridgeRecoveryCard(compact: false),
+            if (showsRecovery) const DesktopBridgeRecoveryCard(compact: false),
             SizedBox(
-              height: 44,
+              height: 40,
               child: Row(
                 children: [
                   Expanded(
@@ -335,21 +435,12 @@ class const _SidebarFooter({
                     IconButton(
                       key: const Key("desktop-sidebar-settings"),
                       tooltip: loc.desktopShortcutHint(loc.settingsTitle, macOS ? "⌘," : "Ctrl+,"),
-                      padding: const EdgeInsets.all(PregoSpacing.sm),
+                      padding: EdgeInsets.zero,
                       onPressed: onOpenSettings,
-                      icon: const Icon(TablerRegular.settings, size: PregoIconSize.md),
+                      icon: const Icon(TablerLight.settings, size: _navIconSize),
                     ),
                   ),
-                  control(
-                    IconButton(
-                      key: const Key("desktop-sidebar-toggle"),
-                      tooltip: loc.desktopShortcutHint(loc.desktopSidebarCollapse, macOS ? "⌘B" : "Ctrl+B"),
-                      padding: const EdgeInsets.all(PregoSpacing.sm),
-                      onPressed: onToggleCollapsed,
-                      icon: const Icon(TablerRegular.layout_sidebar_left_collapse, size: PregoIconSize.md),
-                    ),
-                  ),
-                  const SizedBox(width: PregoSpacing.xs),
+                  const SizedBox(width: 6),
                 ],
               ),
             ),
@@ -392,7 +483,7 @@ class const _SidebarComputerRow({
     };
     return PregoAnchorMenu(
       flat: true,
-      menuWidth: 300,
+      menuWidth: 264,
       triggerBuilder: (context, toggle) => _SidebarButton(
         key: const Key("desktop-sidebar-computer"),
         label: name,
@@ -404,7 +495,7 @@ class const _SidebarComputerRow({
         ),
         status: statusLabel,
         shortcut: null,
-        trailing: Icon(TablerRegular.chevron_down, size: PregoIconSize.sm, color: colors.textTertiary),
+        trailing: Icon(TablerLight.selector, size: PregoIconSize.sm, color: colors.textTertiary),
         onPressed: toggle,
       ),
       entriesBuilder: () => [
@@ -452,7 +543,7 @@ class const _SidebarButton({
     final description = status == null ? label : "$label, $status";
     final shortcut = this.shortcut;
     final color = onPressed == null ? prego.colors.textDisabled : prego.colors.textPrimary;
-    final textStyle = prego.textTheme.textSm.medium.copyWith(color: color);
+    final textStyle = prego.textTheme.textSm.regular.copyWith(color: color);
     final button = Semantics(
       button: true,
       enabled: onPressed != null,
@@ -462,18 +553,20 @@ class const _SidebarButton({
       child: InkWell(
         mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onPressed,
-        hoverColor: prego.colors.bgSecondaryHover,
+        borderRadius: BorderRadius.circular(PregoRadius.sm),
+        hoverDuration: Duration.zero,
+        hoverColor: prego.colors.bgSecondaryHover.withValues(alpha: 0.5),
         focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md + PregoSpacing.sm, vertical: PregoSpacing.xs),
+          padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.sm, 5, PregoSpacing.md, 5),
           child: Row(
             children: [
               SizedBox(
-                width: 28,
-                height: 28,
+                width: 18,
+                height: 18,
                 child: Center(
                   child: IconTheme(
-                    data: IconThemeData(color: color),
+                    data: IconThemeData(color: onPressed == null ? color : prego.colors.textSecondary),
                     child: icon,
                   ),
                 ),
@@ -506,7 +599,9 @@ class const _SidebarButton({
                   child: ExcludeSemantics(
                     child: Text(
                       shortcut,
-                      style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                      style: prego.textTheme.textXs.regular.copyWith(
+                        color: onPressed == null ? prego.colors.textDisabled : prego.colors.textTertiary,
+                      ),
                     ),
                   ),
                 ),
@@ -517,7 +612,7 @@ class const _SidebarButton({
       ),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xxs),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       // A status shows only its icon, so the tooltip names it.
       child: status == null
           ? button
@@ -551,8 +646,11 @@ class const _TooltipWhenTruncated({
   );
 }
 
-/// The selected row's fill. It spans the sidebar's width.
-Color desktopSidebarSelectedFill(PregoColors colors) => colors.textBrandPrimary.withValues(alpha: 0.14);
+/// The size of the sidebar's navigation glyphs.
+const double _navIconSize = 16;
+
+/// A selected navigation row's fill.
+Color desktopSidebarSelectedFill(PregoColors colors) => colors.pointerSelectionFill;
 
 /// The sidebar's name for [project]: its stored name, else its directory.
 String desktopProjectDisplayName({required BuildContext context, required ProjectSummary project}) {

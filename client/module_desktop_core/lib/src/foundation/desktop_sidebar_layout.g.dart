@@ -9,7 +9,7 @@ part of 'desktop_sidebar_layout.dart';
 _DesktopSidebarLayout _$DesktopSidebarLayoutFromJson(
   Map<String, dynamic> json,
 ) => _DesktopSidebarLayout(
-  width: (json['width'] as num?)?.toDouble() ?? 260,
+  width: (json['width'] as num?)?.toDouble() ?? 288,
   collapsed: json['collapsed'] as bool? ?? false,
 );
 

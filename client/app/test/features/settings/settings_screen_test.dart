@@ -970,7 +970,7 @@ void main() {
 
     expect(find.text("Basic usage analytics"), findsOneWidget);
     expect(
-      find.text("Share basic feature usage — never your code or messages."),
+      find.text("Share basic feature usage, never your code or messages."),
       findsOneWidget,
     );
     expect(find.textContaining("automatic installation events"), findsNothing);

@@ -195,7 +195,7 @@ void main() {
       state: _state(process: const BridgeProcessRunning(pid: 42), status: connected, label: "Connected"),
     );
     final healthyHeight = tester.getSize(popover).height;
-    final statusLeft = tester.getTopLeft(find.text("Connected")).dx;
+    final sectionLeft = tester.getTopLeft(find.text("Local bridge")).dx;
 
     updates.add(
       _state(
@@ -219,7 +219,7 @@ void main() {
     final degradedHeight = tester.getSize(popover).height;
     expect(find.text("Degraded · Pi"), findsOneWidget);
     expect(find.text(hint), findsOneWidget);
-    expect(tester.getTopLeft(find.text(hint)).dx, statusLeft);
+    expect(tester.getTopLeft(find.text(hint)).dx, sectionLeft);
     expect(midHeight, inExclusiveRange(healthyHeight, degradedHeight));
 
     updates.add(_state(process: const BridgeProcessRunning(pid: 42), status: connected, label: "Connected"));

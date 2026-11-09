@@ -172,7 +172,9 @@ class const _ReadyView({
             child: SettingsSection(
               title: _groupTitle(context: context, group: group),
               child: PregoGroupedRows(
-                color: context.prego.colors.bgSurface2,
+                color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                    ? null
+                    : context.prego.colors.bgSurface2,
                 showDividers: false,
                 children: [
                   PregoAnimatedList<PluginManagementMetadata>(
@@ -206,7 +208,9 @@ class const _ReadyView({
           SettingsSection(
             title: loc.harnessManagementDefaultsSection,
             child: PregoGroupedRows(
-              color: context.prego.colors.bgSurface2,
+              color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                  ? null
+                  : context.prego.colors.bgSurface2,
               children: [
                 PregoGroupedRow(
                   key: const Key("harness_management_default_timeout"),
@@ -241,8 +245,20 @@ class const _HarnessOverviewRow({
     final install = state.installs[plugin.setup.id];
     return PregoGroupedRow(
       key: Key("harnesses_card_${plugin.setup.id}"),
-      minHeight: 68,
-      leading: PregoBrandLogo(pluginId: plugin.setup.id, color: context.prego.colors.textTertiary),
+      minHeight: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? null : 68,
+      // In the 24 pt slot a row's 20 pt icon takes, so titles share one edge.
+      leading: SizedBox(
+        width: 24,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4),
+          child: SizedBox.square(
+            dimension: 20,
+            child: Center(
+              child: PregoBrandLogo(pluginId: plugin.setup.id, size: 16, color: context.prego.colors.textTertiary),
+            ),
+          ),
+        ),
+      ),
       title: Text(plugin.setup.displayName),
       subtitle: _showOverviewStatus(plugin: plugin, install: install)
           ? _HarnessStatus(plugin: plugin, install: install, overview: true)
@@ -284,7 +300,10 @@ class const _HarnessOverviewRow({
               onPressed: state.harnessControlsBlocked(pluginId: plugin.setup.id) ? null : onOpen,
             )
           else
-            const SizedBox(width: 44, height: 44, child: Icon(TablerRegular.chevron_right)),
+            // On the same end edge as every other settings page's chevron, under a pointer.
+            PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                ? const Icon(TablerRegular.chevron_right)
+                : const SizedBox(width: 44, height: 44, child: Icon(TablerRegular.chevron_right)),
         ],
       ),
     );
@@ -401,7 +420,12 @@ class const _HarnessActionFeedback({
     return groupForceReview && action is PluginManagementActionForceConfirmationRequired
         ? Padding(
             padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-            child: PregoGroupedRows(color: context.prego.colors.bgSurface2, children: [feedback]),
+            child: PregoGroupedRows(
+              color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+                  ? null
+                  : context.prego.colors.bgSurface2,
+              children: [feedback],
+            ),
           )
         : feedback;
   }

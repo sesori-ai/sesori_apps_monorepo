@@ -42,16 +42,22 @@ class const SettingsChromePage({
       onRefresh: onRefresh,
       slivers: slivers,
     ),
-    SettingsPageInWindow() => SettingsWindowPage(onRefresh: onRefresh, slivers: slivers),
+    // These pages' slivers inset their top by 10, so all tabs start at one height.
+    SettingsPageInWindow() => SettingsWindowPage(
+      onRefresh: onRefresh,
+      slivers: slivers,
+      topPadding: SettingsWindowPage.topInset + 6,
+    ),
     SettingsPageInWindowSubpage(:final title, :final onBack) => SettingsWindowPage(
       onRefresh: onRefresh,
+      // Its bar sits where every other page's heading does.
+      topPadding: PregoSpacing.md,
       slivers: [
         SliverPadding(
           padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.md, 0, PregoSpacing.xl, PregoSpacing.sm),
           sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: PregoSpacing.sm,
+            child: Row(
+              spacing: PregoSpacing.xs,
               children: [
                 PregoButtonsSolid(
                   label: MaterialLocalizations.of(context).backButtonTooltip,
@@ -60,12 +66,15 @@ class const SettingsChromePage({
                   size: PregoButtonsSolidSize.sm,
                   onPressed: onBack,
                 ),
-                Padding(
-                  // Lines the title up with the page content below it.
-                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl - PregoSpacing.md),
+                Flexible(
                   child: Semantics(
                     header: true,
-                    child: Text(title, style: context.prego.textTheme.textLg.bold),
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.prego.textTheme.textMd.medium,
+                    ),
                   ),
                 ),
               ],
@@ -87,6 +96,7 @@ class const SettingsWindowPage({
   /// Pull-to-refresh, as on the page's own glass bar; `null` for none.
   required final Future<void> Function()? onRefresh,
   required final List<Widget> slivers,
+  final double topPadding = topInset,
 }) extends StatelessWidget {
   /// Top inset that clears the window's close button.
   static const double topInset = 44;
@@ -99,7 +109,7 @@ class const SettingsWindowPage({
     slivers: [
       if (onRefresh case final onRefresh?)
         PregoSliverRefreshControl(onRefresh: onRefresh, decorate: null, onPulledExtentChanged: null),
-      const SliverToBoxAdapter(child: SizedBox(height: topInset)),
+      SliverToBoxAdapter(child: SizedBox(height: topPadding)),
       ...slivers,
     ],
   );

@@ -1,6 +1,7 @@
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoActivityIndicator;
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 import "prego_button_semantics.dart";
@@ -133,6 +134,7 @@ class PregoButtonsSolid extends StatefulWidget {
     this.isLoading = false,
     this.type = PregoButtonsSolidType.regular,
     this.fullWidth = false,
+    this.contentAtStart = false,
   }) : assert(
          hierarchy != PregoButtonsSolidHierarchy.primaryAlt || type == PregoButtonsSolidType.regular,
          'primaryAlt only supports the brand tone — Figma defines no destructive/warning variant for it.',
@@ -147,7 +149,8 @@ class PregoButtonsSolid extends StatefulWidget {
        ),
        iconOnly = false,
        semanticLabel = null,
-       showsTooltip = false;
+       showsTooltip = false,
+       pointerRadius = PregoRadius.md;
 
   /// Icon-only variant — renders a square button with a single centred icon.
   const new iconOnly({
@@ -160,6 +163,7 @@ class PregoButtonsSolid extends StatefulWidget {
     this.showsTooltip = false,
     this.isLoading = false,
     this.type = PregoButtonsSolidType.regular,
+    this.pointerRadius = PregoRadius.md,
   }) : assert(
          hierarchy != PregoButtonsSolidHierarchy.primaryAlt || type == PregoButtonsSolidType.regular,
          'primaryAlt only supports the brand tone — Figma defines no destructive/warning variant for it.',
@@ -175,6 +179,7 @@ class PregoButtonsSolid extends StatefulWidget {
        assert(!showsTooltip || semanticLabel != null, 'A tooltip shows the semantic label, so it needs one.'),
        iconOnly = true,
        fullWidth = false,
+       contentAtStart = false,
        label = null,
        trailingIcon = null,
        labelTrailing = null;
@@ -219,6 +224,9 @@ class PregoButtonsSolid extends StatefulWidget {
   /// Whether the button renders in icon-only mode (square, no label).
   final bool iconOnly;
 
+  /// The corners under a pointer, for a button set into a rounded container.
+  final double pointerRadius;
+
   /// What a screen reader calls an icon-only button, which shows no words of its
   /// own. Null only under a wrapper that speaks for the button, such as a
   /// press-and-hold control or a larger touch target. Always null for the
@@ -235,6 +243,10 @@ class PregoButtonsSolid extends StatefulWidget {
   /// `crossAxisAlignment: CrossAxisAlignment.stretch`). Ignored when
   /// [iconOnly] is `true`.
   final bool fullWidth;
+
+  /// A full-width button's contents start at its edge rather than its centre, so
+  /// a stack of them shares one icon column.
+  final bool contentAtStart;
 
   @override
   State<PregoButtonsSolid> createState() => _PregoButtonsSolidState();
@@ -259,7 +271,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       actions: {ActivateIntent: activate, ButtonActivateIntent: activate},
       child: PregoTappable.stateAware(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(PregoRadius.full),
+        borderRadius: _shape,
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) return _resolvePressOverlayColor(colors: colors);
           if (states.contains(WidgetState.hovered)) return _resolveHoverOverlayColor(colors: colors);
@@ -280,7 +292,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 
           final decoration = BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(PregoRadius.full),
+            borderRadius: _shape,
             border: border,
             boxShadow: boxShadows,
           );
@@ -305,7 +317,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
           return DecoratedBox(
             decoration: decoration,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(PregoRadius.full),
+              borderRadius: _shape,
               child: Stack(
                 // A box wider than the content — a tight constraint from a
                 // parent that sizes the button, like a swipe row stretching
@@ -314,8 +326,16 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
                 alignment: Alignment.center,
                 children: [
                   child,
-                  if (showSkeuomorphicOverlay)
+                  if (showSkeuomorphicOverlay &&
+                      !(_pointer && widget.hierarchy == PregoButtonsSolidHierarchy.primaryAlt) &&
+                      // Light builds a quiet button from tone; the hairline is edge enough.
+                      !(_pointer &&
+                          widget.hierarchy == PregoButtonsSolidHierarchy.secondary &&
+                          colors.brightness == .light))
                     PregoSkeuomorphicOverlay(
+                      borderRadius: _shape,
+                      // A pointer shell's flatter button keeps the edge, not the raised lip.
+                      showsBottomShadow: !_pointer,
                       innerBorderColor: colors.skeuomorphicInnerBorder,
                       bottomShadowColor: skeuomorphicBottomColor,
                     ),
@@ -412,7 +432,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
         // alignment below actually has spare space to centre into. The default
         // min-size collapses the Row to its content (existing behaviour).
         mainAxisSize: widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: widget.contentAtStart ? MainAxisAlignment.start : MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: children,
       ),
@@ -472,6 +492,9 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   /// Tertiary regular: transparent — bg handles pressed state directly.
   /// Link: transparent — no press background.
   Color _resolvePressOverlayColor({required PregoColors colors}) {
+    if (_pointer && widget.hierarchy == PregoButtonsSolidHierarchy.secondary && !_isDestructive) {
+      return colors.textPrimary.withValues(alpha: 0.14);
+    }
     return switch (widget.hierarchy) {
       PregoButtonsSolidHierarchy.primary =>
         (_isDestructive || _isWarning || _isSuccess) ? colors.bgDestructivePressed : colors.bgBrandPressed,
@@ -546,7 +569,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     return switch (widget.type) {
       PregoButtonsSolidType.regular => colors.bgBrandSolid,
       PregoButtonsSolidType.destructive => colors.bgErrorSolid,
-      PregoButtonsSolidType.warning => colors.bgWarningSolid,
+      PregoButtonsSolidType.warning => _pointer ? colors.pointerWarningFill : colors.bgWarningSolid,
       PregoButtonsSolidType.success => colors.bgSuccessSolid,
     };
   }
@@ -637,7 +660,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
               : Border.all(color: colors.borderDisabled, width: 1),
         // Primary Alt disabled: border-disabled (matches primary regular disabled).
         // No destructive variant exists for primaryAlt.
-        PregoButtonsSolidHierarchy.primaryAlt => Border.all(color: colors.borderDisabled, width: 1),
+        PregoButtonsSolidHierarchy.primaryAlt => _pointer ? null : Border.all(color: colors.borderDisabled, width: 1),
         PregoButtonsSolidHierarchy.secondary =>
           _isDestructive
               // Destructive secondary disabled: border-disabled_subtle.
@@ -650,13 +673,17 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 
     return switch (widget.hierarchy) {
       // Primary: 2px semi-transparent white border (rgba(255,255,255,0.12) = alpha-white-10).
-      PregoButtonsSolidHierarchy.primary => Border.all(color: colors.alphaWhite10, width: 2),
+      PregoButtonsSolidHierarchy.primary =>
+        _isWarning && _pointer ? null : Border.all(color: colors.alphaWhite10, width: 2),
       // Primary Alt: 2px alpha-white-10 at rest/hover; the pressed Figma variant
       // swaps the stroke to a solid border-primary stroke for stronger feedback.
-      PregoButtonsSolidHierarchy.primaryAlt => Border.all(
-        color: isPressed ? colors.borderPrimary : colors.alphaWhite10,
-        width: 2,
-      ),
+      PregoButtonsSolidHierarchy.primaryAlt =>
+        _pointer
+            ? null
+            : Border.all(
+                color: isPressed ? colors.borderPrimary : colors.alphaWhite10,
+                width: 2,
+              ),
       PregoButtonsSolidHierarchy.secondary =>
         _isDestructive
             // Destructive secondary: border-error_subtle for all active states.
@@ -665,7 +692,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
             : Border.all(
                 color: (state.contains(WidgetState.hovered) || _isFocused)
                     ? colors.borderPrimary
-                    : colors.borderSecondary,
+                    : (_pointer ? colors.pointerHairline : colors.borderSecondary),
                 width: 1,
               ),
       PregoButtonsSolidHierarchy.tertiary || PregoButtonsSolidHierarchy.link => null,
@@ -695,6 +722,9 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
         BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
       ];
     }
+
+    // Flat under a pointer: the hairline alone sets a secondary button apart.
+    if (_pointer && widget.hierarchy == PregoButtonsSolidHierarchy.secondary) return null;
 
     // Drop shadow: shadow-xs for default/disabled/secondary-hover.
     // Primary and Primary Alt hover use shadow-skeumorphic (a semantically distinct
@@ -759,16 +789,21 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     }
 
     return switch (widget.hierarchy) {
-      PregoButtonsSolidHierarchy.primary => colors.textWhite,
+      PregoButtonsSolidHierarchy.primary => _primaryForeground(colors: colors),
       // Primary Alt: text-primary_on-white (dark on a brand-tinted/light bg).
       // No hover change — overlay handles the hover/press feedback.
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Secondary text colour does not change on hover (only background does).
-      PregoButtonsSolidHierarchy.secondary => colors.textSecondary,
+      PregoButtonsSolidHierarchy.secondary => _pointer ? colors.textPrimary : colors.textSecondary,
       PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       PregoButtonsSolidHierarchy.link => isHovered ? colors.textBrandSecondaryHover : colors.textBrandSecondary,
     };
   }
+
+  /// White, except on the bright amber under a pointer, where white is too faint
+  /// to read.
+  Color _primaryForeground({required PregoColors colors}) =>
+      _isWarning && _pointer ? const Color(0xFF141414) : colors.textWhite;
 
   Color _resolveIconColor({
     required PregoColors colors,
@@ -800,12 +835,11 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     }
 
     return switch (widget.hierarchy) {
-      // Primary (regular) always uses text-white for the icon.
-      PregoButtonsSolidHierarchy.primary => colors.textWhite,
+      PregoButtonsSolidHierarchy.primary => _primaryForeground(colors: colors),
       // Primary Alt: icon matches the dark text colour (text-primary_on-white).
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Canonical secondary: leading/icon-only uses primary text; trailing matches the label.
-      PregoButtonsSolidHierarchy.secondary => isTrailing ? colors.textSecondary : colors.textPrimary,
+      PregoButtonsSolidHierarchy.secondary => isTrailing || _pointer ? colors.textSecondary : colors.textPrimary,
       PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       // Link uses text-brand-secondary tokens on default/hover; text-secondary when focused.
       PregoButtonsSolidHierarchy.link =>
@@ -813,7 +847,23 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     };
   }
 
-  EdgeInsetsDirectional _resolvePadding() => switch (widget.size) {
+  bool get _pointer => PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+
+  /// A pill under a finger, a rounded rectangle under a pointer.
+  BorderRadius get _shape => BorderRadius.circular(_pointer ? widget.pointerRadius : PregoRadius.full);
+
+  EdgeInsetsDirectional _resolvePadding() => _pointer ? _pointerPadding() : _touchPadding();
+
+  /// One line of type plus these insets gives heights of 24, 28, 32, 36 and 40.
+  EdgeInsetsDirectional _pointerPadding() => switch (widget.size) {
+    PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.md, vertical: 4),
+    PregoButtonsSolidSize.sm => const EdgeInsetsDirectional.symmetric(horizontal: 10, vertical: 5),
+    PregoButtonsSolidSize.md => const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.lg, vertical: 7),
+    PregoButtonsSolidSize.lg => const EdgeInsetsDirectional.symmetric(horizontal: 14, vertical: PregoSpacing.md),
+    PregoButtonsSolidSize.xl => const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl, vertical: 10),
+  };
+
+  EdgeInsetsDirectional _touchPadding() => switch (widget.size) {
     PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.symmetric(
       horizontal: _buttonHPaddingXs,
       vertical: PregoSpacing.sm,
@@ -838,7 +888,17 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     ),
   };
 
-  EdgeInsetsDirectional _resolveIconOnlyPadding() => switch (widget.size) {
+  EdgeInsetsDirectional _resolveIconOnlyPadding() => _pointer
+      ? EdgeInsetsDirectional.all(switch (widget.size) {
+          PregoButtonsSolidSize.xs => 4,
+          PregoButtonsSolidSize.sm => 6,
+          PregoButtonsSolidSize.md => PregoSpacing.md,
+          PregoButtonsSolidSize.lg => 10,
+          PregoButtonsSolidSize.xl => PregoSpacing.lg,
+        })
+      : _touchIconOnlyPadding();
+
+  EdgeInsetsDirectional _touchIconOnlyPadding() => switch (widget.size) {
     PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.all(_buttonIconOnlyPaddingXs),
     PregoButtonsSolidSize.sm => const EdgeInsetsDirectional.all(PregoSpacing.md),
     PregoButtonsSolidSize.md => const EdgeInsetsDirectional.all(_buttonVPaddingMd),
@@ -851,7 +911,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     PregoButtonsSolidSize.lg || PregoButtonsSolidSize.xl => PregoSpacing.sm,
   };
 
-  double _resolveIconSize() => widget.size == PregoButtonsSolidSize.xs ? 16.0 : 20.0;
+  double _resolveIconSize() {
+    if (_pointer) return widget.size == PregoButtonsSolidSize.xs ? PregoIconSize.sm : 16.0;
+    return widget.size == PregoButtonsSolidSize.xs ? 16.0 : 20.0;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -873,6 +936,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 /// `skeuomorphicInnerBorder` so both layers use the same token.
 class const PregoSkeuomorphicOverlay({
   super.key,
+
+  /// The surface's own corners, so the inner border stays concentric with them.
+  required final BorderRadius borderRadius,
+  required final bool showsBottomShadow,
   required final Color innerBorderColor,
   required final Color bottomShadowColor,
 }) extends StatelessWidget {
@@ -882,6 +949,8 @@ class const PregoSkeuomorphicOverlay({
       child: IgnorePointer(
         child: CustomPaint(
           painter: _SkeuomorphicPainter(
+            borderRadius: borderRadius,
+            showsBottomShadow: showsBottomShadow,
             innerBorderColor: innerBorderColor,
             bottomShadowColor: bottomShadowColor,
           ),
@@ -892,15 +961,15 @@ class const PregoSkeuomorphicOverlay({
 }
 
 class _SkeuomorphicPainter({
+  required final BorderRadius borderRadius,
+  required final bool showsBottomShadow,
   required final Color innerBorderColor,
   required final Color bottomShadowColor,
 }) extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    // Use a high enough radius to handle the pill shape.
-    final radius = Radius.circular(size.height / 2);
-    final rrect = RRect.fromRectAndRadius(rect, radius);
+    final rrect = borderRadius.toRRect(rect);
 
     // 1px inner border around the entire button.
     final borderPaint = Paint()
@@ -911,6 +980,7 @@ class _SkeuomorphicPainter({
 
     // 2px-tall bottom inner shadow strip drawn by clipping and painting a rect.
     // Approximates Figma's `inset 0 -2px 0 0` inner shadow.
+    if (!showsBottomShadow) return;
     canvas.save();
     canvas.clipRRect(rrect);
     final bottomShadowPaint = Paint()..color = bottomShadowColor;
@@ -923,7 +993,10 @@ class _SkeuomorphicPainter({
 
   @override
   bool shouldRepaint(_SkeuomorphicPainter oldDelegate) =>
-      innerBorderColor != oldDelegate.innerBorderColor || bottomShadowColor != oldDelegate.bottomShadowColor;
+      borderRadius != oldDelegate.borderRadius ||
+      showsBottomShadow != oldDelegate.showsBottomShadow ||
+      innerBorderColor != oldDelegate.innerBorderColor ||
+      bottomShadowColor != oldDelegate.bottomShadowColor;
 }
 
 /// A small circular progress indicator used in the button loading state.

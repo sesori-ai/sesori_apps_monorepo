@@ -2285,7 +2285,7 @@ void main() {
     expect(find.text("Hello, world!"), findsOneWidget);
     expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
     expect(find.text("1 pending question"), findsNothing);
-    expect(find.text("1 permission request pending"), findsNothing);
+    expect(find.text("1 pending permission request"), findsNothing);
     expect(
       find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.liveRegion ?? false)),
       findsWidgets,
@@ -3034,7 +3034,7 @@ void main() {
     expect(cards, findsNWidgets(2));
     expect(find.text("1 pending question"), findsOneWidget);
     expect(find.text("Choose a release channel"), findsOneWidget);
-    expect(find.text("1 permission request pending"), findsOneWidget);
+    expect(find.text("1 pending permission request"), findsOneWidget);
     expect(find.text("Allow writing the release notes"), findsOneWidget);
 
     final composer = tester.getRect(find.byType(PromptInput));
@@ -3109,7 +3109,7 @@ void main() {
     expect(find.text("This session is archived and read-only."), findsOneWidget);
     // Pending requests can never be answered on an archived session.
     expect(find.text("1 pending question"), findsNothing);
-    expect(find.text("1 permission request pending"), findsNothing);
+    expect(find.text("1 pending permission request"), findsNothing);
     expect(find.text("Queued before archive"), findsOneWidget);
     expect(find.text("Queued"), findsOneWidget);
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);

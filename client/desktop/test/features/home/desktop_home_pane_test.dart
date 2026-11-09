@@ -837,13 +837,13 @@ void main() {
     });
   });
 
-  testWidgets("a home without projects asks for one, through the picker's Open folder", (tester) async {
+  testWidgets("a home without projects offers adding one as its one next step", (tester) async {
     await pumpHome(
       tester: tester,
       state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
     );
     expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
-    final button = tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_project")));
+    final button = tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_add_first_project")));
     expect(button.onPressed, isNotNull);
     verifyNever(bridgeControlCubit.recoverConnection);
   });

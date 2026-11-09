@@ -187,6 +187,7 @@ void main() {
         onOpen: (context) => showPregoModalRoute<void>(
           context: context,
           builder: (context) => PregoModalSurface(
+            anchorsTop: false,
             title: "Question 1",
             subtitle: "1 of 2",
             onBack: null,

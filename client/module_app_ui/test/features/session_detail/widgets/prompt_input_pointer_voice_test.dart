@@ -81,7 +81,7 @@ void main() {
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
 
       await startListening(tester);
-      expect(find.text("Enter to send"), findsOneWidget);
+      expect(find.byType(PregoVoiceWaveform), findsOneWidget);
       // Clicks are not holds: releasing the first click keeps the mic listening.
       verifyNever(() => voiceCubit.stopAndTranscribe(limitReached: false));
 
@@ -346,10 +346,10 @@ void main() {
     testWidgets("the X cancels and keeps the box", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, initialText: "typed first");
-      expect(find.byType(PregoVoiceTarget), findsNothing);
+      expect(_cancel, findsNothing);
 
       await startListening(tester);
-      expect(find.byType(PregoVoiceTarget), findsNWidgets(2));
+      expect(_cancel, findsOneWidget);
 
       await tester.tap(_cancel);
       await tester.pump();
@@ -620,7 +620,7 @@ void main() {
       }
     });
 
-    testWidgets("sending clears the dots and the hint before the shimmer shows", (tester) async {
+    testWidgets("sending clears the dots before the shimmer shows", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
       await startListening(tester);
@@ -631,12 +631,11 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
         final shimmer = _shownOpacity(find.byType(PregoShimmer));
         expect(min(_shownOpacity(find.byType(PregoVoiceWaveform)), shimmer), lessThan(0.1), reason: "at $elapsed ms");
-        expect(min(_shownOpacity(find.text("Enter to send")), shimmer), lessThan(0.1), reason: "at $elapsed ms");
       }
       expect(_shownOpacity(find.byType(PregoShimmer)), 1);
     });
 
-    testWidgets("the X clears the dots and the hint before the resting words show", (tester) async {
+    testWidgets("the X clears the dots before the resting words show", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
       await startListening(tester);
@@ -649,7 +648,6 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
         final resting = _shownOpacity(_hint);
         expect(min(_shownOpacity(find.byType(PregoVoiceWaveform)), resting), lessThan(0.1), reason: "at $elapsed ms");
-        expect(min(_shownOpacity(find.text("Enter to send")), resting), lessThan(0.1), reason: "at $elapsed ms");
       }
       expect(_shownOpacity(_hint), 1);
     });

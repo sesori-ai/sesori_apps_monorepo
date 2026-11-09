@@ -256,11 +256,15 @@ class _ProviderSignInState() extends State<_ProviderSignIn> {
         Widget provider({required String label, required IconData icon, required OAuthProvider provider}) =>
             PregoButtonsSolid(
               label: label,
-              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+              // The way back in leads; the other providers step back once one is known.
+              hierarchy: lastUsed == null || provider == lastUsed
+                  ? PregoButtonsSolidHierarchy.primaryAlt
+                  : PregoButtonsSolidHierarchy.secondary,
               size: PregoButtonsSolidSize.xl,
               leadingIcon: icon,
               labelTrailing: provider == lastUsed ? _LastUsedChip(isEnabled: !isBusy) : null,
               fullWidth: true,
+              contentAtStart: true,
               isLoading: state is LoginAuthenticating && _starting == provider,
               onPressed: isBusy ? null : () => _start(provider: provider),
             );
@@ -292,8 +296,10 @@ class _ProviderSignInState() extends State<_ProviderSignIn> {
             const SizedBox(height: _buttonGap),
             PregoButtonsSolid(
               label: loc.signInWithEmail,
+              leadingIcon: TablerRegular.mail,
               hierarchy: PregoButtonsSolidHierarchy.tertiary,
               size: PregoButtonsSolidSize.xl,
+              contentAtStart: true,
               labelTrailing: lastUsed == AuthProvider.email ? PregoTag(label: loc.desktopLoginLastUsed) : null,
               fullWidth: true,
               onPressed: isBusy ? null : widget.onShowEmailForm,

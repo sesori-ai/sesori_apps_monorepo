@@ -97,7 +97,7 @@ void main() {
       await tester.pump();
       expect(
         tester.getSize(accordion).width,
-        ComposerOptionsAccordion.openWidth(showAttachImage: true),
+        ComposerOptionsAccordion.openWidth(showAttachImage: true, pointer: false),
         reason: "Nothing eases on.",
       );
       await tester.tap(_tooltip("Attach image"));

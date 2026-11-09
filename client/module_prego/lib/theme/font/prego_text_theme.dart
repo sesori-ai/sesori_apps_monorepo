@@ -1,3 +1,5 @@
+import "dart:ui" show lerpDouble;
+
 import "package:material_ui/material_ui.dart";
 
 import "../primitives/prego_colors.g.dart";
@@ -23,6 +25,10 @@ class PregoTextTheme {
 
   static final dark = PregoTextTheme._(variant: .dark);
   static final light = PregoTextTheme._(variant: .light);
+
+  /// The desktop shells' scale, for reading at arm's length with a pointer.
+  static final desktopDark = PregoTextTheme._desktop(variant: .dark);
+  static final desktopLight = PregoTextTheme._desktop(variant: .light);
 
   new _({required _PregoTextThemeVariant variant})
     : display2xl = FontVariation(
@@ -91,6 +97,13 @@ class PregoTextTheme {
         letterSpacing: 0,
         color: variant.color,
       ),
+      chat = FontVariation(
+        fontSize: 14,
+        height: 20,
+        letterSpacing: 0,
+        color: variant.color,
+      ),
+      inlineCodeSize = 13,
       code = TextStyle(
         fontFamily: monoFontFamily,
         fontFamilyFallback: monoFontFamilyFallback,
@@ -100,6 +113,106 @@ class PregoTextTheme {
         fontWeight: FontWeight.w400,
         color: variant.color,
       );
+
+  new _desktop({required _PregoTextThemeVariant variant})
+    : display2xl = FontVariation(
+        fontSize: 56,
+        height: 64,
+        letterSpacing: -1,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      displayXl = FontVariation(
+        fontSize: 48,
+        height: 56,
+        letterSpacing: -1,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      displayLg = FontVariation(
+        fontSize: 36,
+        height: 44,
+        letterSpacing: -0.5,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      displayMd = FontVariation(
+        fontSize: 26,
+        height: 34,
+        letterSpacing: -0.5,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      displaySm = FontVariation(
+        fontSize: 22,
+        height: 30,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      displayXs = FontVariation(
+        fontSize: 18,
+        height: 26,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      textXl = FontVariation(
+        fontSize: 16,
+        height: 22,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      textLg = FontVariation(
+        fontSize: 14.5,
+        height: 21,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      textMd = FontVariation(
+        fontSize: 13.5,
+        height: 19,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      textSm = FontVariation(
+        fontSize: 12.5,
+        height: 18,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      textXs = FontVariation(
+        fontSize: 11.5,
+        height: 16,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      chat = FontVariation(
+        fontSize: 13.5,
+        height: 21,
+        letterSpacing: 0,
+        color: variant.color,
+        boldWeight: _desktopBold,
+      ),
+      inlineCodeSize = 12,
+      code = TextStyle(
+        fontFamily: monoFontFamily,
+        fontFamilyFallback: monoFontFamilyFallback,
+        fontSize: 12,
+        height: 18 / 12,
+        leadingDistribution: TextLeadingDistribution.even,
+        fontWeight: FontWeight.w400,
+        color: variant.color,
+      );
+
+  /// Desktop's strongest weight: hierarchy comes from size, colour and space,
+  /// as the desktop tools around it do.
+  static const FontWeight _desktopBold = FontWeight.w500;
 
   final FontVariation display2xl;
   final FontVariation displayXl;
@@ -113,6 +226,12 @@ class PregoTextTheme {
   final FontVariation textMd;
   final FontVariation textSm;
   final FontVariation textXs;
+
+  /// Prose in a transcript: what the reader spends the most time on.
+  final FontVariation chat;
+
+  /// Monospace runs a little smaller than the [chat] prose around them.
+  final double inlineCodeSize;
 
   /// The one style for code and command output: 12 regular monospace.
   final TextStyle code;
@@ -130,6 +249,8 @@ class PregoTextTheme {
         textMd: FontVariation.lerpVariation(a: a.textMd, b: b.textMd, t: t),
         textSm: FontVariation.lerpVariation(a: a.textSm, b: b.textSm, t: t),
         textXs: FontVariation.lerpVariation(a: a.textXs, b: b.textXs, t: t),
+        chat: FontVariation.lerpVariation(a: a.chat, b: b.chat, t: t),
+        inlineCodeSize: lerpDouble(a.inlineCodeSize, b.inlineCodeSize, t) ?? a.inlineCodeSize,
         code: _lerpTextStyle(a: a.code, b: b.code, t: t),
       );
 
@@ -145,6 +266,8 @@ class PregoTextTheme {
     required this.textMd,
     required this.textSm,
     required this.textXs,
+    required this.chat,
+    required this.inlineCodeSize,
     required this.code,
   });
 
@@ -177,6 +300,7 @@ class FontVariation {
     required double letterSpacing,
     required double height,
     required Color color,
+    FontWeight boldWeight = FontWeight.w700,
   }) : light = _createStyle(
          fontSize: fontSize,
          letterSpacing: letterSpacing,
@@ -203,7 +327,7 @@ class FontVariation {
          letterSpacing: letterSpacing,
          height: height,
          color: color,
-         fontWeight: .w700,
+         fontWeight: boldWeight,
        ),
        black = _createStyle(
          fontSize: fontSize,

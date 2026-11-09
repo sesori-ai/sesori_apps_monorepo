@@ -10,6 +10,9 @@ import "../../repositories/desktop_instance_repository.dart";
 class DesktopSidebarCubit({required final DesktopInstanceRepository repository}) extends Cubit<DesktopSidebarLayout> {
   static const double minWidth = 200;
   static const double maxWidth = 420;
+
+  /// Where a sidebar collapsed by a drag reopens, while it is collapsed.
+  double? _reopenWidth;
   Future<void> _writes = Future<void>.value();
 
   this : super(const DesktopSidebarLayout()) {
@@ -35,17 +38,23 @@ class DesktopSidebarCubit({required final DesktopInstanceRepository repository})
   }
 
   Future<void> toggleCollapsed() {
-    emit(state.copyWith(collapsed: !state.collapsed));
+    final reopening = state.collapsed;
+    emit(state.copyWith(collapsed: !reopening, width: reopening ? _reopenWidth ?? state.width : state.width));
+    if (reopening) _reopenWidth = null;
     return saveLayout();
   }
 
-  Future<void> resetWidth() {
-    resize(width: const DesktopSidebarLayout().width);
+  /// Collapses at the end of a drag that squeezed the sidebar on the way. It keeps
+  /// its squeezed width while it slides out, so nothing jumps, and reopens at
+  /// [reopenWidth], the width the drag began from.
+  Future<void> collapseFromDrag({required double reopenWidth}) {
+    _reopenWidth = reopenWidth;
+    emit(state.copyWith(collapsed: true));
     return saveLayout();
   }
 
   Future<void> saveLayout() {
-    final layout = state;
+    final layout = state.copyWith(width: _reopenWidth ?? state.width);
     return _writes = _writes.then((_) async {
       try {
         await repository.writeSidebarLayout(layout: layout);

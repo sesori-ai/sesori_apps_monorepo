@@ -196,6 +196,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           return DesktopSessionDetailScreen(
             key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
             projectId: route.projectId,
+            projectName: route.projectName,
             sessionId: route.sessionId,
             sessionTitle: route.sessionTitle,
             readOnly: route.readOnly,
@@ -250,6 +251,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           return DesktopSessionDiffsScreen(
             key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
             sessionId: route.sessionId,
+            onBack: () => _goBack(context: context),
           );
         },
       ),
@@ -262,7 +264,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
 Widget _withPageFade({required BuildContext context, required Widget child}) {
   final fade = prefersReducedMotion(context)
       ? const _PageFade(transitionDuration: Duration.zero)
-      : const _PageFade(transitionDuration: Duration(milliseconds: 150));
+      : const _PageFade(transitionDuration: Duration(milliseconds: 120));
   return Theme(
     data: Theme.of(context).copyWith(
       pageTransitionsTheme: PageTransitionsTheme(
@@ -281,7 +283,10 @@ class const _PageFade({@override required final Duration transitionDuration}) ex
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) => FadeTransition(opacity: animation, child: child);
+  ) => FadeTransition(
+    opacity: animation.drive(CurveTween(curve: pregoPointerEnterCurve)),
+    child: child,
+  );
 }
 
 AppRouteNewSession _decodeNewSessionRoute({required GoRouterState state}) {

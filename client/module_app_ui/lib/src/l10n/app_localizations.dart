@@ -193,10 +193,10 @@ abstract class AppLocalizations {
   /// **'Expand sidebar'**
   String get desktopSidebarExpand;
 
-  /// Tooltip on the expanded desktop sidebar's drag handle.
+  /// Tooltip on the expanded desktop sidebar's edge.
   ///
   /// In en, this message translates to:
-  /// **'Resize sidebar; double-click to reset'**
+  /// **'Drag to resize, click to collapse'**
   String get desktopSidebarResize;
 
   /// Desktop sidebar row that opens the command palette.
@@ -240,6 +240,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What should we work on?'**
   String get newSessionHeading;
+
+  /// No description provided for @newSessionNoProjectsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first project'**
+  String get newSessionNoProjectsHeading;
+
+  /// No description provided for @newSessionNoProjectsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a folder on this computer. Your sessions will start there.'**
+  String get newSessionNoProjectsHint;
 
   /// Title of the phone's project picker sheet, opened from the new session page's project button.
   ///
@@ -288,6 +300,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Changes'**
   String get sessionChangesLabel;
+
+  /// Desktop file changes toolbar breadcrumb that returns to the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get desktopSessionBreadcrumb;
 
   /// Desktop subtask toolbar breadcrumb that returns to the session that started the subtask.
   ///
@@ -415,6 +433,12 @@ abstract class AppLocalizations {
   /// **'General'**
   String get desktopSettingsGeneral;
 
+  /// Heading over the launch-at-login row in desktop General settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup'**
+  String get desktopSettingsStartup;
+
   /// Native login-item switch in desktop General settings.
   ///
   /// In en, this message translates to:
@@ -466,7 +490,7 @@ abstract class AppLocalizations {
   /// Windows and AppImage installs download signed updates and install them on Quit or Restart to update.
   ///
   /// In en, this message translates to:
-  /// **'Sesori downloads verified updates in the background and installs them when you quit or restart to update.'**
+  /// **'Downloads verified updates in the background. Installs when you quit or restart.'**
   String get desktopUpdatesCheckDescription;
 
   /// Replaces the Check for updates description while a check runs.
@@ -1195,12 +1219,6 @@ abstract class AppLocalizations {
   /// **'Sesori approves every permission request for you, so the agent never stops to ask.'**
   String get settingsYoloDescription;
 
-  /// No description provided for @settingsYoloLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading the bridge setting…'**
-  String get settingsYoloLoading;
-
   /// No description provided for @settingsYoloUnsupported.
   ///
   /// In en, this message translates to:
@@ -1242,12 +1260,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Starts the session\'s harness when you open it to reduce delays on your first action.'**
   String get settingsPluginWarmupDescription;
-
-  /// No description provided for @settingsPluginWarmupLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading the bridge setting…'**
-  String get settingsPluginWarmupLoading;
 
   /// No description provided for @settingsPluginWarmupUnsupported.
   ///
@@ -1942,7 +1954,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBasicUsageAnalyticsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Share basic feature usage — never your code or messages.'**
+  /// **'Share basic feature usage, never your code or messages.'**
   String get settingsBasicUsageAnalyticsDescription;
 
   /// No description provided for @settingsBasicUsageAnalyticsLoading.
@@ -3955,6 +3967,12 @@ abstract class AppLocalizations {
   /// **'Awaiting input'**
   String get sessionListAwaitingInput;
 
+  /// Heading above the sessions blocked on the reader's answer, at the top of a desktop session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you'**
+  String get sessionListNeedsYou;
+
   /// Amber word leading a session row's meta line while the session waits for the user's answer or permission
   ///
   /// In en, this message translates to:
@@ -4003,11 +4021,11 @@ abstract class AppLocalizations {
   /// **'Put the words in the box'**
   String get voicePutWordsInBox;
 
-  /// Floating helper above the desktop composer while a click-started recording is running.
+  /// Placeholder in the desktop composer while a click-started recording is running.
   ///
   /// In en, this message translates to:
-  /// **'Enter to send'**
-  String get voiceEnterToSend;
+  /// **'Listening'**
+  String get voiceListening;
 
   /// Tooltip and accessibility label of the pencil shown while a desktop recording runs; clicking it puts the words in the box instead of sending them.
   ///
@@ -4044,6 +4062,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dictation limit reached'**
   String get voiceDictationLimitReached;
+
+  /// Card above the desktop composer after a dictation could not be transcribed, beside Discard and Retry
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t transcribe. Your recording is saved.'**
+  String get voiceSavedNotice;
 
   /// Persistent composer status shown after a retryable async transcription failure.
   ///
@@ -4336,13 +4360,13 @@ abstract class AppLocalizations {
   /// No description provided for @permissionBannerSingle.
   ///
   /// In en, this message translates to:
-  /// **'1 permission request pending'**
+  /// **'1 pending permission request'**
   String get permissionBannerSingle;
 
   /// No description provided for @permissionBannerMultiple.
   ///
   /// In en, this message translates to:
-  /// **'{count} permission requests pending'**
+  /// **'{count} pending permission requests'**
   String permissionBannerMultiple(int count);
 
   /// No description provided for @rename.
@@ -4398,6 +4422,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New worktree'**
   String get newSessionDedicatedWorkspace;
+
+  /// The worktree chip when the session will work in the project's own checkout instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Current checkout'**
+  String get newSessionCurrentCheckout;
 
   /// No description provided for @newSessionPluginChooserLabel.
   ///
@@ -4632,6 +4662,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Allow this action?'**
   String get diffPermissionRequestTitle;
+
+  /// No description provided for @diffPermissionAlwaysAllowEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Always approve…'**
+  String get diffPermissionAlwaysAllowEllipsis;
+
+  /// No description provided for @diffPermissionAlwaysBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get diffPermissionAlwaysBack;
+
+  /// No description provided for @desktopBridgeStoppedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge stopped'**
+  String get desktopBridgeStoppedTitle;
+
+  /// No description provided for @desktopUpdatesCheckNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get desktopUpdatesCheckNow;
+
+  /// No description provided for @desktopSidebarOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions will return when the bridge is back.'**
+  String get desktopSidebarOfflineHint;
+
+  /// Heads the desktop sidebar's empty list, beside Refresh, when no project has been added.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects yet'**
+  String get desktopSidebarNoProjects;
+
+  /// No description provided for @diffPermissionAlwaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Always approve this kind of request?'**
+  String get diffPermissionAlwaysTitle;
+
+  /// No description provided for @diffPermissionAlwaysConsequence.
+  ///
+  /// In en, this message translates to:
+  /// **'Future matching requests will run without asking.'**
+  String get diffPermissionAlwaysConsequence;
+
+  /// Under a desktop permission request's actions. Scope varies by harness, so it must not name one.
+  ///
+  /// In en, this message translates to:
+  /// **'What counts as matching depends on the harness, and Sesori can\'t show its exact rule. You can change it in the harness\'s own settings.'**
+  String get diffPermissionAlwaysHint;
+
+  /// Under a desktop permission request's actions, when the harness asking is known. {harness} is its display name.
+  ///
+  /// In en, this message translates to:
+  /// **'What counts as matching depends on {harness}, and Sesori can\'t show its exact rule. You can change it in {harness}\'s settings.'**
+  String diffPermissionAlwaysHintNamed(String harness);
 
   /// No description provided for @diffPermissionReject.
   ///

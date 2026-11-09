@@ -312,7 +312,29 @@ class const DesktopBridgeRecoveryView({
   @override
   Widget build(BuildContext context) {
     final controlState = context.watch<BridgeControlCubit>().state;
+    final controls = context.read<BridgeControlCubit>();
     final bridge = this.bridge;
+    final loc = context.loc;
+    final prego = context.prego;
+    // What went wrong replaces the routine explanation, and retrying replaces
+    // starting, so the page gives one reason and one next step.
+    final (:reason, :actionLabel, :isFailure) = switch (controlState.processState) {
+      BridgeProcessCrashGiveUp() => (
+        reason: loc.desktopBridgeCrashGiveUp,
+        actionLabel: loc.projectListRetry,
+        isFailure: true,
+      ),
+      BridgeProcessStartFailed(:final message) => (
+        reason: message,
+        actionLabel: loc.projectListRetry,
+        isFailure: true,
+      ),
+      _ => (
+        reason: loc.projectsDesktopStartBridgeInfo,
+        actionLabel: loc.projectsDesktopStartBridge,
+        isFailure: false,
+      ),
+    };
 
     return Center(
       child: ConstrainedBox(
@@ -321,45 +343,47 @@ class const DesktopBridgeRecoveryView({
           padding: const EdgeInsets.all(PregoSpacing.x2l),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // An illustration, not a glyph: no icon token applies.
               Icon(
-                TablerRegular.device_laptop,
-                size: 48,
-                color: context.prego.colors.textTertiary,
+                isFailure ? TablerRegular.alert_triangle : TablerRegular.device_laptop,
+                size: 32,
+                color: isFailure ? prego.colors.fgErrorPrimary : prego.colors.textTertiary,
               ),
               const SizedBox(height: PregoSpacing.lg),
-              if (bridge != null) ...[
-                Text(
-                  bridge.name,
-                  textAlign: TextAlign.center,
-                  style: context.prego.textTheme.textLg.bold,
-                ),
-                const SizedBox(height: PregoSpacing.xs),
-              ],
               Text(
-                context.loc.projectsBridgeOfflineDisconnected,
+                isFailure ? loc.desktopBridgeStoppedTitle : bridge?.name ?? loc.desktopSettingsThisComputer,
                 textAlign: TextAlign.center,
-                style: context.prego.textTheme.textSm.regular.copyWith(
-                  color: context.prego.colors.textSecondary,
-                ),
+                style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary),
               ),
-              const SizedBox(height: PregoSpacing.x2l),
+              const SizedBox(height: PregoSpacing.xs),
               Text(
-                context.loc.projectsDesktopStartBridgeInfo,
+                reason,
                 textAlign: TextAlign.center,
-                style: context.prego.textTheme.textSm.regular,
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
               ),
               const SizedBox(height: PregoSpacing.xl),
-              PregoButtonsSolid(
-                label: context.loc.projectsDesktopStartBridge,
-                leadingIcon: TablerRegular.player_play,
-                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                size: PregoButtonsSolidSize.xl,
-                fullWidth: true,
-                isLoading: controlState.activity == BridgeControlActivity.toggling,
-                onPressed: controlState.activity.locksCommands ? null : () => unawaited(onStartBridge()),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: PregoSpacing.md,
+                runSpacing: PregoSpacing.md,
+                children: [
+                  PregoButtonsSolid(
+                    label: actionLabel,
+                    leadingIcon: isFailure ? TablerRegular.refresh : TablerRegular.player_play,
+                    hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                    size: PregoButtonsSolidSize.md,
+                    isLoading: controlState.activity == BridgeControlActivity.toggling,
+                    onPressed: controlState.activity.locksCommands ? null : () => unawaited(onStartBridge()),
+                  ),
+                  if (controlState.processState is BridgeProcessCrashGiveUp)
+                    PregoButtonsSolid(
+                      label: loc.desktopBridgeOpenLogs,
+                      hierarchy: PregoButtonsSolidHierarchy.secondary,
+                      size: PregoButtonsSolidSize.md,
+                      onPressed: () => unawaited(controls.openLogs()),
+                    ),
+                ],
               ),
             ],
           ),
@@ -463,6 +487,8 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
     banner: null,
     // Nobody asked for it yet, so the picker waits for a click.
     opensPicker: false,
+    // Nothing to choose from makes adding a folder the one next step.
+    offersFirstRunStep: true,
     topBar: const SafeArea(bottom: false, child: DesktopFileAccessCard()),
   );
 
@@ -496,7 +522,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           // The desktop root owns its single connection banner.
           banner: null,
           pageChrome: const NewSessionPageChrome(
-            maxContentWidth: 760,
+            maxContentWidth: desktopTranscriptWidth - 32,
             transcriptWidth: desktopTranscriptWidth,
             topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
             // The pane paints the background, beneath the bodies it cross-fades.

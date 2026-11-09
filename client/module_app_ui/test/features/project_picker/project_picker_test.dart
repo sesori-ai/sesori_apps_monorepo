@@ -467,8 +467,8 @@ void main() {
   });
 
   bool footerHighlighted(WidgetTester tester) {
-    final ring = find.ancestor(of: footer, matching: find.byType(DecoratedBox)).first;
-    return (tester.widget<DecoratedBox>(ring).decoration as BoxDecoration).boxShadow != null;
+    final row = find.ancestor(of: find.text("All projects"), matching: find.byType(DecoratedBox)).first;
+    return (tester.widget<DecoratedBox>(row).decoration as BoxDecoration).color != null;
   }
 
   testWidgets("under a pointer Down past the last project highlights the footer, which Enter picks", (tester) async {
@@ -523,7 +523,7 @@ void main() {
     );
 
     bool footerFocused() =>
-        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<PregoButtonsSolid>() != null;
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<InkWell>()?.key != null;
     for (var i = 0; i < 5 && !footerFocused(); i++) {
       await press(tester: tester, key: LogicalKeyboardKey.tab);
     }

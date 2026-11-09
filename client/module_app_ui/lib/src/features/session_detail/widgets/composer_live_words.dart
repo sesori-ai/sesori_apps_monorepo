@@ -500,7 +500,9 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       decoration: pregoComposerSurfaceDecoration(
         prego: prego,
         style: PregoComposerSurfaceStyle.emphasized,
-        borderRadius: BorderRadius.circular(_panelRadius),
+        borderRadius: BorderRadius.circular(
+          PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.x2l : _panelRadius,
+        ),
       ).copyWith(boxShadow: prego.shadows.lg),
     );
   }

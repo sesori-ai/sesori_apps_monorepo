@@ -20,7 +20,7 @@ import "widgets/diff_file_list.dart";
 typedef SessionDiffsHeaderBuilder = Widget Function({
   required BuildContext context,
   required String title,
-  required String? summary,
+  required ({String files, int additions, int deletions})? summary,
 });
 
 /// How the product shell frames the diffs.
@@ -109,12 +109,22 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
               },
             ),
             SessionDiffsSplit(:final headerBuilder) => Material(
-              color: context.prego.colors.bgSurface1,
+              color: Theme.of(context).scaffoldBackgroundColor,
               child: Column(
                 children: [
                   // The page's navigation stays out of copied diffs.
                   SelectionContainer.disabled(
-                    child: headerBuilder(context: context, title: title, summary: summary),
+                    child: headerBuilder(
+                      context: context,
+                      title: title,
+                      summary: fileCount > 0
+                          ? (
+                              files: context.loc.diffFilesChangedCount(fileCount),
+                              additions: additions,
+                              deletions: deletions,
+                            )
+                          : null,
+                    ),
                   ),
                   Expanded(
                     child: switch ((placeholder, viewModels)) {
@@ -219,7 +229,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
           width: 300,
           child: SelectionContainer.disabled(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(PregoSpacing.md),
+              padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xs),
               child: DiffFileList(
                 viewModels: viewModels,
                 selectedIndex: selectedIndex,

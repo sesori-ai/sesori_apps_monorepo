@@ -18,6 +18,7 @@ import "package:sesori_desktop/features/new_session/desktop_new_session_screen.d
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 void main() {
   // The archived page reads the shared trackers as it is built.
@@ -137,7 +138,7 @@ void main() {
 
   for (final reducedMotion in [false, true]) {
     testWidgets(
-      reducedMotion ? "main-pane pages switch at once under reduced motion" : "main-pane pages cross-fade in 150 ms",
+      reducedMotion ? "main-pane pages switch at once under reduced motion" : "main-pane pages cross-fade in 120 ms",
       (tester) async {
         if (reducedMotion) {
           tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
@@ -164,11 +165,11 @@ void main() {
         await tester.pump(const Duration(milliseconds: 75));
 
         final page = tester.element(find.text("b"));
-        expect(ModalRoute.of(page)?.transitionDuration, Duration(milliseconds: reducedMotion ? 0 : 150));
+        expect(ModalRoute.of(page)?.transitionDuration, Duration(milliseconds: reducedMotion ? 0 : 120));
         final fade = tester.widget<FadeTransition>(
           find.ancestor(of: find.text("b"), matching: find.byType(FadeTransition)).first,
         );
-        expect(fade.opacity.value, reducedMotion ? 1 : closeTo(0.5, 0.01));
+        expect(fade.opacity.value, reducedMotion ? 1 : closeTo(pregoPointerEnterCurve.transform(75 / 120), 0.01));
         // Mid-fade the page underneath still shows; reduced motion has already hidden it.
         expect(find.text("a"), reducedMotion ? findsNothing : findsOneWidget);
         await tester.pumpAndSettle();
