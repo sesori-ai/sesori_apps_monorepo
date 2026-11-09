@@ -858,7 +858,7 @@ class const _ComposerApp({
           imageClipboard: _NoOpImageClipboard.new,
           fileClipboard: null,
           droppedPaths: null,
-          attachKind: ComposerAttachKind.images,
+          attachKind: ComposerAttachKind.photosAndFiles,
           child: home(const _ComposerHost()),
         ),
       ),

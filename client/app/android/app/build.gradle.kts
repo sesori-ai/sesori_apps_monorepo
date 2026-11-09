@@ -143,6 +143,8 @@ dependencies {
     // Google Play In-App Review, behind the app_review channel
     // https://developer.android.com/guide/playcore/in-app-review/kotlin-java
     implementation("com.google.android.play:review:2.0.2")
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 // Fail fast if the signing properties file for the requested build type is missing.

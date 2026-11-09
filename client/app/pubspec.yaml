@@ -69,6 +69,7 @@ dependencies:
   sign_in_with_apple: ^8.2.0
   crypto: ^3.0.8
   image_picker: ^1.2.4
+  file_selector: ^1.1.0
   flutter_keyboard_visibility: ^7.0.1
   flutter_web_auth_2: 5.1.0
 

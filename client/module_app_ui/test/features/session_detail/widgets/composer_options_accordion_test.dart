@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/composer_options_accordion.dart";
 import "package:sesori_app_ui/src/l10n/app_localizations.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// The composer's labelled buttons keep their tooltip's words off the semantics
@@ -20,7 +21,8 @@ void main() {
         alwaysOpen: false,
         actionsEnabled: true,
         showAttachImage: true,
-        onAttachImageTap: () => attachmentPicks++,
+        attachSources: const [ComposerPickSource.photos],
+        onAttach: (_) => attachmentPicks++,
         onSlashCommandsTap: () => commandPicks++,
       );
 
@@ -84,7 +86,8 @@ void main() {
         alwaysOpen: false,
         actionsEnabled: true,
         showAttachImage: true,
-        onAttachImageTap: () {},
+        attachSources: const [ComposerPickSource.photos],
+        onAttach: (_) {},
         onSlashCommandsTap: () {},
       );
       final accordion = find.byType(ComposerOptionsAccordion);
@@ -111,7 +114,8 @@ void main() {
       alwaysOpen: false,
       actionsEnabled: true,
       showAttachImage: false,
-      onAttachImageTap: () => fail("Unsupported attachment action was invoked"),
+      attachSources: const [ComposerPickSource.photos],
+      onAttach: (_) => fail("Unsupported attachment action was invoked"),
       onSlashCommandsTap: () => commandPicks++,
     );
     await tester.tap(_tooltip("More actions"));
@@ -136,7 +140,8 @@ void main() {
       alwaysOpen: true,
       actionsEnabled: true,
       showAttachImage: true,
-      onAttachImageTap: () => attachmentPicks++,
+      attachSources: const [ComposerPickSource.photos],
+      onAttach: (_) => attachmentPicks++,
       onSlashCommandsTap: () => commandPicks++,
     );
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
@@ -163,7 +168,8 @@ void main() {
       isTyping: isTyping,
       actionsEnabled: true,
       showAttachImage: true,
-      onAttachImageTap: () {},
+      attachSources: const [ComposerPickSource.photos],
+      onAttach: (_) {},
       onSlashCommandsTap: () {},
     );
 
@@ -192,7 +198,8 @@ void main() {
       alwaysOpen: false,
       actionsEnabled: false,
       showAttachImage: true,
-      onAttachImageTap: () => fail("Disabled attachment action was invoked"),
+      attachSources: const [ComposerPickSource.photos],
+      onAttach: (_) => fail("Disabled attachment action was invoked"),
       onSlashCommandsTap: () => fail("Disabled command action was invoked"),
     );
     await tester.tap(_tooltip("More actions"));
@@ -219,7 +226,8 @@ void main() {
         alwaysOpen: false,
         actionsEnabled: true,
         showAttachImage: true,
-        onAttachImageTap: () => attachmentPicks++,
+        attachSources: const [ComposerPickSource.photos],
+        onAttach: (_) => attachmentPicks++,
         onSlashCommandsTap: () => commandPicks++,
       );
 
@@ -247,7 +255,8 @@ void main() {
         alwaysOpen: true,
         actionsEnabled: false,
         showAttachImage: true,
-        onAttachImageTap: () => fail("Disabled attachment action was invoked"),
+        attachSources: const [ComposerPickSource.photos],
+        onAttach: (_) => fail("Disabled attachment action was invoked"),
         onSlashCommandsTap: () => fail("Disabled command action was invoked"),
       );
 
@@ -261,6 +270,68 @@ void main() {
     }, variant: platforms);
   });
 
+  testWidgets("with photos and files the plus opens a menu, and a choice picks it and folds the pill", (tester) async {
+    final picked = <ComposerPickSource>[];
+    await _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: false,
+      actionsEnabled: true,
+      showAttachImage: true,
+      attachSources: const [ComposerPickSource.photos, ComposerPickSource.files],
+      onAttach: picked.add,
+      onSlashCommandsTap: () {},
+    );
+    await tester.tap(_tooltip("More actions"));
+    await tester.pumpAndSettle();
+
+    await tester.tap(_tooltip("Attach image"));
+    await tester.pumpAndSettle();
+    expect(picked, isEmpty, reason: "The plus only opens the menu.");
+    expect(find.text("Photos"), findsOneWidget);
+    expect(find.text("Files"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plus), findsOneWidget, reason: "The pill stays open under the menu.");
+
+    await tester.tap(find.text("Files"));
+    await tester.pumpAndSettle();
+    expect(picked, [ComposerPickSource.files]);
+    expect(find.text("Photos"), findsNothing);
+    expect(_tooltip("More actions"), findsOneWidget);
+
+    await tester.tap(_tooltip("More actions"));
+    await tester.pumpAndSettle();
+    await tester.tap(_tooltip("Attach image"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Photos"));
+    await tester.pumpAndSettle();
+    expect(picked, [ComposerPickSource.files, ComposerPickSource.photos]);
+  });
+
+  testWidgets("an open Photos / Files menu stops picking once actions are disabled", (tester) async {
+    final picked = <ComposerPickSource>[];
+    Future<void> pump({required bool actionsEnabled}) => _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: true,
+      actionsEnabled: actionsEnabled,
+      showAttachImage: true,
+      attachSources: const [ComposerPickSource.photos, ComposerPickSource.files],
+      onAttach: picked.add,
+      onSlashCommandsTap: () {},
+    );
+    await pump(actionsEnabled: true);
+    await tester.tap(_tooltip("Attach image"));
+    await tester.pumpAndSettle();
+    expect(find.text("Files"), findsOneWidget);
+
+    // Recording starts while the menu is open.
+    await pump(actionsEnabled: false);
+    await tester.tap(find.text("Files"), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(picked, isEmpty);
+  });
+
   testWidgets("an attach action whose support is unknown holds its place inert", (tester) async {
     var commandPicks = 0;
     await _pumpAccordion(
@@ -269,7 +340,8 @@ void main() {
       alwaysOpen: true,
       actionsEnabled: true,
       showAttachImage: true,
-      onAttachImageTap: null,
+      attachSources: const [],
+      onAttach: (_) => fail("An attach action of unknown support was invoked"),
       onSlashCommandsTap: () => commandPicks++,
     );
     expect(_tooltip("Attach image"), findsOneWidget);
@@ -288,7 +360,8 @@ Future<void> _pumpAccordion({
   bool isTyping = false,
   required bool actionsEnabled,
   required bool showAttachImage,
-  required VoidCallback? onAttachImageTap,
+  required List<ComposerPickSource> attachSources,
+  required ValueChanged<ComposerPickSource> onAttach,
   required VoidCallback onSlashCommandsTap,
 }) async {
   await tester.pumpWidget(
@@ -307,7 +380,8 @@ Future<void> _pumpAccordion({
             attachTooltip: "Attach image",
             alwaysOpen: alwaysOpen,
             isTyping: isTyping,
-            onAttachImageTap: onAttachImageTap,
+            attachSources: attachSources,
+            onAttach: onAttach,
             onSlashCommandsTap: onSlashCommandsTap,
             onOpenChanged: (_) {},
           ),

@@ -35,6 +35,8 @@ import 'package:sesori_mobile/core/platform/channel_on_device_speech_source.dart
     as _i140;
 import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
+import 'package:sesori_mobile/core/platform/document_picker_client.dart'
+    as _i383;
 import 'package:sesori_mobile/core/platform/file_attribution_claim_storage.dart'
     as _i968;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
@@ -69,8 +71,8 @@ import 'package:sesori_mobile/core/platform/firebase_voice_mode_config_source.da
     as _i880;
 import 'package:sesori_mobile/core/platform/flutter_app_review_client.dart'
     as _i291;
-import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
-    as _i111;
+import 'package:sesori_mobile/core/platform/flutter_composer_file_picker.dart'
+    as _i216;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
     as _i636;
 import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_provider.dart'
@@ -143,6 +145,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i441.ApplicationSupportDirectoryClient>(
       () => _i441.ApplicationSupportDirectoryClient(),
+    );
+    gh.lazySingleton<_i383.DocumentPickerClient>(
+      () => _i383.DocumentPickerClient(),
     );
     gh.lazySingleton<_i489.FlutterWebAuthClient>(
       () => _i489.FlutterWebAuthClient(),
@@ -267,15 +272,16 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
-    gh.lazySingleton<_i948.ComposerFilePicker>(
-      () => _i111.FlutterComposerImagePicker(
-        picker: gh<_i183.ImagePicker>(),
-        downscaleBuilder: gh<_i854.PlatformImageDownscaleBuilder>(),
-      ),
-    );
     gh.lazySingleton<_i948.VoiceModeConfigSource>(
       () => _i245.NoOpVoiceModeConfigSource(),
       registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i948.ComposerFilePicker>(
+      () => _i216.FlutterComposerFilePicker(
+        picker: gh<_i183.ImagePicker>(),
+        downscaleBuilder: gh<_i854.PlatformImageDownscaleBuilder>(),
+        documentPicker: gh<_i383.DocumentPickerClient>(),
+      ),
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),

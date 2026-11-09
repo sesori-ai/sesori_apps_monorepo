@@ -8,8 +8,13 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:test/test.dart";
 
 class _StubComposerFilePicker({required final ComposerPickResult? result}) implements ComposerFilePicker {
+  final requestedSources = <ComposerPickSource>[];
+
   @override
-  Future<ComposerPickResult?> pick() async => result;
+  Future<ComposerPickResult?> pick({required ComposerPickSource source}) async {
+    requestedSources.add(source);
+    return result;
+  }
 }
 
 class _MockConnectionService() extends Mock implements ConnectionService;
@@ -78,8 +83,12 @@ void main() {
   group("ComposerAttachmentDispatcher", () {
     test("returns null when selection is dismissed", () async {
       expect(
-        await dispatcherFor(picked: null)
-            .pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0),
+        await dispatcherFor(picked: null).pick(
+          source: ComposerPickSource.photos,
+          attachmentsSupported: true,
+          fileUploadsSupported: false,
+          stagedAttachmentBytes: 0,
+        ),
         isNull,
       );
     });
@@ -91,7 +100,12 @@ void main() {
       );
 
       final outcome =
-          await dispatcher.pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0) ??
+          await dispatcher.pick(
+            source: ComposerPickSource.photos,
+            attachmentsSupported: true,
+            fileUploadsSupported: false,
+            stagedAttachmentBytes: 0,
+          ) ??
           fail("no image picked");
 
       final attachment = outcome.attachments.single;
@@ -181,7 +195,12 @@ void main() {
       );
 
       final outcome =
-          await dispatcher.pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0) ??
+          await dispatcher.pick(
+            source: ComposerPickSource.photos,
+            attachmentsSupported: true,
+            fileUploadsSupported: false,
+            stagedAttachmentBytes: 0,
+          ) ??
           fail("no image picked");
 
       final attachment = outcome.attachments.single;
@@ -354,13 +373,94 @@ void main() {
     });
 
     test("routes picked host paths the same way", () async {
-      final outcome = await dispatcherFor(
-        picked: ComposerPickedHostPaths(paths: [notesPath, imagePath]),
-        activeBridgeId: _localBridgeId,
-      ).pick(attachmentsSupported: true, fileUploadsSupported: false, stagedAttachmentBytes: 0);
+      final outcome =
+          await dispatcherFor(
+            picked: ComposerPickedHostPaths(paths: [notesPath, imagePath], oversizedCount: 0),
+            activeBridgeId: _localBridgeId,
+          ).pick(
+            source: ComposerPickSource.files,
+            attachmentsSupported: true,
+            fileUploadsSupported: false,
+            stagedAttachmentBytes: 0,
+          );
 
       expect(outcome?.attachments.single.filename, "shot.png");
       expect(outcome?.insertedText, notesPath);
+    });
+
+    test("opens the picker for the chosen source", () async {
+      final picker = _StubComposerFilePicker(result: null);
+      final dispatcher = ComposerAttachmentDispatcher(
+        filePicker: picker,
+        downscaleBuilder: const ComposerImageDownscaleBuilder(),
+        hostFiles: HostFileRepository(client: const HostFileClient()),
+        connectionService: _MockConnectionService(),
+        locality: const _Locality(localBridgeId: _localBridgeId),
+      );
+
+      for (final source in ComposerPickSource.values) {
+        await dispatcher.pick(
+          source: source,
+          attachmentsSupported: true,
+          fileUploadsSupported: true,
+          stagedAttachmentBytes: 0,
+        );
+      }
+
+      expect(picker.requestedSources, ComposerPickSource.values);
+    });
+
+    test("stages a Files pick as a file on a bridge on another computer that saves uploads", () async {
+      final outcome =
+          await dispatcherFor(
+            picked: ComposerPickedHostPaths(paths: [notesPath], oversizedCount: 0),
+            activeBridgeId: "another-computer",
+          ).pick(
+            source: ComposerPickSource.files,
+            attachmentsSupported: false,
+            fileUploadsSupported: true,
+            stagedAttachmentBytes: 0,
+          );
+
+      final attachment = outcome?.attachments.single;
+      if (attachment is! ComposerFileAttachment) fail("expected a staged file, got $attachment");
+      expect(attachment.mime, composerFileAttachmentMime);
+      expect(attachment.filename, "notes.dart");
+      expect(attachment.bytes, File(notesPath).readAsBytesSync());
+      expect(outcome?.rejections, isEmpty);
+    });
+
+    test("counts files the picker left out as too large as over budget", () async {
+      final outcome =
+          await dispatcherFor(
+            picked: ComposerPickedHostPaths(paths: [notesPath], oversizedCount: 2),
+            activeBridgeId: "another-computer",
+          ).pick(
+            source: ComposerPickSource.files,
+            attachmentsSupported: false,
+            fileUploadsSupported: true,
+            // Leaves no room for the notes file either.
+            stagedAttachmentBytes: maxComposerPromptAttachmentBytes,
+          );
+
+      expect(outcome?.attachments, isEmpty);
+      expect(outcome?.rejections, {ComposerAttachRejectionReason.overBudget: 3});
+    });
+
+    test("reports a pick of only oversized files as over budget", () async {
+      final outcome =
+          await dispatcherFor(
+            picked: const ComposerPickedHostPaths(paths: [], oversizedCount: 1),
+            activeBridgeId: "another-computer",
+          ).pick(
+            source: ComposerPickSource.files,
+            attachmentsSupported: false,
+            fileUploadsSupported: true,
+            stagedAttachmentBytes: 0,
+          );
+
+      expect(outcome?.attachments, isEmpty);
+      expect(outcome?.rejections, {ComposerAttachRejectionReason.overBudget: 1});
     });
 
     test("routes copied files like a drop when every path exists", () async {
@@ -550,9 +650,15 @@ void main() {
 
     test("stages the bytes as a file named after the picked file when the harness takes no images", () async {
       final bytes = bytesWithPrefix(prefix: [0, 0, 0, 24, ..."ftypheic".codeUnits]);
-      final outcome = await dispatcherFor(
-        picked: ComposerPickedImage(bytes: bytes, filename: "IMG_0001.HEIC"),
-      ).pick(attachmentsSupported: false, fileUploadsSupported: true, stagedAttachmentBytes: 0);
+      final outcome =
+          await dispatcherFor(
+            picked: ComposerPickedImage(bytes: bytes, filename: "IMG_0001.HEIC"),
+          ).pick(
+            source: ComposerPickSource.photos,
+            attachmentsSupported: false,
+            fileUploadsSupported: true,
+            stagedAttachmentBytes: 0,
+          );
 
       final file = outcome?.attachments.single;
       expect(file, isA<ComposerFileAttachment>());
