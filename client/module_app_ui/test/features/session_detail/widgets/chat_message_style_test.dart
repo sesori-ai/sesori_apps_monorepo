@@ -117,6 +117,17 @@ void main() {
       }
     });
   }
+
+  test("inline code sits on the same translucent chip on phone and desktop", () {
+    for (final prego in [
+      PregoDesignSystem.light,
+      PregoDesignSystem.dark,
+      PregoDesignSystem.desktopLight,
+      PregoDesignSystem.desktopDark,
+    ]) {
+      expect(buildChatMessageMarkdownStyleSheet(prego: prego).code?.backgroundColor, prego.colors.alphaBlack10);
+    }
+  });
 }
 
 Widget _app({required Brightness brightness, required Widget child}) => MaterialApp(

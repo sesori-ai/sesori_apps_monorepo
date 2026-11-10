@@ -114,10 +114,7 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     // The chip must stay translucent: a paragraph paints its selection
     // highlight before its glyphs, so an opaque run background covers the
     // highlight and a selection crossing inline code looks like it skipped it.
-    code: base.code?.copyWith(
-      color: foreground,
-      backgroundColor: prego.isDesktopScale ? null : prego.colors.alphaBlack10,
-    ),
+    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.alphaBlack10),
     h1: heading(headings.textXl),
     h2: heading(headings.textLg),
     h3: heading(headings.textMd),

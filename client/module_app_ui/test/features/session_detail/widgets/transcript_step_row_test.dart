@@ -153,6 +153,47 @@ void main() {
   }
 
   for (final mode in PregoInteractionMode.values) {
+    testWidgets("every step kind leads with one glyph and underlines only commands under ${mode.name}", (tester) async {
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: mode,
+          child: MaterialApp(
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [for (final (step, _) in _steps) step],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      /// The glyph a row leads with: an icon, or the AI loader's type.
+      Object leading({required String text}) {
+        final row = find.ancestor(of: find.text(text), matching: find.byType(TranscriptStepRow));
+        final glyph = tester.widget(
+          find.descendant(of: row, matching: find.byWidgetPredicate((w) => w is Icon || w is PregoAiLoader)).first,
+        );
+        return glyph is Icon ? glyph.icon ?? glyph : glyph.runtimeType;
+      }
+
+      /// The style of the row's detail, after its label and a space.
+      TextStyle? detailStyle({required String text}) => switch (tester.widget<Text>(find.text(text)).textSpan) {
+        TextSpan(children: [_, _, final TextSpan detail]) => detail.style,
+        _ => fail("$text has no detail span."),
+      };
+
+      expect(leading(text: "Thought Weighing the options"), PregoAiLoader);
+      expect(leading(text: "Read notes.md"), TablerRegular.tool);
+      expect(leading(text: r"Ran $ make test"), TablerRegular.terminal_2);
+      expect(leading(text: "Explore Survey the screens"), TablerRegular.robot);
+      expect(detailStyle(text: r"Ran $ make test"), const TextStyle(decoration: TextDecoration.underline));
+      expect(detailStyle(text: "Read notes.md"), isNull);
+    });
+
     testWidgets("a live label sweeps over the secondary text colour under ${mode.name}", (tester) async {
       await tester.pumpWidget(
         MaterialApp(

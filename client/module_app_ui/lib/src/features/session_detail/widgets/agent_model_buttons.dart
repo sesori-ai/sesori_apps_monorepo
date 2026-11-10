@@ -189,13 +189,7 @@ class const ReadOnlyAgentModelPills({
     );
     final pills = [
       // As in the composer, a harness with a single agent has none to name.
-      if (agents.length > 1 && agent != null)
-        pill(
-          icon: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-              ? TablerRegular.tool
-              : TablerRegular.robot,
-          label: agent,
-        ),
+      if (agents.length > 1 && agent != null) pill(icon: TablerRegular.robot, label: agent),
       if (model != null)
         pill(
           icon: TablerRegular.cpu,
@@ -291,9 +285,7 @@ class const _AgentMenu({
       triggerBuilder: (context, toggle) => _pickerButton(
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
-        leadingIcon: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-            ? TablerRegular.tool
-            : TablerRegular.robot,
+        leadingIcon: TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,

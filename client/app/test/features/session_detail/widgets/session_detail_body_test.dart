@@ -6569,20 +6569,29 @@ void main() {
         if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
         final before = measure(tester: tester);
 
-        Future<void> expectGapHeld() async {
+        /// The controls' heights on the frames between, each holding the gap.
+        Future<List<double>> expectGapHeld() async {
+          final heights = <double>[];
           for (var frame = 0; frame < 30; frame++) {
             await tester.pump(const Duration(milliseconds: 16));
-            expect(measure(tester: tester).gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
+            final now = measure(tester: tester);
+            expect(now.gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
+            heights.add(now.height);
           }
+          return heights;
         }
 
         states.add(loaded.copyWith(pendingQuestions: [_question]));
-        await expectGapHeld();
-        expect(measure(tester: tester).height, greaterThan(before.height), reason: "The card has arrived.");
+        final arriving = await expectGapHeld();
+        final arrived = measure(tester: tester).height;
+        expect(arrived, greaterThan(before.height), reason: "The card has arrived.");
+        bool between(double height) => height > before.height + 1 && height < arrived - 1;
+        expect(arriving.where(between), isNotEmpty, reason: "The card grows into its room.");
 
         states.add(loaded);
-        await expectGapHeld();
+        final leaving = await expectGapHeld();
         expect(measure(tester: tester).height, moreOrLessEquals(before.height), reason: "The card has gone.");
+        expect(leaving.where(between), isNotEmpty, reason: "The card folds away.");
       });
     });
 
