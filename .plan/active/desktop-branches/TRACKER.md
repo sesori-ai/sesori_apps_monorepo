@@ -170,8 +170,8 @@ against `main` and fixed what was still wrong:
 | `tools-and-file-changes.md` | the Shell panel shares code blocks' inset | it shares the phone's; desktop code blocks are quieter with a hairline (`session-turns.md`) |
 | `tools-and-file-changes.md` | the phone is the only transcript surface | the phone and the desktop both show it |
 | `diffs-and-source-control.md` | the Changes counts fade, and a phone circle stretches into a pill | desktop's counts have their own slot and change at once (2.9); the phone has only the menu row |
-| `popup-alerts.md` | every alert fades in over 220 ms | adds desktop's solid within 40 ms, as `desktop-cockpit-shell.md` says |
-| `session-creation-and-options.md` | the harness name "over" a chevron | the mark, the name and the chevron in one row |
+| `popup-alerts.md` | every alert fades in over 220 ms | adds desktop's solid within 40 ms without reduced motion, as `desktop-cockpit-shell.md` says |
+| `session-creation-and-options.md` | the harness name "over" a chevron; its menu below the pill | the mark, the name and the chevron in one row; the menu beside the pill, toward the side with more room |
 | `multi-computer.md` | the entry sits under "Bridge" on both apps | "Connected bridge" on desktop |
 | `multi-computer.md` | the desktop footer row ends in a chevron | an up-and-down picker glyph, as `desktop-cockpit-shell.md` says |
 
