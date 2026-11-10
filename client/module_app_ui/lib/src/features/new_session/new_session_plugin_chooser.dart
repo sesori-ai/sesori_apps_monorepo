@@ -176,8 +176,9 @@ class const _HarnessTrigger({
   }
 }
 
-/// The menu's first row: the section name and the shortcut into harness
-/// settings, where harnesses are enabled, restarted and set up.
+/// The menu's first row: the section name, in spaced capitals as every menu
+/// and picker section heading is, and the shortcut into harness settings,
+/// where harnesses are enabled, restarted and set up.
 class const _HarnessesMenuHeader({required final double height, required final VoidCallback onSettingsPressed})
     extends StatelessWidget {
   @override
@@ -192,10 +193,7 @@ class const _HarnessesMenuHeader({required final double height, required final V
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                loc.settingsHarnessesTitle,
-                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-              ),
+              child: Text(loc.settingsHarnessesTitle.toUpperCase(), style: PregoMenuLabel.textStyle(prego)),
             ),
             // Flutter's tooltip OverlayPortal cannot be laid out below this
             // anchored menu's follower layer (flutter/flutter#178522). Keep the

@@ -6,6 +6,7 @@ import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
 import "../loaders/prego_activity_indicator.dart";
+import "prego_anchor_menu.dart";
 import "prego_popover.dart";
 
 /// A row of a [PregoPickerSearchList].
@@ -488,17 +489,13 @@ class const _Note({required final String text}) extends StatelessWidget {
 class const _Heading({required final String text, required final bool pointer}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     return Padding(
       padding: pointer
           ? const EdgeInsetsDirectional.fromSTEB(10, 6, 10, 2)
           : const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
       child: Semantics(
         header: true,
-        child: Text(
-          text.toUpperCase(),
-          style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8),
-        ),
+        child: Text(text.toUpperCase(), style: PregoMenuLabel.textStyle(context.prego)),
       ),
     );
   }
