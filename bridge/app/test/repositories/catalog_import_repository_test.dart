@@ -1,9 +1,11 @@
 import "dart:async";
 import "dart:io";
 
+import "package:drift/drift.dart" show Value;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/catalog_hydrations_table.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -191,6 +193,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -697,6 +700,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           catalogHydrationsDao: database.catalogHydrationsDao,
+          sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
           projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
             scratchRoot: "/scratch",
             pathContext: p.context,
@@ -751,6 +755,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           catalogHydrationsDao: database.catalogHydrationsDao,
+          sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
           projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
             scratchRoot: "/scratch",
             pathContext: p.context,
@@ -791,6 +796,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           catalogHydrationsDao: database.catalogHydrationsDao,
+          sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
           projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: link, pathContext: p.context),
           filesystemApi: const FilesystemApi(),
         );
@@ -1109,6 +1115,7 @@ void main() {
             projectsDao: database.projectsDao,
             sessionDao: _RecordingSessionDao(database: database, failOnWriteCall: 1),
             catalogHydrationsDao: database.catalogHydrationsDao,
+            sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
             projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
               scratchRoot: "/scratch",
               pathContext: p.context,
@@ -1159,6 +1166,38 @@ void main() {
           await _importCompletion(database: database, plugin: idle);
 
           expect(await database.projectsDao.getAllProjects(), unorderedEquals(rows));
+        });
+
+        test("cached session options carry over when the survivor has none, the most recent first", () async {
+          await database.projectsDao.upsertProjectRows(
+            rows: [
+              _projectRow(id: folder, path: folder),
+              _projectRow(id: link, path: link),
+              _projectRow(id: secondLink, path: secondLink),
+            ],
+          );
+          final cached = [
+            // Plugin "a": the survivor has none, so the newest merged one moves.
+            _cachedOptions(pluginId: "a", projectId: link, capturedAt: 10, marker: "a-older"),
+            _cachedOptions(pluginId: "a", projectId: secondLink, capturedAt: 30, marker: "a-newest"),
+            // Plugin "b": the survivor keeps its own, however old.
+            _cachedOptions(pluginId: "b", projectId: folder, capturedAt: 5, marker: "b-own"),
+            _cachedOptions(pluginId: "b", projectId: link, capturedAt: 50, marker: "b-merged"),
+          ];
+          for (final row in cached) {
+            await database.into(database.sessionOptionsCacheTable).insert(row);
+          }
+
+          await _importCompletion(database: database, plugin: idle);
+
+          final rows = await database.select(database.sessionOptionsCacheTable).get();
+          expect(
+            rows,
+            unorderedEquals([
+              cached[1].copyWith(ownerId: folder, projectId: Value(folder), capturedProjectPath: Value(folder)),
+              cached[2],
+            ]),
+          );
         });
 
         test("a row whose links cannot be read is left alone", () async {
@@ -1420,6 +1459,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: calculator,
         filesystemApi: const FilesystemApi(),
       );
@@ -1456,6 +1496,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -1522,6 +1563,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -1771,6 +1813,7 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2162,6 +2205,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2203,6 +2247,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2269,6 +2314,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2321,6 +2367,7 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2372,6 +2419,7 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2619,6 +2667,27 @@ Future<void> _recordMergeMarker({required AppDatabase database}) {
       projectionVersion: CatalogImportRepository.projectionVersion,
       completedAt: 1,
     ),
+  );
+}
+
+/// A project-scoped session options snapshot whose payloads carry [marker].
+SessionOptionsCacheTableData _cachedOptions({
+  required String pluginId,
+  required String projectId,
+  required int capturedAt,
+  required String marker,
+}) {
+  return SessionOptionsCacheTableData(
+    pluginId: pluginId,
+    scope: PluginSessionOptionsScope.project,
+    ownerId: projectId,
+    projectId: projectId,
+    capturedProjectPath: projectId,
+    revision: 2,
+    capturedAt: capturedAt,
+    agentsJson: '{"marker":"$marker"}',
+    providersJson: '{"marker":"$marker"}',
+    commandsJson: '{"marker":"$marker"}',
   );
 }
 

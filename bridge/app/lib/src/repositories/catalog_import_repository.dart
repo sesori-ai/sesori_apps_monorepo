@@ -12,6 +12,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../api/database/daos/catalog_hydrations_dao.dart";
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
+import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
@@ -33,6 +34,7 @@ class CatalogImportRepository({
   required final ProjectsDao _projectsDao,
   required final SessionDao _sessionDao,
   required final CatalogHydrationsDao _catalogHydrationsDao,
+  required final SessionOptionsCacheDao _sessionOptionsCacheDao,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   required final FilesystemApi _filesystemApi,
 }) {
@@ -844,8 +846,13 @@ class CatalogImportRepository({
         rows: [_mergeSplitProjectRow(survivor: survivor, merged: merged)],
       );
       final moved = await _sessionDao.moveSessionsToProject(fromProjectIds: mergedIds, toProjectId: survivor.projectId);
-      // After the move, so removing a row cascades only to its cached session
-      // options.
+      await _sessionOptionsCacheDao.copyNewestProjectRows(
+        fromProjectIds: mergedIds,
+        toProjectId: survivor.projectId,
+        toProjectPath: survivor.path,
+      );
+      // After the move and copy, so removing a row cascades only to its own
+      // cached session options.
       await _projectsDao.deleteProjects(projectIds: mergedIds);
       Log.i(
         "CatalogImportRepository: merged ${mergedIds.join(", ")} into ${survivor.projectId}, "
@@ -858,7 +865,8 @@ class CatalogImportRepository({
   }
 
   /// [survivor] keeps its own name and base branch and fills them from
-  /// [merged] when it has none. It is visible when any of the rows was, so no
+  /// [merged] when it has none, as it does each plugin's cached session
+  /// options (the most recently captured) in [_mergeSplitProjects]. It is visible when any of the rows was, so no
   /// session the user could see moves into a hidden project, and its activity
   /// spans all of them.
   ProjectDto _mergeSplitProjectRow({required ProjectDto survivor, required List<ProjectDto> merged}) {

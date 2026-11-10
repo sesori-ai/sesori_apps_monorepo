@@ -7,6 +7,7 @@ import "package:args/args.dart";
 import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -136,6 +137,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
