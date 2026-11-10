@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
@@ -606,6 +607,100 @@ void main() {
       expect(opened.id, directory);
       expect(plugin.lastGetProjectId, isNull);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    // Imports before links were resolved stored some folders under the spelling
+    // a harness reported (`/tmp/x/demo-app` for `/private/tmp/x/demo-app`).
+    group("a project stored under a link's spelling", () {
+      late String folder;
+      late String link;
+      late ProjectRepository resolvingRepo;
+
+      setUp(() {
+        final root = Directory.systemTemp.createTempSync("sesori-open-link-").resolveSymbolicLinksSync();
+        addTearDown(() => Directory(root).deleteSync(recursive: true));
+        // A link to a parent, as `/tmp` is to `/private/tmp`.
+        folder = p.join(root, "real", "demo-app");
+        Directory(folder).createSync(recursive: true);
+        Link(p.join(root, "linked")).createSync(p.join(root, "real"));
+        link = p.join(root, "linked", "demo-app");
+        resolvingRepo = singlePluginProjectRepository(
+          gitCliApi: FakeGitCliApi(),
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: const FilesystemApi(),
+        );
+      });
+
+      Future<Project> open({required String path}) async {
+        final target = await resolvingRepo.resolveProjectOpenTarget(path: path);
+        return (await resolvingRepo.persistOpenedProject(target: target, observedAt: 20)).committedProject;
+      }
+
+      Future<void> storeUnderLink() => db.projectsDao.recordOpenedProject(
+        projectId: link,
+        path: link,
+        displayName: "Stored name",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      test("opening through the link reuses it and stores the resolved folder", () async {
+        await storeUnderLink();
+
+        final opened = await open(path: link);
+
+        expect(opened.id, link);
+        expect(opened.name, "Stored name");
+        expect(opened.path, folder);
+        final rows = await db.projectsDao.getAllProjects();
+        expect(rows.map((row) => (row.projectId, row.path)), [(link, folder)]);
+      });
+
+      test("opening the resolved folder reuses it", () async {
+        await storeUnderLink();
+
+        final opened = await open(path: folder);
+
+        expect(opened.id, link);
+        expect((await db.projectsDao.getAllProjects()).map((row) => (row.projectId, row.path)), [(link, folder)]);
+      });
+
+      test("with both spellings stored, opening uses the resolved row and leaves the other alone", () async {
+        await storeUnderLink();
+        await db.projectsDao.recordOpenedProject(
+          projectId: folder,
+          path: folder,
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 1,
+        );
+        final linkRow = await db.projectsDao.getProject(projectId: link);
+
+        final opened = await open(path: link);
+
+        expect(opened.id, folder);
+        expect(await db.projectsDao.getProject(projectId: link), linkRow);
+        expect((await db.projectsDao.getAllProjects()).length, 2);
+      });
+
+      test("a row under another folder's link with the same name stays separate", () async {
+        final other = p.join(p.dirname(folder), "other", "demo-app");
+        Directory(other).createSync(recursive: true);
+        await db.projectsDao.recordOpenedProject(
+          projectId: other,
+          path: other,
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 1,
+        );
+
+        final opened = await open(path: folder);
+
+        expect(opened.id, folder);
+        expect((await db.projectsDao.getAllProjects()).length, 2);
+      });
     });
 
     test("opening keeps a folder whose links cannot be resolved as given", () async {
