@@ -134,7 +134,10 @@ extension BuildContextLocalization on BuildContext {
   /// than an empty line, which the engine rounds differently.
   double lineHeightOf(TextStyle style) {
     final painter = TextPainter(
-      text: TextSpan(text: "A", style: DefaultTextStyle.of(this).style.merge(style)),
+      text: TextSpan(
+        text: "A",
+        style: resolveTextStyle(context: this, style: style),
+      ),
       textDirection: Directionality.of(this),
       textScaler: MediaQuery.textScalerOf(this),
     )..layout();

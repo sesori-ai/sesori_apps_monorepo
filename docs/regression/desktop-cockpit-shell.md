@@ -452,9 +452,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   modifiers and while typing (`desktop_text_size_scope_test`); the View menu's channel
   (`method_channel_desktop_app_menu_test`); the General row (`desktop_settings_screens_test`); pointer sidebar
   rows and headings at 130% with packaged fonts, a status too long for its line ellipsizing, and loading
-  placeholders as tall as the rows and headings at 90%, 115% and 130% (`session_list_desktop_text_size_test`); the
-  desktop transcript at 14/20 beside the compact interface (`prego_theme_data_test`) with headings at the phone's
-  sizes (`markdown_styles_test`); a wide Send label widening the voice group (`prompt_input_pointer_voice_test`).
+  placeholders as tall as the rows and headings at 90%, 115% and 130% and under the accessibility line height and
+  bold text (`session_list_desktop_text_size_test`); the desktop transcript at 14/20 beside the compact interface
+  (`prego_theme_data_test`) with headings at the phone's sizes (`markdown_styles_test`); a Send label widened by
+  text size or letter spacing widening the voice group (`prompt_input_pointer_voice_test`).
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel persistence, click and drag-past-minimum collapse with the width it reopens at,
   intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
   narrow-window mode, JSON round-trip with an unknown key ignored, storage failure fallback.

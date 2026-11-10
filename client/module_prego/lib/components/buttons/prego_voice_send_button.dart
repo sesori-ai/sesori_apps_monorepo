@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
+import "../../utils/prego_text_spacing_overrides.dart";
 
 /// The corners of a button set in a pointer composer's corner: the composer's
 /// 16 pt radius less the 6 pt it is inset by, so the two curves run parallel.
@@ -29,7 +30,10 @@ class const PregoVoiceSendButton({
   /// current text size, with [PregoSpacing.sm] either side.
   static double widthFor({required BuildContext context, required String label}) {
     final painter = TextPainter(
-      text: TextSpan(text: label, style: DefaultTextStyle.of(context).style.merge(_labelStyleOf(context))),
+      text: TextSpan(
+        text: label,
+        style: resolveTextStyle(context: context, style: _labelStyleOf(context)),
+      ),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
       maxLines: 1,

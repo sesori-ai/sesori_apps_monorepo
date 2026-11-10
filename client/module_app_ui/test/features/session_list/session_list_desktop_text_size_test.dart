@@ -97,6 +97,7 @@ void main() {
     PregoInteractionMode mode = PregoInteractionMode.pointer,
     required double scale,
     required double width,
+    bool spacingOverrides = false,
     required Widget child,
   }) {
     tester.view.physicalSize = Size(width, 600);
@@ -114,7 +115,23 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Material(
-          child: PregoInteractionScope(mode: mode, child: child),
+          child: PregoInteractionScope(
+            mode: mode,
+            child: spacingOverrides
+                ? Builder(
+                    builder: (context) => MediaQuery(
+                      // The accessibility line height and bold text, which [Text] applies.
+                      data: MediaQueryData(
+                        size: MediaQuery.sizeOf(context),
+                        textScaler: MediaQuery.textScalerOf(context),
+                        lineHeightScaleFactorOverride: 2,
+                        boldText: true,
+                      ),
+                      child: child,
+                    ),
+                  )
+                : child,
+          ),
         ),
       ),
     );
@@ -137,43 +154,48 @@ void main() {
   });
 
   for (final mode in PregoInteractionMode.values) {
-    for (final scale in [0.9, 1.15, 1.3]) {
-      testWidgets("placeholders stand as tall as the rows and headings they hold the place of (${mode.name}, $scale)", (
-        tester,
-      ) async {
-        await pumpAt(
+    for (final (scale, spacingOverrides) in [(0.9, false), (1.15, false), (1.3, false), (1.15, true)]) {
+      final overridden = spacingOverrides ? ", spacing overrides" : "";
+      testWidgets(
+        "placeholders stand as tall as the rows and headings they hold the place of (${mode.name}, $scale$overridden)",
+        (
           tester,
-          mode: mode,
-          scale: scale,
-          width: 280,
-          child: Column(
-            children: [
-              const SessionListHeading(heading: "Today", isFirst: true),
-              const SessionListHeadingSkeleton(isFirst: true, width: 40),
-              const SessionListHeading(heading: "Yesterday", isFirst: false),
-              const SessionListHeadingSkeleton(isFirst: false, width: 64),
-              tile(title: "With a project", projectLabel: "sesori"),
-              tile(title: "Without one"),
-              const SessionTileSkeleton(titleWidthFraction: 0.5, detailsWidth: 64),
-            ],
-          ),
-        );
-
-        double heightOf(Finder finder) => tester.getSize(finder.first).height;
-        final skeletonRow = find.byType(SessionTileSkeleton);
-        final rowHeight = heightOf(find.byType(SessionTile));
-        expect(heightOf(find.byType(SessionTile).last), rowHeight, reason: "a row without words is as tall");
-        expect(heightOf(skeletonRow), rowHeight);
-        expect(SessionTileSkeleton.heightOf(context: tester.element(skeletonRow)), heightOf(skeletonRow));
-        for (final (index, heading) in ["Today", "Yesterday"].indexed) {
-          final skeleton = find.byType(SessionListHeadingSkeleton).at(index);
-          expect(heightOf(skeleton), heightOf(find.widgetWithText(SessionListHeading, heading)));
-          expect(
-            SessionListHeadingSkeleton.heightOf(context: tester.element(skeleton), isFirst: index == 0),
-            heightOf(skeleton),
+        ) async {
+          await pumpAt(
+            tester,
+            mode: mode,
+            scale: scale,
+            width: 280,
+            spacingOverrides: spacingOverrides,
+            child: Column(
+              children: [
+                const SessionListHeading(heading: "Today", isFirst: true),
+                const SessionListHeadingSkeleton(isFirst: true, width: 40),
+                const SessionListHeading(heading: "Yesterday", isFirst: false),
+                const SessionListHeadingSkeleton(isFirst: false, width: 64),
+                tile(title: "With a project", projectLabel: "sesori"),
+                tile(title: "Without one"),
+                const SessionTileSkeleton(titleWidthFraction: 0.5, detailsWidth: 64),
+              ],
+            ),
           );
-        }
-      });
+
+          double heightOf(Finder finder) => tester.getSize(finder.first).height;
+          final skeletonRow = find.byType(SessionTileSkeleton);
+          final rowHeight = heightOf(find.byType(SessionTile));
+          expect(heightOf(find.byType(SessionTile).last), rowHeight, reason: "a row without words is as tall");
+          expect(heightOf(skeletonRow), rowHeight);
+          expect(SessionTileSkeleton.heightOf(context: tester.element(skeletonRow)), heightOf(skeletonRow));
+          for (final (index, heading) in ["Today", "Yesterday"].indexed) {
+            final skeleton = find.byType(SessionListHeadingSkeleton).at(index);
+            expect(heightOf(skeleton), heightOf(find.widgetWithText(SessionListHeading, heading)));
+            expect(
+              SessionListHeadingSkeleton.heightOf(context: tester.element(skeleton), isFirst: index == 0),
+              heightOf(skeleton),
+            );
+          }
+        },
+      );
     }
   }
 }
