@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:math";
 import "dart:typed_data";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
@@ -642,6 +643,8 @@ class ChatHistoryRepository({
     }
 
     final semanticallyImportedStoredIds = <String>{...anchoredReplayExtensionStoredIds};
+    // Imported index -> the stored context row it replaces by content.
+    final semanticPairs = <int, int>{};
     for (final entry in storedIndexesByContext.entries) {
       final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
       final storedIndexes = entry.value;
@@ -650,6 +653,7 @@ class ChatHistoryRepository({
         final storedCreatedAt = storedSemanticFingerprints[storedIndexes.single]?.createdAt;
         if (importedCreatedAt == null || storedCreatedAt == null || importedCreatedAt == storedCreatedAt) {
           semanticallyImportedStoredIds.add(storedContextRows[storedIndexes.single].messageId);
+          semanticPairs[importedIndexes.single] = storedIndexes.single;
         }
         continue;
       }
@@ -663,17 +667,35 @@ class ChatHistoryRepository({
         final createdAt = storedSemanticFingerprints[index]?.createdAt;
         if (createdAt != null) storedIndexesByCreatedAt.putIfAbsent(createdAt, () => []).add(index);
       }
-      final importedCountsByCreatedAt = <int, int>{};
+      final importedIndexesByCreatedAt = <int, List<int>>{};
       for (final index in importedIndexes) {
         final createdAt = importedSemanticFingerprints[index]?.createdAt;
-        if (createdAt != null) importedCountsByCreatedAt[createdAt] = (importedCountsByCreatedAt[createdAt] ?? 0) + 1;
+        if (createdAt != null) importedIndexesByCreatedAt.putIfAbsent(createdAt, () => []).add(index);
       }
-      for (final entry in importedCountsByCreatedAt.entries) {
+      for (final entry in importedIndexesByCreatedAt.entries) {
         final matchingStoredIndexes = storedIndexesByCreatedAt[entry.key] ?? const [];
-        final matchCount = entry.value < matchingStoredIndexes.length ? entry.value : matchingStoredIndexes.length;
+        final matchCount = min(entry.value.length, matchingStoredIndexes.length);
         for (var index = 0; index < matchCount; index++) {
           semanticallyImportedStoredIds.add(storedContextRows[matchingStoredIndexes[index]].messageId);
+          semanticPairs[entry.value[index]] = matchingStoredIndexes[index];
         }
+      }
+    }
+
+    final storedContextIndexById = {
+      for (var index = 0; index < storedContextRows.length; index++) storedContextRows[index].messageId: index,
+    };
+    for (var index = 0; index < messages.length; index++) {
+      final exactStoredIndex = storedContextIndexById[messages[index].info.id];
+      final storedIndex = exactStoredIndex ?? semanticPairs[index];
+      if (storedIndex == null || storedSemanticFingerprints[storedIndex] == null) continue;
+      final notice = _reconciledNotice(
+        imported: messages[index].info,
+        stored: Message.fromJson(jsonDecodeMap(storedContextRows[storedIndex].infoJson)),
+        sameIdentity: exactStoredIndex != null,
+      );
+      if (notice != null) {
+        importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(notice.toJson()));
       }
     }
 
@@ -1188,6 +1210,26 @@ class ChatHistoryRepository({
     return matchedStoredIds;
   }
 
+  /// The notice to store for an imported error notice that replaces a stored
+  /// one, or null to store the imported row unchanged.
+  ///
+  /// A backend can send a failed turn's real reason live and save only a fixed
+  /// closing row for it (Hermes does), so the two copies of one notice can be
+  /// worded differently. The stored wording leads, since it is what the user
+  /// saw live, and the replayed wording follows when it adds something. A
+  /// stored copy that already holds the replayed wording, as an earlier
+  /// reconciliation leaves it, keeps it. A different wording under the same
+  /// message id is an update from the backend and replaces it.
+  MessageError? _reconciledNotice({required Message imported, required Message stored, required bool sameIdentity}) {
+    if ((imported, stored) case (final MessageError imported, final MessageError stored)
+        when stored.errorMessage != imported.errorMessage) {
+      final kept = stored.errorMessage.contains(imported.errorMessage);
+      if (kept) return imported.copyWith(errorMessage: stored.errorMessage);
+      if (!sameIdentity) return imported.copyWith(errorMessage: "${stored.errorMessage}\n\n${imported.errorMessage}");
+    }
+    return null;
+  }
+
   bool _knownTimesAgree({
     required _SemanticMessageFingerprints imported,
     required _SemanticMessageFingerprints stored,
@@ -1232,7 +1274,13 @@ class ChatHistoryRepository({
       final message = Message.fromJson(jsonDecodeMap(infoJson));
       final info = _withoutFields(
         source: message.toJson(),
-        fields: const {"id", "sessionID", "promptId", "time", "agent", "modelID", "providerID"},
+        fields: {
+          "id", "sessionID", "promptId", "time", "agent", "modelID", "providerID",
+          // An error notice says that a turn failed. Its wording may differ
+          // between live and replay: a backend can send the real reason live
+          // and save only a fixed closing row (see [_reconciledNotice]).
+          if (message is MessageError) ...{"errorName", "errorMessage"},
+        },
       );
       final parts = await _rehydrateParts(
         storageScope: storageScope,

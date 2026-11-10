@@ -4,6 +4,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
 import "package:hermes_plugin/src/api/hermes_acp_api.dart";
+import "package:hermes_plugin/src/hermes_event_mapper.dart";
 import "package:hermes_plugin/src/repositories/hermes_catalog_repository.dart";
 import "package:hermes_plugin/src/services/hermes_session_options_service.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -457,7 +458,7 @@ HermesPlugin _plugin({
     ),
     launchDirectory: "/repo",
     childSessionTracker: childSessionTracker,
-    eventMapper: AcpEventMapper(
+    eventMapper: HermesEventMapper(
       launchDirectory: "/repo",
       pluginId: "hermes",
       configurationTracker: configurationTracker,

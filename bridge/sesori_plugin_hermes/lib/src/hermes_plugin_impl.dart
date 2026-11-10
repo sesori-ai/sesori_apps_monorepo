@@ -1,6 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "hermes_event_mapper.dart";
 import "hermes_identity.dart";
 import "services/hermes_session_options_service.dart";
 
@@ -18,7 +19,7 @@ import "services/hermes_session_options_service.dart";
 class HermesPlugin({
   required super.launchSpec,
   required super.launchDirectory,
-  required super.eventMapper,
+  required HermesEventMapper super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,

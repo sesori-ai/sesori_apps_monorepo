@@ -1851,6 +1851,101 @@ void main() {
       );
     });
 
+    // Hermes sends a failed turn's real reason live but saves only a fixed
+    // closing row, so its replay has a notice for the turn in other words.
+    group("a failed turn's notice", () {
+      const liveReason = "custom didn't respond in time on any of 3 attempts.\n\nProvider said: Connection error.";
+      const savedRow = "Your request was not processed. Send it again if you still want me to carry it out.";
+
+      List<MessageWithParts> failedTurnReplay() => [
+        _messageWithText(id: "h1-user", text: "Hello", createdAt: null, promptId: null),
+        _errorMessage(id: "h2-error", text: savedRow, createdAt: null),
+      ];
+
+      Future<TestChatHistory> liveFailedTurn({required _FakeSessionRepository repository}) async {
+        final history = createTestChatHistory(sessionRepository: repository);
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-user", text: "Hello", createdAt: 100, promptId: null),
+            _errorMessage(id: "live-error", text: liveReason, createdAt: 200),
+          ],
+        );
+        return history;
+      }
+
+      Future<List<String>> storedNotices({required TestChatHistory history}) async => [
+        for (final message in await _storedMessages(history: history, sessionId: "ses_a"))
+          if (message.info case MessageError(:final errorMessage)) errorMessage,
+      ];
+
+      test("is one notice after a reload, live wording first", () async {
+        final history = await liveFailedTurn(repository: _FakeSessionRepository(transcript: failedTurnReplay()));
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["h1-user", "h2-error"],
+        );
+        expect(await storedNotices(history: history), const ["$liveReason\n\n$savedRow"]);
+      });
+
+      test("stays one notice with the live wording after later re-imports", () async {
+        final transcript = failedTurnReplay();
+        final history = await liveFailedTurn(repository: _FakeSessionRepository(transcript: transcript));
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        // The session moved on outside Sesori.
+        transcript.add(_messageWithText(id: "h3-user", text: "Try again", createdAt: null, promptId: null));
+
+        await history.service.backfillSession(sessionId: "ses_a");
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(await storedNotices(history: history), const ["$liveReason\n\n$savedRow"]);
+      });
+
+      test("is the saved row alone for a turn that failed outside Sesori", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(transcript: failedTurnReplay()),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(await storedNotices(history: history), const [savedRow]);
+      });
+
+      test("is one notice when live and replay word it the same", () async {
+        final history = await liveFailedTurn(
+          repository: _FakeSessionRepository(
+            transcript: [
+              _messageWithText(id: "h1-user", text: "Hello", createdAt: null, promptId: null),
+              _errorMessage(id: "h2-error", text: liveReason, createdAt: null),
+            ],
+          ),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(await storedNotices(history: history), const [liveReason]);
+      });
+
+      test("for another turn stays its own notice", () async {
+        final history = await liveFailedTurn(
+          repository: _FakeSessionRepository(
+            transcript: [
+              _messageWithText(id: "h1-user", text: "Other prompt", createdAt: null, promptId: null),
+              _errorMessage(id: "h2-error", text: savedRow, createdAt: null),
+            ],
+          ),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(await storedNotices(history: history), unorderedEquals(const [savedRow, liveReason]));
+      });
+    });
+
     // Editing a message in the backend's own client rolls the session back and
     // deletes what followed. A bridge that was not watching never sees the
     // removal events, so the re-import's gap is the only evidence it gets.
@@ -2115,6 +2210,20 @@ MessageWithParts _messageWithText({
     time: createdAt == null ? null : MessageTime(created: createdAt, completed: null),
   ),
   parts: [_part(id: "$id-part", messageId: id, text: text)],
+);
+
+MessageWithParts _errorMessage({required String id, required String text, required int? createdAt}) => MessageWithParts(
+  info: Message.error(
+    id: id,
+    sessionID: "ses_a",
+    agent: "hermes",
+    modelID: null,
+    providerID: null,
+    errorName: "hermes_turn_failure",
+    errorMessage: text,
+    time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
+  ),
+  parts: const [],
 );
 
 MessageWithParts _assistantMessageWithText({
