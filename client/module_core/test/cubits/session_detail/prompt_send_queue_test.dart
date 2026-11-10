@@ -206,8 +206,36 @@ void main() {
       expect(queue.bridgePromptAttachments.keys, ["image-1", "image-2"]);
       queue.reconcileBridgeQueue(promptIds: promptIds);
       expect(queue.bridgePromptAttachments.keys, ["image-1", "image-2"]);
-      queue.clear();
+      queue.clear(keepActive: false);
       expect(queue.bridgePromptAttachments, isEmpty);
+    });
+
+    test("a clear that keeps the active send lets it park or be abandoned, and drops the rest", () {
+      const sending = QueuedSessionSubmission.text(
+        promptId: "sending",
+        attachments: [],
+        text: "sending",
+        inputMode: ComposerInputMode.typed,
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+      queue
+        ..enqueue(sending)
+        ..enqueue(_second)
+        ..beginSend()
+        ..clear(keepActive: true);
+      expect(queue.active, sending);
+      expect(queue.items, isEmpty);
+      expect(queue.abandonSend(), sending);
+      expect(queue.active, isNull);
+      expect(queue.items, isEmpty, reason: "abandoned, not requeued");
+
+      queue
+        ..enqueue(sending)
+        ..beginSend()
+        ..removeByPromptId("sending");
+      expect(queue.abandonSend(), isNull, reason: "the bridge settled it while it was sending");
     });
 
     test("a preview exceeding the whole budget degrades without affecting bridge ownership", () {

@@ -449,7 +449,9 @@ variant, and worktree mode, and creating the session with its first input.
   sending it; one still sending finishes, counting as sent if the bridge accepts
   it and coming back after the others if it fails. After an ambiguous Stop
   outcome the bridge may already hold a returned one, so sending it again can
-  duplicate it. A refused Stop leaves them queued, and they still send (see
+  duplicate it. A refused Stop leaves them queued, and they still send. A
+  harness block that shuts the harness down returns each one it accepted to
+  the composer, images included, as it does the session screen's sends (see
   [session turns](session-turns.md)). The session screen's composer is
   there from its first frame, in the new-session composer's place, with the
   committed options (read-only), any unsent text with its caret or selection

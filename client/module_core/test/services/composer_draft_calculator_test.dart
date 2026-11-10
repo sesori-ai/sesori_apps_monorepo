@@ -1,3 +1,6 @@
+import "dart:typed_data";
+
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/services/composer_draft_calculator.dart";
@@ -295,5 +298,27 @@ void main() {
       ),
       ComposerDraft.typed(text: "/review"),
     );
+  });
+
+  group("uniqueReturned", () {
+    final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: null);
+    final other = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([2]), filename: null);
+
+    test("keeps each prompt once, where it first appears, taking later images only when it has none", () {
+      final unique = calculator.uniqueReturned(
+        prompts: [
+          (promptId: "a", draft: ComposerDraft.typed(text: "listed"), attachments: const []),
+          (promptId: "b", draft: ComposerDraft.typed(text: "b"), attachments: [other]),
+          (promptId: "a", draft: ComposerDraft.typed(text: "submitted"), attachments: [image]),
+          (promptId: "b", draft: null, attachments: [image]),
+        ],
+      );
+      expect(unique.map((prompt) => prompt.promptId), ["a", "b"]);
+      expect(unique.map((prompt) => prompt.draft?.text), ["listed", "b"]);
+      expect(unique.map((prompt) => prompt.attachments), [
+        [image],
+        [other],
+      ]);
+    });
   });
 }
