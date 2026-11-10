@@ -113,47 +113,29 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
         ToolStatus.unknown => loc.sessionDetailToolUnknown,
       };
       final color = status == ToolStatus.error ? prego.colors.textErrorPrimary : prego.colors.textSecondary;
-      final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
       return TranscriptStepRow(
         leading: live
             ? const TranscriptLiveSparkle()
-            : Icon(
-                pointer && status == ToolStatus.completed ? TablerRegular.check : TablerRegular.terminal_2,
-                size: PregoIconSize.sm,
-                color: pointer && status == ToolStatus.completed ? prego.colors.textTertiary : color,
-              ),
+            : Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: color),
         label: verb,
         detail: TextSpan(
           text: "\$ $command",
-          // A command reads as a command under a pointer, not as a link.
-          style: pointer
-              ? prego.textTheme.code.copyWith(color: live ? prego.colors.textPrimary : color)
-              : const TextStyle(decoration: TextDecoration.underline),
+          style: const TextStyle(decoration: TextDecoration.underline),
         ),
         live: live,
-        color: pointer && status != ToolStatus.error ? null : color,
+        // Without a colour, a pointer shell's label takes the primary text, as
+        // its other steps' labels do; a failed command stays red.
+        color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer && status != ToolStatus.error
+            ? null
+            : color,
         trailing: null,
       );
     }
 
     return TranscriptStepRow(
-      leading: live
-          ? const TranscriptLiveSparkle()
-          : _statusIcon(
-              status: status,
-              prego: prego,
-              pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-            ),
+      leading: live ? const TranscriptLiveSparkle() : _statusIcon(status: status, prego: prego),
       label: ToolPartWidget.toolName(loc: loc, part: part),
-      detail: switch (title) {
-        null => null,
-        // Paths and patterns, set as the commands around them are.
-        final title when PregoInteractionScope.of(context) == PregoInteractionMode.pointer => TextSpan(
-          text: title,
-          style: prego.textTheme.code.copyWith(color: prego.colors.textSecondary),
-        ),
-        final title => TextSpan(text: title),
-      },
+      detail: title == null ? null : TextSpan(text: title),
       live: live,
       color: null,
       trailing: null,
@@ -162,14 +144,10 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
 
   static bool _isLive({required ToolStatus status}) => status == ToolStatus.pending || status == ToolStatus.running;
 
-  static Widget _statusIcon({
-    required ToolStatus status,
-    required PregoDesignSystem prego,
-    required bool pointer,
-  }) => switch (status) {
+  static Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
     // A live tool leads with the sparkle instead.
     ToolStatus.pending || ToolStatus.running || ToolStatus.completed => Icon(
-      pointer ? TablerRegular.check : TablerRegular.tool,
+      TablerRegular.tool,
       size: PregoIconSize.sm,
       color: prego.colors.textTertiary,
     ),

@@ -4283,6 +4283,7 @@ void _stubPromptAttachmentCapability({
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
             supportsPromptAttachments: supportsPromptAttachments,
           ),
         ],

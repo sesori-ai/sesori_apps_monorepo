@@ -160,7 +160,6 @@ class SessionDetailLoadedView extends StatelessWidget {
                     : loc.pendingRequestBannerMultiple(state.pendingQuestions.length))
               : (questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount)),
           request: _firstLine(question.question),
-          requestIsCode: false,
           action: hasTypedRequest ? loc.needsYouReview : loc.needsYouAnswer,
           leads: true,
           onPressed: onShowPendingQuestions,
@@ -173,7 +172,6 @@ class SessionDetailLoadedView extends StatelessWidget {
               ? loc.permissionBannerSingle
               : loc.permissionBannerMultiple(state.pendingPermissions.length),
           request: _firstLine(permission.description),
-          requestIsCode: true,
           action: loc.needsYouReview,
           leads: !isReviewingPermission && state.pendingQuestions.firstOrNull?.questions.firstOrNull == null,
           onPressed: onShowPendingPermissions,
@@ -306,7 +304,10 @@ class SessionDetailLoadedView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _NeedsYouCards(cards: needsYou),
+                    // Each card grows into its room and folds away as it last
+                    // looked when answered, so the transcript above glides
+                    // rather than snaps.
+                    TranscriptPresenceColumn(risesFromBottom: true, children: needsYou),
                     if (!readOnly && !state.isArchived)
                       SessionAutoContinuationNotice(
                         view: state.session.autoContinuation,
@@ -333,14 +334,4 @@ bool hasActiveWork({
   required Map<String, SessionStatus> childStatuses,
 }) {
   return sessionStatus is! SessionStatusIdle || childStatuses.values.any((status) => isChildRunning(status: status));
-}
-
-/// The cards asking for the reader's attention. Under a pointer each one grows
-/// into its room and folds away as it last looked when answered, so the transcript
-/// above glides rather than snaps. Under a finger they simply appear.
-class const _NeedsYouCards({required final List<Widget> cards}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-      ? TranscriptPresenceColumn(risesFromBottom: true, children: cards)
-      : Column(mainAxisSize: MainAxisSize.min, children: cards);
 }

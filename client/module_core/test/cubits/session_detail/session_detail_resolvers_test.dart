@@ -89,6 +89,7 @@ SessionDetailLoaded _state({
     pluginId: "opencode",
     supportsPromptAttachments: false,
     supportsFileUploads: false,
+    offersSessionMcp: true,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},

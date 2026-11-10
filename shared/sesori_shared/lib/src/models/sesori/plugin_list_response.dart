@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "mcp.dart";
+
 part "plugin_list_response.freezed.dart";
 part "plugin_list_response.g.dart";
 
@@ -48,6 +50,14 @@ sealed class PluginMetadata with _$PluginMetadata {
     // enclosing response's legacy capability signal. Remove @Default and that
     // mapping once those bridges are unsupported.
     @Default(false) bool supportsPromptAttachments,
+
+    /// Where this harness answers MCP inventory; empty when it has no MCP
+    /// support. Mirrors `PluginManagementMetadata.mcpScopes`.
+    // COMPATIBILITY 2026-11-09 (v1.12.0): Older bridge payloads omit mcpScopes;
+    // null means the bridge did not report them, so clients keep offering
+    // session MCP as before. Make it non-nullable once the minimum supported
+    // bridge sends it.
+    @JsonKey(unknownEnumValue: McpScopeKind.unknown) required Set<McpScopeKind>? mcpScopes,
   }) = _PluginMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);

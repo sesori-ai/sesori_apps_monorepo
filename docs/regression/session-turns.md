@@ -850,11 +850,13 @@ defaults and queued client sends coherent.
   and underlined primary-color links in light and dark themes. Streaming and
   settled responses share the same typography; code remains monospace and
   Markdown emphasis, selection, attachments and queued-state cues stay usable.
-- Markdown looks the same on phone and desktop in both themes. A fenced code
-  block is one quiet box (the raised inset tool output uses, with no border)
-  holding its language label, copy button and code. Inline code sits on a soft
-  translucent chip that contrasts with whichever surface carries it, so a
-  selection highlight painted under the text still reads through it.
+- Markdown has one structure on phone and desktop in both themes. A fenced code
+  block is one quiet box holding its language label, copy button and code: on
+  the phone the raised inset tool output uses, with no border; on desktop a
+  quieter fill with a hairline border, so it stands off the desktop page. Inline
+  code sits on the same soft translucent chip on both, contrasting with whichever
+  surface carries it, so a selection highlight painted under the text still
+  reads through it.
   Tables show hairline row lines under a bold, left-aligned header
   with no outer grid, and a horizontal rule is one hairline. None of these fall
   back to the SDK's purple-grey Material palette.

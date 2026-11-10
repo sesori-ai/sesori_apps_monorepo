@@ -343,6 +343,7 @@ void main() {
               state: PluginLifecycleState.ready,
               actionHint: null,
               failureBlock: null,
+              mcpScopes: null,
             ),
           ],
         ),
@@ -573,6 +574,7 @@ void main() {
               state: PluginLifecycleState.ready,
               actionHint: null,
               failureBlock: null,
+              mcpScopes: null,
             ),
           ],
         ),
@@ -738,6 +740,7 @@ void main() {
               state: PluginLifecycleState.ready,
               actionHint: null,
               failureBlock: null,
+              mcpScopes: null,
             ),
           ],
         ),
@@ -978,6 +981,7 @@ void main() {
               state: PluginLifecycleState.failed,
               actionHint: "Restart the bridge to retry.",
               failureBlock: null,
+              mcpScopes: null,
             ),
             PluginMetadata(
               id: "codex",
@@ -986,6 +990,7 @@ void main() {
               state: PluginLifecycleState.degraded,
               actionHint: "Check the bridge console.",
               failureBlock: null,
+              mcpScopes: null,
             ),
             PluginMetadata(
               id: "cursor",
@@ -994,6 +999,7 @@ void main() {
               state: PluginLifecycleState.unavailable,
               actionHint: "Make this tool available on the bridge.",
               failureBlock: null,
+              mcpScopes: null,
             ),
           ],
         ),
@@ -1048,6 +1054,7 @@ void main() {
               state: PluginLifecycleState.ready,
               actionHint: null,
               failureBlock: null,
+              mcpScopes: null,
             ),
             PluginMetadata(
               id: "degraded-id",
@@ -1056,6 +1063,7 @@ void main() {
               state: PluginLifecycleState.degraded,
               actionHint: "Check the bridge console.",
               failureBlock: null,
+              mcpScopes: null,
             ),
           ],
         ),
@@ -1092,6 +1100,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
     var cleared = false;
     when(pluginRepository.listPlugins).thenAnswer(
@@ -1109,6 +1118,7 @@ void main() {
               state: cleared ? PluginLifecycleState.ready : PluginLifecycleState.unavailable,
               actionHint: cleared ? null : gatewayHint,
               failureBlock: cleared ? null : PluginFailureBlock.unavailable,
+              mcpScopes: null,
             ),
           ],
         ),
@@ -1291,6 +1301,7 @@ void main() {
                 state: PluginLifecycleState.ready,
                 actionHint: "Plugin $index action hint",
                 failureBlock: null,
+                mcpScopes: null,
               ),
           ],
         ),
@@ -1374,6 +1385,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
     const toolB = PluginMetadata(
       id: "tool-b",
@@ -1382,6 +1394,7 @@ void main() {
       state: PluginLifecycleState.degraded,
       actionHint: "Check the bridge console.",
       failureBlock: null,
+      mcpScopes: null,
     );
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
@@ -1461,6 +1474,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
     const toolB = PluginMetadata(
       id: "tool-b",
@@ -1469,6 +1483,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
     final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
     var discoveryCalls = 0;
@@ -1564,6 +1579,7 @@ void main() {
                 state: PluginLifecycleState.ready,
                 actionHint: null,
                 failureBlock: null,
+                mcpScopes: null,
               ),
             ],
           ),
@@ -1705,6 +1721,7 @@ void main() {
                     state: PluginLifecycleState.ready,
                     actionHint: null,
                     failureBlock: null,
+                    mcpScopes: null,
                   ),
                 ],
         ),
@@ -1759,6 +1776,7 @@ void main() {
                     state: PluginLifecycleState.ready,
                     actionHint: null,
                     failureBlock: null,
+                    mcpScopes: null,
                   ),
                 ],
         ),
@@ -1871,6 +1889,7 @@ void main() {
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
           ),
         ],
       ),
@@ -1954,6 +1973,7 @@ void main() {
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
           ),
         ],
       ),
@@ -2055,6 +2075,7 @@ void main() {
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
           ),
         ],
       ),
@@ -2246,6 +2267,7 @@ void main() {
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
           ),
         ],
       ),
@@ -3384,6 +3406,7 @@ void main() {
               state: PluginLifecycleState.ready,
               actionHint: null,
               failureBlock: null,
+              mcpScopes: null,
               supportsPromptAttachments: true,
             ),
           ],
