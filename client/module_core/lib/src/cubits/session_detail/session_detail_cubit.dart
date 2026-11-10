@@ -177,6 +177,10 @@ class SessionDetailCubit(
   /// queued, so this screen's queue waits until none is left.
   List<LaunchFollowUp> _unsentLaunchFollowUps = const [];
 
+  /// The launch follow-ups a stop found still sending. The bridge may yet
+  /// accept one, so it returns to the composer only if its send fails.
+  final Set<String> _launchFollowUpsSendingAtStop = {};
+
   /// Images the launch's composer held unsent, until this screen's composer
   /// stages them.
   List<ComposerAttachment> _launchAttachments = const [];
@@ -195,7 +199,8 @@ class SessionDetailCubit(
 
   /// The prompts a stop or a harness block returned to the composer, which
   /// neither may return again: each can capture a prompt the other returns
-  /// while it waits.
+  /// while it waits. A launch follow-up among them is the composer's too, so
+  /// no later launch event shows or parks it again.
   final Set<String> _returnedPromptIds = {};
 
   /// Delivered user messages already accounted for. A message becomes
@@ -358,7 +363,26 @@ class SessionDetailCubit(
   void _onLaunchFollowUps(List<LaunchFollowUp> followUps) {
     if (isClosed) return;
     final unsent = <LaunchFollowUp>[];
+    final failedAfterStop = <QueuedSessionSubmission>[];
     for (final followUp in followUps) {
+      final promptId = followUp.submission.promptId;
+      // A list the launch published before a stop took these back can land
+      // after it; they are the composer's now.
+      if (_returnedPromptIds.contains(promptId)) continue;
+      if (_launchFollowUpsSendingAtStop.contains(promptId)) {
+        switch (followUp) {
+          case SendingLaunchFollowUp():
+            break;
+          case AcceptedLaunchFollowUp():
+            _launchFollowUpsSendingAtStop.remove(promptId);
+          case QueuedLaunchFollowUp() || FailedLaunchFollowUp():
+            // Proven not accepted, so it goes where the stop put the rest.
+            _launchFollowUpsSendingAtStop.remove(promptId);
+            _returnedPromptIds.add(promptId);
+            failedAfterStop.add(followUp.submission);
+            continue;
+        }
+      }
       if (followUp case AcceptedLaunchFollowUp(:final submission, :final since)) {
         _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
       } else {
@@ -367,9 +391,26 @@ class SessionDetailCubit(
     }
     final released = _unsentLaunchFollowUps.isNotEmpty && unsent.isEmpty;
     _unsentLaunchFollowUps = unsent;
-    _emitQueueUpdate(switch (state) {
-      final SessionDetailLoaded current => current.copyWith(launchFollowUps: unsent),
-      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => state,
+    final current = state;
+    final stagedCommand = current is SessionDetailLoaded ? current.stagedCommand : null;
+    for (final submission in failedAfterStop) {
+      _sessionLaunchService.cancelFollowUp(promptId: submission.promptId);
+    }
+    final returning = [
+      for (final submission in failedAfterStop)
+        if (_unsentSubmission(submission: submission) case final prompt
+            when prompt.draft != null || prompt.attachments.isNotEmpty)
+          prompt,
+    ];
+    if (returning.isNotEmpty) _restoreToComposer(unsent: returning, stagedCommand: stagedCommand);
+    final commandRestored = returning.isNotEmpty && stagedCommand != null;
+    _emitQueueUpdate(switch (current) {
+      SessionDetailLoaded() => current.copyWith(
+        launchFollowUps: unsent,
+        stagedCommand: commandRestored ? null : current.stagedCommand,
+        composerRestorations: _composerRestorations,
+      ),
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => current,
     });
     if (released) _tryDrainQueue();
   }
@@ -3467,8 +3508,9 @@ class SessionDetailCubit(
 
   /// Stops the session with the given sub-agent scope.
   ///
-  /// Queue draining pauses for the request lifetime. Only exact non-mutating
-  /// rejection/refusal outcomes retain local queue and stale-option state;
+  /// Queue draining, the launch's follow-ups included, pauses for the request
+  /// lifetime. Only exact non-mutating rejection/refusal outcomes retain local
+  /// queue and stale-option state;
   /// accepted or ambiguous outcomes clear them and move every queued message
   /// not yet sent back into the composer, so a stop never loses typed words.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
@@ -3477,31 +3519,36 @@ class SessionDetailCubit(
       return const SessionAbortOutcome.failed();
     }
     _abortRequestInFlight = true;
+    // Like this screen's own queue, the launch's follow-ups wait for the stop.
+    _sessionLaunchService.holdFollowUps(sessionId: _sessionId);
     _feedbackPromptService.recordUserStop(sessionId: _sessionId);
     // The bridge drops its queue as the stop lands, and the queue event saying
     // so can outrun the response, so what it holds is taken now.
     final queuedAtStop = _unsentQueuedPrompts();
+    final bridgeListedAtStop = _bridgeListedPromptIds;
     try {
       await _sessionAbortService.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeDropped: true);
+      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeListedAtStop: bridgeListedAtStop, bridgeDropped: true);
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
     } on SessionAbortRejectedException catch (error) {
+      _sessionLaunchService.resumeFollowUps(sessionId: _sessionId);
       _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.rejected(rejection: error.rejection);
     } on SessionAbortNotAcceptedException catch (error) {
+      _sessionLaunchService.resumeFollowUps(sessionId: _sessionId);
       _feedbackPromptService.recordUserStopRefused(sessionId: _sessionId);
       return SessionAbortOutcome.notAccepted(refusal: error.refusal);
     } on SessionAbortDescendantFailureException catch (error) {
       // The session itself stopped; only a sub-agent did not.
-      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeDropped: true);
+      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeListedAtStop: bridgeListedAtStop, bridgeDropped: true);
       loge("Failed to abort session descendants", error.cause, error.causeStackTrace);
       return const SessionAbortOutcome.failed();
     } on Object catch (error, stackTrace) {
       // Response loss and partial bridge failures may follow a mutating stop.
       // The bridge may still hold its queue, whose events keep showing it; a
       // message both queued there and restored beats one lost.
-      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeDropped: false);
+      _returnQueuedToComposer(queuedAtStop: queuedAtStop, bridgeListedAtStop: bridgeListedAtStop, bridgeDropped: false);
       loge("Failed to abort session(s)", error, stackTrace);
       return const SessionAbortOutcome.failed();
     } finally {
@@ -3515,22 +3562,71 @@ class SessionDetailCubit(
   /// and those staged while it ran, minus any the transcript shows delivered.
   /// When [bridgeDropped], the bridge's listing of those messages goes too,
   /// rather than showing beside the composer until its queue event lands.
-  void _returnQueuedToComposer({required List<_UnsentPrompt> queuedAtStop, required bool bridgeDropped}) {
+  /// [bridgeListedAtStop] are the prompts the bridge listed as the stop began.
+  void _returnQueuedToComposer({
+    required List<_UnsentPrompt> queuedAtStop,
+    required Set<String> bridgeListedAtStop,
+    required bool bridgeDropped,
+  }) {
     final current = state;
     final delivered = <String>{
       if (current case SessionDetailLoaded(:final messages))
         for (final message in messages)
           if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
     };
-    final returned = <String>{};
-    final unsent = [
-      for (final prompt in [...queuedAtStop, ..._unsentQueuedPrompts()])
-        if (!delivered.contains(prompt.promptId) &&
-            !_returnedPromptIds.contains(prompt.promptId) &&
-            returned.add(prompt.promptId))
-          prompt,
+    final queuedNow = _unsentQueuedPrompts();
+    // The launch's follow-ups the bridge has not accepted are this screen's to
+    // return like its own staged sends, so none may send after the stop.
+    // One still sending stays, as the bridge may yet accept it, unless the
+    // bridge already listed it: its queue holds it then, and goes with the stop.
+    final (:withdrawn, :sendingPromptIds) = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
+    final bridgeListed = {...bridgeListedAtStop, ..._bridgeListedPromptIds};
+    final stillSending = {
+      for (final promptId in sendingPromptIds)
+        if (!bridgeListed.contains(promptId)) promptId,
+    };
+    _launchFollowUpsSendingAtStop.addAll(stillSending);
+    // Recorded as returned only once the list below is built, which skips
+    // what earlier returns took.
+    final returnedFollowUpIds = [
+      for (final followUp in _unsentLaunchFollowUps)
+        if (!stillSending.contains(followUp.submission.promptId)) followUp.submission.promptId,
+      for (final submission in withdrawn) submission.promptId,
     ];
-    _returnedPromptIds.addAll(returned);
+    // The launch forgets one returned while its send was pending, so a failure
+    // arriving later leaves no copy to show or retry when the session reopens.
+    for (final promptId in sendingPromptIds.difference(stillSending)) {
+      _sessionLaunchService.settleFollowUp(promptId: promptId);
+    }
+    _unsentLaunchFollowUps = [
+      for (final followUp in _unsentLaunchFollowUps)
+        if (stillSending.contains(followUp.submission.promptId)) followUp,
+    ];
+    final unsentById = <String, _UnsentPrompt>{};
+    for (final prompt in [
+      ...queuedAtStop,
+      ...queuedNow,
+      for (final submission in withdrawn) _unsentSubmission(submission: submission),
+    ]) {
+      final promptId = prompt.promptId;
+      if (delivered.contains(promptId) || stillSending.contains(promptId) || _returnedPromptIds.contains(promptId)) {
+        continue;
+      }
+      switch (unsentById[promptId]) {
+        case null:
+          unsentById[promptId] = prompt;
+        // The bridge lists a launch follow-up's images by count only; its
+        // submission holds them.
+        case final kept when kept.attachments.isEmpty && prompt.attachments.isNotEmpty:
+          unsentById[promptId] = (promptId: promptId, draft: kept.draft, attachments: prompt.attachments);
+        case _:
+          break;
+      }
+    }
+    final unsent = [...unsentById.values];
+    _returnedPromptIds
+      ..addAll(unsentById.keys)
+      ..addAll(returnedFollowUpIds);
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
     final restored = unsent.any((prompt) => prompt.draft != null || prompt.attachments.isNotEmpty);
@@ -3548,6 +3644,7 @@ class SessionDetailCubit(
       current.copyWith(
         // A stop ends the first message's send too.
         launchHandoff: null,
+        launchFollowUps: _unsentLaunchFollowUps,
         bridgeQueuedPrompts: bridgeDropped
             ? [
                 for (final prompt in current.bridgeQueuedPrompts)
@@ -3560,9 +3657,16 @@ class SessionDetailCubit(
     );
   }
 
+  /// The prompts the bridge's queue lists.
+  Set<String> get _bridgeListedPromptIds => switch (state) {
+    SessionDetailLoaded(:final bridgeQueuedPrompts) => {for (final prompt in bridgeQueuedPrompts) prompt.id},
+    SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => const {},
+  };
+
   /// What is queued and not yet in the transcript, oldest first: the prompts
-  /// the bridge holds, then this screen's sends it has not listed yet, the one
-  /// sending, the failed one and those still staged. A dispatched prompt counts
+  /// the bridge holds, then this screen's sends it has not listed yet, the
+  /// launch's follow-ups it has not accepted, the one sending, the failed one
+  /// and those still staged. A dispatched prompt counts
   /// too: until the harness echoes it, as Claude steering the stop interrupts
   /// before the CLI reads it, nothing says it will ever reach the transcript.
   List<_UnsentPrompt> _unsentQueuedPrompts() {
@@ -3582,33 +3686,42 @@ class SessionDetailCubit(
         ),
       for (final submission in [
         for (final entry in _promptQueue.awaitingBridge) entry.submission,
+        // Typed before the session existed, so ahead of all sent from here.
+        for (final followUp in _unsentLaunchFollowUps) followUp.submission,
         if (!_promptQueue.isActiveSettledElsewhere) ?_promptQueue.active,
         ?_promptQueue.failed?.submission,
         ..._promptQueue.items,
       ])
-        (
-          promptId: submission.promptId,
-          draft: _draftCalculator.submissionDraft(submission: submission),
-          attachments: submission.attachments,
-        ),
+        _unsentSubmission(submission: submission),
     ];
   }
+
+  static _UnsentPrompt _unsentSubmission({required QueuedSessionSubmission submission}) => (
+    promptId: submission.promptId,
+    draft: _draftCalculator.submissionDraft(submission: submission),
+    attachments: submission.attachments,
+  );
 
   /// Puts [unsent] into the composer ahead of what it holds, each after a
   /// blank line, but after what an earlier return put there, so all returned
   /// stays oldest first; their images go after its own and earlier returns'.
   /// A [stagedCommand] becomes its literal text, as the restored words would
-  /// otherwise be its arguments.
+  /// otherwise be its arguments, even when [unsent] brings only images.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
-    final held = switch (stagedCommand) {
-      null => _composerDraft,
-      CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
+    final restored = [for (final prompt in unsent) ?prompt.draft];
+    final restoration = switch (stagedCommand) {
+      null => _draftCalculator.restoreParagraphs(
+        held: _composerDraft,
+        restoredPrefix: _restoredDraftPrefix,
+        restored: restored,
+      ),
+      CommandInfo(:final name) => _draftCalculator.restoreParagraphsUnderCommand(
+        command: name,
+        args: _composerDraft,
+        restoredPrefix: _restoredDraftPrefix,
+        restored: restored,
+      ),
     };
-    final restoration = _draftCalculator.restoreParagraphs(
-      held: held,
-      restoredPrefix: _restoredDraftPrefix,
-      restored: [for (final prompt in unsent) ?prompt.draft],
-    );
     saveComposerDraft(draft: restoration.draft);
     _restoredDraftPrefix = restoration.restoredPrefix;
     // The composer stages these up to its budget and stops at the first that

@@ -31,6 +31,10 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
 
   final BehaviorSubject<List<SessionLaunch>> _launches = BehaviorSubject.seeded(const []);
 
+  /// Sessions whose launch follow-ups wait for a stop to be decided; see
+  /// [holdFollowUps].
+  final Set<String> _heldSessionIds = <String>{};
+
   /// How each launch's creation ended, published once per launch.
   Stream<SessionLaunchOutcome> get outcomes => _outcomes.stream;
 
@@ -49,10 +53,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     () => _changes.stream
         .where((launch) => _sessionOf(launch: launch)?.id == sessionId)
         .map((launch) => launch.followUps)
-        .startWith(
-          _storage.readAll().where((launch) => _sessionOf(launch: launch)?.id == sessionId).firstOrNull?.followUps ??
-              const [],
-        ),
+        .startWith(_launchFor(sessionId: sessionId)?.followUps ?? const []),
   );
 
   /// The follow-ups of [launchId] after every change, for the composing route
@@ -111,13 +112,14 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   }
 
   /// Marks the next follow-up of a created launch as sending and returns it
-  /// with its session. Null while the session does not exist yet, when
-  /// nothing is queued, or while the one ahead is still sending or failed.
+  /// with its session. Null while the session does not exist yet, while its
+  /// follow-ups are held, when nothing is queued, or while the one ahead is
+  /// still sending or failed.
   ({String sessionId, QueuedSessionSubmission submission})? beginFollowUp({required String launchId}) {
     final launch = _storage.read(launchId: launchId);
     if (launch == null) return null;
     final session = _sessionOf(launch: launch);
-    if (session == null) return null;
+    if (session == null || _heldSessionIds.contains(session.id)) return null;
     final index = launch.followUps.indexWhere((followUp) => followUp is! AcceptedLaunchFollowUp);
     if (index < 0) return null;
     if (launch.followUps[index] case QueuedLaunchFollowUp(:final submission, :final since)) {
@@ -210,6 +212,50 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
       return launch.launchId;
     }
     return null;
+  }
+
+  /// Keeps any further follow-up of the launch that created [sessionId] from
+  /// starting to send while a stop of that session is decided. One already
+  /// sending finishes. Ended by [resumeFollowUps] or [withdrawFollowUps].
+  void holdFollowUps({required String sessionId}) => _heldSessionIds.add(sessionId);
+
+  /// Ends the hold on [sessionId]'s follow-ups after a refused stop. Returns
+  /// the launch holding them, for delivery to go on, or null when none does.
+  String? resumeFollowUps({required String sessionId}) {
+    _heldSessionIds.remove(sessionId);
+    return _launchFor(sessionId: sessionId)?.launchId;
+  }
+
+  /// Ends the hold on [sessionId]'s follow-ups after a stop by removing every
+  /// one the bridge has not accepted and that is not still sending, so none
+  /// sends afterwards, and returns them oldest first. One still sending stays,
+  /// as the bridge may yet accept it; its promptId comes back in
+  /// `sendingPromptIds` so the caller can follow how its send ends.
+  ({List<QueuedSessionSubmission> withdrawn, Set<String> sendingPromptIds}) withdrawFollowUps({
+    required String sessionId,
+  }) {
+    _heldSessionIds.remove(sessionId);
+    final launch = _launchFor(sessionId: sessionId);
+    if (launch == null) return (withdrawn: const [], sendingPromptIds: const {});
+    final withdrawn = [
+      for (final followUp in launch.followUps)
+        if (followUp is QueuedLaunchFollowUp || followUp is FailedLaunchFollowUp) followUp.submission,
+    ];
+    final sendingPromptIds = {
+      for (final followUp in launch.followUps)
+        if (followUp is SendingLaunchFollowUp) followUp.submission.promptId,
+    };
+    if (withdrawn.isNotEmpty) {
+      _put(
+        launch: launch.copyWith(
+          followUps: [
+            for (final followUp in launch.followUps)
+              if (followUp is AcceptedLaunchFollowUp || followUp is SendingLaunchFollowUp) followUp,
+          ],
+        ),
+      );
+    }
+    return (withdrawn: withdrawn, sendingPromptIds: sendingPromptIds);
   }
 
   /// Records the session the bridge created. A launch whose payload was
@@ -367,6 +413,9 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     CreatedSessionLaunch(:final session) || ReconcilingSessionLaunch(:final session) => session,
     PendingSessionLaunch() || ReleasedPendingSessionLaunch() => null,
   };
+
+  SessionLaunch? _launchFor({required String sessionId}) =>
+      _storage.readAll().where((launch) => _sessionOf(launch: launch)?.id == sessionId).firstOrNull;
 
   static int _indexOf({required SessionLaunch launch, required String promptId}) =>
       launch.followUps.indexWhere((followUp) => followUp.submission.promptId == promptId);
