@@ -210,9 +210,10 @@ reaches the backend so the turn continues.
   Review button opens the existing modal. Phone and desktop share one look: light
   uses a cream warning fill and dark a faint amber tint, each with a soft amber
   border, an amber icon and a darker amber label that clears 4.5:1, over primary
-  text. Only the first card's button is solid (black in light, white in dark);
-  a second card's is the quieter secondary button, and stacked buttons share a
-  left edge.
+  text. On the phone every card's button is bright: the white secondary button
+  in light, the white solid one in dark. On desktop only the first card's button
+  is solid (black in light, white in dark) and a second card's is the quieter
+  secondary button. Stacked buttons share a left edge.
   A card grows in above the composer and folds away when answered, holding the
   newest row's gap to the composer on every frame; reduced motion shows it at
   once. Read-only, archived and blocked sessions show no card.

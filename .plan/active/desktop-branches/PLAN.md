@@ -114,6 +114,8 @@ These refine steps 3 and 4.
 - **Decision 10, the needs-you card rules.** Desktop's rules on both, including the button looks: the first card's
   action is the solid primary, the others are secondary. Before step 3 merges, check that the secondary button is
   legible on the amber tint on the phone in dark mode. If it is unreadable, fix it for both apps and show the owner.
+  After step 3 the owner chose C, "The before is better": the phone keeps its old buttons (light: both secondary;
+  dark: both white), desktop keeps this rule; the rest of decision 10 stays on both.
 - **Decision 2, reading confirmed.** Only shell commands are underlined and paths stay plain, on both. The needs-you
   request line is normal text on both.
 

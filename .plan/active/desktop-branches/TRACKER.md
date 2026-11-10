@@ -6,7 +6,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | --- | --- | --- | --- |
 | 1 Raise the plan | Merged | #2463 | |
 | 2 Fold the subtle desktop differences | Merged | #2475 | 10 items folded (2.11 only its radius), 2.15 done by #2460; 2.6, 2.13 and 2.11's fill and wrap dropped (below). 2.10 and 2.14, also dropped, were decided in round 3 and folded in step 4. 2.1 folded to the phone's values, not the pointer's. |
-| 3 Fold the transcript and needs-you card looks | Merged | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped. |
+| 3 Fold the transcript and needs-you card looks | Merged | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped; the phone's buttons later went back to before by owner choice C (#PRNUM). |
 | 4 Fold the settings, alert, diff and picker looks | PR open | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
 | 5 Flag new interaction-mode reads | Pending | | Waits for steps 3 and 4. Record whether `unnecessary_ignore` reports stale plugin ignores. |
 | 6 Reconcile regression docs | Pending | | |
@@ -17,6 +17,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | Work | State | Notes |
 | --- | --- | --- |
 | #2460 Drop dead and no-op desktop checks | Merged | Precursor. It included the phone "Waiting" amber (`smallWarningText`), so item 2.15 is done. |
+| #PRNUM Keep both needs-you buttons bright on the phone | PR open | Owner choice C on decision 10's buttons: the phone's go back as before step 3, desktop's stay. Adds 1 read (step 3 measurements). |
 | `desktop-text-size` | Local branch, no PR | Shares `prego_anchor_menu.dart` with step 4 (another hunk). |
 
 ## Step 2 measurements
@@ -89,12 +90,14 @@ Folded, before → after:
 | 10 card padding and icon | phone: 12 all round, icon 18 | 12/8/8/8, icon 16 | phone |
 | 10 card label | phone light `#B54708` (5.20:1) | `#854B00` (6.70:1); dark `#FDB022` 8.63 → 9.08:1 | phone |
 | 10 card fill and border | phone light border `#F4CEA5`; dark fill `#2B2013`, border `#684210` | light border `#F7D7B3`; dark fill `#241D13`, border `#573811` | phone |
-| 10 card actions | phone: light secondary on both cards, dark white on both | the first card's solid (light `#18191B`, white text 17.59:1; dark white), a second card's secondary (light white, `#474747` 9.29:1; dark `#2C2C2C`, `#AEAEAE` 6.29:1, fill on card 1.20:1) | phone |
+| 10 card actions | phone: light secondary on both cards, dark white on both | the first card's solid (light `#18191B`, white text 17.59:1; dark white), a second card's secondary (light white, `#474747` 9.29:1; dark `#2C2C2C`, `#AEAEAE` 6.29:1, fill on card 1.20:1). Reverted on the phone by owner choice C ("The before is better"), in #PRNUM; desktop keeps it | phone, until #PRNUM |
 | 10 action minimum width | 0 | 72 (buttons are 112 wide, so nothing moves) | neither |
 
 Dropped: none. The dark secondary button was measured on the phone simulator's screenshot
-(`#AEAEAE` on `#2C2C2C`, 6.29:1) and is legible, so decision 10 shipped whole. Whether it reads as
-disabled is an open owner question.
+(`#AEAEAE` on `#2C2C2C`, 6.29:1) and is legible, so decision 10 shipped whole. The owner then chose C,
+"The before is better": #PRNUM puts the phone's buttons back as they were (light: both secondary; dark:
+both white) and keeps desktop's first-card-solid rule, with one interaction-mode read. The rest of
+decision 10 stays.
 
 ## Read counts
 
@@ -106,6 +109,7 @@ disabled is an open owner question.
 | After step 3 | 82 | 38 |
 | After step 4 (planned) | about 71 | about 35 |
 | After step 4 | 74 | 36 |
+| After #PRNUM (phone needs-you buttons) | 75 | 37 |
 
 Every row is counted with this command from `client/`, on the commit named or the step's merge:
 
@@ -125,3 +129,5 @@ caret sizes, which wait for the metrics phase.
 Step 4 removed 8 reads: 3 in the computer entry, 1 in the diff "M", 3 in the harness cards and 1 in the session
 row's waiting dot. The alert, picker and menu folds remove none: the alert keeps its pointer check for the fade
 without Reduce Motion (2.10) and for step 2's dropped fill and wrap, and the picker keeps its padding read.
+
+#PRNUM adds 1 read back, in the needs-you card: it picks the button's look (owner choice C on decision 10).
