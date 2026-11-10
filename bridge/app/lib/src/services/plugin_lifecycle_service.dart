@@ -1154,6 +1154,7 @@ class PluginLifecycleService({
               actionHint: _metadataActionHint(snapshot: snapshot, state: state),
               failureBlock: failureBlock,
               supportsPromptAttachments: plugin.supportsPromptAttachments,
+              mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
             );
           }(),
     };

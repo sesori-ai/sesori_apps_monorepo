@@ -34,6 +34,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
     final bridge = FakeRelayBridge(
       answer: (request) => switch (request.path) {

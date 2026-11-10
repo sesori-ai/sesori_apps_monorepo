@@ -166,31 +166,32 @@ class const _MobileSessionDetailBody({
         pageChrome: null,
         // Audit views retain read-only inventory without session mutations.
         menuEntriesBuilder: ({required context, required session, required isBusy}) => [
-          PregoMenuItem(
-            leadingIcon: TablerRegular.plug,
-            title: context.loc.mcpMenuLabel,
-            subtitle: null,
-            isSelected: false,
-            shortcutLabel: null,
-            onTap: () async {
-              final state = context.read<SessionDetailCubit>().state;
-              await showMcpInventory(
-                context: context,
-                request: McpInventoryRequest(
-                  pluginId: session.pluginId,
-                  scope: McpSessionScope(sessionId: session.id),
-                ),
-                createService: getIt.call<McpService>,
-                authenticationService: getIt.call<McpAuthenticationService>,
-                mutationsAllowed:
-                    !readOnly &&
-                    !auditView &&
-                    session.parentID == null &&
-                    session.time?.archived == null &&
-                    !(state is SessionDetailLoaded && state.isArchived),
-              );
-            },
-          ),
+          if (context.read<SessionDetailCubit>().state.offersMcp)
+            PregoMenuItem(
+              leadingIcon: TablerRegular.plug,
+              title: context.loc.mcpMenuLabel,
+              subtitle: null,
+              isSelected: false,
+              shortcutLabel: null,
+              onTap: () async {
+                final state = context.read<SessionDetailCubit>().state;
+                await showMcpInventory(
+                  context: context,
+                  request: McpInventoryRequest(
+                    pluginId: session.pluginId,
+                    scope: McpSessionScope(sessionId: session.id),
+                  ),
+                  createService: getIt.call<McpService>,
+                  authenticationService: getIt.call<McpAuthenticationService>,
+                  mutationsAllowed:
+                      !readOnly &&
+                      !auditView &&
+                      session.parentID == null &&
+                      session.time?.archived == null &&
+                      !(state is SessionDetailLoaded && state.isArchived),
+                );
+              },
+            ),
           if (!auditView && session.parentID == null)
             ..._sessionActions.sessionMenuEntries(
               context: context,

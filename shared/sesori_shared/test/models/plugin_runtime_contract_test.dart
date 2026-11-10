@@ -13,6 +13,7 @@ void main() {
           state: PluginLifecycleState.degraded,
           actionHint: "Check the bridge console if this plugin needs attention.",
           failureBlock: null,
+          mcpScopes: null,
           supportsPromptAttachments: true,
         ),
         PluginMetadata(
@@ -22,6 +23,7 @@ void main() {
           state: PluginLifecycleState.ready,
           actionHint: null,
           failureBlock: null,
+          mcpScopes: null,
         ),
       ],
     );
@@ -40,6 +42,35 @@ void main() {
     });
 
     expect(metadata.supportsPromptAttachments, isFalse);
+  });
+
+  test("plugin metadata decodes omitted MCP scopes as unreported and round-trips declared ones", () {
+    final legacy = PluginMetadata.fromJson(const {
+      "id": "legacy",
+      "displayName": "Legacy",
+      "isDefault": true,
+      "state": "ready",
+    });
+    const declared = PluginMetadata(
+      id: "codex",
+      displayName: "Codex",
+      isDefault: false,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+      failureBlock: null,
+      mcpScopes: {McpScopeKind.harness, McpScopeKind.session},
+    );
+    final future = PluginMetadata.fromJson(const {
+      "id": "future",
+      "displayName": "Future",
+      "isDefault": false,
+      "state": "ready",
+      "mcpScopes": ["session", "workspace"],
+    });
+
+    expect(legacy.mcpScopes, isNull);
+    expect(PluginMetadata.fromJson(declared.toJson()), declared);
+    expect(future.mcpScopes, {McpScopeKind.session, McpScopeKind.unknown});
   });
 
   test("plugin discovery omits a null bridge ID and decodes a missing one as null", () {
@@ -107,6 +138,7 @@ void main() {
       state: PluginLifecycleState.unavailable,
       actionHint: "Check the gateway's credentials, then check setup.",
       failureBlock: PluginFailureBlock.unavailable,
+      mcpScopes: null,
     );
     const ready = PluginMetadata(
       id: "opencode",
@@ -115,6 +147,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
 
     expect(blocked.toJson()["failureBlock"], "unavailable");

@@ -23,6 +23,15 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
   ),
   supportsPromptAttachments:
       json['supportsPromptAttachments'] as bool? ?? false,
+  mcpScopes: (json['mcpScopes'] as List<dynamic>?)
+      ?.map(
+        (e) => $enumDecode(
+          _$McpScopeKindEnumMap,
+          e,
+          unknownValue: McpScopeKind.unknown,
+        ),
+      )
+      .toSet(),
 );
 
 Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
@@ -34,6 +43,9 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'actionHint': ?instance.actionHint,
       'failureBlock': ?_$PluginFailureBlockEnumMap[instance.failureBlock],
       'supportsPromptAttachments': instance.supportsPromptAttachments,
+      'mcpScopes': ?instance.mcpScopes
+          ?.map((e) => _$McpScopeKindEnumMap[e]!)
+          .toList(),
     };
 
 const _$PluginLifecycleStateEnumMap = {
@@ -47,6 +59,13 @@ const _$PluginFailureBlockEnumMap = {
   PluginFailureBlock.authenticationRequired: 'authenticationRequired',
   PluginFailureBlock.unavailable: 'unavailable',
   PluginFailureBlock.unknown: 'unknown',
+};
+
+const _$McpScopeKindEnumMap = {
+  McpScopeKind.harness: 'harness',
+  McpScopeKind.project: 'project',
+  McpScopeKind.session: 'session',
+  McpScopeKind.unknown: 'unknown',
 };
 
 _PluginListResponse _$PluginListResponseFromJson(Map json) =>

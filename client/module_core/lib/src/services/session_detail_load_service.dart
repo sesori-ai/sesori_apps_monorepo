@@ -183,9 +183,7 @@ class SessionDetailLoadService({
         requireComplete: requireCompleteOptions && !isArchived,
         mode: isArchived ? SessionOptionsRequestMode.cacheOnly : optionsMode,
       );
-      final promptCapabilitiesFuture = isArchived
-          ? Future.value(_unresolvedPromptCapabilities)
-          : _loadPromptCapabilities(pluginId: pluginId);
+      final pluginCapabilitiesFuture = _loadPluginCapabilities(pluginId: pluginId, isArchived: isArchived);
       // Stage 4 child discovery persists legacy bindings. Pending input must
       // observe those bindings rather than race the compatibility backfill.
       final childrenResponse = await childrenFuture;
@@ -206,9 +204,9 @@ class SessionDetailLoadService({
         statusesFuture,
         queuedPromptsFuture,
       ).wait;
-      final (optionsResult, promptCapabilities) = await (
+      final (optionsResult, pluginCapabilities) = await (
         optionsFuture,
-        promptCapabilitiesFuture,
+        pluginCapabilitiesFuture,
       ).wait;
       final options = switch (optionsResult) {
         _SessionDetailOptionsAvailable(:final options) => options,
@@ -256,8 +254,9 @@ class SessionDetailLoadService({
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           pluginId: pluginId,
-          supportsPromptAttachments: promptCapabilities.supportsPromptAttachments,
-          supportsFileUploads: promptCapabilities.supportsFileUploads,
+          supportsPromptAttachments: pluginCapabilities.supportsPromptAttachments,
+          supportsFileUploads: pluginCapabilities.supportsFileUploads,
+          offersSessionMcp: pluginCapabilities.offersSessionMcp,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
           userMessagesBefore: messagesPage.userMessagesBefore,
@@ -407,31 +406,41 @@ class SessionDetailLoadService({
     }
   }
 
-  static const _PromptCapabilities _unresolvedPromptCapabilities = (
+  static const _PluginCapabilities _unresolvedPluginCapabilities = (
     supportsPromptAttachments: null,
     supportsFileUploads: null,
+    offersSessionMcp: true,
   );
 
-  /// Reads both prompt capabilities from one plugin listing.
-  Future<_PromptCapabilities> _loadPromptCapabilities({required String? pluginId}) async {
-    if (pluginId == null) return _unresolvedPromptCapabilities;
+  /// Reads the prompt and MCP capabilities from one plugin listing. An
+  /// archived session cannot prompt, so its prompt capabilities stay
+  /// unresolved.
+  Future<_PluginCapabilities> _loadPluginCapabilities({required String? pluginId, required bool isArchived}) async {
+    if (pluginId == null) return _unresolvedPluginCapabilities;
 
     try {
       switch (await _pluginRepository.listPlugins()) {
         case SuccessResponse(:final data):
+          final plugin = data.plugins.firstWhereOrNull((plugin) => plugin.id == pluginId);
           return (
-            supportsPromptAttachments: data.plugins
-                .firstWhereOrNull((plugin) => plugin.id == pluginId)
-                ?.supportsPromptAttachments,
-            supportsFileUploads: data.supportsFileUploads,
+            supportsPromptAttachments: isArchived ? null : plugin?.supportsPromptAttachments,
+            supportsFileUploads: isArchived ? null : data.supportsFileUploads,
+            offersSessionMcp: switch (plugin?.mcpScopes) {
+              final scopes? => scopes.contains(McpScopeKind.session),
+              // COMPATIBILITY 2026-11-09 (v1.12.0): an older bridge reports no
+              // scopes, so keep the entry it has always had. A harness missing
+              // from the listing is unknown as well. Remove the compatibility
+              // part with the nullable field.
+              null => true,
+            },
           );
         case ErrorResponse(:final error):
-          logw("Failed to load prompt capabilities for plugin $pluginId", error);
-          return _unresolvedPromptCapabilities;
+          logw("Failed to load plugin capabilities for plugin $pluginId", error);
+          return _unresolvedPluginCapabilities;
       }
     } on Object catch (error, stackTrace) {
-      logw("Failed to load prompt capabilities for plugin $pluginId", error, stackTrace);
-      return _unresolvedPromptCapabilities;
+      logw("Failed to load plugin capabilities for plugin $pluginId", error, stackTrace);
+      return _unresolvedPluginCapabilities;
     }
   }
 }
@@ -449,6 +458,11 @@ class const SessionDetailSnapshot({
   /// images, or `null` when the session is archived or has no plugin id, or
   /// its plugin listing could not be read.
   required final bool? supportsFileUploads,
+
+  /// Whether the session menu offers MCP. False only when the bridge reports
+  /// that the session's harness answers no MCP for a session, so the entry
+  /// would open a dead end; true whenever that is unknown.
+  required final bool offersSessionMcp,
   required final List<MessageWithParts> messages,
 
   /// Cursor for the page before [messages], or null when the transcript is
@@ -496,7 +510,7 @@ class const SessionDetailSnapshot({
 /// user messages precede it, when the bridge counts them.
 typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBefore});
 
-typedef _PromptCapabilities = ({bool? supportsPromptAttachments, bool? supportsFileUploads});
+typedef _PluginCapabilities = ({bool? supportsPromptAttachments, bool? supportsFileUploads, bool offersSessionMcp});
 
 typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,

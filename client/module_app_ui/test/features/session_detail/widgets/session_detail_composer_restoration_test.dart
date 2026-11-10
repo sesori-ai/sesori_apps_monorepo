@@ -47,6 +47,7 @@ void main() {
       pluginId: "claude",
       supportsPromptAttachments: true,
       supportsFileUploads: false,
+      offersSessionMcp: true,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
