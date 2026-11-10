@@ -10,7 +10,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 4 Fold the settings, alert, diff and picker looks | Merged | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
 | 5 Flag new interaction-mode reads | Merged | #2485 (`eb71881bf4`) | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
 | 6 Reconcile regression docs | Merged | #2488 (`d2b38bec4e`) | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. No findings after the merge: Codex reviewed the merged head clean, and cubic added nothing. |
-| 7 Run the verification matrix and retire the plan | Blocked | | Matrix run on `main` `d2b38bec4e` (below): every cell passed except Desktop screens, which is Partial because the running macOS app was not launched. The plan stays active until the owner answers the two questions under "With the owner" (below); then it moves to `.plan/completed/`. |
+| 7 Run the verification matrix and retire the plan | Merged | #2489 (`1cb3d6d877`), #2490 | Matrix run on `main` `d2b38bec4e` (below): every cell passed except Desktop screens, which is Partial because the running macOS app was not launched. The owner answered both questions on 2026-11-09 (round 4 in `PLAN.md`): the "Harnesses" title takes decision 7, and the plan retires now with the six desktop items owed to the owner's own check. #2490 made both changes and moved the plan to `.plan/completed/`. |
 
 ## Outside the series
 
@@ -232,27 +232,43 @@ desktop. It counts as neither pass nor fail.
 The waiting-dot amber in light mode is undecided. The options are `#D98200` (desktop's colour before step 4) and the
 shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). Dark stays `#F79009` either way. Nothing here changes it.
 
-### Found for the owner
+### Found for the owner, now decided
 
-The New Session harness menu's "Harnesses" header is in sentence case on both apps (`_HarnessesMenuHeader` in
+The New Session harness menu's "Harnesses" header was in sentence case on both apps (`_HarnessesMenuHeader` in
 `new_session_plugin_chooser.dart`). Decision 7 put menu and picker section headings in spaced capitals on both. This
 header is a title row with a settings action, not a `PregoMenuLabel`. It has no mode read, and the series did not
-touch it, so it is not a regression. Whether it follows decision 7 is a design choice the owner has not made yet.
+touch it, so it was not a regression. The owner chose spaced capitals for it (round 4); #2490 did it.
 
-### With the owner
+### The owner's answers (2026-11-09)
 
-Two questions are on the owner's review page:
+Both questions from the review page are answered and written in `PLAN.md` (round 4, and the acceptance under
+"Verification and retirement"):
 
-- whether to retire the plan now and check the six owed items below while trying the build, or keep it open until
-  they are checked;
-- whether the "Harnesses" header above takes decision 7's spaced capitals.
+- retire the plan now; the owner checks the six owed items below while trying the build;
+- the "Harnesses" header takes decision 7's spaced capitals.
 
-Step 7 stays Blocked until the owner answers. Then a small follow-up writes the answer into `PLAN.md` and moves the
-plan to `.plan/completed/`.
+### #2490: the "Harnesses" title, checked after the matrix
+
+#2490 changed shared code after the matrix ran, so its own checks ran on its branch from `main` `1cb3d6d877`:
+
+| Cell | Result | What ran |
+| --- | --- | --- |
+| Owning tests | Pass | `flutter test` in `client/module_prego` (432), `client/module_app_ui` (1740, with the new title test failing first), `client/app` (867) and `client/desktop` (451) |
+| Analyzer | Pass | `dart analyze --fatal-infos client` from the repository root: no issues. No read added or removed, so the counts above stand |
+| Phone screens | Pass | headless `sesori-dev-2` (iPhone 17), bridge from source on slot 2: the harness menu opened from the pill shows "HARNESSES" in spaced capitals with the settings button beside it, in light and dark |
+| Desktop screens | Widget test only | the new title test runs under both modes. The running app's harness menu, title included, is owed item 5 below |
+
+The menu and picker headings now share one style, `PregoMenuLabel.textStyle`; the picker's `_Heading` used to repeat
+its values.
+
+### Open after retirement
+
+- The waiting-dot amber decision above stays with the owner.
+- The six items below are owed to the owner's own check, as the owner accepted on 2026-11-09.
 
 ### Owed: desktop items that need the running app
 
-These are not marked passed:
+These are not marked passed; the owner checks them while trying the build:
 
 - the computer card's hover and press fill, which take the card's shape, and menu hover;
 - the alert fade end to end with macOS Reduce Motion on and off (widget tests cover both);

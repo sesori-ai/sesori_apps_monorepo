@@ -24,7 +24,13 @@ import "anchored_spotlight_backdrop.dart";
 sealed class const PregoMenuEntry();
 
 /// A non-interactive section header, in spaced capitals on every path.
-class const PregoMenuLabel({required final String text}) extends PregoMenuEntry;
+class const PregoMenuLabel({required final String text}) extends PregoMenuEntry {
+  /// The look of every menu and picker section heading. A heading built
+  /// outside a label, such as a menu title with an action beside it, takes this
+  /// style and uppercases its text.
+  static TextStyle textStyle(PregoDesignSystem prego) =>
+      prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
+}
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
 /// leading glyph or widget, and an optional [trailing] mark or selected check.
@@ -327,7 +333,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         // GlassMenuLabel uppercases the title itself; we only supply the style.
         return GlassMenuLabel(
           title: text,
-          style: _labelStyle(prego),
+          style: PregoMenuLabel.textStyle(prego),
           height: _glassLabelHeight(context),
         );
       case PregoMenuItem(
@@ -510,7 +516,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
               ? const EdgeInsetsDirectional.fromSTEB(_compactRowInset, 6, _compactRowInset, 2)
               : const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
           // Uppercased to match GlassMenuLabel on the glass path.
-          child: Text(text.toUpperCase(), style: _labelStyle(prego)),
+          child: Text(text.toUpperCase(), style: PregoMenuLabel.textStyle(prego)),
         );
       case PregoMenuItem(
         :final key,
@@ -746,7 +752,8 @@ double _glassItemHeight(BuildContext context, {required bool hasSubtitle}) {
 /// Height of a [PregoMenuLabel]'s glass row. [GlassMenuLabel] pins its box to
 /// the declared height, so it must clear the label's line box — at a large text
 /// scale that outgrows the 30px the package would otherwise assume.
-double _glassLabelHeight(BuildContext context) => math.max(30, _lineHeight(context, style: _labelStyle(context.prego)));
+double _glassLabelHeight(BuildContext context) =>
+    math.max(30, _lineHeight(context, style: PregoMenuLabel.textStyle(context.prego)));
 
 /// Height of a [PregoMenuDivider]'s glass row — [GlassMenuDivider]'s own
 /// default, named so the height budget can account for it.
@@ -782,9 +789,6 @@ double _lineHeight(BuildContext context, {required TextStyle style}) {
 }
 
 // ── Shared entry styling, cont. ──────────────────────────────────────────────
-
-TextStyle _labelStyle(PregoDesignSystem prego) =>
-    prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
 TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive, required bool isWarning}) =>
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics

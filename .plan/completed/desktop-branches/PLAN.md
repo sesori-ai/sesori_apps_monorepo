@@ -2,6 +2,11 @@
 
 Slug: `desktop-branches`. PR titles: `<emoji> [desktop-branches] <description> [step x/7]`.
 
+Status: completed 2026-11-09. Step 7 ran the matrix (#2489). #2490 recorded the owner's round 4 answers and retired
+the plan with the owner's [acceptance of the reduced matrix](#owners-acceptance-of-the-reduced-matrix-2026-11-09).
+Two items stay open after retirement: the waiting-dot amber, and six desktop items owed to the owner's own check.
+Later phases start their own plans from the bullets at the end.
+
 ## Goal, evidence and scope
 
 Shared client code (`client/module_app_ui`, `client/module_prego`) asks "is this desktop?" in about 100 places.
@@ -98,7 +103,7 @@ Final. Where the owner reverses the audit's suggestion, the plan follows the own
 | 4 | Computer entry at the top of Settings. Desktop puts it in a card. | Card on both. | Same | 4 |
 | 5 | Popup alert accent. Touch shows a glow in the variant colour behind the card. | Icon only on both. | Same | 4 |
 | 6 | Diff list "M" letter. Desktop is grey; touch is amber. | Grey on both. | Same | 4 |
-| 7 | Menu and picker section headings. Desktop uses sentence case. | Spaced capitals (uppercase, 0.8 tracking) on both. Sentence case reverted. | Pick one, no side. **Owner picks the phone's.** | 4 |
+| 7 | Menu and picker section headings. Desktop uses sentence case. | Spaced capitals (uppercase, 0.8 tracking) on both. Sentence case reverted. Amended: the New Session harness menu's "Harnesses" title takes it too (round 4 below). | Pick one, no side. **Owner picks the phone's.** | 4; the title in #2490 |
 | 8 | Inline code in chat. Desktop has no background. | Background (`alphaBlack10`) on both. | Pick one | 3 |
 | 9 | Desktop harness overview cards (`bgSurface3`). | `bgSurface2` on both, matching harness detail and MCP. | Same | 4 |
 | 10 | Needs-you card rules. | Desktop's rules on both: only the first card's action is primary, 72 pt minimum action width, the darker readable amber label, desktop's alphas, padding and icon size. Amended: the phone keeps its own button looks (choice C, round 2 below). | Same | 3 |
@@ -128,6 +133,20 @@ Two items step 2 dropped as the owner's call, now decided and folded in step 4.
   the pointer check stays for that path.
 - **Item 2.14, the waiting dot.** The phone's amber (`fgWarningPrimary`) on every waiting dot on both: the session
   row's, and on desktop the page title's and the hidden sidebar toggle's, so desktop never shows two ambers.
+
+### Owner decisions, round 4 (2026-11-09)
+
+The two questions step 7 left with the owner, answered on the review page.
+
+- **Decision 7 amended: the "Harnesses" menu title.** The New Session harness menu opens with a title row, "Harnesses"
+  and a settings button (`_HarnessesMenuHeader` in `new_session_plugin_chooser.dart`). It is not a `PregoMenuLabel`,
+  so step 4 left it in sentence case. The owner chose spaced capitals on both apps, with the same size, colour and
+  spacing as the model picker's "RECENT". The row's layout and its settings button stay. #2490 gives it
+  `PregoMenuLabel.textStyle`, the one style every menu and picker section heading now shares, and uppercases its
+  text at render as the other headings do; the localized string stays "Harnesses". No other menu or picker has a
+  title row with an action beside it.
+- **Retire now.** The owner chose "Retire now, I check these when I try the build". The acceptance is written under
+  [Verification and retirement](#owners-acceptance-of-the-reduced-matrix-2026-11-09).
 
 ### How this plan reads the decisions
 
@@ -359,6 +378,10 @@ Fix contradictions between them. Remove "desktop only" or "phone only" claims ph
 Run the matrix below on `main` after step 6, and record the result in the tracker. Then move this plan to
 `.plan/completed/desktop-branches/`. Later phases start their own plans from the bullets at the end.
 
+Done: #2489 ran the matrix on `main`. Desktop screens was Partial, so the plan waited for the owner. #2490 wrote the
+owner's round 4 answers (the "Harnesses" title, and the acceptance below), then moved the plan to
+`.plan/completed/`.
+
 ## Complexity budget
 
 - New persistent state: none.
@@ -400,6 +423,25 @@ service matrix: the change is client presentation only.
 
 The final step re-runs the L2 entries of the docs listed in step 6 on the phone cell, plus the desktop items steps 2–4
 listed, on `main`. Any reduction to this matrix needs the owner's acceptance written here before retirement.
+
+### Owner's acceptance of the reduced matrix (2026-11-09)
+
+Step 7 ran the matrix on `main` `d2b38bec4e` (tracker, "Step 7 verification"). Every cell passed except Desktop
+screens, which is Partial: no agent launched the running macOS app. On 2026-11-09 the owner accepted that reduction
+and chose to retire the plan now: "Retire now, I check these when I try the build". The owner looks at these six
+items, listed in the tracker's "Owed" section, when trying the build. Anything off comes back as a normal fix:
+
+1. the computer card's hover and press fill, which take the card's shape, and menu hover;
+2. the alert fade end to end with macOS Reduce Motion on and off (widget tests cover both);
+3. the waiting dot in the real shell's page title and hidden-sidebar toggle (widget tests cover its colour);
+4. the desktop text-size setting at non-default sizes on the folded rows, headings and cards;
+5. where the harness menu and other anchored menus land in a real window;
+6. step 2's presence and disclosure motion seen live.
+
+Open after retirement:
+- The waiting-dot amber in light mode is still with the owner: `#D98200` (desktop's colour before step 4) or the
+  shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). Dark stays `#F79009` either way.
+- The six items above are owed to the owner's own check.
 
 ### Evidence and accepted risk
 
