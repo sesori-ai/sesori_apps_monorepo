@@ -167,8 +167,9 @@ variant, and worktree mode, and creating the session with its first input.
   current plugin defaults. A failed creation never replaces the remembered
   selection. Preference read/write failures stay observable locally but never hide
   usable options or turn an already-created session into a retryable failure.
-- The New Session harness pill shows the picked harness's mark and name over a
-  down chevron on phone and desktop, and opens its harness menu below the pill.
+- The New Session harness pill shows the picked harness's mark, its name and a
+  down chevron in one row on phone and desktop, and opens its harness menu
+  beside the pill, above or below it, toward the side with more room.
 - A harness the user picks on the New Session screen carries over when the
   project changes before the session is created, on the same bridge and while
   that harness stays routable; otherwise the saved or default harness applies.

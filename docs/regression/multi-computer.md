@@ -31,9 +31,9 @@ area documents linked below own the detail.
   whether the target was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
 - **Computer menu.** The phone home's computer button, whose label and status dot name the target computer and
-  its state, and the desktop sidebar footer's row, which names it and ends in a chevron, open an anchored menu
-  listing every computer of the account, most recently seen first (from the button, the current one first),
-  with platform icon, name, online or last-seen state, and a check on the current one
+  its state, and the desktop sidebar footer's row, which names it and ends in an up-and-down picker glyph, open an
+  anchored menu listing every computer of the account, most recently seen first (from the button, the current one
+  first), with platform icon, name, online or last-seen state, and a check on the current one
   ([projects and sessions](projects-and-sessions.md)). A small dot centred on the state's line leads its grey words:
   green for "Online", and red for "Offline" or "Offline · last seen …", in the computer button's dot colours, in
   both themes. The dot is silent for screen readers, which read only the words. The Computers
@@ -73,9 +73,9 @@ area documents linked below own the detail.
   "No other computers online"; an account with one computer shows no card. The start command and help keep their
   place below ([projects and sessions](projects-and-sessions.md),
   [account and onboarding](account-and-onboarding.md)).
-- **Settings.** The Bridge section opens with the current computer's entry, a card of its own under the "Bridge" caption
-  on both apps, which opens the same menu. It appears only once the account's list names the current computer, with
-  no empty card while that list loads; the rows
+- **Settings.** The Bridge section opens with the current computer's entry, a card of its own on both apps that
+  opens the same menu. It sits under the "Bridge" caption on the phone and "Connected bridge" on desktop. It appears
+  only once the account's list names the current computer, with no empty card while that list loads; the rows
   below it apply to that computer only. The desktop Bridge tab shows the same entry and closes Settings before it
   switches ([account and onboarding](account-and-onboarding.md)).
 - **Desktop.** The sidebar footer's row names the computer on every page and opens the same menu above this

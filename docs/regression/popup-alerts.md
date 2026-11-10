@@ -24,8 +24,10 @@ and render above the current route, below the top navigation bar.
   button is tapped, and on an upward swipe that follows the finger and completes
   on release.
 - Alerts enter from just above their resting position with a fade and subtle
-  scale over 220 ms, and fade upward over 160 ms when dismissed. Closing during
-  entrance continues from the current position without a jump.
+  scale over 220 ms, and fade upward over 160 ms when dismissed. On desktop,
+  unless reduced motion is on, the card turns solid within its first 40 ms
+  ([desktop shell](desktop-cockpit-shell.md)).
+  Closing during entrance continues from the current position without a jump.
 - Android Remove animations and iOS Reduce Motion use fade-only entry and exit,
   the same fade on phone and desktop (0.9 opaque at about 80 ms), including when
   the preference changes while an alert is visible. User-driven
