@@ -24,7 +24,9 @@ class DiffFileHeaderDelegate({
 }) extends SliverPersistentHeaderDelegate {
   /// 6px padding top and bottom, an 18px code line and a 0.5px border make
   /// 30.5px; 36 leaves room for modest text scaling, and larger text grows it.
-  double get _extent => math.max(36, 12.5 + textScaler.scale(18));
+  /// The line is the scaled 12px font on its 18/12 height, as the text lays it
+  /// out under a nonlinear system scaler too.
+  double get _extent => math.max(36, 12.5 + textScaler.scale(12) * 18 / 12);
 
   @override
   double get maxExtent => _extent;

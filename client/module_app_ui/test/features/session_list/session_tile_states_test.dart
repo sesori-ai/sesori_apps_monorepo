@@ -644,7 +644,7 @@ void main() {
           titleTop: 7.0,
           metaTop: 7.0 + 19 + 2,
         ));
-        expect(SessionTileSkeleton.heightOf(pointer: true), 51);
+        expect(SessionTileSkeleton.heightOf(context: tester.element(find.byType(SessionTile))), 51);
         expect(find.text("now"), findsOneWidget);
       },
     );

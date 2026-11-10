@@ -11,8 +11,9 @@ const double composerActionRadius = PregoRadius.x2l - PregoSpacing.sm;
 /// The wide Send a pointer composer shows while a dictation runs, in the colours
 /// of the Send button it grows out of.
 ///
-/// The parent sets its width and may animate it: the label keeps its size and
-/// stays centred instead of reflowing, and the fill clips it. Going [enabled]
+/// The parent sets its width, at least [widthFor] its label, and may animate
+/// it: the label keeps its size and stays centred instead of reflowing, and the
+/// fill clips it on the way. Going [enabled]
 /// false only dims it and stops it responding, so it can hold its place under
 /// the cursor while the words arrive.
 class const PregoVoiceSendButton({
@@ -23,6 +24,23 @@ class const PregoVoiceSendButton({
 }) extends StatelessWidget {
   static const double _dimmedOpacity = 0.4;
   static const Duration _dimDuration = Duration(milliseconds: 220);
+
+  /// How wide the button must be to show [label] and its arrow whole at the
+  /// current text size, with [PregoSpacing.sm] either side.
+  static double widthFor({required BuildContext context, required String label}) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: DefaultTextStyle.of(context).style.merge(_labelStyleOf(context))),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width + PregoSpacing.xs + PregoIconSize.sm + PregoSpacing.sm * 2;
+    painter.dispose();
+    return width;
+  }
+
+  static TextStyle _labelStyleOf(BuildContext context) =>
+      context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textPrimaryOnWhite);
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +88,7 @@ class const PregoVoiceSendButton({
                   Text(
                     label,
                     maxLines: 1,
-                    style: prego.textTheme.textSm.medium.copyWith(color: foreground),
+                    style: _labelStyleOf(context),
                   ),
                   Icon(TablerRegular.arrow_up, size: PregoIconSize.sm, color: foreground),
                 ],

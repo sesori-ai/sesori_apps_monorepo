@@ -6,7 +6,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 /// Dumb adapter for the macOS runner's app-menu items; see
-/// `MainFlutterWindow+AppMenu.swift`. Other platforms have no such menu, so
+/// `MainFlutterWindow.swift`. Other platforms have no such menu, so
 /// the channel never calls and [commands] stays silent.
 @LazySingleton(as: DesktopAppMenu)
 class MethodChannelDesktopAppMenu.forTesting({required final MethodChannel _channel}) implements DesktopAppMenu {

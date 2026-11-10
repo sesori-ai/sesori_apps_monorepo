@@ -90,6 +90,31 @@ void main() {
     });
   }
 
+  test("desktop chat headings keep the phone's sizes, none smaller than the prose", () {
+    final phone = buildChatMessageMarkdownStyleSheet(prego: PregoDesignSystem.light);
+    for (final theme in [PregoDesignSystem.desktopLight, PregoDesignSystem.desktopDark]) {
+      final sheet = buildChatMessageMarkdownStyleSheet(prego: theme);
+      final headings = [sheet.h1, sheet.h2, sheet.h3, sheet.h4, sheet.h5, sheet.h6];
+      expect(
+        [for (final h in headings) (h?.fontSize, h?.height)],
+        [
+          (phone.h1?.fontSize, phone.h1?.height),
+          (phone.h2?.fontSize, phone.h2?.height),
+          (phone.h3?.fontSize, phone.h3?.height),
+          (phone.h4?.fontSize, phone.h4?.height),
+          (phone.h5?.fontSize, phone.h5?.height),
+          (phone.h6?.fontSize, phone.h6?.height),
+        ],
+      );
+      for (final h in headings) {
+        expect(h?.fontSize, greaterThanOrEqualTo(sheet.p?.fontSize ?? double.infinity));
+        // The desktop scale's own bold, as its strong text uses.
+        expect(h?.fontWeight, sheet.strong?.fontWeight);
+        expect(h?.color, theme.colors.textPrimary);
+      }
+    }
+  });
+
   test("inline code keeps a translucent chip so a selection highlight shows through", () {
     for (final theme in [PregoDesignSystem.light, PregoDesignSystem.dark]) {
       // A paragraph paints its selection highlight before its glyphs, so an

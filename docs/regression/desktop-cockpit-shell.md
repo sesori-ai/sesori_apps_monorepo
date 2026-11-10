@@ -50,9 +50,10 @@ The main pane hosts one full-width routed page.
   restores the user's choice. Windows narrower than 1000 pixels open the sidebar at 240 pixels. The native minimum
   window remains 560 × 480.
 - Pointer shells set light, small type in Satoshi at every size, with Medium the heaviest weight: 12.5 pt rows,
-  11.5 pt metadata, a 13.5 pt transcript and 12 pt code. The sidebar's session rows are roomier: a 13.5 pt title and
-  12 pt time over a 12 pt metadata line, 2 points apart in 6 points of padding, 51 points a row whatever the metadata
-  line holds. Nested corners follow one rule, inner radius equals outer minus the gap, so the composer's send button
+  11.5 pt metadata and 12 pt code. The transcript alone reads at the phone's sizes: 14/20 prose, 13 pt inline code
+  and the phone's heading sizes, none under the prose. At Default text size the sidebar's session rows are roomier:
+  a 13.5 pt title and 12 pt time over a 12 pt metadata line, 2 points apart in 6 points of padding, 51 points a row
+  whatever the metadata line holds. Nested corners follow one rule, inner radius equals outer minus the gap, so the composer's send button
   is concentric with the composer. Vertical scrollbars are macOS's overlay style, 6 points thick and inset 3, showing
   only while scrolling. Light builds surfaces from tone with a faint hairline rather than a drawn outline. The phone
   keeps its own type, radii and scrollbars.
@@ -312,9 +313,9 @@ The main pane hosts one full-width routed page.
   before the first frame of the next launch. Cmd/Ctrl+= or + (Shift+= and the keypad's + too) steps it up,
   Cmd/Ctrl+- down, stopping at either end, and Cmd/Ctrl+0 returns to Default; they work while typing and do not
   repeat on a held key. On macOS the View menu lists Increase, Decrease and Reset Text Size with the same keys; a
-  key press reaches only one of them. Transcript text keeps the phone's 14/20 at Default while the interface
-  around it stays compact. At Larger, sidebar rows, headings, menus and the diff file headers grow instead of
-  clipping or overflowing. Bridge's connected-bridge intro sits inside its section.
+  key press reaches only one of them. At Larger, sidebar rows and their loading placeholders, headings, menus, the
+  diff file headers and the composer's wide Send grow instead of clipping or overflowing, and a row's status
+  shortens with an ellipsis only once it alone outgrows its line. Bridge's connected-bridge intro sits inside its section.
   Escape/outside dismiss;
   active text editing and owned dialogs retain their closer dismissal order.
 - General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.
@@ -352,7 +353,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 | L1 | Client E2E; desktop; representative bridge | Sidebar, project opening, Bridge/Settings access. |
 | L2 | Automated; no plugin | See [automated checks](#automated-checks-l2). |
 | L3 | Client E2E; macOS; representative live bridge | See [live macOS checks](#live-macos-checks-l3). |
-| L4 | Client E2E; Windows/Linux | Resize/collapse, native-window size changes, saved-layout restore. |
+| L4 | Client E2E; Windows/Linux | Resize/collapse, native-window size changes, saved-layout restore. Text size from General and Ctrl+=/-/0: each step, nothing clipped at Larger, kept across a relaunch. |
 | L5 | No additional coverage | Lower levels still apply. |
 
 ### Automated checks (L2)
@@ -450,8 +451,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   file (`desktop_instance_storage_test`); the root scaler multiplying the system's, the shortcuts with both
   modifiers and while typing (`desktop_text_size_scope_test`); the View menu's channel
   (`method_channel_desktop_app_menu_test`); the General row (`desktop_settings_screens_test`); pointer sidebar
-  rows and headings at 130% with packaged fonts (`session_list_desktop_text_size_test`); the desktop transcript at
-  14/20 beside the compact interface (`prego_theme_data_test`).
+  rows and headings at 130% with packaged fonts, a status too long for its line ellipsizing, and loading
+  placeholders as tall as the rows and headings at 90%, 115% and 130% (`session_list_desktop_text_size_test`); the
+  desktop transcript at 14/20 beside the compact interface (`prego_theme_data_test`) with headings at the phone's
+  sizes (`markdown_styles_test`); a wide Send label widening the voice group (`prompt_input_pointer_voice_test`).
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel persistence, click and drag-past-minimum collapse with the width it reopens at,
   intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
   narrow-window mode, JSON round-trip with an unknown key ignored, storage failure fallback.

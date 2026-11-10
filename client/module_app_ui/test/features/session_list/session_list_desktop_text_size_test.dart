@@ -91,4 +91,89 @@ void main() {
     // The scale really reached them: a meta line is taller than at 1x.
     expect(tester.getSize(find.text("Today")).height, greaterThan(16));
   });
+
+  Future<void> pumpAt(
+    WidgetTester tester, {
+    PregoInteractionMode mode = PregoInteractionMode.pointer,
+    required double scale,
+    required double width,
+    required Widget child,
+  }) {
+    tester.view.physicalSize = Size(width, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = scale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    return tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          extensions: [
+            if (mode == PregoInteractionMode.pointer) PregoDesignSystem.desktopLight else PregoDesignSystem.light,
+          ],
+        ),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Material(
+          child: PregoInteractionScope(mode: mode, child: child),
+        ),
+      ),
+    );
+  }
+
+  testWidgets("a status too long for its line ellipsizes, and the project gives way first", (tester) async {
+    await pumpAt(
+      tester,
+      scale: 1.3,
+      width: 150,
+      child: Column(
+        children: [tile(title: "Flaky upload", isRetrying: true, projectLabel: "relay")],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(tester.takeException(), isNull);
+    final status = tester.renderObject<RenderParagraph>(find.text("Running (retrying)"));
+    expect(status.didExceedMaxLines, isTrue, reason: "the status shortens to its line");
+  });
+
+  for (final mode in PregoInteractionMode.values) {
+    for (final scale in [0.9, 1.15, 1.3]) {
+      testWidgets("placeholders stand as tall as the rows and headings they hold the place of (${mode.name}, $scale)", (
+        tester,
+      ) async {
+        await pumpAt(
+          tester,
+          mode: mode,
+          scale: scale,
+          width: 280,
+          child: Column(
+            children: [
+              const SessionListHeading(heading: "Today", isFirst: true),
+              const SessionListHeadingSkeleton(isFirst: true, width: 40),
+              const SessionListHeading(heading: "Yesterday", isFirst: false),
+              const SessionListHeadingSkeleton(isFirst: false, width: 64),
+              tile(title: "With a project", projectLabel: "sesori"),
+              tile(title: "Without one"),
+              const SessionTileSkeleton(titleWidthFraction: 0.5, detailsWidth: 64),
+            ],
+          ),
+        );
+
+        double heightOf(Finder finder) => tester.getSize(finder.first).height;
+        final skeletonRow = find.byType(SessionTileSkeleton);
+        final rowHeight = heightOf(find.byType(SessionTile));
+        expect(heightOf(find.byType(SessionTile).last), rowHeight, reason: "a row without words is as tall");
+        expect(heightOf(skeletonRow), rowHeight);
+        expect(SessionTileSkeleton.heightOf(context: tester.element(skeletonRow)), heightOf(skeletonRow));
+        for (final (index, heading) in ["Today", "Yesterday"].indexed) {
+          final skeleton = find.byType(SessionListHeadingSkeleton).at(index);
+          expect(heightOf(skeleton), heightOf(find.widgetWithText(SessionListHeading, heading)));
+          expect(
+            SessionListHeadingSkeleton.heightOf(context: tester.element(skeleton), isFirst: index == 0),
+            heightOf(skeleton),
+          );
+        }
+      });
+    }
+  }
 }
