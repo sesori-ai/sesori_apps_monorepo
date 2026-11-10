@@ -900,10 +900,14 @@ shows it as an error notice instead of a reply. Recognition matches the
 harness's exact wording, so a reworded notice falls back to plain assistant
 text.
 
+The bridge's history store keeps one notice per failed turn. When the live
+notice and the replayed one are worded differently, the stored notice shows the
+live wording first and adds the replayed wording after it.
+
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
-| Hermes | ✅ The notice Hermes sends once its model provider has failed every retry ("… didn't respond in time on any of 3 attempts — …"), live. Hermes saves a different row for that turn ("Your request was not processed…", or "This turn did not complete…" after a tool ran); replay drops it, so a reload shows the live notice once. Wording read in the Hermes 0.21.5 source on 2026-11-09. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
+| Hermes | ✅ Every failure copy Hermes sends as its final response, live and after history load: retries exhausted, usage limits, rejected credentials, unknown models, content policy, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions and shutdown. Hermes saves a different row for a failed turn ("Your request was not processed…", or "This turn did not complete. Some actions may already have run…" after a tool ran); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows Hermes's live reason followed by that row. Wording read in the Hermes 0.21.5 source on 2026-11-09. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts. ⚠️ When the model streamed part of a reply before failing, Hermes sends no failure text live, so the notice appears only after a reload. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 ## Saved prompt files
 

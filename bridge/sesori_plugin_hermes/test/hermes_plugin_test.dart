@@ -418,47 +418,6 @@ void main() {
         isEmpty,
       );
     });
-
-    test("history replay drops Hermes's saved failed-turn boundary", () async {
-      final collector = await plugin.createSessionReplayCollector(
-        sessionId: "s1",
-        collectorFactory: ({required toolPartSuppression}) => AcpReplayCollector(
-          sessionUpdateNormalizer: null,
-          shellCommandResolver: null,
-          sessionId: "s1",
-          agentId: "hermes",
-          initialUserMessage: null,
-          messageIdOverride: null,
-          messageTimeResolver: null,
-          haltClassifier: null,
-          toolPartReplacement: null,
-          toolPartSuppression: toolPartSuppression,
-        ),
-      );
-      for (final update in [
-        {
-          "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "Hello"},
-        },
-        {
-          "sessionUpdate": "agent_message_chunk",
-          "content": {
-            "type": "text",
-            "text": "Your request was not processed. Send it again if you still want me to carry it out.",
-          },
-        },
-      ]) {
-        collector.consumeNotification(
-          notification: AcpNotification(
-            method: "session/update",
-            params: {"sessionId": "s1", "update": update},
-          ),
-        );
-      }
-
-      final messages = collector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
-      expect(messages.map((message) => message.info), [isA<PluginMessageUser>()]);
-    });
   });
 }
 

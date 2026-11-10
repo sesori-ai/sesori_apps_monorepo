@@ -3,13 +3,7 @@ import "package:hermes_plugin/src/hermes_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-/// The final response Hermes streamed when its model provider stayed
-/// unreachable through every retry (reported 2026-11-09 on Hermes 0.21.5,
-/// whose `agent/turn_failure_copy.py::exhausted_copy` writes this shape).
-const String providerTimeoutNotice =
-    "custom didn't respond in time on any of 3 attempts — it looks temporarily unavailable. "
-    "Wait a minute and send /retry, or switch models with /model. To avoid this in future, "
-    "add a backup provider with `hermes fallback add`.\n\nProvider said: Connection error.";
+import "fixtures/hermes_failure_copy_fixtures.dart";
 
 void main() {
   group("HermesEventMapper", () {
@@ -49,24 +43,22 @@ void main() {
       expect(
         message,
         isA<PluginMessageError>()
-            .having((error) => error.errorName, "errorName", "hermes_provider_failure")
+            .having((error) => error.errorName, "errorName", "hermes_turn_failure")
             .having((error) => error.errorMessage, "errorMessage", providerTimeoutNotice),
       );
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
     });
 
-    test("the other retry-exhausted leads and the usage-limit wording are notices too", () {
-      const rateLimited =
-          "OpenRouter rate-limited every one of 4 attempts — it looks temporarily unavailable. "
-          "Wait a minute and send /retry, or switch models with /model. To avoid this in future, "
-          "add a backup provider with `hermes fallback add`.\n\nProvider said: HTTP 429";
-      const usageLimited =
-          "Nous Portal returned a server error on all 3 attempts — its usage limit resets in ~3h. "
-          "Send /retry after that, or switch models with /model. To avoid this in future, "
-          "add a backup provider with `hermes fallback add`.\n\nProvider said: HTTP 503";
-      for (final notice in [rateLimited, usageLimited]) {
-        expect(mapper.classifyHaltNotice(text: notice), isNotNull, reason: notice);
+    test("every family of Hermes failure copy is a notice", () {
+      for (final MapEntry(key: family, value: notice) in failureNotices.entries) {
+        expect(mapper.classifyHaltNotice(text: notice)?.errorName, "hermes_turn_failure", reason: family);
+      }
+    });
+
+    test("Hermes's saved failed-turn rows are notices", () {
+      for (final row in [failedTurnBoundary, partialFailedTurnBoundary]) {
+        expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_failed_turn", reason: row);
       }
     });
 
@@ -77,19 +69,36 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "The build passes now.");
     });
 
-    test("a reply that quotes the notice stays assistant text", () {
-      const quoted = "Hermes printed this earlier:\n\n$providerTimeoutNotice\n\nI switched to a backup provider.";
-
-      expect(mapper.classifyHaltNotice(text: quoted), isNull);
+    test("a reply that quotes a notice stays assistant text", () {
+      for (final notice in [...failureNotices.values, failedTurnBoundary, partialFailedTurnBoundary]) {
+        final quoted = "Hermes printed this earlier:\n\n$notice\n\nI switched to a backup provider.";
+        expect(mapper.classifyHaltNotice(text: quoted), isNull, reason: notice);
+      }
       expect(
-        mapper.map(finalResponse(text: quoted)).whereType<BridgeSseMessageUpdated>().single.info,
+        mapper
+            .map(finalResponse(text: "Hermes printed this earlier:\n\n$providerTimeoutNotice"))
+            .whereType<BridgeSseMessageUpdated>()
+            .single
+            .info,
         isA<PluginMessageAssistant>(),
       );
     });
 
-    test("a reply that keeps the lead but drops Hermes's tail stays assistant text", () {
+    test("a reply that keeps a lead but drops Hermes's tail stays assistant text", () {
       expect(
         mapper.classifyHaltNotice(text: "custom didn't respond in time on any of 3 attempts — try again later."),
+        isNull,
+      );
+    });
+
+    test("a reasoning-only stop stays a reply, because it carries the model's own thoughts", () {
+      expect(
+        mapper.classifyHaltNotice(
+          text:
+              "⚠️ gpt-5 spent all of its output budget thinking and never wrote an answer. Lower its reasoning "
+              "effort with `/reasoning low`, or switch to a different model with /model. Its last thoughts, "
+              "which may contain the answer:\n\nThe fix is to pin the version.",
+        ),
         isNull,
       );
     });
