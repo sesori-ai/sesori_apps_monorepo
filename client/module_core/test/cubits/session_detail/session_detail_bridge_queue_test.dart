@@ -2965,8 +2965,14 @@ void main() {
           ).thenReturn([followUp(promptId: "prm_a"), followUp(promptId: "prm_b")]);
           final cubit = await createLoadedCubit(sessionLaunchService: service);
           launchFollowUps.add([
-            LaunchFollowUp.sending(submission: followUp(promptId: "prm_a"), since: DateTime(2026)),
-            LaunchFollowUp.queued(submission: followUp(promptId: "prm_b"), since: DateTime(2026)),
+            LaunchFollowUp.sending(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_b"),
+              since: DateTime(2026),
+            ),
           ]);
           await Future<void>.delayed(Duration.zero);
           cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
@@ -2979,8 +2985,14 @@ void main() {
 
           // Published before the withdrawal, delivered after it.
           launchFollowUps.add([
-            LaunchFollowUp.accepted(submission: followUp(promptId: "prm_a"), since: DateTime(2026)),
-            LaunchFollowUp.queued(submission: followUp(promptId: "prm_b"), since: DateTime(2026)),
+            LaunchFollowUp.accepted(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_b"),
+              since: DateTime(2026),
+            ),
           ]);
           await Future<void>.delayed(Duration.zero);
 
