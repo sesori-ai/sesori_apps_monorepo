@@ -41,6 +41,7 @@ void main() {
           isDefault: false,
           state: PluginLifecycleState.failed,
           actionHint: "Restart the bridge.",
+          failureBlock: null,
           supportsPromptAttachments: true,
         ),
         PluginMetadata(
@@ -49,6 +50,7 @@ void main() {
           isDefault: true,
           state: PluginLifecycleState.ready,
           actionHint: null,
+          failureBlock: null,
         ),
       ],
     );
@@ -96,6 +98,7 @@ void main() {
                 isDefault: true,
                 state: PluginLifecycleState.ready,
                 actionHint: null,
+                failureBlock: null,
                 supportsPromptAttachments: true,
               ),
             ],
@@ -114,6 +117,7 @@ void main() {
           isDefault: true,
           state: PluginLifecycleState.ready,
           actionHint: null,
+          failureBlock: null,
         ),
         PluginMetadata(
           id: "codex",
@@ -121,6 +125,7 @@ void main() {
           isDefault: false,
           state: PluginLifecycleState.ready,
           actionHint: null,
+          failureBlock: null,
         ),
       ],
     );

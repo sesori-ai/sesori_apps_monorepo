@@ -19,6 +19,7 @@ void main() {
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isTrue);
+      expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
       expect(ClaudePluginDescriptor.targetVersion, "2.1.310");

@@ -2027,6 +2027,55 @@ void main() {
       expect(await repository.getProjectActivitySummaries(), isEmpty);
     });
 
+    test("getProjectActivitySummaries excludes archived sessions and children", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const project = "/tmp/proj/alpha";
+      final plugin = _FakeDerivedPlugin(launchDirectory: project, allSessions: const [])
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: project,
+            activeSessions: [
+              PluginActiveSession(
+                id: "archived",
+                mainAgentRunning: true,
+                awaitingInput: true,
+                isRetrying: false,
+                childSessionIds: [],
+              ),
+              PluginActiveSession(
+                id: "live",
+                mainAgentRunning: false,
+                awaitingInput: true,
+                isRetrying: false,
+                childSessionIds: ["archived"],
+              ),
+            ],
+          ),
+        ];
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await recordWorktreeSession(db, parent: project, worktree: "$project/.worktrees/a", sessionId: "archived");
+      await recordWorktreeSession(db, parent: project, worktree: "$project/.worktrees/l", sessionId: "live");
+      await db.sessionDao.setArchived(sessionId: "archived", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(summaries.single.id, project);
+      expect(summaries.single.activeSessions.map((session) => session.id), ["live"]);
+      expect(summaries.single.activeSessions.single.childSessionIds, isEmpty);
+
+      // Auto-approval still reaches an archived root, whose row can carry an
+      // active sub-agent's request.
+      final withArchived = await repository.getProjectActivitySummaries(includeArchived: true);
+      expect(withArchived.single.activeSessions.map((session) => session.id), ["archived", "live"]);
+    });
+
     test("setSessionTitleIfStored makes a derived title win over enumeration", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

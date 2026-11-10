@@ -321,6 +321,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("controls on a dormant integration ask for a session, then another try", (tester) async {
+    actionStates.add(
+      const McpActionReceivedState(
+        request: McpEntryActionRequest(
+          pluginId: "fixture",
+          action: McpServerEntryAction(target: _target, action: McpServerAction.reconnect),
+        ),
+        result: McpActionUnavailable(reason: McpActionUnavailableReason.pluginInactive),
+      ),
+    );
+    authStates.add(
+      const McpAuthenticationClientState(
+        observation: McpAuthenticationObserved(state: McpAuthenticationIdle(), refreshFailure: null),
+        browser: McpAuthenticationBrowserIdle(),
+        request: McpAuthenticationRequestRejected(
+          response: McpAuthenticationReceived(
+            result: McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.pluginInactive),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(app(controls: true, scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("This integration isn't running. Start a session with it, then try again."), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("pending connector setup blocks controls without claiming a native server action", (tester) async {
     actionStates.add(
       const McpActionPending(

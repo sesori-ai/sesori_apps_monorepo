@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:collection";
-import "dart:io" show Directory, Platform;
+import "dart:io" show Directory, FileSystemException, Platform;
 import "dart:math";
 
 import "package:path/path.dart" as p;
@@ -15,6 +15,7 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
+import "../api/filesystem_api.dart";
 import "../runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
@@ -33,6 +34,7 @@ class CatalogImportRepository({
   required final SessionDao _sessionDao,
   required final CatalogHydrationsDao _catalogHydrationsDao,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+  required final FilesystemApi _filesystemApi,
 }) {
   /// Invalidates every durable hydration marker written by an earlier version.
   ///
@@ -46,10 +48,18 @@ class CatalogImportRepository({
   static const int projectionVersion = 2;
   static const int _responsivenessBatchSize = 512;
   static const Duration _walkProgressInterval = Duration(milliseconds: 250);
+  static const Duration _pathResolutionTimeout = Duration(seconds: 2);
+
+  /// `ENOENT` on macOS and Linux, the only hosts that resolve links here.
+  static const int _noSuchFileOrDirectory = 2;
   static final Random _secureRandom = Random.secure();
 
   final String? _normalizedUserHomeDirectory = _resolveNormalizedUserHomeDirectory();
-  final String _normalizedTemporaryDirectory = normalizeProjectDirectory(directory: Directory.systemTemp.path);
+
+  /// Temporary folders under every spelling a harness may report: macOS
+  /// links `/tmp` to `/private/tmp` and the system temporary folder below
+  /// `/var` to `/private/var`.
+  late final List<String> _temporaryDirectories = _resolveTemporaryDirectories();
   final StreamController<List<SessionBackendActivity>> _backendActivityController =
       StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
 
@@ -148,6 +158,9 @@ class CatalogImportRepository({
     final importStartedAt = DateTime.now().millisecondsSinceEpoch;
     final observedProjects = <String, _ObservedProject>{};
     final observedSessions = <String, _ObservedSession>{};
+    // Each reported project folder's spelling with links resolved, for this
+    // import only, so a link retargeted later is followed next time.
+    final resolvedPaths = <String, String>{};
     final cancellation = source.cancellation;
     var derivedProjectPathsByBackendId = const <String, String>{};
     String? derivedLaunchDirectory;
@@ -166,6 +179,7 @@ class CatalogImportRepository({
           cancellation: cancellation,
           observedProjects: observedProjects,
           observedSessions: observedSessions,
+          resolvedPaths: resolvedPaths,
         );
         if (!observed) {
           yield CatalogImportProgress.cancelled(pluginId: pluginId);
@@ -196,6 +210,7 @@ class CatalogImportRepository({
                 cancellation: cancellation,
                 observedProjects: observedProjects,
                 observedSessions: observedSessions,
+                resolvedPaths: resolvedPaths,
               );
               if (!observed) {
                 yield CatalogImportProgress.cancelled(pluginId: pluginId);
@@ -215,13 +230,22 @@ class CatalogImportRepository({
               yield CatalogImportProgress.cancelled(pluginId: pluginId);
               return;
             }
+            await _resolveProjectPaths(
+              resolvedPaths: resolvedPaths,
+              directories: [for (final project in projects) project.directory],
+            );
+            if (cancellation.isCancelled) {
+              yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              return;
+            }
             for (final project in projects) {
-              final path = _normalizeRequiredPath(project.directory);
+              final path = _reportedProjectPath(resolvedPaths: resolvedPaths, directory: project.directory);
               _mergeObservedProject(
                 observations: observedProjects,
                 observed: _ObservedProject(
                   preferredId: project.id,
-                  path: path,
+                  path: path.resolved,
+                  reportedPaths: {path.reported},
                   displayName: _usefulText(project.name),
                   createdAt: project.activity?.createdAt,
                   updatedAt: project.activity?.updatedAt,
@@ -253,8 +277,9 @@ class CatalogImportRepository({
                 yield CatalogImportProgress.cancelled(pluginId: pluginId);
                 return;
               }
-              final projectPath = _normalizeRequiredPath(project.directory);
-              final roots = await plugin.getSessions(projectId: projectPath);
+              final projectPath = _reportedProjectPath(resolvedPaths: resolvedPaths, directory: project.directory);
+              // The backend knows the project by the spelling it reported.
+              final roots = await plugin.getSessions(projectId: projectPath.reported);
               if (cancellation.isCancelled) {
                 yield CatalogImportProgress.cancelled(pluginId: pluginId);
                 return;
@@ -263,7 +288,7 @@ class CatalogImportRepository({
               for (final session in roots) {
                 _recordObservedSession(
                   observations: observedSessions,
-                  observation: _ObservedSession(session: session, rootProjectPath: projectPath),
+                  observation: _ObservedSession(session: session, rootProjectPath: projectPath.resolved),
                 );
                 pendingChildren.add(session);
                 if (observedSessions.length % _responsivenessBatchSize == 0) {
@@ -321,7 +346,6 @@ class CatalogImportRepository({
               return;
             }
             final launchDirectory = _normalizeRequiredPath(plugin.launchDirectory);
-            derivedLaunchDirectory = launchDirectory;
             derivedProjectPathsByBackendId = {
               for (final row in storedSessionPaths) row.backendSessionId: _normalizeRequiredPath(row.projectPath),
             };
@@ -335,27 +359,44 @@ class CatalogImportRepository({
                 if (_projectCatalogIdentityCalculator.isWithinScratch(path: row.directory))
                   _normalizeRequiredPath(row.directory),
             };
-            _mergeObservedProject(
-              observations: observedProjects,
-              observed: _ObservedProject(
-                preferredId: launchDirectory,
-                path: launchDirectory,
-                displayName: null,
-                createdAt: null,
-                updatedAt: null,
-              ),
-            );
             final sessions = await plugin.listAllSessions(knownDirectories: knownDirectories);
             if (cancellation.isCancelled) {
               yield CatalogImportProgress.cancelled(pluginId: pluginId);
               return;
             }
+            await _resolveProjectPaths(
+              resolvedPaths: resolvedPaths,
+              directories: [
+                launchDirectory,
+                for (final session in sessions)
+                  if (session.parentID == null) session.directory,
+              ],
+            );
+            if (cancellation.isCancelled) {
+              yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              return;
+            }
+            final launchPath = _reportedProjectPath(resolvedPaths: resolvedPaths, directory: launchDirectory);
+            derivedLaunchDirectory = launchPath.resolved;
+            _mergeObservedProject(
+              observations: observedProjects,
+              observed: _ObservedProject(
+                preferredId: launchPath.resolved,
+                path: launchPath.resolved,
+                reportedPaths: {launchPath.reported},
+                displayName: null,
+                createdAt: null,
+                updatedAt: null,
+              ),
+            );
             for (final session in sessions) {
               _recordObservedSession(
                 observations: observedSessions,
                 observation: _ObservedSession(
                   session: session,
-                  rootProjectPath: session.parentID == null ? _normalizeRequiredPath(session.directory) : null,
+                  rootProjectPath: session.parentID == null
+                      ? _reportedProjectPath(resolvedPaths: resolvedPaths, directory: session.directory).resolved
+                      : null,
                 ),
               );
               if (observedSessions.length % _responsivenessBatchSize == 0) {
@@ -379,16 +420,18 @@ class CatalogImportRepository({
     if (plugin is BridgeDerivedProjectsPluginApi) {
       for (final observation in ancestryValidated) {
         if (observation.session.parentID != null) continue;
-        final projectPath =
-            derivedProjectPathsByBackendId[observation.session.id] ??
-            _normalizeRequiredPath(observation.session.directory);
+        final projectPath = switch (derivedProjectPathsByBackendId[observation.session.id]) {
+          final storedPath? => _storedProjectPath(storedPath),
+          null => _reportedProjectPath(resolvedPaths: resolvedPaths, directory: observation.session.directory),
+        };
         final time = observation.session.time;
-        observation.rootProjectPath = projectPath;
+        observation.rootProjectPath = projectPath.resolved;
         _mergeObservedProject(
           observations: observedProjects,
           observed: _ObservedProject(
-            preferredId: projectPath,
-            path: projectPath,
+            preferredId: projectPath.resolved,
+            path: projectPath.resolved,
+            reportedPaths: {projectPath.reported},
             displayName: null,
             createdAt: time?.created,
             updatedAt: time?.updated,
@@ -415,6 +458,7 @@ class CatalogImportRepository({
       observedProjects: observedProjects,
       observedSessions: observedSessions,
       derivedLaunchDirectory: derivedLaunchDirectory,
+      resolvedPaths: resolvedPaths,
       sessionsSeen: ancestryValidated.length,
     );
     await publicationFinished;
@@ -442,15 +486,23 @@ class CatalogImportRepository({
     required PluginCatalogCancellationSignal cancellation,
     required Map<String, _ObservedProject> observedProjects,
     required Map<String, _ObservedSession> observedSessions,
+    required Map<String, String> resolvedPaths,
   }) async {
+    await _resolveProjectPaths(
+      resolvedPaths: resolvedPaths,
+      directories: [for (final family in snapshot.projects) family.project.directory],
+    );
+    if (cancellation.isCancelled) return false;
     for (final family in snapshot.projects) {
       final project = family.project;
-      final projectPath = _normalizeRequiredPath(project.directory);
+      final path = _reportedProjectPath(resolvedPaths: resolvedPaths, directory: project.directory);
+      final projectPath = path.resolved;
       _mergeObservedProject(
         observations: observedProjects,
         observed: _ObservedProject(
           preferredId: project.id,
           path: projectPath,
+          reportedPaths: {path.reported},
           displayName: _usefulText(project.name),
           createdAt: project.activity?.createdAt,
           updatedAt: project.activity?.updatedAt,
@@ -482,6 +534,7 @@ class CatalogImportRepository({
     final observedProjects = observation.observedProjects;
     final observedSessions = observation.observedSessions;
     final derivedLaunchDirectory = observation.derivedLaunchDirectory;
+    final resolvedPaths = observation.resolvedPaths;
     final importStartedAt = observation.importStartedAt;
     void requireCurrentGeneration() {
       _runtime.requireCatalogImportAuthority(
@@ -530,21 +583,23 @@ class CatalogImportRepository({
             if (observation.session.parentID != null) continue;
             final existing = currentBindings[observation.session.id];
             final existingProject = existing == null ? null : projectsById[existing.projectId];
-            final projectPath = existingProject == null
-                ? _normalizeRequiredPath(observation.session.directory)
-                : _normalizeRequiredPath(existingProject.path);
+            final projectPath = switch (existingProject?.path) {
+              final storedPath? => _storedProjectPath(storedPath),
+              null => _reportedProjectPath(resolvedPaths: resolvedPaths, directory: observation.session.directory),
+            };
             final time = observation.session.time;
             _mergeObservedProject(
               observations: publicationProjects,
               observed: _ObservedProject(
-                preferredId: existingProject?.projectId ?? projectPath,
-                path: projectPath,
+                preferredId: existingProject?.projectId ?? projectPath.resolved,
+                path: projectPath.resolved,
+                reportedPaths: {projectPath.reported},
                 displayName: null,
                 createdAt: time?.created,
                 updatedAt: time?.updated,
               ),
             );
-            observation.rootProjectPath = projectPath;
+            observation.rootProjectPath = projectPath.resolved;
           }
         } else {
           publicationProjects.addAll(observedProjects);
@@ -562,17 +617,24 @@ class CatalogImportRepository({
         var projectsAdded = 0;
         var sessionsAdded = 0;
         for (final observation in publicationProjects.values) {
-          final existing = _projectCatalogIdentityCalculator.calculate(
-            projectsById: projectsById,
-            projectsByNormalizedPath: projectsByNormalizedPath,
-            preferredProjectId: observation.preferredId,
-            observedPath: observation.path,
-          );
+          // A row stored under a spelling the harness reported, before links
+          // were resolved, is the same project.
+          final existing =
+              _projectCatalogIdentityCalculator.calculate(
+                projectsById: projectsById,
+                projectsByNormalizedPath: projectsByNormalizedPath,
+                preferredProjectId: observation.preferredId,
+                observedPath: observation.path,
+              ) ??
+              observation.reportedPaths.map((path) => projectsByNormalizedPath[path]).nonNulls.firstOrNull;
           if (existing == null) projectsAdded++;
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
-            hiddenWhenNew: _shouldHideDiscoveredProject(projectPath: observation.path),
+            hiddenWhenNew: [
+              observation.path,
+              ...observation.reportedPaths,
+            ].any((path) => _shouldHideDiscoveredProject(projectPath: path)),
             importStartedAt: importStartedAt,
           );
           // The stamp alone differs on every import, so it does not make a row
@@ -691,9 +753,12 @@ class CatalogImportRepository({
     required int importStartedAt,
   }) {
     if (existing != null && existing.projectionUpdatedAt > importStartedAt) return existing;
+    // Resolving links alone never moves a row: one stored under a spelling the
+    // harness reported keeps it.
+    final storedPath = existing == null ? null : _normalizeRequiredPath(existing.path);
     return ProjectDto(
       projectId: existing?.projectId ?? observation.preferredId,
-      path: observation.path,
+      path: storedPath != null && observation.reportedPaths.contains(storedPath) ? storedPath : observation.path,
       hidden: existing?.hidden ?? hiddenWhenNew,
       baseBranch: existing?.baseBranch,
       displayName: existing?.displayName ?? observation.displayName,
@@ -843,6 +908,7 @@ class CatalogImportRepository({
         : _ObservedProject(
             preferredId: publishedPath,
             path: publishedPath,
+            reportedPaths: {publishedPath},
             displayName: null,
             createdAt: observed.createdAt,
             updatedAt: observed.updatedAt,
@@ -852,6 +918,7 @@ class CatalogImportRepository({
       observations[observation.path] = observation;
       return;
     }
+    existing.reportedPaths.addAll(observation.reportedPaths);
     existing.displayName ??= observation.displayName;
     if (observation.createdAt case final createdAt?) {
       existing.createdAt = switch (existing.createdAt) {
@@ -878,7 +945,7 @@ class CatalogImportRepository({
 
   bool _shouldHideDiscoveredProject({required String projectPath}) {
     // Scans discover history; only Add/Open Project explicitly reveals these folders.
-    for (final temporaryDirectory in ["/tmp", "/private/tmp", _normalizedTemporaryDirectory]) {
+    for (final temporaryDirectory in _temporaryDirectories) {
       if (p.equals(temporaryDirectory, projectPath) || p.isWithin(temporaryDirectory, projectPath)) return true;
     }
     final userHomeDirectory = _normalizedUserHomeDirectory;
@@ -891,6 +958,81 @@ class CatalogImportRepository({
     final trimmed = path.trim();
     if (trimmed.isEmpty) throw StateError("plugin returned an empty catalog path");
     return normalizeProjectDirectory(directory: trimmed);
+  }
+
+  /// [directory], a project folder a harness reported, normalized and in the
+  /// spelling [_resolveProjectPaths] recorded for it in [resolvedPaths].
+  _ReportedProjectPath _reportedProjectPath({
+    required Map<String, String> resolvedPaths,
+    required String directory,
+  }) {
+    final reported = _normalizeRequiredPath(directory);
+    return (reported: reported, resolved: resolvedPaths[reported] ?? reported);
+  }
+
+  /// A path from a stored row, which publishes as spelled.
+  _ReportedProjectPath _storedProjectPath(String path) {
+    final normalized = _normalizeRequiredPath(path);
+    return (reported: normalized, resolved: normalized);
+  }
+
+  /// Records in [resolvedPaths] the spelling with symbolic links resolved of
+  /// each project folder in [directories] that is not there yet, so one import
+  /// probes each distinct folder once however many sessions report it.
+  ///
+  /// Projects opened in Sesori are stored resolved (see
+  /// `ProjectRepository.resolveProjectOpenTarget`), but some harnesses report a
+  /// working directory as spelled: `/tmp/x` rather than `/private/tmp/x` on
+  /// macOS. Publishing under the resolved spelling keeps both on one project.
+  Future<void> _resolveProjectPaths({
+    required Map<String, String> resolvedPaths,
+    required Iterable<String> directories,
+  }) async {
+    final pending = <String>{
+      for (final directory in directories)
+        if (_normalizeRequiredPath(directory) case final reported when !resolvedPaths.containsKey(reported)) reported,
+    };
+    if (pending.isEmpty) return;
+    final resolved = await Future.wait([for (final path in pending) _resolveProjectPath(path: path)]);
+    for (final (index, path) in pending.indexed) {
+      resolvedPaths[path] = resolved[index];
+    }
+  }
+
+  /// The normalized [path] with its symbolic links resolved. Falls back to [path]
+  /// itself on Windows, which keeps a working directory as spelled; inside the
+  /// scratch root, whose folders are matched as spelled; and when the folder
+  /// cannot be resolved, as for old history in a folder deleted since.
+  Future<String> _resolveProjectPath({required String path}) async {
+    if (Platform.isWindows || _projectCatalogIdentityCalculator.isWithinScratch(path: path)) return path;
+    try {
+      final resolved = await _filesystemApi.resolveDirectoryPathAsync(path: path).timeout(_pathResolutionTimeout);
+      return normalizeProjectDirectory(directory: resolved);
+    } on FileSystemException catch (error, stackTrace) {
+      // A folder deleted since is common in old history and expected, so it is
+      // not worth a warning per folder; any other failure is.
+      if (error.osError?.errorCode == _noSuchFileOrDirectory) {
+        Log.d("CatalogImportRepository: $path no longer exists; importing it as reported");
+      } else {
+        Log.w("CatalogImportRepository: could not resolve links in $path; importing it as reported", error, stackTrace);
+      }
+      return path;
+    } on TimeoutException {
+      Log.w("CatalogImportRepository: resolving links in $path timed out; importing it as reported");
+      return path;
+    }
+  }
+
+  List<String> _resolveTemporaryDirectories() {
+    final systemTemporary = normalizeProjectDirectory(directory: Directory.systemTemp.path);
+    final directories = ["/tmp", "/private/tmp", systemTemporary];
+    if (Platform.isWindows) return directories;
+    try {
+      directories.add(normalizeProjectDirectory(directory: _filesystemApi.resolveDirectoryPath(path: systemTemporary)));
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("CatalogImportRepository: could not resolve links in $systemTemporary", error, stackTrace);
+    }
+    return directories;
   }
 
   String? _usefulText(String? value) {
@@ -908,9 +1050,16 @@ enum _CatalogOperation() {
   importCatalog,
 }
 
+/// A project folder as a harness reported it (normalized) and as it is
+/// published: with its symbolic links resolved, where that succeeded.
+typedef _ReportedProjectPath = ({String reported, String resolved});
+
+/// [path] is the spelling the project publishes under; [reportedPaths] holds
+/// every spelling observed for it, so a row stored under any of them matches.
 class _ObservedProject({
   required final String preferredId,
   required final String path,
+  required final Set<String> reportedPaths,
   required var String? displayName,
   required var int? createdAt,
   required var int? updatedAt,
@@ -927,5 +1076,6 @@ class const _CatalogImportObservation({
   required final Map<String, _ObservedProject> observedProjects,
   required final Map<String, _ObservedSession> observedSessions,
   required final String? derivedLaunchDirectory,
+  required final Map<String, String> resolvedPaths,
   required final int sessionsSeen,
 });

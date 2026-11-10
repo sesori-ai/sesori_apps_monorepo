@@ -43,6 +43,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
             ? PluginProjectOwnership.native
             : PluginProjectOwnership.bridgeDerived,
         setup: const PluginSetupReady(),
+        setupSource: PluginSetupSource.inspection,
         accessGate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
         generation: 1,

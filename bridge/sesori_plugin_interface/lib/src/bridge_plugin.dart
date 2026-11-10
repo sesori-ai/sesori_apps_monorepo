@@ -84,7 +84,11 @@ sealed class BridgePluginApi() {
   /// Notify the backend that a session has been archived.
   ///
   /// This is best-effort — the local database archive state is authoritative.
-  /// Unarchive is not propagated to the backend; it only clears the local DB.
+  /// Archiving is final: the bridge refuses unarchive, so nothing reverses it.
+  /// An archived session refuses replies through Sesori, so pending input of
+  /// [sessionId] that only Sesori could answer would wait forever: cancel it.
+  /// Leave input that the backend's own clients can still answer, such as
+  /// requests held by OpenCode's server.
   Future<void> archiveSession({required String sessionId});
 
   /// Delete a workspace (git worktree / sandbox) from the backend.

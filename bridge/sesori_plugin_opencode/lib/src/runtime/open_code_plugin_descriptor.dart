@@ -150,6 +150,12 @@ class const OpenCodePluginDescriptor({
   @override
   bool get supportsPromptAttachments => true;
 
+  @override
+  Set<PluginMcpCapability> get mcpCapabilities => const {
+    PluginMcpCapability.management,
+    PluginMcpCapability.authentication,
+  };
+
   /// Frozen ownership filename in the legacy shared runtime directory.
   static const String ownershipFileName = "opencode-processes.json";
 

@@ -44,6 +44,10 @@ final class const PassThroughSessionViews() implements SessionViewService {
 }
 
 final class const UnusedContinuationMutations() implements SessionMutationDispatcher {
+  // The summary refresh an archive announces is covered at the orchestrator.
+  @override
+  void sessionArchived({required Session session}) {}
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

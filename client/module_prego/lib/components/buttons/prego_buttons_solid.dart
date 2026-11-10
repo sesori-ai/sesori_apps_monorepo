@@ -837,11 +837,13 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       PregoButtonsSolidHierarchy.primary => _primaryForeground(colors: colors),
       // Primary Alt: icon matches the dark text colour (text-primary_on-white).
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
-      // Secondary on touch: an icon beside a label takes the label's colour,
-      // and an icon-only button, having no label, uses primary text. Pointer
-      // (desktop) secondary buttons keep their icons secondary on purpose,
-      // under a primary-text label, as #2429 set.
-      PregoButtonsSolidHierarchy.secondary => widget.iconOnly && !_pointer ? colors.textPrimary : colors.textSecondary,
+      // Secondary: an icon beside a label takes the label's colour on every
+      // platform. An icon-only button has no label, so it uses primary text
+      // under a finger and secondary text under a pointer.
+      PregoButtonsSolidHierarchy.secondary =>
+        widget.iconOnly
+            ? (_pointer ? colors.textSecondary : colors.textPrimary)
+            : _resolveTextColor(colors: colors, state: state),
       PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       // Link uses text-brand-secondary tokens on default/hover; text-secondary when focused.
       PregoButtonsSolidHierarchy.link =>

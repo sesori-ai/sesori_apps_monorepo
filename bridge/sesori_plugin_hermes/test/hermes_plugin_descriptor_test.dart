@@ -36,6 +36,11 @@ void main() {
         isTrue,
         reason: "Hermes advertises prompt image support",
       );
+      expect(
+        const HermesPluginDescriptor().mcpCapabilities,
+        isEmpty,
+        reason: "Hermes has no MCP management, so a dormant Hermes must not read as merely inactive",
+      );
       expect(HermesPluginDescriptor.minVersion, "0.20.0");
       expect(HermesPluginDescriptor.targetVersion, "0.22.5");
     });

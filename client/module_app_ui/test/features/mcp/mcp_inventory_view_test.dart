@@ -317,6 +317,39 @@ void main() {
     await tester.tap(find.byType(PregoButtonsSolid));
     verify(() => cubit.refresh()).called(1);
   });
+  testWidgets("a dormant integration asks for a session, then a refresh", (tester) async {
+    states.add(
+      const McpInventoryReady(
+        inventory: McpInventoryUnavailable(
+          scope: McpHarnessScope(),
+          reason: McpInventoryUnavailableReason.pluginInactive,
+          message: "Unavailable",
+        ),
+        refresh: McpInventoryRefreshIdle(),
+      ),
+    );
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("This integration isn't running. Start a session with it, then refresh."), findsOneWidget);
+    expect(find.textContaining("harness settings"), findsNothing);
+    await tester.tap(find.byType(PregoButtonsSolid));
+    verify(() => cubit.refresh()).called(1);
+  });
+  testWidgets("connector setup on a dormant integration asks for a session, then another try", (tester) async {
+    states.add(_ready(entries: [_offer], refresh: const McpInventoryRefreshIdle()));
+    actionStates.add(
+      const McpActionReceivedState(
+        request: McpEntryActionRequest(
+          pluginId: "fixture",
+          action: McpConnectorSetupEntryAction(offerTarget: _offerTarget),
+        ),
+        result: McpActionUnavailable(reason: McpActionUnavailableReason.pluginInactive),
+      ),
+    );
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("This integration isn't running. Start a session with it, then try again."), findsOneWidget);
+  });
   testWidgets("offline inventory disables refresh and keeps its servers readable", (tester) async {
     states.add(_ready(entries: [_server], refresh: const McpInventoryRefreshOffline()));
     await tester.pumpWidget(app(scale: 1));

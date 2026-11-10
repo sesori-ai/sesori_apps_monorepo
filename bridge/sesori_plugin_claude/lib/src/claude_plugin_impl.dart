@@ -745,10 +745,18 @@ final class ClaudePlugin({
 
   Future<String?> _directoryForSession(String sessionId) async => (await _findSession(sessionId))?.directory;
 
+  /// Forwards the dispatcher's [events]. A status among them, a sub-agent's or
+  /// a retry, changes the activity summary session lists read, which only a
+  /// republication refreshes.
+  void _addMapped(List<BridgeSseEvent> events) {
+    events.forEach(_eventBuffer.add);
+    if (events.any((event) => event is BridgeSseSessionStatus)) _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
     if (event is ClaudeSessionProcessExited) {
       // Sub-agents live only inside the resident process.
-      _eventDispatcher.cancelTasks(sessionId: event.sessionId).forEach(_eventBuffer.add);
+      _addMapped(_eventDispatcher.cancelTasks(sessionId: event.sessionId));
       return;
     }
     if (event case ClaudeSessionProcessMessage(:final message, :final interrupted, :final promptId)) {
@@ -777,7 +785,7 @@ final class ClaudePlugin({
         final now = _clock.now();
         final status = _eventDispatcher.retryStatus(message: message, now: now);
         if (status != null) _sessions.recordRetryStatus(sessionId: event.sessionId, status: status);
-        _eventDispatcher.map(message: message, now: now).forEach(_eventBuffer.add);
+        _addMapped(_eventDispatcher.map(message: message, now: now));
         return;
       }
       if (message is ClaudeUserMessage &&
@@ -792,7 +800,7 @@ final class ClaudePlugin({
         _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId);
         return;
       }
-      _eventDispatcher.map(message: message, now: null).forEach(_eventBuffer.add);
+      _addMapped(_eventDispatcher.map(message: message, now: null));
       if (message is ClaudeResultMessage) _eventDispatcher.completeTurn(sessionId: event.sessionId);
       // `claude auth status` still reports logged in when the stored OAuth
       // session can no longer refresh; only the turn reveals it.

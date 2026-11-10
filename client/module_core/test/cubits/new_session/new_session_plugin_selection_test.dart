@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/new_session/new_session_composer_presentation.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/errors/remote_failure_reason.dart";
@@ -18,6 +19,7 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/session_launch_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -31,6 +33,7 @@ const pluginA = PluginMetadata(
   isDefault: true,
   state: PluginLifecycleState.ready,
   actionHint: null,
+  failureBlock: null,
 );
 const pluginB = PluginMetadata(
   id: "plugin-b",
@@ -38,6 +41,7 @@ const pluginB = PluginMetadata(
   isDefault: false,
   state: PluginLifecycleState.ready,
   actionHint: null,
+  failureBlock: null,
 );
 const connectedStatus = ConnectionStatus.connected(
   config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
@@ -145,7 +149,11 @@ void main() {
       await connectionEvents.close();
     });
 
-    NewSessionCubit buildCubit({NewSessionOptionsService? optionsService, String? projectId}) => NewSessionCubit(
+    NewSessionCubit buildCubit({
+      NewSessionOptionsService? optionsService,
+      String? projectId,
+      PluginManagementService? pluginManagementService,
+    }) => NewSessionCubit(
       connectionService: connectionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: pluginRepository,
@@ -165,7 +173,7 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
-      pluginManagementService: stubbedPluginManagementService(),
+      pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
       project: NewSessionProject(id: projectId ?? "project-1", name: null, kind: ProjectKind.folder),
     );
 
@@ -321,6 +329,7 @@ void main() {
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
+        failureBlock: null,
       );
       const refreshedB = PluginMetadata(
         id: "plugin-b",
@@ -328,6 +337,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.degraded,
         actionHint: "Check the bridge console.",
+        failureBlock: null,
       );
       const unavailableB = PluginMetadata(
         id: "plugin-b",
@@ -335,6 +345,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
+        failureBlock: null,
       );
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
@@ -423,6 +434,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.ready,
         actionHint: null,
+        failureBlock: null,
       );
       final refreshed = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
@@ -471,6 +483,228 @@ void main() {
       await pumpEventQueue();
 
       expect(states, isEmpty);
+    });
+
+    group("a harness held back after a refused request", () {
+      const gatewayHint = "Check the gateway's credentials, then check setup.";
+      const blockedB = PluginMetadata(
+        id: "plugin-b",
+        displayName: "Plugin B",
+        isDefault: false,
+        state: PluginLifecycleState.unavailable,
+        actionHint: gatewayHint,
+        failureBlock: PluginFailureBlock.unavailable,
+      );
+
+      test("stays pickable and shows its notice in the composer's place", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        expect(cubit.state.agentModelData?.plugins, [pluginA, blockedB]);
+
+        cubit.selectPlugin(pluginId: "plugin-b");
+
+        final data = cubit.state.agentModelData ?? fail("no agent and model data");
+        expect(data.plugin, blockedB);
+        expect(data.optionsState, isA<NewSessionOptionsUnavailableState>());
+        expect(
+          cubit.composerPresentation,
+          isA<NewSessionComposerHarnessBlocked>()
+              .having((presentation) => presentation.harnessName, "harnessName", "Plugin B")
+              .having((presentation) => presentation.block, "block", PluginFailureBlock.unavailable)
+              .having((presentation) => presentation.actionHint, "actionHint", gatewayHint),
+        );
+        expect(cubit.canCreateSession, isFalse);
+        verifyNever(
+          () => sessionApi.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-b",
+          ),
+        );
+      });
+
+      test("keeps the selection when the harness on screen is held back", () async {
+        var discoveryCalls = 0;
+        when(pluginRepository.listPlugins).thenAnswer((_) async {
+          discoveryCalls++;
+          return ApiResponse.success(
+            _pluginSnapshot(
+              bridgeId: "br_test",
+              plugins: discoveryCalls == 1 ? [pluginA, pluginB] : [pluginA, blockedB],
+            ),
+          );
+        });
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+        await _waitForComposer(cubit);
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+
+        emitPluginManagementChanged();
+        await _waitUntil(() => cubit.state.agentModelData?.plugin == blockedB);
+
+        expect(cubit.state.agentModelData?.plugins, [pluginA, blockedB]);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
+      test("Check setup that clears the block makes the harness usable in place", () async {
+        var cleared = false;
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            _pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, cleared ? pluginB : blockedB]),
+          ),
+        );
+        when(
+          () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-b")])));
+        final pluginManagementService = stubbedPluginManagementService();
+        stubSetupCheck(service: pluginManagementService, onCheck: () => cleared = true);
+
+        final cubit = buildCubit(pluginManagementService: pluginManagementService);
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+
+        await cubit.checkHarnessSetup();
+
+        verify(() => pluginManagementService.checkSetup(pluginId: "plugin-b")).called(1);
+        final data = cubit.state.agentModelData ?? fail("no agent and model data");
+        expect(data.plugin, pluginB);
+        expect(data.agents.map((agent) => agent.name), ["agent-b"]);
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        expect(cubit.canCreateSession, isTrue);
+      });
+
+      test("a picked held-back harness keeps its selection and notice across a reconnect", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+        var discoveryCalls = 0;
+        when(pluginRepository.listPlugins).thenAnswer((_) async {
+          discoveryCalls++;
+          return ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB]));
+        });
+
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connectedStatus);
+        await _waitUntil(
+          () => discoveryCalls == 1 && !(cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true),
+        );
+
+        expect(cubit.state.agentModelData?.plugin, blockedB);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
+      test("Retry after a failed rediscovery keeps a held-back harness on screen selected", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
+        );
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connectedStatus);
+        await _waitUntil(() => cubit.state.phase is NewSessionPhaseDiscoveryError);
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+
+        await cubit.refreshOptions();
+
+        expect(cubit.state.phase, isNot(isA<NewSessionPhaseDiscoveryError>()));
+        expect(cubit.state.agentModelData?.plugin, blockedB);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
+      test("Check setup that leaves the harness held back keeps its notice in place", () async {
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, blockedB])),
+        );
+        final pluginManagementService = stubbedPluginManagementService();
+        stubSetupCheck(service: pluginManagementService, onCheck: () {});
+
+        final cubit = buildCubit(pluginManagementService: pluginManagementService);
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+        cubit.selectPlugin(pluginId: "plugin-b");
+
+        await cubit.checkHarnessSetup();
+
+        expect(cubit.state.agentModelData?.plugin, blockedB);
+        expect(cubit.composerPresentation, isA<NewSessionComposerHarnessBlocked>());
+      });
+
+      test("a saved choice held back preselects the default and keeps the saved choice", () async {
+        var cleared = false;
+        when(pluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            _pluginSnapshot(bridgeId: "br_test", plugins: [pluginA, cleared ? pluginB : blockedB]),
+          ),
+        );
+        when(
+          () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
+        ).thenAnswer((_) async => "plugin-b");
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _waitForComposer(cubit);
+
+        expect(cubit.state.agentModelData?.plugins, [pluginA, blockedB]);
+        expect(cubit.state.agentModelData?.plugin, pluginA);
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        verifyNever(
+          () => pluginPreferenceRepository.writePluginId(
+            bridgeId: any(named: "bridgeId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        );
+
+        // Once it runs again, the next new session preselects it.
+        cleared = true;
+        when(
+          () => sessionApi.listAgents(projectId: "project-1", pluginId: "plugin-b"),
+        ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-b")])));
+        final reopened = buildCubit();
+        addTearDown(reopened.close);
+        await _waitForComposer(reopened);
+        expect(reopened.state.agentModelData?.plugin, pluginB);
+      });
+    });
+
+    test("a harness the bridge leaves out of the list, as it does one never set up, is not offered", () async {
+      when(pluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "br_test", plugins: [pluginA])),
+      );
+      when(
+        () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
+      ).thenAnswer((_) async => "plugin-b");
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectPlugin(pluginId: "plugin-b");
+
+      expect(cubit.state.agentModelData?.plugins, [pluginA]);
+      expect(cubit.state.agentModelData?.plugin, pluginA);
     });
 
     test("the selected harness turned off elsewhere falls back to the default", () async {
@@ -527,6 +761,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
+        failureBlock: null,
       );
       final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
@@ -574,6 +809,7 @@ void main() {
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
+        failureBlock: null,
       );
       final originalCommand = testCommandInfo();
       final refreshedCommand = testCommandInfo(template: "/review {{path}}");
@@ -1461,6 +1697,7 @@ void main() {
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
+        failureBlock: null,
       );
       const unavailableB = PluginMetadata(
         id: "plugin-b",
@@ -1468,6 +1705,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
+        failureBlock: null,
       );
       final command = testCommandInfo();
       final fallbackAgents = Completer<ApiResponse<Agents>>();
@@ -1588,6 +1826,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.failed,
         actionHint: "Restart the bridge.",
+        failureBlock: null,
       );
       const second = PluginMetadata(
         id: "selected",
@@ -1595,6 +1834,7 @@ void main() {
         isDefault: true,
         state: PluginLifecycleState.ready,
         actionHint: null,
+        failureBlock: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [first, second])),
@@ -1619,6 +1859,7 @@ void main() {
         isDefault: true,
         state: PluginLifecycleState.degraded,
         actionHint: "Check the bridge console.",
+        failureBlock: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [degraded])),
@@ -1674,6 +1915,7 @@ void main() {
         isDefault: true,
         state: PluginLifecycleState.unavailable,
         actionHint: "Check the bridge console.",
+        failureBlock: null,
       );
       const failed = PluginMetadata(
         id: "failed",
@@ -1681,6 +1923,7 @@ void main() {
         isDefault: false,
         state: PluginLifecycleState.failed,
         actionHint: "Restart the bridge.",
+        failureBlock: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [unavailable, failed])),

@@ -139,6 +139,7 @@ CatalogImportRepository singlePluginCatalogImportRepository({
   required ProjectsDao projectsDao,
   required SessionDao sessionDao,
   required CatalogHydrationsDao catalogHydrationsDao,
+  required FilesystemApi filesystemApi,
 }) {
   return CatalogImportRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
@@ -146,6 +147,7 @@ CatalogImportRepository singlePluginCatalogImportRepository({
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,
     projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
+    filesystemApi: filesystemApi,
   );
 }
 

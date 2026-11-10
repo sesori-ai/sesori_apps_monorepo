@@ -5767,11 +5767,17 @@ abstract class AppLocalizations {
   /// **'Open a running session to inspect its MCP servers. Reading inventory will not start a session.'**
   String get mcpLiveSessionRequired;
 
-  /// No description provided for @mcpPluginInactive.
+  /// Shown in place of the MCP inventory when the harness is enabled but not running. 'Refresh' is the button beside this message.
   ///
   /// In en, this message translates to:
-  /// **'This integration is inactive. Enable it in harness settings before reading inventory.'**
+  /// **'This integration isn\'t running. Start a session with it, then refresh.'**
   String get mcpPluginInactive;
+
+  /// Shown after an MCP sign-in, server control or connector setup could not run because the harness is enabled but not running.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration isn\'t running. Start a session with it, then try again.'**
+  String get mcpPluginInactiveAction;
 
   /// No description provided for @mcpServers.
   ///
