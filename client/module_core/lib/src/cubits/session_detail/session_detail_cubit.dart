@@ -3594,6 +3594,11 @@ class SessionDetailCubit(
         if (!stillSending.contains(followUp.submission.promptId)) followUp.submission.promptId,
       for (final submission in withdrawn) submission.promptId,
     ]);
+    // The launch forgets one returned while its send was pending, so a failure
+    // arriving later leaves no copy to show or retry when the session reopens.
+    for (final promptId in sendingPromptIds.difference(stillSending)) {
+      _sessionLaunchService.settleFollowUp(promptId: promptId);
+    }
     _unsentLaunchFollowUps = [
       for (final followUp in _unsentLaunchFollowUps)
         if (stillSending.contains(followUp.submission.promptId)) followUp,

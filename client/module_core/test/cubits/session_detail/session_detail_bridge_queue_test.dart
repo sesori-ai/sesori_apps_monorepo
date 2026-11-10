@@ -3389,50 +3389,65 @@ void main() {
           expect((cubit.state as SessionDetailLoaded).stagedCommand, isNull);
         });
 
-        test("one the bridge listed while its send was pending returns at the stop, and stays returned", () async {
-          final (:cubit, :repository) = await stopWhileSending(
-            queuedBehind: [
-              LaunchFollowUp.queued(
-                submission: followUp(promptId: "prm_b"),
-                since: DateTime(2026),
-              ),
-            ],
-          );
-          sessionEvents.add(
-            const SesoriSseEvent.sessionQueuedPrompts(
-              sessionID: _sessionId,
-              prompts: [
-                QueuedSessionPrompt(
-                  id: "prm_a",
-                  text: "and then prm_a",
-                  command: null,
-                  attachmentCount: 0,
-                  createdAt: 50,
-                ),
-              ],
-            ) as SesoriSessionEvent,
-          );
-          await Future<void>.delayed(Duration.zero);
-          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
-          abortResponse.complete(ApiResponse.success(true));
-          expect(await aborting, isA<SessionAbortAccepted>());
-          expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
+        for (final succeeds in [true, false]) {
+          test(
+            "one the bridge listed while its send was pending returns at the stop, and the launch keeps no copy "
+            "once the send ${succeeds ? "succeeds" : "fails"}",
+            () async {
+              final (:cubit, :repository) = await stopWhileSending(
+                queuedBehind: [
+                  LaunchFollowUp.queued(
+                    submission: followUp(promptId: "prm_b"),
+                    since: DateTime(2026),
+                  ),
+                ],
+              );
+              sessionEvents.add(
+                const SesoriSseEvent.sessionQueuedPrompts(
+                  sessionID: _sessionId,
+                  prompts: [
+                    QueuedSessionPrompt(
+                      id: "prm_a",
+                      text: "and then prm_a",
+                      command: null,
+                      attachmentCount: 0,
+                      createdAt: 50,
+                    ),
+                  ],
+                ) as SesoriSessionEvent,
+              );
+              await Future<void>.delayed(Duration.zero);
+              final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+              abortResponse.complete(ApiResponse.success(true));
+              expect(await aborting, isA<SessionAbortAccepted>());
+              expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
 
-          // The send's acceptance reaches the launch and then this screen.
-          firstSend.complete(ApiResponse.success(null));
-          for (var i = 0; i < 10; i++) {
-            await Future<void>.delayed(Duration.zero);
-          }
+              // The send's outcome reaches the launch and then this screen.
+              firstSend.complete(succeeds ? ApiResponse.success(null) : ApiResponse.error(ApiError.generic()));
+              for (var i = 0; i < 10; i++) {
+                await Future<void>.delayed(Duration.zero);
+              }
 
-          expect(sentPromptIds, ["prm_a"]);
-          expect(repository.beginFollowUp(launchId: "launch-1"), isNull);
-          final state = cubit.state as SessionDetailLoaded;
-          expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the stop dropped it with the bridge's queue");
-          expect(state.launchFollowUps, isEmpty);
-          expect(state.bridgeQueuedPrompts, isEmpty);
-          expect(state.composerRestorations, 1);
-          expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
-        });
+              expect(sentPromptIds, ["prm_a"]);
+              expect(repository.beginFollowUp(launchId: "launch-1"), isNull);
+              final state = cubit.state as SessionDetailLoaded;
+              expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the stop dropped it with the bridge's queue");
+              expect(state.launchFollowUps, isEmpty);
+              expect(state.bridgeQueuedPrompts, isEmpty);
+              expect(state.composerRestorations, 1);
+              expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
+
+              // Opened again, the session shows no copy of it, sent or failed.
+              expect(repository.retryFollowUp(promptId: "prm_a"), isNull);
+              expect(await repository.watchForSession(sessionId: _sessionId).first, isEmpty);
+              final reopened = await createLoadedCubit(sessionLaunchService: launchService(repository: repository));
+              await Future<void>.delayed(Duration.zero);
+              final reopenedState = reopened.state as SessionDetailLoaded;
+              expect(reopenedState.launchFollowUps, isEmpty);
+              expect(reopenedState.awaitingBridgeSubmissions, isEmpty);
+            },
+          );
+        }
 
         test("an image-carrying one the bridge listed after its send failed comes back with its images", () async {
           final repository = launchedRepository(
