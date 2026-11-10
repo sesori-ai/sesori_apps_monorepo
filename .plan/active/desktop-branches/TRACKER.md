@@ -10,7 +10,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 4 Fold the settings, alert, diff and picker looks | Merged | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
 | 5 Flag new interaction-mode reads | Merged | #2485 (`eb71881bf4`) | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
 | 6 Reconcile regression docs | Merged | #2488 (`d2b38bec4e`) | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. No findings after the merge: Codex reviewed the merged head clean, and cubic added nothing. |
-| 7 Run the verification matrix and retire the plan | Blocked | | Matrix run on `main` `d2b38bec4e` (below): every cell passed except Desktop screens, which is Partial because the running macOS app was not launched. The plan stays active until the owner runs the desktop items listed below or accepts the reduction in `PLAN.md`; then it moves to `.plan/completed/`. |
+| 7 Run the verification matrix and retire the plan | Blocked | | Matrix run on `main` `d2b38bec4e` (below): every cell passed except Desktop screens, which is Partial because the running macOS app was not launched. The plan stays active until the owner answers the two questions under "With the owner" (below); then it moves to `.plan/completed/`. |
 
 ## Outside the series
 
@@ -182,18 +182,19 @@ buttons (#2486).
 
 ## Step 7 verification
 
-Run on `main` `d2b38bec4e`, level L2. The bridge ran from source on slot 2, with Claude Code as the representative
-plugin on a throwaway Git fixture. The phone ran on headless `sesori-dev-2` (iPhone 17), in light and dark, driven by a
-throwaway integration test that was not committed. Desktop looks were rendered under a pointer
-`PregoInteractionScope`. Screenshots stay outside the repository.
+Run on `main` `d2b38bec4e0708f31cc041e1e75de27e0984f043`, in a clean checkout of that commit, at level L2. The bridge
+ran from source on slot 2, with Claude Code as the representative plugin on a throwaway Git fixture. The phone ran on
+headless `sesori-dev-2` (iPhone 17), in light and dark, driven by a throwaway integration test that was not committed.
+That test followed the docs' exploration guidance, so a rerun varies the prompts and the order. Desktop looks were
+rendered under a pointer `PregoInteractionScope`. Screenshots stay outside the repository.
 
 | Cell | Result | What ran |
 | --- | --- | --- |
-| Owning tests | Pass | `flutter test`: `module_prego` 432, `module_app_ui` 1738, `app` 867, `desktop` 451. `dart test`: `module_desktop_core` 468, `shared/no_slop_linter` 233 |
-| Analyzer | Pass | `dart analyze --fatal-infos` over `client/`: no issues |
-| Reads and markers | Pass | 75 reads in 37 files, all marked: 71 `pending:` and 4 permanent. By home: `metrics` 44, `variant` 22, `wrapper` 3, `presenter` 2. Every marker sits over a read |
+| Owning tests | Pass | `flutter test` in `client/module_prego` (432 tests), `client/module_app_ui` (1738), `client/app` (867) and `client/desktop` (451); `dart test` in `client/module_desktop_core` (468) and `shared/no_slop_linter` (233) |
+| Analyzer | Pass | `dart analyze --fatal-infos client`, run from the repository root: no issues |
+| Reads and markers | Pass | the commands in "Read counts" and "Step 5 markers": 75 reads in 37 files, all marked: 71 `pending:` and 4 permanent. By home: `metrics` 44, `variant` 22, `wrapper` 3, `presenter` 2. Every marker sits over a read |
 | Phone screens | Pass | the docs' L2 surfaces, below |
-| Desktop screens | Partial | everything steps 2–4 changed on desktop, rendered and measured, plus the `desktop` suite. The running macOS app was not launched, so the items under "Owed" are unchecked |
+| Desktop screens | Partial | everything steps 2–4 changed on desktop, rendered and measured, plus the `desktop` suite, which is also `desktop-cockpit-shell.md`'s L2 entry. The running macOS app was not launched, so the items under "Owed" are unchecked |
 
 The series changed no bridge, shared or plugin code; it touched only client presentation, docs and the linter. So the
 bridge-only halves of these L2 entries were not re-run, for example option discovery, diff base branches, project
@@ -212,7 +213,6 @@ automated halves are in Owning tests.
 | `popup-alerts.md` | The archive alert outlives its removed row. A folder-exists alert renders above the add-project sheet. Radius 12, no glow, dark fill `#333333` |
 | `plugin-setup-and-lifecycle.md` | Harness overview chevrons in 44 pt boxes beside the switches |
 | `multi-computer.md` (Settings) | The computer card under "Bridge" |
-| `desktop-cockpit-shell.md` | Desktop only; its L2 entry is the `desktop` suite |
 
 The differences that stay on purpose all look as documented:
 
@@ -238,6 +238,17 @@ The New Session harness menu's "Harnesses" header is in sentence case on both ap
 `new_session_plugin_chooser.dart`). Decision 7 put menu and picker section headings in spaced capitals on both. This
 header is a title row with a settings action, not a `PregoMenuLabel`. It has no mode read, and the series did not
 touch it, so it is not a regression. Whether it follows decision 7 is a design choice the owner has not made yet.
+
+### With the owner
+
+Two questions are on the owner's review page:
+
+- whether to retire the plan now and check the six owed items below while trying the build, or keep it open until
+  they are checked;
+- whether the "Harnesses" header above takes decision 7's spaced capitals.
+
+Step 7 stays Blocked until the owner answers. Then a small follow-up writes the answer into `PLAN.md` and moves the
+plan to `.plan/completed/`.
 
 ### Owed: desktop items that need the running app
 
