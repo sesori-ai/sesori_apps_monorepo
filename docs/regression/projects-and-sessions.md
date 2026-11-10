@@ -59,7 +59,9 @@ state.
   own name and base branch, takes them from a merged row when it has none, is
   visible when any of the rows was, and spans their activity. For each plugin
   whose cached session options (agents, models, commands) it lacks, it takes the
-  most recently captured one among the merged rows. Folders resolve as
+  most recently captured one among the merged rows. Within the same import,
+  sessions reported through a removed spelling or the folder itself join the
+  surviving row. Folders resolve as
   imports resolve them, so a deleted folder merges through its surviving
   parents. A row whose links no longer resolve, one whose links cannot be read,
   a lone link-spelled row and every row on Windows stay as stored. The merge's
@@ -921,7 +923,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - After the first import at the current projection version, a folder an older
   import stored once per spelling still lists as two projects; or the merge
   loses a session, detaches a child from its parent, hides a project the user
-  could see, drops the merged row's name or the cached session options of a plugin the survivor had none for, or merges a row whose links no longer
+  could see, recreates a removed row in the same import, drops the merged row's name or the cached session options of a plugin the survivor had none for, or merges a row whose links no longer
   resolve. A failed import leaves a half-merged catalog, the app keeps listing
   the removed project after the import completes, or the merge runs again once
   a marker is recorded.

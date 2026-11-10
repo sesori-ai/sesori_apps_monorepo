@@ -50,36 +50,16 @@ class SessionOptionsCacheDao({required AppDatabase database})
     return [for (final row in rows) ?row.read(sessionOptionsCacheTable.projectId)];
   }
 
-  /// Gives [toProjectId], stored at [toProjectPath], a copy of the most
-  /// recently captured project-scoped snapshot among [fromProjectIds], for each
-  /// plugin that has none for it yet. The rows copied from stay as they are.
-  Future<void> copyNewestProjectRows({
-    required Set<String> fromProjectIds,
-    required String toProjectId,
-    required String toProjectPath,
-  }) async {
-    final rows =
-        await (select(sessionOptionsCacheTable)..where(
-              (table) =>
-                  table.scope.equalsValue(PluginSessionOptionsScope.project) &
-                  table.projectId.isIn({...fromProjectIds, toProjectId}),
-            ))
-            .get();
-    final newestByPlugin = <String, SessionOptionsCacheTableData>{};
-    final pluginsWithTarget = {
-      for (final row in rows)
-        if (row.projectId == toProjectId) row.pluginId,
-    };
-    for (final row in rows) {
-      if (pluginsWithTarget.contains(row.pluginId)) continue;
-      final newest = newestByPlugin[row.pluginId];
-      if (newest == null || row.capturedAt > newest.capturedAt) newestByPlugin[row.pluginId] = row;
-    }
-    for (final row in newestByPlugin.values) {
-      await into(sessionOptionsCacheTable).insert(
-        row.copyWith(ownerId: toProjectId, projectId: Value(toProjectId), capturedProjectPath: Value(toProjectPath)),
-      );
-    }
+  /// Every project-scoped row for the projects [projectIds].
+  Future<List<SessionOptionsCacheTableData>> getProjectRows({required Set<String> projectIds}) {
+    return (select(sessionOptionsCacheTable)..where(
+          (table) => table.scope.equalsValue(PluginSessionOptionsScope.project) & table.projectId.isIn(projectIds),
+        ))
+        .get();
+  }
+
+  Future<void> insertRow({required SessionOptionsCacheTableData row}) async {
+    await into(sessionOptionsCacheTable).insert(row);
   }
 
   Future<void> deleteRow({

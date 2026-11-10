@@ -1013,6 +1013,41 @@ void main() {
           expect(await projectOf("ses_second"), link);
         });
 
+        // The same import publishes after merging, so it must find the
+        // survivor under the spelling it just removed, or under the folder.
+        for (final reportedThrough in ["the removed spelling", "the resolved folder"]) {
+          test(
+            "with only link spellings stored, a native import through $reportedThrough joins the survivor",
+            () async {
+              final reported = reportedThrough == "the removed spelling" ? secondLink : folder;
+              await database.projectsDao.upsertProjectRows(
+                rows: [
+                  _projectRow(id: secondLink, path: secondLink),
+                  _projectRow(id: link, path: link),
+                ],
+              );
+              final plugin = _NativeImportPlugin(
+                projects: [PluginProject(id: "backend-project", directory: reported)],
+                rootsByProject: {
+                  reported: [_pluginSession(id: "root", directory: reported)],
+                },
+                childrenByParent: const {},
+              );
+
+              await _importCompletion(database: database, plugin: plugin);
+
+              expect(await storedProjectIds(), [link]);
+              expect(
+                (await database.sessionDao.getSessionByBinding(
+                  pluginId: plugin.id,
+                  backendSessionId: "root",
+                ))?.projectId,
+                link,
+              );
+            },
+          );
+        }
+
         test("a deleted folder stored under both spellings merges through its surviving parents", () async {
           final resolvedGone = p.join(folder, "gone");
           final linkedGone = p.join(link, "gone");

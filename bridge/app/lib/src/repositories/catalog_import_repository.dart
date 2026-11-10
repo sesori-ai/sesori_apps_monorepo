@@ -13,6 +13,7 @@ import "../api/database/daos/catalog_hydrations_dao.dart";
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
+import "../api/database/database.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
@@ -569,7 +570,7 @@ class CatalogImportRepository({
             resolvedPaths: resolutions,
             requireCurrentGeneration: requireCurrentGeneration,
           ),
-          null => (projects: 0, sessions: 0),
+          null => (projects: 0, sessions: 0, survivorIdsByPath: const <String, String>{}),
         };
         final currentProjects = await _projectsDao.getAllProjects();
         final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
@@ -585,6 +586,12 @@ class CatalogImportRepository({
         final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
           projects: currentProjects,
         );
+        // A spelling the merge just removed, and the folder itself, still name
+        // its survivor, so this import's observations through them join it
+        // rather than recreating the split.
+        for (final MapEntry(key: path, value: survivorId) in merged.survivorIdsByPath.entries) {
+          if (projectsById[survivorId] case final survivor?) projectsByNormalizedPath.putIfAbsent(path, () => survivor);
+        }
         final publicationProjects = <String, _ObservedProject>{};
         if (observation.projectOwnership == PluginProjectOwnership.bridgeDerived) {
           // Bridge-derived enumeration always records its launch directory and observes its project.
@@ -819,7 +826,10 @@ class CatalogImportRepository({
   /// row missing from it was stored after the probe, by an open or import that
   /// already resolves links. A folder whose links no longer resolve maps to
   /// itself, so its row stays as it is.
-  Future<({int projects, int sessions})> _mergeSplitProjects({
+  ///
+  /// Returns, besides its counts, the survivor's id for each removed spelling
+  /// and merged folder.
+  Future<({int projects, int sessions, Map<String, String> survivorIdsByPath})> _mergeSplitProjects({
     required Map<String, String> resolvedPaths,
     required void Function() requireCurrentGeneration,
   }) async {
@@ -831,6 +841,7 @@ class CatalogImportRepository({
     }
     var projectsMerged = 0;
     var sessionsMoved = 0;
+    final survivorIdsByPath = <String, String>{};
     for (final MapEntry(key: folder, value: rows) in rowsByFolder.entries) {
       if (rows.every((entry) => entry.resolved)) continue;
       rows.sort((a, b) => a.row.projectId.compareTo(b.row.projectId));
@@ -846,11 +857,7 @@ class CatalogImportRepository({
         rows: [_mergeSplitProjectRow(survivor: survivor, merged: merged)],
       );
       final moved = await _sessionDao.moveSessionsToProject(fromProjectIds: mergedIds, toProjectId: survivor.projectId);
-      await _sessionOptionsCacheDao.copyNewestProjectRows(
-        fromProjectIds: mergedIds,
-        toProjectId: survivor.projectId,
-        toProjectPath: survivor.path,
-      );
+      await _carrySessionOptionsOver(survivor: survivor, mergedIds: mergedIds);
       // After the move and copy, so removing a row cascades only to its own
       // cached session options.
       await _projectsDao.deleteProjects(projectIds: mergedIds);
@@ -860,15 +867,51 @@ class CatalogImportRepository({
       );
       projectsMerged += merged.length;
       sessionsMoved += moved;
+      for (final path in [folder, for (final row in merged) _normalizeRequiredPath(row.path)]) {
+        survivorIdsByPath[path] = survivor.projectId;
+      }
     }
-    return (projects: projectsMerged, sessions: sessionsMoved);
+    return (projects: projectsMerged, sessions: sessionsMoved, survivorIdsByPath: survivorIdsByPath);
+  }
+
+  /// Gives [survivor], for each plugin it has no cached session options for, a
+  /// copy of the most recently captured snapshot among the projects
+  /// [mergedIds], under its own id and path.
+  Future<void> _carrySessionOptionsOver({required ProjectDto survivor, required Set<String> mergedIds}) async {
+    final rows = await _sessionOptionsCacheDao.getProjectRows(projectIds: {...mergedIds, survivor.projectId});
+    final pluginsWithOwn = {
+      for (final row in rows)
+        if (row.projectId == survivor.projectId) row.pluginId,
+    };
+    final newestByPlugin = <String, SessionOptionsCacheTableData>{};
+    for (final row in rows) {
+      if (pluginsWithOwn.contains(row.pluginId)) continue;
+      final newest = newestByPlugin[row.pluginId];
+      if (newest == null || row.capturedAt > newest.capturedAt) newestByPlugin[row.pluginId] = row;
+    }
+    for (final row in newestByPlugin.values) {
+      await _sessionOptionsCacheDao.insertRow(
+        row: SessionOptionsCacheTableData(
+          pluginId: row.pluginId,
+          scope: row.scope,
+          ownerId: survivor.projectId,
+          projectId: survivor.projectId,
+          capturedProjectPath: survivor.path,
+          revision: row.revision,
+          capturedAt: row.capturedAt,
+          agentsJson: row.agentsJson,
+          providersJson: row.providersJson,
+          commandsJson: row.commandsJson,
+        ),
+      );
+    }
   }
 
   /// [survivor] keeps its own name and base branch and fills them from
   /// [merged] when it has none, as it does each plugin's cached session
-  /// options (the most recently captured) in [_mergeSplitProjects]. It is visible when any of the rows was, so no
-  /// session the user could see moves into a hidden project, and its activity
-  /// spans all of them.
+  /// options (the most recently captured) in [_carrySessionOptionsOver]. It
+  /// is visible when any of the rows was, so no session the user could see
+  /// moves into a hidden project, and its activity spans all of them.
   ProjectDto _mergeSplitProjectRow({required ProjectDto survivor, required List<ProjectDto> merged}) {
     final rows = [survivor, ...merged];
     return survivor.copyWith(
