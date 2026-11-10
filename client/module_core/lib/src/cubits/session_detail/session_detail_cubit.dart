@@ -185,11 +185,6 @@ class SessionDetailCubit(
   /// accept one, so it returns to the composer only if its send fails.
   final Set<String> _launchFollowUpsSendingAtStop = {};
 
-  /// The words the last restore put ahead of the composer's own, so one that
-  /// comes back later can go after them; see
-  /// [ComposerDraftCalculator.insertParagraphAfter].
-  ComposerDraft? _restoredLead;
-
   /// Images the launch's composer held unsent, until this screen's composer
   /// stages them.
   List<ComposerAttachment> _launchAttachments = const [];
@@ -201,6 +196,10 @@ class SessionDetailCubit(
   /// until the composer stages them; see [restoredAttachments].
   List<ComposerAttachment> _restoredAttachments = const [];
   int _composerRestorations = 0;
+
+  /// The words returned messages put at the front of the composer's draft,
+  /// for a later return to go after while the draft still starts with them.
+  String _restoredDraftPrefix = "";
 
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
@@ -401,7 +400,7 @@ class SessionDetailCubit(
             when prompt.draft != null || prompt.attachments.isNotEmpty)
           prompt,
     ];
-    if (returning.isNotEmpty) _returnAfterRestored(unsent: returning, stagedCommand: stagedCommand);
+    if (returning.isNotEmpty) _restoreToComposer(unsent: returning, stagedCommand: stagedCommand);
     final commandRestored = returning.isNotEmpty && stagedCommand != null;
     _emitQueueUpdate(switch (current) {
       SessionDetailLoaded() => current.copyWith(
@@ -3011,6 +3010,7 @@ class SessionDetailCubit(
 
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
+    _restoredDraftPrefix = "";
     _composerDraftRepository.clearForSession(sessionId: _sessionId);
   }
 
@@ -3590,42 +3590,28 @@ class SessionDetailCubit(
   );
 
   /// Puts [unsent] into the composer ahead of what it holds, each after a
-  /// blank line, with their images after its own. A [stagedCommand] becomes
-  /// its literal text, as the restored words would otherwise be its arguments.
+  /// blank line, but after what an earlier return put there, so all returned
+  /// stays oldest first; their images go after its own and earlier returns'.
+  /// A [stagedCommand] becomes its literal text, as the restored words would
+  /// otherwise be its arguments.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
     final held = switch (stagedCommand) {
       null => _composerDraft,
       CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
     };
-    final lead = _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft]);
-    _restoredLead = lead;
-    saveComposerDraft(draft: _draftCalculator.joinParagraphs(drafts: [lead, held]));
+    final restoration = _draftCalculator.restoreParagraphs(
+      held: held,
+      restoredPrefix: _restoredDraftPrefix,
+      restored: [for (final prompt in unsent) ?prompt.draft],
+    );
+    saveComposerDraft(draft: restoration.draft);
+    _restoredDraftPrefix = restoration.restoredPrefix;
     // The composer stages these up to its budget and stops at the first that
     // does not fit, so its own images, which fit before the stop, go first.
-    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
-    _composerRestorations++;
-  }
-
-  /// Puts [unsent], launch follow-ups whose send failed after a stop, into
-  /// the composer after what that stop put back and before the user's own
-  /// words, with their images after the composer's.
-  void _returnAfterRestored({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
-    final words = _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft]);
-    if (words.text.isNotEmpty) {
-      final (draft: restored, :lead) = _draftCalculator.insertParagraphAfter(
-        draft: switch (stagedCommand) {
-          null => _composerDraft,
-          CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
-        },
-        // Under a staged command the composer's words are its arguments, not
-        // what the stop put back.
-        lead: stagedCommand == null ? _restoredLead : null,
-        paragraph: words,
-      );
-      _restoredLead = lead;
-      saveComposerDraft(draft: restored);
-    }
-    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
+    // An earlier return the composer has not staged yet already holds them,
+    // and its messages' images, which its own report would not.
+    final heldAttachments = _restoredAttachments.isEmpty ? _composerAttachments : _restoredAttachments;
+    _restoredAttachments = [...heldAttachments, for (final prompt in unsent) ...prompt.attachments];
     _composerRestorations++;
   }
 
