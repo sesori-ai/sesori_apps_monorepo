@@ -21,8 +21,7 @@ class const TranscriptLiveSparkle({super.key}) extends StatelessWidget {
 }
 
 /// A live row's label. A primary-text band sweeps across the label in the
-/// tertiary text colour, or the secondary one under a pointer, where it must
-/// read ahead of the finished rows, so it reads in both themes. Reduced motion keeps the
+/// secondary text colour, so it reads in both themes. Reduced motion keeps the
 /// label still in its own colour.
 class const TranscriptLiveLabel({super.key, required final Widget label, required final String? semanticLabel})
     extends StatelessWidget {
@@ -31,9 +30,7 @@ class const TranscriptLiveLabel({super.key, required final Widget label, require
     alignment: AlignmentDirectional.centerStart,
     child: PregoShimmer(
       appearDelay: Duration.zero,
-      baseColor: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-          ? context.prego.colors.textSecondary
-          : context.prego.colors.textTertiary,
+      baseColor: context.prego.colors.textSecondary,
       highlightColor: context.prego.colors.textPrimary,
       semanticLabel: semanticLabel,
       child: label,
@@ -73,9 +70,7 @@ class const TranscriptStepRow({
   /// as a button: its 44 px minimum, adjusted for density as the button
   /// adjusts it.
   static double verticalInset({required BuildContext context}) =>
-      PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-      ? 2
-      : (44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy - TranscriptLiveSparkle.size) / 2;
+      (44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy - TranscriptLiveSparkle.size) / 2;
 
   /// The gap every step widget leaves above and below its row.
   static const double stepGap = 4;
@@ -97,16 +92,7 @@ class const TranscriptStepRow({
                 : color,
           ),
         ),
-        if (detail != null) ...[
-          TextSpan(
-            text: " ",
-            // Under a pointer the label stands clear of what follows it.
-            style: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                ? const TextStyle(letterSpacing: 3)
-                : null,
-          ),
-          detail,
-        ],
+        if (detail != null) ...[const TextSpan(text: " "), detail],
       ],
     );
     final text = Text.rich(
@@ -133,11 +119,7 @@ class const TranscriptStepRow({
         children: [
           SizedBox.square(
             dimension: TranscriptLiveSparkle.size,
-            child: Center(
-              child: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                  ? Transform.translate(offset: const Offset(0, -1), child: leading)
-                  : leading,
-            ),
+            child: Center(child: leading),
           ),
           SizedBox(width: prego.spacing.md),
           Expanded(

@@ -223,13 +223,14 @@ void main() {
         streamingText: const {},
       ),
     );
-    await tester.pump(const Duration(milliseconds: 100));
+    // The row is solid early in its ease, so it is caught just after it starts.
+    await tester.pump(const Duration(milliseconds: 20));
     final opacities = tester.widgetList<Opacity>(
       find.ancestor(of: find.byType(MarkdownBody), matching: find.byType(Opacity)),
     );
     expect(opacities.any((opacity) => opacity.opacity > 0 && opacity.opacity < 1), isTrue);
 
-    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 230));
     expect(find.byType(MarkdownBody), findsOneWidget);
   });
 
