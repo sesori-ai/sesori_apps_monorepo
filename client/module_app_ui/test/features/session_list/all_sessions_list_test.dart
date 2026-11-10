@@ -1842,7 +1842,7 @@ void main() {
               // The height the list sizes its placeholder by is the one it draws.
               expect(
                 rowRect.height,
-                SessionTileSkeleton.heightOf(pointer: interaction == PregoInteractionMode.pointer),
+                SessionTileSkeleton.heightOf(context: tester.element(find.byType(SessionTileSkeleton).first)),
               );
 
               final [headerTops, fieldTops, skeletonTops] = await topsAcross(
@@ -1980,10 +1980,13 @@ void main() {
         final updates = StreamController<AllSessionsState>();
         addTearDown(updates.close);
         await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active);
-        final chipsRoom = find.descendant(
-          of: find.byKey(const ValueKey("all-sessions-chips")),
-          matching: find.byType(AnimatedSize),
-        );
+        // The outermost one: each chip's count slot eases its own width.
+        final chipsRoom = find
+            .descendant(
+              of: find.byKey(const ValueKey("all-sessions-chips")),
+              matching: find.byType(AnimatedSize),
+            )
+            .first;
         final loadingHeight = tester.getSize(chipsRoom).height;
         // Only its placeholder carries no count.
         final lastPill = find.text("Unread · 0");

@@ -30,6 +30,7 @@ class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements
 class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 class _MockAppearanceStore() extends Mock implements AppearanceStore;
 class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
+class _MockDesktopTextSizeCubit() extends MockCubit<DesktopTextSize> implements DesktopTextSizeCubit;
 class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
@@ -118,6 +119,7 @@ void main() {
     await font.load();
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(ChatInputMode.voiceFirst);
+    registerFallbackValue(DesktopTextSize.standard);
     registerFallbackValue(DesktopAttentionPreference.enabled);
     registerFallbackValue(DesktopAutomaticUpdates.enabled);
     registerFallbackValue(ComputerSwitchSource.settings);
@@ -127,6 +129,7 @@ void main() {
   late _MockBridgeControlCubit bridgeControl;
   late _MockAppearanceStore appearanceStore;
   late AppearanceCubit appearanceCubit;
+  late _MockDesktopTextSizeCubit textSizeCubit;
   late ChatInputModeCubit chatInputModeCubit;
   late _MockBridgeSettingsService bridgeSettingsService;
   late _MockDesktopAttentionService desktopAttentionService;
@@ -182,6 +185,9 @@ void main() {
     when(() => appearanceStore.write(mode: any(named: "mode"))).thenAnswer((_) async {});
     when(() => chatInputModeStore.write(mode: any(named: "mode"))).thenAnswer((_) async {});
     appearanceCubit = AppearanceCubit(store: appearanceStore, initialMode: AppearanceMode.system);
+    textSizeCubit = _MockDesktopTextSizeCubit();
+    when(() => textSizeCubit.state).thenReturn(DesktopTextSize.standard);
+    when(() => textSizeCubit.select(size: any(named: "size"))).thenAnswer((_) async {});
     chatInputModeCubit = ChatInputModeCubit(store: chatInputModeStore, initialMode: ChatInputMode.voiceFirst);
     final connectionService = _MockConnectionService();
     connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(_connected);
@@ -280,6 +286,7 @@ void main() {
   tearDown(() async {
     await getIt.reset();
     await appearanceCubit.close();
+    await textSizeCubit.close();
     await attentionPreferences.close();
     await updateStates.close();
     await automaticUpdates.close();
@@ -344,6 +351,7 @@ void main() {
           BlocProvider<BridgeControlCubit>.value(value: bridgeControl),
           BlocProvider<FileAccessCubit>.value(value: fileAccess),
           BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
+          BlocProvider<DesktopTextSizeCubit>.value(value: textSizeCubit),
           BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
           BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlay),
         ],
@@ -502,6 +510,33 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets("General offers the four text sizes and marks the current one", (tester) async {
+    when(() => textSizeCubit.state).thenReturn(DesktopTextSize.large);
+    await open(tester: tester, tab: DesktopSettingsTab.general);
+    expect(find.text("Text size"), findsOneWidget);
+    for (final label in ["Small", "Default", "Large", "Larger"]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    bool selected(String size) =>
+        tester
+            .widget<Semantics>(
+              find
+                  .descendant(of: find.byKey(ValueKey("desktop-text-size-$size")), matching: find.byType(Semantics))
+                  .first,
+            )
+            .properties
+            .selected ??
+        false;
+    expect(selected("large"), isTrue);
+    expect(selected("standard"), isFalse);
+
+    await tester.tap(find.byKey(const ValueKey("desktop-text-size-larger")));
+    await tester.pumpAndSettle();
+
+    verify(() => textSizeCubit.select(size: DesktopTextSize.larger)).called(1);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("General composes preferences instead of a mobile navigation menu", (tester) async {
     final router = await open(tester: tester, tab: DesktopSettingsTab.general);

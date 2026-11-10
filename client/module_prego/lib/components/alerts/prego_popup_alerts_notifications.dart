@@ -67,7 +67,7 @@ class const PregoPopupAlertsNotifications({
     final prego = context.prego;
     final colors = prego.colors;
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
-    final radius = BorderRadius.circular(pointer ? PregoRadius.xl : PregoRadius.x2l);
+    final radius = BorderRadius.circular(PregoRadius.xl);
 
     return Material(
       type: MaterialType.transparency,

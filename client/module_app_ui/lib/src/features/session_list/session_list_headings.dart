@@ -1,6 +1,7 @@
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "session_date_label.dart";
 
@@ -99,18 +100,8 @@ class const SessionListHeading({super.key, required final String heading, requir
     // list's rows do.
     width: double.infinity,
     child: Padding(
-      padding: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-          ? _pointerHeadingPadding(isFirst: isFirst)
-          : _headingPadding(isFirst: isFirst),
-      child: Text(
-        heading,
-        style:
-            (PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                    ? context.prego.textTheme.textXs
-                    : context.prego.textTheme.textSm)
-                .medium
-                .copyWith(color: context.prego.colors.textTertiary),
-      ),
+      padding: _paddingOf(context: context, isFirst: isFirst),
+      child: Text(heading, style: _styleOf(context: context)),
     ),
   );
 }
@@ -119,18 +110,16 @@ class const SessionListHeading({super.key, required final String heading, requir
 /// bar of [width] where the heading's text starts.
 class const SessionListHeadingSkeleton({super.key, required final bool isFirst, required final double width})
     extends StatelessWidget {
-  /// As tall as a heading at the default text size.
-  static double heightOf({required bool isFirst, required bool pointer}) => pointer
-      ? _pointerHeadingPadding(isFirst: isFirst).vertical + _pointerHeadingLineHeight
-      : _headingPadding(isFirst: isFirst).vertical + _headingLineHeight;
+  /// As tall as a heading under [context]'s pointer or touch, at its text size.
+  static double heightOf({required BuildContext context, required bool isFirst}) =>
+      _paddingOf(context: context, isFirst: isFirst).vertical + context.lineHeightOf(_styleOf(context: context));
 
   @override
   Widget build(BuildContext context) {
-    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return Padding(
-      padding: pointer ? _pointerHeadingPadding(isFirst: isFirst) : _headingPadding(isFirst: isFirst),
+      padding: _paddingOf(context: context, isFirst: isFirst),
       child: SizedBox(
-        height: pointer ? _pointerHeadingLineHeight : _headingLineHeight,
+        height: context.lineHeightOf(_styleOf(context: context)),
         child: Align(
           alignment: AlignmentDirectional.centerStart,
           child: PregoSkeletonBar(height: 12, width: width),
@@ -149,8 +138,15 @@ EdgeInsetsDirectional _headingPadding({required bool isFirst}) =>
 EdgeInsetsDirectional _pointerHeadingPadding({required bool isFirst}) =>
     EdgeInsetsDirectional.fromSTEB(14, isFirst ? 8 : 14, 14, 4);
 
-/// The line box of a heading's 14/20 text.
-const double _headingLineHeight = 20;
+EdgeInsetsDirectional _paddingOf({required BuildContext context, required bool isFirst}) =>
+    PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+    ? _pointerHeadingPadding(isFirst: isFirst)
+    : _headingPadding(isFirst: isFirst);
 
-/// The line box of a pointer heading's 12/16 text.
-const double _pointerHeadingLineHeight = 16;
+/// A heading's text: the scale's smallest under a pointer, 14/20 under a finger.
+TextStyle _styleOf({required BuildContext context}) =>
+    (PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+            ? context.prego.textTheme.textXs
+            : context.prego.textTheme.textSm)
+        .medium
+        .copyWith(color: context.prego.colors.textTertiary);

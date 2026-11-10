@@ -10,6 +10,7 @@ import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/desktop_attention_preference.dart";
 import "../foundation/desktop_automatic_updates.dart";
 import "../foundation/desktop_sidebar_layout.dart";
+import "../foundation/desktop_text_size.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/window_host.dart";
 
@@ -26,6 +27,7 @@ class DesktopInstanceStorage._create({
   static const String _windowBoundsFileName = "window-bounds";
   static const String _attentionPreferenceFileName = "attention-notifications";
   static const String _automaticUpdatesFileName = "automatic-updates";
+  static const String _textSizeFileName = "text-size";
 
   Future<BridgeProcessDesiredState?> readBridgeDesiredState() async {
     final File file = await _desiredStateFile();
@@ -122,6 +124,31 @@ class DesktopInstanceStorage._create({
     final File file = await _fileNamed(fileName: _automaticUpdatesFileName);
     await file.parent.create(recursive: true);
     await file.writeAsString(preference.name, flush: true);
+  }
+
+  /// The stored text size, or [DesktopTextSize.standard] when none was chosen
+  /// or it cannot be read: it is read before the first frame, and a text size
+  /// is never worth failing startup over.
+  Future<DesktopTextSize> readTextSize() async {
+    try {
+      final file = await _fileNamed(fileName: _textSizeFileName);
+      // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
+      if (!await file.exists()) return DesktopTextSize.standard;
+      final value = (await file.readAsString()).trim();
+      for (final size in DesktopTextSize.values) {
+        if (size.name == value) return size;
+      }
+      logw("Ignoring an invalid persisted desktop text size");
+    } on Object catch (error, stackTrace) {
+      logw("Failed to read the desktop text size", error, stackTrace);
+    }
+    return DesktopTextSize.standard;
+  }
+
+  Future<void> writeTextSize({required DesktopTextSize size}) async {
+    final file = await _fileNamed(fileName: _textSizeFileName);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(size.name, flush: true);
   }
 
   Future<DesktopSidebarLayout> readSidebarLayout() async {

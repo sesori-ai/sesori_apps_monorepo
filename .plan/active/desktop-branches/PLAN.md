@@ -105,6 +105,18 @@ Final. Where the owner reverses the audit's suggestion, the plan follows the own
 | 11 | The subtle differences: motion timing, 1–4 pt nudges, colour tweaks. | Fold all in one batch, one value each. | Same | 2 |
 | 12 | Order. | Folds and lint first. Metrics objects and variants later. | Same | — |
 
+### Owner decisions, review round 2 (2026-11-09)
+
+These refine steps 3 and 4.
+
+- **Decision 5, the popup alert accent.** On the phone the accent is a soft coloured glow behind the card, not a
+  stripe. Decided: no glow on both.
+- **Decision 10, the needs-you card rules.** Desktop's rules on both, including the button looks: the first card's
+  action is the solid primary, the others are secondary. Before step 3 merges, check that the secondary button is
+  legible on the amber tint on the phone in dark mode. If it is unreadable, fix it for both apps and show the owner.
+- **Decision 2, reading confirmed.** Only shell commands are underlined and paths stay plain, on both. The needs-you
+  request line is normal text on both.
+
 ### How this plan reads the decisions
 
 Each reading below follows the decision text against what the code does. A reviewer who reads one differently says so
@@ -112,8 +124,7 @@ on the step's PR.
 
 - **Paths stay plain (decision 2).** The phone underlines shell commands, but shows paths and patterns as plain text
   (`_ToolHeader.build`, `final title => TextSpan(text: title)`). "Phone's look" therefore means underlined commands
-  and plain paths on both. Underlining paths too would be a new look on both platforms; it is a one-line change in
-  step 3 if wanted.
+  and plain paths on both. The owner confirmed this reading in round 2.
 - **The needs-you request line follows decision 2, not 10.** Desktop sets a permission's request line in monospace
   (`SessionDetailNeedsYouCard`, `requestIsCode`). The audit grouped it with decision 2, so it becomes
   `textSm.medium` on both, and `requestIsCode` goes away.
@@ -122,8 +133,8 @@ on the step's PR.
 - **Decision 10 changes the phone's pills.** Today the touch pill is a white pill in both themes: `secondary` in
   light, `primaryAlt` in dark. With desktop's rules, the leading card's action is `primaryAlt` (black in light,
   white in dark), and any other card's is `secondary` (grey in dark). The code comment says the dark grey
-  `secondary` "is lost on the tint". Desktop already shows that today. Step 3 checks it on the phone; if it is
-  unreadable, that is a finding for a review page.
+  `secondary` "is lost on the tint". Desktop already shows that today. Step 3 checks it on the phone in dark mode
+  before it merges; if it is unreadable, step 3 fixes it for both apps and shows the owner (round 2).
 - **The computer card moves inside the entry (decision 4).** `ComputerSettingsEntry` renders nothing until the
   account's list names the current computer. Desktop builds the card outside it, so desktop flashes an empty card
   while the list loads. Step 4 builds the card inside the entry's computer branch, which also fixes the flash.
@@ -176,7 +187,7 @@ dropped item's branch as it is, and note it in the tracker for the metrics phase
 
 | Item | Site (file, symbol) | Touch today | Pointer today | Folded value |
 | --- | --- | --- | --- | --- |
-| 2.1 | `transcript_motion.dart` `_TranscriptPresenceState._animation` | exit 200 ms, `transcriptMotionCurve` (easeOut) | exit 130 ms (`pregoPointerExitDuration`), `pregoContentMoveCurve` | pointer's on both |
+| 2.1 | `transcript_motion.dart` `_TranscriptPresenceState._animation` | exit 200 ms, `transcriptMotionCurve` (easeOut) | exit 130 ms (`pregoPointerExitDuration`), `pregoContentMoveCurve` | the phone's on both. Planned as the pointer's, but that pair moves the rows above a Working handoff by 6.4 pt (tracker) |
 | 2.2 | `transcript_motion.dart` `_TranscriptPresenceState.build` opacity | follows the animation | solid by 35% of the enter | pointer's on both |
 | 2.3 | `transcript_disclosure.dart` `_TranscriptDisclosureState` (`_pointer`) | 200 ms easeOut, header minimum 44×44 | open 180 ms, close 130 ms, `Cubic(0.25, 0.55, 0.2, 1)`, resize 180 ms, header minimum zero | pointer's motion on both; `Size(44, 44)` header minimum on both, which density shrinks on desktop (measure the desktop header) |
 | 2.4 | `transcript_live_row.dart` `TranscriptLiveLabel.build` shimmer base | `textTertiary` | `textSecondary` | `textSecondary` |

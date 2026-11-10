@@ -67,6 +67,8 @@ import 'package:sesori_desktop/core/platform/io_file_access_permission.dart'
 import 'package:sesori_desktop/core/platform/io_installed_desktop_bundle_source.dart'
     as _i696;
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
+import 'package:sesori_desktop/core/platform/method_channel_desktop_app_menu.dart'
+    as _i671;
 import 'package:sesori_desktop/core/platform/method_channel_sparkle_update_engine.dart'
     as _i760;
 import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dart'
@@ -115,6 +117,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.OnDeviceSpeechSource>(
       () => _i567.UnsupportedOnDeviceSpeechSource(),
+    );
+    gh.lazySingleton<_i316.DesktopAppMenu>(
+      () => _i671.MethodChannelDesktopAppMenu(),
     );
     gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
       () => _i11.FlutterDesktopApplicationSupportDirectory(),

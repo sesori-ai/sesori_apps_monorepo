@@ -234,7 +234,127 @@ void main() {
     ).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
+
+  test("a load that timed out while connected reloads once after the next reconnect", () async {
+    final mockLoadService = MockSessionDetailLoadService();
+    final mockSessionRepository = MockSessionRepository();
+    final mockConnectionService = MockConnectionService();
+    final mockNotificationCanceller = MockNotificationCanceller();
+    final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
+    final globalEvents = StreamController<SseEvent>.broadcast();
+    final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+
+    addTearDown(sessionEvents.close);
+    addTearDown(globalEvents.close);
+    addTearDown(connectionStatus.close);
+
+    when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
+    when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
+    when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
+    when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+    when(
+      () => mockNotificationCanceller.cancelForSession(sessionId: any(named: "sessionId")),
+    ).thenAnswer((_) async {});
+    var metadataCalls = 0;
+    when(() => mockLoadService.loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer((_) async {
+      metadataCalls++;
+      if (metadataCalls == 1) {
+        return SessionDetailMetadataLoadResult.failed(
+          error: ApiError.dartHttpClient(
+            TimeoutException("Relay request timed out: POST /session/detail", const Duration(seconds: 30)),
+          ),
+          stackTrace: StackTrace.current,
+        );
+      }
+      return SessionDetailMetadataLoadResult.found(session: testSession(id: _sessionId));
+    });
+    when(
+      () => mockLoadService.reload(
+        session: any(named: "session"),
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) async => const SessionDetailLoadResult.loaded(snapshot: _emptySnapshot));
+
+    final cubit = SessionDetailCubit(
+      mockConnectionService,
+      pluginManagementService: stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
+      loadService: mockLoadService,
+      sessionAbortService: SessionAbortService(repository: mockSessionRepository),
+      autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
+      approvalService: SessionApprovalService(repository: mockSessionRepository),
+      promptDispatcher: mockSessionRepository,
+      permissionRepository: MockPermissionRepository(),
+      sessionViewingService: stubbedSessionViewingService(),
+      lifecycleSource: FakeLifecycleSource(),
+      composerDraftRepository: inMemoryComposerDraftRepository(),
+      productAnalyticsService: stubbedProductAnalyticsService(),
+      feedbackPromptService: FakeFeedbackPromptService(),
+      sessionId: _sessionId,
+      projectId: "project-1",
+      notificationCanceller: mockNotificationCanceller,
+      failureReporter: MockFailureReporter(),
+      bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
+      fileReferenceOpenService: MockFileReferenceOpenService(),
+      window: idleSessionWindow(),
+      sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
+    );
+    addTearDown(cubit.close);
+
+    await awaitState(
+      cubit: cubit,
+      predicate: (state) => state is SessionDetailFailed,
+      description: "SessionDetailFailed",
+    );
+
+    // A status emission that is not a reconnect leaves the failure for Retry.
+    connectionStatus.add(connectedStatus);
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, isA<SessionDetailFailed>());
+    expect(metadataCalls, 1);
+
+    connectionStatus.add(const ConnectionStatus.disconnected());
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, isA<SessionDetailFailed>());
+    expect(metadataCalls, 1);
+
+    connectionStatus.add(connectedStatus);
+    await _awaitLoaded(cubit);
+
+    expect(metadataCalls, 2);
+    verify(
+      () => mockLoadService.reload(
+        session: any(named: "session"),
+        projectId: "project-1",
+      ),
+    ).called(1);
+  });
 }
+
+const _emptySnapshot = SessionDetailSnapshot(
+  areOptionsStale: false,
+  bridgeQueuedPrompts: [],
+  pluginId: "opencode",
+  supportsPromptAttachments: false,
+  supportsFileUploads: false,
+  messages: <MessageWithParts>[],
+  olderMessagesCursor: null,
+  userMessagesBefore: null,
+  awaitingHarnessSync: false,
+  pendingQuestions: <PendingQuestion>[],
+  pendingPermissions: <PendingPermission>[],
+  childSessions: <Session>[],
+  statuses: <String, SessionStatus>{},
+  agents: <AgentInfo>[],
+  providerData: null,
+  commands: <CommandInfo>[],
+  canonicalSessionTitle: null,
+  promptDefaults: null,
+  isRootSession: true,
+  isArchived: false,
+  cannotContinueMessage: null,
+);
 
 void _stubLoadApis(MockSessionRepository sourceRepository, {required MockSessionApi optionsApi}) {
   when(

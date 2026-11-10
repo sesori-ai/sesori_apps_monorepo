@@ -371,6 +371,40 @@ void main() {
     expect(find.text("2 steps"), findsOneWidget);
   });
 
+  testWidgets("a row that turns around mid-ease carries its opacity on, either way", (tester) async {
+    Widget row({required bool exiting}) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: TranscriptPresence(
+        entering: true,
+        exiting: exiting,
+        onEntered: null,
+        onExited: null,
+        child: const SizedBox(height: 40),
+      ),
+    );
+    double opacity() => tester.widget<Opacity>(find.byType(Opacity)).opacity;
+
+    await tester.pumpWidget(row(exiting: false));
+    await tester.pump(const Duration(milliseconds: 100));
+    final entered = opacity();
+    expect(entered, 1, reason: "solid early in its ease");
+
+    // It leaves before it has eased all the way in.
+    await tester.pumpWidget(row(exiting: true));
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(opacity(), moreOrLessEquals(entered, epsilon: 0.02));
+    await tester.pump(const Duration(milliseconds: 40));
+    final leaving = opacity();
+    expect(leaving, lessThan(entered));
+
+    // And runs again before it has folded away.
+    await tester.pumpWidget(row(exiting: false));
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(opacity(), moreOrLessEquals(leaving, epsilon: 0.02));
+    await tester.pumpAndSettle();
+    expect(opacity(), 1);
+  });
+
   testWidgets("reduced motion folds a finished row and changes the count at once", (tester) async {
     List<MessagePart> parts({required ToolStatus last}) => [
       _tool(id: "t1", name: "read", status: ToolStatus.completed),
