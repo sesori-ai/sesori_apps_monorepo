@@ -41,6 +41,7 @@ void main() {
     required ComposerImageDownscaleBuilder downscaleBuilder,
     required ValueNotifier<String> draftIdentity,
     required List<_Sent> sent,
+    required String initialText,
   }) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
@@ -92,7 +93,7 @@ void main() {
                 fileUploadsSupported: false,
                 draftIdentity: identity,
                 restorationKey: null,
-                initialDraft: ComposerDraft.typed(text: "see attached"),
+                initialDraft: ComposerDraft.typed(text: initialText),
                 initialAttachments: const [],
                 onAttachmentsChanged: null,
                 autofocus: false,
@@ -134,6 +135,7 @@ void main() {
       downscaleBuilder: downscale,
       draftIdentity: draftIdentity,
       sent: sent,
+      initialText: "see attached",
     );
 
     await paste(tester);
@@ -168,6 +170,7 @@ void main() {
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
       draftIdentity: draftIdentity,
       sent: sent,
+      initialText: "see attached",
     );
 
     await paste(tester);
@@ -203,6 +206,7 @@ void main() {
       downscaleBuilder: downscale,
       draftIdentity: draftIdentity,
       sent: sent,
+      initialText: "see attached",
     );
 
     await paste(tester);
@@ -227,7 +231,7 @@ void main() {
     expect(sent, hasLength(1));
   });
 
-  testWidgets("tests type into the composer and send through its stable keys", (tester) async {
+  testWidgets("tests open the resting pill, type and send through the composer's stable keys", (tester) async {
     final draftIdentity = ValueNotifier("session");
     addTearDown(draftIdentity.dispose);
     final sent = <_Sent>[];
@@ -237,12 +241,23 @@ void main() {
       downscaleBuilder: const ComposerImageDownscaleBuilder(),
       draftIdentity: draftIdentity,
       sent: sent,
+      initialText: "",
     );
+    final send = find.byKey(PromptInput.sendButtonKey);
+    expect(send, findsOneWidget);
+    expect(find.byKey(PromptInput.textFieldKey), findsNothing);
 
-    await tester.enterText(find.byKey(PromptInput.textFieldKey), "hello from a test");
+    await tester.tap(find.byKey(PromptInput.startTypingKey));
     await tester.pump();
-    expect(find.byKey(PromptInput.sendButtonKey), findsOneWidget);
-    await tester.tap(find.byKey(PromptInput.sendButtonKey));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Mid cross-fade from the pill to the typing layout.
+    expect(send, findsOneWidget);
+
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(PromptInput.textFieldKey), "hello from a test");
+    await tester.pumpAndSettle();
+    expect(send, findsOneWidget);
+    await tester.tap(send);
     await tester.pumpAndSettle();
 
     expect(sent.single.text, "hello from a test");

@@ -102,22 +102,33 @@ flutter test
 ### Driving the app on a simulator
 
 Automated on-device checks run as integration tests on an iOS simulator. Build them with
-`--dart-define=SESORI_TEST_MODE=true` (`sesoriTestMode` in `lib/core/sesori_test_mode.dart`; release builds ignore it).
-It skips both native notification permission prompts, never starts the founder call sheet or the automatic rating
-prompt, and starts the composer in typing mode. Pass `--no-uninstall` so the app, and its sign-in, stays installed
-between runs:
+`--dart-define=SESORI_TEST_MODE=true` (`sesoriTestMode` in `lib/core/sesori_test_mode.dart`). It skips both native
+notification permission prompts, never starts the founder call sheet or the automatic rating prompt, and starts the
+composer in typing mode. Release builds ignore it, but any debug or profile build honors it, including one on a physical
+device, so pass it only for unattended simulator runs.
+
+Keep the dev-account credentials out of the command line and shell history: put them in the gitignored
+`sesori_test_defines.json` in this directory, mode 0600:
+
+```json
+{
+  "SESORI_TEST_EMAIL": "<dev-account-email>",
+  "SESORI_TEST_PASSWORD": "<dev-account-password>"
+}
+```
+
+Pass `--no-uninstall` so the app, and its sign-in, stays installed between runs:
 
 ```bash
 flutter test integration_test/sim_smoke_test.dart -d <simulator-udid> --no-uninstall \
-  --dart-define=SESORI_TEST_MODE=true \
-  --dart-define=SESORI_TEST_EMAIL=<dev-account-email> \
-  --dart-define=SESORI_TEST_PASSWORD=<dev-account-password>
+  --dart-define=SESORI_TEST_MODE=true --dart-define-from-file=sesori_test_defines.json
 ```
 
 `sim_smoke_test.dart` signs in with email only when the app is signed out, opens the newest session and types into its
 composer; it is skipped without the flag and credentials, and needs a bridge signed in to the same account. Find the
 composer with `PromptInput.textFieldKey` and its Send button with `PromptInput.sendButtonKey`. In typing mode the
-composer rests as a compact pill: tap `PromptInput.startTypingKey` first to open the text field.
+composer rests as a compact pill: tap `PromptInput.startTypingKey` first to open the text field. Keyed finders match
+only the current composer layout, also while two layouts cross-fade.
 
 ## Adding a New Screen
 
