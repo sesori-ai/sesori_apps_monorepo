@@ -583,6 +583,9 @@ void main() {
       });
 
       test("a project stored under the link spelling still receives new sessions", () async {
+        // The one-time merge, which gives such a row the folder's spelling, has
+        // already run.
+        await _recordMergeMarker(database: database);
         await database.projectsDao.upsertProjectRows(
           rows: [_projectRow(id: link, path: link)],
         );
@@ -986,31 +989,82 @@ void main() {
           expect([await projectOf("ses_0"), await projectOf("ses_1")], [folder, folder]);
         });
 
-        test("with only link spellings stored, the lowest id keeps the sessions and its spelling", () async {
-          await database.projectsDao.upsertProjectRows(
-            rows: [
-              _projectRow(id: secondLink, path: secondLink),
-              _projectRow(id: link, path: link),
-            ],
+        test(
+          "with only link spellings stored, the lowest id keeps the sessions and takes the folder's spelling",
+          () async {
+            await database.projectsDao.upsertProjectRows(
+              rows: [
+                _projectRow(id: secondLink, path: secondLink),
+                _projectRow(id: link, path: link),
+              ],
+            );
+            await database.sessionDao.upsertSessionRows(
+              rows: [
+                _sessionRow(
+                  sessionId: "ses_second",
+                  backendSessionId: "second",
+                  projectId: secondLink,
+                  directory: secondLink,
+                  pluginId: "other",
+                  projectionUpdatedAt: 20,
+                ),
+              ],
+            );
+
+            await _importCompletion(database: database, plugin: idle);
+
+            expect(await storedProjectIds(), [link]);
+            expect((await database.projectsDao.getProject(projectId: link))?.path, folder);
+            expect(await projectOf("ses_second"), link);
+          },
+        );
+
+        test("a lone link-spelled row takes the folder's spelling, its cached session options with it", () async {
+          final row = _projectRow(id: link, path: link).copyWith(displayName: "Linked name");
+          await database.projectsDao.upsertProjectRows(rows: [row]);
+          final cached = _cachedOptions(pluginId: "a", projectId: link, capturedAt: 10, marker: "a");
+          // Captured under a spelling since replaced, so already stale: it stays so.
+          final stale = _cachedOptions(
+            pluginId: "b",
+            projectId: link,
+            capturedAt: 10,
+            marker: "b",
+          ).copyWith(capturedProjectPath: Value(secondLink));
+          for (final options in [cached, stale]) {
+            await database.into(database.sessionOptionsCacheTable).insert(options);
+          }
+
+          final completed = await _importCompletion(database: database, plugin: idle);
+
+          expect(await database.projectsDao.getAllProjects(), [row.copyWith(path: folder)]);
+          expect(
+            await database.select(database.sessionOptionsCacheTable).get(),
+            unorderedEquals([cached.copyWith(capturedProjectPath: Value(folder)), stale]),
           );
-          await database.sessionDao.upsertSessionRows(
-            rows: [
-              _sessionRow(
-                sessionId: "ses_second",
-                backendSessionId: "second",
-                projectId: secondLink,
-                directory: secondLink,
-                pluginId: "other",
-                projectionUpdatedAt: 20,
-              ),
-            ],
+          expect(completed.projectsImported, 1);
+          expect(completed.newItems, const CatalogImportNewItems(projects: 0, sessions: 0));
+        });
+
+        test("a later import reporting the folder joins a lone link-spelled row", () async {
+          await database.projectsDao.upsertProjectRows(
+            rows: [_projectRow(id: link, path: link)],
+          );
+          await _importCompletion(database: database, plugin: idle);
+          final plugin = _NativeImportPlugin(
+            projects: [PluginProject(id: "backend-project", directory: folder)],
+            rootsByProject: {
+              folder: [_pluginSession(id: "root", directory: folder)],
+            },
+            childrenByParent: const {},
           );
 
-          await _importCompletion(database: database, plugin: idle);
+          await _importCompletion(database: database, plugin: plugin);
 
           expect(await storedProjectIds(), [link]);
-          expect((await database.projectsDao.getProject(projectId: link))?.path, link);
-          expect(await projectOf("ses_second"), link);
+          expect(
+            (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "root"))?.projectId,
+            link,
+          );
         });
 
         // The same import publishes after merging, so it must find the
@@ -1184,7 +1238,7 @@ void main() {
           expect(await projectOf("ses_linked"), folder);
         });
 
-        test("rows whose links no longer resolve are left alone", () async {
+        test("rows whose links no longer resolve are left alone, lone ones too", () async {
           // A link since removed, and one whose target is gone.
           final removedLink = p.join(root, "removed-link");
           final missingTarget = p.join(root, "missing-target");
@@ -1235,26 +1289,28 @@ void main() {
           );
         });
 
-        test("a row whose links cannot be read is left alone", () async {
-          final rows = [_projectRow(id: folder, path: folder), _projectRow(id: link, path: link)];
-          await database.projectsDao.upsertProjectRows(rows: rows);
-          final repository = singlePluginCatalogImportRepository(
-            plugin: idle,
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            catalogHydrationsDao: database.catalogHydrationsDao,
-            filesystemApi: _DeniedFilesystemApi(deniedPath: link),
-          );
+        for (final lone in [false, true]) {
+          test("a${lone ? " lone" : ""} row whose links cannot be read is left alone", () async {
+            final rows = [if (!lone) _projectRow(id: folder, path: folder), _projectRow(id: link, path: link)];
+            await database.projectsDao.upsertProjectRows(rows: rows);
+            final repository = singlePluginCatalogImportRepository(
+              plugin: idle,
+              projectsDao: database.projectsDao,
+              sessionDao: database.sessionDao,
+              catalogHydrationsDao: database.catalogHydrationsDao,
+              filesystemApi: _DeniedFilesystemApi(deniedPath: link),
+            );
 
-          await repository
-              .importCatalog(
-                pluginId: idle.id,
-                control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
-              )
-              .drain<void>();
+            await repository
+                .importCatalog(
+                  pluginId: idle.id,
+                  control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+                )
+                .drain<void>();
 
-          expect(await database.projectsDao.getAllProjects(), unorderedEquals(rows));
-        });
+            expect(await database.projectsDao.getAllProjects(), unorderedEquals(rows));
+          });
+        }
       });
     });
 

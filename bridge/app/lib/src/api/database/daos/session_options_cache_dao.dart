@@ -62,6 +62,20 @@ class SessionOptionsCacheDao({required AppDatabase database})
     await into(sessionOptionsCacheTable).insert(row);
   }
 
+  Future<void> updateCapturedProjectPath({
+    required String projectId,
+    required String fromPath,
+    required String toPath,
+  }) async {
+    await (update(sessionOptionsCacheTable)..where(
+          (table) =>
+              table.scope.equalsValue(PluginSessionOptionsScope.project) &
+              table.projectId.equals(projectId) &
+              table.capturedProjectPath.equals(fromPath),
+        ))
+        .write(SessionOptionsCacheTableCompanion(capturedProjectPath: Value(toPath)));
+  }
+
   Future<void> deleteRow({
     required String pluginId,
     required PluginSessionOptionsScope scope,

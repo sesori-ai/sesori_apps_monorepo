@@ -42,7 +42,7 @@ state.
   folder a harness reports once per import and publishes under the resolved
   spelling, so `/tmp/x/demo-app` joins the project stored as
   `/private/tmp/x/demo-app`. A row already stored under the reported spelling
-  still matches and keeps its path; with rows under both spellings, new
+  still matches; with rows under both spellings, new
   sessions join the resolved one and neither row changes. A folder deleted
   since, common in old history, resolves through its nearest surviving parent
   (`/tmp/x/gone` imports as `/private/tmp/x/gone`); a folder that cannot be
@@ -54,7 +54,10 @@ state.
   transaction, until a plugin records a hydration marker at the current
   projection version, which every plugin's next start does once. A row stored through a link moves its sessions to the row stored under
   the resolved spelling, or, with only link spellings stored, to the lowest id
-  among them, and is removed. Only the project moves: each session keeps its
+  among them, and is removed. A surviving or lone link-spelled row takes the
+  resolved spelling as its path, keeping its id, so later imports that report
+  the folder join it; its cached session options captured under the old
+  spelling follow the new path. Only the project moves: each session keeps its
   folder, worktree, branch, parent and other state. The surviving row keeps its
   own name and base branch, takes them from a merged row when it has none, is
   visible when any of the rows was, and spans their activity. For each plugin
@@ -64,7 +67,7 @@ state.
   surviving row. Folders resolve as
   imports resolve them, so a deleted folder merges through its surviving
   parents. A row whose links no longer resolve, one whose links cannot be read,
-  a lone link-spelled row and every row on Windows stay as stored. The merge's
+  and every row on Windows stay as stored. The merge's
   writes count as written rows, so the app reloads its lists. A failed or
   cancelled import leaves the split as it was, and a split that appears after
   the marker is not merged.
@@ -923,7 +926,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - After the first import at the current projection version, a folder an older
   import stored once per spelling still lists as two projects; or the merge
   loses a session, detaches a child from its parent, hides a project the user
-  could see, recreates a removed row in the same import, drops the merged row's name or the cached session options of a plugin the survivor had none for, or merges a row whose links no longer
+  could see, recreates a removed row in the same import, leaves a lone
+  link-spelled row under the link's spelling so a later import that reports the
+  folder lists a second project, drops the merged row's name or the cached session options of a plugin the survivor had none for, or merges a row whose links no longer
   resolve. A failed import leaves a half-merged catalog, the app keeps listing
   the removed project after the import completes, or the merge runs again once
   a marker is recorded.
@@ -1058,9 +1063,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   only rediscovers sessions in directories the bridge already knows.
 - A Windows process keeps its working directory as spelled, so a folder reached
   through a junction or a mapped or `subst` drive and its target stay separate
-  projects there. A project opened through a link before link resolution keeps
-  that spelling, so an import can still list its resolved folder as a second
-  project; the user can remove either one without losing sessions.
+  projects there.
 - Only plugins registered in the build under test count.
 - Antigravity discovery is limited to valid `.meta` records in its Sesori-owned isolated profile. Missing or changed
   private metadata can reduce discovery/attribution; Sesori does not mutate or migrate Google's history format.

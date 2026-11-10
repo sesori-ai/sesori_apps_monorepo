@@ -820,7 +820,9 @@ class CatalogImportRepository({
   /// `/private/tmp/x/app`). Each row stored through a link moves its sessions
   /// to the row imports and opens already choose for the folder: the lowest id
   /// stored under the resolved spelling, or else the lowest id among the link
-  /// spellings, which keeps its own. The rows it merged are then removed.
+  /// spellings, which takes the resolved spelling, as does a lone link-spelled
+  /// row, so later imports find it under the folder. The rows it merged are
+  /// then removed.
   ///
   /// [resolvedPaths] maps a normalized stored path to its resolved spelling. A
   /// row missing from it was stored after the probe, by an open or import that
@@ -845,27 +847,37 @@ class CatalogImportRepository({
     for (final MapEntry(key: folder, value: rows) in rowsByFolder.entries) {
       if (rows.every((entry) => entry.resolved)) continue;
       rows.sort((a, b) => a.row.projectId.compareTo(b.row.projectId));
-      final survivor = (rows.where((entry) => entry.resolved).firstOrNull ?? rows.first).row;
+      final (row: survivor, resolved: survivorResolved) =
+          rows.where((entry) => entry.resolved).firstOrNull ?? rows.first;
       final merged = [
         for (final entry in rows)
           if (!entry.resolved && entry.row.projectId != survivor.projectId) entry.row,
       ];
-      if (merged.isEmpty) continue;
       final mergedIds = {for (final row in merged) row.projectId};
+      final kept = _mergeSplitProjectRow(
+        survivor: survivor,
+        merged: merged,
+      ).copyWith(path: survivorResolved ? survivor.path : folder);
       requireCurrentGeneration();
-      await _projectsDao.upsertProjectRows(
-        rows: [_mergeSplitProjectRow(survivor: survivor, merged: merged)],
-      );
+      await _projectsDao.upsertProjectRows(rows: [kept]);
       final moved = await _sessionDao.moveSessionsToProject(fromProjectIds: mergedIds, toProjectId: survivor.projectId);
-      await _carrySessionOptionsOver(survivor: survivor, mergedIds: mergedIds);
+      if (!survivorResolved) {
+        // Options captured under the old spelling stay valid under the new one.
+        await _sessionOptionsCacheDao.updateCapturedProjectPath(
+          projectId: survivor.projectId,
+          fromPath: survivor.path,
+          toPath: kept.path,
+        );
+      }
+      await _carrySessionOptionsOver(survivor: kept, mergedIds: mergedIds);
       // After the move and copy, so removing a row cascades only to its own
       // cached session options.
       await _projectsDao.deleteProjects(projectIds: mergedIds);
       Log.i(
-        "CatalogImportRepository: merged ${mergedIds.join(", ")} into ${survivor.projectId}, "
+        "CatalogImportRepository: merged [${mergedIds.join(", ")}] into ${survivor.projectId}, "
         "one folder ($folder) stored once per spelling; moved $moved sessions",
       );
-      projectsMerged += merged.length;
+      projectsMerged += merged.length + (survivorResolved ? 0 : 1);
       sessionsMoved += moved;
       for (final path in [folder, for (final row in merged) _normalizeRequiredPath(row.path)]) {
         survivorIdsByPath[path] = survivor.projectId;
