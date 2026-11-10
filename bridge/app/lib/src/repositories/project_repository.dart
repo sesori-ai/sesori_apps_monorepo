@@ -2,6 +2,7 @@ import "dart:async" show TimeoutException;
 import "dart:io" show FileSystemException, Platform;
 import "dart:math" show max;
 
+import "package:collection/collection.dart" show IterableExtension;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
@@ -282,17 +283,12 @@ class ProjectRepository({
     }
   }
 
-  /// [path] normalized and, on macOS and Linux, with its symbolic links
-  /// resolved. Harnesses read their working directory back through `getcwd`,
-  /// which resolves links there, so a folder opened through a link (`/tmp` is
-  /// `/private/tmp` on macOS) must be stored the same way to match the
-  /// sessions they report. Windows keeps a working directory as spelled, so
-  /// the path stays as given there, as does a path whose links cannot be
-  /// resolved.
   /// The stored row, lowest project id first, whose path has the same folder
   /// name as [canonical] and resolves to it through links. Only rows with that
   /// name are probed, so opening costs a probe or two rather than one per
-  /// stored project; a probe that fails or stalls rules its row out.
+  /// stored project; a probe that fails or stalls rules its row out. Probes
+  /// run in id-ordered batches of [_maxConcurrentWorktreeInspections], and the
+  /// first batch with a match ends the search.
   Future<ProjectDto?> _storedUnderLinkSpelling({
     required String canonical,
     required Map<String, ProjectDto> projectsByNormalizedPath,
@@ -303,11 +299,13 @@ class ProjectRepository({
       for (final MapEntry(key: storedPath, value: project) in projectsByNormalizedPath.entries)
         if (storedPath != canonical && p.basename(storedPath) == name) (path: storedPath, project: project),
     ]..sort((a, b) => a.project.projectId.compareTo(b.project.projectId));
-    final resolved = await Future.wait([
-      for (final candidate in candidates) _resolvedOrNull(path: candidate.path),
-    ]);
-    for (final (index, candidate) in candidates.indexed) {
-      if (resolved[index] == canonical) return candidate.project;
+    for (final batch in candidates.slices(_maxConcurrentWorktreeInspections)) {
+      final resolved = await Future.wait([
+        for (final candidate in batch) _resolvedOrNull(path: candidate.path),
+      ]);
+      for (final (index, candidate) in batch.indexed) {
+        if (resolved[index] == canonical) return candidate.project;
+      }
     }
     return null;
   }
@@ -332,6 +330,13 @@ class ProjectRepository({
     }
   }
 
+  /// [path] normalized and, on macOS and Linux, with its symbolic links
+  /// resolved. Harnesses read their working directory back through `getcwd`,
+  /// which resolves links there, so a folder opened through a link (`/tmp` is
+  /// `/private/tmp` on macOS) must be stored the same way to match the
+  /// sessions they report. Windows keeps a working directory as spelled, so
+  /// the path stays as given there, as does a path whose links cannot be
+  /// resolved.
   String _canonicalProjectDirectory({required String path}) {
     final normalized = normalizeProjectDirectory(directory: path);
     if (Platform.isWindows) return normalized;

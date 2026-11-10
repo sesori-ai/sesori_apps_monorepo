@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io";
+import "dart:math" show max;
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
@@ -701,6 +702,32 @@ void main() {
         expect(opened.id, folder);
         expect((await db.projectsDao.getAllProjects()).length, 2);
       });
+    });
+
+    test("opening probes same-named stored folders at most eight at a time", () async {
+      for (var index = 0; index < 20; index++) {
+        await db.projectsDao.recordOpenedProject(
+          projectId: "stored-$index",
+          path: "/stored/$index/app",
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 1,
+        );
+      }
+      final filesystemApi = _ConcurrencyTrackingFilesystemApi();
+      final probingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: filesystemApi,
+      );
+
+      final target = await probingRepo.resolveProjectOpenTarget(path: "/opened/app");
+
+      expect(target.id, "/opened/app");
+      expect(filesystemApi.probedPaths, hasLength(20));
+      expect(filesystemApi.maxInFlight, lessThanOrEqualTo(8));
     });
 
     test("opening keeps a folder whose links cannot be resolved as given", () async {
@@ -1564,6 +1591,24 @@ class _CountingProjectsDao({required AppDatabase database}) extends ProjectsDao 
   Future<ProjectDto?> getProject({required String projectId}) {
     getProjectCallCount++;
     return super.getProject(projectId: projectId);
+  }
+}
+
+/// Resolves every path to itself after a short delay, tracking how many
+/// resolutions run at once.
+class _ConcurrencyTrackingFilesystemApi() extends FakeFilesystemApi {
+  final List<String> probedPaths = [];
+  int maxInFlight = 0;
+  int _inFlight = 0;
+
+  @override
+  Future<String> resolveDirectoryPathAsync({required String path}) async {
+    probedPaths.add(path);
+    _inFlight++;
+    maxInFlight = max(maxInFlight, _inFlight);
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    _inFlight--;
+    return path;
   }
 }
 
