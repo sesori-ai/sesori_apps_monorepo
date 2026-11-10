@@ -187,6 +187,7 @@ PluginManagementLoadResult managementFixture({
         idleTimeoutMins: 45,
         hasIdleTimeoutOverride: false,
         managementCapabilities: const {},
+        mcpScopes: null,
         actionHint: null,
       ),
     ],

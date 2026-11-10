@@ -91,6 +91,7 @@ const _plugin = PluginManagementMetadata(
     PluginManagementCapability.setupRefresh,
     PluginManagementCapability.idleTimeout,
   },
+  mcpScopes: null,
   actionHint: null,
 );
 
