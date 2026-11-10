@@ -150,13 +150,22 @@ def require_macos_framework_install_names(*, gui: Path) -> None:
     as pdfium_dart's native-asset pdfium.framework did to the PDFium.framework the executable links.
     """
     frameworks = gui / "Contents/Frameworks"
-    for framework in sorted(frameworks.glob("*.framework")):
+    bundled = sorted(frameworks.glob("*.framework"))
+    # A case-sensitive build volume can hold both; a user's Mac then keeps only one.
+    seen: dict[str, str] = {}
+    for framework in bundled:
+        other = seen.setdefault(framework.name.casefold(), framework.name)
+        if other != framework.name:
+            raise ValueError(f"{other} and {framework.name} differ only by case")
+    for framework in bundled:
         name = framework.name.removesuffix(".framework")
         for install_name in otool_lines(flag="-D", binary=framework / name):
             if install_name.rsplit("/", 1)[-1] != name or f"{name}.framework/" not in install_name:
                 raise ValueError(f"{framework.name} contains a binary with install name {install_name}")
     for line in otool_lines(flag="-L", binary=gui / "Contents/MacOS/Sesori"):
         requested = line.split(" (compatibility version", 1)[0]
+        if requested.startswith("@") and not requested.startswith("@rpath/"):
+            raise ValueError(f"Unsupported load path {requested}: this check resolves @rpath/ only")
         if not requested.startswith("@rpath/") or ".framework/" not in requested:
             continue
         binary = frameworks / requested.removeprefix("@rpath/")

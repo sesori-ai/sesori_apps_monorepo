@@ -129,21 +129,25 @@ class NativeInventoryTest(unittest.TestCase):
                     qualification.main()
 
     def test_frameworks_must_carry_the_install_name_dyld_loads_them_by(self) -> None:
-        linked = ("@rpath/PDFium.framework/PDFium", "@rpath/Sparkle.framework/Versions/B/Sparkle")
+        system = ("/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit", "/usr/lib/libSystem.B.dylib")
+        bundled = ("@rpath/PDFium.framework/PDFium", "@rpath/Sparkle.framework/Versions/B/Sparkle")
         gate = "pdfrx_pdfium_gate.framework/pdfrx_pdfium_gate"
         shipped = {"PDFium.framework/PDFium": "@rpath/PDFium.framework/PDFium",
                    "Sparkle.framework/Versions/B/Sparkle": "@rpath/Sparkle.framework/Versions/B/Sparkle",
                    "Sparkle.framework/Sparkle": "@rpath/Sparkle.framework/Versions/B/Sparkle",
                    gate: f"@rpath/{gate}"}
         cases = {
-            "passes": ({}, None),
+            "passes": ({}, (), None),
             # 1.12.0 (1162): pdfium_dart's native asset overwrote the XCFramework on a case-insensitive volume.
-            "case collision": ({"PDFium.framework/PDFium": "@rpath/pdfium.framework/pdfium"},
+            "case collision": ({"PDFium.framework/PDFium": "@rpath/pdfium.framework/pdfium"}, (),
                                "PDFium.framework contains a binary with install name @rpath/pdfium.framework/pdfium"),
-            "linked framework missing": ({"PDFium.framework/PDFium": None},
+            "linked framework missing": ({"PDFium.framework/PDFium": None}, (),
                                          r"links @rpath/PDFium.framework/PDFium, but .* has \['nothing'\]"),
+            "load path the check cannot resolve": ({}, ("@executable_path/../Frameworks/Foo.framework/Foo",),
+                                                   "Unsupported load path @executable_path/../Frameworks/Foo"),
         }
-        for case, (changes, error) in cases.items():
+        for case, (changes, extra, error) in cases.items():
+            linked = system + bundled + extra
             with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
                 gui = Path(directory) / "Sesori.app"
                 frameworks = gui / "Contents/Frameworks"
@@ -169,6 +173,15 @@ class NativeInventoryTest(unittest.TestCase):
                     else:
                         with self.assertRaisesRegex(ValueError, error):
                             qualification.require_macos_framework_install_names(gui=gui)
+
+    def test_frameworks_differing_only_by_case_fail_even_from_a_case_sensitive_build(self) -> None:
+        # Both directories can only coexist on a case-sensitive volume, so list them instead of creating them.
+        frameworks = Path("Sesori.app/Contents/Frameworks")
+        listed = [frameworks / "PDFium.framework", frameworks / "pdfium.framework"]
+        with patch.object(qualification.Path, "glob", return_value=listed), \
+             patch.object(qualification, "run", side_effect=AssertionError("must fail before otool")), \
+             self.assertRaisesRegex(ValueError, "PDFium.framework and pdfium.framework differ only by case"):
+            qualification.require_macos_framework_install_names(gui=Path("Sesori.app"))
 
     def test_framework_check_needs_only_a_bundle(self) -> None:
         args = ["qualify_desktop.py", "check-frameworks", "--bundle-dir", "/Applications/Sesori.app"]
