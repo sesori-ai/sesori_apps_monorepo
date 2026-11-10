@@ -105,12 +105,12 @@ abstract class const BridgePluginDescriptor() {
   /// declares none.
   Set<PluginMcpCapability> get mcpCapabilities => const {};
 
-  /// The MCP scopes the started plugin's inventory answers; empty unless
-  /// [mcpCapabilities] includes management.
+  /// The MCP scopes the started plugin's inventory answers.
   ///
-  /// Clients offer MCP only where the harness answers, so a harness that
-  /// manages MCP per session shows no harness-wide entry. The default
-  /// declares none.
+  /// A descriptor that declares scopes must also declare management in
+  /// [mcpCapabilities]; the bridge publishes this set as declared. Clients
+  /// offer MCP only where the harness answers, so a harness that manages MCP
+  /// per session shows no harness-wide entry. The default declares none.
   Set<PluginMcpScopeKind> get mcpScopes => const {};
 
   /// Inspects whether this plugin's runtime and authentication are already set

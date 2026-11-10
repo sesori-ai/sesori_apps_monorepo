@@ -738,9 +738,10 @@ and [reproduction tools](../tool/mcp-contracts/README.md).
 | Pi | 🚫 No MCP method in the resident RPC | 🚫 | 🚫 | 🚫 |
 | Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes, OMP | 🚫 Standard ACP has no management API | 🚫 | 🚫 | 🚫 |
 
-Plugin descriptors declare the inventory scopes above (`mcpScopes`), and harness
-settings show the MCP entry only for a harness that answers harness scope, which
-today is Codex alone.
+Plugin descriptors declare the inventory scopes above (`mcpScopes`). With a
+bridge that reports them, harness settings show the MCP entry only for a harness
+that answers harness scope, which today is Codex alone. An older bridge omits
+`mcpScopes`, so every harness keeps the entry it had before.
 
 Typed MCP forms and URL requests are implemented for Claude and Codex only;
 other plugins return empty snapshots and refuse typed replies.

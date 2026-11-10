@@ -2804,6 +2804,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
