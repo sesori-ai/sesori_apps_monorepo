@@ -576,10 +576,21 @@ class Orchestrator({
       attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
       bridgeIdProvider: _bridgeRegistrationService,
     );
+    final sessionAbortService = SessionAbortService(
+      continuations: sessionContinuations,
+      views: sessionViews,
+      mutations: sessionMutationDispatcher,
+      sessionRepository: sessionRepository,
+      dispatcher: sessionOperationDispatcher,
+    );
     final sessionLifecycleService = SessionLifecycleService(
       continuations: sessionContinuations,
       views: sessionViews,
       mutations: sessionMutationDispatcher,
+      abortService: sessionAbortService,
+      // The bound ACP delete gives a cancelled turn to settle; it keeps the
+      // whole archive well inside the app's request timeout.
+      stopDeadline: const Duration(seconds: 5),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
@@ -593,13 +604,6 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       scratchRepository: scratchRepository,
       promptUploadRepository: promptUploadRepository,
-    );
-    final sessionAbortService = SessionAbortService(
-      continuations: sessionContinuations,
-      views: sessionViews,
-      mutations: sessionMutationDispatcher,
-      sessionRepository: sessionRepository,
-      dispatcher: sessionOperationDispatcher,
     );
     final sessionDiffService = SessionDiffService(
       sessionRepository: sessionRepository,

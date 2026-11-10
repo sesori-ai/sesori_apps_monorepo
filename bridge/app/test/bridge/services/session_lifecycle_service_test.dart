@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -10,6 +11,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
@@ -42,6 +44,14 @@ void main() {
         continuations: const EmptySessionContinuations(),
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
+        abortService: SessionAbortService(
+          sessionRepository: sessionRepository,
+          dispatcher: operationDispatcher,
+          continuations: const EmptySessionContinuations(),
+          views: const PassThroughSessionViews(),
+          mutations: const UnusedContinuationMutations(),
+        ),
+        stopDeadline: Duration.zero,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         filesystemRepository: FilesystemRepository(
@@ -351,11 +361,14 @@ void main() {
     late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
     late RecordingSessionContinuations continuations;
+    late SessionAbortService abortService;
+    late DeletionWorktreeServiceFake worktrees;
 
     setUp(() async {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = _FakeBridgePlugin();
+      worktrees = DeletionWorktreeServiceFake();
       final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -363,11 +376,21 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      continuations = RecordingSessionContinuations();
+      abortService = SessionAbortService(
+        sessionRepository: repository,
+        dispatcher: operationDispatcher,
+        continuations: continuations,
+        views: const PassThroughSessionViews(),
+        mutations: const UnusedContinuationMutations(),
+      );
       service = SessionLifecycleService(
-        continuations: continuations = RecordingSessionContinuations(),
+        continuations: continuations,
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
-        worktreeService: DeletionWorktreeServiceFake(),
+        abortService: abortService,
+        stopDeadline: const Duration(milliseconds: 50),
+        worktreeService: worktrees,
         sessionRepository: repository,
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
@@ -399,6 +422,7 @@ void main() {
     });
 
     tearDown(() async {
+      await abortService.dispose();
       await operationDispatcher.dispose();
       await db.close();
     });
@@ -482,6 +506,145 @@ void main() {
       expect(update.session.id, "root-session");
       expect(update.changed, isFalse);
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
+    });
+
+    Future<int?> storedArchivedAt() async => (await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt;
+
+    Future<ArchiveStatusUpdate> archive() => service.updateArchiveStatus(
+      sessionId: "root-session",
+      archived: true,
+      deleteWorktree: false,
+      force: false,
+    );
+
+    test("an idle session archives without a stop", () async {
+      await archive();
+
+      expect(plugin.abortCalls, isEmpty);
+      expect(await storedArchivedAt(), isNotNull);
+    });
+
+    group("a running session", () {
+      setUp(() {
+        plugin.activeSummaries = const [
+          PluginProjectActivitySummary(
+            id: "/repo",
+            activeSessions: [PluginActiveSession(id: "backend-session", mainAgentRunning: true)],
+          ),
+        ];
+      });
+
+      test("is stopped, sub-agents included, before it is archived", () async {
+        final stateWhenStopped = <({int? archivedAt, String? archiveNotified})>[];
+        plugin.onAbort = () async {
+          stateWhenStopped.add((archivedAt: await storedArchivedAt(), archiveNotified: plugin.lastArchivedSessionId));
+        };
+        // Stop's own push suppression applies too.
+        final started = <String>[];
+        final aborted = <String>[];
+        abortService.abortStartedSessions.listen(started.add);
+        abortService.abortedSessions.listen(aborted.add);
+
+        final update = await archive();
+
+        expect(started, ["root-session"]);
+        expect(aborted, ["root-session"]);
+        expect(plugin.abortCalls, [
+          (sessionId: "backend-session", subAgents: PluginAbortSubAgentPolicy.stop, useAtomicStop: true),
+        ]);
+        expect(stateWhenStopped, [(archivedAt: null, archiveNotified: null)]);
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+        expect(plugin.lastArchivedSessionId, "backend-session");
+      });
+
+      test("is archived when its stop fails", () async {
+        plugin.abortError = const PluginOperationException("abortSession", message: "fixture stop failure");
+
+        final update = await archive();
+
+        expect(plugin.abortCalls, hasLength(1));
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+        expect(plugin.lastArchivedSessionId, "backend-session");
+      });
+
+      test("is archived with a warning when its stop leaves work running", () async {
+        plugin.abortResult = const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
+        final log = _StderrBuffer();
+
+        final update = await IOOverrides.runZoned(archive, stderr: () => log);
+
+        expect(log.text, contains("[archive] session root-session did not fully stop; archiving it anyway"));
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+      });
+
+      test("is archived when its stop does not finish within the deadline", () async {
+        final stopHeld = Completer<void>();
+        addTearDown(stopHeld.complete);
+        plugin.onAbort = () => stopHeld.future;
+
+        final update = await archive();
+
+        expect(plugin.abortCalls, hasLength(1));
+        expect(stopHeld.isCompleted, isFalse);
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+        expect(plugin.lastArchivedSessionId, "backend-session");
+      });
+    });
+
+    group("a running session with a worktree to delete", () {
+      Future<ArchiveStatusUpdate> archiveWorktreeSession({required bool force}) => service.updateArchiveStatus(
+        sessionId: "worktree-session",
+        archived: true,
+        deleteWorktree: true,
+        force: force,
+      );
+
+      setUp(() async {
+        await db.sessionDao.insertSession(
+          fastMode: false,
+          sessionId: "worktree-session",
+          backendSessionId: "backend-worktree",
+          projectId: "/repo",
+          isDedicated: true,
+          createdAt: 1,
+          worktreePath: "/repo-worktrees/fixture",
+          baseBranch: "main",
+          baseCommit: "base",
+          lastAgent: null,
+          lastAgentModel: null,
+          pluginId: "fake",
+        );
+        plugin.activeSummaries = const [
+          PluginProjectActivitySummary(
+            id: "/repo",
+            activeSessions: [PluginActiveSession(id: "backend-worktree", mainAgentRunning: true)],
+          ),
+        ];
+        worktrees.safetyResult = WorktreeUnsafe(issues: [UnstagedChanges()]);
+      });
+
+      test("keeps running when the cleanup is refused", () async {
+        await expectLater(
+          archiveWorktreeSession(force: false),
+          throwsA(isA<SessionArchiveConflictException>()),
+        );
+
+        expect(plugin.abortCalls, isEmpty);
+        expect(worktrees.removeCallCount, 0);
+        expect((await db.sessionDao.getSession(sessionId: "worktree-session"))?.archivedAt, isNull);
+      });
+
+      test("is stopped and archived on a forced retry", () async {
+        await archiveWorktreeSession(force: true);
+
+        expect(plugin.abortCalls, hasLength(1));
+        expect(worktrees.removeCallCount, 1);
+        expect((await db.sessionDao.getSession(sessionId: "worktree-session"))?.archivedAt, isNotNull);
+      });
     });
   });
 }
@@ -597,8 +760,47 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
+class _StderrBuffer() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  bool get hasTerminal => false;
+
+  @override
+  bool get supportsAnsiEscapes => false;
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeBridgePlugin() extends FakeBridgePlugin {
   String? get lastArchivedSessionId => lastArchiveSessionId;
+
+  List<PluginProjectActivitySummary> activeSummaries = const [];
+  final List<({String sessionId, PluginAbortSubAgentPolicy subAgents, bool useAtomicStop})> abortCalls = [];
+  Future<void> Function()? onAbort;
+  Object? abortError;
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => activeSummaries;
+
+  @override
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  }) async {
+    abortCalls.add((sessionId: sessionId, subAgents: subAgents, useAtomicStop: useAtomicStop));
+    await onAbort?.call();
+    if (abortError case final error?) throw error;
+    return abortResult;
+  }
 
   @override
   Future<PluginSession> createSession({

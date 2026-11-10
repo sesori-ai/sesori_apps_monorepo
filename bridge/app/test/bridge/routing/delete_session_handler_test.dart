@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/delete_session_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
@@ -75,6 +76,14 @@ void main() {
         continuations: const EmptySessionContinuations(),
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
+        abortService: SessionAbortService(
+          sessionRepository: sessionRepository,
+          dispatcher: sessionOperationDispatcher,
+          continuations: const EmptySessionContinuations(),
+          views: const PassThroughSessionViews(),
+          mutations: const UnusedContinuationMutations(),
+        ),
+        stopDeadline: Duration.zero,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         filesystemRepository: FilesystemRepository(

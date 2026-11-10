@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
@@ -273,6 +274,14 @@ class _Fixture() {
       continuations: const EmptySessionContinuations(),
       mutations: const UnusedContinuationMutations(),
       views: const PassThroughSessionViews(),
+      abortService: SessionAbortService(
+        sessionRepository: repository,
+        dispatcher: operations,
+        continuations: const EmptySessionContinuations(),
+        views: const PassThroughSessionViews(),
+        mutations: const UnusedContinuationMutations(),
+      ),
+      stopDeadline: Duration.zero,
       worktreeService: worktree,
       sessionRepository: repository,
       filesystemRepository: _MissingFilesystemRepository(),
@@ -463,6 +472,9 @@ class _FamilyRepository() implements SessionRepository {
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<bool> isSessionRunning({required String sessionId}) async => false;
 
   Future<void> executeAction({required String sessionId}) async {
     final started = actionStarted;

@@ -33,6 +33,21 @@ class OpenCodeV2ActivityTracker() {
   bool hasPendingInput({required String sessionId}) =>
       permissions.any((request) => request.sessionID == sessionId) || forms.any((form) => form.sessionID == sessionId);
 
+  /// Working sessions at any depth below [sessionId].
+  Set<String> workingDescendantIds({required String sessionId}) => {
+    for (final id in workingSessionIds)
+      if (_hasAncestor(sessionId: id, ancestorId: sessionId)) id,
+  };
+
+  bool _hasAncestor({required String sessionId, required String ancestorId}) {
+    var parent = _sessions[sessionId]?.parentID;
+    while (parent != null) {
+      if (parent == ancestorId) return true;
+      parent = _sessions[parent]?.parentID;
+    }
+    return false;
+  }
+
   String? rootSessionId({required String sessionId}) {
     var current = _sessions[sessionId];
     while (current != null) {

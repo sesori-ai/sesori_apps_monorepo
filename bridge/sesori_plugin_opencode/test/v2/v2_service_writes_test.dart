@@ -308,6 +308,32 @@ void main() {
     expect(service.workState, PluginWorkState.busy);
   });
 
+  test("a working grandchild whose parent finished is confirmed, kept and stopped like a child", () async {
+    final grandchild = root.copyWith(id: "grandchild", parentID: "child");
+    tracker.seed(
+      sessions: [root, child, grandchild],
+      activeSessionIds: {root.id, "grandchild"},
+      permissions: [],
+      forms: [],
+    );
+
+    for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+      expect(
+        await service.abortSession(sessionId: root.id, subAgents: policy),
+        isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.runningSubAgentCount, "count", 1),
+      );
+    }
+    tracker.apply(event: V2SessionExecutionSucceeded(sessionID: root.id));
+    expect(
+      await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.keep),
+      isA<PluginAbortAccepted>().having((r) => r.workKept, "workKept", isTrue),
+    );
+    expect(repository.calls, isEmpty);
+
+    await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.stop);
+    expect(repository.calls, ["interrupt:${root.id}:false", "interrupt:grandchild:false"]);
+  });
+
   test("rename/delete/workspace removal delegate; archival stays bridge-owned", () async {
     await service.renameSession(sessionId: root.id, title: "Renamed");
     await service.deleteSession(sessionId: root.id);
