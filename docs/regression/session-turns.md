@@ -58,8 +58,12 @@ defaults and queued client sends coherent.
   this screen still holds come back after the composer's own. A composer
   restored this way returns after Check setup holding them, and the refresh
   does not put them back again. A send still in flight as the block lands goes
-  back the same way once the shut-down harness accepts it. A send the
-  transcript shows stays there as its sent message and is not restored.
+  back the same way once the shut-down harness accepts it, after the ones
+  already returned and ahead of the draft, its images after theirs, even when
+  it lands before the composer has shown them. A Stop pressed before the block
+  lands and answered after it returns each message once, whichever path takes
+  it first. A send the transcript shows stays there as its sent message and is
+  not restored.
   Open response dialogs close without answering when availability changes.
 - Disconnects, background/resume reconnects, and the management snapshot refresh
   that follows preserve a loaded chat's last known availability. A usable chat

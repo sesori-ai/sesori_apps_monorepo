@@ -2748,6 +2748,95 @@ void main() {
         expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
       });
 
+      test("puts a send accepted after the block behind those it returned, images and all", () async {
+        final held = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: null);
+        final first = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([2]), filename: null);
+        final second = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([3]), filename: null);
+        final secondAccepted = Completer<ApiResponse<void>>();
+        var sends = 0;
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: _sessionId,
+            promptId: any(named: "promptId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+          ),
+        ).thenAnswer((_) => ++sends == 1 ? Future.value(ApiResponse.success(null)) : secondAccepted.future);
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots, supportsPromptAttachments: true);
+        await cubit.sendMessage(
+          text: "first",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [first],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty);
+        final sending = cubit.sendMessage(
+          text: "second",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: [second],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).localSend is LocalSendSending);
+        cubit
+          ..saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"))
+          ..trackComposerAttachments(attachments: [held]);
+
+        await block(cubit);
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "first\n\nhalf typed"));
+        expect(cubit.restoredAttachments, [held, first]);
+
+        // Accepted before the composer rebuilds to stage the first return.
+        secondAccepted.complete(ApiResponse.success(null));
+        await sending;
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "first\n\nsecond\n\nhalf typed"));
+        expect(cubit.restoredAttachments, [held, first, second]);
+        expect((cubit.state as SessionDetailLoaded).composerRestorations, 2);
+      });
+
+      for (final (outcome, finish) in <(String, void Function(Completer<ApiResponse<bool>>))>[
+        ("succeeds", (stop) => stop.complete(ApiResponse.success(true))),
+        ("fails ambiguously", (stop) => stop.completeError(StateError("502 after cancellation"))),
+      ]) {
+        test("returns a send once when it lands while a stop that then $outcome is in flight", () async {
+          final stop = Completer<ApiResponse<bool>>();
+          when(
+            () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+          ).thenAnswer((_) => stop.future);
+          final cubit = await createLoadedCubit(managementSnapshots: snapshots, snapshotQueue: const [_queuedPrompt]);
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+
+          await block(cubit);
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "steer it"));
+
+          finish(stop);
+          await aborting;
+
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "steer it"));
+          expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
+        });
+      }
+
+      test("does not return again what an ambiguous stop returned while the bridge still lists it", () async {
+        when(
+          () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+        ).thenAnswer((_) async => throw StateError("502 after cancellation"));
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots, snapshotQueue: const [_queuedPrompt]);
+        expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortFailed>());
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "steer it"));
+        expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, isNotEmpty);
+
+        await block(cubit);
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "steer it"));
+        expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
+      });
+
       test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
         const dispatched = QueuedSessionPrompt(
           id: "prm_steering",

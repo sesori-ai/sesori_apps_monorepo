@@ -189,6 +189,15 @@ class SessionDetailCubit(
   List<ComposerAttachment> _restoredAttachments = const [];
   int _composerRestorations = 0;
 
+  /// The words returned messages put at the front of the composer's draft,
+  /// for a later return to go after while the draft still starts with them.
+  String _restoredDraftPrefix = "";
+
+  /// The prompts a stop or a harness block returned to the composer, which
+  /// neither may return again: each can capture a prompt the other returns
+  /// while it waits.
+  final Set<String> _returnedPromptIds = {};
+
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
   /// this every update would settle another prompt.
@@ -487,10 +496,14 @@ class SessionDetailCubit(
     final returned = <String>{};
     final undelivered = [
       for (final prompt in _unsentQueuedPrompts())
-        if (accepted.contains(prompt.promptId) && !delivered.contains(prompt.promptId) && returned.add(prompt.promptId))
+        if (accepted.contains(prompt.promptId) &&
+            !delivered.contains(prompt.promptId) &&
+            !_returnedPromptIds.contains(prompt.promptId) &&
+            returned.add(prompt.promptId))
           prompt,
     ];
     if (undelivered.isEmpty) return current;
+    _returnedPromptIds.addAll(returned);
     for (final prompt in undelivered) {
       _promptQueue.removeByPromptId(prompt.promptId);
     }
@@ -3004,7 +3017,8 @@ class SessionDetailCubit(
   void acknowledgeLaunchAttachments() => _launchAttachments = const [];
 
   /// The images a restoring composer stages in place of its own: the ones it
-  /// already held, then those of the queued messages a stop moved back. Empty
+  /// already held, then those of the queued messages a stop or a harness block
+  /// moved back. Empty
   /// once staged; see [acknowledgeRestoredAttachments].
   List<ComposerAttachment> get restoredAttachments => _restoredAttachments;
 
@@ -3019,6 +3033,7 @@ class SessionDetailCubit(
 
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
+    _restoredDraftPrefix = "";
     _composerDraftRepository.clearForSession(sessionId: _sessionId);
   }
 
@@ -3499,8 +3514,12 @@ class SessionDetailCubit(
     final returned = <String>{};
     final unsent = [
       for (final prompt in [...queuedAtStop, ..._unsentQueuedPrompts()])
-        if (!delivered.contains(prompt.promptId) && returned.add(prompt.promptId)) prompt,
+        if (!delivered.contains(prompt.promptId) &&
+            !_returnedPromptIds.contains(prompt.promptId) &&
+            returned.add(prompt.promptId))
+          prompt,
     ];
+    _returnedPromptIds.addAll(returned);
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
     final restored = unsent.any((prompt) => prompt.draft != null || prompt.attachments.isNotEmpty);
@@ -3521,7 +3540,7 @@ class SessionDetailCubit(
         bridgeQueuedPrompts: bridgeDropped
             ? [
                 for (final prompt in current.bridgeQueuedPrompts)
-                  if (!returned.contains(prompt.id)) prompt,
+                  if (!_returnedPromptIds.contains(prompt.id)) prompt,
               ]
             : current.bridgeQueuedPrompts,
         stagedCommand: restored ? null : current.stagedCommand,
@@ -3565,19 +3584,28 @@ class SessionDetailCubit(
   }
 
   /// Puts [unsent] into the composer ahead of what it holds, each after a
-  /// blank line, with their images after its own. A [stagedCommand] becomes
-  /// its literal text, as the restored words would otherwise be its arguments.
+  /// blank line, but after what an earlier return put there, so all returned
+  /// stays oldest first; their images go after its own and earlier returns'.
+  /// A [stagedCommand] becomes its literal text, as the restored words would
+  /// otherwise be its arguments.
   void _restoreToComposer({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
     final held = switch (stagedCommand) {
       null => _composerDraft,
       CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
     };
-    saveComposerDraft(
-      draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
+    final restoration = _draftCalculator.restoreParagraphs(
+      held: held,
+      restoredPrefix: _restoredDraftPrefix,
+      restored: [for (final prompt in unsent) ?prompt.draft],
     );
+    saveComposerDraft(draft: restoration.draft);
+    _restoredDraftPrefix = restoration.restoredPrefix;
     // The composer stages these up to its budget and stops at the first that
     // does not fit, so its own images, which fit before the stop, go first.
-    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
+    // An earlier return the composer has not staged yet already holds them,
+    // and its messages' images, which its own report would not.
+    final heldAttachments = _restoredAttachments.isEmpty ? _composerAttachments : _restoredAttachments;
+    _restoredAttachments = [...heldAttachments, for (final prompt in unsent) ...prompt.attachments];
     _composerRestorations++;
   }
 
