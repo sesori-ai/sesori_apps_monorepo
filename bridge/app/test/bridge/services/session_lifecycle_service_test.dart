@@ -569,6 +569,17 @@ void main() {
         expect(plugin.lastArchivedSessionId, "backend-session");
       });
 
+      test("is archived with a warning when its stop leaves work running", () async {
+        plugin.abortResult = const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
+        final log = _StderrBuffer();
+
+        final update = await IOOverrides.runZoned(archive, stderr: () => log);
+
+        expect(log.text, contains("[archive] session root-session did not fully stop; archiving it anyway"));
+        expect(update.changed, isTrue);
+        expect(await storedArchivedAt(), isNotNull);
+      });
+
       test("is archived when its stop does not finish within the deadline", () async {
         final stopHeld = Completer<void>();
         addTearDown(stopHeld.complete);
@@ -749,6 +760,24 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
+class _StderrBuffer() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  bool get hasTerminal => false;
+
+  @override
+  bool get supportsAnsiEscapes => false;
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeBridgePlugin() extends FakeBridgePlugin {
   String? get lastArchivedSessionId => lastArchiveSessionId;
 
@@ -770,7 +799,7 @@ class _FakeBridgePlugin() extends FakeBridgePlugin {
     abortCalls.add((sessionId: sessionId, subAgents: subAgents, useAtomicStop: useAtomicStop));
     await onAbort?.call();
     if (abortError case final error?) throw error;
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    return abortResult;
   }
 
   @override

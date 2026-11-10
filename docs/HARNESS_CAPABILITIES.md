@@ -432,7 +432,7 @@ archive would refuse is refused before the stop, leaving the session running.
 |---|---|
 | Claude Code | ✅ `interrupt` stops background sub-agents with the turn. |
 | OpenCode v2 | ✅ The root and its working sub-agents at any depth. |
-| OpenCode v1 | ✅ The root and its running direct children; a background grandchild keeps running, which only the app's follow-up stop reaches. |
+| OpenCode v1 | ✅ The root and its running direct children; a background grandchild keeps running under the archived root. |
 | Codex | ✅ The root and its known running descendants, one `turn/interrupt` each. |
 | Cursor | ✅ One root `session/cancel`, which cascades; its 20-second settle wait outlasts the archive's 5. |
 | Grok | ✅ The root and a snapshot of its running descendants. |
@@ -918,8 +918,9 @@ background sub-agents together with the running main turn.
 (verified on 1.18.25); background children survive, and the tracker cannot tell
 the two apart, so the option is not offered.
 Atomic subtree completion acknowledgment is **not implemented** for OpenCode;
-its observed-child snapshot retains legacy client fanout. A v2 stop interrupts
-working sub-agents at any depth; v1 reaches the direct children only.
+its observed-child snapshot retains legacy client fanout. A v2 stop confirms,
+keeps and interrupts working sub-agents at any depth; v1 reaches the direct
+children only.
 
 ³ Codex (managed codex-cli 0.153.4, probed 2026-09-08): live children announce
 through parent activity and status, never `thread/started`; persisted activity

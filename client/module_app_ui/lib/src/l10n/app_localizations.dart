@@ -3559,7 +3559,7 @@ abstract class AppLocalizations {
   /// **'Archive a running session?'**
   String get sessionListArchiveRunningTitle;
 
-  /// Body of the desktop alert shown before archiving a running session. Archiving stops the session's turn and its sub-agents first.
+  /// Body of the alert shown before archiving a running session. Archiving first asks the session's turn and its sub-agents to stop, the way the Stop button does, then archives even if some work keeps running.
   ///
   /// In en, this message translates to:
   /// **'“{title}” is still running. Archiving stops it and makes it permanently read-only.'**

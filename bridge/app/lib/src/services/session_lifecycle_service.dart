@@ -282,8 +282,9 @@ class SessionLifecycleService({
             useAtomicStop: true,
           )
           .timeout(_stopDeadline);
-      if (result is! SessionAborted) {
-        Log.w("[archive] session $sessionId refused the stop; archiving it anyway");
+      // A refused stop, or one that left resident work running.
+      if (result is! SessionAborted || result.workKept) {
+        Log.w("[archive] session $sessionId did not fully stop; archiving it anyway");
       }
     } on Object catch (error, stackTrace) {
       Log.w("[archive] could not stop session $sessionId; archiving it anyway", error, stackTrace);

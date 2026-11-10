@@ -308,7 +308,7 @@ void main() {
     expect(service.workState, PluginWorkState.busy);
   });
 
-  test("stop reaches a working grandchild whose parent finished; keep leaves it running", () async {
+  test("a working grandchild whose parent finished is confirmed, kept and stopped like a child", () async {
     final grandchild = root.copyWith(id: "grandchild", parentID: "child");
     tracker.seed(
       sessions: [root, child, grandchild],
@@ -317,10 +317,19 @@ void main() {
       forms: [],
     );
 
-    await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.keep);
-    expect(repository.calls, ["interrupt:${root.id}:false"]);
+    for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+      expect(
+        await service.abortSession(sessionId: root.id, subAgents: policy),
+        isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.runningSubAgentCount, "count", 1),
+      );
+    }
+    tracker.apply(event: V2SessionExecutionSucceeded(sessionID: root.id));
+    expect(
+      await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.keep),
+      isA<PluginAbortAccepted>().having((r) => r.workKept, "workKept", isTrue),
+    );
+    expect(repository.calls, isEmpty);
 
-    repository.calls.clear();
     await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.stop);
     expect(repository.calls, ["interrupt:${root.id}:false", "interrupt:grandchild:false"]);
   });

@@ -357,15 +357,15 @@ class OpenCodeV2Service({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
-    final children = _tracker.workingSessionIds
-        .where((id) => _tracker.session(sessionId: id)?.parentID == sessionId)
-        .toList();
+    // Working sub-agents at any depth, so a background grandchild is confirmed,
+    // kept and stopped like a child, from Stop and from archive alike.
+    final subAgentIds = _tracker.workingDescendantIds(sessionId: sessionId);
     final mainRunning = _tracker.status(sessionId: sessionId) != null;
-    if (children.isNotEmpty) {
+    if (subAgentIds.isNotEmpty) {
       if (subAgents == PluginAbortSubAgentPolicy.confirm ||
           (subAgents == PluginAbortSubAgentPolicy.keep && mainRunning)) {
         return PluginAbortRejectedSubAgentsRunning(
-          runningSubAgentCount: children.length,
+          runningSubAgentCount: subAgentIds.length,
           mainAgentRunning: mainRunning,
           mainAgentOnlySupported: false,
         );
@@ -374,13 +374,8 @@ class OpenCodeV2Service({
         return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
       }
     }
-    // Working sub-agents at any depth, so a background grandchild stops as
-    // well, from Stop and from archive alike.
-    final targets = subAgents == PluginAbortSubAgentPolicy.keep
-        ? [sessionId]
-        : [sessionId, ..._tracker.workingDescendantIds(sessionId: sessionId)];
     await Future.wait([
-      for (final id in targets) _repository.interrupt(sessionId: id, resume: false),
+      for (final id in [sessionId, ...subAgentIds]) _repository.interrupt(sessionId: id, resume: false),
     ]);
     return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }
