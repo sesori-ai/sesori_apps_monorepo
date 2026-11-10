@@ -45,7 +45,12 @@ class CatalogImportRepository({
   /// the only thing preventing a corrected import from ever running. Bumping
   /// re-hydrates each plugin exactly once; the merge is non-destructive and
   /// tombstoned sessions stay deleted.
-  static const int projectionVersion = 2;
+  ///
+  /// Bumped to 3 so that every plugin's next start imports once more, and
+  /// imports until a marker at this version is recorded also merge projects
+  /// that imports before link resolution stored once per spelling of one
+  /// folder (see [_mergeSplitProjects]).
+  static const int projectionVersion = 3;
   static const int _responsivenessBatchSize = 512;
   static const Duration _walkProgressInterval = Duration(milliseconds: 250);
   static const Duration _pathResolutionTimeout = Duration(seconds: 2);
@@ -529,7 +534,7 @@ class CatalogImportRepository({
   _publishCatalog({
     required _CatalogImportObservation observation,
     required CatalogImportControl control,
-  }) {
+  }) async {
     final pluginId = observation.pluginId;
     final observedProjects = observation.observedProjects;
     final observedSessions = observation.observedSessions;
@@ -550,10 +555,20 @@ class CatalogImportRepository({
       }
     }
 
-    return _runtime.commitCatalogImport(
+    final splitResolutions = await _resolveStoredProjectPathsForMerge(resolvedPaths: resolvedPaths);
+    return await _runtime.commitCatalogImport(
       authority: observation.authority,
       operation: _CatalogOperation.importCatalog,
       commit: () => _sessionDao.attachedDatabase.transaction(() async {
+        // First, so the import below matches against the merged catalog, and
+        // in the same transaction, so a failed import leaves the split as it was.
+        final merged = switch (splitResolutions) {
+          final resolutions? => await _mergeSplitProjects(
+            resolvedPaths: resolutions,
+            requireCurrentGeneration: requireCurrentGeneration,
+          ),
+          null => (projects: 0, sessions: 0),
+        };
         final currentProjects = await _projectsDao.getAllProjects();
         final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
         final orderedSessions = _validOrderedSessions(
@@ -737,8 +752,10 @@ class CatalogImportRepository({
         requireCurrentGeneration();
         _publishBackendActivity(activity: observedActivity);
         return (
-          projectsImported: projectRows.length,
-          sessionsImported: sessionsImported,
+          // A merge's writes count too, so the app reloads lists that may
+          // still show a removed project.
+          projectsImported: projectRows.length + merged.projects,
+          sessionsImported: sessionsImported + merged.sessions,
           newItems: CatalogImportNewItems(projects: projectsAdded, sessions: sessionsAdded),
           completedAt: completedAt,
         );
@@ -770,6 +787,88 @@ class CatalogImportRepository({
         (null, null) => importStartedAt,
       },
       projectionUpdatedAt: importStartedAt,
+    );
+  }
+
+  /// [resolvedPaths] extended with the resolved spelling of every stored
+  /// project folder, for [_mergeSplitProjects], or null once an import has
+  /// recorded a hydration marker at [projectionVersion]: that import merged in
+  /// the same transaction. Probes run before the transaction, so none holds it
+  /// open, and a folder this import already resolved is not probed again.
+  Future<Map<String, String>?> _resolveStoredProjectPathsForMerge({
+    required Map<String, String> resolvedPaths,
+  }) async {
+    if (await _catalogHydrationsDao.hasAnyCompletion(projectionVersion: projectionVersion)) return null;
+    await _resolveProjectPaths(
+      resolvedPaths: resolvedPaths,
+      directories: [for (final project in await _projectsDao.getAllProjects()) project.path],
+    );
+    return resolvedPaths;
+  }
+
+  /// Merges projects stored once per spelling of one folder, which imports
+  /// made before they resolved links (`/tmp/x/app` beside
+  /// `/private/tmp/x/app`). Each row stored through a link moves its sessions
+  /// to the row imports and opens already choose for the folder: the lowest id
+  /// stored under the resolved spelling, or else the lowest id among the link
+  /// spellings, which keeps its own. The rows it merged are then removed.
+  ///
+  /// [resolvedPaths] maps a normalized stored path to its resolved spelling. A
+  /// row missing from it was stored after the probe, by an open or import that
+  /// already resolves links. A folder whose links no longer resolve maps to
+  /// itself, so its row stays as it is.
+  Future<({int projects, int sessions})> _mergeSplitProjects({
+    required Map<String, String> resolvedPaths,
+    required void Function() requireCurrentGeneration,
+  }) async {
+    final rowsByFolder = <String, List<({ProjectDto row, bool resolved})>>{};
+    for (final row in await _projectsDao.getAllProjects()) {
+      final storedPath = _normalizeRequiredPath(row.path);
+      final folder = resolvedPaths[storedPath] ?? storedPath;
+      (rowsByFolder[folder] ??= []).add((row: row, resolved: storedPath == folder));
+    }
+    var projectsMerged = 0;
+    var sessionsMoved = 0;
+    for (final MapEntry(key: folder, value: rows) in rowsByFolder.entries) {
+      if (rows.every((entry) => entry.resolved)) continue;
+      rows.sort((a, b) => a.row.projectId.compareTo(b.row.projectId));
+      final survivor = (rows.where((entry) => entry.resolved).firstOrNull ?? rows.first).row;
+      final merged = [
+        for (final entry in rows)
+          if (!entry.resolved && entry.row.projectId != survivor.projectId) entry.row,
+      ];
+      if (merged.isEmpty) continue;
+      final mergedIds = {for (final row in merged) row.projectId};
+      requireCurrentGeneration();
+      await _projectsDao.upsertProjectRows(
+        rows: [_mergeSplitProjectRow(survivor: survivor, merged: merged)],
+      );
+      final moved = await _sessionDao.moveSessionsToProject(fromProjectIds: mergedIds, toProjectId: survivor.projectId);
+      // After the move, so removing a row cascades only to its cached session
+      // options.
+      await _projectsDao.deleteProjects(projectIds: mergedIds);
+      Log.i(
+        "CatalogImportRepository: merged ${mergedIds.join(", ")} into ${survivor.projectId}, "
+        "one folder ($folder) stored once per spelling; moved $moved sessions",
+      );
+      projectsMerged += merged.length;
+      sessionsMoved += moved;
+    }
+    return (projects: projectsMerged, sessions: sessionsMoved);
+  }
+
+  /// [survivor] keeps its own name and base branch and fills them from
+  /// [merged] when it has none. It is visible when any of the rows was, so no
+  /// session the user could see moves into a hidden project, and its activity
+  /// spans all of them.
+  ProjectDto _mergeSplitProjectRow({required ProjectDto survivor, required List<ProjectDto> merged}) {
+    final rows = [survivor, ...merged];
+    return survivor.copyWith(
+      hidden: rows.every((row) => row.hidden),
+      baseBranch: rows.map((row) => row.baseBranch).nonNulls.firstOrNull,
+      displayName: rows.map((row) => row.displayName).nonNulls.firstOrNull,
+      createdAt: rows.map((row) => row.createdAt).reduce(min),
+      updatedAt: rows.map((row) => row.updatedAt).reduce(max),
     );
   }
 

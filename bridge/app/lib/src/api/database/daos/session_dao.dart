@@ -751,4 +751,12 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     if (parentSessionIds.isEmpty) return Future.value(const []);
     return (select(sessionTable)..where((table) => table.parentSessionId.isIn(parentSessionIds))).get();
   }
+
+  /// Binds every session of the projects [fromProjectIds] to [toProjectId],
+  /// changing nothing else, and returns how many moved.
+  Future<int> moveSessionsToProject({required Set<String> fromProjectIds, required String toProjectId}) {
+    return (update(sessionTable)..where((table) => table.projectId.isIn(fromProjectIds))).write(
+      SessionTableCompanion(projectId: Value(toProjectId)),
+    );
+  }
 }
