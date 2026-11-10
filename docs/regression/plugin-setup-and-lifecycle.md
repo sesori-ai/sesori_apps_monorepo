@@ -490,8 +490,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   actual enable/disable intent and retain the bridge's
   known enabled preference while blocked by setup or another operation; unknown runtime
   has no inferred switch. A harness whose runtime is not installed shows its switch off and
-  unavailable, with a Not installed status in whichever section it sits, and sends nothing;
-  its stored preference is untouched and reappears once the runtime is installed. A pending toggle replaces only that harness's switch with an
+  unavailable in whichever section it sits, and sends nothing. Its status reads Not installed,
+  or Installing while an installation runs. Its stored preference is untouched and reappears
+  once the runtime is installed. A pending toggle replaces only that harness's switch with an
   in-place indicator in the same 64×44 slot; the list and unrelated harness toggles stay
   usable. Each harness retains its own pending action, failure or safe-conflict confirmation
   across refresh and overview/detail navigation. Same-harness commands, overrides, installs
