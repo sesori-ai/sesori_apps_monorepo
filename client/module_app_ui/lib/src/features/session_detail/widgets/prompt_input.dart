@@ -645,6 +645,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// the dictation.
   void _handleSend() {
     if (_isAwaitingDictatedWords) return;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (_isListening && ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
       unawaited(_endRecording(finish: _VoiceFinish.send));
       return;
@@ -1530,6 +1531,7 @@ class _PromptInputState() extends State<PromptInput> {
     // and Shift+Enter finish the dictation the same way; they are handled here,
     // so neither reaches the field as a newline. Focus outside the composer
     // never gets here.
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = capabilities.presentation == ComposerPresentation.pointer;
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
@@ -2218,6 +2220,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// pointer shell's voice targets and wide Send are equally wide; a touch shell
   /// has the mic beyond the send.
   Widget _buildTextFirstCaption(BuildContext context, {required Widget idle}) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
     return _buildVoiceCaption(
       context,
@@ -2258,6 +2261,7 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildCompactComposer(BuildContext context) {
     final prego = context.prego;
     final hintInCaption =
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
         _voiceSupport.isSupported && ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
     final hint = Text(
       _hintText(context),
@@ -2383,6 +2387,7 @@ class _PromptInputState() extends State<PromptInput> {
     final sendKeyPolicy = ComposerPresentationScope.of(context).sendKeyPolicy;
     // A pointer shell grows the box for long prompts instead of offering the
     // full-screen editor sheet.
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final growsInPlace = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
 
     return Column(
@@ -2636,6 +2641,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   Widget _buildMicAndPrimaryActions(BuildContext context) {
     if (_voiceSupport.isSupported &&
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
         ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
       return _buildPointerVoiceActions(context);
     }
@@ -2795,6 +2801,7 @@ class _PromptInputState() extends State<PromptInput> {
   // Read without depending: this can be asked before the first build, and a shell's
   // mode never changes.
   bool get _pointerShell =>
+      // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
       context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
 
   double get _actionButtonSize => _pointerShell ? 32 : 44;
@@ -2837,8 +2844,10 @@ class _PromptInputState() extends State<PromptInput> {
       },
       triggerBuilder: (context, toggle) => ComposerOptionsAccordion(
         actionsEnabled: _voicePresentation == _VoicePresentation.idle,
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
         // A pointer shell has the room, so typing never folds the actions away.
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
         isTyping: _hasText && ComposerPresentationScope.of(context).presentation != ComposerPresentation.pointer,
         showAttachImage: _offersAttachImage,
         attachTooltip: switch (attachKind) {
@@ -3215,6 +3224,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// shell keeps its pencil and X through both.
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
     // The accordion leaves the tree for these and comes back closed.
     if (_voicePresentation != _VoicePresentation.idle) _optionsOpen = false;
@@ -3384,6 +3394,7 @@ class _PromptInputState() extends State<PromptInput> {
     final loc = context.loc;
 
     // A pointer shell clicks to start; the wide Send takes it from there.
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
       return _buildLabelledIconButton(
         label: loc.voiceRecord,

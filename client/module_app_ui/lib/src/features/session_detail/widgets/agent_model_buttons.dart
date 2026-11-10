@@ -152,6 +152,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     ];
     final row = _pillRow(compact: compact, reachesLayerBottom: false, pills: selectors);
     // Under a pointer they sit on the composer's action row, in its line.
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) return row;
     return Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: row);
   }
@@ -179,6 +180,7 @@ class const ReadOnlyAgentModelPills({
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
       child: _pickerButton(
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: compact,
         leadingIcon: icon,
@@ -283,6 +285,7 @@ class const _AgentMenu({
       menuWidth: 240,
       menuMaxHeight: PregoPickerPopover.maxHeight,
       triggerBuilder: (context, toggle) => _pickerButton(
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
         leadingIcon: TablerRegular.robot,
@@ -320,6 +323,7 @@ class const _ModelMenu({
       pointerWidth: 300,
       onClosed: null,
       triggerBuilder: (context, toggle) => _pickerButton(
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
         leadingIcon: TablerRegular.cpu,
@@ -357,6 +361,7 @@ class const _VariantMenu({
       menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => _pickerButton(
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         hugLabel: hugLabel,
         leadingIcon: TablerRegular.gauge,

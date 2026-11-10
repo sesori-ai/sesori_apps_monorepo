@@ -101,7 +101,7 @@ Final. Where the owner reverses the audit's suggestion, the plan follows the own
 | 7 | Menu and picker section headings. Desktop uses sentence case. | Spaced capitals (uppercase, 0.8 tracking) on both. Sentence case reverted. | Pick one, no side. **Owner picks the phone's.** | 4 |
 | 8 | Inline code in chat. Desktop has no background. | Background (`alphaBlack10`) on both. | Pick one | 3 |
 | 9 | Desktop harness overview cards (`bgSurface3`). | `bgSurface2` on both, matching harness detail and MCP. | Same | 4 |
-| 10 | Needs-you card rules. | Desktop's rules on both: only the first card's action is primary, 72 pt minimum action width, the darker readable amber label, desktop's alphas, padding and icon size. | Same | 3 |
+| 10 | Needs-you card rules. | Desktop's rules on both: only the first card's action is primary, 72 pt minimum action width, the darker readable amber label, desktop's alphas, padding and icon size. Amended: the phone keeps its own button looks (choice C, round 2 below). | Same | 3 |
 | 11 | The subtle differences: motion timing, 1–4 pt nudges, colour tweaks. | Fold all in one batch, one value each. | Same | 2 |
 | 12 | Order. | Folds and lint first. Metrics objects and variants later. | Same | — |
 
@@ -146,7 +146,8 @@ on the step's PR.
   light, `primaryAlt` in dark. With desktop's rules, the leading card's action is `primaryAlt` (black in light,
   white in dark), and any other card's is `secondary` (grey in dark). The code comment says the dark grey
   `secondary` "is lost on the tint". Desktop already shows that today. Step 3 checks it on the phone in dark mode
-  before it merges; if it is unreadable, step 3 fixes it for both apps and shows the owner (round 2).
+  before it merges; if it is unreadable, step 3 fixes it for both apps and shows the owner (round 2). Amended after
+  step 3: by choice C the phone keeps the white pill in both themes, and only desktop leads with one card (#2486).
 - **The computer card moves inside the entry (decision 4).** `ComputerSettingsEntry` renders nothing until the
   account's list names the current computer. Desktop builds the card outside it, so desktop flashes an empty card
   while the list loads. Step 4 builds the card inside the entry's computer branch, which also fixes the flash.
@@ -268,6 +269,9 @@ card's "white button pill").
 Checks: phone, yes. The needs-you card animates and the composer gap holds; the light leading pill is now black; the
 dark non-leading grey pill is readable on the tint. Desktop, yes: icons, underlined commands, plain paths, the inline
 code chip.
+
+After step 3, #2486 put the phone's pills back by choice C; its touch test expects both cards' actions bright, so
+step 7 checks the phone against that, not against the pills above.
 
 ### Step 4: fold the settings, alert, diff and picker looks
 

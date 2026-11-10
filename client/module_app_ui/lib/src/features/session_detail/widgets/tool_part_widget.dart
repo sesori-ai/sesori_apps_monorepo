@@ -125,6 +125,7 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
         live: live,
         // Without a colour, a pointer shell's label takes the primary text, as
         // its other steps' labels do; a failed command stays red.
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer && status != ToolStatus.error
             ? null
             : color,

@@ -118,6 +118,7 @@ class _PregoSwitchState() extends State<PregoSwitch> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
     final isDisabled = widget._isDisabled;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final trackWidth = pointer ? _pointerTrackWidth : _trackWidth;
     final trackHeight = pointer ? _pointerTrackHeight : _trackHeight;

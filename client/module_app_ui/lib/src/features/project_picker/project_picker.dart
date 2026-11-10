@@ -51,6 +51,7 @@ class const ProjectPicker({
     // The sheet and the popover are routes of their own, outside this
     // subtree's providers, and the list they show stays live.
     final cubit = context.read<ProjectListCubit>();
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: presenter
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     Widget list({required VoidCallback close}) => BlocProvider.value(
       value: cubit,

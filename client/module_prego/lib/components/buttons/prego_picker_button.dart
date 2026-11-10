@@ -54,6 +54,7 @@ class const PregoPickerButton({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final foreground = prego.colors.textSecondary;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final borderRadius = BorderRadius.circular(
       plain ? composerActionRadius : (pointer ? PregoRadius.md : PregoRadius.full),

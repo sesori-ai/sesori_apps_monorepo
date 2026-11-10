@@ -227,9 +227,11 @@ class _TranscriptStickyPromptOverlayState()
       horizontalInset: widget.horizontalInset,
       bubbleColor: _bubbleFill(
         prego: prego,
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
       ),
       haloColor: Theme.of(context).scaffoldBackgroundColor,
+      // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
       fadesTopEdge: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
       fade: _curvedFade,
       fadingOpenerId: _fadingId,

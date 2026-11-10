@@ -73,6 +73,7 @@ class const PregoPickerPopover({
 
   @override
   Widget build(BuildContext context) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return PregoPopover(
       popoverWidth: pointer ? pointerWidth : double.infinity,
@@ -226,6 +227,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: wrapper
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final footerActions = _footerActions;
     final highlighted = _highlighted;

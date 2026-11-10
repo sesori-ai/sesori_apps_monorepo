@@ -7,8 +7,8 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 1 Raise the plan | Merged | #2463 | |
 | 2 Fold the subtle desktop differences | Merged | #2475 | 10 items folded (2.11 only its radius), 2.15 done by #2460; 2.6, 2.13 and 2.11's fill and wrap dropped (below). 2.10 and 2.14, also dropped, were decided in round 3 and folded in step 4. 2.1 folded to the phone's values, not the pointer's. |
 | 3 Fold the transcript and needs-you card looks | Merged | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped; the phone's buttons later went back to before by owner choice C (#2486). |
-| 4 Fold the settings, alert, diff and picker looks | PR open | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
-| 5 Flag new interaction-mode reads | Pending | | Waits for steps 3 and 4. Record whether `unnecessary_ignore` reports stale plugin ignores. |
+| 4 Fold the settings, alert, diff and picker looks | Merged | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
+| 5 Flag new interaction-mode reads | PR open | #2485 | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
 | 6 Reconcile regression docs | Pending | | |
 | 7 Run the verification matrix and retire the plan | Pending | | |
 
@@ -109,7 +109,8 @@ decision 10 stays.
 | After step 3 | 82 | 38 |
 | After step 4 (planned) | about 71 | about 35 |
 | After step 4 | 74 | 36 |
-| After #2486 (phone needs-you buttons) | 75 | 37 |
+| After step 5 | 74, all marked | 36 |
+| After #2486 (phone needs-you buttons) | 75, all marked | 37 |
 
 Every row is counted with this command from `client/`, on the commit named or the step's merge:
 
@@ -130,4 +131,28 @@ Step 4 removed 8 reads: 3 in the computer entry, 1 in the diff "M", 3 in the har
 row's waiting dot. The alert, picker and menu folds remove none: the alert keeps its pointer check for the fade
 without Reduce Motion (2.10) and for step 2's dropped fill and wrap, and the picker keeps its padding read.
 
-#2486 adds 1 read back, in the needs-you card: it picks the button's look (owner choice C on decision 10).
+#2486 adds 1 read back, in the needs-you card: it picks the button's look (owner choice C on decision 10). Its
+marker's home is `variant`, the needs-you card's desktop variant, so 71 `pending:` markers remain.
+
+## Step 5 markers
+
+The rule's 74 findings before markers sat exactly on the 74 lines the command above counts. Each now carries a
+marker on the line above it. Count what the later phases owe with
+`git grep -ho 'avoid_interaction_mode_reads, pending:' -- client/module_app_ui/lib client/module_prego/lib | wc -l`
+(70).
+
+| Home | Markers | Where |
+| --- | --- | --- |
+| `metrics` | 44 | the read only picks values: sizes, padding, radii, colours, motion, text styles, fade edges |
+| `variant` | 21 | structure inside the four planned variants: the composer (all 11 `prompt_input` reads and `session_detail_composer_controls`), the session row (3), the permission request (1) and new-session setup (4); and the all-sessions filter line, which picks `_PointerFilterChip` over `PregoButtonsSolid` (outside the four, so its phase decides between a fifth variant and one chip with metrics) |
+| `wrapper` | 3 | generic interaction behaviour: the add-project breadcrumb, the anchor menu's flat list and the picker search list |
+| `presenter` | 2 | popover or sheet: the project picker and the transcript group |
+| permanent | 4 | the adaptive presenters: `prego_modal.dart` (3) and `prego_action_sheet.dart` (1), with their reason in place of `pending:` |
+
+A read that mixes values with structure or behaviour takes the structural home. The sticky prompt's
+`fadesTopEdge` read is marked `metrics`; the audit also suggested a shell parameter for it, which the metrics
+phase can decide.
+
+Stale markers: a `// ignore: no_slop_linter/avoid_interaction_mode_reads` above a line with no read gives no
+diagnostic, while a stale `// ignore: avoid_print` on the same line reports `unnecessary_ignore`. So a PR that
+removes a read must delete its marker by hand, and the strict phase greps for markers with no read under them.

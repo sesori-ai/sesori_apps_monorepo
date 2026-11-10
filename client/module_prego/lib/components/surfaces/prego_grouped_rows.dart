@@ -43,10 +43,12 @@ class const PregoGroupedRows({
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(
+          // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
           PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.xl : PregoRadius.x5l,
         ),
         // White on near-white needs an edge; dark surfaces step apart by fill.
         side:
+            // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
             PregoInteractionScope.of(context) == PregoInteractionMode.pointer &&
                 context.prego.colors.brightness == .light
             ? BorderSide(color: context.prego.colors.pointerHairline)
@@ -114,6 +116,7 @@ class const PregoGroupedRow({
     final prego = context.prego;
     final subtitle = this.subtitle;
     final trailing = this.trailing;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final glyphSize = pointer ? _pointerLeadingIconSize : _leadingIconSize;
     final leading =

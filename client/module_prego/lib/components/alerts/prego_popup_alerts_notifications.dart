@@ -51,6 +51,7 @@ class const PregoPopupAlertsNotifications({
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final desktop = theme.extension<PregoDesignSystem>()?.isDesktopScale ?? false;
     return Theme(
       data: theme.copyWith(
@@ -66,6 +67,7 @@ class const PregoPopupAlertsNotifications({
   Widget _buildCard(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final radius = BorderRadius.circular(PregoRadius.xl);
 
@@ -463,6 +465,7 @@ class _PregoPopupAlertOverlayState()
       bottom: false,
       child: Center(
         child: FadeTransition(
+          // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
           opacity: !reducedMotion && PregoInteractionScope.of(context) == PregoInteractionMode.pointer
               ? _opacity
               : _controller,

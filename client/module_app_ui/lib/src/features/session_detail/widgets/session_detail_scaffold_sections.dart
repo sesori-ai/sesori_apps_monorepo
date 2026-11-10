@@ -27,6 +27,7 @@ class const SessionDetailNeedsYouCard({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     const radius = PregoRadius.x2l;
     return Padding(
@@ -78,7 +79,7 @@ class const SessionDetailNeedsYouCard({
                   child: PregoButtonsSolid(
                     label: action,
                     // Under a pointer only the leading card's action is solid; on the
-                    // phone every card's stays bright, a white pill in both themes.
+                    // phone every card's action stays bright, a white pill in both themes.
                     hierarchy: pointer
                         ? (leads ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary)
                         : (isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary),

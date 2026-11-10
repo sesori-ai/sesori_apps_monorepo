@@ -29,6 +29,7 @@ class const PregoActionSheet({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, the adaptive action sheet, a sheet on touch and a dialog under a pointer
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) {
       return PregoModalSurface(
         anchorsTop: true,

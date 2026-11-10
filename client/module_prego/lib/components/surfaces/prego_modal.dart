@@ -41,6 +41,7 @@ Future<T?> showPregoModal<T>({
   PregoBottomSheetBodySize bodySize = PregoBottomSheetBodySize.natural,
   PregoModalWidth width = PregoModalWidth.regular,
 }) {
+  // ignore: no_slop_linter/avoid_interaction_mode_reads, the adaptive presenter, a sheet on touch and a dialog under a pointer
   return switch (PregoInteractionScope.of(context)) {
     PregoInteractionMode.touch => showPregoBottomSheet<T>(
       context: context,
@@ -72,6 +73,7 @@ Future<T?> showPregoModal<T>({
 /// [PregoActionSheet], for a header that follows the content. The route is a
 /// bottom sheet for touch and a dialog for pointer, as in [showPregoModal].
 Future<T?> showPregoModalRoute<T>({required BuildContext context, required WidgetBuilder builder}) {
+  // ignore: no_slop_linter/avoid_interaction_mode_reads, the adaptive presenter, a sheet on touch and a dialog under a pointer
   return switch (PregoInteractionScope.of(context)) {
     // ignore: no_slop_linter/avoid_raw_modal_presenters, this is the adaptive presenter
     PregoInteractionMode.touch => showModalBottomSheet<T>(
@@ -113,6 +115,7 @@ class const PregoModalSurface({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, the adaptive presenter, a sheet on touch and a dialog under a pointer
     return switch (PregoInteractionScope.of(context)) {
       PregoInteractionMode.touch => PregoBottomSheet(
         title: title,
