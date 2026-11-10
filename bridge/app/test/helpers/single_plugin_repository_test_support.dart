@@ -3,6 +3,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/catalog_hydrations_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
@@ -146,6 +147,7 @@ CatalogImportRepository singlePluginCatalogImportRepository({
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,
+    sessionOptionsCacheDao: SessionOptionsCacheDao(database: catalogHydrationsDao.attachedDatabase),
     projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
     filesystemApi: filesystemApi,
   );

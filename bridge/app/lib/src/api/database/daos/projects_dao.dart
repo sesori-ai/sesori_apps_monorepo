@@ -121,6 +121,12 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     );
   }
 
+  /// Deletes the rows for [projectIds]. Their sessions and cached session
+  /// options cascade, so a caller keeping the sessions moves them first.
+  Future<void> deleteProjects({required Set<String> projectIds}) async {
+    await (delete(projectsTable)..where((table) => table.projectId.isIn(projectIds))).go();
+  }
+
   /// Marks a project as hidden. Creates the row if missing. Uses DoUpdate to
   /// update ONLY the hidden column on conflict, preserving all other fields.
   Future<void> hideProject({required String projectId}) async {

@@ -19,6 +19,14 @@ class CatalogHydrationsDao(super.attachedDatabase)
         .getSingleOrNull();
   }
 
+  /// Whether any plugin has completed a hydration at [projectionVersion].
+  Future<bool> hasAnyCompletion({required int projectionVersion}) async {
+    final query = select(catalogHydrationsTable)
+      ..where((table) => table.projectionVersion.equals(projectionVersion))
+      ..limit(1);
+    return await query.getSingleOrNull() != null;
+  }
+
   Future<void> recordCompletion({required CatalogHydrationDto completion}) {
     return into(catalogHydrationsTable).insertOnConflictUpdate(completion);
   }
