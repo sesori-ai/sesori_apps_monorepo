@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/composer/composer_draft.dart";
@@ -214,6 +216,49 @@ final class const ComposerDraftCalculator() {
     }
     return ComposerDraft(text: text.toString(), voiceSpans: voiceSpans);
   }
+
+  /// [paragraph] put into [draft] right after [lead], the paragraphs an
+  /// earlier restore put first, while [draft] still starts with them as a
+  /// paragraph of their own; otherwise ahead of all of [draft]. Returns the
+  /// paragraphs now leading too, for the next such insertion.
+  ({ComposerDraft draft, ComposerDraft lead}) insertParagraphAfter({
+    required ComposerDraft draft,
+    required ComposerDraft? lead,
+    required ComposerDraft paragraph,
+  }) {
+    if (lead case final lead? when lead.text.trim().isNotEmpty && draft.text.startsWith(lead.text)) {
+      final at = lead.text.length;
+      final end = draft.text.length;
+      if (at == end || draft.text.startsWith("\n\n", at)) {
+        final newLead = joinParagraphs(
+          drafts: [
+            _slice(draft: draft, start: 0, end: at),
+            paragraph,
+          ],
+        );
+        return (
+          draft: joinParagraphs(
+            drafts: [
+              newLead,
+              _slice(draft: draft, start: min(at + 2, end), end: end),
+            ],
+          ),
+          lead: newLead,
+        );
+      }
+    }
+    return (draft: joinParagraphs(drafts: [paragraph, draft]), lead: paragraph);
+  }
+
+  /// The text of [draft] from [start] to [end], with the voice spans inside it.
+  ComposerDraft _slice({required ComposerDraft draft, required int start, required int end}) => ComposerDraft(
+    text: draft.text.substring(start, end),
+    voiceSpans: [
+      for (final span in draft.voiceSpans)
+        if (span.end > start && span.start < end)
+          VoiceOriginSpan(start: max(span.start, start) - start, end: min(span.end, end) - start),
+    ],
+  );
 
   ComposerDraft appendVoiceTranscript({
     required ComposerDraft draft,

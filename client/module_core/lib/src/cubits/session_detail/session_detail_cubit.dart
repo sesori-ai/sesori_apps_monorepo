@@ -181,6 +181,15 @@ class SessionDetailCubit(
   /// launch event may show or park again.
   final Set<String> _returnedLaunchFollowUpIds = {};
 
+  /// The launch follow-ups a stop found still sending. The bridge may yet
+  /// accept one, so it returns to the composer only if its send fails.
+  final Set<String> _launchFollowUpsSendingAtStop = {};
+
+  /// The words the last restore put ahead of the composer's own, so one that
+  /// comes back later can go after them; see
+  /// [ComposerDraftCalculator.insertParagraphAfter].
+  ComposerDraft? _restoredLead;
+
   /// Images the launch's composer held unsent, until this screen's composer
   /// stages them.
   List<ComposerAttachment> _launchAttachments = const [];
@@ -353,10 +362,26 @@ class SessionDetailCubit(
   void _onLaunchFollowUps(List<LaunchFollowUp> followUps) {
     if (isClosed) return;
     final unsent = <LaunchFollowUp>[];
+    final failedAfterStop = <QueuedSessionSubmission>[];
     for (final followUp in followUps) {
+      final promptId = followUp.submission.promptId;
       // A list the launch published before a stop took these back can land
       // after it; they are the composer's now.
-      if (_returnedLaunchFollowUpIds.contains(followUp.submission.promptId)) continue;
+      if (_returnedLaunchFollowUpIds.contains(promptId)) continue;
+      if (_launchFollowUpsSendingAtStop.contains(promptId)) {
+        switch (followUp) {
+          case SendingLaunchFollowUp():
+            break;
+          case AcceptedLaunchFollowUp():
+            _launchFollowUpsSendingAtStop.remove(promptId);
+          case QueuedLaunchFollowUp() || FailedLaunchFollowUp():
+            // Proven not accepted, so it goes where the stop put the rest.
+            _launchFollowUpsSendingAtStop.remove(promptId);
+            _returnedLaunchFollowUpIds.add(promptId);
+            failedAfterStop.add(followUp.submission);
+            continue;
+        }
+      }
       if (followUp case AcceptedLaunchFollowUp(:final submission, :final since)) {
         _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
       } else {
@@ -365,9 +390,26 @@ class SessionDetailCubit(
     }
     final released = _unsentLaunchFollowUps.isNotEmpty && unsent.isEmpty;
     _unsentLaunchFollowUps = unsent;
-    _emitQueueUpdate(switch (state) {
-      final SessionDetailLoaded current => current.copyWith(launchFollowUps: unsent),
-      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => state,
+    final current = state;
+    final stagedCommand = current is SessionDetailLoaded ? current.stagedCommand : null;
+    for (final submission in failedAfterStop) {
+      _sessionLaunchService.cancelFollowUp(promptId: submission.promptId);
+    }
+    final returning = [
+      for (final submission in failedAfterStop)
+        if (_unsentSubmission(submission: submission) case final prompt
+            when prompt.draft != null || prompt.attachments.isNotEmpty)
+          prompt,
+    ];
+    if (returning.isNotEmpty) _returnAfterRestored(unsent: returning, stagedCommand: stagedCommand);
+    final commandRestored = returning.isNotEmpty && stagedCommand != null;
+    _emitQueueUpdate(switch (current) {
+      SessionDetailLoaded() => current.copyWith(
+        launchFollowUps: unsent,
+        stagedCommand: commandRestored ? null : current.stagedCommand,
+        composerRestorations: _composerRestorations,
+      ),
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => current,
     });
     if (released) _tryDrainQueue();
   }
@@ -3454,20 +3496,29 @@ class SessionDetailCubit(
     final queuedNow = _unsentQueuedPrompts();
     // The launch's follow-ups the bridge has not accepted are this screen's to
     // return like its own staged sends, so none may send after the stop.
-    final launchFollowUps = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
+    // One still sending stays: the bridge may yet accept it.
+    final (:withdrawn, :sendingPromptIds) = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
+    _launchFollowUpsSendingAtStop.addAll(sendingPromptIds);
     _returnedLaunchFollowUpIds.addAll([
-      for (final followUp in _unsentLaunchFollowUps) followUp.submission.promptId,
-      for (final submission in launchFollowUps) submission.promptId,
+      for (final followUp in _unsentLaunchFollowUps)
+        if (!sendingPromptIds.contains(followUp.submission.promptId)) followUp.submission.promptId,
+      for (final submission in withdrawn) submission.promptId,
     ]);
-    _unsentLaunchFollowUps = const [];
+    _unsentLaunchFollowUps = [
+      for (final followUp in _unsentLaunchFollowUps)
+        if (sendingPromptIds.contains(followUp.submission.promptId)) followUp,
+    ];
     final returned = <String>{};
     final unsent = [
       for (final prompt in [
         ...queuedAtStop,
         ...queuedNow,
-        for (final submission in launchFollowUps) _unsentSubmission(submission: submission),
+        for (final submission in withdrawn) _unsentSubmission(submission: submission),
       ])
-        if (!delivered.contains(prompt.promptId) && returned.add(prompt.promptId)) prompt,
+        if (!delivered.contains(prompt.promptId) &&
+            !sendingPromptIds.contains(prompt.promptId) &&
+            returned.add(prompt.promptId))
+          prompt,
     ];
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
@@ -3486,7 +3537,7 @@ class SessionDetailCubit(
       current.copyWith(
         // A stop ends the first message's send too.
         launchHandoff: null,
-        launchFollowUps: const [],
+        launchFollowUps: _unsentLaunchFollowUps,
         bridgeQueuedPrompts: bridgeDropped
             ? [
                 for (final prompt in current.bridgeQueuedPrompts)
@@ -3546,11 +3597,34 @@ class SessionDetailCubit(
       null => _composerDraft,
       CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
     };
-    saveComposerDraft(
-      draft: _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft, held]),
-    );
+    final lead = _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft]);
+    _restoredLead = lead;
+    saveComposerDraft(draft: _draftCalculator.joinParagraphs(drafts: [lead, held]));
     // The composer stages these up to its budget and stops at the first that
     // does not fit, so its own images, which fit before the stop, go first.
+    _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
+    _composerRestorations++;
+  }
+
+  /// Puts [unsent], launch follow-ups whose send failed after a stop, into
+  /// the composer after what that stop put back and before the user's own
+  /// words, with their images after the composer's.
+  void _returnAfterRestored({required List<_UnsentPrompt> unsent, required CommandInfo? stagedCommand}) {
+    final words = _draftCalculator.joinParagraphs(drafts: [for (final prompt in unsent) ?prompt.draft]);
+    if (words.text.isNotEmpty) {
+      final (draft: restored, :lead) = _draftCalculator.insertParagraphAfter(
+        draft: switch (stagedCommand) {
+          null => _composerDraft,
+          CommandInfo(:final name) => _draftCalculator.typedCommand(command: name, args: _composerDraft),
+        },
+        // Under a staged command the composer's words are its arguments, not
+        // what the stop put back.
+        lead: stagedCommand == null ? _restoredLead : null,
+        paragraph: words,
+      );
+      _restoredLead = lead;
+      saveComposerDraft(draft: restored);
+    }
     _restoredAttachments = [..._composerAttachments, for (final prompt in unsent) ...prompt.attachments];
     _composerRestorations++;
   }

@@ -155,6 +155,61 @@ void main() {
     expect(result.voiceSpans, [VoiceOriginSpan(start: 7, end: 13), VoiceOriginSpan(start: 26, end: 31)]);
   });
 
+  group("insertParagraphAfter", () {
+    test("puts the paragraph after the restored lead and before the user's words, keeping voice spans", () {
+      final lead = calculator.joinParagraphs(
+        drafts: [
+          ComposerDraft.typed(text: "first"),
+          voiceDraft("spoken", 0, 6),
+        ],
+      );
+      final draft = calculator.joinParagraphs(drafts: [lead, voiceDraft("mine said", 5, 9)]);
+
+      final result = calculator.insertParagraphAfter(
+        draft: draft,
+        lead: lead,
+        paragraph: voiceDraft("late", 0, 4),
+      );
+
+      expect(result.draft.text, "first\n\nspoken\n\nlate\n\nmine said");
+      expect(result.draft.voiceSpans, [
+        VoiceOriginSpan(start: 7, end: 13),
+        VoiceOriginSpan(start: 15, end: 19),
+        VoiceOriginSpan(start: 26, end: 30),
+      ]);
+      expect(result.lead.text, "first\n\nspoken\n\nlate");
+    });
+
+    test("appends after a lead that is all the composer holds", () {
+      final lead = ComposerDraft.typed(text: "first");
+
+      final result = calculator.insertParagraphAfter(
+        draft: lead,
+        lead: lead,
+        paragraph: ComposerDraft.typed(text: "late"),
+      );
+
+      expect(result.draft, ComposerDraft.typed(text: "first\n\nlate"));
+    });
+
+    test("goes ahead of everything once the lead was edited, or without one", () {
+      final edited = calculator.insertParagraphAfter(
+        draft: ComposerDraft.typed(text: "firstly\n\nmine"),
+        lead: ComposerDraft.typed(text: "first"),
+        paragraph: ComposerDraft.typed(text: "late"),
+      );
+      final none = calculator.insertParagraphAfter(
+        draft: ComposerDraft.typed(text: "mine"),
+        lead: null,
+        paragraph: ComposerDraft.typed(text: "late"),
+      );
+
+      expect(edited.draft, ComposerDraft.typed(text: "late\n\nfirstly\n\nmine"));
+      expect(edited.lead, ComposerDraft.typed(text: "late"));
+      expect(none.draft, ComposerDraft.typed(text: "late\n\nmine"));
+    });
+  });
+
   test("submissionDraft keeps a dictated send dictated and a command as its typed text", () {
     ComposerDraft? draftOf(QueuedSessionSubmission submission) => calculator.submissionDraft(submission: submission);
 

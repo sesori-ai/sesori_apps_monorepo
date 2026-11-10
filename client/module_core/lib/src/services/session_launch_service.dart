@@ -112,11 +112,14 @@ class SessionLaunchService({
     if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
   }
 
-  /// Takes back every follow-up of [sessionId]'s launch the bridge has not
-  /// accepted, oldest first, so a stop can return them to the composer and
-  /// none sends after it.
-  List<QueuedSessionSubmission> withdrawFollowUps({required String sessionId}) =>
-      _launchRepository.withdrawFollowUps(sessionId: sessionId);
+  /// Takes back every follow-up of [sessionId]'s launch that is neither
+  /// accepted nor still sending, oldest first, so a stop can return them to the
+  /// composer and none sends after it. One still sending is left to finish:
+  /// its promptId is in `sendingPromptIds`, and its outcome arrives through
+  /// [watchForSession] as for any other follow-up.
+  ({List<QueuedSessionSubmission> withdrawn, Set<String> sendingPromptIds}) withdrawFollowUps({
+    required String sessionId,
+  }) => _launchRepository.withdrawFollowUps(sessionId: sessionId);
 
   /// Creates the session and publishes its outcome on [outcomes].
   ///

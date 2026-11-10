@@ -227,26 +227,35 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   }
 
   /// Ends the hold on [sessionId]'s follow-ups after a stop by removing every
-  /// one the bridge has not accepted, so none sends afterwards, and returns
-  /// them oldest first. A send still in flight records nothing when it ends.
-  List<QueuedSessionSubmission> withdrawFollowUps({required String sessionId}) {
+  /// one the bridge has not accepted and that is not still sending, so none
+  /// sends afterwards, and returns them oldest first. One still sending stays,
+  /// as the bridge may yet accept it; its promptId comes back in
+  /// `sendingPromptIds` so the caller can follow how its send ends.
+  ({List<QueuedSessionSubmission> withdrawn, Set<String> sendingPromptIds}) withdrawFollowUps({
+    required String sessionId,
+  }) {
     _heldSessionIds.remove(sessionId);
     final launch = _launchFor(sessionId: sessionId);
-    if (launch == null) return const [];
+    if (launch == null) return (withdrawn: const [], sendingPromptIds: const {});
     final withdrawn = [
       for (final followUp in launch.followUps)
-        if (followUp is! AcceptedLaunchFollowUp) followUp.submission,
+        if (followUp is QueuedLaunchFollowUp || followUp is FailedLaunchFollowUp) followUp.submission,
     ];
-    if (withdrawn.isEmpty) return const [];
-    _put(
-      launch: launch.copyWith(
-        followUps: [
-          for (final followUp in launch.followUps)
-            if (followUp is AcceptedLaunchFollowUp) followUp,
-        ],
-      ),
-    );
-    return withdrawn;
+    final sendingPromptIds = {
+      for (final followUp in launch.followUps)
+        if (followUp is SendingLaunchFollowUp) followUp.submission.promptId,
+    };
+    if (withdrawn.isNotEmpty) {
+      _put(
+        launch: launch.copyWith(
+          followUps: [
+            for (final followUp in launch.followUps)
+              if (followUp is AcceptedLaunchFollowUp || followUp is SendingLaunchFollowUp) followUp,
+          ],
+        ),
+      );
+    }
+    return (withdrawn: withdrawn, sendingPromptIds: sendingPromptIds);
   }
 
   /// Records the session the bridge created. A launch whose payload was
