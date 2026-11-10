@@ -2335,6 +2335,15 @@ class SessionDetailCubit(
       unawaited(_runLoadingRefresh(trigger: trigger));
       return;
     }
+    if (reconnected && state is SessionDetailFailed) {
+      // A load can fail while the app still shows as connected, such as a
+      // relay timeout just before the disconnect. Each reconnect then runs the
+      // reload Retry runs, once; a Retry already running shows as loading.
+      const trigger = _SessionRefreshTrigger.connectionReconnected;
+      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
+      unawaited(_runLoadingRefresh(trigger: trigger));
+      return;
+    }
     _tryDrainQueue();
     if (_needsStaleRefresh) {
       _needsStaleRefresh = false;
