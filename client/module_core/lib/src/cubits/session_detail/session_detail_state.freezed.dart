@@ -370,9 +370,9 @@ class SessionDetailLoaded implements SessionDetailState {
 /// available; see [SessionDetailLoadedX.runsFastMode].
  final  bool fastMode;
  final  CommandInfo? stagedCommand;
-/// How many stops on this screen have moved unsent queued messages back
-/// into the composer. The composer takes up its restored draft and images
-/// once each time this grows.
+/// How many stops or harness blocks on this screen have moved unsent
+/// messages back into the composer. The composer takes up its restored
+/// draft and images once each time this grows.
 @JsonKey() final  int composerRestorations;
  final  bool isRefreshing;
  final  List<SessionVariant> _availableVariants;

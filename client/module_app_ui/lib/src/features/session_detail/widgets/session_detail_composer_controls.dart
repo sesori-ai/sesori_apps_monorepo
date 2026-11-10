@@ -94,8 +94,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
 
   Widget _buildLoaded({required BuildContext context, required SessionDetailLoaded state}) => _buildComposer(
     context: context,
-    // A stop moved queued messages back into the draft: the composer takes
-    // them up, with their images and its own.
+    // A stop or a harness block moved unsent messages back into the draft:
+    // the composer takes them up, with their images and its own, even while
+    // a notice hides it.
     restorationKey: state.composerRestorations == 0 ? null : ValueKey(state.composerRestorations),
     // Queued messages count: the user has already "sent" something, so the
     // composer should rest as a follow-up field even before the first message

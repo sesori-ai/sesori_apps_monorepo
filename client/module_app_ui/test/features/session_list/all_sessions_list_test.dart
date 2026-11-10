@@ -2324,7 +2324,9 @@ void main() {
     tester,
   ) async {
     final now = DateTime.now();
-    final lastMonth = now.subtract(const Duration(days: 40));
+    // Midday on a day of last month, so the rows' 100 minutes stay on one day
+    // under one month heading whatever the clock and time zone.
+    final lastMonth = DateTime(now.year, now.month - 1, 15, 12);
     final rows = [
       for (var index = 0; index < 100; index++)
         row(
