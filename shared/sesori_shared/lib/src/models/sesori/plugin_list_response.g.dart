@@ -16,6 +16,11 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
     unknownValue: PluginLifecycleState.unavailable,
   ),
   actionHint: json['actionHint'] as String?,
+  failureBlock: $enumDecodeNullable(
+    _$PluginFailureBlockEnumMap,
+    json['failureBlock'],
+    unknownValue: PluginFailureBlock.unknown,
+  ),
   supportsPromptAttachments:
       json['supportsPromptAttachments'] as bool? ?? false,
 );
@@ -27,6 +32,7 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'isDefault': instance.isDefault,
       'state': _$PluginLifecycleStateEnumMap[instance.state]!,
       'actionHint': ?instance.actionHint,
+      'failureBlock': ?_$PluginFailureBlockEnumMap[instance.failureBlock],
       'supportsPromptAttachments': instance.supportsPromptAttachments,
     };
 
@@ -35,6 +41,12 @@ const _$PluginLifecycleStateEnumMap = {
   PluginLifecycleState.ready: 'ready',
   PluginLifecycleState.degraded: 'degraded',
   PluginLifecycleState.failed: 'failed',
+};
+
+const _$PluginFailureBlockEnumMap = {
+  PluginFailureBlock.authenticationRequired: 'authenticationRequired',
+  PluginFailureBlock.unavailable: 'unavailable',
+  PluginFailureBlock.unknown: 'unknown',
 };
 
 _PluginListResponse _$PluginListResponseFromJson(Map json) =>

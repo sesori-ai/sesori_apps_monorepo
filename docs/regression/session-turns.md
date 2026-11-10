@@ -264,6 +264,12 @@ defaults and queued client sends coherent.
   background and streams more output as `in_progress`. Failure signal: the
   sub-agent row stays hidden behind a stale streaming reply or a finished
   command card that reopened as running.
+- OpenCode session lists and the chat agree on a running session. An OpenCode
+  v2 session that starts while the bridge's cold start lists sessions still
+  shows running in the list once the cold start reads its details. An OpenCode
+  v1 status of an unknown type keeps the session's last known activity, as the
+  chat does, instead of dropping it from the summary. Failure signal: the
+  sidebar row reads idle while the open chat shows Working.
 - Claude tasks, OpenCode child sessions, and Grok children expose scoped stop.
   The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is
@@ -386,7 +392,11 @@ defaults and queued client sends coherent.
   whose selection the bridge just applied through Pi's setters; the setters'
   thinking-level echoes do not invalidate that selection. A model or
   thinking-level change remains bridge-queued until the
-  current run settles. Pi may run model-backed automatic compaction before it
+  current run settles. A Pi stop keeps the session Working in both the session
+  list and the chat until Pi acknowledges the abort and its process is torn
+  down, then both go idle together. A prompt sent during the stop waits for
+  that teardown, runs on a fresh process, and keeps the session busy
+  throughout. Pi may run model-backed automatic compaction before it
   acknowledges a prompt, so that preflight uses a turn-scale deadline instead
   of the shorter history/control RPC deadline. The prompt remains visibly
   queued alongside the live compaction row while compaction
@@ -1033,7 +1043,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   reply to a steered follow-up lands above it; or a steered follow-up
   dismisses a pending permission or form request.
   A Pi abort waits for the general history/control timeout, lets hidden steering
-  resume after Stop, or leaves later sends stuck in their sending state.
+  resume after Stop, or leaves later sends stuck in their sending state. A
+  stopping Pi session reads idle in the session list while its chat still
+  shows Working, or a prompt sent during the stop fails on the stopped process
+  or reads idle in the chat while it runs.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A Claude session reports idle while a background sub-agent still runs, or

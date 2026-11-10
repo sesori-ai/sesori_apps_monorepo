@@ -608,6 +608,9 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   String resolveDirectoryPath({required String path}) => throw UnimplementedError();
 
   @override
+  Future<String> resolveDirectoryPathAsync({required String path}) => throw UnimplementedError();
+
+  @override
   String resolveFilePath({required String path}) => throw UnimplementedError();
 }
 

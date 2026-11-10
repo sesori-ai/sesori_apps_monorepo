@@ -33,6 +33,7 @@ const _plugins = [
     isDefault: true,
     state: PluginLifecycleState.ready,
     actionHint: null,
+    failureBlock: null,
     supportsPromptAttachments: true,
   ),
 ];

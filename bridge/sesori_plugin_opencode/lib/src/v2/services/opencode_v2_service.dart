@@ -53,6 +53,12 @@ class OpenCodeV2Service({
       permissions: [for (final (permissions, _) in pending) ...permissions],
       forms: [for (final (_, forms) in pending) ...forms],
     );
+    // A session that started after the listing has no metadata, and the
+    // activity summary cannot place a session without it.
+    await Future.wait([
+      for (final id in _tracker.workingSessionIds)
+        if (_tracker.session(sessionId: id) == null) _rememberSession(sessionId: id),
+    ]);
     final settled = await Future.wait(
       changes.entries.map(
         (change) async => [
@@ -465,13 +471,7 @@ class OpenCodeV2Service({
     if (sessionId != null &&
         event is! V2SessionDeleted &&
         (_tracker.session(sessionId: sessionId) == null || event is V2SessionCreated || event is V2SessionRenamed)) {
-      try {
-        changed =
-            _tracker.rememberSession(session: await _repository.getSessionDetails(sessionId: sessionId)) || changed;
-      } catch (error, stack) {
-        // A metadata lookup must not suppress a native status or input request.
-        Log.w("OpenCode v2 session metadata failed for $sessionId", error, stack);
-      }
+      changed = await _rememberSession(sessionId: sessionId) || changed;
     }
     if (sessionId != null) {
       final session = deleted ?? _tracker.session(sessionId: sessionId);
@@ -504,6 +504,18 @@ class OpenCodeV2Service({
     // Creation is authoritative even when its full session details are unavailable.
     if (changed || event is V2SessionCreated) result.add(const BridgeSseProjectUpdated());
     return result;
+  }
+
+  /// Reads and keeps the session's metadata; returns whether it changed.
+  Future<bool> _rememberSession({required String sessionId}) async {
+    try {
+      final session = await _repository.getSessionDetails(sessionId: sessionId);
+      return session != null && _tracker.rememberSession(session: session);
+    } catch (error, stack) {
+      // A metadata lookup must not suppress a native status or input request.
+      Log.w("OpenCode v2 session metadata failed for $sessionId", error, stack);
+      return false;
+    }
   }
 
   Future<List<BridgeSseEvent>> _enrich({required V2EventEnvelope envelope, required String? directory}) async {

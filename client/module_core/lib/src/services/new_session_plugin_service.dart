@@ -94,4 +94,11 @@ class NewSessionPluginService({
 
 extension PluginMetadataSelection on PluginMetadata {
   bool get isRoutable => state == PluginLifecycleState.ready || state == PluginLifecycleState.degraded;
+
+  /// Whether the picker offers this harness: it can start a session, or the
+  /// bridge held it back after a refused request, which picking it explains
+  /// in the composer's place with a way to check setup again. Discovery never
+  /// preselects a held-back harness; it falls back to the default instead, and
+  /// the saved preference stays so the harness comes back once it runs.
+  bool get isPickable => isRoutable || failureBlock != null;
 }

@@ -605,12 +605,65 @@ void main() {
       const PluginSetupUnavailable(actionHint: "Check the gateway, then refresh setup."),
     );
     expect(runtime.snapshot.single.startAllowed, isFalse);
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.authenticationFailure);
 
     await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
     runtime.applyAccess(entries: enabled);
 
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.inspection);
     expect(runtime.snapshot.single.startAllowed, isTrue);
+  });
+
+  test("a setup check that still finds the login refused keeps the authentication failure source", () async {
+    var loggedIn = false;
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        inspect: () async =>
+            loggedIn ? const PluginSetupReady() : const PluginSetupAuthenticationRequired(actionHint: "Log in again."),
+      ),
+    );
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.use,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "test",
+          actionHint: "Authenticate locally.",
+          recovery: PluginAuthenticationRecovery.login,
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+
+    await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    expect(runtime.snapshot.single.setup, const PluginSetupAuthenticationRequired(actionHint: "Log in again."));
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.authenticationFailure);
+
+    loggedIn = true;
+    await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.inspection);
+  });
+
+  test("setup recorded by inspection, even an unavailable one, keeps the inspection source", () async {
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        inspect: () async => const PluginSetupUnavailable(actionHint: "Install a supported version."),
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    await runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+
+    expect(runtime.snapshot.single.setup, isA<PluginSetupUnavailable>());
+    expect(runtime.snapshot.single.setupSource, PluginSetupSource.inspection);
   });
 
   test("unknown plugin acquisitions preserve the typed unavailable contract", () async {

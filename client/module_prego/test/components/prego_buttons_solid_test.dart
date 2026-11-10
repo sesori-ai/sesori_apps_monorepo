@@ -1,3 +1,4 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -113,6 +114,80 @@ void main() {
         everyElement(prego.colors.textDisabled),
       );
     });
+
+    for (final mode in PregoInteractionMode.values) {
+      testWidgets("a secondary icon beside a label matches the label under ${mode.name} in $brightness", (
+        tester,
+      ) async {
+        final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+        Future<void> pump({required VoidCallback? onPressed}) => tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(brightness: brightness, extensions: [prego]),
+            home: PregoInteractionScope(
+              mode: mode,
+              child: Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PregoButtonsSolid(
+                        label: "Refresh",
+                        hierarchy: PregoButtonsSolidHierarchy.secondary,
+                        size: PregoButtonsSolidSize.md,
+                        leadingIcon: TablerRegular.refresh,
+                        trailingIcon: TablerRegular.chevron_right,
+                        onPressed: onPressed,
+                      ),
+                      PregoButtonsSolid.iconOnly(
+                        semanticLabel: "Icon",
+                        leadingIcon: TablerRegular.check,
+                        hierarchy: PregoButtonsSolidHierarchy.secondary,
+                        size: PregoButtonsSolidSize.md,
+                        onPressed: onPressed,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        final labelled = find.byType(PregoButtonsSolid).first;
+        void expectIconsMatchLabel() {
+          final label = tester.widget<Text>(find.text("Refresh")).style?.color;
+          final icons = tester.widgetList<Icon>(find.descendant(of: labelled, matching: find.byType(Icon)));
+          expect(icons, hasLength(2));
+          expect(icons.map((icon) => icon.color), everyElement(label));
+        }
+
+        await pump(onPressed: () {});
+        expect(
+          tester.widget<Text>(find.text("Refresh")).style?.color,
+          mode == PregoInteractionMode.pointer ? prego.colors.textPrimary : prego.colors.textSecondary,
+        );
+        expectIconsMatchLabel();
+        // An icon-only button has no label to match.
+        expect(
+          tester.widget<Icon>(find.byIcon(TablerRegular.check)).color,
+          mode == PregoInteractionMode.pointer ? prego.colors.textSecondary : prego.colors.textPrimary,
+        );
+
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: tester.getCenter(labelled));
+        await tester.pump();
+        expectIconsMatchLabel();
+
+        await mouse.moveTo(Offset.zero);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expectIconsMatchLabel();
+
+        await pump(onPressed: null);
+        expect(tester.widget<Text>(find.text("Refresh")).style?.color, prego.colors.textDisabled);
+        expectIconsMatchLabel();
+      });
+    }
   }
 
   testWidgets("xs buttons are 30px high with a text-xs label and a 16px icon", (tester) async {

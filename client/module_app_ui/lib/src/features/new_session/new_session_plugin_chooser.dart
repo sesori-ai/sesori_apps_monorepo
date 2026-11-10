@@ -74,7 +74,7 @@ class const NewSessionPluginChooser({
               subtitle: _lifecycleStatus(context, state: plugin.state),
               isSelected: plugin.id == selectedPluginId,
               shortcutLabel: null,
-              isEnabled: isSelectionEnabled && plugin.isRoutable,
+              isEnabled: isSelectionEnabled && plugin.isPickable,
               leading: PregoBrandLogo(
                 pluginId: plugin.id,
                 color: context.prego.colors.textSecondary,

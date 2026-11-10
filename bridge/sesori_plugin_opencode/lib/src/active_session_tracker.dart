@@ -214,8 +214,8 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
             _sessionStatuses[event.sessionID] = event.status;
             _unknownSessionIds.remove(event.sessionID);
           case SessionStatusUnknown():
-            Log.w("Unknown session status for ${event.sessionID}; treating as inactive");
-            _sessionStatuses.remove(event.sessionID);
+            // The chat never receives it either, so both keep the last known state.
+            Log.w("Unknown session status for ${event.sessionID}; keeping its last known activity");
             _unknownSessionIds.add(event.sessionID);
         }
       case SseSessionIdle():
