@@ -86,6 +86,7 @@ const PluginManagementMetadata _plugin = PluginManagementMetadata(
   idleTimeoutMins: 10,
   hasIdleTimeoutOverride: false,
   managementCapabilities: {PluginManagementCapability.setupRefresh},
+  mcpScopes: null,
   actionHint: null,
 );
 const PluginManagementResponse _pluginResponse = PluginManagementResponse(

@@ -47,3 +47,6 @@ app.*.map.json
 # Sisyphus (oh my opencode)
 .sisyphus
 
+
+# Local simulator test credentials (see README, "Driving the app on a simulator")
+/sesori_test_defines.json

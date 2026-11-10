@@ -516,6 +516,7 @@ void main() {
       sessionOptionsScope: PluginSessionOptionsScope.project,
       managementCapabilities: defaultManagementCapabilities,
       supportsPromptAttachments: false,
+      mcpScopes: noMcpScopes,
     );
 
     expect(
@@ -543,6 +544,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "beta",
@@ -552,6 +554,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "alpha",
@@ -561,6 +564,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {"beta", "future-plugin"},
@@ -607,6 +611,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "yeti",
@@ -616,6 +621,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "xenon",
@@ -625,6 +631,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "wombat",
@@ -634,6 +641,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {"yeti"},
@@ -667,6 +675,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "opencode",
@@ -676,6 +685,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -709,6 +719,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "alpha",
@@ -718,6 +729,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -745,6 +757,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "cursor",
@@ -754,6 +767,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {"cursor"},
@@ -817,6 +831,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "alpha",
@@ -826,6 +841,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "beta",
@@ -835,6 +851,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {"beta"},
@@ -911,6 +928,49 @@ void main() {
     );
   });
 
+  test("management snapshot publishes each plugin's declared MCP scopes", () {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      mcpScopes: const {PluginMcpScopeKind.project, PluginMcpScopeKind.session},
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    addTearDown(() async {
+      await service.dispose();
+      await repository.dispose();
+    });
+
+    expect(service.managementSnapshot.plugins.single.mcpScopes, const {McpScopeKind.project, McpScopeKind.session});
+  });
+
+  test("management snapshot reports no MCP scopes for a harness without MCP", () {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    addTearDown(() async {
+      await service.dispose();
+      await repository.dispose();
+    });
+
+    // Empty, not omitted: an omitted field means an older bridge that never said.
+    expect(service.managementSnapshot.plugins.single.mcpScopes, isEmpty);
+    expect(service.managementSnapshot.plugins.single.toJson()["mcpScopes"], isEmpty);
+  });
+
   test("management snapshot uses the immutable capability registration snapshot", () {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),
@@ -950,6 +1010,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: {PluginControlCapability.setupRefresh},
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "managed",
@@ -959,6 +1020,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {"external", "managed", "future-plugin"},
@@ -980,6 +1042,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1042,6 +1105,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "beta",
@@ -1051,6 +1115,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1167,6 +1232,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: {PluginControlCapability.idleTimeout},
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "external",
@@ -1176,6 +1242,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: {PluginControlCapability.setupRefresh},
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1226,6 +1293,7 @@ void main() {
             sessionOptionsScope: PluginSessionOptionsScope.project,
             managementCapabilities: defaultManagementCapabilities,
             supportsPromptAttachments: false,
+            mcpScopes: noMcpScopes,
           ),
       ],
       disabledPluginIds: const {},
@@ -1348,6 +1416,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1597,6 +1666,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1648,6 +1718,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1701,6 +1772,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -1741,6 +1813,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2606,6 +2679,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.plugin,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
         (
           id: "alpha",
@@ -2615,6 +2689,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: true,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2671,6 +2746,7 @@ void main() {
             sessionOptionsScope: PluginSessionOptionsScope.project,
             managementCapabilities: defaultManagementCapabilities,
             supportsPromptAttachments: false,
+            mcpScopes: noMcpScopes,
           ),
         ],
         disabledPluginIds: const {},
@@ -2698,6 +2774,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2727,6 +2804,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2822,6 +2900,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2865,6 +2944,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2915,6 +2995,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -2958,6 +3039,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -3009,6 +3091,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -3051,6 +3134,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
         ),
       ],
       disabledPluginIds: const {},
@@ -3124,6 +3208,7 @@ PluginLifecycleService _singleIdleService({
         sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,
         supportsPromptAttachments: false,
+        mcpScopes: noMcpScopes,
       ),
     ],
     disabledPluginIds: const {},
@@ -3137,6 +3222,7 @@ PluginLifecycleService _commandService({
   required Set<String> disabledPluginIds,
   required Map<String, PluginSetupStatus> setupById,
   Set<PluginControlCapability> managementCapabilities = defaultManagementCapabilities,
+  Set<PluginMcpScopeKind> mcpScopes = noMcpScopes,
 }) {
   return PluginLifecycleService(
     lifecycleRepository: repository,
@@ -3153,6 +3239,7 @@ PluginLifecycleService _commandService({
         sessionOptionsScope: PluginSessionOptionsScope.project,
         managementCapabilities: managementCapabilities,
         supportsPromptAttachments: false,
+        mcpScopes: mcpScopes,
       ),
     ],
     disabledPluginIds: disabledPluginIds,

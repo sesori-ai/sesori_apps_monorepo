@@ -12,6 +12,14 @@ sealed class McpScope with _$McpScope {
   factory fromJson(Map<String, dynamic> json) => _$McpScopeFromJson(json);
 }
 
+/// The kind of [McpScope] a harness answers MCP inventory for.
+enum McpScopeKind() {
+  harness,
+  project,
+  session,
+  unknown,
+}
+
 @Freezed(unionKey: "type", copyWith: false, fromJson: true, toJson: true)
 sealed class McpEntryTarget with _$McpEntryTarget {
   const factory server({required McpScope scope, required String serverKey}) = McpServerTarget;

@@ -155,6 +155,44 @@ void main() {
     expect(result.voiceSpans, [VoiceOriginSpan(start: 7, end: 13), VoiceOriginSpan(start: 26, end: 31)]);
   });
 
+  group("restoreParagraphs", () {
+    test("puts a later return after the earlier one and ahead of the draft, keeping voice spans", () {
+      final result = calculator.restoreParagraphs(
+        held: voiceDraft("first\n\nhalf", 7, 11),
+        restoredPrefix: "first",
+        restored: [voiceDraft("second", 0, 6)],
+      );
+
+      expect(result.draft.text, "first\n\nsecond\n\nhalf");
+      expect(result.draft.voiceSpans, [VoiceOriginSpan(start: 7, end: 13), VoiceOriginSpan(start: 15, end: 19)]);
+      expect(result.restoredPrefix, "first\n\nsecond");
+    });
+
+    test("puts a later return after an earlier one that is the whole draft", () {
+      final result = calculator.restoreParagraphs(
+        held: ComposerDraft.typed(text: "first"),
+        restoredPrefix: "first",
+        restored: [ComposerDraft.typed(text: "second")],
+      );
+
+      expect(result.draft, ComposerDraft.typed(text: "first\n\nsecond"));
+      expect(result.restoredPrefix, "first\n\nsecond");
+    });
+
+    test("puts the return ahead of all of a draft that no longer starts with the earlier one", () {
+      for (final held in ["fist\n\nhalf", "firstly"]) {
+        final result = calculator.restoreParagraphs(
+          held: ComposerDraft.typed(text: held),
+          restoredPrefix: "first",
+          restored: [ComposerDraft.typed(text: "second")],
+        );
+
+        expect(result.draft, ComposerDraft.typed(text: "second\n\n$held"));
+        expect(result.restoredPrefix, "second");
+      }
+    });
+  });
+
   test("submissionDraft keeps a dictated send dictated and a command as its typed text", () {
     ComposerDraft? draftOf(QueuedSessionSubmission submission) => calculator.submissionDraft(submission: submission);
 

@@ -156,6 +156,11 @@ class const OpenCodePluginDescriptor({
     PluginMcpCapability.authentication,
   };
 
+  /// MCP is read from a project or session directory; harness scope has none
+  /// and answers unsupported scope.
+  @override
+  Set<PluginMcpScopeKind> get mcpScopes => const {PluginMcpScopeKind.project, PluginMcpScopeKind.session};
+
   /// Frozen ownership filename in the legacy shared runtime directory.
   static const String ownershipFileName = "opencode-processes.json";
 

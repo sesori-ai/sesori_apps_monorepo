@@ -20,6 +20,7 @@ void main() {
       PluginManagementCapability.setupRefresh,
       PluginManagementCapability.idleTimeout,
     },
+    mcpScopes: {McpScopeKind.project, McpScopeKind.session},
     actionHint: null,
   );
 
@@ -53,6 +54,7 @@ void main() {
         "idleTimeoutMins",
         "hasIdleTimeoutOverride",
         "managementCapabilities",
+        "mcpScopes",
       ]),
     );
     expect(json["snapshotToken"], "snapshot-token");
@@ -92,6 +94,29 @@ void main() {
       PluginManagementMetadata.fromJson(json).managementCapabilities,
       {PluginManagementCapability.lifecycle, PluginManagementCapability.unknown},
     );
+  });
+
+  test("MCP scopes round-trip, and a harness without MCP sends none", () {
+    final json = plugin.toJson();
+
+    expect(json["mcpScopes"], unorderedEquals(["project", "session"]));
+    expect(PluginManagementMetadata.fromJson(json).mcpScopes, plugin.mcpScopes);
+
+    final withoutMcp = plugin.copyWith(mcpScopes: const {}).toJson();
+    expect(withoutMcp["mcpScopes"], isEmpty);
+    expect(PluginManagementMetadata.fromJson(withoutMcp).mcpScopes, isEmpty);
+  });
+
+  test("older management payloads leave MCP scopes unreported", () {
+    final json = plugin.toJson()..remove("mcpScopes");
+
+    expect(PluginManagementMetadata.fromJson(json).mcpScopes, isNull);
+  });
+
+  test("future MCP scopes decode to unknown", () {
+    final json = plugin.toJson()..["mcpScopes"] = ["harness", "futureScope"];
+
+    expect(PluginManagementMetadata.fromJson(json).mcpScopes, {McpScopeKind.harness, McpScopeKind.unknown});
   });
 
   test("install capability round-trips on the wire", () {

@@ -2535,6 +2535,39 @@ void main() {
       expect(find.byType(PromptInput), findsNothing);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets("the composer comes back after Check setup holding the send the block put back", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final ready = loaded(
+        interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
+      );
+      whenListen(cubit, states.stream, initialState: ready);
+      when(() => cubit.restoredAttachments).thenReturn(const []);
+      when(cubit.acknowledgeRestoredAttachments).thenReturn(null);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptInput), findsOneWidget);
+      clearInteractions(cubit);
+
+      // The block takes the composer's place as it returns the send to the
+      // draft; the composer, hidden under the notice, takes it up there.
+      when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "Fix the build"));
+      states.add(ready.copyWith(interaction: unavailable(hint: gatewayHint), composerRestorations: 1));
+      await tester.pumpAndSettle();
+      expect(notice, findsOneWidget);
+      expect(find.byType(PromptInput), findsNothing);
+
+      when(cubit.checkHarnessSetup).thenAnswer((_) async {});
+      await tester.tap(checkSetup);
+      states.add(ready.copyWith(composerRestorations: 1));
+      await tester.pumpAndSettle();
+
+      expect(notice, findsNothing);
+      expect(find.descendant(of: find.byType(PromptInput), matching: find.text("Fix the build")), findsOneWidget);
+      verify(cubit.acknowledgeRestoredAttachments).called(1);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group("Check setup from the unavailable notice", () {
@@ -6558,13 +6591,14 @@ void main() {
           (widget) => widget is AnimatedSize && widget.alignment == Alignment.bottomCenter,
         ),
       );
+      // The layout the send left is fading out, which finders treat as offstage.
       final typingSurface = find.ancestor(
-        of: find.byType(EditableText),
+        of: find.byType(EditableText, skipOffstage: false),
         matching: find.byWidgetPredicate((widget) {
           if (widget is! DecoratedBox) return false;
           final decoration = widget.decoration;
           return decoration is BoxDecoration && decoration.boxShadow != null;
-        }),
+        }, skipOffstage: false),
       );
       Clip composerClip(WidgetTester tester) => tester
           .widget<ClipRRect>(find.ancestor(of: composerBox.last, matching: find.byType(ClipRRect)).first)

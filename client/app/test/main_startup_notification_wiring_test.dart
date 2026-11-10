@@ -79,6 +79,7 @@ void main() {
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
+      testMode: false,
       configureDependenciesFn: configureDependencies,
       prepareSingularAttributionFn: prepareSingularAttribution,
       applySingularCrawlGateFn: applySingularCrawlGate,
@@ -160,6 +161,7 @@ void main() {
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: false,
+      testMode: false,
       configureDependenciesFn: () async {
         events.add("configureDependencies");
         return AnalyticsRuntimeBootstrap(
@@ -196,6 +198,45 @@ void main() {
       "singularAttribution.allow",
     ]);
   });
+
+  for (final testMode in [false, true]) {
+    test("test mode $testMode ${testMode ? "skips" : "starts"} the automatic prompts and "
+        "${testMode ? "leads with typing" : "keeps the stored input mode"}", () async {
+      final events = <String>[];
+      late Widget launchedApp;
+
+      await bootstrapSesoriApp(
+        shouldInitializeFirebase: false,
+        testMode: testMode,
+        configureDependenciesFn: () async => AnalyticsRuntimeBootstrap(
+          capability: const AnalyticsRuntimeCapability.disabled(
+            reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+          ),
+          crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
+        ),
+        prepareSingularAttributionFn: () {},
+        applySingularCrawlGateFn: ({required crawlGate}) {},
+        startAttributionFn: () {},
+        startProductAnalyticsFn: () async {},
+        startFeedbackPromptFn: () => events.add("feedbackPrompt"),
+        startFounderCallFn: () => events.add("founderCall"),
+        startAnalyticsRouteListenerFn: () async {},
+        startNotificationStartupFn: () async {},
+        readAppearanceFn: () async => AppearanceMode.system,
+        readChatInputModeFn: () async => ChatInputMode.voiceFirst,
+        runAppFn: (app) => launchedApp = app,
+      );
+
+      final app = (launchedApp as GlassAdaptiveScope).child as SesoriApp;
+      if (testMode) {
+        expect(events, isEmpty);
+        expect(app.initialChatInputMode, ChatInputMode.textFirst);
+      } else {
+        expect(events, ["feedbackPrompt", "founderCall"]);
+        expect(app.initialChatInputMode, ChatInputMode.voiceFirst);
+      }
+    });
+  }
 
   test("notification startup initializes adapters before starting dispatchers", () async {
     final events = <String>[];

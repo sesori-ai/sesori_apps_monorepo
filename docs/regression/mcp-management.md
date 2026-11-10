@@ -123,6 +123,11 @@ retain inspection when native data is available and grant no session mutation.
 
 - Session menus request the session scope; harness settings request harness scope.
   Unsupported scope/integration messages do not imply empty inventory.
+- Each harness's management row reports the MCP scopes its plugin descriptor
+  declares (`mcpScopes`; empty without MCP). Harness settings offer the MCP entry
+  only when that includes harness scope, so Claude Code (session only), OpenCode
+  (project and session) and harnesses without MCP, such as Hermes, show none;
+  Codex keeps it. A bridge that omits the field keeps the entry visible.
 - The inventory opens above the underlying session/settings page. Server details
   use a separate presentation layer; closing either returns to the previous view.
 - Refresh feedback occupies a stable header area. Existing inventory remains
