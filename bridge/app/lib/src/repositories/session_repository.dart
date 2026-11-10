@@ -871,6 +871,17 @@ class SessionRepository({
     ];
   }
 
+  /// Whether [sessionId] is running by the rule the Running filter and the
+  /// apps apply. Only active root sessions can be; an archived one never is.
+  Future<bool> isSessionRunning({required String sessionId}) async {
+    for (final summary in await getProjectActivitySummaries()) {
+      for (final active in summary.activeSessions) {
+        if (active.id == sessionId) return _runningCalculator.isRunning(session: active);
+      }
+    }
+    return false;
+  }
+
   Future<_PluginActivityObservation> _collectPluginProjectActivity({
     required String pluginId,
     required BridgePluginApi plugin,

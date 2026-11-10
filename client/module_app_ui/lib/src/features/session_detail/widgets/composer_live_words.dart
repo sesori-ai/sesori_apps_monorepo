@@ -163,7 +163,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   /// The gap above the composer's body that its hint sits on.
   static const double _hintBaseline = 8;
 
-  static const double _panelRadius = 18;
   static const int _panelLines = 5;
 
   static const _glideDuration = Duration(milliseconds: 340);
@@ -500,9 +499,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       decoration: pregoComposerSurfaceDecoration(
         prego: prego,
         style: PregoComposerSurfaceStyle.emphasized,
-        borderRadius: BorderRadius.circular(
-          PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.x2l : _panelRadius,
-        ),
+        borderRadius: BorderRadius.circular(PregoRadius.x2l),
       ).copyWith(boxShadow: prego.shadows.lg),
     );
   }

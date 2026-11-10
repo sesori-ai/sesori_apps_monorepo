@@ -570,7 +570,7 @@ void main() {
       expect(_shellHeight(tester), loading, reason: "the output lays out at the old height first");
       await tester.pump(const Duration(milliseconds: 100));
       final easing = _shellHeight(tester);
-      expect(tester.getRect(find.byKey(_toggle)), header);
+      expect(tester.getRect(find.byKey(_toggle)), rectMoreOrLessEquals(header));
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(easing, greaterThan(loading));

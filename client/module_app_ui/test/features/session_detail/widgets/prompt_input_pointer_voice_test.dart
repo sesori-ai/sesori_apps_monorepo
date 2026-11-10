@@ -435,6 +435,34 @@ void main() {
       expect(tester.widget<PregoVoiceSendButton>(_wideSend).enabled, isFalse);
     });
 
+    for (final (reason, textScaler, letterSpacing) in [
+      ("text size", const TextScaler.linear(2.5), null),
+      ("letter spacing", TextScaler.noScaling, 12.0),
+    ]) {
+      testWidgets("a Send label too wide for the mic and send widens the group instead of clipping ($reason)", (
+        tester,
+      ) async {
+        final harness = _Harness();
+        await _pumpPointerComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          harness: harness,
+          textScaler: textScaler,
+          letterSpacingOverride: letterSpacing,
+        );
+        final restingRight = tester.getRect(_mic).left;
+
+        await startListening(tester);
+
+        final sendRect = tester.getRect(_wideSend);
+        final label = tester.getRect(find.descendant(of: _wideSend, matching: find.text("Send")));
+        final arrow = tester.getRect(find.descendant(of: _wideSend, matching: find.byType(Icon)));
+        expect(sendRect.left, lessThan(restingRight), reason: "the group grew toward the options");
+        expect(sendRect.left, lessThanOrEqualTo(label.left));
+        expect(sendRect.right, greaterThanOrEqualTo(arrow.right));
+      });
+    }
+
     testWidgets("the shimmer stands centred between the targets and the wide Send", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
@@ -761,6 +789,8 @@ Future<void> _pumpPointerComposer({
   bool canSend = true,
   bool reducedMotion = false,
   bool attachmentsSupported = false,
+  TextScaler textScaler = TextScaler.noScaling,
+  double? letterSpacingOverride,
 }) async {
   tester.view.physicalSize = const Size(760, 600);
   tester.view.devicePixelRatio = 1;
@@ -781,7 +811,12 @@ Future<void> _pumpPointerComposer({
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => SentBubbleLanding(child: child ?? const SizedBox.shrink()),
       home: MediaQuery(
-        data: MediaQueryData(size: const Size(760, 600), disableAnimations: reducedMotion),
+        data: MediaQueryData(
+          size: const Size(760, 600),
+          textScaler: textScaler,
+          letterSpacingOverride: letterSpacingOverride,
+          disableAnimations: reducedMotion,
+        ),
         child: BlocProvider<VoiceInputCubit>.value(
           value: voiceCubit,
           child: ComposerPresentationScope(

@@ -1004,7 +1004,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesStatusBlocked => 'Blocked';
 
   @override
-  String get harnessesStatusDormant => 'Dormant';
+  String get harnessesStatusDormant => 'Not running';
 
   @override
   String get harnessesStatusStarting => 'Starting';
@@ -1035,6 +1035,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopSettingsTheme => 'Theme';
+
+  @override
+  String get desktopSettingsTextSize => 'Text size';
+
+  @override
+  String get desktopSettingsTextSizeSmall => 'Small';
+
+  @override
+  String get desktopSettingsTextSizeDefault => 'Default';
+
+  @override
+  String get desktopSettingsTextSizeLarge => 'Large';
+
+  @override
+  String get desktopSettingsTextSizeLarger => 'Larger';
 
   @override
   String get settingsSectionAnalytics => 'Analytics';
@@ -2029,7 +2044,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sessionListArchiveRunningMessage(String title) {
-    return '“$title” is still running. Archiving makes it permanently read-only.';
+    return '“$title” is still running. Archiving stops it and makes it permanently read-only.';
   }
 
   @override

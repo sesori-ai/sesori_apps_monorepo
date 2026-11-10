@@ -128,4 +128,21 @@ extension BuildContextLocalization on BuildContext {
     final RenderBox box when box.hasSize => box.localToGlobal(box.size.center(Offset.zero)),
     _ => Offset.zero,
   };
+
+  /// How tall a line of [style] lays out at the current text size, for a
+  /// placeholder to stand as tall as the text it stands in for. A letter rather
+  /// than an empty line, which the engine rounds differently.
+  double lineHeightOf(TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: "A",
+        style: resolveTextStyle(context: this, style: style),
+      ),
+      textDirection: Directionality.of(this),
+      textScaler: MediaQuery.textScalerOf(this),
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height;
+  }
 }

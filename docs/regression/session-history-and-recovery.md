@@ -112,6 +112,7 @@ reconnect or restart.
   older messages is not gated on eligibility: a blocked chat pages store-only, the
   same way it opened, so scrolling back through a rendered transcript never waits
   on the harness. A page that fails keeps the cursor for retry.
+- A chat showing "Failed to load messages" reloads once on each reconnect, as Retry does, even when the load failed while the app still showed as connected (a relay timeout just before the disconnect).
 - A blocked chat that stays on screen keeps its bridge-side view declaration. A
   resume or reconnect that released it re-declares it even though the refresh
   itself is a no-op while blocked, so the visible chat does not mark its own

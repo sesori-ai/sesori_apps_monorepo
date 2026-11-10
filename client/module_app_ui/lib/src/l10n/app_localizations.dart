@@ -1876,7 +1876,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesStatusDormant.
   ///
   /// In en, this message translates to:
-  /// **'Dormant'**
+  /// **'Not running'**
   String get harnessesStatusDormant;
 
   /// No description provided for @harnessesStatusStarting.
@@ -1938,6 +1938,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Theme'**
   String get desktopSettingsTheme;
+
+  /// No description provided for @desktopSettingsTextSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get desktopSettingsTextSize;
+
+  /// No description provided for @desktopSettingsTextSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get desktopSettingsTextSizeSmall;
+
+  /// No description provided for @desktopSettingsTextSizeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get desktopSettingsTextSizeDefault;
+
+  /// No description provided for @desktopSettingsTextSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get desktopSettingsTextSizeLarge;
+
+  /// No description provided for @desktopSettingsTextSizeLarger.
+  ///
+  /// In en, this message translates to:
+  /// **'Larger'**
+  String get desktopSettingsTextSizeLarger;
 
   /// No description provided for @settingsSectionAnalytics.
   ///
@@ -3559,10 +3589,10 @@ abstract class AppLocalizations {
   /// **'Archive a running session?'**
   String get sessionListArchiveRunningTitle;
 
-  /// Body of the desktop alert shown before archiving a running session.
+  /// Body of the alert shown before archiving a running session. Archiving first asks the session's turn and its sub-agents to stop, the way the Stop button does, then archives even if some work keeps running.
   ///
   /// In en, this message translates to:
-  /// **'“{title}” is still running. Archiving makes it permanently read-only.'**
+  /// **'“{title}” is still running. Archiving stops it and makes it permanently read-only.'**
   String sessionListArchiveRunningMessage(String title);
 
   /// Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving.

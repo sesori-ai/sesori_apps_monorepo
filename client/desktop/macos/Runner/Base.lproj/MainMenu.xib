@@ -289,6 +289,22 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="View" id="HyV-fh-RgO">
                         <items>
+                            <menuItem title="Increase Text Size" keyEquivalent="+" id="Tx1-Zs-Inc">
+                                <connections>
+                                    <action selector="increaseTextSize:" target="-1" id="Tx2-Zs-Inc"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Decrease Text Size" keyEquivalent="-" id="Tx1-Zs-Dec">
+                                <connections>
+                                    <action selector="decreaseTextSize:" target="-1" id="Tx2-Zs-Dec"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reset Text Size" keyEquivalent="0" id="Tx1-Zs-Rst">
+                                <connections>
+                                    <action selector="resetTextSize:" target="-1" id="Tx2-Zs-Rst"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="Tx1-Zs-Sep"/>
                             <menuItem title="Enter Full Screen" keyEquivalent="f" id="4J7-dP-txa">
                                 <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
                                 <connections>

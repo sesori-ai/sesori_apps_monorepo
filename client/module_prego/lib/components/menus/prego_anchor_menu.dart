@@ -470,7 +470,9 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
               PregoMenuPlacement.besideTrigger => AnchoredPanelPlacement.besideTrigger,
               PregoMenuPlacement.belowRightAligned => AnchoredPanelPlacement.belowRightAligned,
             },
-      width: widget.menuWidth,
+      // A pointer menu's rows keep their shortcut and trailing glyphs on one
+      // line, so it widens with its text; the phone's keeps its width.
+      width: compact ? MediaQuery.textScalerOf(context).scale(widget.menuWidth) : widget.menuWidth,
       // The panel measures its rows for real, so the cap is all it needs: it
       // shrink-wraps below it and scrolls above it.
       maxHeight: widget.menuMaxHeight,

@@ -2,12 +2,11 @@ import "dart:async";
 import "dart:math";
 
 import "package:material_ui/material_ui.dart";
-import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
-/// How long a transcript row takes to ease in, fold away or open: the 200 ms
-/// ease-out every transcript disclosure uses.
+/// How long a transcript row takes to ease in or fold away: the 200 ms
+/// ease-out most of the transcript's motion uses.
 const Duration transcriptMotionDuration = Duration(milliseconds: 200);
 
 /// Decelerates both ways: [Curves.easeIn] run backwards starts a fold fast.
@@ -52,6 +51,10 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
   AnimationController? _controller;
   CurvedAnimation? _curve;
 
+  /// Where the row last turned around, so its opacity carries on from there
+  /// rather than snapping to the other direction's.
+  ({double t, double opacity}) _turn = (t: 0, opacity: 0);
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +65,8 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
   void didUpdateWidget(TranscriptPresence oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exiting == widget.exiting) return;
+    final t = _curve?.value ?? 1;
+    _turn = (t: t, opacity: _opacity(t, exiting: oldWidget.exiting));
     if (widget.exiting) {
       _animation(from: 1).reverse();
     } else {
@@ -73,20 +78,16 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
   AnimationController _animation({required double from}) {
     final existing = _controller;
     if (existing != null) return existing;
-    // Under a pointer a row the app adds eases the transcript along without
-    // snatching it from under someone reading it.
-    // Read once for this controller, which can be made before the first build.
-    final pointer =
-        context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
+    // The same length and mirrored curves both ways, so a row growing in
+    // exactly offsets one folding away and the rows above hold still.
     final controller = _controller = AnimationController(
       vsync: this,
       duration: transcriptMotionDuration,
-      reverseDuration: pointer ? pregoPointerExitDuration : transcriptMotionDuration,
       value: from,
     );
     _curve = CurvedAnimation(
       parent: controller,
-      curve: pointer ? pregoContentMoveCurve : transcriptMotionCurve,
+      curve: transcriptMotionCurve,
       reverseCurve: transcriptMotionReverseCurve,
     );
     controller
@@ -107,6 +108,11 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
       });
     return controller;
   }
+
+  /// An entering row is solid early, so its words never sit over the rows
+  /// around it; a leaving one fades with its height.
+  double _opacity(double t, {required bool exiting}) =>
+      exiting ? (_turn.t == 0 ? 0 : _turn.opacity * t / _turn.t) : min(1, _turn.opacity + max(0, t - _turn.t) / 0.35);
 
   void _release() {
     _curve?.dispose();
@@ -133,11 +139,7 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
         widthFactor: 1,
         heightFactor: t,
         child: Opacity(
-          opacity:
-              !widget.exiting &&
-                  context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer
-              ? min(1, t / 0.35)
-              : t,
+          opacity: _opacity(t, exiting: widget.exiting),
           child: FractionalTranslation(
             translation: Offset(
               0,

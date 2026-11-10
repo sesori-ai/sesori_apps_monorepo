@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
@@ -2658,7 +2659,13 @@ class _PromptInputState() extends State<PromptInput> {
     final loc = context.loc;
     final keepsStop = _showsStop;
     final sendEnd = keepsStop ? _stopRoom : 0.0;
-    final groupWidth = merged && keepsStop ? _pointerVoiceGroupWidth + _stopRoom : _pointerVoiceGroupWidth;
+    // The Send covers the mic and primary action, and widens the group only when
+    // its label, translated or at a larger text size, would not fit over them.
+    final sendWidth = max(
+      _pointerVoiceGroupWidth,
+      PregoVoiceSendButton.widthFor(context: context, label: loc.sessionDetailSend),
+    );
+    final groupWidth = merged ? sendWidth + sendEnd : _pointerVoiceGroupWidth;
     final motion = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
 
     return AnimatedContainer(

@@ -151,4 +151,23 @@ void main() {
       expect(icons.map((icon) => icon.size), List.filled(5, PregoIconSize.sm));
     });
   }
+
+  for (final mode in PregoInteractionMode.values) {
+    testWidgets("a live label sweeps over the secondary text colour under ${mode.name}", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          home: PregoInteractionScope(
+            mode: mode,
+            child: const TranscriptLiveLabel(label: Text("Working"), semanticLabel: null),
+          ),
+        ),
+      );
+
+      expect(
+        tester.widget<PregoShimmer>(find.byType(PregoShimmer)).baseColor,
+        PregoDesignSystem.light.colors.textSecondary,
+      );
+    });
+  }
 }

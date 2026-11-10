@@ -13,6 +13,7 @@ import "package:theme_prego/module_prego.dart";
 import "core/di/injection.dart";
 import "core/routing/desktop_router.dart";
 import "core/widgets/desktop_escape_dismissal.dart";
+import "core/widgets/desktop_text_size_scope.dart";
 import "core/widgets/desktop_window_brightness.dart";
 import "core/widgets/desktop_window_drag_area.dart";
 
@@ -24,6 +25,7 @@ class const SesoriDesktopApp({
   required final bool hiddenLaunch,
   required final AppearanceMode initialAppearance,
   required final ChatInputMode initialChatInputMode,
+  required final DesktopTextSize initialTextSize,
   super.key,
 }) extends StatelessWidget {
   @override
@@ -52,6 +54,13 @@ class const SesoriDesktopApp({
             create: (_) => ChatInputModeCubit(
               store: getIt<ChatInputModeStore>(),
               initialMode: initialChatInputMode,
+            ),
+          ),
+          BlocProvider<DesktopTextSizeCubit>(
+            create: (_) => DesktopTextSizeCubit(
+              repository: getIt<DesktopInstanceRepository>(),
+              appMenu: getIt<DesktopAppMenu>(),
+              initialSize: initialTextSize,
             ),
           ),
         ],
@@ -167,18 +176,20 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               child: CupertinoUiCompatibilityBridge(child: child ?? const SizedBox.shrink()),
             ),
           );
-          return DesktopWindowBrightness(
-            windowHost: windowHost,
-            // macOS only: the window has no title bar of its own (see `FlutterWindowHost`),
-            // so the band a page toolbar fills moves it, on every screen.
-            child: defaultTargetPlatform == TargetPlatform.macOS
-                ? DesktopWindowDragArea(
-                    windowHost: windowHost,
-                    height: PregoTopNavigation.barHeight,
-                    zoomOnDoubleClick: false,
-                    child: app,
-                  )
-                : app,
+          return DesktopTextSizeScope(
+            child: DesktopWindowBrightness(
+              windowHost: windowHost,
+              // macOS only: the window has no title bar of its own (see `FlutterWindowHost`),
+              // so the band a page toolbar fills moves it, on every screen.
+              child: defaultTargetPlatform == TargetPlatform.macOS
+                  ? DesktopWindowDragArea(
+                      windowHost: windowHost,
+                      height: PregoTopNavigation.barHeight,
+                      zoomOnDoubleClick: false,
+                      child: app,
+                    )
+                  : app,
+            ),
           );
         },
       ),

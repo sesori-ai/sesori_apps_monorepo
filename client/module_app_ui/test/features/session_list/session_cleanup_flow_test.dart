@@ -80,6 +80,11 @@ void main() {
   testWidgets("a running session is asked about first, and Cancel archives nothing", (tester) async {
     await pumpArchiveButton(tester: tester, running: true);
     expect(find.text("Archive a running session?"), findsOneWidget);
+    // The bridge stops a running session before archiving it; the alert says so.
+    expect(
+      find.text("“Fix the build” is still running. Archiving stops it and makes it permanently read-only."),
+      findsOneWidget,
+    );
     expect(archives.state.hiddenIds, isEmpty);
 
     await tester.tap(find.text("Cancel"));

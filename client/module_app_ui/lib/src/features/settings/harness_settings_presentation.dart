@@ -37,7 +37,9 @@ bool _canInstall({required PluginManagementMetadata plugin}) =>
 
 bool _showOverviewStatus({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
   if (_group(plugin: plugin, install: install) == _HarnessGroup.disabled) {
-    return plugin.runtimeState == PluginRuntimeState.stopping;
+    // A disabled harness that isn't installed says so, explaining its
+    // unavailable switch.
+    return plugin.runtimeState == PluginRuntimeState.stopping || plugin.setup.state == PluginSetupState.runtimeMissing;
   }
   if (install != null || plugin.setup.state != PluginSetupState.ready) return true;
   return plugin.runtimeState != PluginRuntimeState.dormant &&
@@ -54,7 +56,6 @@ String _status({
   if (plugin.setup.state != PluginSetupState.ready) return _setupStatus(context: context, state: plugin.setup.state);
   if (plugin.runtimeState == PluginRuntimeState.disabled) return context.loc.harnessesStatusDisabled;
   return switch (plugin.runtimeState) {
-    PluginRuntimeState.dormant => context.loc.harnessesStatusIdle,
     PluginRuntimeState.active => switch (plugin.workState) {
       PluginManagementWorkState.busy => context.loc.harnessesStatusRunning,
       PluginManagementWorkState.idle => context.loc.harnessesStatusIdle,
@@ -62,6 +63,7 @@ String _status({
     },
     PluginRuntimeState.disabled ||
     PluginRuntimeState.blocked ||
+    PluginRuntimeState.dormant ||
     PluginRuntimeState.starting ||
     PluginRuntimeState.degraded ||
     PluginRuntimeState.stopping ||
@@ -142,16 +144,21 @@ class const _HarnessSwitch({
     Future<void> setEnabled({required bool enabled}) => enabled
         ? context.read<PluginManagementCubit>().enable(pluginId: plugin.setup.id)
         : context.read<PluginManagementCubit>().disable(pluginId: plugin.setup.id);
+    // A harness that isn't installed cannot run, so its switch reads off and
+    // waits for the install. The stored setting stays untouched and shows
+    // again once the runtime is installed.
+    final installed = plugin.setup.state != PluginSetupState.runtimeMissing;
+    final interactive = installed && !blocked;
 
     return Semantics(
       label: context.loc.harnessesEnabledLabel(plugin.setup.displayName),
       child: MouseRegion(
-        cursor: blocked ? MouseCursor.defer : SystemMouseCursors.click,
+        cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
         child: GestureDetector(
           key: Key("harness_management_enabled_target_${plugin.setup.id}"),
           behavior: HitTestBehavior.opaque,
           excludeFromSemantics: true,
-          onTap: blocked ? null : () => unawaited(setEnabled(enabled: !plugin.runtimeState.isEnabled)),
+          onTap: interactive ? () => unawaited(setEnabled(enabled: !plugin.runtimeState.isEnabled)) : null,
           child: SizedBox(
             height: 44,
             // Expand the hit target without stretching the 64×28 design-system track.
@@ -159,8 +166,8 @@ class const _HarnessSwitch({
               widthFactor: 1,
               child: PregoSwitch(
                 key: Key("harness_management_enabled_${plugin.setup.id}"),
-                value: plugin.runtimeState.isEnabled,
-                onChanged: blocked ? null : (value) => unawaited(setEnabled(enabled: value)),
+                value: installed && plugin.runtimeState.isEnabled,
+                onChanged: interactive ? (value) => unawaited(setEnabled(enabled: value)) : null,
               ),
             ),
           ),
