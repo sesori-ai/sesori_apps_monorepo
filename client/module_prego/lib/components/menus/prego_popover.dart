@@ -68,6 +68,7 @@ class const PregoPopover({
   Widget build(BuildContext context) {
     // Reduced motion opens and closes the popover at once.
     final reduced = prefersReducedMotion(context);
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     // `cue` still imports the SDK Material library and reads its localizations.
     return PregoMenuOpenMotion(

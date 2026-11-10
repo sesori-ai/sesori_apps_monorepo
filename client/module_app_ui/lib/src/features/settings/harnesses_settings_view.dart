@@ -239,6 +239,7 @@ class const _HarnessOverviewRow({
   @override
   Widget build(BuildContext context) {
     final install = state.installs[plugin.setup.id];
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return PregoGroupedRow(
       key: Key("harnesses_card_${plugin.setup.id}"),
@@ -304,6 +305,7 @@ class const _HarnessOverviewRow({
             )
           else
             // On the same end edge as every other settings page's chevron, under a pointer.
+            // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
             PregoInteractionScope.of(context) == PregoInteractionMode.pointer
                 ? const Icon(TablerRegular.chevron_right)
                 : const SizedBox(width: 44, height: 44, child: Icon(TablerRegular.chevron_right)),

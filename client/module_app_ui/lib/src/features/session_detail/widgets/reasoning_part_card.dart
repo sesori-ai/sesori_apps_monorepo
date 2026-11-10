@@ -60,6 +60,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
               onTap: () => _showFullText(context: context),
               borderRadius: BorderRadius.circular(PregoRadius.xs),
               child: TranscriptStepRow(
+                // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
                 maxLines: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 3 : 1,
                 leading: PregoAiLoader(
                   animate: widget.isStreaming,

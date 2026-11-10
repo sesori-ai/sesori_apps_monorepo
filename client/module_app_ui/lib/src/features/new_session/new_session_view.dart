@@ -449,6 +449,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                               header,
                               _AnimatedOptions(
                                 key: const Key("new_session_options"),
+                                // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
                                 gap: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
                                     ? PregoSpacing.md
                                     : PregoSpacing.lg,
@@ -613,6 +614,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
               cubit: cubit,
               state: state,
               surfaceStyleController: surfaceStyleController,
+              // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
               compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
               // D9: the options are committed at Send.
               readOnly: isSending,
@@ -723,6 +725,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     };
     // Under a pointer the worktree choice is a chip on the setup line.
     final worktreeInHeader =
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
         PregoInteractionScope.of(context) == PregoInteractionMode.pointer && options is _DedicatedWorkspaceRow;
     final harnessPill = _buildHarnessPill(cubit: cubit, data: composerData);
     final header = NewSessionHeader(
@@ -1112,6 +1115,7 @@ class const _DedicatedWorkspaceRow({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
 
     return SizedBox(

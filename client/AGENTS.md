@@ -219,6 +219,18 @@ Desktop-only platform capabilities are defined in
 `desktop/lib/core/platform/`. Do not put tray, window, updater, bridge-process,
 or single-instance business logic in `client/desktop`.
 
+Shared widgets in `module_app_ui` and `module_prego` don't branch on desktop vs
+touch inline: a difference lives in metrics, in a behaviour wrapper in
+`module_prego/lib/interactions/`, or in a desktop variant of the component. The
+`avoid_interaction_mode_reads` lint reports any other read of
+`PregoInteractionScope`, `PregoInteractionMode`, `isDesktopScale` or
+`ComposerPresentation`; the shells, tests and the files that define a mode
+(`module_prego/lib/interactions/`, `prego_design_system.dart`,
+`composer_presentation_scope.dart`) are free to read it. A read not yet moved carries
+`// ignore: no_slop_linter/avoid_interaction_mode_reads, pending: <home>`, so a
+change that removes a read deletes its marker too (`unnecessary_ignore` doesn't
+report a stale plugin ignore).
+
 ## Error Handling
 
 **Never silently swallow.** The target is a `catch` that discards an error and continues with no trace (`catch (e) { /* no-op */ }`). A handler that swallows and continues (no-op/best-effort cleanup included) must log, and a catch-all (`on Object catch`/`catch (e)`) especially, since the cause is unknown. But do NOT add a redundant log when the catch already surfaces the failure — rethrows, throws a typed exception, or returns/yields an explicit failure the caller renders — that just double-logs. When you log a caught error, pass it as the logger argument (`Log.w("msg", error, stackTrace)`), don't string-interpolate it.

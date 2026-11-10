@@ -7,6 +7,7 @@
 // - `avoid_dynamic_return_type`: Forbids implicit or `dynamic` return types
 // - `avoid_flutter_spinners`: Forbids direct Flutter spinner widgets
 // - `avoid_implicit_tostring`: Forbids implicit toString() in string interpolation
+// - `avoid_interaction_mode_reads`: Forbids desktop/touch mode reads in shared client code, outside the definitions
 // - `avoid_legacy_flutter_design_imports`: Forbids SDK Material/Cupertino imports
 // - `avoid_material_icons`: Forbids Material Icons glyphs, use Tabler
 // - `avoid_mutable_class_fields`: Forbids non-final public instance fields
@@ -37,6 +38,7 @@ import 'src/rules/avoid_flutter_spinners_rule.dart';
 import 'src/rules/avoid_material_icons_rule.dart';
 import 'src/rules/prefer_specific_type_rule.dart';
 import 'src/rules/avoid_implicit_tostring_rule.dart';
+import 'src/rules/avoid_interaction_mode_reads_rule.dart';
 import 'src/rules/avoid_legacy_flutter_design_imports_rule.dart';
 import 'src/rules/avoid_mutable_class_fields_rule.dart';
 import 'src/rules/avoid_navigator_of_rule.dart';
@@ -63,6 +65,7 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidFlutterSpinnersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidInteractionModeReadsRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidLegacyFlutterDesignImportsRule(ignoreTestFiles: false));
     registry.registerWarningRule(AvoidMaterialIconsRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));

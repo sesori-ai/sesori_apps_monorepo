@@ -13,6 +13,7 @@ Every rule is registered as a warning rule, so it is enabled wherever the plugin
 | `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions |
 | `avoid_flutter_spinners` | Prevents direct Flutter spinner widgets; use `PregoActivityIndicator` |
 | `avoid_implicit_tostring` | Prevents implicit `toString()` in string interpolation. Exempt: `String`, `int`, `double`, `bool` and `dynamic` values, explicit `.toString()` calls, and interpolations inside `logt`/`logd` calls |
+| `avoid_interaction_mode_reads` | Prevents desktop/touch reads (`PregoInteractionScope`, `PregoInteractionMode`, `isDesktopScale`, `ComposerPresentation`) in `sesori_app_ui` and `theme_prego`; put the difference in metrics, a wrapper or a desktop variant. Exempt: the files that define a mode and `theme_prego/interactions/` |
 | `avoid_legacy_flutter_design_imports` | Prevents SDK Material and Cupertino imports; use the standalone UI packages |
 | `avoid_material_icons` | Prevents Material `Icons` glyphs; use `TablerRegular` or `TablerSolid` |
 | `avoid_mutable_class_fields` | Prevents non-final public instance fields |

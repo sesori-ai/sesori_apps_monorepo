@@ -157,6 +157,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
     final isOpen = _isOpen || _isOpenByDefault;
     _reportOpen(isOpen: isOpen);
 
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return DecoratedBox(
       // Under a pointer the actions are plain glyphs on the composer itself.

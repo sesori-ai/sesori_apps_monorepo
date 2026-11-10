@@ -22,6 +22,7 @@ class const PregoComposerChip({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final foreground = isWarning ? prego.colors.textWarningPrimary : prego.colors.textSecondary;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final height = pointer ? 28.0 : 36.0;
     final borderRadius = BorderRadius.circular(pointer ? PregoRadius.md : PregoRadius.full);

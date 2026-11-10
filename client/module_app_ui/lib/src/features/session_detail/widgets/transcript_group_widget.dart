@@ -51,6 +51,7 @@ class const TranscriptGroupWidget({
         // The chevron's slot already insets the start; the end mirrors it so
         // the target and its hover run past the label instead of stopping at it.
         padding: EdgeInsetsDirectional.only(end: prego.spacing.md),
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         minimumSize: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
             ? const Size(44, 28)
             : const Size(44, 44),
@@ -65,6 +66,7 @@ class const TranscriptGroupWidget({
     return Padding(
       key: const ValueKey("transcriptGroup.summary"),
       padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
+      // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: presenter
       child: switch (PregoInteractionScope.of(context)) {
         PregoInteractionMode.pointer => _OpenState(
           builder: (context, isOpen, setOpen) => PregoPopover(

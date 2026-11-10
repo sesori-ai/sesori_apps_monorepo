@@ -87,6 +87,7 @@ class const SessionTile({
 
   @override
   Widget build(BuildContext context) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) {
       return _PointerRowMenu(
         menuWidth: _menuWidth,
@@ -391,6 +392,7 @@ class const SessionTile({
         semanticsLabel: context.formatTimestamp(updatedAt),
         style: _metaStyleOf(
           context: context,
+          // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
           pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
         ).copyWith(color: prego.colors.textSecondary, fontFeatures: const [FontFeature.tabularFigures()]),
         // Past the relative window this is a date, and some locales write
@@ -675,6 +677,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return DecoratedBox(
       // The hairline [PregoSwipeActions] draws under a real row.
@@ -759,6 +762,7 @@ class const SessionTileSkeleton({
 }) extends StatelessWidget {
   /// As tall as a quiet row under [context]'s pointer or touch, at its text size.
   static double heightOf({required BuildContext context}) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final lines = _lineHeightsOf(context: context, pointer: pointer);
     return _rowVerticalPadding(pointer: pointer) * 2 +
@@ -770,6 +774,7 @@ class const SessionTileSkeleton({
 
   @override
   Widget build(BuildContext context) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final lines = _lineHeightsOf(context: context, pointer: pointer);
     return Padding(
@@ -864,6 +869,7 @@ class const _HarnessLogo({required final String pluginId, required final bool li
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final logo = PregoBrandLogo(
       pluginId: pluginId,

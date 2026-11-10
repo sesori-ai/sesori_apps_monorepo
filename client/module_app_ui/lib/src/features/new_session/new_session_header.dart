@@ -78,6 +78,7 @@ class _NewSessionHeaderState() extends State<NewSessionHeader> with SingleTicker
     final label = onProjectSelected == null
         ? projectName ?? loc.projectListDefaultName
         : liveProjectName(context: context, projectId: projectId, projectName: projectName);
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     Widget pill({required VoidCallback? onPressed}) => pointer
         ? IntrinsicWidth(

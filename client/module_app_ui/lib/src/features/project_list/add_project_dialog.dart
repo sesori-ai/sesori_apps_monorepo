@@ -556,6 +556,7 @@ class const _Breadcrumb({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final segmentStyle = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: wrapper
     final touch = PregoInteractionScope.of(context) == PregoInteractionMode.touch;
     // A short segment such as "/" still gets a finger- or pointer-sized target;
     // it only shows while hovered or pressed.

@@ -87,6 +87,7 @@ class const TranscriptStepRow({
           text: capitalize(label: label),
           style: prego.textTheme.textSm.bold.copyWith(
             // A settled or live step names itself first; a failed one keeps its colour.
+            // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
             color: this.color == null && PregoInteractionScope.of(context) == PregoInteractionMode.pointer
                 ? prego.colors.textPrimary
                 : color,
@@ -98,6 +99,7 @@ class const TranscriptStepRow({
     final text = Text.rich(
       span,
       style: prego.textTheme.textSm.regular.copyWith(color: color),
+      // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
       strutStyle: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
           ? const StrutStyle(fontSize: 12.5, height: 18 / 12.5, forceStrutHeight: true)
           : null,

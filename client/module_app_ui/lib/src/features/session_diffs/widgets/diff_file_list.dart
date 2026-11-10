@@ -17,6 +17,7 @@ class const DiffFileList({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final rows = [
       for (final (index, vm) in viewModels.indexed)
@@ -120,6 +121,7 @@ class const DiffStatusLetter({super.key, required final FileDiffStatus? status})
       label,
       style: context.prego.textTheme.code.copyWith(
         color: color,
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         fontWeight: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
             ? FontWeight.w500
             : FontWeight.w600,

@@ -59,6 +59,7 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
 
 /// The same raised inset as a tool's output, so code reads alike wherever it
 /// appears and stands off the grey page in both themes.
+// ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
 BoxDecoration _codeBlockDecoration({required PregoDesignSystem prego}) => prego.isDesktopScale
     // The desktop page is too near the usual fill in light, and it glares in dark.
     ? BoxDecoration(
@@ -96,6 +97,7 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     paragraphStyle: body,
   );
 
+  // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
   final desktop = prego.isDesktopScale;
   // Headings keep the phone's sizes on desktop too, as the prose under them
   // does, so none reads smaller than its paragraph. The weight stays the scale's.
@@ -193,6 +195,7 @@ MarkdownStyleSheet buildLegalMarkdownStyleSheet({required PregoDesignSystem preg
       listBullet: body,
       strong: body.copyWith(
         color: prego.colors.textPrimary,
+        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         fontWeight: prego.isDesktopScale ? FontWeight.w500 : FontWeight.w600,
       ),
       a: body.copyWith(

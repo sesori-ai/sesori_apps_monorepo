@@ -13,9 +13,13 @@ enum PregoInteractionMode() {
 /// for, including their spacing and sizes. A product shell built for a mouse
 /// installs one scope at its root, and a touch shell installs none.
 ///
-/// It carries only the mode, not spacing or theme values: each widget decides
-/// what the mode means for it. What a product does differently, rather than how
-/// a widget is drawn, comes through constructor parameters from the shell.
+/// It carries only the mode, not spacing or theme values. Shared widgets don't
+/// read it inline: a desktop difference lives in metrics, in a behaviour wrapper
+/// in this folder, or in a desktop variant of the component. The
+/// `avoid_interaction_mode_reads` lint reports any other read, and a read not
+/// yet moved carries an ignore naming its home (`pending: <home>`). What a
+/// product does differently, rather than how a widget is drawn, comes through
+/// constructor parameters from the shell.
 class const PregoInteractionScope({
   super.key,
   required final PregoInteractionMode mode,

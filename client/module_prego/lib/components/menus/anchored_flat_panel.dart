@@ -138,6 +138,7 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
     final safe = MediaQuery.paddingOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final atCorner = placement == AnchoredPanelPlacement.atCorner;
     final gap = atCorner ? 0.0 : AnchoredFlatPanel._gap;
