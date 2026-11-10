@@ -146,9 +146,10 @@ class const _ThemePreview({required final PregoColors palette}) extends Stateles
 
   @override
   Widget build(BuildContext context) {
-    // The canvas is the app background of the previewed theme: white in light,
-    // near-black in dark. Bubbles and the composer sit on it as surfaces.
-    final canvas = palette.brightness == Brightness.light ? palette.bgSurface3 : palette.bgSurface1;
+    // The canvas is the previewed theme's card fill, like the settings cards
+    // around the picker. The page background would hide the dark tile on the
+    // dark page. Bubbles and the composer sit on it as bordered surfaces.
+    final canvas = palette.bgSurface3;
     final surface = BoxDecoration(
       color: palette.bgSurface3,
       border: Border.all(color: palette.borderSecondary),
