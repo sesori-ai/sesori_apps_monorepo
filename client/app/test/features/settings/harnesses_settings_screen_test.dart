@@ -1176,7 +1176,10 @@ void main() {
     expect(find.text("Not installed"), findsOneWidget);
     expect(find.text("Install the harness runtime."), findsOneWidget);
     expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsOneWidget);
-    expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).value, isTrue);
+    // A harness that isn't installed cannot run, so its switch reads off and
+    // waits for the install instead of changing the stored setting.
+    expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).value, isFalse);
+    expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).onChanged, isNull);
     expect(find.byKey(const Key("harness_management_refresh_future-harness")), findsNothing);
     expect(find.byKey(const Key("harness_management_restart_future-harness")), findsNothing);
     expect(find.byKey(const Key("harness_management_timeout_future-harness")), findsNothing);
@@ -1189,12 +1192,12 @@ void main() {
 
     await tester.tap(_switchFor("future-harness"));
     await tester.pump();
-    verify(
+    verifyNever(
       () => service.command(
         pluginId: "future-harness",
         request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
       ),
-    ).called(1);
+    );
   });
 
   testWidgets("overview opens install guidance before a missing runtime can be installed", (tester) async {

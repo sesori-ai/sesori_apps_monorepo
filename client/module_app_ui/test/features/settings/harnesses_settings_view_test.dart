@@ -256,16 +256,19 @@ void main() {
   ) async {
     phone(tester: tester);
     publish(
-      plugins: [_plugin(id: "missing", runtime: PluginRuntimeState.blocked, setup: PluginSetupState.runtimeMissing)],
+      plugins: [
+        _ready,
+        _plugin(id: "missing", runtime: PluginRuntimeState.blocked, setup: PluginSetupState.runtimeMissing),
+      ],
     );
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
-    final toggle = find.byKey(const Key("harness_management_enabled_missing"));
-    final toggleTarget = find.byKey(const Key("harness_management_enabled_target_missing"));
+    final toggle = find.byKey(const Key("harness_management_enabled_ready"));
+    final toggleTarget = find.byKey(const Key("harness_management_enabled_target_ready"));
     expect(tester.widget<PregoSwitch>(toggle).value, isTrue);
     expect(tester.getSize(toggle), const Size(64, 28));
     expect(tester.getSize(toggleTarget), const Size(64, 44));
-    final enabledSemantics = find.bySemanticsLabel("missing enabled");
+    final enabledSemantics = find.bySemanticsLabel("Ready harness enabled");
     expect(enabledSemantics, findsOneWidget);
     expect(tester.getSemantics(enabledSemantics).rect.height, 44);
     // The padding belongs to the switch, not the navigable harness row.
@@ -273,7 +276,7 @@ void main() {
     await tester.pumpAndSettle();
     verify(
       () => service.command(
-        pluginId: "missing",
+        pluginId: "ready",
         request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
       ),
     ).called(1);
@@ -288,6 +291,66 @@ void main() {
     await tester.tap(find.text("missing"));
     expect(opened, ["missing"]);
   });
+
+  for (final detail in [false, true]) {
+    testWidgets("${detail ? 'detail' : 'overview'} shows a not-installed harness switched off until it is installed", (
+      tester,
+    ) async {
+      phone(tester: tester);
+      final enabled = _plugin(
+        id: "missing",
+        runtime: PluginRuntimeState.blocked,
+        setup: PluginSetupState.runtimeMissing,
+      );
+      final disabled = _plugin(
+        id: "off",
+        runtime: PluginRuntimeState.disabled,
+        setup: PluginSetupState.runtimeMissing,
+      );
+      publish(plugins: [enabled, disabled]);
+      await tester.pumpWidget(app(detailId: detail ? "missing" : null));
+      await tester.pumpAndSettle();
+      for (final id in detail ? ["missing"] : ["missing", "off"]) {
+        final toggle = tester.widget<PregoSwitch>(find.byKey(Key("harness_management_enabled_$id")));
+        expect(toggle.value, isFalse, reason: "$id cannot run until it is installed.");
+        expect(toggle.onChanged, isNull, reason: "$id has nothing to switch until it is installed.");
+        await tester.tap(find.byKey(Key("harness_management_enabled_target_$id")));
+        await tester.pumpAndSettle();
+      }
+      verifyNever(
+        () => service.command(
+          pluginId: any(named: "pluginId"),
+          request: any(named: "request"),
+        ),
+      );
+      if (detail) {
+        expect(find.text("Not installed"), findsOneWidget);
+      } else {
+        // Each row explains why its switch is off, in its own section.
+        for (final id in ["missing", "off"]) {
+          final row = find.byKey(Key("harnesses_card_$id"));
+          expect(
+            find.descendant(of: row, matching: find.text("Not installed")),
+            findsOneWidget,
+            reason: id,
+          );
+        }
+      }
+
+      // Installing restores the setting the user left, without anyone touching it.
+      publish(
+        plugins: [
+          enabled.copyWith(setup: enabled.setup.copyWith(state: PluginSetupState.ready)),
+          disabled,
+        ],
+      );
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pumpAndSettle();
+      final installed = tester.widget<PregoSwitch>(find.byKey(const Key("harness_management_enabled_missing")));
+      expect(installed.value, isTrue);
+      expect(installed.onChanged, isNotNull);
+    });
+  }
 
   testWidgets("overview shows Running for busy work and omits idle or stopped subtitles", (tester) async {
     phone(tester: tester);
@@ -340,6 +403,21 @@ void main() {
       expect(find.descendant(of: statusRow, matching: find.text(label)), findsOneWidget);
       if (workState != PluginManagementWorkState.busy) expect(find.text("Running"), findsNothing);
     }
+  });
+
+  testWidgets("detail names a dormant harness Not running rather than Idle", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _ready.copyWith(runtimeState: PluginRuntimeState.dormant, workState: PluginManagementWorkState.unknown),
+      ],
+    );
+    await tester.pumpWidget(app(detailId: "ready"));
+    await tester.pumpAndSettle();
+    final statusRow = find.widgetWithText(PregoGroupedRow, "Status");
+    expect(find.descendant(of: statusRow, matching: find.text("Not running")), findsOneWidget);
+    expect(find.text("Idle"), findsNothing);
+    expect(find.text("Dormant"), findsNothing);
   });
 
   for (final detail in [false, true]) {
@@ -831,7 +909,7 @@ void main() {
     await tester.pump();
     expect(tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).value, .4);
     final toggle = tester.widget<PregoSwitch>(find.byKey(const Key("harness_management_enabled_missing")));
-    expect(toggle.value, isTrue);
+    expect(toggle.value, isFalse);
     expect(toggle.onChanged, isNull);
     expect(find.byType(PregoButtonsSolid), findsNothing);
     installs.add(const {

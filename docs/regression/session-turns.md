@@ -286,7 +286,9 @@ defaults and queued client sends coherent.
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
   OpenCode retains legacy client fallback: its observed-child snapshot does not
-  prove atomic subtree completion across separate HTTP/SSE channels. Grok also
+  prove atomic subtree completion across separate HTTP/SSE channels. OpenCode v2
+  counts, keeps and stops working sub-agents at any depth, so a background
+  grandchild whose parent finished is confirmed like a child. Grok also
   reports false atomic authority: current clients receive root-first native
   cancellation plus exact per-child snapshot fanout, then retain their fallback.
   After generic JSON-RPC unwrapping, each Grok child-cancel ACK must contain the

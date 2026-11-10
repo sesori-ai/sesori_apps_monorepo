@@ -190,7 +190,9 @@ reaches the backend so the turn continues.
   active backend.
 - An archived session refuses replies with the archived read-only rejection, and
   pending lists drop every request whose own session is archived. A request
-  from an active sub-agent stays listed under an archived display root.
+  from an active sub-agent stays listed under an archived display root. Archiving
+  a running root stops its sub-agents first, so that leaves only a sub-agent the
+  stop did not reach (see [archiving](session-archiving-and-deletion.md)).
 - Question rejection carries the owning session ID. Missing or null ownership is
   a malformed request rather than triggering a cross-session owner search.
 - Question choices preserve their distinct selected styling, per-question
