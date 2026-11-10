@@ -2853,11 +2853,12 @@ void main() {
         // it is sending, with the rest still queued behind it.
         Future<({SessionDetailCubit cubit, SessionLaunchRepository repository})> stopWhileSending({
           required List<LaunchFollowUp> queuedBehind,
+          QueuedSessionSubmission? first,
         }) async {
           final repository = launchedRepository(
             followUps: [
               LaunchFollowUp.failed(
-                submission: followUp(promptId: "prm_a"),
+                submission: first ?? followUp(promptId: "prm_a"),
                 failure: PromptSendFailure.uncertain,
               ),
               ...queuedBehind,
@@ -2986,6 +2987,178 @@ void main() {
           expect(state.composerRestorations, 2);
           expect(repository.retryFollowUp(promptId: "prm_a"), isNull, reason: "the launch no longer holds it");
           expect(sentPromptIds, ["prm_a"]);
+        });
+
+        QueuedSessionSubmission withImage({required String promptId, required String text}) =>
+            QueuedSessionSubmission.text(
+              promptId: promptId,
+              text: text,
+              inputMode: ComposerInputMode.typed,
+              attachments: [image],
+              agent: null,
+              agentModel: null,
+              fastMode: false,
+            );
+
+        Future<void> failFirstSend({required SessionDetailCubit cubit, required int restorations}) async {
+          firstSend.complete(ApiResponse.error(ApiError.generic()));
+          await _awaitCondition(() => (cubit.state as SessionDetailLoaded).composerRestorations == restorations);
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        test("one that fails after the stop keeps the images the stop returned, not yet staged", () async {
+          final secondImage = ComposerImageAttachment(
+            mime: "image/png",
+            bytes: Uint8List.fromList([8]),
+            filename: null,
+          );
+          final (:cubit, repository: _) = await stopWhileSending(
+            first: QueuedSessionSubmission.text(
+              promptId: "prm_a",
+              text: "and then prm_a",
+              inputMode: ComposerInputMode.typed,
+              attachments: [secondImage],
+              agent: null,
+              agentModel: null,
+              fastMode: false,
+            ),
+            queuedBehind: [
+              LaunchFollowUp.queued(
+                submission: withImage(promptId: "prm_b", text: "and then prm_b"),
+                since: DateTime(2026),
+              ),
+            ],
+          );
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+          expect(cubit.restoredAttachments, [image]);
+
+          await failFirstSend(cubit: cubit, restorations: 2);
+
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"));
+          expect(cubit.restoredAttachments, [image, secondImage]);
+        });
+
+        test("an image-only one that fails after the stop spells out a staged command", () async {
+          final (:cubit, repository: _) = await stopWhileSending(
+            first: withImage(promptId: "prm_a", text: ""),
+            queuedBehind: const [],
+          );
+          cubit.stageCommand(_reviewCommand);
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+          expect((cubit.state as SessionDetailLoaded).stagedCommand, _reviewCommand, reason: "nothing returned yet");
+
+          await failFirstSend(cubit: cubit, restorations: 1);
+
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "/review half typed"));
+          expect((cubit.state as SessionDetailLoaded).stagedCommand, isNull);
+          expect(cubit.restoredAttachments, [image]);
+        });
+
+        test("one that fails after a command was staged over what the stop returned still comes after it", () async {
+          final (:cubit, repository: _) = await stopWhileSending(
+            queuedBehind: [
+              LaunchFollowUp.queued(
+                submission: followUp(promptId: "prm_b"),
+                since: DateTime(2026),
+              ),
+            ],
+          );
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+          cubit.stageCommand(_reviewCommand);
+
+          await failFirstSend(cubit: cubit, restorations: 2);
+
+          expect(
+            cubit.composerDraft,
+            ComposerDraft.typed(text: "/review and then prm_b\n\nand then prm_a\n\nhalf typed"),
+          );
+          expect((cubit.state as SessionDetailLoaded).stagedCommand, isNull);
+        });
+
+        test("one the bridge listed while its send was pending returns at the stop, and stays returned", () async {
+          final (:cubit, :repository) = await stopWhileSending(
+            queuedBehind: [
+              LaunchFollowUp.queued(
+                submission: followUp(promptId: "prm_b"),
+                since: DateTime(2026),
+              ),
+            ],
+          );
+          sessionEvents.add(
+            const SesoriSseEvent.sessionQueuedPrompts(
+              sessionID: _sessionId,
+              prompts: [
+                QueuedSessionPrompt(
+                  id: "prm_a",
+                  text: "and then prm_a",
+                  command: null,
+                  attachmentCount: 0,
+                  createdAt: 50,
+                ),
+              ],
+            ) as SesoriSessionEvent,
+          );
+          await Future<void>.delayed(Duration.zero);
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
+
+          // The send's acceptance reaches the launch and then this screen.
+          firstSend.complete(ApiResponse.success(null));
+          for (var i = 0; i < 10; i++) {
+            await Future<void>.delayed(Duration.zero);
+          }
+
+          expect(sentPromptIds, ["prm_a"]);
+          expect(repository.beginFollowUp(launchId: "launch-1"), isNull);
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the stop dropped it with the bridge's queue");
+          expect(state.launchFollowUps, isEmpty);
+          expect(state.bridgeQueuedPrompts, isEmpty);
+          expect(state.composerRestorations, 1);
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
+        });
+
+        test("an image-carrying one the bridge listed after its send failed comes back with its images", () async {
+          final repository = launchedRepository(
+            followUps: [
+              LaunchFollowUp.failed(
+                submission: withImage(promptId: "prm_a", text: "and then prm_a"),
+                failure: PromptSendFailure.uncertain,
+              ),
+            ],
+          );
+          final cubit = await createLoadedCubit(sessionLaunchService: launchService(repository: repository));
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+          sessionEvents.add(
+            const SesoriSseEvent.sessionQueuedPrompts(
+              sessionID: _sessionId,
+              prompts: [
+                QueuedSessionPrompt(
+                  id: "prm_a",
+                  text: "and then prm_a",
+                  command: null,
+                  attachmentCount: 1,
+                  createdAt: 50,
+                ),
+              ],
+            ) as SesoriSessionEvent,
+          );
+          await Future<void>.delayed(Duration.zero);
+
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nhalf typed"));
+          expect(cubit.restoredAttachments, [image]);
         });
 
         test("an ambiguous stop returns them to the composer too, and none sends after it", () async {
