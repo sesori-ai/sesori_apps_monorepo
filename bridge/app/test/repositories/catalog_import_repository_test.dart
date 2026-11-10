@@ -445,6 +445,9 @@ void main() {
     group("a folder opened through a symbolic link", () {
       late String folder;
       late String link;
+      // Missing below a root that is no link, so it resolves as spelled on
+      // every host, unlike `/tmp/launch` on macOS.
+      const launchOutsideLinks = "/sesori-test-launch";
 
       setUp(() {
         // Resolved first, so the folder is spelled without links even where
@@ -503,7 +506,7 @@ void main() {
       test("stays one project when a derived import reports a session in the resolved folder", () async {
         final opened = await openThroughLink();
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "terminal-root", directory: folder)],
         );
 
@@ -511,7 +514,7 @@ void main() {
 
         expect(
           (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
-          unorderedEquals([opened.id, "/tmp/launch"]),
+          unorderedEquals([opened.id, launchOutsideLinks]),
         );
         expect(
           (await database.sessionDao.getSessionByBinding(
@@ -527,7 +530,7 @@ void main() {
       test("a derived session reported through the link joins the opened project", () async {
         final opened = await openThroughLink();
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "linked-root", directory: link)],
         );
 
@@ -535,7 +538,7 @@ void main() {
 
         expect(
           (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
-          unorderedEquals([opened.id, "/tmp/launch"]),
+          unorderedEquals([opened.id, launchOutsideLinks]),
         );
         expect((await database.projectsDao.getProject(projectId: opened.id))?.path, folder);
         final row = await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "linked-root");
@@ -569,7 +572,7 @@ void main() {
           rows: [_projectRow(id: link, path: link)],
         );
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "arrived", directory: link)],
         );
 
@@ -578,7 +581,7 @@ void main() {
         expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
         expect(
           (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
-          unorderedEquals([link, "/tmp/launch"]),
+          unorderedEquals([link, launchOutsideLinks]),
         );
         // Resolving links alone never moves a stored row.
         expect((await database.projectsDao.getProject(projectId: link))?.path, link);
@@ -594,7 +597,7 @@ void main() {
         await database.projectsDao.upsertProjectRows(rows: [legacy]);
         final legacyBefore = await database.projectsDao.getProject(projectId: link);
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "arrived", directory: link, updatedAt: 1)],
         );
 
@@ -602,7 +605,7 @@ void main() {
 
         expect(
           (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
-          unorderedEquals([opened.id, link, "/tmp/launch"]),
+          unorderedEquals([opened.id, link, launchOutsideLinks]),
         );
         expect(await database.projectsDao.getProject(projectId: link), legacyBefore);
         expect(
@@ -611,10 +614,10 @@ void main() {
         );
       });
 
-      test("a reported folder that no longer exists imports under the spelling reported", () async {
-        final gone = p.join(link, "gone");
+      test("a reported folder that no longer exists resolves through its surviving parents", () async {
+        final gone = p.join(link, "gone", "deeper");
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: link,
           sessions: [
             _pluginSession(id: "gone-root", directory: gone),
             _pluginSession(id: "gone-child", parentId: "gone-root", directory: gone),
@@ -624,24 +627,55 @@ void main() {
 
         final completed = await _importCompletion(database: database, plugin: plugin);
 
-        expect(completed.newItems, const CatalogImportNewItems(projects: 3, sessions: 3));
+        final resolvedGone = p.join(folder, "gone", "deeper");
+        expect(completed.newItems, const CatalogImportNewItems(projects: 2, sessions: 3));
         expect(
           (await database.projectsDao.getAllProjects()).map((project) => project.path),
-          unorderedEquals([gone, folder, "/tmp/launch"]),
+          unorderedEquals([resolvedGone, folder]),
         );
         for (final id in ["gone-root", "gone-child"]) {
-          expect(
-            (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: id))?.projectId,
-            gone,
-            reason: id,
-          );
+          final row = await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: id);
+          expect(row?.projectId, resolvedGone, reason: id);
+          expect(row?.directory, gone, reason: id);
         }
+      });
+
+      test("a deleted folder reported through the link joins the project opened before it was deleted", () async {
+        final gone = p.join(folder, "gone");
+        Directory(gone).createSync();
+        final projects = singlePluginProjectRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: const FilesystemApi(),
+          gitCliApi: FakeGitCliApi(),
+        );
+        final opened = (await projects.persistOpenedProject(
+          target: await projects.resolveProjectOpenTarget(path: gone),
+          observedAt: 20,
+        )).committedProject;
+        Directory(gone).deleteSync();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: link,
+          sessions: [_pluginSession(id: "old-root", directory: p.join(link, "gone"))],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals([opened.id, folder]),
+        );
+        expect(
+          (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "old-root"))?.projectId,
+          opened.id,
+        );
       });
 
       test("a folder whose links cannot be read still imports and logs the error with its trace", () async {
         final logs = captureLogOutput();
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "denied-root", directory: link)],
         );
         final repository = CatalogImportRepository(
@@ -679,7 +713,7 @@ void main() {
       test("a folder deleted since its sessions ran imports without a warning", () async {
         final logs = captureLogOutput();
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "gone-root", directory: p.join(link, "gone"))],
         );
 
@@ -735,7 +769,7 @@ void main() {
           displayName: "No project",
         );
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [_pluginSession(id: "scratch-root", directory: scratchFolder)],
         );
         final repository = CatalogImportRepository(
@@ -756,7 +790,7 @@ void main() {
 
         expect(
           (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
-          unorderedEquals([link, "/tmp/launch"]),
+          unorderedEquals([link, launchOutsideLinks]),
         );
         expect(
           (await database.sessionDao.getSessionByBinding(
@@ -772,7 +806,7 @@ void main() {
         // resolved (/private/var/folders on macOS), the spelling `getcwd`
         // gives a harness.
         final plugin = _DerivedImportPlugin(
-          launchDirectory: "/tmp/launch",
+          launchDirectory: launchOutsideLinks,
           sessions: [
             _pluginSession(id: "resolved-root", directory: folder),
             _pluginSession(id: "linked-root", directory: link),

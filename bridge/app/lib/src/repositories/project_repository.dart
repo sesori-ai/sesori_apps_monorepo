@@ -1,6 +1,8 @@
+import "dart:async" show TimeoutException;
 import "dart:io" show FileSystemException, Platform;
 import "dart:math" show max;
 
+import "package:collection/collection.dart" show IterableExtension;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
@@ -31,6 +33,9 @@ class ProjectRepository({
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
   static const int _maxConcurrentWorktreeInspections = 8;
   static const Duration _directoryProbeTimeout = Duration(seconds: 2);
+
+  /// `ENOENT` on macOS and Linux, the only hosts that resolve links here.
+  static const int _noSuchFileOrDirectory = 2;
   final ParallelLock _worktreeInspectionLock = ParallelLock(
     maxParallelOperations: _maxConcurrentWorktreeInspections,
   );
@@ -92,17 +97,26 @@ class ProjectRepository({
 
   /// Resolves [path] locally, retaining any durable identity already recorded
   /// for the same canonical directory.
+  ///
+  /// A row stored under a spelling through a link, as imports did before they
+  /// resolved links, is the same project: one under the spelling [path] gives,
+  /// or one with the same folder name whose links resolve to the same folder.
+  /// A row under the resolved spelling wins when both exist.
   Future<Project> resolveProjectOpenTarget({required String path}) async {
     final canonical = _canonicalProjectDirectory(path: path);
     final storedProjects = await _projectsDao.getAllProjects();
-    final stored = _projectCatalogIdentityCalculator.calculate(
-      projectsById: {for (final project in storedProjects) project.projectId: project},
-      projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
-        projects: storedProjects,
-      ),
-      preferredProjectId: canonical,
-      observedPath: canonical,
+    final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+      projects: storedProjects,
     );
+    final stored =
+        _projectCatalogIdentityCalculator.calculate(
+          projectsById: {for (final project in storedProjects) project.projectId: project},
+          projectsByNormalizedPath: projectsByNormalizedPath,
+          preferredProjectId: canonical,
+          observedPath: canonical,
+        ) ??
+        projectsByNormalizedPath[normalizeProjectDirectory(directory: path)] ??
+        await _storedUnderLinkSpelling(canonical: canonical, projectsByNormalizedPath: projectsByNormalizedPath);
     final base = p.basename(canonical);
     return Project(
       id: stored?.projectId ?? canonical,
@@ -266,6 +280,53 @@ class ProjectRepository({
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ProjectRepository: could not determine whether $path exists; treating as present", error, stackTrace);
       return false;
+    }
+  }
+
+  /// The stored row, lowest project id first, whose path has the same folder
+  /// name as [canonical] and resolves to it through links. Only rows with that
+  /// name are probed, so opening costs a probe or two rather than one per
+  /// stored project; a probe that fails or stalls rules its row out. Probes
+  /// run in id-ordered batches of [_maxConcurrentWorktreeInspections], and the
+  /// first batch with a match ends the search.
+  Future<ProjectDto?> _storedUnderLinkSpelling({
+    required String canonical,
+    required Map<String, ProjectDto> projectsByNormalizedPath,
+  }) async {
+    final name = p.basename(canonical);
+    if (Platform.isWindows || name.isEmpty) return null;
+    final candidates = [
+      for (final MapEntry(key: storedPath, value: project) in projectsByNormalizedPath.entries)
+        if (storedPath != canonical && p.basename(storedPath) == name) (path: storedPath, project: project),
+    ]..sort((a, b) => a.project.projectId.compareTo(b.project.projectId));
+    for (final batch in candidates.slices(_maxConcurrentWorktreeInspections)) {
+      final resolved = await Future.wait([
+        for (final candidate in batch) _resolvedOrNull(path: candidate.path),
+      ]);
+      for (final (index, candidate) in batch.indexed) {
+        if (resolved[index] == canonical) return candidate.project;
+      }
+    }
+    return null;
+  }
+
+  Future<String?> _resolvedOrNull({required String path}) async {
+    try {
+      final resolved = await _filesystemApi.resolveDirectoryPathAsync(path: path).timeout(_directoryProbeTimeout);
+      return normalizeProjectDirectory(directory: resolved);
+    } on FileSystemException catch (error, stackTrace) {
+      // A stored folder that no longer resolves cannot be the one being
+      // opened. One deleted since is expected; any other failure is worth a
+      // warning.
+      if (error.osError?.errorCode == _noSuchFileOrDirectory) {
+        Log.d("ProjectRepository: stored folder $path no longer exists; not matching it to the opened folder");
+      } else {
+        Log.w("ProjectRepository: could not resolve links in stored folder $path", error, stackTrace);
+      }
+      return null;
+    } on TimeoutException {
+      Log.w("ProjectRepository: resolving links in $path timed out; not matching it to the opened folder");
+      return null;
     }
   }
 
