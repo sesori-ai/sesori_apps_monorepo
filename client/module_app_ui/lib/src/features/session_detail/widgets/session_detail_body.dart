@@ -45,8 +45,9 @@ typedef SessionDetailHeaderBuilder = Widget Function({
   required void Function({required Offset origin})? onShowPrompts,
 });
 
-/// The session's own actions for the glass bar's menu, built when it opens.
-/// [isBusy] is whether the session works right now.
+/// The session's own actions for the glass bar's menu, built with the page so
+/// More can hide when there are none. [isBusy] is whether the session works
+/// right now.
 typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
   required BuildContext context,
   required Session session,
@@ -801,7 +802,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
     };
     // A shell's entries can all drop out, such as MCP for a harness without
-    // it, and More must not open an empty menu.
+    // it, and More must not open an empty menu. Built once per page build and
+    // reused by the menu.
     final shellMenuEntries = switch ((session, menuEntriesBuilder)) {
       (final session?, final builder?) => builder(context: context, session: session, isBusy: isBusy),
       _ => const <PregoMenuEntry>[],
@@ -890,8 +892,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                       onTap: openDiffs,
                     ),
                   if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
-                  if (menuEntriesBuilder != null)
-                    ...menuEntriesBuilder(context: context, session: session, isBusy: isBusy),
+                  ...shellMenuEntries,
                 ],
                 triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
                   key: const Key("session-detail-more"),

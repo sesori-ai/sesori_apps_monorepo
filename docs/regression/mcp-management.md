@@ -137,7 +137,8 @@ retain inspection when native data is available and grant no session mutation.
   use a separate presentation layer; closing either returns to the previous view.
 - Refresh feedback occupies a stable header area. Existing inventory remains
   scrollable, with stable target keys and no offset reset during refresh failure.
-- Archived and sub-agent sessions of a harness with session MCP retain the read-only MCP menu entry; session mutations stay hidden.
+- Archived and sub-agent sessions of a harness with session MCP retain the
+  read-only MCP menu entry; session mutations stay hidden.
 - Archived control requests return HTTP 409 with the canonical session ID and
   `archived_read_only` reason, without accessing the native plugin.
 - Unknown entries show an upgrade hint instead of claiming an empty available catalog.
