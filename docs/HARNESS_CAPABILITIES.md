@@ -425,15 +425,17 @@ at once, and the bridge lists none of its pending requests.
 Archiving a running root session first runs the bridge's Stop with `stop` (the turn and its running sub-agents),
 waits up to five seconds, then archives whatever the outcome; a failed, refused or slow stop is logged and the
 backend may finish cancelling after the archive. The app's own follow-up stop of busy descendants is not
-repeated, so the reach is each harness's own Stop, per [Sub-agents](#sub-agents).
+repeated, so the reach is each harness's own Stop, per [Sub-agents](#sub-agents). A worktree cleanup the
+archive would refuse is refused before the stop, leaving the session running.
 
 | Harness | Archiving a running session stops it |
 |---|---|
 | Claude Code | ✅ `interrupt` stops background sub-agents with the turn. |
-| OpenCode (v1 and v2) | ✅ The root and its running direct children. A background grandchild keeps running. |
+| OpenCode v2 | ✅ The root and its working sub-agents at any depth. |
+| OpenCode v1 | ✅ The root and its running direct children; a background grandchild keeps running, which only the app's follow-up stop reaches. |
 | Codex | ✅ The root and its known running descendants, one `turn/interrupt` each. |
 | Cursor | ✅ One root `session/cancel`, which cascades; its 20-second settle wait outlasts the archive's 5. |
-| Grok | ✅ The root and a snapshot of its running children. |
+| Grok | ✅ The root and a snapshot of its running descendants. |
 | DeepSeek | ✅ Native subtree stop. |
 | Pi, and Antigravity, Copilot, Hermes, OMP (no sub-agents exposed) | ✅ The turn. |
 
@@ -916,7 +918,8 @@ background sub-agents together with the running main turn.
 (verified on 1.18.25); background children survive, and the tracker cannot tell
 the two apart, so the option is not offered.
 Atomic subtree completion acknowledgment is **not implemented** for OpenCode;
-its observed-child snapshot retains legacy client fanout.
+its observed-child snapshot retains legacy client fanout. A v2 stop interrupts
+working sub-agents at any depth; v1 reaches the direct children only.
 
 ³ Codex (managed codex-cli 0.153.4, probed 2026-09-08): live children announce
 through parent activity and status, never `thread/started`; persisted activity

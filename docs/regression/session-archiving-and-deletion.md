@@ -33,7 +33,9 @@ entirely along with its transcript and its dedicated worktree.
   works, the session waits to retry, or a sub-agent runs); an idle or already archived session is not stopped,
   and a sub-agent session is never stopped on its own archive. A stop that fails, is refused or takes longer is
   logged and the archive still completes and never hangs; the backend may then finish its cancel unseen, while
-  the archived session stays out of activity and its own pending requests are cancelled as above.
+  the archived session stays out of activity and its own pending requests are cancelled as above. A worktree
+  cleanup the archive would refuse is refused before the stop, so a refused archive leaves the session
+  running; a forced retry stops it and archives.
 - Archiving exports a versioned transcript audit record before the session flips
   to archived, then purges live history for it. When backend history is
   unavailable the export may proceed from stored content only and must record
@@ -204,7 +206,7 @@ entirely along with its transcript and its dedicated worktree.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
-| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a running session stopped before the flip, and still archived when its stop fails or never answers; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a running session stopped before the flip, still archived when its stop fails or never answers, and left running when its worktree cleanup is refused; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
@@ -286,12 +288,12 @@ restart before explicit re-import.
 - On both shells the Undo offer lives in the single popup alert slot. Another alert shown inside the
   five-second window, such as a background session creation failing, replaces it (an archive failure waits
   instead), and the archive still commits when the window ends, as it would had the user closed the alert.
-- The archive-time stop is the bridge's half of Stop. The app's own follow-up stop of busy descendants, which
-  Stop adds where the harness does not confirm it handled them, has no archive equivalent, so a sub-agent the
-  harness's own stop misses keeps running; on OpenCode that is a background grandchild, since its stop
-  aborts the root and its running direct children (see `docs/HARNESS_CAPABILITIES.md`).
-- A stop is not undone when the archive then fails, for example on a worktree cleanup refusal: the session
-  stays listed, stopped and not archived.
+- The archive-time stop is the bridge's half of Stop; the app's own follow-up stop of busy descendants has no
+  archive equivalent. Every harness's own stop already reaches its running sub-agents at any depth, except
+  OpenCode v1, which reaches the direct children only, so a v1 background grandchild keeps running under an
+  archived root (see `docs/HARNESS_CAPABILITIES.md`).
+- A stop is not undone when the archive fails after it: a cleanup refusal that only appears once the stopped
+  turn has changed the worktree, or a failed export, leaves the session listed, stopped and not archived.
 - Apps before this change confirm a running archive without saying it stops the session; the bridge stops it
   anyway. Bridges before it archive a running session without stopping it, whatever the app's confirmation
   says.
@@ -357,7 +359,8 @@ delete and read state from a row, detail and unwinding, the offline page), share
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice;
 `session_cleanup_service_test`, the one owner of the shared-worktree retry;
-bridge `session_lifecycle_service_test` for the stop before archive, `session_repository_test` for archived
+bridge `session_lifecycle_service_test` for the stop before archive and the refusal ahead of it, OpenCode
+`v2_service_writes_test` for a stop reaching a grandchild, `session_repository_test` for archived
 activity, `orchestrator_emit_bridge_event_test` for the
 summary after archive, `pending_interaction_support_test` for archived questions and permissions, and the
 archive cases in Codex `codex_plugin_write_path_test`, ACP `acp_plugin_activity_test` and

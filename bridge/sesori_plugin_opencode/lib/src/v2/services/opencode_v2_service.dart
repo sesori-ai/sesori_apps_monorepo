@@ -374,8 +374,13 @@ class OpenCodeV2Service({
         return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
       }
     }
+    // Working sub-agents at any depth, so a background grandchild stops as
+    // well, from Stop and from archive alike.
+    final targets = subAgents == PluginAbortSubAgentPolicy.keep
+        ? [sessionId]
+        : [sessionId, ..._tracker.workingDescendantIds(sessionId: sessionId)];
     await Future.wait([
-      for (final id in [sessionId, ...children]) _repository.interrupt(sessionId: id, resume: false),
+      for (final id in targets) _repository.interrupt(sessionId: id, resume: false),
     ]);
     return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }

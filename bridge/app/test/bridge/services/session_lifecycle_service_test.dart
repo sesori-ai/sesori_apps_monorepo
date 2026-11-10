@@ -362,11 +362,13 @@ void main() {
     late SessionLifecycleService service;
     late RecordingSessionContinuations continuations;
     late SessionAbortService abortService;
+    late DeletionWorktreeServiceFake worktrees;
 
     setUp(() async {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = _FakeBridgePlugin();
+      worktrees = DeletionWorktreeServiceFake();
       final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -388,7 +390,7 @@ void main() {
         views: const PassThroughSessionViews(),
         abortService: abortService,
         stopDeadline: const Duration(milliseconds: 50),
-        worktreeService: DeletionWorktreeServiceFake(),
+        worktreeService: worktrees,
         sessionRepository: repository,
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
@@ -579,6 +581,58 @@ void main() {
         expect(update.changed, isTrue);
         expect(await storedArchivedAt(), isNotNull);
         expect(plugin.lastArchivedSessionId, "backend-session");
+      });
+    });
+
+    group("a running session with a worktree to delete", () {
+      Future<ArchiveStatusUpdate> archiveWorktreeSession({required bool force}) => service.updateArchiveStatus(
+        sessionId: "worktree-session",
+        archived: true,
+        deleteWorktree: true,
+        force: force,
+      );
+
+      setUp(() async {
+        await db.sessionDao.insertSession(
+          fastMode: false,
+          sessionId: "worktree-session",
+          backendSessionId: "backend-worktree",
+          projectId: "/repo",
+          isDedicated: true,
+          createdAt: 1,
+          worktreePath: "/repo-worktrees/fixture",
+          baseBranch: "main",
+          baseCommit: "base",
+          lastAgent: null,
+          lastAgentModel: null,
+          pluginId: "fake",
+        );
+        plugin.activeSummaries = const [
+          PluginProjectActivitySummary(
+            id: "/repo",
+            activeSessions: [PluginActiveSession(id: "backend-worktree", mainAgentRunning: true)],
+          ),
+        ];
+        worktrees.safetyResult = WorktreeUnsafe(issues: [UnstagedChanges()]);
+      });
+
+      test("keeps running when the cleanup is refused", () async {
+        await expectLater(
+          archiveWorktreeSession(force: false),
+          throwsA(isA<SessionArchiveConflictException>()),
+        );
+
+        expect(plugin.abortCalls, isEmpty);
+        expect(worktrees.removeCallCount, 0);
+        expect((await db.sessionDao.getSession(sessionId: "worktree-session"))?.archivedAt, isNull);
+      });
+
+      test("is stopped and archived on a forced retry", () async {
+        await archiveWorktreeSession(force: true);
+
+        expect(plugin.abortCalls, hasLength(1));
+        expect(worktrees.removeCallCount, 1);
+        expect((await db.sessionDao.getSession(sessionId: "worktree-session"))?.archivedAt, isNotNull);
       });
     });
   });

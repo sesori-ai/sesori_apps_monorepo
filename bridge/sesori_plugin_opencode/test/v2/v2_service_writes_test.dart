@@ -308,6 +308,23 @@ void main() {
     expect(service.workState, PluginWorkState.busy);
   });
 
+  test("stop reaches a working grandchild whose parent finished; keep leaves it running", () async {
+    final grandchild = root.copyWith(id: "grandchild", parentID: "child");
+    tracker.seed(
+      sessions: [root, child, grandchild],
+      activeSessionIds: {root.id, "grandchild"},
+      permissions: [],
+      forms: [],
+    );
+
+    await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.keep);
+    expect(repository.calls, ["interrupt:${root.id}:false"]);
+
+    repository.calls.clear();
+    await service.abortSession(sessionId: root.id, subAgents: PluginAbortSubAgentPolicy.stop);
+    expect(repository.calls, ["interrupt:${root.id}:false", "interrupt:grandchild:false"]);
+  });
+
   test("rename/delete/workspace removal delegate; archival stays bridge-owned", () async {
     await service.renameSession(sessionId: root.id, title: "Renamed");
     await service.deleteSession(sessionId: root.id);
