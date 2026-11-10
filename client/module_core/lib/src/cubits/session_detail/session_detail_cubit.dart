@@ -177,10 +177,6 @@ class SessionDetailCubit(
   /// queued, so this screen's queue waits until none is left.
   List<LaunchFollowUp> _unsentLaunchFollowUps = const [];
 
-  /// The launch follow-ups a stop returned to the composer, which no later
-  /// launch event may show or park again.
-  final Set<String> _returnedLaunchFollowUpIds = {};
-
   /// The launch follow-ups a stop found still sending. The bridge may yet
   /// accept one, so it returns to the composer only if its send fails.
   final Set<String> _launchFollowUpsSendingAtStop = {};
@@ -203,7 +199,8 @@ class SessionDetailCubit(
 
   /// The prompts a stop or a harness block returned to the composer, which
   /// neither may return again: each can capture a prompt the other returns
-  /// while it waits.
+  /// while it waits. A launch follow-up among them is the composer's too, so
+  /// no later launch event shows or parks it again.
   final Set<String> _returnedPromptIds = {};
 
   /// Delivered user messages already accounted for. A message becomes
@@ -371,7 +368,7 @@ class SessionDetailCubit(
       final promptId = followUp.submission.promptId;
       // A list the launch published before a stop took these back can land
       // after it; they are the composer's now.
-      if (_returnedLaunchFollowUpIds.contains(promptId)) continue;
+      if (_returnedPromptIds.contains(promptId)) continue;
       if (_launchFollowUpsSendingAtStop.contains(promptId)) {
         switch (followUp) {
           case SendingLaunchFollowUp():
@@ -381,7 +378,7 @@ class SessionDetailCubit(
           case QueuedLaunchFollowUp() || FailedLaunchFollowUp():
             // Proven not accepted, so it goes where the stop put the rest.
             _launchFollowUpsSendingAtStop.remove(promptId);
-            _returnedLaunchFollowUpIds.add(promptId);
+            _returnedPromptIds.add(promptId);
             failedAfterStop.add(followUp.submission);
             continue;
         }
@@ -3589,11 +3586,13 @@ class SessionDetailCubit(
         if (!bridgeListed.contains(promptId)) promptId,
     };
     _launchFollowUpsSendingAtStop.addAll(stillSending);
-    _returnedLaunchFollowUpIds.addAll([
+    // Recorded as returned only once the list below is built, which skips
+    // what earlier returns took.
+    final returnedFollowUpIds = [
       for (final followUp in _unsentLaunchFollowUps)
         if (!stillSending.contains(followUp.submission.promptId)) followUp.submission.promptId,
       for (final submission in withdrawn) submission.promptId,
-    ]);
+    ];
     // The launch forgets one returned while its send was pending, so a failure
     // arriving later leaves no copy to show or retry when the session reopens.
     for (final promptId in sendingPromptIds.difference(stillSending)) {
@@ -3625,7 +3624,9 @@ class SessionDetailCubit(
       }
     }
     final unsent = [...unsentById.values];
-    _returnedPromptIds.addAll(unsentById.keys);
+    _returnedPromptIds
+      ..addAll(unsentById.keys)
+      ..addAll(returnedFollowUpIds);
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
     final restored = unsent.any((prompt) => prompt.draft != null || prompt.attachments.isNotEmpty);

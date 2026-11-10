@@ -3162,6 +3162,7 @@ void main() {
         Future<({SessionDetailCubit cubit, SessionLaunchRepository repository})> stopWhileSending({
           required List<LaunchFollowUp> queuedBehind,
           QueuedSessionSubmission? first,
+          ValueStream<PluginManagementLoadResult>? managementSnapshots,
         }) async {
           final repository = launchedRepository(
             followUps: [
@@ -3172,7 +3173,10 @@ void main() {
               ...queuedBehind,
             ],
           );
-          final cubit = await createLoadedCubit(sessionLaunchService: launchService(repository: repository));
+          final cubit = await createLoadedCubit(
+            sessionLaunchService: launchService(repository: repository),
+            managementSnapshots: managementSnapshots,
+          );
           cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
           cubit.retryLaunchFollowUp(promptId: "prm_a");
           expect(sentPromptIds, ["prm_a"]);
@@ -3482,6 +3486,61 @@ void main() {
 
           expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nhalf typed"));
           expect(cubit.restoredAttachments, [image]);
+        });
+
+        test("one that fails after the stop and is then listed by the bridge comes back only once", () async {
+          final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+            managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.active),
+          );
+          addTearDown(snapshots.close);
+          final (:cubit, repository: _) = await stopWhileSending(
+            queuedBehind: [
+              LaunchFollowUp.queued(
+                submission: followUp(promptId: "prm_b"),
+                since: DateTime(2026),
+              ),
+            ],
+            managementSnapshots: snapshots,
+          );
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortAccepted>());
+          await failFirstSend(cubit: cubit, restorations: 2);
+          const draft = "and then prm_b\n\nand then prm_a\n\nhalf typed";
+          expect(cubit.composerDraft, ComposerDraft.typed(text: draft));
+
+          // The timed-out send had reached the bridge after all.
+          void bridgeLists() => sessionEvents.add(
+            const SesoriSseEvent.sessionQueuedPrompts(
+              sessionID: _sessionId,
+              prompts: [
+                QueuedSessionPrompt(
+                  id: "prm_a",
+                  text: "and then prm_a",
+                  command: null,
+                  attachmentCount: 0,
+                  createdAt: 50,
+                ),
+              ],
+            ) as SesoriSessionEvent,
+          );
+          bridgeLists();
+          await Future<void>.delayed(Duration.zero);
+          expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortAccepted>());
+          expect(cubit.composerDraft, ComposerDraft.typed(text: draft), reason: "a second stop");
+
+          bridgeLists();
+          await Future<void>.delayed(Duration.zero);
+          snapshots.add(
+            managementFixture(
+              pluginId: "plugin-1",
+              setup: PluginSetupState.unavailable,
+              runtime: PluginRuntimeState.stopping,
+              actionHint: "Check the gateway's credentials and configuration, then refresh setup.",
+            ),
+          );
+          await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).interaction.canInteract);
+          expect(cubit.composerDraft, ComposerDraft.typed(text: draft), reason: "a harness block");
+          expect((cubit.state as SessionDetailLoaded).composerRestorations, 2);
         });
 
         test("an ambiguous stop returns them to the composer too, and none sends after it", () async {
