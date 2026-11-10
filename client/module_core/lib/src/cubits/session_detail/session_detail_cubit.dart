@@ -502,17 +502,18 @@ class SessionDetailCubit(
             returned.add(prompt.promptId))
           prompt,
     ];
-    if (undelivered.isEmpty) return current;
     _returnedPromptIds.addAll(returned);
+    // An ambiguous stop's return keeps its bridge row, which the block drops.
+    final bridgePrompts = [
+      for (final prompt in current.bridgeQueuedPrompts)
+        if (!_returnedPromptIds.contains(prompt.id)) prompt,
+    ];
+    if (undelivered.isEmpty && bridgePrompts.length == current.bridgeQueuedPrompts.length) return current;
     for (final prompt in undelivered) {
       _promptQueue.removeByPromptId(prompt.promptId);
     }
     final restored = undelivered.any((prompt) => prompt.draft != null || prompt.attachments.isNotEmpty);
     if (restored) _restoreToComposer(unsent: undelivered, stagedCommand: current.stagedCommand);
-    final bridgePrompts = [
-      for (final prompt in current.bridgeQueuedPrompts)
-        if (!returned.contains(prompt.id)) prompt,
-    ];
     final queue = _queueView(bridgePrompts: bridgePrompts);
     return current.copyWith(
       bridgeQueuedPrompts: bridgePrompts,

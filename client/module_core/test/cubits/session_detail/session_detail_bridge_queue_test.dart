@@ -2834,7 +2834,11 @@ void main() {
         await block(cubit);
 
         expect(cubit.composerDraft, ComposerDraft.typed(text: "steer it"));
-        expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
+        final state = cubit.state as SessionDetailLoaded;
+        expect(state.composerRestorations, 1);
+        // The harness the block shut down dropped it, so its row goes too.
+        expect(state.bridgeQueuedPrompts, isEmpty);
+        expect(state.queuedMessages, isEmpty);
       });
 
       test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
