@@ -295,6 +295,18 @@ jobs:
         run: flutter build ${{ matrix.target }}
         working-directory: client/desktop
 
+      # A launch on the runner can't stand in for this: its dyld accepted the
+      # mismatched PDFium that users' Macs refused in 1.12.0 (1162).
+      - uses: actions/setup-python@v6
+        if: matrix.target == 'macos'
+        with:
+          python-version: '3.13'
+      - name: Check that every framework matches the install name it is loaded by
+        if: matrix.target == 'macos'
+        run: >-
+          python .github/scripts/qualify_desktop.py check-frameworks
+          --bundle-dir client/desktop/build/macos/Build/Products/Release/Sesori.app
+
   # Terminal aggregator — the ONLY job to mark as a required branch-protection
   # check. It inspects its `needs` results and fails on any failure/cancelled
   # (skipped dependents don't propagate failure, so a naive always-green

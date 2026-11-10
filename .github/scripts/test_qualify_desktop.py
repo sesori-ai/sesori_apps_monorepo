@@ -86,13 +86,17 @@ class NativeInventoryTest(unittest.TestCase):
                     binary.parent.mkdir(parents=True, exist_ok=True)
                     binary.write_bytes(macho(machine=machine))
 
-                def fake_run(*, command: list[str], cwd: Path = qualification.ROOT) -> str:
+                def fake_run(*, command: list[str], cwd: Path = qualification.ROOT, merge_stderr: bool = True) -> str:
                     if command == ["git", "rev-parse", "HEAD"]:
                         return "product-sha" if cwd == source else "tooling-sha"
                     if command == ["flutter", "--version", "--machine"]:
                         return json.dumps({"frameworkVersion": "3.47.5"})
                     if command == ["xcodebuild", "-version"]:
                         return "Xcode 27.0"
+                    if command == ["otool", "-D", str(gui / "Contents/Frameworks/App.framework/App")]:
+                        return f"{command[-1]}:\n@rpath/App.framework/App\n"
+                    if command == ["otool", "-L", str(gui / "Contents/MacOS/Sesori")]:
+                        return f"{command[-1]}:\n\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0)\n"
                     self.fail(f"Unexpected command (must not execute target code): {command}")
 
                 with patch.object(qualification, "run", side_effect=fake_run), \
@@ -123,6 +127,72 @@ class NativeInventoryTest(unittest.TestCase):
                     qualification.sys, "argv", ["qualify_desktop.py", operation, "--arch", "x64"]
                 ), self.assertRaisesRegex(ValueError, "Native host required"):
                     qualification.main()
+
+    def test_frameworks_must_carry_the_install_name_dyld_loads_them_by(self) -> None:
+        system = ("/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit", "/usr/lib/libSystem.B.dylib")
+        bundled = ("@rpath/PDFium.framework/PDFium", "@rpath/Sparkle.framework/Versions/B/Sparkle")
+        gate = "pdfrx_pdfium_gate.framework/pdfrx_pdfium_gate"
+        shipped = {"PDFium.framework/PDFium": "@rpath/PDFium.framework/PDFium",
+                   "Sparkle.framework/Versions/B/Sparkle": "@rpath/Sparkle.framework/Versions/B/Sparkle",
+                   "Sparkle.framework/Sparkle": "@rpath/Sparkle.framework/Versions/B/Sparkle",
+                   gate: f"@rpath/{gate}"}
+        cases = {
+            "passes": ({}, (), None),
+            # 1.12.0 (1162): pdfium_dart's native asset overwrote the XCFramework on a case-insensitive volume.
+            "case collision": ({"PDFium.framework/PDFium": "@rpath/pdfium.framework/pdfium"}, (),
+                               "PDFium.framework contains a binary with install name @rpath/pdfium.framework/pdfium"),
+            "linked framework missing": ({"PDFium.framework/PDFium": None}, (),
+                                         r"links @rpath/PDFium.framework/PDFium, but .* has \['nothing'\]"),
+            "load path the check cannot resolve": ({}, ("@executable_path/../Frameworks/Foo.framework/Foo",),
+                                                   "Unsupported load path @executable_path/../Frameworks/Foo"),
+        }
+        for case, (changes, extra, error) in cases.items():
+            linked = system + bundled + extra
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                gui = Path(directory) / "Sesori.app"
+                frameworks = gui / "Contents/Frameworks"
+                names = {**shipped, **changes}
+                for relative, install_name in names.items():
+                    if install_name is not None:
+                        (frameworks / relative).parent.mkdir(parents=True, exist_ok=True)
+                        (frameworks / relative).write_bytes(universal_macho())
+
+                def fake_run(*, command: list[str], cwd: Path = qualification.ROOT, merge_stderr: bool = True) -> str:
+                    self.assertFalse(merge_stderr)
+                    binary = Path(command[-1])
+                    slices = (f"{binary} (architecture {arch}):\n" for arch in ("x86_64", "arm64"))
+                    if command[1] == "-L":
+                        dependencies = "".join(f"\t{name} (compatibility version 0.0.0)\n" for name in linked)
+                        return "".join(header + dependencies for header in slices)
+                    install_name = names[binary.relative_to(frameworks).as_posix()]
+                    return "".join(f"{header}{install_name}\n" for header in slices)
+
+                with patch.object(qualification, "run", side_effect=fake_run):
+                    if error is None:
+                        qualification.require_macos_framework_install_names(gui=gui)
+                    else:
+                        with self.assertRaisesRegex(ValueError, error):
+                            qualification.require_macos_framework_install_names(gui=gui)
+
+    def test_frameworks_differing_only_by_case_fail_even_from_a_case_sensitive_build(self) -> None:
+        # Both directories can only coexist on a case-sensitive volume, so list them instead of creating them.
+        frameworks = Path("Sesori.app/Contents/Frameworks")
+        listed = [frameworks / "PDFium.framework", frameworks / "pdfium.framework"]
+        with patch.object(qualification.Path, "glob", return_value=listed), \
+             patch.object(qualification, "run", side_effect=AssertionError("must fail before otool")), \
+             self.assertRaisesRegex(ValueError, "PDFium.framework and pdfium.framework differ only by case"):
+            qualification.require_macos_framework_install_names(gui=Path("Sesori.app"))
+
+    def test_framework_check_needs_only_a_bundle(self) -> None:
+        args = ["qualify_desktop.py", "check-frameworks", "--bundle-dir", "/Applications/Sesori.app"]
+        with patch.object(qualification.sys, "platform", "darwin"), patch.object(qualification.sys, "argv", args), \
+             patch.object(qualification, "require_macos_framework_install_names") as check, \
+             patch.object(qualification.sys, "stdout", new_callable=StringIO):
+            qualification.main()
+        check.assert_called_once_with(gui=Path("/Applications/Sesori.app"))
+        with patch.object(qualification.sys, "argv", ["qualify_desktop.py", "inspect-gui", "--bundle-dir", "gui"]), \
+             patch.object(qualification.sys, "stderr", new_callable=StringIO), self.assertRaises(SystemExit):
+            qualification.main()
 
     def test_rejects_x64_library_in_arm64_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

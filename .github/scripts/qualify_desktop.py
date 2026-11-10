@@ -137,9 +137,47 @@ def require_macos_build_architecture(*, gui: Path, arch: str) -> None:
             raise ValueError(f"Expected single-architecture macos/{arch} build at {binary}, found {native}")
 
 
+def otool_lines(*, flag: str, binary: Path) -> list[str]:
+    # Drops the "<path>[ (architecture …)]:" header otool prints before each slice.
+    output = run(command=["otool", flag, str(binary)], merge_stderr=False)
+    return [line.strip() for line in output.splitlines() if line.strip() and not line.endswith(":")]
+
+
+def require_macos_framework_install_names(*, gui: Path) -> None:
+    """Static launch check: dyld refuses a framework whose install name doesn't match the loaded path.
+
+    On a case-insensitive volume, frameworks whose names differ only by case overwrite each other,
+    as pdfium_dart's native-asset pdfium.framework did to the PDFium.framework the executable links.
+    """
+    frameworks = gui / "Contents/Frameworks"
+    bundled = sorted(frameworks.glob("*.framework"))
+    # A case-sensitive build volume can hold both; a user's Mac then keeps only one.
+    seen: dict[str, str] = {}
+    for framework in bundled:
+        other = seen.setdefault(framework.name.casefold(), framework.name)
+        if other != framework.name:
+            raise ValueError(f"{other} and {framework.name} differ only by case")
+    for framework in bundled:
+        name = framework.name.removesuffix(".framework")
+        for install_name in otool_lines(flag="-D", binary=framework / name):
+            if install_name.rsplit("/", 1)[-1] != name or f"{name}.framework/" not in install_name:
+                raise ValueError(f"{framework.name} contains a binary with install name {install_name}")
+    for line in otool_lines(flag="-L", binary=gui / "Contents/MacOS/Sesori"):
+        requested = line.split(" (compatibility version", 1)[0]
+        if requested.startswith("@") and not requested.startswith("@rpath/"):
+            raise ValueError(f"Unsupported load path {requested}: this check resolves @rpath/ only")
+        if not requested.startswith("@rpath/") or ".framework/" not in requested:
+            continue
+        binary = frameworks / requested.removeprefix("@rpath/")
+        found = otool_lines(flag="-D", binary=binary) if binary.is_file() else ["nothing"]
+        if set(found) != {requested}:
+            raise ValueError(f"The executable links {requested}, but Contents/Frameworks has {found}")
+
+
 def inspect_gui(*, gui: Path, arch: str, source: Path) -> None:
     """Inspect cross-compiled GUI/probe payloads without executing their target code."""
     require_macos_build_architecture(gui=gui, arch=arch)
+    require_macos_framework_install_names(gui=gui)
     sdk = shutil.which("flutter")
     if sdk is None:
         raise ValueError("Pinned Flutter must be on PATH")
@@ -223,13 +261,22 @@ def inspect(*, target_os: str, arch: str, gui: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("bootstrap", "inspect", "inspect-gui"))
-    parser.add_argument("--arch", choices=("x64", "arm64"), required=True)
+    parser.add_argument("operation", choices=("bootstrap", "inspect", "inspect-gui", "check-frameworks"))
+    parser.add_argument("--arch", choices=("x64", "arm64"))
     parser.add_argument("--sdk-dir", type=Path)
     parser.add_argument("--bundle-dir", type=Path)
     parser.add_argument("--source-root", type=Path, default=ROOT)
     args = parser.parse_args()
     target_os = OS_NAMES[sys.platform]
+    if args.operation == "check-frameworks":
+        # Read-only, so it also suits a downloaded release or an installed app.
+        if target_os != "macos" or args.bundle_dir is None:
+            parser.error("check-frameworks requires macOS and --bundle-dir")
+        require_macos_framework_install_names(gui=ROOT / args.bundle_dir)
+        print(f"Every framework in {args.bundle_dir} matches the install name it is loaded by")
+        return
+    if args.arch is None:
+        parser.error(f"{args.operation} requires --arch")
     if args.operation == "inspect-gui":
         if target_os != "macos" or args.bundle_dir is None:
             parser.error("inspect-gui requires a macOS compiler host and --bundle-dir")
