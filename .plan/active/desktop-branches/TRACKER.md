@@ -17,7 +17,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | Work | State | Notes |
 | --- | --- | --- |
 | #2460 Drop dead and no-op desktop checks | Merged | Precursor. It included the phone "Waiting" amber (`smallWarningText`), so item 2.15 is done. |
-| #2486 Keep both needs-you buttons bright on the phone | PR open | Owner choice C on decision 10's buttons: the phone's go back as before step 3, desktop's stay. Adds 1 read (step 3 measurements). |
+| #2486 Keep both needs-you buttons bright on the phone | Merged (`96d1b1b75d`) | Owner choice C on decision 10's buttons: the phone's go back as before step 3, desktop's stay. Adds 1 read (step 3 measurements). |
 | `desktop-text-size` | Local branch, no PR | Shares `prego_anchor_menu.dart` with step 4 (another hunk). |
 
 ## Step 2 measurements
@@ -132,7 +132,9 @@ row's waiting dot. The alert, picker and menu folds remove none: the alert keeps
 without Reduce Motion (2.10) and for step 2's dropped fill and wrap, and the picker keeps its padding read.
 
 #2486 adds 1 read back, in the needs-you card: it picks the button's look (owner choice C on decision 10). Its
-marker's home is `variant`, the needs-you card's desktop variant, so 71 `pending:` markers remain.
+marker's home is `variant`, the needs-you card's desktop variant, so 71 `pending:` markers remain. That card is
+not one of the four planned variants. Like the all-sessions filter line (below), the variants phase decides whether
+it becomes a fifth variant or a metrics value.
 
 ## Step 5 markers
 
@@ -174,5 +176,5 @@ against `main` and fixed what was still wrong:
 | `multi-computer.md` | the desktop footer row ends in a chevron | an up-and-down picker glyph, as `desktop-cockpit-shell.md` says |
 
 For step 7, the differences that remain on purpose: the step row's size, label colour and strut; the alert's dark
-fill, wrap and fade without Reduce Motion; the harness chevron's 44 box; desktop's code block fill; and, once #2486
-merges, the needs-you buttons.
+fill, wrap and fade without Reduce Motion; the harness chevron's 44 box; desktop's code block fill; and the needs-you
+buttons (#2486).
