@@ -2676,6 +2676,23 @@ void main() {
         return cubit;
       }
 
+      test("returns with the stop when the bridge accepted it before the stop was answered", () async {
+        // Sent before the stop and accepted first, it was in the bridge's queue
+        // or steering the turn the stop then ended, so the stop dropped it.
+        final cubit = await stopWhileSending();
+        final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+        firstSend.complete(ApiResponse.success(null));
+        await Future<void>.delayed(Duration.zero);
+        abortResponse.complete(ApiResponse.success(true));
+        await aborting;
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "one\n\ntwo\n\nhalf typed"));
+        final state = cubit.state as SessionDetailLoaded;
+        expect(_sendingOf(state: state), isNull);
+        expect(state.awaitingBridgeSubmissions, isEmpty);
+        expect(sentTexts, ["one"]);
+      });
+
       for (final (outcome, finish) in <(String, void Function(Completer<ApiResponse<bool>>))>[
         ("an accepted", (stop) => stop.complete(ApiResponse.success(true))),
         ("an ambiguous", (stop) => stop.completeError(StateError("response lost"))),
