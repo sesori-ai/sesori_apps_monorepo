@@ -389,6 +389,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
   // ── Flat path (Android) ────────────────────────────────────────────────────
 
   Widget _buildFlat(BuildContext context) {
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: wrapper
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     // Dimming the window to lift one row is a touch idiom.
     final spotlight = pointer ? null : widget.spotlight;
@@ -786,6 +787,7 @@ TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
 TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive, required bool isWarning}) =>
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     (prego.isDesktopScale ? prego.textTheme.textSm.regular : prego.textTheme.textSm.medium).copyWith(
       color: isDestructive
           ? prego.colors.fgErrorPrimary

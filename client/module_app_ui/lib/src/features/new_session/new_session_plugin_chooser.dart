@@ -109,6 +109,7 @@ class const _HarnessTrigger({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final borderRadius = BorderRadius.circular(pointer ? PregoRadius.md : PregoRadius.full);
     final pluginId = this.pluginId;

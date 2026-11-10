@@ -85,6 +85,7 @@ class const PermissionModal({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final copy = PregoCopyIconButton(
       onCopy: () => copyTextToClipboard(

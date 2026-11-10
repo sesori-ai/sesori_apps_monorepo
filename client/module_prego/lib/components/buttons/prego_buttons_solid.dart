@@ -851,6 +851,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     };
   }
 
+  // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
   bool get _pointer => PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
 
   /// A pill under a finger, a rounded rectangle under a pointer.

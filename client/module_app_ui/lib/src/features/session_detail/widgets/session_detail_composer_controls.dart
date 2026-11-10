@@ -167,6 +167,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required CommandInfo? stagedCommand,
   }) {
     final composerCapabilities = ComposerPresentationScope.of(context);
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = composerCapabilities.presentation == ComposerPresentation.pointer;
     return Column(
       mainAxisSize: MainAxisSize.min,

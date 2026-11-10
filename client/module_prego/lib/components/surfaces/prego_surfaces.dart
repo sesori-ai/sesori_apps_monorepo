@@ -27,6 +27,7 @@ BoxDecoration pregoComposerSurfaceDecoration({
   required PregoComposerSurfaceStyle style,
   required BorderRadius borderRadius,
 }) {
+  // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
   final tonal = prego.isDesktopScale && prego.colors.brightness == .light;
   final borderColor = switch (style) {
     _ when tonal => prego.colors.pointerHairline,

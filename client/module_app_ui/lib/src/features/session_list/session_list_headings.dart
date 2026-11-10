@@ -139,12 +139,14 @@ EdgeInsetsDirectional _pointerHeadingPadding({required bool isFirst}) =>
     EdgeInsetsDirectional.fromSTEB(14, isFirst ? 8 : 14, 14, 4);
 
 EdgeInsetsDirectional _paddingOf({required BuildContext context, required bool isFirst}) =>
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     PregoInteractionScope.of(context) == PregoInteractionMode.pointer
     ? _pointerHeadingPadding(isFirst: isFirst)
     : _headingPadding(isFirst: isFirst);
 
 /// A heading's text: the scale's smallest under a pointer, 14/20 under a finger.
 TextStyle _styleOf({required BuildContext context}) =>
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     (PregoInteractionScope.of(context) == PregoInteractionMode.pointer
             ? context.prego.textTheme.textXs
             : context.prego.textTheme.textSm)
