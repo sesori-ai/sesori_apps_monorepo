@@ -482,7 +482,7 @@ class const SessionTile({
           height: _waitingDotSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: context.prego.colors.fgWarningPrimary,
+            color: context.prego.colors.waitingDot,
           ),
         ),
       );

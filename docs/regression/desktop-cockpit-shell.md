@@ -60,7 +60,8 @@ The main pane hosts one full-width routed page.
 - A pointer shell's session row has no leading state column. Title and metadata sit flush left, and a long title fades
   out, never an ellipsis or a second line. The state mark sits just before the time: a turning star for working, a
   resting blue star for finished or unread, and an amber dot for waiting. A row with no mark gives that room to its title.
-  Every waiting dot, the row's, the hidden sidebar toggle's and the page title's, is the phone's amber.
+  Every waiting dot, the row's, the hidden sidebar toggle's and the page title's, is the same clear amber as the
+  phone's waiting dot (`#D98200` in light, `#F79009` in dark).
   The metadata line reads "Waiting" while the session waits for the user, otherwise "Running (retrying)" while a retry
   runs, then the project, then background tasks as a stack glyph and their number (the words in its tooltip), and ends
   with the harness glyph under the time, which hover actions cover. A plain running row has no "Running" word; screen

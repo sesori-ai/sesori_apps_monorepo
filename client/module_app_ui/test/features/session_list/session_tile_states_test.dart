@@ -54,10 +54,24 @@ void main() {
     );
   }
 
-  Future<void> pumpTile(WidgetTester tester, Widget row, {Widget Function(Widget child)? wrap}) async {
+  Future<void> pumpTile(
+    WidgetTester tester,
+    Widget row, {
+    Widget Function(Widget child)? wrap,
+    Brightness brightness = Brightness.light,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(extensions: [if (wrap == null) PregoDesignSystem.light else PregoDesignSystem.desktopLight]),
+        theme: ThemeData(
+          extensions: [
+            switch ((wrap == null, brightness)) {
+              (true, Brightness.light) => PregoDesignSystem.light,
+              (true, Brightness.dark) => PregoDesignSystem.dark,
+              (false, Brightness.light) => PregoDesignSystem.desktopLight,
+              (false, Brightness.dark) => PregoDesignSystem.desktopDark,
+            },
+          ],
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Material(child: Column(children: [if (wrap == null) row else wrap(row)])),
@@ -67,10 +81,11 @@ void main() {
     await tester.pump();
   }
 
-  Future<void> pumpPointerTile(WidgetTester tester, Widget row) => pumpTile(
+  Future<void> pumpPointerTile(WidgetTester tester, Widget row, {Brightness brightness = Brightness.light}) => pumpTile(
     tester,
     row,
     wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
+    brightness: brightness,
   );
 
   FontWeight? titleWeight(WidgetTester tester, String title) => tester.widget<Text>(find.text(title)).style?.fontWeight;
@@ -106,8 +121,9 @@ void main() {
   // Every state on both apps: the mark follows the title, and the time stays.
   for (final pointer in [false, true]) {
     group(pointer ? "pointer rows" : "touch rows", () {
-      Future<void> pump(WidgetTester tester, SessionTile row) =>
-          pointer ? pumpPointerTile(tester, row) : pumpTile(tester, row);
+      Future<void> pump(WidgetTester tester, SessionTile row, {Brightness brightness = Brightness.light}) => pointer
+          ? pumpPointerTile(tester, row, brightness: brightness)
+          : pumpTile(tester, row, brightness: brightness);
 
       testWidgets("a running session ends its title with a twinkling sparkle and keeps its time", (tester) async {
         await pump(
@@ -152,37 +168,50 @@ void main() {
         expect(find.text("now"), findsOneWidget);
       });
 
-      testWidgets("a waiting session says Waiting in amber, with the phone's amber dot", (tester) async {
-        final semantics = tester.ensureSemantics();
-        await pump(
+      // The waiting amber, one value on both apps in each theme.
+      for (final (brightness, amber) in [
+        (Brightness.light, const Color(0xFFD98200)),
+        (Brightness.dark, const Color(0xFFF79009)),
+      ]) {
+        testWidgets("a waiting session says Waiting in amber, with the waiting dot, in ${brightness.name}", (
           tester,
-          tile(
-            session: testSession(title: "My Session", updatedAt: now),
-            awaitingInput: true,
-          ),
-        );
+        ) async {
+          final semantics = tester.ensureSemantics();
+          final themeColors = brightness == Brightness.light
+              ? PregoDesignSystem.light.colors
+              : PregoDesignSystem.dark.colors;
+          await pump(
+            tester,
+            tile(
+              session: testSession(title: "My Session", updatedAt: now),
+              awaitingInput: true,
+            ),
+            brightness: brightness,
+          );
 
-        expect(find.byType(PregoAiLoader), findsNothing);
-        final dot = find.descendant(
-          of: find.byType(SessionTile),
-          matching: find.byWidgetPredicate(
-            (widget) => switch (widget) {
-              Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
-              _ => false,
-            },
-          ),
-        );
-        // Heard once, from the mark; the word stays silent.
-        expect(find.bySemanticsLabel(RegExp("Awaiting input")), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
-        expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.smallWarningText);
-        expect(
-          tester.widget<Container>(dot).decoration,
-          isA<BoxDecoration>().having((decoration) => decoration.color, "color", colors.fgWarningPrimary),
-        );
-        expect(find.text("now"), findsOneWidget);
-        semantics.dispose();
-      });
+          expect(find.byType(PregoAiLoader), findsNothing);
+          final dot = find.descendant(
+            of: find.byType(SessionTile),
+            matching: find.byWidgetPredicate(
+              (widget) => switch (widget) {
+                Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
+                _ => false,
+              },
+            ),
+          );
+          // Heard once, from the mark; the word stays silent.
+          expect(find.bySemanticsLabel(RegExp("Awaiting input")), findsOneWidget);
+          expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
+          expect(tester.widget<Text>(find.text("Waiting")).style?.color, themeColors.smallWarningText);
+          expect(themeColors.waitingDot, amber);
+          expect(
+            tester.widget<Container>(dot).decoration,
+            isA<BoxDecoration>().having((decoration) => decoration.color, "color", themeColors.waitingDot),
+          );
+          expect(find.text("now"), findsOneWidget);
+          semantics.dispose();
+        });
+      }
 
       testWidgets("waiting wins over a turn still counted as running", (tester) async {
         await pump(

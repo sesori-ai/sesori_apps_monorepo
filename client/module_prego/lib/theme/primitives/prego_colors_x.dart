@@ -29,8 +29,12 @@ extension PregoColorsX on PregoColors {
   Color get smallWarningText => brightness == .light ? const Color(0xFF854B00) : textWarningPrimary;
 
   /// The warning fill for a pointer shell's buttons: a clear amber in both themes,
-  /// with dark text on it. Waiting dots use [fgWarningPrimary] on every shell.
+  /// with dark text on it.
   Color get pointerWarningFill => brightness == .light ? const Color(0xFFD98200) : bgWarningSolid;
+
+  /// The dot that says a session waits for the user, wherever it is drawn, on
+  /// every shell: a clear amber in both themes.
+  Color get waitingDot => brightness == .light ? const Color(0xFFD98200) : bgWarningSolid;
 
   /// Converts this [PregoColors] instance to a Flutter [ColorScheme].
   ///

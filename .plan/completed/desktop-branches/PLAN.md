@@ -4,7 +4,8 @@ Slug: `desktop-branches`. PR titles: `<emoji> [desktop-branches] <description> [
 
 Status: completed 2026-11-09. Step 7 ran the matrix (#2489). #2490 recorded the owner's round 4 answers and retired
 the plan with the owner's [acceptance of the reduced matrix](#owners-acceptance-of-the-reduced-matrix-2026-11-09).
-Two items stay open after retirement: the waiting-dot amber, and six desktop items owed to the owner's own check.
+Six desktop items stay open after retirement, owed to the owner's own check. The waiting-dot amber, also open at
+retirement, was decided later the same day (see "Open after retirement").
 Later phases start their own plans from the bullets at the end.
 
 ## Goal, evidence and scope
@@ -439,8 +440,9 @@ items, listed in the tracker's "Owed" section, when trying the build. Anything o
 6. step 2's presence and disclosure motion seen live.
 
 Open after retirement:
-- The waiting-dot amber in light mode is still with the owner: `#D98200` (desktop's colour before step 4) or the
-  shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). Dark stays `#F79009` either way.
+- Decided after retirement (owner, 2026-11-09): every waiting dot on both apps takes desktop's colour before step 4,
+  `#D98200` in light and `#F79009` in dark, from one token, `waitingDot`. This reverses 2.14's light value only;
+  `fgWarningPrimary` stays as it is for other warning UI.
 - The six items above are owed to the owner's own check.
 
 ### Evidence and accepted risk

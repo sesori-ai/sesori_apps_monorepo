@@ -490,7 +490,7 @@ class const _SidebarTitleBar({
                           height: 7,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: prego.colors.fgWarningPrimary,
+                            color: prego.colors.waitingDot,
                           ),
                         ),
                       ),
