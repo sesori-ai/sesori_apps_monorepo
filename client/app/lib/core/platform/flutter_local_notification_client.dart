@@ -8,6 +8,8 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../sesori_test_mode.dart";
+
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
     return switch (this) {
@@ -77,7 +79,13 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings("@drawable/ic_notification"),
-        iOS: DarwinInitializationSettings(),
+        // Test mode skips the native permission prompt an unattended driver
+        // cannot answer.
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: !sesoriTestMode,
+          requestSoundPermission: !sesoriTestMode,
+          requestBadgePermission: !sesoriTestMode,
+        ),
       ),
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );

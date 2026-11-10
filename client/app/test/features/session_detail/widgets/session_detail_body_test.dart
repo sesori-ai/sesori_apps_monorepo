@@ -6591,13 +6591,14 @@ void main() {
           (widget) => widget is AnimatedSize && widget.alignment == Alignment.bottomCenter,
         ),
       );
+      // The layout the send left is fading out, which finders treat as offstage.
       final typingSurface = find.ancestor(
-        of: find.byType(EditableText),
+        of: find.byType(EditableText, skipOffstage: false),
         matching: find.byWidgetPredicate((widget) {
           if (widget is! DecoratedBox) return false;
           final decoration = widget.decoration;
           return decoration is BoxDecoration && decoration.boxShadow != null;
-        }),
+        }, skipOffstage: false),
       );
       Clip composerClip(WidgetTester tester) => tester
           .widget<ClipRRect>(find.ancestor(of: composerBox.last, matching: find.byType(ClipRRect)).first)
