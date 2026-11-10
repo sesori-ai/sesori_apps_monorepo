@@ -4,7 +4,8 @@ Slug: `desktop-branches`. PR titles: `<emoji> [desktop-branches] <description> [
 
 Status: completed 2026-11-09. Step 7 ran the matrix (#2489). #2490 recorded the owner's round 4 answers and retired
 the plan with the owner's [acceptance of the reduced matrix](#owners-acceptance-of-the-reduced-matrix-2026-11-09).
-Two items stay open after retirement: the waiting-dot amber, and six desktop items owed to the owner's own check.
+Six desktop items stay open after retirement, owed to the owner's own check. The waiting-dot amber, also open at
+retirement, was decided later the same day (see "Open after retirement").
 Later phases start their own plans from the bullets at the end.
 
 ## Goal, evidence and scope
@@ -133,6 +134,7 @@ Two items step 2 dropped as the owner's call, now decided and folded in step 4.
   the pointer check stays for that path.
 - **Item 2.14, the waiting dot.** The phone's amber (`fgWarningPrimary`) on every waiting dot on both: the session
   row's, and on desktop the page title's and the hidden sidebar toggle's, so desktop never shows two ambers.
+  Superseded after retirement: every waiting dot now reads `waitingDot` (light `#D98200`); see "Open after retirement".
 
 ### Owner decisions, round 4 (2026-11-09)
 
@@ -232,7 +234,7 @@ dropped item's branch as it is, and note it in the tracker for the metrics phase
 | 2.11 | `prego_popup_alerts_notifications.dart` `_buildCard` radius, dark fill, wrap | radius 16, fill `_surfaceColor` (`#333333`), actions wrap to the start | radius 12, fill `bgSurface3`, actions wrap to the end | radius 12 and wrap to the end on both. Fill: the phone's dark `bgSurface3` is `gray800`, not `#333333`; fold only to a fill that reads the same on both, else drop the fill. The accent use stays for step 4. |
 | 2.12 | `composer_live_words.dart` `_ComposerLiveWordsState._liveLook` radius | 18 (`_panelRadius`) | 16 | 16 |
 | 2.13 | `harnesses_settings_view.dart` `_HarnessOverviewRow.build` chevron | icon in a 44×44 box | bare icon | bare icon; the whole row is the tap target, and `minHeight: 68` keeps the phone row's height (measure it) |
-| 2.14 | `session_tile.dart` `_state` waiting dot | `fgWarningPrimary` | `pointerWarningFill` (light `#D98200` vs `#DC6803`; dark identical) | `fgWarningPrimary` on both. Dropped in step 2; round 3 decided it with desktop's other waiting dots (step 4) |
+| 2.14 | `session_tile.dart` `_state` waiting dot | `fgWarningPrimary` | `pointerWarningFill` (light `#D98200` vs `#DC6803`; dark identical) | `fgWarningPrimary` on both. Dropped in step 2; round 3 decided it with desktop's other waiting dots (step 4). Superseded after retirement by `waitingDot` |
 | 2.15 | `session_tile.dart` `_statusLabel` "Waiting" word | only if #2460 merged without it | | `pointerWarningText` on both |
 
 Cleanup in this step: the `AnimatedSwitcher` path and `_duration` in `PregoButtonTrailing`; `_panelRadius`; stale
@@ -305,7 +307,7 @@ Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14.
 | `prego_anchor_menu.dart` `_flatEntry` `PregoMenuLabel` | `text.toUpperCase()`. The glass path already uppercases. | none | sentence case → capitals |
 | `harnesses_settings_view.dart` `_ReadyView` group and defaults cards, `_HarnessActionFeedback` | `color: bgSurface2` | none | `bgSurface3` → `bgSurface2` |
 | `prego_popup_alerts_notifications.dart` `_PregoPopupAlertOverlayState.build` fade (2.10) | under Reduce Motion, the fade follows the controller; the pointer's `_opacity` only while the alert slides | none | Reduce Motion: solid at once → the phone's fade |
-| `session_tile.dart` `_state`, `desktop_session_signals.dart`, `desktop_cockpit_shell.dart` toggle dot (2.14) | `fgWarningPrimary` | none | light `#D98200` → `#DC6803` |
+| `session_tile.dart` `_state`, `desktop_session_signals.dart`, `desktop_cockpit_shell.dart` toggle dot (2.14) | `fgWarningPrimary` | none | light `#D98200` → `#DC6803`; reverted after retirement by `waitingDot` |
 
 Cleanup in this step: `_entryGap`; the accent code; the `ComputerSettingsEntry` doc comment ("grows into place");
 the `DiffStatusLetter` doc comment if it names amber.
@@ -439,8 +441,9 @@ items, listed in the tracker's "Owed" section, when trying the build. Anything o
 6. step 2's presence and disclosure motion seen live.
 
 Open after retirement:
-- The waiting-dot amber in light mode is still with the owner: `#D98200` (desktop's colour before step 4) or the
-  shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). Dark stays `#F79009` either way.
+- Decided after retirement (owner, 2026-11-09): every waiting dot on both apps takes desktop's colour before step 4,
+  `#D98200` in light and `#F79009` in dark, from one token, `waitingDot`. This reverses 2.14's light value only;
+  `fgWarningPrimary` stays as it is for other warning UI.
 - The six items above are owed to the owner's own check.
 
 ### Evidence and accepted risk

@@ -227,10 +227,12 @@ The differences that stay on purpose all look as documented:
 Recorded only: the session row's waiting dot is `#DC6803` in light and `#F79009` in dark, on the phone and on
 desktop. It counts as neither pass nor fail.
 
-### Open owner decision, outliving the plan
+### Owner decision after retirement: the waiting-dot amber (2026-11-09)
 
-The waiting-dot amber in light mode is undecided. The options are `#D98200` (desktop's colour before step 4) and the
-shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). Dark stays `#F79009` either way. Nothing here changes it.
+The waiting-dot amber in light mode was undecided at retirement, between `#D98200` (desktop's colour before step 4)
+and the shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). The owner chose `#D98200` ("the before color is best")
+for every waiting dot on both apps. Dark stays `#F79009`. The dots read one token, `waitingDot`, so the row values
+recorded above are now `#D98200` in light.
 
 ### Found for the owner, now decided
 
@@ -263,7 +265,6 @@ its values.
 
 ### Open after retirement
 
-- The waiting-dot amber decision above stays with the owner.
 - The six items below are owed to the owner's own check, as the owner accepted on 2026-11-09.
 
 ### Owed: desktop items that need the running app

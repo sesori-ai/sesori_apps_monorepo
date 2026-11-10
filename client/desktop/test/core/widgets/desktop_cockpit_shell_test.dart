@@ -185,7 +185,7 @@ void main() {
     initialState: ComputerSwitcherState(computers: computers, targetId: targetId, localId: localId),
   );
 
-  Widget app({required BridgeControlState state, Widget? child}) {
+  Widget app({required BridgeControlState state, Widget? child, Brightness brightness = Brightness.light}) {
     whenListen(bridgeControlCubit, const Stream<BridgeControlState>.empty(), initialState: state);
     final launchService = inMemorySessionLaunchService(launchRepository: launches);
     return MultiBlocProvider(
@@ -196,7 +196,7 @@ void main() {
         BlocProvider<LocalBridgeStartupCubit>.value(value: startup),
       ],
       child: MaterialApp(
-        theme: buildPregoThemeData(brightness: Brightness.light),
+        theme: buildPregoThemeData(brightness: brightness),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         // As in the router, the cockpit's cubits sit below the root navigator,
@@ -619,44 +619,47 @@ void main() {
     expect(restore, findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
-  testWidgets("the hidden sidebar's toggle carries an amber dot while any session waits, listed or not", (
-    tester,
-  ) async {
-    seedTwoProjects();
-    const waiting = SessionActivityInfo(
-      awaitingInput: true,
-      isRunning: false,
-      lastUserActivityAt: null,
-      updatedAt: null,
-    );
-    final dot = find.byKey(const Key("desktop-sidebar-needs-you"));
-    await tester.pumpWidget(app(state: running));
-    await tester.pumpAndSettle();
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
-    expect(dot, findsNothing);
+  for (final (brightness, amber) in [
+    (Brightness.light, const Color(0xFFD98200)),
+    (Brightness.dark, const Color(0xFFF79009)),
+  ]) {
+    testWidgets(
+      "the hidden sidebar's toggle carries the waiting dot while any session waits, listed or not, "
+      "in ${brightness.name}",
+      (tester) async {
+        seedTwoProjects();
+        const waiting = SessionActivityInfo(
+          awaitingInput: true,
+          isRunning: false,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        );
+        final dot = find.byKey(const Key("desktop-sidebar-needs-you"));
+        await tester.pumpWidget(app(state: running, brightness: brightness));
+        await tester.pumpAndSettle();
+        await tester.tap(toggle);
+        await tester.pumpAndSettle();
+        expect(dot, findsNothing);
 
-    // The list is filtered to the other project, so it shows no row for it.
-    filter.add("project-1");
-    activity.emitSessionActivity({
-      "project-2": {"s2": waiting},
-    });
-    await tester.pumpAndSettle();
-    expect(dot, findsOneWidget);
-    // The phone's amber, as on every waiting dot.
-    expect(
-      tester.widget<Container>(dot).decoration,
-      isA<BoxDecoration>().having(
-        (decoration) => decoration.color,
-        "color",
-        PregoDesignSystem.light.colors.fgWarningPrimary,
-      ),
-    );
+        // The list is filtered to the other project, so it shows no row for it.
+        filter.add("project-1");
+        activity.emitSessionActivity({
+          "project-2": {"s2": waiting},
+        });
+        await tester.pumpAndSettle();
+        expect(dot, findsOneWidget);
+        // The waiting amber, as on every waiting dot.
+        expect(
+          tester.widget<Container>(dot).decoration,
+          isA<BoxDecoration>().having((decoration) => decoration.color, "color", amber),
+        );
 
-    activity.emitSessionActivity(const {});
-    await tester.pumpAndSettle();
-    expect(dot, findsNothing);
-  });
+        activity.emitSessionActivity(const {});
+        await tester.pumpAndSettle();
+        expect(dot, findsNothing);
+      },
+    );
+  }
 
   testWidgets("Archived is the row under Search, not a footer button, and opens Archived", (tester) async {
     var archivedOpens = 0;

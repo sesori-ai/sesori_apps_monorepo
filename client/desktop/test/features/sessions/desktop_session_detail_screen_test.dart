@@ -415,6 +415,7 @@ void main() {
       SessionPromptDefaults? promptDefaults,
       SessionDetailState? initialState,
       Stream<SessionDetailState> states = const Stream.empty(),
+      Brightness brightness = Brightness.light,
     }) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
@@ -450,7 +451,9 @@ void main() {
           child: PregoInteractionScope(
             mode: PregoInteractionMode.pointer,
             child: MaterialApp(
-              theme: ThemeData(extensions: [PregoDesignSystem.light]),
+              theme: ThemeData(
+                extensions: [if (brightness == Brightness.light) PregoDesignSystem.light else PregoDesignSystem.dark],
+              ),
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               home: _composerScope(
@@ -598,21 +601,29 @@ void main() {
       // The pending question puts the awaiting glyph in the slot before the title.
       final signals = find.byType(DesktopSessionSignals);
       expect(tester.widget<DesktopSessionSignals>(signals).isAwaitingInput, isTrue);
-      // The phone's amber, as on every waiting dot.
-      expect(
-        tester.widget<Container>(find.descendant(of: signals, matching: find.byType(Container))).decoration,
-        isA<BoxDecoration>().having(
-          (decoration) => decoration.color,
-          "color",
-          PregoDesignSystem.light.colors.fgWarningPrimary,
-        ),
-      );
       expect(tester.getTopLeft(breadcrumb).dx, lessThan(tester.getTopLeft(signals).dx));
       expect(tester.getTopLeft(signals).dx, lessThan(tester.getTopLeft(title).dx));
 
       await tester.tap(breadcrumb);
       expect(openedParents, ["parent-1"]);
     });
+
+    // The waiting amber, as on every waiting dot.
+    for (final (brightness, amber) in [
+      (Brightness.light, const Color(0xFFD98200)),
+      (Brightness.dark, const Color(0xFFF79009)),
+    ]) {
+      testWidgets("the waiting dot before the title is the waiting amber in ${brightness.name}", (tester) async {
+        await pumpPage(tester, session: _session, brightness: brightness);
+
+        final signals = find.byType(DesktopSessionSignals);
+        expect(tester.widget<DesktopSessionSignals>(signals).isAwaitingInput, isTrue);
+        expect(
+          tester.widget<Container>(find.descendant(of: signals, matching: find.byType(Container))).decoration,
+          isA<BoxDecoration>().having((decoration) => decoration.color, "color", amber),
+        );
+      });
+    }
 
     testWidgets("Mark unread from the menu shows its shortcut, sends read: false and leaves the page", (
       tester,
