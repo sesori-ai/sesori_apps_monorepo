@@ -9,8 +9,8 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 3 Fold the transcript and needs-you card looks | Merged | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped; the phone's buttons later went back to before by owner choice C (#2486). |
 | 4 Fold the settings, alert, diff and picker looks | Merged | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
 | 5 Flag new interaction-mode reads | Merged | #2485 (`eb71881bf4`) | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
-| 6 Reconcile regression docs | PR open | #2488 | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. |
-| 7 Run the verification matrix and retire the plan | Pending | | |
+| 6 Reconcile regression docs | Merged | #2488 (`d2b38bec4e`) | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. No findings after the merge: Codex reviewed the merged head clean, and cubic added nothing. |
+| 7 Run the verification matrix and retire the plan | Blocked | | Matrix run on `main` `d2b38bec4e` (below): every cell passed except Desktop screens, which is Partial because the running macOS app was not launched. The plan stays active until the owner runs the desktop items listed below or accepts the reduction in `PLAN.md`; then it moves to `.plan/completed/`. |
 
 ## Outside the series
 
@@ -111,6 +111,7 @@ decision 10 stays.
 | After step 4 | 74 | 36 |
 | After step 5 | 74, all marked | 36 |
 | After #2486 (phone needs-you buttons) | 75, all marked | 37 |
+| Step 7, on `main` `d2b38bec4e` | 75, all marked: 71 `pending:` and 4 permanent | 37 |
 
 Every row is counted with this command from `client/`, on the commit named or the step's merge:
 
@@ -141,7 +142,7 @@ it becomes a fifth variant or a metrics value.
 The rule's 74 findings before markers sat exactly on the 74 lines the command above counts. Each now carries a
 marker on the line above it. Count what the later phases owe with
 `git grep -ho 'avoid_interaction_mode_reads, pending:' -- client/module_app_ui/lib client/module_prego/lib | wc -l`
-(70).
+(70 at step 5; 71 after #2486, whose marker is a 22nd `variant`).
 
 | Home | Markers | Where |
 | --- | --- | --- |
@@ -178,3 +179,73 @@ against `main` and fixed what was still wrong:
 For step 7, the differences that remain on purpose: the step row's size, label colour and strut; the alert's dark
 fill, wrap and fade without Reduce Motion; the harness chevron's 44 box; desktop's code block fill; and the needs-you
 buttons (#2486).
+
+## Step 7 verification
+
+Run on `main` `d2b38bec4e`, level L2. The bridge ran from source on slot 2, with Claude Code as the representative
+plugin on a throwaway Git fixture. The phone ran on headless `sesori-dev-2` (iPhone 17), in light and dark, driven by a
+throwaway integration test that was not committed. Desktop looks were rendered under a pointer
+`PregoInteractionScope`. Screenshots stay outside the repository.
+
+| Cell | Result | What ran |
+| --- | --- | --- |
+| Owning tests | Pass | `flutter test`: `module_prego` 432, `module_app_ui` 1738, `app` 867, `desktop` 451. `dart test`: `module_desktop_core` 468, `shared/no_slop_linter` 233 |
+| Analyzer | Pass | `dart analyze --fatal-infos` over `client/`: no issues |
+| Reads and markers | Pass | 75 reads in 37 files, all marked: 71 `pending:` and 4 permanent. By home: `metrics` 44, `variant` 22, `wrapper` 3, `presenter` 2. Every marker sits over a read |
+| Phone screens | Pass | the docs' L2 surfaces, below |
+| Desktop screens | Partial | everything steps 2–4 changed on desktop, rendered and measured, plus the `desktop` suite. The running macOS app was not launched, so the items under "Owed" are unchecked |
+
+The series changed no bridge, shared or plugin code; it touched only client presentation, docs and the linter. So the
+bridge-only halves of these L2 entries were not re-run, for example option discovery, diff base branches, project
+import and question variants beyond single choice. They ran only where the live journey passes through them. Their
+automated halves are in Owning tests.
+
+| Doc | Phone, both themes |
+| --- | --- |
+| `account-and-onboarding.md` | Email sign-in and logout from Settings |
+| `projects-and-sessions.md` | A project opened. Sessions created with a first prompt get their title and go from busy to idle. The row's waiting dot and "Waiting" label |
+| `session-creation-and-options.md` | The harness pill shows the mark, the name and a down chevron in one row; its menu opens below the pill, the side with more room |
+| `session-turns.md` | Prompts stream and return to idle. Inline code chips and a fenced code block (white on light, dark on dark, radius 4, no border) |
+| `tools-and-file-changes.md` | An Edit row with its path and status. A shell row with the command underlined and paths plain, and its bounded output in the Shell panel. A live row with the sparkle. The "4 steps" disclosure and its sheet, with 44 pt rows in 14 pt `w700` grey labels |
+| `questions-and-permissions.md` | A single-choice question answered from its needs-you card, and a permission allowed once from its card; the turn went on after each. Both cards' buttons are bright, as #2486 set them: light secondary, dark white. Cards about 54 pt tall, amber label, 16 pt icon |
+| `diffs-and-source-control.md` | The menu's Changes row with its count. The file list with "A" in green and "M" in grey: light `#474747`, dark `#AEAEAE` |
+| `popup-alerts.md` | The archive alert outlives its removed row. A folder-exists alert renders above the add-project sheet. Radius 12, no glow, dark fill `#333333` |
+| `plugin-setup-and-lifecycle.md` | Harness overview chevrons in 44 pt boxes beside the switches |
+| `multi-computer.md` (Settings) | The computer card under "Bridge" |
+| `desktop-cockpit-shell.md` | Desktop only; its L2 entry is the `desktop` suite |
+
+The differences that stay on purpose all look as documented:
+
+| Difference | Phone | Desktop |
+| --- | --- | --- |
+| Step row | 44 pt; label 14 pt `w700`, `#474747` light, `#AEAEAE` dark; no strut | 28 pt; label 12.5 pt `w500`, `#141414` light, `#FDFDFD` dark; strut 1.44 |
+| Alert | dark fill `#333333`; at 3.2× text the action wraps to the start | dark fill `#252525`; the action wraps to the end; solid within 40 ms without Reduce Motion (widget test) |
+| Harness overview chevron | in a 44 pt box, row 68 pt | bare 16 pt chevron, row 60 pt |
+| Code block | light `#FFFFFF`, dark `#2C2C2C`; radius 4; no border | light `#F0F0F0`, dark `#1E1E1E`, with a hairline; radius 8 |
+| Needs-you buttons | both bright (#2486) | the first card's button solid, a second card's secondary |
+
+Recorded only: the session row's waiting dot is `#DC6803` in light and `#F79009` in dark, on the phone and on
+desktop. It counts as neither pass nor fail.
+
+### Open owner decision, outliving the plan
+
+The waiting-dot amber in light mode is undecided. The options are `#D98200` (desktop's colour before step 4) and the
+shipped `fgWarningPrimary` `#DC6803` (2.14, step 4). Dark stays `#F79009` either way. Nothing here changes it.
+
+### Found for the owner
+
+The New Session harness menu's "Harnesses" header is in sentence case on both apps (`_HarnessesMenuHeader` in
+`new_session_plugin_chooser.dart`). Decision 7 put menu and picker section headings in spaced capitals on both. This
+header is a title row with a settings action, not a `PregoMenuLabel`. It has no mode read, and the series did not
+touch it, so it is not a regression. Whether it follows decision 7 is a design choice the owner has not made yet.
+
+### Owed: desktop items that need the running app
+
+These are not marked passed:
+
+- the computer card's hover and press fill, which take the card's shape, and menu hover;
+- the alert fade end to end with macOS Reduce Motion on and off (widget tests cover both);
+- the waiting dot in the real shell's page title and hidden-sidebar toggle (widget tests cover its colour);
+- the desktop text-size setting at non-default sizes on the folded rows, headings and cards;
+- where the harness menu and other anchored menus land in a real window;
+- step 2's presence and disclosure motion seen live.

@@ -417,11 +417,16 @@ listed, on `main`. Any reduction to this matrix needs the owner's acceptance wri
   - the `pointer*` colours and the `prego_pointer_motion.dart` constants;
   - the `pointerRadius`, `pointerWidth` and `plain` parameters.
 - **Four desktop variants,** each chosen at one switch with shared computed state: the session row, the composer
-  layout (on `ComposerPresentation`), the permission request, and new-session setup.
+  layout (on `ComposerPresentation`), the permission request, and new-session setup. Two reads are marked `variant`
+  but fall outside these four: the needs-you card's button look (#2486) and the all-sessions filter chip. For each,
+  this phase decides between a fifth variant and metrics values.
 - **Behaviour wrappers** in `module_prego/lib/interactions/`: hover reveal, context-menu region, touch target.
 - **A popover-or-sheet presenter,** replacing the separate picks in the project picker and the transcript group.
 - **Delete `isDesktopScale`** once nothing reads it.
-- **Lint strict:** no `pending:` markers left, and the final allowlist with its reasons.
+- **Lint strict:** no `pending:` markers left, and the final allowlist with its reasons. Phase 1 ends with 75 reads
+  in 37 files: 71 `pending:` markers (by home: `metrics` 44, `variant` 22, `wrapper` 3, `presenter` 2) and 4
+  permanent. The tracker's "Step 5 markers" section has the count command. A stale plugin ignore is not reported, so
+  a PR that removes a read must delete its marker by hand, and this phase greps for markers with no read under them.
 
 ## Plan review
 
