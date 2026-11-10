@@ -715,8 +715,8 @@ defaults and queued client sends coherent.
   words only. Their queued rows leave as the draft fills (an ambiguous failure
   keeps the bridge's rows until its queue event, accepting a possible duplicate
   over a loss). A send still in flight when the stop is answered stays in view
-  instead, as the bridge may yet accept it: if it does, it shows as sent and
-  does not come back, and a message sent after the stop waits behind it; if its
+  instead, as the bridge may yet accept it: if it does, it counts as sent,
+  stays in view until the transcript shows it, and does not come back, and a message sent after the stop waits behind it; if its
   send fails or times out, it comes back once, after what the stop returned and
   before the user's own words (inside a command staged over them), with its
   images and no Retry, and is not sent again. One the bridge's queue already

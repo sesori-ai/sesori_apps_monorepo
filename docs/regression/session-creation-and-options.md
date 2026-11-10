@@ -452,8 +452,8 @@ variant, and worktree mode, and creating the session with its first input.
   it and coming back after the others if it fails. After an ambiguous Stop
   outcome the bridge may already hold a returned one, so sending it again can
   duplicate it. A refused Stop leaves them queued, and they still send. A
-  harness block that shuts the harness down returns each one it accepted to
-  the composer, images included, as it does the session screen's sends, and
+  harness block that shuts the harness down returns each one it accepted that
+  the transcript has not shown yet to the composer, images included, as it does the session screen's sends, and
   each one still queued or failed too, so none sends to the blocked harness (see
   [session turns](session-turns.md)). The session screen's composer is
   there from its first frame, in the new-session composer's place, with the

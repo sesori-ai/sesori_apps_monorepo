@@ -3598,11 +3598,7 @@ void main() {
               final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
               abortResponse.complete(ApiResponse.success(true));
               expect(await aborting, isA<SessionAbortAccepted>());
-              expect(
-                cubit.composerDraft,
-                ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"),
-                reason: "accepted later, it comes back after what the block returned",
-              );
+              expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
 
               // The send's outcome reaches the launch and then this screen.
               firstSend.complete(succeeds ? ApiResponse.success(null) : ApiResponse.error(ApiError.generic()));
@@ -3617,11 +3613,7 @@ void main() {
               expect(state.launchFollowUps, isEmpty);
               expect(state.bridgeQueuedPrompts, isEmpty);
               expect(state.composerRestorations, 1);
-              expect(
-                cubit.composerDraft,
-                ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"),
-                reason: "accepted later, it comes back after what the block returned",
-              );
+              expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
 
               // Opened again, the session shows no copy of it, sent or failed.
               expect(repository.retryFollowUp(promptId: "prm_a"), isNull);

@@ -24,6 +24,7 @@ void main() {
                     state: PluginLifecycleState.ready,
                     actionHint: null,
                     failureBlock: null,
+                    mcpScopes: null,
                   ),
                 ],
                 selectedPluginId: "claude",
