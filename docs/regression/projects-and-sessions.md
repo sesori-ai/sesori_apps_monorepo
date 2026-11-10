@@ -41,9 +41,11 @@ state.
   its links. A catalog import on macOS or Linux resolves each distinct project
   folder a harness reports once per import and publishes under the resolved
   spelling, so `/tmp/x/demo-app` joins the project stored as
-  `/private/tmp/x/demo-app`. A row already stored under the reported spelling
-  still matches; with rows under both spellings, new
-  sessions join the resolved one and neither row changes. A folder deleted
+  `/private/tmp/x/demo-app`. Once the one-time merge below has recorded its
+  marker, a row stored under the reported spelling still matches; with rows
+  under both spellings, new sessions join the resolved one and neither row
+  changes. Until then, that merge first folds such rows into one under the
+  resolved spelling. A folder deleted
   since, common in old history, resolves through its nearest surviving parent
   (`/tmp/x/gone` imports as `/private/tmp/x/gone`); a folder that cannot be
   resolved for another reason imports under the spelling reported, and
