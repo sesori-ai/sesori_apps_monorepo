@@ -135,25 +135,36 @@ class _GitHubApi {
   final String _token;
 
   // A transient GitHub 5xx here used to discard an hour of finished release
-  // builds, so server errors get a few spaced retries before failing.
+  // builds, so server errors and dropped connections get a few spaced retries
+  // before failing.
   Future<dynamic> getJson({required String path}) async {
     const maxAttempts = 4;
     final uri = Uri.parse('https://api.github.com$path');
     for (var attempt = 1; ; attempt++) {
-      final request = await _client.getUrl(uri);
-      request.headers.set('Authorization', 'Bearer $_token');
-      request.headers.set('Accept', 'application/vnd.github+json');
-      request.headers.set('X-GitHub-Api-Version', '2022-11-28');
-      request.headers.set('User-Agent', 'sesori-release-notes');
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode == 200) {
-        return jsonDecode(body);
+      String failure;
+      try {
+        final request = await _client.getUrl(uri);
+        request.headers.set('Authorization', 'Bearer $_token');
+        request.headers.set('Accept', 'application/vnd.github+json');
+        request.headers.set('X-GitHub-Api-Version', '2022-11-28');
+        request.headers.set('User-Agent', 'sesori-release-notes');
+        final response = await request.close();
+        final body = await response.transform(utf8.decoder).join();
+        if (response.statusCode == 200) {
+          return jsonDecode(body);
+        }
+        failure = 'returned ${response.statusCode}: $body';
+        if (response.statusCode < 500) {
+          throw StateError('GET $path $failure');
+        }
+      } on IOException catch (error) {
+        // Socket, TLS and "connection closed before full header" failures.
+        failure = 'failed: $error';
       }
-      if (response.statusCode < 500 || attempt == maxAttempts) {
-        throw StateError('GET $path returned ${response.statusCode}: $body');
+      if (attempt == maxAttempts) {
+        throw StateError('GET $path $failure');
       }
-      stderr.writeln('GET $path returned ${response.statusCode}; retrying ($attempt/${maxAttempts - 1}).');
+      stderr.writeln('GET $path $failure; retrying ($attempt/${maxAttempts - 1}).');
       await Future<void>.delayed(Duration(seconds: 5 * attempt));
     }
   }
