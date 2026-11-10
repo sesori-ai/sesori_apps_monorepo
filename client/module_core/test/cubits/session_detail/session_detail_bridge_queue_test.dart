@@ -2618,8 +2618,196 @@ void main() {
 
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages, isEmpty);
-      expect(_sendingOf(state: state), isNull);
+      // The bridge may yet accept the one in flight, so it waits out its send.
+      expect(_sendingOf(state: state)?.text, "one");
+      expect(cubit.composerDraft, ComposerDraft.typed(text: "two"));
       sendCompleter.complete(ApiResponse.success(null));
+    });
+
+    group("a stop while this screen's own send is in flight", () {
+      final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([5]), filename: null);
+      late List<String> sentTexts;
+      late Completer<ApiResponse<void>> firstSend;
+      late Completer<ApiResponse<bool>> abortResponse;
+
+      setUp(() {
+        sentTexts = [];
+        firstSend = Completer();
+        abortResponse = Completer();
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: _sessionId,
+            promptId: any(named: "promptId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+          ),
+        ).thenAnswer((invocation) {
+          final text = invocation.namedArguments[#text] as String;
+          sentTexts.add(text);
+          return text == "one" ? firstSend.future : Future.value(ApiResponse.success(null));
+        });
+        when(
+          () => mockSessionRepository.abortSession(
+            sessionId: _sessionId,
+            subAgents: any(named: "subAgents"),
+          ),
+        ).thenAnswer((_) => abortResponse.future);
+      });
+
+      // "one" is sending, with "two" staged behind it, when Stop is pressed.
+      Future<SessionDetailCubit> stopWhileSending({List<ComposerAttachment> firstAttachments = const []}) async {
+        final cubit = await createLoadedCubit(supportsPromptAttachments: true, commands: const [_reviewCommand]);
+        unawaited(
+          cubit.sendMessage(
+            text: "one",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: firstAttachments,
+          ),
+        );
+        await _awaitCondition(() => _sendingOf(state: cubit.state as SessionDetailLoaded) != null);
+        await cubit.sendMessage(text: "two", command: null, inputMode: ComposerInputMode.typed, attachments: [image]);
+        cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+        return cubit;
+      }
+
+      test("returns with the stop when the bridge accepted it before the stop was answered", () async {
+        // Sent before the stop and accepted first, it was in the bridge's queue
+        // or steering the turn the stop then ended, so the stop dropped it.
+        final cubit = await stopWhileSending();
+        final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+        firstSend.complete(ApiResponse.success(null));
+        await Future<void>.delayed(Duration.zero);
+        abortResponse.complete(ApiResponse.success(true));
+        await aborting;
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "one\n\ntwo\n\nhalf typed"));
+        final state = cubit.state as SessionDetailLoaded;
+        expect(_sendingOf(state: state), isNull);
+        expect(state.awaitingBridgeSubmissions, isEmpty);
+        expect(sentTexts, ["one"]);
+      });
+
+      for (final (outcome, finish) in <(String, void Function(Completer<ApiResponse<bool>>))>[
+        ("an accepted", (stop) => stop.complete(ApiResponse.success(true))),
+        ("an ambiguous", (stop) => stop.completeError(StateError("response lost"))),
+      ]) {
+        test("stays out of the composer at $outcome stop and counts as sent once accepted", () async {
+          final cubit = await stopWhileSending();
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          finish(abortResponse);
+          await aborting;
+
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "two\n\nhalf typed"));
+          expect(cubit.restoredAttachments, [image]);
+          var state = cubit.state as SessionDetailLoaded;
+          expect(_sendingOf(state: state)?.text, "one", reason: "it stays in view while the bridge may take it");
+          expect(state.queuedMessages, isEmpty);
+          expect(state.composerRestorations, 1);
+
+          // Sent after the stop, it waits behind the one still sending.
+          await cubit.sendMessage(text: "three", command: null, inputMode: ComposerInputMode.typed, attachments: []);
+          expect(sentTexts, ["one"]);
+
+          firstSend.complete(ApiResponse.success(null));
+          await _awaitCondition(() => sentTexts.length == 2);
+
+          state = cubit.state as SessionDetailLoaded;
+          expect(state.awaitingBridgeSubmissions.map((entry) => entry.submission.text), ["one", "three"]);
+          expect(state.localSend, isA<LocalSendIdle>());
+          expect(state.composerRestorations, 1);
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "two\n\nhalf typed"));
+          expect(sentTexts, ["one", "three"]);
+        });
+      }
+
+      final staleOptionsError = ApiError.nonSuccessCode(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SendPromptErrorResponse(
+            code: SendPromptErrorCode.staleSessionOptions,
+            message: "unsupported Claude agent",
+          ).toJson(),
+        ),
+      );
+      for (final (failure, failSend) in <(String, void Function(Completer<ApiResponse<void>>))>[
+        ("is refused", (send) => send.complete(ApiResponse.error(ApiError.generic()))),
+        ("times out", (send) => send.completeError(TimeoutException("no answer"))),
+        ("names stale options", (send) => send.complete(ApiResponse.error(staleOptionsError))),
+      ]) {
+        test("comes back once, after what the stop returned, when its send $failure", () async {
+          final firstImage = ComposerImageAttachment(
+            mime: "image/png",
+            bytes: Uint8List.fromList([6]),
+            filename: null,
+          );
+          final cubit = await stopWhileSending(firstAttachments: [firstImage]);
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+          await cubit.sendMessage(text: "three", command: null, inputMode: ComposerInputMode.typed, attachments: []);
+
+          failSend(firstSend);
+          await _awaitCondition(() => (cubit.state as SessionDetailLoaded).composerRestorations == 2);
+          await _awaitCondition(() => sentTexts.length == 2);
+
+          expect(cubit.composerDraft, ComposerDraft.typed(text: "two\n\none\n\nhalf typed"));
+          expect(cubit.restoredAttachments, [image, firstImage]);
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.localSend, isA<LocalSendIdle>(), reason: "no Retry: the composer holds it");
+          expect(state.awaitingBridgeSubmissions.map((entry) => entry.submission.text), ["three"]);
+          // It is not sent again; what was sent after the stop goes on.
+          expect(sentTexts, ["one", "three"]);
+        });
+      }
+
+      test("one that fails after a command was staged over what the stop returned still comes after it", () async {
+        final cubit = await stopWhileSending();
+        final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+        abortResponse.complete(ApiResponse.success(true));
+        expect(await aborting, isA<SessionAbortAccepted>());
+        cubit.stageCommand(_reviewCommand);
+
+        firstSend.complete(ApiResponse.error(ApiError.generic()));
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).composerRestorations == 2);
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "/review two\n\none\n\nhalf typed"));
+        expect((cubit.state as SessionDetailLoaded).stagedCommand, isNull);
+      });
+
+      test("one the bridge listed while its send was pending returns at the stop, and never shows as sent", () async {
+        final cubit = await stopWhileSending();
+        final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)?.promptId ?? fail("not sending");
+        sessionEvents.add(
+          SesoriSseEvent.sessionQueuedPrompts(
+            sessionID: _sessionId,
+            prompts: [
+              QueuedSessionPrompt(id: promptId, text: "one", command: null, attachmentCount: 0, createdAt: 50),
+            ],
+          ) as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+        abortResponse.complete(ApiResponse.success(true));
+        expect(await aborting, isA<SessionAbortAccepted>());
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "one\n\ntwo\n\nhalf typed"));
+
+        firstSend.complete(ApiResponse.success(null));
+        for (var i = 0; i < 5; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        final state = cubit.state as SessionDetailLoaded;
+        expect(state.localSend, isA<LocalSendIdle>());
+        expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the stop dropped it with the bridge's queue");
+        expect(state.composerRestorations, 1);
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "one\n\ntwo\n\nhalf typed"));
+      });
     });
 
     test("opening the created session discharges its launch", () async {
@@ -3544,6 +3732,141 @@ void main() {
           await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).interaction.canInteract);
           expect(cubit.composerDraft, ComposerDraft.typed(text: draft), reason: "a harness block");
           expect((cubit.state as SessionDetailLoaded).composerRestorations, 2);
+        });
+
+        group("a harness block", () {
+          late BehaviorSubject<PluginManagementLoadResult> snapshots;
+
+          setUp(() {
+            snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+              managementFixture(
+                pluginId: "plugin-1",
+                setup: PluginSetupState.ready,
+                runtime: PluginRuntimeState.active,
+              ),
+            );
+          });
+          tearDown(() => snapshots.close());
+
+          Future<void> block(SessionDetailCubit cubit) async {
+            snapshots.add(
+              managementFixture(
+                pluginId: "plugin-1",
+                setup: PluginSetupState.unavailable,
+                runtime: PluginRuntimeState.stopping,
+                actionHint: "Check the gateway's credentials and configuration, then refresh setup.",
+              ),
+            );
+            await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).interaction.canInteract);
+          }
+
+          for (final succeeds in [true, false]) {
+            test(
+              "returns one the bridge listed while its send was pending with its images, and no row or launch "
+              "copy is left once the send ${succeeds ? "succeeds" : "fails"}",
+              () async {
+                final (:cubit, :repository) = await stopWhileSending(
+                  first: withImage(promptId: "prm_a", text: "and then prm_a"),
+                  queuedBehind: const [],
+                  managementSnapshots: snapshots,
+                );
+                sessionEvents.add(
+                  const SesoriSseEvent.sessionQueuedPrompts(
+                    sessionID: _sessionId,
+                    prompts: [
+                      QueuedSessionPrompt(
+                        id: "prm_a",
+                        text: "and then prm_a",
+                        command: null,
+                        attachmentCount: 1,
+                        createdAt: 50,
+                      ),
+                    ],
+                  ) as SesoriSessionEvent,
+                );
+                await Future<void>.delayed(Duration.zero);
+
+                await block(cubit);
+
+                expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nhalf typed"));
+                expect(cubit.restoredAttachments, [image]);
+                var state = cubit.state as SessionDetailLoaded;
+                expect(state.bridgeQueuedPrompts, isEmpty);
+                expect(state.launchFollowUps, isEmpty, reason: "its row leaves as the draft fills");
+
+                firstSend.complete(succeeds ? ApiResponse.success(null) : ApiResponse.error(ApiError.generic()));
+                for (var i = 0; i < 10; i++) {
+                  await Future<void>.delayed(Duration.zero);
+                }
+
+                state = cubit.state as SessionDetailLoaded;
+                expect(state.awaitingBridgeSubmissions, isEmpty);
+                expect(state.launchFollowUps, isEmpty);
+                expect(state.composerRestorations, 1);
+                expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nhalf typed"));
+                expect(repository.retryFollowUp(promptId: "prm_a"), isNull, reason: "the launch no longer holds it");
+                expect(await repository.watchForSession(sessionId: _sessionId).first, isEmpty);
+              },
+            );
+          }
+
+          test("returns one the launch's send delivers only after the block landed", () async {
+            final (:cubit, repository: _) = await stopWhileSending(
+              queuedBehind: const [],
+              managementSnapshots: snapshots,
+            );
+
+            await block(cubit);
+            expect(cubit.composerDraft, ComposerDraft.typed(text: "half typed"), reason: "nothing accepted yet");
+
+            firstSend.complete(ApiResponse.success(null));
+            await _awaitCondition(() => (cubit.state as SessionDetailLoaded).composerRestorations == 1);
+
+            expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nhalf typed"));
+            final state = cubit.state as SessionDetailLoaded;
+            expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the harness the block shut down dropped it");
+            expect(state.launchFollowUps, isEmpty);
+          });
+
+          test("returns one queued behind the launch's send with its images, and it never sends", () async {
+            final (:cubit, :repository) = await stopWhileSending(
+              queuedBehind: [
+                LaunchFollowUp.queued(
+                  submission: withImage(promptId: "prm_b", text: "and then prm_b"),
+                  since: DateTime(2026),
+                ),
+              ],
+              managementSnapshots: snapshots,
+            );
+
+            await block(cubit);
+
+            expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_b\n\nhalf typed"));
+            expect(cubit.restoredAttachments, [image]);
+            expect(
+              [
+                for (final followUp in (cubit.state as SessionDetailLoaded).launchFollowUps)
+                  followUp.submission.promptId,
+              ],
+              ["prm_a"],
+              reason: "only the one sending keeps its row",
+            );
+
+            firstSend.complete(ApiResponse.success(null));
+            await _awaitCondition(() => (cubit.state as SessionDetailLoaded).composerRestorations == 2);
+            for (var i = 0; i < 10; i++) {
+              await Future<void>.delayed(Duration.zero);
+            }
+
+            expect(
+              cubit.composerDraft,
+              ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"),
+              reason: "accepted later, it comes back after what the block returned",
+            );
+            expect(sentPromptIds, ["prm_a"]);
+            expect((cubit.state as SessionDetailLoaded).launchFollowUps, isEmpty);
+            expect(await repository.watchForSession(sessionId: _sessionId).first, isEmpty);
+          });
         });
 
         test("an ambiguous stop returns them to the composer too, and none sends after it", () async {

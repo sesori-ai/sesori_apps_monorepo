@@ -1,7 +1,12 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/composer/composer_draft.dart";
 import "../foundation/models/composer/queued_session_submission.dart";
+
+/// A queued message going back into the composer: its words, or null when it
+/// carries only images, and its images.
+typedef ReturnedPrompt = ({String promptId, ComposerDraft? draft, List<ComposerAttachment> attachments});
 
 /// Pure edit transformations for composer text and voice-origin spans.
 final class const ComposerDraftCalculator() {
@@ -189,6 +194,26 @@ final class const ComposerDraftCalculator() {
           ),
         },
       };
+
+  /// [prompts] once per promptId, in the order each first appears. Several
+  /// owners can list one message; the bridge lists a launch follow-up's images
+  /// by count only while the launch's submission holds them, so a kept entry
+  /// without images takes the first later entry's.
+  List<ReturnedPrompt> uniqueReturned({required List<ReturnedPrompt> prompts}) {
+    final byId = <String, ReturnedPrompt>{};
+    for (final prompt in prompts) {
+      final promptId = prompt.promptId;
+      switch (byId[promptId]) {
+        case null:
+          byId[promptId] = prompt;
+        case final kept when kept.attachments.isEmpty && prompt.attachments.isNotEmpty:
+          byId[promptId] = (promptId: promptId, draft: kept.draft, attachments: prompt.attachments);
+        case _:
+          break;
+      }
+    }
+    return [...byId.values];
+  }
 
   /// [args], the composer's words under a staged [command], as the literal
   /// "/command args" text, so dictated arguments keep their spans.
