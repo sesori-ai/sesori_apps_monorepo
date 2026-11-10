@@ -131,12 +131,13 @@ without Reduce Motion (2.10) and for step 2's dropped fill and wrap, and the pic
 
 The rule's 74 findings before markers sat exactly on the 74 lines the command above counts. Each now carries a
 marker on the line above it. Count what the later phases owe with
-`git grep -c 'avoid_interaction_mode_reads, pending:' -- client`.
+`git grep -ho 'avoid_interaction_mode_reads, pending:' -- client/module_app_ui/lib client/module_prego/lib | wc -l`
+(70).
 
 | Home | Markers | Where |
 | --- | --- | --- |
-| `metrics` | 45 | the read only picks values (sizes, padding, radii, text styles, fade edges) |
-| `variant` | 20 | structure inside the four planned variants: the composer (all 11 `prompt_input` reads and `session_detail_composer_controls`), the session row (3), the permission request (1) and new-session setup (4) |
+| `metrics` | 44 | the read only picks values: sizes, padding, radii, colours, motion, text styles, fade edges |
+| `variant` | 21 | structure inside the four planned variants: the composer (all 11 `prompt_input` reads and `session_detail_composer_controls`), the session row (3), the permission request (1) and new-session setup (4); and the all-sessions filter line, which picks `_PointerFilterChip` over `PregoButtonsSolid` (outside the four, so its phase decides between a fifth variant and one chip with metrics) |
 | `wrapper` | 3 | generic interaction behaviour: the add-project breadcrumb, the anchor menu's flat list and the picker search list |
 | `presenter` | 2 | popover or sheet: the project picker and the transcript group |
 | permanent | 4 | the adaptive presenters: `prego_modal.dart` (3) and `prego_action_sheet.dart` (1), with their reason in place of `pending:` |

@@ -312,7 +312,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             for (final MapEntry(key: projectId, value: rows) in launchRows.entries)
               if (state.projectId == null || state.projectId == projectId) ...rows.placeholders,
           ];
-    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     List<SessionListEntry<_Item>> entriesOf(AllSessionsState state) {
       final headings = _headings.headingsOf(

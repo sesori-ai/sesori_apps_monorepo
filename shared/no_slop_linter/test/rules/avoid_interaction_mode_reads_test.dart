@@ -106,6 +106,25 @@ bool handedIn(PregoInteractionMode mode) => mode == PregoInteractionMode.touch;
     ]);
   }
 
+  void test_reportsInferredLookup() async {
+    final source =
+        '''
+$_scope
+bool inferred(BuildContext context) {
+  final PregoInteractionScope? scope = context.dependOnInheritedWidgetOfExactType();
+  return scope != null;
+}
+''';
+    newFile(_sharedFile, source);
+
+    await assertDiagnosticsInFile(_sharedFile, [
+      lint(
+        source.indexOf('context.dependOnInheritedWidgetOfExactType'),
+        'context.dependOnInheritedWidgetOfExactType()'.length,
+      ),
+    ]);
+  }
+
   void test_switchOnScopeReadIsOneFinding() async {
     final source =
         '''
@@ -114,6 +133,15 @@ double size(BuildContext context) => switch (PregoInteractionScope.of(context)) 
   PregoInteractionMode.touch => 44,
   PregoInteractionMode.pointer => 32,
 };
+
+double statement(BuildContext context) {
+  switch (PregoInteractionScope.of(context)) {
+    case PregoInteractionMode.touch:
+      return 44;
+    case .pointer:
+      return 32;
+  }
+}
 
 double sizeOf(PregoInteractionMode mode) => switch (mode) {
   PregoInteractionMode.touch => 44,
@@ -124,6 +152,7 @@ double sizeOf(PregoInteractionMode mode) => switch (mode) {
 
     await assertDiagnosticsInFile(_sharedFile, [
       lint(source.indexOf('PregoInteractionScope.of(context)'), 'PregoInteractionScope.of(context)'.length),
+      lint(source.lastIndexOf('PregoInteractionScope.of(context)'), 'PregoInteractionScope.of(context)'.length),
       lint(source.lastIndexOf('PregoInteractionMode.touch'), 'PregoInteractionMode.touch'.length),
       lint(source.lastIndexOf('.pointer => 32'), '.pointer'.length),
     ]);

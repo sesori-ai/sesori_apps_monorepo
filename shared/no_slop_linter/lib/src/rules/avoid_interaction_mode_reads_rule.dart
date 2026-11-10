@@ -106,9 +106,10 @@ bool _isScopeRead(MethodInvocation node) {
         _isClass(element.enclosingElement, name: 'PregoInteractionScope', package: _themePrego);
   }
   if (!name.endsWith('InheritedWidgetOfExactType')) return false;
-  final typeArguments = node.typeArguments?.arguments ?? const [];
+  // Resolved, so a type argument inferred from the declared type counts too.
+  final typeArguments = node.typeArgumentTypes ?? const [];
   return typeArguments.length == 1 &&
-      _isClass(typeArguments.first.type?.element, name: 'PregoInteractionScope', package: _themePrego);
+      _isClass(typeArguments.first.element, name: 'PregoInteractionScope', package: _themePrego);
 }
 
 /// Whether [expression] is a scope read, or the `mode` of an inherited-widget

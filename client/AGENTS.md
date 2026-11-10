@@ -224,7 +224,9 @@ touch inline: a difference lives in metrics, in a behaviour wrapper in
 `module_prego/lib/interactions/`, or in a desktop variant of the component. The
 `avoid_interaction_mode_reads` lint reports any other read of
 `PregoInteractionScope`, `PregoInteractionMode`, `isDesktopScale` or
-`ComposerPresentation`. A read not yet moved carries
+`ComposerPresentation`; the shells, tests and the files that define a mode
+(`module_prego/lib/interactions/`, `prego_design_system.dart`,
+`composer_presentation_scope.dart`) are free to read it. A read not yet moved carries
 `// ignore: no_slop_linter/avoid_interaction_mode_reads, pending: <home>`, so a
 change that removes a read deletes its marker too (`unnecessary_ignore` doesn't
 report a stale plugin ignore).
