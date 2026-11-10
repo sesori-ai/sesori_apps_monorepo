@@ -224,6 +224,17 @@ class const PromptInput({
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header,
 }) extends StatefulWidget {
+  /// Finds the composer's Send button, enabled or not, in widget and
+  /// integration tests. The session and new-session composers share it.
+  static const sendButtonKey = ValueKey("promptInput.sendButton");
+
+  /// Finds the composer's text field in widget and integration tests.
+  static const textFieldKey = ValueKey("promptInput.textField");
+
+  /// Finds the resting text-first pill's field area, which a tap opens into
+  /// the text field, in widget and integration tests.
+  static const startTypingKey = ValueKey("promptInput.startTyping");
+
   @override
   State<PromptInput> createState() => _PromptInputState();
 }
@@ -2271,6 +2282,7 @@ class _PromptInputState() extends State<PromptInput> {
               idle: MouseRegion(
                 cursor: SystemMouseCursors.text,
                 child: GestureDetector(
+                  key: PromptInput.startTypingKey,
                   behavior: HitTestBehavior.opaque,
                   onTap: _enterTypingMode,
                   child: hintInCaption
@@ -2417,6 +2429,7 @@ class _PromptInputState() extends State<PromptInput> {
                   child: ComposerWordsBoxSlot(
                     box: _wordsBox,
                     child: TextField(
+                      key: PromptInput.textFieldKey,
                       controller: _controller,
                       scrollController: _textScrollController,
                       focusNode: _focusNode,
@@ -3504,7 +3517,7 @@ class _PromptInputState() extends State<PromptInput> {
                 child: _buildSendLook(onPressed: null),
               ),
             Opacity(
-              key: const ValueKey("send look"),
+              key: PromptInput.sendButtonKey,
               opacity: settled ? 1 : enabledShown,
               alwaysIncludeSemantics: true,
               child: IgnorePointer(

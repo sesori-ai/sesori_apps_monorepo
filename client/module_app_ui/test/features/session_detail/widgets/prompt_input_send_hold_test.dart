@@ -226,4 +226,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(sent, hasLength(1));
   });
+
+  testWidgets("tests type into the composer and send through its stable keys", (tester) async {
+    final draftIdentity = ValueNotifier("session");
+    addTearDown(draftIdentity.dispose);
+    final sent = <_Sent>[];
+    await pumpComposer(
+      tester,
+      clipboard: _PendingImageClipboard(),
+      downscaleBuilder: const ComposerImageDownscaleBuilder(),
+      draftIdentity: draftIdentity,
+      sent: sent,
+    );
+
+    await tester.enterText(find.byKey(PromptInput.textFieldKey), "hello from a test");
+    await tester.pump();
+    expect(find.byKey(PromptInput.sendButtonKey), findsOneWidget);
+    await tester.tap(find.byKey(PromptInput.sendButtonKey));
+    await tester.pumpAndSettle();
+
+    expect(sent.single.text, "hello from a test");
+  });
 }
