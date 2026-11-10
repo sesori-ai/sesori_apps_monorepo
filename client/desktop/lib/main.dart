@@ -46,6 +46,7 @@ Future<void> main(List<String> arguments) async {
   logi("Desktop startup: reading appearance and input preferences");
   final AppearanceMode initialAppearance = await getIt<AppearanceStore>().read();
   final ChatInputMode initialChatInputMode = await getIt<ChatInputModeStore>().read();
+  final DesktopTextSize initialTextSize = await getIt<DesktopInstanceRepository>().readTextSize();
 
   logi("Desktop startup: initializing the native window");
   try {
@@ -98,6 +99,7 @@ Future<void> main(List<String> arguments) async {
       hiddenLaunch: hiddenLaunch,
       initialAppearance: initialAppearance,
       initialChatInputMode: initialChatInputMode,
+      initialTextSize: initialTextSize,
     ),
   );
   unawaited(startupOrchestrator.restoreBridgeDesiredState());

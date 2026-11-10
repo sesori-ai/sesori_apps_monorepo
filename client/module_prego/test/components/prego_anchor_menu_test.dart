@@ -901,6 +901,24 @@ void main() {
       expect(find.text("⇧⌘U"), findsOneWidget);
     });
 
+    testWidgets("a compact menu widens with its text, so a shortcut row still fits; a touch menu keeps its width", (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(pointer(child: row()));
+      await secondaryClick(tester: tester, at: const Offset(120, 30));
+      expect(tester.getSize(panel).width, closeTo(200 * 1.3, 0.01));
+      expect(tester.takeException(), isNull);
+
+      await tester.tapAt(const Offset(700, 500));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(row());
+      await tester.tap(find.text("Row"));
+      await tester.pumpAndSettle();
+      expect(tester.getSize(panel).width, 200);
+    });
+
     testWidgets("a menu that does not fit below the pointer flips above it", (tester) async {
       await tester.pumpWidget(pointer(child: row(alignment: Alignment.bottomLeft)));
       await secondaryClick(tester: tester, at: const Offset(120, 580));

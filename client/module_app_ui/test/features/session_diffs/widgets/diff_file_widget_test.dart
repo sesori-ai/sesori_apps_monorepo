@@ -1,6 +1,8 @@
+import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_diffs/models/diff_file_view_model.dart";
+import "package:sesori_app_ui/src/features/session_diffs/widgets/diff_file_header_delegate.dart";
 import "package:sesori_app_ui/src/features/session_diffs/widgets/diff_file_widget.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -97,5 +99,55 @@ void main() {
       await tester.pumpWidget(buildTestWidget(vm));
       expect(find.text("M"), findsOneWidget);
     });
+  });
+
+  testWidgets("the pinned header keeps its height at 1x and 130% and grows past that instead of cropping", (
+    tester,
+  ) async {
+    DiffFileHeaderDelegate delegate(double scale) => DiffFileHeaderDelegate(
+      viewModel: buildVM(),
+      isExpanded: true,
+      onToggle: () {},
+      headerKey: null,
+      textScaler: TextScaler.linear(scale),
+    );
+    expect(delegate(1).maxExtent, 36);
+    expect(delegate(1.3).maxExtent, 36);
+    expect(delegate(1.5).maxExtent, 39.5);
+    expect(delegate(1.5).shouldRebuild(delegate(1)), isTrue);
+
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildPregoThemeData(brightness: Brightness.light),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => CustomScrollView(
+              slivers: [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: DiffFileHeaderDelegate(
+                    viewModel: buildVM(),
+                    isExpanded: true,
+                    onToggle: () {},
+                    headerKey: null,
+                    textScaler: MediaQuery.textScalerOf(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final cropped = [
+      for (final paragraph in tester.renderObjectList<RenderParagraph>(find.byType(RichText)))
+        if (paragraph.getMinIntrinsicHeight(paragraph.size.width) > paragraph.size.height + 0.01)
+          paragraph.text.toPlainText(),
+    ];
+    expect(cropped, isEmpty);
   });
 }

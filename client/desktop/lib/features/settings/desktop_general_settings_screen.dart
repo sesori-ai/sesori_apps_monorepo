@@ -64,6 +64,19 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                           ),
                         ),
                       ),
+                      PregoGroupedRow(
+                        icon: TablerRegular.typography,
+                        title: SizedBox(
+                          width: double.infinity,
+                          child: Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: PregoSpacing.md,
+                            runSpacing: PregoSpacing.sm,
+                            children: [Text(loc.desktopSettingsTextSize), const _TextSizeSegments()],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -114,14 +127,50 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
 class const _ThemeSegments() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final loc = context.loc;
     final cubit = context.watch<AppearanceCubit>();
-    final labels = {
-      AppearanceMode.light: loc.settingsAppearanceLight,
-      AppearanceMode.dark: loc.settingsAppearanceDark,
-      AppearanceMode.system: loc.settingsAppearanceSystem,
-    };
+    return _Segments(
+      keyPrefix: "desktop-theme",
+      labels: {
+        AppearanceMode.light: loc.settingsAppearanceLight,
+        AppearanceMode.dark: loc.settingsAppearanceDark,
+        AppearanceMode.system: loc.settingsAppearanceSystem,
+      },
+      selected: cubit.state,
+      onSelected: (mode) => cubit.select(mode: mode),
+    );
+  }
+}
+
+/// The window's text size; the zoom shortcuts step through the same sizes.
+class const _TextSizeSegments() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final cubit = context.watch<DesktopTextSizeCubit>();
+    return _Segments(
+      keyPrefix: "desktop-text-size",
+      labels: {
+        DesktopTextSize.small: loc.desktopSettingsTextSizeSmall,
+        DesktopTextSize.standard: loc.desktopSettingsTextSizeDefault,
+        DesktopTextSize.large: loc.desktopSettingsTextSizeLarge,
+        DesktopTextSize.larger: loc.desktopSettingsTextSizeLarger,
+      },
+      selected: cubit.state,
+      onSelected: (size) => cubit.select(size: size),
+    );
+  }
+}
+
+class const _Segments<T extends Enum>({
+  required final String keyPrefix,
+  required final Map<T, String> labels,
+  required final T selected,
+  required final ValueChanged<T> onSelected,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
     // A Material, not a DecoratedBox: the selected segment's Ink paints on it.
     return Material(
       color: prego.colors.bgTertiary,
@@ -131,13 +180,13 @@ class const _ThemeSegments() extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final MapEntry(key: mode, value: label) in labels.entries)
+            for (final MapEntry(key: value, value: label) in labels.entries)
               Flexible(
-                child: _ThemeSegment(
-                  key: ValueKey("desktop-theme-${mode.name}"),
+                child: _Segment(
+                  key: ValueKey("$keyPrefix-${value.name}"),
                   label: label,
-                  selected: cubit.state == mode,
-                  onPressed: () => cubit.select(mode: mode),
+                  selected: selected == value,
+                  onPressed: () => onSelected(value),
                 ),
               ),
           ],
@@ -147,7 +196,7 @@ class const _ThemeSegments() extends StatelessWidget {
   }
 }
 
-class const _ThemeSegment({
+class const _Segment({
   super.key,
   required final String label,
   required final bool selected,

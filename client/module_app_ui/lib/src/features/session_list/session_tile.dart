@@ -179,10 +179,10 @@ class const SessionTile({
                       if (revealActions)
                         PositionedDirectional(
                           end: PregoSpacing.xs,
-                          // Centred on the meta line.
+                          // Centred on the meta line, at whatever text size.
                           bottom:
                               _rowVerticalPadding(pointer: true) -
-                              (_hoverActionHeight - _metaLineHeightOf(pointer: true)) / 2,
+                              (_hoverActionHeight - _lineHeightsOf(context: context, pointer: true).meta) / 2,
                           child: _hoverActions(context: context),
                         ),
                       // What the open menu's actions will hit, as Finder outlines the
@@ -529,20 +529,33 @@ class const SessionTile({
           spacing: PregoSpacing.xs,
           children: [
             Expanded(
-              child: Row(
-                children: [
-                  // The status keeps its words and the count its number; only
-                  // the project gives way.
-                  ?status,
-                  if (status != null && project != null) separator(),
-                  if (project != null) Flexible(child: project),
-                  if (project != null && backgroundTasks != null) separator(),
-                  ?backgroundTasks,
-                  // With no words at all, an empty line of the meta text holds
-                  // the line box, so the row is as tall as one with words at
-                  // any text size.
-                  if (status == null && project == null && backgroundTasks == null) Text("", style: style),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    // The status keeps its words and the count its number; the
+                    // project gives way first. Only a status too long for the
+                    // whole line, with its separator, ellipsizes.
+                    if (status != null)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: status),
+                            if (project != null) separator(),
+                          ],
+                        ),
+                      ),
+                    if (project != null) Flexible(child: project),
+                    if (project != null && backgroundTasks != null) separator(),
+                    ?backgroundTasks,
+                    // With no words at all, a line of the meta text's height holds
+                    // the line box, so the row is as tall as one with words at
+                    // any text size.
+                    if (status == null && project == null && backgroundTasks == null)
+                      SizedBox(height: context.lineHeightOf(style)),
+                  ],
+                ),
               ),
             ),
             // At the line's end, under the time, where the hover actions
@@ -581,10 +594,10 @@ class const SessionTile({
                       ],
                     ),
             ),
-          // With nothing to show, an empty line of the meta text still
-          // takes its height at the current text scale, so the row stays as
+          // With nothing to show, a line of the meta text's height still
+          // holds the line at the current text scale, so the row stays as
           // tall as its neighbours and as the launching row it replaces.
-          if (details.isEmpty) Text("", style: style),
+          if (details.isEmpty) SizedBox(height: context.lineHeightOf(style)),
         ],
       ),
     );
@@ -746,17 +759,21 @@ class const SessionTileSkeleton({
   required final double titleWidthFraction,
   required final double detailsWidth,
 }) extends StatelessWidget {
-  /// As tall as a row at the default text size, under a pointer or touch.
-  static double heightOf({required bool pointer}) =>
-      _rowVerticalPadding(pointer: pointer) * 2 +
-      _titleLineHeightOf(pointer: pointer) +
-      _lineGap +
-      _metaLineHeightOf(pointer: pointer) +
-      (pointer ? _pointerRowMargin.vertical : 0);
+  /// As tall as a quiet row under [context]'s pointer or touch, at its text size.
+  static double heightOf({required BuildContext context}) {
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final lines = _lineHeightsOf(context: context, pointer: pointer);
+    return _rowVerticalPadding(pointer: pointer) * 2 +
+        lines.title +
+        _lineGap +
+        lines.meta +
+        (pointer ? _pointerRowMargin.vertical : 0);
+  }
 
   @override
   Widget build(BuildContext context) {
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final lines = _lineHeightsOf(context: context, pointer: pointer);
     return Padding(
       padding: pointer ? _pointerRowMargin : EdgeInsets.zero,
       child: Padding(
@@ -766,7 +783,7 @@ class const SessionTileSkeleton({
           spacing: _lineGap,
           children: [
             SizedBox(
-              height: _titleLineHeightOf(pointer: pointer),
+              height: lines.title,
               // A dot where the harness logo goes, so the title bar starts where
               // the title does.
               child: Row(
@@ -784,7 +801,7 @@ class const SessionTileSkeleton({
               ),
             ),
             SizedBox(
-              height: _metaLineHeightOf(pointer: pointer),
+              height: lines.meta,
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: PregoSkeletonBar(height: 12, width: detailsWidth),
@@ -921,6 +938,16 @@ class _PointerRevealState() extends State<_PointerReveal> {
 double _titleLineHeightOf({required bool pointer}) => pointer ? 19 : 24;
 double _metaLineHeightOf({required bool pointer}) => pointer ? 16 : 20;
 const double _lineGap = PregoSpacing.xxs;
+
+/// A quiet row's line boxes at the current text size, as its text lays them
+/// out: the title's line, and the meta line's, which keeps its minimum.
+({double title, double meta}) _lineHeightsOf({required BuildContext context, required bool pointer}) => (
+  title: context.lineHeightOf(context.prego.textTheme.textMd.regular),
+  meta: max(
+    _metaLineHeightOf(pointer: pointer),
+    context.lineHeightOf(_metaStyleOf(context: context, pointer: pointer)),
+  ),
+);
 
 /// The meta line's type: the scale's smallest text, and under a pointer half a
 /// point larger on the same 16 pt line box, to sit under the 13.5 pt title.

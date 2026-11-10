@@ -207,6 +207,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
                 isExpanded: _expandedFileIndices.contains(i),
                 onToggle: () => _toggleFile(i),
                 headerKey: _headerKeys.putIfAbsent(i, GlobalKey.new),
+                textScaler: MediaQuery.textScalerOf(context),
               ),
             ),
             if (_expandedFileIndices.contains(i))

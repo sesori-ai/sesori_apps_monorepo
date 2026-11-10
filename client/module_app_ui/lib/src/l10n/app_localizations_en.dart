@@ -1037,6 +1037,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSettingsTheme => 'Theme';
 
   @override
+  String get desktopSettingsTextSize => 'Text size';
+
+  @override
+  String get desktopSettingsTextSizeSmall => 'Small';
+
+  @override
+  String get desktopSettingsTextSizeDefault => 'Default';
+
+  @override
+  String get desktopSettingsTextSizeLarge => 'Large';
+
+  @override
+  String get desktopSettingsTextSizeLarger => 'Larger';
+
+  @override
   String get settingsSectionAnalytics => 'Analytics';
 
   @override

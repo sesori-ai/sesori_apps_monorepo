@@ -994,15 +994,14 @@ class const SessionListSkeleton({
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
-    final rowHeight = SessionTileSkeleton.heightOf(pointer: pointer);
+    final rowHeight = SessionTileSkeleton.heightOf(context: context);
     final children = <Widget>[];
     var height = 0.0;
     var row = 0;
     for (var group = 0; height < screenHeight; group++) {
       final isFirst = group == 0;
       children.add(SessionListHeadingSkeleton(isFirst: isFirst, width: _headingWidths[group % _headingWidths.length]));
-      height += SessionListHeadingSkeleton.heightOf(isFirst: isFirst, pointer: pointer);
+      height += SessionListHeadingSkeleton.heightOf(context: context, isFirst: isFirst);
       for (var index = 0; index < _groupSizes[group % _groupSizes.length]; index++, row++) {
         children.add(
           SessionTileSkeleton(

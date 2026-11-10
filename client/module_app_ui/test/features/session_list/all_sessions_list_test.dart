@@ -1842,7 +1842,7 @@ void main() {
               // The height the list sizes its placeholder by is the one it draws.
               expect(
                 rowRect.height,
-                SessionTileSkeleton.heightOf(pointer: interaction == PregoInteractionMode.pointer),
+                SessionTileSkeleton.heightOf(context: tester.element(find.byType(SessionTileSkeleton).first)),
               );
 
               final [headerTops, fieldTops, skeletonTops] = await topsAcross(

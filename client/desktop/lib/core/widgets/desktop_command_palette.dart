@@ -22,11 +22,13 @@ class const DesktopCommand({
   required final VoidCallback run,
 });
 
-/// A cockpit shortcut: Cmd+[key] on macOS, Ctrl+[key] elsewhere.
-SingleActivator desktopShortcut({required LogicalKeyboardKey key}) => SingleActivator(
+/// A cockpit shortcut: Cmd+[key] on macOS, Ctrl+[key] elsewhere, with Shift
+/// held too when [shift] is set.
+SingleActivator desktopShortcut({required LogicalKeyboardKey key, bool shift = false}) => SingleActivator(
   key,
   meta: defaultTargetPlatform == TargetPlatform.macOS,
   control: defaultTargetPlatform != TargetPlatform.macOS,
+  shift: shift,
   includeRepeats: false,
 );
 

@@ -65,15 +65,10 @@ class const PregoEllipsisText({
 
   @override
   Widget build(BuildContext context) {
-    // The same resolution [Text] applies to its own style, bold text included.
-    var resolved = DefaultTextStyle.of(context).style.merge(style);
-    if (MediaQuery.boldTextOf(context)) {
-      resolved = resolved.merge(const TextStyle(fontWeight: FontWeight.bold));
-    }
     return _EllipsisRenderWidget(
       text: text,
       ellipsis: ellipsis,
-      style: withTextSpacingOverrides(context: context, style: resolved),
+      style: resolveTextStyle(context: context, style: style),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     );

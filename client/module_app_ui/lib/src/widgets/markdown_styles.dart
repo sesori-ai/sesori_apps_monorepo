@@ -97,6 +97,11 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
   );
 
   final desktop = prego.isDesktopScale;
+  // Headings keep the phone's sizes on desktop too, as the prose under them
+  // does, so none reads smaller than its paragraph. The weight stays the scale's.
+  final headings = PregoTextTheme.light;
+  TextStyle heading(FontVariation size) =>
+      size.bold.copyWith(color: foreground, fontWeight: prego.textTheme.chat.bold.fontWeight);
   // Tight list items carry no paragraph, so they take only the block gap.
   final sheet = base.copyWith(
     blockSpacing: desktop ? PregoSpacing.xs : null,
@@ -113,12 +118,12 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
       color: foreground,
       backgroundColor: prego.isDesktopScale ? null : prego.colors.alphaBlack10,
     ),
-    h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
-    h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
-    h3: prego.textTheme.textMd.bold.copyWith(color: foreground),
-    h4: prego.textTheme.textSm.bold.copyWith(color: foreground),
-    h5: prego.textTheme.textSm.bold.copyWith(color: foreground),
-    h6: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    h1: heading(headings.textXl),
+    h2: heading(headings.textLg),
+    h3: heading(headings.textMd),
+    h4: heading(headings.textSm),
+    h5: heading(headings.textSm),
+    h6: heading(headings.textSm),
     em: body.copyWith(fontStyle: FontStyle.italic),
     strong: body.copyWith(fontWeight: prego.textTheme.chat.bold.fontWeight),
     del: body.copyWith(decoration: TextDecoration.lineThrough),

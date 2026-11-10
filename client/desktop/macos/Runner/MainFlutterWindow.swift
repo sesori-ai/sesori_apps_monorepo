@@ -3,6 +3,9 @@ import FlutterMacOS
 import window_manager
 
 class MainFlutterWindow: NSWindow {
+  /// Carries the View menu's text-size items to Dart (`MethodChannelDesktopAppMenu`).
+  private var appMenuChannel: FlutterMethodChannel?
+
   override func awakeFromNib() {
     let flutterProject = FlutterDartProject()
     // Pass the native process arguments through explicitly so LaunchAgent
@@ -19,6 +22,7 @@ class MainFlutterWindow: NSWindow {
     SparkleUpdater.shared.attach(messenger: messenger)
     MenuBarAppearance.shared.attach(messenger: messenger)
     DesktopFirebaseAnalyticsChannel.attach(messenger: messenger)
+    appMenuChannel = FlutterMethodChannel(name: "sesori/app_menu", binaryMessenger: messenger)
 
     // The sidebar panel runs to the window's top edge (the Dart side hides the
     // title bar). An empty unified toolbar makes AppKit itself set the traffic
@@ -38,6 +42,21 @@ class MainFlutterWindow: NSWindow {
     }
 
     super.awakeFromNib()
+  }
+
+  // The View menu's text-size items (MainMenu.xib). Flutter sees a key
+  // equivalent before the menu does and binds the same keys, so a press it
+  // handles never reaches these; a pick from the menu runs the same command.
+  @IBAction func increaseTextSize(_ sender: Any?) {
+    appMenuChannel?.invokeMethod("increaseTextSize", arguments: nil)
+  }
+
+  @IBAction func decreaseTextSize(_ sender: Any?) {
+    appMenuChannel?.invokeMethod("decreaseTextSize", arguments: nil)
+  }
+
+  @IBAction func resetTextSize(_ sender: Any?) {
+    appMenuChannel?.invokeMethod("resetTextSize", arguments: nil)
   }
 
   // MainMenu.xib orders the Flutter window before Dart can restore persisted
