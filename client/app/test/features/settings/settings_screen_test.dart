@@ -417,8 +417,9 @@ void main() {
     expect(tester.getTopLeft(find.text("Bridge")).dy, lessThan(tester.getTopLeft(entry).dy));
     expect(tester.getBottomLeft(entry).dy, lessThan(tester.getTopLeft(find.text("Harnesses")).dy));
 
-    // Picking the current computer only closes the menu.
-    await tester.tap(entry);
+    // The whole card opens the menu, its edges included; picking the current
+    // computer only closes it.
+    await tester.tapAt(tester.getRect(card).centerLeft + const Offset(4, 0));
     await tester.pumpAndSettle();
     expect(find.text("build-box"), findsOneWidget);
     await tester.tap(find.text("studio-mac").last);

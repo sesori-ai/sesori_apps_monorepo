@@ -173,7 +173,7 @@ and become metrics values later.
 | 1 | `🌱 [desktop-branches] Raise the plan [step 1/7]` | 0 | plan files | — |
 | 2 | `🌿 [desktop-branches] Fold the subtle desktop differences to one value [step 2/7]` | about 13 | ~300 | #2460 |
 | 3 | `🌿 [desktop-branches] Fold the transcript and needs-you card looks [step 3/7]` | 10 | ~400 | step 2 |
-| 4 | `🌿 [desktop-branches] Fold the settings, alert, diff and picker looks [step 4/7]` | 7 | ~300 | step 2 (parallel with 3) |
+| 4 | `🌿 [desktop-branches] Fold the settings, alert, diff and picker looks [step 4/7]` | 8 (7, plus 2.14's from round 3) | ~300 | step 2 (parallel with 3) |
 | 5 | `⚙️ [desktop-branches] Flag new interaction-mode reads in shared client code [step 5/7]` | 0 (marks about 71) | ~500 | steps 3 and 4 |
 | 6 | `🌱 [desktop-branches] Reconcile regression docs [step 6/7]` | 0 | docs | step 5 |
 | 7 | `🌱 [desktop-branches] Run the verification matrix and retire the plan [step 7/7]` | 0 | plan files | step 6 |

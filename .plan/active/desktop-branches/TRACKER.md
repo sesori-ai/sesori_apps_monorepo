@@ -56,7 +56,7 @@ Folded, before → after. Nothing was dropped.
 
 | Item | Before | After | Who sees it |
 | --- | --- | --- | --- |
-| 4 computer entry | phone: flat 54 pt row on the page, 12 pt gap below, selector 22 pt | a 54 pt card (radius 26, insets 18/12), 8 pt gap, selector 14 pt; the platform icon stays 22 pt, centred about 29 pt from the card's start (the rows' glyphs at 28) | phone; desktop only while the list loads, which now shows no empty card |
+| 4 computer entry | phone: flat 54 pt row on the page, 12 pt gap below, selector 22 pt | a 54 pt card (radius 26, insets 18/12), 8 pt gap, selector 14 pt; the platform icon stays 22 pt, centred about 29 pt from the card's start (the rows' glyphs at 28). The whole card opens the menu, and its hover and press fill take the card's shape, as the rows' do (desktop's was an 8 pt-radius rect inset 18/12) | phone; desktop while the list loads, which now shows no empty card, and on hover |
 | 5 alert accent | phone: a radial glow over the dark card (`#333333`), edges success `#39614D` (1.80:1), warning `#6E4F26` (1.69:1), error `#6C3835` (1.35:1) | no glow; the icon alone carries the variant | phone |
 | 6 diff "M" | phone: light `#DC6803` (3.49:1 on `bgSurface3`), dark `#FDB022` (8.33:1) | `textSecondary`: light `#474747` (9.29:1), dark `#AEAEAE` (6.91:1); also in the file header and the selected file's header | phone |
 | 7 section headings | desktop: sentence case at 11.5 pt, e.g. Recent 36.0 pt, OpenRouter (free) 92.6 pt | spaced capitals, 0.8 tracking: RECENT 49.2 pt, OPENROUTER (FREE) 127.0 pt; menus give 196–216 pt and pickers 280–340 pt, so nothing truncates. The command palette's headings change too | desktop |

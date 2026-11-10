@@ -31,64 +31,61 @@ class const ComputerSettingsEntry({
             padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
             child: PregoGroupedRows(
               children: [
-                // On the card rows' icon and trailing columns.
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(18, 0, 12, 0),
-                  child: ComputerMenu(
-                    onSelect: ({required bridgeId}) =>
-                        onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
-                    onManageComputers: onManageComputers,
-                    currentFirst: false,
-                    triggerBuilder: (context, toggle) => Semantics(
-                      hint: context.loc.computerMenuSwitchHint,
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: InkWell(
-                          key: const Key("computer_settings_entry"),
-                          mouseCursor: WidgetStateMouseCursor.clickable,
-                          borderRadius: BorderRadius.circular(PregoRadius.md),
-                          onTap: toggle,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: PregoSpacing.sm),
-                            child: Row(
-                              spacing: PregoSpacing.md,
-                              children: [
-                                Icon(
-                                  ComputerMenu.platformIcon(platform: computer.platform),
-                                  size: PregoIconSize.lg,
-                                  color: prego.colors.textTertiary,
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        computer.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: prego.textTheme.textMd.regular.copyWith(
-                                          color: prego.colors.textPrimary,
-                                        ),
+                ComputerMenu(
+                  onSelect: ({required bridgeId}) =>
+                      onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
+                  onManageComputers: onManageComputers,
+                  currentFirst: false,
+                  triggerBuilder: (context, toggle) => Semantics(
+                    hint: context.loc.computerMenuSwitchHint,
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        key: const Key("computer_settings_entry"),
+                        mouseCursor: WidgetStateMouseCursor.clickable,
+                        onTap: toggle,
+                        child: Padding(
+                          // On the card rows' icon and trailing columns, inside the ink so the
+                          // whole card opens the menu.
+                          padding: const EdgeInsetsDirectional.fromSTEB(18, PregoSpacing.sm, 12, PregoSpacing.sm),
+                          child: Row(
+                            spacing: PregoSpacing.md,
+                            children: [
+                              Icon(
+                                ComputerMenu.platformIcon(platform: computer.platform),
+                                size: PregoIconSize.lg,
+                                color: prego.colors.textTertiary,
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      computer.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: prego.textTheme.textMd.regular.copyWith(
+                                        color: prego.colors.textPrimary,
                                       ),
-                                      PregoStatusLabel(
-                                        status: ComputerMenu.presenceStatus(computer: computer),
-                                        text: ComputerMenu.presenceLabel(context: context, computer: computer),
-                                        style: prego.textTheme.textXs.regular.copyWith(
-                                          color: prego.colors.textSecondary,
-                                        ),
-                                        maxLines: null,
+                                    ),
+                                    PregoStatusLabel(
+                                      status: ComputerMenu.presenceStatus(computer: computer),
+                                      text: ComputerMenu.presenceLabel(context: context, computer: computer),
+                                      style: prego.textTheme.textXs.regular.copyWith(
+                                        color: prego.colors.textSecondary,
                                       ),
-                                    ],
-                                  ),
+                                      maxLines: null,
+                                    ),
+                                  ],
                                 ),
-                                Icon(
-                                  TablerRegular.selector,
-                                  size: PregoIconSize.sm,
-                                  color: prego.colors.textTertiary,
-                                ),
-                              ],
-                            ),
+                              ),
+                              Icon(
+                                TablerRegular.selector,
+                                size: PregoIconSize.sm,
+                                color: prego.colors.textTertiary,
+                              ),
+                            ],
                           ),
                         ),
                       ),

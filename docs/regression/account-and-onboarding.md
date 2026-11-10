@@ -78,7 +78,9 @@ participates.
   computers…" ([multi-computer](multi-computer.md)), and picking another
   computer lands on its home; picking the current one only closes the
   menu. The entry and its card appear only once the computer list names the
-  current computer and grow in without a jump; no empty card shows while it loads.
+  current computer, and grow in without a jump (with reduced motion they appear
+  at once); no empty card shows while it loads. The whole card, its edges
+  included, opens the menu.
   Offline, Harnesses and the YOLO and warm-up rows dim and do not respond to taps.
 - The desktop Bridge settings tab shows the same entry above its description;
   switching closes the settings window and then switches. Its card leads with the

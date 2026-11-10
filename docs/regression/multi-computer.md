@@ -74,7 +74,8 @@ area documents linked below own the detail.
   place below ([projects and sessions](projects-and-sessions.md),
   [account and onboarding](account-and-onboarding.md)).
 - **Settings.** The Bridge section opens with the current computer's entry, a card of its own under the "Bridge" caption
-  on both apps, which opens the same menu; the rows
+  on both apps, which opens the same menu. It appears only once the account's list names the current computer, with
+  no empty card while that list loads; the rows
   below it apply to that computer only. The desktop Bridge tab shows the same entry and closes Settings before it
   switches ([account and onboarding](account-and-onboarding.md)).
 - **Desktop.** The sidebar footer's row names the computer on every page and opens the same menu above this
