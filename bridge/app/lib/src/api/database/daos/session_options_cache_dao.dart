@@ -50,6 +50,32 @@ class SessionOptionsCacheDao({required AppDatabase database})
     return [for (final row in rows) ?row.read(sessionOptionsCacheTable.projectId)];
   }
 
+  /// Every project-scoped row for the projects [projectIds].
+  Future<List<SessionOptionsCacheTableData>> getProjectRows({required Set<String> projectIds}) {
+    return (select(sessionOptionsCacheTable)..where(
+          (table) => table.scope.equalsValue(PluginSessionOptionsScope.project) & table.projectId.isIn(projectIds),
+        ))
+        .get();
+  }
+
+  Future<void> insertRow({required SessionOptionsCacheTableData row}) async {
+    await into(sessionOptionsCacheTable).insert(row);
+  }
+
+  Future<void> updateCapturedProjectPath({
+    required String projectId,
+    required String fromPath,
+    required String toPath,
+  }) async {
+    await (update(sessionOptionsCacheTable)..where(
+          (table) =>
+              table.scope.equalsValue(PluginSessionOptionsScope.project) &
+              table.projectId.equals(projectId) &
+              table.capturedProjectPath.equals(fromPath),
+        ))
+        .write(SessionOptionsCacheTableCompanion(capturedProjectPath: Value(toPath)));
+  }
+
   Future<void> deleteRow({
     required String pluginId,
     required PluginSessionOptionsScope scope,

@@ -24,6 +24,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -96,6 +97,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
       projectsDao: projectsDao,
       sessionDao: sessionDao,
       catalogHydrationsDao: database.catalogHydrationsDao,
+      sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
       projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
         scratchRoot: "/scratch",
         pathContext: p.context,

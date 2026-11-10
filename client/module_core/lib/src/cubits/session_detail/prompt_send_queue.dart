@@ -254,11 +254,23 @@ class PromptSendQueue() {
     if (_active?.promptId == promptId) _settledElsewhere.add(promptId);
   }
 
-  /// Drops everything staged locally (the user stopped the session).
-  void clear() {
+  /// Drops the active submission after its send failed, for a caller that
+  /// takes it elsewhere instead of retrying it. Returns it, or null when the
+  /// bridge settled it while its send was in flight.
+  QueuedSessionSubmission? abandonSend() {
+    final active = _active;
+    _active = null;
+    if (active == null || _settledElsewhere.remove(active.promptId)) return null;
+    return active;
+  }
+
+  /// Drops everything staged locally (the user stopped the session). With
+  /// [keepActive], the submission still sending stays, so its send settles
+  /// through [parkAccepted] or [abandonSend] as usual.
+  void clear({required bool keepActive}) {
     _items.clear();
     _awaitingBridge.clear();
-    _active = null;
+    if (!keepActive) _active = null;
     _failed = null;
     _settledElsewhere.clear();
     _bridgePromptAttachments.clear();

@@ -523,6 +523,7 @@ class Orchestrator({
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       catalogHydrationsDao: _database.catalogHydrationsDao,
+      sessionOptionsCacheDao: SessionOptionsCacheDao(database: _database),
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       filesystemApi: const FilesystemApi(),
     );
