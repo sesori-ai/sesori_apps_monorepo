@@ -1004,7 +1004,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesStatusBlocked => 'Blocked';
 
   @override
-  String get harnessesStatusDormant => 'Dormant';
+  String get harnessesStatusDormant => 'Not running';
 
   @override
   String get harnessesStatusStarting => 'Starting';
