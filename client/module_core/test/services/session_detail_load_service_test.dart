@@ -39,6 +39,7 @@ void main() {
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
             supportsPromptAttachments: true,
           ),
         ],
@@ -224,6 +225,56 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
       expect(result.snapshot.supportsFileUploads, isNull);
+      expect(result.snapshot.offersSessionMcp, isTrue);
+    });
+
+    test("load offers session MCP only when the harness answers it, or did not say", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      final cases = <({Set<McpScopeKind>? scopes, bool offered})>[
+        (scopes: const {}, offered: false),
+        (scopes: const {McpScopeKind.harness, McpScopeKind.project}, offered: false),
+        (scopes: const {McpScopeKind.project, McpScopeKind.session}, offered: true),
+        // An older bridge does not report scopes.
+        (scopes: null, offered: true),
+      ];
+      for (final (:scopes, :offered) in cases) {
+        service = SessionDetailLoadService(
+          repository: repository,
+          pluginRepository: stubbedPluginRepository(
+            plugins: [
+              PluginMetadata(
+                id: "plugin-1",
+                displayName: "Plugin One",
+                isDefault: true,
+                state: PluginLifecycleState.ready,
+                actionHint: null,
+                failureBlock: null,
+                mcpScopes: scopes,
+              ),
+            ],
+          ),
+          connectionService: connectionService,
+        );
+
+        final result = await _load(service: service, projectId: "project-1");
+
+        expect((result as SessionDetailLoadResultLoaded).snapshot.offersSessionMcp, offered, reason: "$scopes");
+      }
+    });
+
+    test("load offers session MCP for a harness missing from the listing", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      service = SessionDetailLoadService(
+        repository: repository,
+        pluginRepository: stubbedPluginRepository(plugins: const []),
+        connectionService: connectionService,
+      );
+
+      final result = await _load(service: service, projectId: "project-1");
+
+      expect((result as SessionDetailLoadResultLoaded).snapshot.offersSessionMcp, isTrue);
     });
 
     test("load reads the bridge's file upload capability from the same plugin listing", () async {
@@ -238,6 +289,7 @@ void main() {
             state: PluginLifecycleState.ready,
             actionHint: null,
             failureBlock: null,
+            mcpScopes: null,
           ),
         ],
         supportsFileUploads: true,
@@ -295,7 +347,50 @@ void main() {
           mode: SessionOptionsRequestMode.dynamic,
         ),
       );
-      verifyNever(pluginRepository.listPlugins);
+    });
+
+    test("an archived session still leaves MCP out for a harness without it", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false));
+      stubSessionRepositoryGetSession(
+        repository: repository,
+        sessionId: "session-1",
+        session: testSession(id: "session-1", title: "Archived", archivedAt: DateTime.utc(2026)),
+      );
+      service = SessionDetailLoadService(
+        repository: repository,
+        pluginRepository: stubbedPluginRepository(
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+              failureBlock: null,
+              supportsPromptAttachments: true,
+              mcpScopes: {},
+            ),
+          ],
+          supportsFileUploads: true,
+        ),
+        connectionService: connectionService,
+      );
+
+      final result = await _load(service: service, projectId: "project-1");
+
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.offersSessionMcp, isFalse);
+      // It cannot prompt, so its prompt capabilities stay unresolved.
+      expect(snapshot.supportsPromptAttachments, isNull);
+      expect(snapshot.supportsFileUploads, isNull);
     });
 
     test("an archived reload without a cached catalog still loads", () async {

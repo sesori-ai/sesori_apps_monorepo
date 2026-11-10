@@ -2689,7 +2689,7 @@ void main() {
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: true,
-          mcpScopes: noMcpScopes,
+          mcpScopes: {PluginMcpScopeKind.project, PluginMcpScopeKind.session},
         ),
       ],
       disabledPluginIds: const {},
@@ -2708,6 +2708,15 @@ void main() {
         for (final metadata in service.selectableMetadataSnapshot) metadata.id: metadata.supportsPromptAttachments,
       },
       {"alpha": true, "beta": false},
+    );
+    // Discovery carries each harness's MCP scopes, so a session screen can
+    // leave MCP out for a harness that has none.
+    expect(
+      {for (final metadata in service.selectableMetadataSnapshot) metadata.id: metadata.mcpScopes},
+      {
+        "alpha": {McpScopeKind.project, McpScopeKind.session},
+        "beta": <McpScopeKind>{},
+      },
     );
     expect(service.compositionView.defaultPluginId, "alpha");
   });

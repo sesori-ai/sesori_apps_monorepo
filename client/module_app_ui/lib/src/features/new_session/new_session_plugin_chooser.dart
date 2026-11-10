@@ -161,7 +161,7 @@ class const _HarnessTrigger({
                   ),
                   SizedBox(width: prego.spacing.sm),
                   Icon(
-                    pointer ? TablerRegular.selector : TablerRegular.chevron_down,
+                    TablerRegular.chevron_down,
                     size: pointer ? PregoIconSize.sm : PregoIconSize.md,
                     color: prego.colors.textSecondary,
                   ),

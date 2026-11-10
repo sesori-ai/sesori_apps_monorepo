@@ -61,13 +61,11 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
               borderRadius: BorderRadius.circular(PregoRadius.xs),
               child: TranscriptStepRow(
                 maxLines: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 3 : 1,
-                leading: !widget.isStreaming && PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                    ? Icon(TablerRegular.bulb, size: PregoIconSize.sm, color: prego.colors.textTertiary)
-                    : PregoAiLoader(
-                        animate: widget.isStreaming,
-                        fillMode: .outline,
-                        color: prego.colors.textSecondary,
-                      ),
+                leading: PregoAiLoader(
+                  animate: widget.isStreaming,
+                  fillMode: .outline,
+                  color: prego.colors.textSecondary,
+                ),
                 label: widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
                 detail: widget.isStreaming || widget.text.isEmpty ? null : TextSpan(text: _previewText),
                 live: widget.isStreaming,

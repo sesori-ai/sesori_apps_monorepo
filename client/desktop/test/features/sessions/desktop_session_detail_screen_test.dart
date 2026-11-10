@@ -133,6 +133,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     pluginId: "opencode",
     supportsPromptAttachments: true,
     supportsFileUploads: false,
+    offersSessionMcp: true,
     assistantAgentModel: null,
     children: const [_child],
     childStatuses: const {"child-1": SessionStatus.idle()},
@@ -807,6 +808,26 @@ void main() {
       },
       variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.linux}),
     );
+
+    testWidgets("offers MCP in the menu", (tester) async {
+      await pumpPage(tester, session: _session);
+      await tester.tap(find.byKey(const Key("desktop-session-page-more")));
+      await tester.pumpAndSettle();
+
+      expect(find.text("MCP"), findsOneWidget);
+    });
+
+    testWidgets("leaves MCP out of the menu for a harness that answers no MCP for a session", (tester) async {
+      await pumpPage(
+        tester,
+        session: _session,
+        initialState: _loadedState(session: _session).copyWith(offersSessionMcp: false),
+      );
+      await tester.tap(find.byKey(const Key("desktop-session-page-more")));
+      await tester.pumpAndSettle();
+      expect(find.text("MCP"), findsNothing);
+      expect(find.text("Mark as unread"), findsOneWidget);
+    });
 
     testWidgets("offers the session's actions with Mark as unread, never Mark as read", (tester) async {
       await pumpPage(tester, session: _session);

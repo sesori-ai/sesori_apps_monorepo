@@ -37,7 +37,11 @@ class _MockSessionWindowService() extends Mock implements SessionWindowService {
   }
 }
 
-Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
+Widget _buildApp({
+  required String? sessionTitle,
+  required GlobalKey<NavigatorState>? navigatorKey,
+  bool auditView = false,
+}) {
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
@@ -51,7 +55,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailScreen(
-        auditView: false,
+        auditView: auditView,
         onBack: null,
         projectId: "project-1",
         projectName: null,
@@ -62,7 +66,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
   );
 }
 
-SessionDetailLoadResult _loadedResult({required bool isArchived}) {
+SessionDetailLoadResult _loadedResult({required bool isArchived, required bool offersSessionMcp}) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       areOptionsStale: false,
@@ -70,6 +74,7 @@ SessionDetailLoadResult _loadedResult({required bool isArchived}) {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       supportsFileUploads: false,
+      offersSessionMcp: offersSessionMcp,
       messages: const [],
       olderMessagesCursor: null,
       userMessagesBefore: null,
@@ -98,6 +103,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       supportsFileUploads: false,
+      offersSessionMcp: true,
       messages: const [],
       olderMessagesCursor: null,
       userMessagesBefore: null,
@@ -126,6 +132,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       supportsFileUploads: false,
+      offersSessionMcp: true,
       messages: [],
       olderMessagesCursor: null,
       userMessagesBefore: null,
@@ -272,13 +279,13 @@ void main() {
         session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
-    ).thenAnswer((_) async => _loadedResult(isArchived: false));
+    ).thenAnswer((_) async => _loadedResult(isArchived: false, offersSessionMcp: true));
     when(
       () => loadService.reload(
         session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
-    ).thenAnswer((_) async => _loadedResult(isArchived: false));
+    ).thenAnswer((_) async => _loadedResult(isArchived: false, offersSessionMcp: true));
 
     _registerDependencies(
       loadService: loadService,
@@ -306,7 +313,7 @@ void main() {
         session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
-    ).thenAnswer((_) async => _loadedResult(isArchived: true));
+    ).thenAnswer((_) async => _loadedResult(isArchived: true, offersSessionMcp: true));
     const request = McpInventoryRequest(
       pluginId: "plugin-1",
       scope: McpSessionScope(sessionId: "session-1"),
@@ -353,6 +360,40 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("leaves MCP out of the menu for a harness that answers no MCP for a session", (tester) async {
+    when(
+      () => loadService.load(
+        session: any(named: "session"),
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) async => _loadedResult(isArchived: false, offersSessionMcp: false));
+    await tester.pumpWidget(_buildApp(sessionTitle: null, navigatorKey: null));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(SessionDetailBody));
+
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+
+    expect(find.text(context.loc.mcpMenuLabel), findsNothing);
+    expect(find.text(context.loc.sessionChangesLabel), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("an archived audit view of a harness without MCP offers no menu at all", (tester) async {
+    when(
+      () => loadService.load(
+        session: any(named: "session"),
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) async => _loadedResult(isArchived: true, offersSessionMcp: false));
+    await tester.pumpWidget(_buildApp(sessionTitle: null, navigatorKey: null, auditView: true));
+    await tester.pumpAndSettle();
+
+    // MCP was its only entry, so an empty menu would open on nothing.
+    expect(find.byKey(const Key("session-detail-more")), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("shows carried title during loading and before canonical data arrives", (tester) async {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
@@ -370,7 +411,7 @@ void main() {
     expect(find.byType(PregoLaunchStatus), findsOneWidget);
     expect(find.bySemanticsLabel(loc.sessionDetailLoadingSemantics), findsOneWidget);
 
-    loadCompleter.complete(_loadedResult(isArchived: false));
+    loadCompleter.complete(_loadedResult(isArchived: false, offersSessionMcp: true));
     await tester.pumpAndSettle();
 
     expect(find.text("Carried title"), findsOneWidget);

@@ -193,6 +193,49 @@ void main() {
     });
   });
 
+  group("restoreParagraphsUnderCommand", () {
+    test("puts a later return after an earlier one the command was staged over, then spells the command out", () {
+      final result = calculator.restoreParagraphsUnderCommand(
+        command: "review",
+        args: voiceDraft("first\n\nhalf", 7, 11),
+        restoredPrefix: "first",
+        restored: [ComposerDraft.typed(text: "second")],
+      );
+
+      expect(
+        result.draft,
+        ComposerDraft(
+          text: "/review first\n\nsecond\n\nhalf",
+          voiceSpans: [VoiceOriginSpan(start: 23, end: 27)],
+        ),
+      );
+      expect(result.restoredPrefix, "/review first\n\nsecond");
+    });
+
+    test("puts the return ahead of the spelled-out command when its arguments hold no earlier one", () {
+      final result = calculator.restoreParagraphsUnderCommand(
+        command: "review",
+        args: ComposerDraft.typed(text: "half"),
+        restoredPrefix: "first",
+        restored: [ComposerDraft.typed(text: "second")],
+      );
+
+      expect(result.draft, ComposerDraft.typed(text: "second\n\n/review half"));
+      expect(result.restoredPrefix, "second");
+    });
+
+    test("spells the command out when the return brings no words", () {
+      final result = calculator.restoreParagraphsUnderCommand(
+        command: "review",
+        args: ComposerDraft.typed(text: "half"),
+        restoredPrefix: "",
+        restored: const [],
+      );
+
+      expect(result.draft, ComposerDraft.typed(text: "/review half"));
+    });
+  });
+
   test("submissionDraft keeps a dictated send dictated and a command as its typed text", () {
     ComposerDraft? draftOf(QueuedSessionSubmission submission) => calculator.submissionDraft(submission: submission);
 

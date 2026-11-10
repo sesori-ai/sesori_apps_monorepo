@@ -54,6 +54,7 @@ void main() {
         state: state,
         actionHint: null,
         failureBlock: null,
+        mcpScopes: null,
       ),
     ]);
   }
@@ -133,6 +134,7 @@ void main() {
           state: PluginLifecycleState.ready,
           actionHint: null,
           failureBlock: null,
+          mcpScopes: null,
         ),
         const PluginMetadata(
           id: "pi",
@@ -141,6 +143,7 @@ void main() {
           state: PluginLifecycleState.degraded,
           actionHint: "Check the bridge console if this plugin needs attention.",
           failureBlock: null,
+          mcpScopes: null,
         ),
         const PluginMetadata(
           id: "codex",
@@ -149,6 +152,7 @@ void main() {
           state: PluginLifecycleState.failed,
           actionHint: null,
           failureBlock: null,
+          mcpScopes: null,
         ),
       ]);
       await pump();

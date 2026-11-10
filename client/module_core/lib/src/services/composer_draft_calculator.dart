@@ -226,11 +226,7 @@ final class const ComposerDraftCalculator() {
     required List<ComposerDraft> restored,
   }) {
     final prefixEnd = restoredPrefix.length;
-    final keepsPrefix =
-        restoredPrefix.isNotEmpty &&
-        held.text.startsWith(restoredPrefix) &&
-        (held.text.length == prefixEnd || held.text.startsWith("\n\n", prefixEnd));
-    if (!keepsPrefix) {
+    if (!_keepsPrefix(held: held, restoredPrefix: restoredPrefix)) {
       final front = joinParagraphs(drafts: restored);
       return (draft: joinParagraphs(drafts: [front, held]), restoredPrefix: front.text);
     }
@@ -240,6 +236,38 @@ final class const ComposerDraftCalculator() {
     final front = joinParagraphs(drafts: [earlier, ...restored]);
     return (draft: joinParagraphs(drafts: [front, rest]), restoredPrefix: front.text);
   }
+
+  /// [restoreParagraphs] for a composer whose [args] are the arguments of a
+  /// staged [command], spelled out as literal "/command args" text. A command
+  /// staged after earlier returns holds them in [args], so a later return goes
+  /// after them there; otherwise it goes ahead of the literal command.
+  ({ComposerDraft draft, String restoredPrefix}) restoreParagraphsUnderCommand({
+    required String command,
+    required ComposerDraft args,
+    required String restoredPrefix,
+    required List<ComposerDraft> restored,
+  }) {
+    if (!_keepsPrefix(held: args, restoredPrefix: restoredPrefix)) {
+      return restoreParagraphs(
+        held: typedCommand(command: command, args: args),
+        restoredPrefix: restoredPrefix,
+        restored: restored,
+      );
+    }
+    final inArgs = restoreParagraphs(held: args, restoredPrefix: restoredPrefix, restored: restored);
+    final draft = typedCommand(command: command, args: inArgs.draft);
+    final prefix = typedCommand(
+      command: command,
+      args: ComposerDraft.typed(text: inArgs.restoredPrefix),
+    ).text;
+    return (draft: draft, restoredPrefix: draft.text.startsWith(prefix) ? prefix : "");
+  }
+
+  /// Whether [held] still starts with [restoredPrefix] as a paragraph of its own.
+  bool _keepsPrefix({required ComposerDraft held, required String restoredPrefix}) =>
+      restoredPrefix.isNotEmpty &&
+      held.text.startsWith(restoredPrefix) &&
+      (held.text.length == restoredPrefix.length || held.text.startsWith("\n\n", restoredPrefix.length));
 
   ComposerDraft appendVoiceTranscript({
     required ComposerDraft draft,

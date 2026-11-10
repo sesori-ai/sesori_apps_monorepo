@@ -610,6 +610,7 @@ SessionDetailSnapshot _snapshot({
   pluginId: "plugin-1",
   supportsPromptAttachments: true,
   supportsFileUploads: false,
+  offersSessionMcp: true,
   messages: messages,
   olderMessagesCursor: olderMessagesCursor,
   userMessagesBefore: userMessagesBefore,

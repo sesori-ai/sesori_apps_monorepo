@@ -34,6 +34,7 @@ const pluginA = PluginMetadata(
   state: PluginLifecycleState.ready,
   actionHint: null,
   failureBlock: null,
+  mcpScopes: null,
 );
 const pluginB = PluginMetadata(
   id: "plugin-b",
@@ -42,6 +43,7 @@ const pluginB = PluginMetadata(
   state: PluginLifecycleState.ready,
   actionHint: null,
   failureBlock: null,
+  mcpScopes: null,
 );
 const connectedStatus = ConnectionStatus.connected(
   config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
@@ -330,6 +332,7 @@ void main() {
         state: PluginLifecycleState.ready,
         actionHint: null,
         failureBlock: null,
+        mcpScopes: null,
       );
       const refreshedB = PluginMetadata(
         id: "plugin-b",
@@ -338,6 +341,7 @@ void main() {
         state: PluginLifecycleState.degraded,
         actionHint: "Check the bridge console.",
         failureBlock: null,
+        mcpScopes: null,
       );
       const unavailableB = PluginMetadata(
         id: "plugin-b",
@@ -346,6 +350,7 @@ void main() {
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
         failureBlock: null,
+        mcpScopes: null,
       );
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
@@ -435,6 +440,7 @@ void main() {
         state: PluginLifecycleState.ready,
         actionHint: null,
         failureBlock: null,
+        mcpScopes: null,
       );
       final refreshed = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
@@ -494,6 +500,7 @@ void main() {
         state: PluginLifecycleState.unavailable,
         actionHint: gatewayHint,
         failureBlock: PluginFailureBlock.unavailable,
+        mcpScopes: null,
       );
 
       test("stays pickable and shows its notice in the composer's place", () async {
@@ -762,6 +769,7 @@ void main() {
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
         failureBlock: null,
+        mcpScopes: null,
       );
       final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
@@ -810,6 +818,7 @@ void main() {
         state: PluginLifecycleState.ready,
         actionHint: null,
         failureBlock: null,
+        mcpScopes: null,
       );
       final originalCommand = testCommandInfo();
       final refreshedCommand = testCommandInfo(template: "/review {{path}}");
@@ -1698,6 +1707,7 @@ void main() {
         state: PluginLifecycleState.ready,
         actionHint: null,
         failureBlock: null,
+        mcpScopes: null,
       );
       const unavailableB = PluginMetadata(
         id: "plugin-b",
@@ -1706,6 +1716,7 @@ void main() {
         state: PluginLifecycleState.unavailable,
         actionHint: "Start the plugin.",
         failureBlock: null,
+        mcpScopes: null,
       );
       final command = testCommandInfo();
       final fallbackAgents = Completer<ApiResponse<Agents>>();
@@ -1827,6 +1838,7 @@ void main() {
         state: PluginLifecycleState.failed,
         actionHint: "Restart the bridge.",
         failureBlock: null,
+        mcpScopes: null,
       );
       const second = PluginMetadata(
         id: "selected",
@@ -1835,6 +1847,7 @@ void main() {
         state: PluginLifecycleState.ready,
         actionHint: null,
         failureBlock: null,
+        mcpScopes: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [first, second])),
@@ -1860,6 +1873,7 @@ void main() {
         state: PluginLifecycleState.degraded,
         actionHint: "Check the bridge console.",
         failureBlock: null,
+        mcpScopes: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [degraded])),
@@ -1916,6 +1930,7 @@ void main() {
         state: PluginLifecycleState.unavailable,
         actionHint: "Check the bridge console.",
         failureBlock: null,
+        mcpScopes: null,
       );
       const failed = PluginMetadata(
         id: "failed",
@@ -1924,6 +1939,7 @@ void main() {
         state: PluginLifecycleState.failed,
         actionHint: "Restart the bridge.",
         failureBlock: null,
+        mcpScopes: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [unavailable, failed])),
