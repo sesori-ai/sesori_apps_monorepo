@@ -85,6 +85,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     // while unresolved: the listing failed, the session is archived or has no
     // plugin id, or the connection dropped.
     required bool? supportsFileUploads,
+    // Whether the session menu offers MCP; false only when the bridge reports
+    // that the harness answers no MCP for a session.
+    required bool offersSessionMcp,
     // Model from the latest assistant message.
     required AgentModel? assistantAgentModel,
     // Background tasks (child sessions).
@@ -212,6 +215,13 @@ extension SessionDetailStateX on SessionDetailState {
   Session? get hydratedSession => switch (this) {
     SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
     SessionDetailLoading() || SessionDetailFailed() => null,
+  };
+
+  /// Whether the session menu offers MCP. Until the session loads, nothing
+  /// says its harness lacks MCP, so the entry stays.
+  bool get offersMcp => switch (this) {
+    SessionDetailLoaded(:final offersSessionMcp) => offersSessionMcp,
+    SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => true,
   };
 }
 

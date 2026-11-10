@@ -35,6 +35,7 @@ const _loaded = SessionDetailState.loaded(
   pluginId: "opencode",
   supportsPromptAttachments: false,
   supportsFileUploads: false,
+  offersSessionMcp: true,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},

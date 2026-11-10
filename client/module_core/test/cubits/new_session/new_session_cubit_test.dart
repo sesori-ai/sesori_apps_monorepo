@@ -58,6 +58,7 @@ void main() {
       state: PluginLifecycleState.ready,
       actionHint: null,
       failureBlock: null,
+      mcpScopes: null,
     );
 
     setUpAll(registerAllFallbackValues);
@@ -433,6 +434,7 @@ void main() {
                   state: PluginLifecycleState.ready,
                   actionHint: null,
                   failureBlock: null,
+                  mcpScopes: null,
                   supportsPromptAttachments: true,
                 ),
               ],
@@ -513,6 +515,7 @@ void main() {
                     state: PluginLifecycleState.ready,
                     actionHint: null,
                     failureBlock: null,
+                    mcpScopes: null,
                     supportsPromptAttachments: false,
                   ),
                 ],
@@ -856,6 +859,7 @@ void main() {
                 state: PluginLifecycleState.ready,
                 actionHint: null,
                 failureBlock: null,
+                mcpScopes: null,
                 supportsPromptAttachments: true,
               ),
             ],
@@ -935,6 +939,7 @@ void main() {
                 state: PluginLifecycleState.ready,
                 actionHint: null,
                 failureBlock: null,
+                mcpScopes: null,
                 supportsPromptAttachments: true,
               ),
             ],
@@ -3916,6 +3921,7 @@ void main() {
                   state: PluginLifecycleState.failed,
                   actionHint: null,
                   failureBlock: null,
+                  mcpScopes: null,
                 ),
               ],
             ),
@@ -4105,6 +4111,7 @@ void main() {
           state: PluginLifecycleState.ready,
           actionHint: null,
           failureBlock: null,
+          mcpScopes: null,
         );
         when(mockPluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(

@@ -127,12 +127,17 @@ retain inspection when native data is available and grant no session mutation.
   declares (`mcpScopes`; empty without MCP). Harness settings offer the MCP entry
   only when that includes harness scope, so Claude Code (session only), OpenCode
   (project and session) and harnesses without MCP, such as Hermes, show none;
-  Codex keeps it. A bridge that omits the field keeps the entry visible.
+  Codex keeps it. Plugin discovery (`GET /plugin`) carries the same `mcpScopes`,
+  and the phone and desktop session menus offer MCP only when they include
+  session scope, so a Hermes session shows no MCP entry. A bridge that omits the
+  field, or a listing that fails or lacks the harness, keeps the entry visible.
+  When MCP was the menu's only entry, as in an archived audit view, the More
+  button is hidden rather than opening an empty menu.
 - The inventory opens above the underlying session/settings page. Server details
   use a separate presentation layer; closing either returns to the previous view.
 - Refresh feedback occupies a stable header area. Existing inventory remains
   scrollable, with stable target keys and no offset reset during refresh failure.
-- Archived and sub-agent sessions retain the read-only MCP menu entry; session mutations stay hidden.
+- Archived and sub-agent sessions of a harness with session MCP retain the read-only MCP menu entry; session mutations stay hidden.
 - Archived control requests return HTTP 409 with the canonical session ID and
   `archived_read_only` reason, without accessing the native plugin.
 - Unknown entries show an upgrade hint instead of claiming an empty available catalog.

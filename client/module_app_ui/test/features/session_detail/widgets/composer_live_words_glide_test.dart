@@ -1034,6 +1034,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
     pluginId: "opencode",
     supportsPromptAttachments: true,
     supportsFileUploads: false,
+    offersSessionMcp: true,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},

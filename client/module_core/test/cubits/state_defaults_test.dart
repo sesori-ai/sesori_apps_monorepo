@@ -24,6 +24,7 @@ void main() {
       pluginId: "opencode",
       supportsPromptAttachments: false,
       supportsFileUploads: false,
+      offersSessionMcp: true,
       assistantAgentModel: null,
       children: [],
       childStatuses: {},

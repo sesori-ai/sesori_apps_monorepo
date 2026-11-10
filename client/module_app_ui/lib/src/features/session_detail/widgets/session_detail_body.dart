@@ -800,6 +800,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       ),
       SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
     };
+    // A shell's entries can all drop out, such as MCP for a harness without
+    // it, and More must not open an empty menu.
+    final shellMenuEntries = switch ((session, menuEntriesBuilder)) {
+      (final session?, final builder?) => builder(context: context, session: session, isBusy: isBusy),
+      _ => const <PregoMenuEntry>[],
+    };
     if (pageChrome != null) {
       return _PageFocus(
         child: Scaffold(
@@ -864,7 +870,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       SessionDetailActionSwitcher(
         surface: SessionDetailActionSurface.glass,
         gapAfter: 0,
-        child: session == null || (openDiffs == null && menuEntriesBuilder == null && !canConfigureContinuation)
+        child: session == null || (openDiffs == null && shellMenuEntries.isEmpty && !canConfigureContinuation)
             ? null
             : PregoAnchorMenu(
                 flat: true,

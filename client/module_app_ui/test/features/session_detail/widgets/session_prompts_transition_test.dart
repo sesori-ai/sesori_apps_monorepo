@@ -122,6 +122,7 @@ SessionDetailLoaded _loadedState({required List<MessageWithParts> messages}) {
     pluginId: "opencode",
     supportsPromptAttachments: true,
     supportsFileUploads: false,
+    offersSessionMcp: true,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},

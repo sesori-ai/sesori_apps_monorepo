@@ -34,6 +34,7 @@ const _plugins = [
     state: PluginLifecycleState.ready,
     actionHint: null,
     failureBlock: null,
+    mcpScopes: null,
     supportsPromptAttachments: true,
   ),
 ];
