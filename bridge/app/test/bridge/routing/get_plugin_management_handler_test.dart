@@ -51,6 +51,7 @@ const _response = PluginManagementResponse(
         PluginManagementCapability.setupRefresh,
         PluginManagementCapability.idleTimeout,
       },
+      mcpScopes: null,
       actionHint: null,
     ),
   ],

@@ -163,6 +163,7 @@ const _metadata = PluginManagementMetadata(
   idleTimeoutMins: 0,
   hasIdleTimeoutOverride: false,
   managementCapabilities: {PluginManagementCapability.authentication},
+  mcpScopes: null,
   actionHint: "Sign in.",
 );
 

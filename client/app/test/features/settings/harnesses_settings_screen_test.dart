@@ -40,6 +40,7 @@ const _managed = PluginManagementMetadata(
     PluginManagementCapability.setupRefresh,
     PluginManagementCapability.idleTimeout,
   },
+  mcpScopes: null,
   actionHint: null,
 );
 
@@ -56,6 +57,7 @@ const _externalOpenCode = PluginManagementMetadata(
   idleTimeoutMins: 0,
   hasIdleTimeoutOverride: false,
   managementCapabilities: {PluginManagementCapability.setupRefresh},
+  mcpScopes: null,
   actionHint: null,
 );
 
@@ -73,6 +75,7 @@ const _authenticationRequired = PluginManagementMetadata(
   idleTimeoutMins: 0,
   hasIdleTimeoutOverride: false,
   managementCapabilities: {PluginManagementCapability.authentication},
+  mcpScopes: null,
   actionHint: "Log in to continue.",
 );
 

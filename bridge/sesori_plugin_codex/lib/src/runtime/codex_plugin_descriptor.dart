@@ -148,6 +148,11 @@ class const CodexPluginDescriptor({
     PluginMcpCapability.connectorSetup,
   };
 
+  /// MCP is read harness-wide or for an existing thread; project scope answers
+  /// unsupported scope.
+  @override
+  Set<PluginMcpScopeKind> get mcpScopes => const {PluginMcpScopeKind.harness, PluginMcpScopeKind.session};
+
   /// Backend-namespaced ownership filename in shared runtime storage.
   static const String ownershipFileName = "codex-processes.json";
 

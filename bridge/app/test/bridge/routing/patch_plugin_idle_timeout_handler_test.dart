@@ -123,6 +123,7 @@ const _unsupportedPlugin = PluginManagementMetadata(
   idleTimeoutMins: 10,
   hasIdleTimeoutOverride: false,
   managementCapabilities: {PluginManagementCapability.setupRefresh},
+  mcpScopes: null,
   actionHint: null,
 );
 

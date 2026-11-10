@@ -103,6 +103,11 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
       expect(
+        descriptor.mcpScopes,
+        {PluginMcpScopeKind.project, PluginMcpScopeKind.session},
+        reason: "OpenCode reads MCP from a directory, which harness scope lacks",
+      );
+      expect(
         descriptor.options.map((o) => o.name).toList(),
         equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin", "no-shared-service"]),
       );

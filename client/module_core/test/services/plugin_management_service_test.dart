@@ -2950,6 +2950,7 @@ PluginLifecycleConflict _conflict(List<PluginLifecycleConflictReason> reasons) {
         PluginManagementCapability.setupRefresh,
         PluginManagementCapability.idleTimeout,
       },
+      mcpScopes: null,
       actionHint: null,
     ),
   );

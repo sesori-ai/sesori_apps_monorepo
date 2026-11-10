@@ -105,6 +105,11 @@ final class const ClaudePluginDescriptor({
     PluginMcpCapability.authentication,
   };
 
+  /// MCP is read from a live resident session; harness-wide and project
+  /// inventory answer unsupported scope.
+  @override
+  Set<PluginMcpScopeKind> get mcpScopes => const {PluginMcpScopeKind.session};
+
   @override
   PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.conditional;
 

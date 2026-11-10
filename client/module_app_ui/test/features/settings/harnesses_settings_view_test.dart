@@ -33,6 +33,7 @@ const _ready = PluginManagementMetadata(
     PluginManagementCapability.setupRefresh,
     PluginManagementCapability.idleTimeout,
   },
+  mcpScopes: null,
   actionHint: null,
 );
 
@@ -922,6 +923,25 @@ void main() {
     expect(find.text("Extracting…"), findsOneWidget);
     expect(find.textContaining("40%"), findsNothing);
   });
+
+  for (final (scopes, offered) in [
+    // An older bridge that reports no scopes keeps the entry it always had.
+    (null, true),
+    ({McpScopeKind.harness, McpScopeKind.session}, true),
+    // Session-only MCP, such as Claude Code, opens from a session's menu.
+    ({McpScopeKind.session}, false),
+    ({McpScopeKind.project, McpScopeKind.session}, false),
+    // No MCP support at all, such as Hermes.
+    (<McpScopeKind>{}, false),
+  ]) {
+    testWidgets("detail offers harness-wide MCP only where the harness answers it; scopes=$scopes", (tester) async {
+      phone(tester: tester);
+      publish(plugins: [_ready.copyWith(mcpScopes: scopes)]);
+      await tester.pumpWidget(app(detailId: "ready"));
+      await tester.pumpAndSettle();
+      expect(find.text("MCP servers and connectors"), offered ? findsOneWidget : findsNothing);
+    });
+  }
 
   testWidgets("detail selection never substitutes an unknown identity", (tester) async {
     publish(plugins: [_ready]);
