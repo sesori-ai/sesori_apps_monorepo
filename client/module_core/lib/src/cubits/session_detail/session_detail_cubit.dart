@@ -177,6 +177,10 @@ class SessionDetailCubit(
   /// queued, so this screen's queue waits until none is left.
   List<LaunchFollowUp> _unsentLaunchFollowUps = const [];
 
+  /// The launch follow-ups a stop returned to the composer, which no later
+  /// launch event may show or park again.
+  final Set<String> _returnedLaunchFollowUpIds = {};
+
   /// Images the launch's composer held unsent, until this screen's composer
   /// stages them.
   List<ComposerAttachment> _launchAttachments = const [];
@@ -350,6 +354,9 @@ class SessionDetailCubit(
     if (isClosed) return;
     final unsent = <LaunchFollowUp>[];
     for (final followUp in followUps) {
+      // A list the launch published before a stop took these back can land
+      // after it; they are the composer's now.
+      if (_returnedLaunchFollowUpIds.contains(followUp.submission.promptId)) continue;
       if (followUp case AcceptedLaunchFollowUp(:final submission, :final since)) {
         _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
       } else {
@@ -3448,6 +3455,10 @@ class SessionDetailCubit(
     // The launch's follow-ups the bridge has not accepted are this screen's to
     // return like its own staged sends, so none may send after the stop.
     final launchFollowUps = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
+    _returnedLaunchFollowUpIds.addAll([
+      for (final followUp in _unsentLaunchFollowUps) followUp.submission.promptId,
+      for (final submission in launchFollowUps) submission.promptId,
+    ]);
     _unsentLaunchFollowUps = const [];
     final returned = <String>{};
     final unsent = [

@@ -2953,6 +2953,43 @@ void main() {
           expect(cubit.composerDraft, ComposerDraft.typed(text: "half typed"));
           expect((cubit.state as SessionDetailLoaded).composerRestorations, 0);
         });
+
+        test("a launch list published before the stop took them back does not bring them back", () async {
+          final launchFollowUps = StreamController<List<LaunchFollowUp>>.broadcast();
+          addTearDown(launchFollowUps.close);
+          final service = _MockSessionLaunchService();
+          when(() => service.takeHandoff(sessionId: _sessionId)).thenReturn(null);
+          when(() => service.watchForSession(sessionId: _sessionId)).thenAnswer((_) => launchFollowUps.stream);
+          when(
+            () => service.withdrawFollowUps(sessionId: _sessionId),
+          ).thenReturn([followUp(promptId: "prm_a"), followUp(promptId: "prm_b")]);
+          final cubit = await createLoadedCubit(sessionLaunchService: service);
+          launchFollowUps.add([
+            LaunchFollowUp.sending(submission: followUp(promptId: "prm_a"), since: DateTime(2026)),
+            LaunchFollowUp.queued(submission: followUp(promptId: "prm_b"), since: DateTime(2026)),
+          ]);
+          await Future<void>.delayed(Duration.zero);
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+
+          final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+          abortResponse.complete(ApiResponse.success(true));
+          expect(await aborting, isA<SessionAbortAccepted>());
+          final restoredDraft = ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed");
+          expect(cubit.composerDraft, restoredDraft);
+
+          // Published before the withdrawal, delivered after it.
+          launchFollowUps.add([
+            LaunchFollowUp.accepted(submission: followUp(promptId: "prm_a"), since: DateTime(2026)),
+            LaunchFollowUp.queued(submission: followUp(promptId: "prm_b"), since: DateTime(2026)),
+          ]);
+          await Future<void>.delayed(Duration.zero);
+
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.launchFollowUps, isEmpty);
+          expect(state.awaitingBridgeSubmissions, isEmpty);
+          expect(state.composerRestorations, 1);
+          expect(cubit.composerDraft, restoredDraft);
+        });
       });
 
       void stubSends({required List<String> sentTexts}) {
@@ -3415,3 +3452,5 @@ QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => swit
   LocalSendFailed(:final submission) => submission,
   LocalSendIdle() || LocalSendSending() => null,
 };
+
+class _MockSessionLaunchService() extends Mock implements SessionLaunchService;
