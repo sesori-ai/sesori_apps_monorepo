@@ -999,27 +999,36 @@ class CatalogImportRepository({
     }
   }
 
-  /// The normalized [path] with its symbolic links resolved. Falls back to [path]
-  /// itself on Windows, which keeps a working directory as spelled; inside the
-  /// scratch root, whose folders are matched as spelled; and when the folder
-  /// cannot be resolved, as for old history in a folder deleted since.
+  /// The normalized [path] with its symbolic links resolved. A folder deleted
+  /// since, common in old history, resolves through its nearest surviving
+  /// parent, so `/tmp/x/gone` still becomes `/private/tmp/x/gone` on macOS.
+  /// Falls back to [path] itself on Windows, which keeps a working directory as
+  /// spelled; inside the scratch root, whose folders are matched as spelled;
+  /// and when resolution fails for any other reason.
   Future<String> _resolveProjectPath({required String path}) async {
     if (Platform.isWindows || _projectCatalogIdentityCalculator.isWithinScratch(path: path)) return path;
-    try {
-      final resolved = await _filesystemApi.resolveDirectoryPathAsync(path: path).timeout(_pathResolutionTimeout);
-      return normalizeProjectDirectory(directory: resolved);
-    } on FileSystemException catch (error, stackTrace) {
-      // A folder deleted since is common in old history and expected, so it is
-      // not worth a warning per folder; any other failure is.
-      if (error.osError?.errorCode == _noSuchFileOrDirectory) {
-        Log.d("CatalogImportRepository: $path no longer exists; importing it as reported");
-      } else {
+    var existing = path;
+    final missingSegments = <String>[];
+    while (true) {
+      try {
+        final resolved = await _filesystemApi.resolveDirectoryPathAsync(path: existing).timeout(_pathResolutionTimeout);
+        if (missingSegments.isNotEmpty) {
+          Log.d("CatalogImportRepository: $path no longer exists; resolved through $existing");
+        }
+        return normalizeProjectDirectory(directory: p.joinAll([resolved, ...missingSegments.reversed]));
+      } on FileSystemException catch (error, stackTrace) {
+        final parent = p.dirname(existing);
+        if (error.osError?.errorCode == _noSuchFileOrDirectory && parent != existing) {
+          missingSegments.add(p.basename(existing));
+          existing = parent;
+          continue;
+        }
         Log.w("CatalogImportRepository: could not resolve links in $path; importing it as reported", error, stackTrace);
+        return path;
+      } on TimeoutException {
+        Log.w("CatalogImportRepository: resolving links in $path timed out; importing it as reported");
+        return path;
       }
-      return path;
-    } on TimeoutException {
-      Log.w("CatalogImportRepository: resolving links in $path timed out; importing it as reported");
-      return path;
     }
   }
 
