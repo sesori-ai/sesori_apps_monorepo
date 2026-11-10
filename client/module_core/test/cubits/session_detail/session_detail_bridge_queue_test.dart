@@ -2703,6 +2703,51 @@ void main() {
         expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
       });
 
+      test("puts a send the harness accepts only after the block back into the composer", () async {
+        final accepted = Completer<ApiResponse<void>>();
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: _sessionId,
+            promptId: any(named: "promptId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+          ),
+        ).thenAnswer((_) => accepted.future);
+        final cubit = await createLoadedCubit(managementSnapshots: snapshots);
+        final sending = cubit.sendMessage(
+          text: "Fix the build",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await _awaitCondition(() => (cubit.state as SessionDetailLoaded).localSend is LocalSendSending);
+        cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+
+        // The block lands while the send is still in flight, so nothing is
+        // accepted yet to return.
+        await block(cubit);
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "half typed"));
+
+        accepted.complete(ApiResponse.success(null));
+        await sending;
+
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "Fix the build\n\nhalf typed"));
+        final state = cubit.state as SessionDetailLoaded;
+        expect(state.awaitingBridgeSubmissions, isEmpty);
+        expect(state.localSend, isA<LocalSendIdle>());
+
+        // Check setup's refresh finds the prompt gone and leaves the draft be.
+        snapshots.add(ready);
+        await cubit.checkHarnessSetup();
+        expect(cubit.composerDraft, ComposerDraft.typed(text: "Fix the build\n\nhalf typed"));
+        expect((cubit.state as SessionDetailLoaded).composerRestorations, 1);
+      });
+
       test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
         const dispatched = QueuedSessionPrompt(
           id: "prm_steering",

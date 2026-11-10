@@ -2739,7 +2739,14 @@ class SessionDetailCubit(
       if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
     }
 
-    _emitQueueUpdate(_latestLoadedState());
+    switch (_latestLoadedState()) {
+      // Accepted by a harness a block already shut down: it is dropped with
+      // the rest, so it returns to the composer as they did.
+      case final latest? when sendSucceeded && !isClosed && _isHarnessBlock(interaction: latest.interaction):
+        emit(_returnUndeliveredToComposer(current: latest));
+      case final latest:
+        _emitQueueUpdate(latest);
+    }
 
     if (sendSettledElsewhere && _isConnected) {
       // The bridge already owns that prompt; the staged sends behind it must
