@@ -348,7 +348,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
+			shellScript = "# pdfium_dart also bundles libpdfium on macOS, as the native asset pdfium.framework. macOS volumes ignore\n# case, so embedding it overwrites the PDFium.framework XCFramework the app links, and dyld then refuses\n# to launch the app. The app loads PDFium from that linked XCFramework, so skip the duplicate.\n# Remove once pdfium_dart stops emitting the macOS asset: https://github.com/espresso3389/pdfrx\nrm -rf \"$BUILT_PRODUCTS_DIR/native_assets/pdfium.framework\" && echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
