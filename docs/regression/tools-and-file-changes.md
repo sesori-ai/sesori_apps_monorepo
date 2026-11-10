@@ -202,13 +202,13 @@ sub-agent parts, plus the signal that a tool changed files.
   fits a short transcript and caps at 144 px. One Copy takes the transcript
   exactly as shown. A sideways swipe anywhere on the panel scrolls the transcript.
   Status stays visible outside the viewport; streamed updates do not close an
-  open panel. The panel eases open over 180 ms and shut over 130 ms, growing down from the
+  open panel. A tap eases the panel open over 180 ms and shut over 130 ms, growing down from the
   row, and its details stay visible while it closes. In the reversed
   transcript the tapped header stays still while the panel opens and closes
   below it; only when no room is left above the composer (the newest row)
   does the row grow upward. A later resize of an open panel never scrolls
   the transcript, except the eased resize when a fetched output arrives. Screen safe-area insets do not displace its scrollbars.
-  Reduced motion opens and closes it at once.
+  Reduced motion, or the keyboard, opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
   A tool with output or an error but no shell command opens the same panel,
   titled with the tool name, from its row; a tool with neither is a plain row.
@@ -245,7 +245,7 @@ sub-agent parts, plus the signal that a tool changed files.
   before. Until the output arrives the panel shows its title and any command
   over a fixed-height row; a spinner fades in there only after 150 ms, so a
   quick fetch never flashes one, and Copy keeps its place but is hidden. When
-  the output arrives the panel eases over 180 ms from that height to its own,
+  the output arrives the panel eases over 180 ms (at once under reduced motion) from that height to its own,
   taller or shorter, the tapped header stays still as when opening, and a
   command scrolled sideways keeps its offset. A failed fetch shows “Could not
   load the output.” with Retry in the same row, so the panel does not change

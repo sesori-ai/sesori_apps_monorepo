@@ -187,7 +187,7 @@ dropped item's branch as it is, and note it in the tracker for the metrics phase
 
 | Item | Site (file, symbol) | Touch today | Pointer today | Folded value |
 | --- | --- | --- | --- | --- |
-| 2.1 | `transcript_motion.dart` `_TranscriptPresenceState._animation` | exit 200 ms, `transcriptMotionCurve` (easeOut) | exit 130 ms (`pregoPointerExitDuration`), `pregoContentMoveCurve` | pointer's on both. Step 2 folded the phone's instead: the pointer's pair moves the rows above a Working handoff by 6.4 pt (tracker) |
+| 2.1 | `transcript_motion.dart` `_TranscriptPresenceState._animation` | exit 200 ms, `transcriptMotionCurve` (easeOut) | exit 130 ms (`pregoPointerExitDuration`), `pregoContentMoveCurve` | the phone's on both. Planned as the pointer's, but that pair moves the rows above a Working handoff by 6.4 pt (tracker) |
 | 2.2 | `transcript_motion.dart` `_TranscriptPresenceState.build` opacity | follows the animation | solid by 35% of the enter | pointer's on both |
 | 2.3 | `transcript_disclosure.dart` `_TranscriptDisclosureState` (`_pointer`) | 200 ms easeOut, header minimum 44×44 | open 180 ms, close 130 ms, `Cubic(0.25, 0.55, 0.2, 1)`, resize 180 ms, header minimum zero | pointer's motion on both; `Size(44, 44)` header minimum on both, which density shrinks on desktop (measure the desktop header) |
 | 2.4 | `transcript_live_row.dart` `TranscriptLiveLabel.build` shimmer base | `textTertiary` | `textSecondary` | `textSecondary` |

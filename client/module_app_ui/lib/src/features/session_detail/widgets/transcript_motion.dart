@@ -51,6 +51,10 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
   AnimationController? _controller;
   CurvedAnimation? _curve;
 
+  /// Where the row last turned around, so its opacity carries on from there
+  /// rather than snapping to the other direction's.
+  ({double t, double opacity}) _turn = (t: 0, opacity: 0);
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +65,8 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
   void didUpdateWidget(TranscriptPresence oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exiting == widget.exiting) return;
+    final t = _curve?.value ?? 1;
+    _turn = (t: t, opacity: _opacity(t, exiting: oldWidget.exiting));
     if (widget.exiting) {
       _animation(from: 1).reverse();
     } else {
@@ -103,6 +109,11 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
     return controller;
   }
 
+  /// An entering row is solid early, so its words never sit over the rows
+  /// around it; a leaving one fades with its height.
+  double _opacity(double t, {required bool exiting}) =>
+      exiting ? (_turn.t == 0 ? 0 : _turn.opacity * t / _turn.t) : min(1, _turn.opacity + max(0, t - _turn.t) / 0.35);
+
   void _release() {
     _curve?.dispose();
     _controller?.dispose();
@@ -128,9 +139,7 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
         widthFactor: 1,
         heightFactor: t,
         child: Opacity(
-          // An entering row is solid early, so its words never sit over the
-          // rows around it.
-          opacity: widget.exiting ? t : min(1, t / 0.35),
+          opacity: _opacity(t, exiting: widget.exiting),
           child: FractionalTranslation(
             translation: Offset(
               0,
